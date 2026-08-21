@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` at `a47137f`
+**Branch / baseline:** `main` through `01c4b560`
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -38,23 +38,30 @@ scientific gates are met.
 | Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
+| Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
+| OLS reference-contract harness | Implemented; capture pending | Commit `01c4b560` freezes the semantic/benchmark manifest, isolated preflight, capture renderer, and sealed receipt verifier. It deliberately refuses to run without an exact `ftools` provenance pin. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
 
-1. Freeze pinned `reghdfe` reference captures and the OLS benchmark manifest.
-2. Audit and complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
+1. Resolve and verify the exact transitive `ftools` reference, then run and seal
+   the pinned `reghdfe` semantic captures.
+2. Use the frozen captures to settle weight, DoF, VCE, fit-statistic, and
+   postestimation contracts.
+3. Complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
    integration gaps before enabling `estimate-ols`.
-3. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
-4. Optimize only after scientific correctness is certified.
+4. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
+5. Optimize only after scientific correctness is certified.
 
 ## Current blockers
 
 - `stfeols` is deliberately disabled and returns `r(498)`; no successful
   Stata estimator invocation, result posting, or reference parity evidence
   exists yet.
-- No pinned `reghdfe` capture, benchmark timing, peak-RSS receipt, or
-  constrained-memory receipt has been recorded.
+- The `reghdfe` capture harness is ready but cannot launch: the required
+  transitive `ftools` source/installed-file provenance is intentionally
+  unresolved and fail-closed. No pinned reference capture, benchmark timing,
+  peak-RSS receipt, or constrained-memory receipt has been recorded.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
   as a Stata-facing estimator. Independent audit and integration work are in
   progress.
@@ -62,10 +69,11 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Exact pinned `reghdfe` installation/capture receipt, including executable,
-  reference hash, commands, seed, `e()` output, samples, timing, and RSS.
-- A dependency-ordered OLS integration audit identifying the first safely
-  enableable implementation slice and its tests.
+- Exact `ftools` and `reghdfe` installation/capture receipt, including
+  executable, source and installed-file hashes, commands, seed, `e()` output,
+  samples, timing, and RSS.
+- Executable request-to-`PreparedOlsData` design and adversarial test suite,
+  with no public estimator enablement.
 
 ## Historical qualification
 
