@@ -6,10 +6,11 @@ use crate::fe::FeDesign;
 #[derive(Debug, Clone, PartialEq)]
 pub struct FeCertificate {
     /// Largest raw element of `D' W r` over all effects and right-hand sides.
+    /// Saturates to infinity when a nonzero diagnostic is not representable.
     pub absolute_infinity_norm: f64,
-    /// Largest scale-free moment `|d_j'Wr| / (||d_j||_W ||y_j||_W)`.
+    /// Largest basis-invariant local projection ratio over all FE levels and RHSs.
     pub relative_infinity_norm: f64,
-    /// Root-mean-square of scale-free moments over all FE coefficient directions.
+    /// Root-mean-square of the basis-invariant local projection ratios.
     pub relative_two_norm: f64,
     pub passed: bool,
 }
@@ -17,22 +18,52 @@ pub struct FeCertificate {
 /// Weighted Euclidean norm of each matrix column.
 pub(crate) fn weighted_column_norms(values: &DenseMatrix, weights: &[f64]) -> Result<Vec<f64>> {
     validate_common(values, weights)?;
-    let mut square_sums = vec![0.0_f64; values.ncols()];
+    let mut scales = vec![0.0_f64; values.ncols()];
+    let mut scaled_square_sums = vec![1.0_f64; values.ncols()];
     for row in 0..values.nrows() {
+        let square_root_weight = weights[row].sqrt();
         for column in 0..values.ncols() {
-            let value = values[(row, column)];
-            square_sums[column] = (weights[row] * value).mul_add(value, square_sums[column]);
+            let value = square_root_weight * values[(row, column)];
+            if !value.is_finite() {
+                return Err(StFixestError::new(
+                    ErrorCode::InvalidData,
+                    "weighted certificate value is not finite",
+                ));
+            }
+            update_scaled_sum_of_squares(
+                value,
+                &mut scales[column],
+                &mut scaled_square_sums[column],
+            );
         }
     }
-    Ok(square_sums.into_iter().map(f64::sqrt).collect())
+    scales
+        .into_iter()
+        .zip(scaled_square_sums)
+        .map(|(scale, scaled_square_sum)| {
+            let norm = if scale == 0.0 {
+                0.0
+            } else {
+                scale * scaled_square_sum.sqrt()
+            };
+            if norm.is_finite() {
+                Ok(norm)
+            } else {
+                Err(StFixestError::new(
+                    ErrorCode::InvalidData,
+                    "weighted certificate norm is not finite",
+                ))
+            }
+        })
+        .collect()
 }
 
-/// Recompute true weighted fixed-effect moments from returned residuals.
+/// Recompute weighted fixed-effect span projections from returned residuals.
 ///
 /// This convenience entry point uses the residual norm as the reference scale.
 /// Estimation solvers should call the internal reference-norm entry point with
 /// norms of the original right-hand sides so that an almost-exact fit does not
-/// turn roundoff into an order-one relative moment.
+/// turn roundoff into an order-one relative violation.
 pub fn certify_residuals(
     design: &FeDesign,
     weights: &[f64],
@@ -43,7 +74,7 @@ pub fn certify_residuals(
     certify_residuals_with_reference_norms(design, weights, residuals, &reference_norms, tolerance)
 }
 
-/// Recompute true weighted FE moments using pre-absorption RHS norms.
+/// Recompute weighted FE-span projections using pre-absorption RHS norms.
 pub(crate) fn certify_residuals_with_reference_norms(
     design: &FeDesign,
     weights: &[f64],
@@ -96,40 +127,83 @@ pub(crate) fn certify_residuals_with_reference_norms(
     let mut relative_count = 0_usize;
     for effect in design.effects() {
         let channels = effect.channels();
-        let directions = effect.n_levels() * channels;
-        let mut moments = vec![0.0; directions * residuals.ncols()];
-        let mut basis_square_sums = vec![0.0; directions];
-        for observation in 0..design.nobs() {
-            let level = effect.codes()[observation] as usize;
-            let weight = weights[observation];
+        for level in 0..effect.n_levels() {
+            let observations = effect.level_index().members(level);
+            let mut normalized_columns = Vec::with_capacity(channels);
             for channel in 0..channels {
-                let basis = effect.basis_value(channel, observation);
-                let direction = level * channels + channel;
-                basis_square_sums[direction] =
-                    (weight * basis).mul_add(basis, basis_square_sums[direction]);
-                for rhs in 0..residuals.ncols() {
-                    let index = direction * residuals.ncols() + rhs;
-                    moments[index] =
-                        (weight * basis).mul_add(residuals[(observation, rhs)], moments[index]);
+                let mut column = Vec::with_capacity(observations.len());
+                let mut column_scale = 0.0_f64;
+                for &observation in observations {
+                    let value =
+                        weights[observation].sqrt() * effect.basis_value(channel, observation);
+                    if !value.is_finite() {
+                        return Err(StFixestError::new(
+                            ErrorCode::InvalidData,
+                            "weighted fixed-effect basis is not finite",
+                        ));
+                    }
+                    column_scale = column_scale.max(value.abs());
+                    column.push(value);
                 }
+                if column_scale == 0.0 {
+                    continue;
+                }
+                for value in &mut column {
+                    *value /= column_scale;
+                }
+                let norm = euclidean_norm(&column);
+                if norm == 0.0 || !norm.is_finite() {
+                    return Err(StFixestError::new(
+                        ErrorCode::InvalidData,
+                        "fixed-effect basis normalization failed",
+                    ));
+                }
+                for value in &mut column {
+                    *value /= norm;
+                }
+                normalized_columns.push(column);
             }
-        }
-        for direction in 0..directions {
-            let basis_norm = basis_square_sums[direction].sqrt();
+
+            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns);
             for rhs in 0..residuals.ncols() {
-                let moment = moments[direction * residuals.ncols() + rhs];
-                absolute_infinity_norm = absolute_infinity_norm.max(moment.abs());
-                let denominator = basis_norm * rhs_scales[rhs];
-                let relative = if denominator > 0.0 {
-                    moment.abs() / denominator
-                } else if moment == 0.0 {
-                    0.0
-                } else {
-                    f64::INFINITY
-                };
+                let denominator = rhs_scales[rhs];
+                let mut projected_square_norm = 0.0_f64;
+                if denominator > 0.0 {
+                    for basis in &orthonormal_basis {
+                        let mut coefficient = 0.0_f64;
+                        for (local_row, &observation) in observations.iter().enumerate() {
+                            let scaled_residual = weights[observation].sqrt()
+                                * residuals[(observation, rhs)]
+                                / denominator;
+                            coefficient = basis[local_row].mul_add(scaled_residual, coefficient);
+                        }
+                        projected_square_norm =
+                            coefficient.mul_add(coefficient, projected_square_norm);
+                    }
+                }
+                let relative = projected_square_norm.sqrt();
+                if !relative.is_finite() {
+                    return Err(StFixestError::new(
+                        ErrorCode::InvalidData,
+                        "fixed-effect projection certificate is not finite",
+                    ));
+                }
                 relative_infinity_norm = relative_infinity_norm.max(relative);
                 relative_square_sum = relative.mul_add(relative, relative_square_sum);
                 relative_count += 1;
+            }
+
+            for channel in 0..channels {
+                for rhs in 0..residuals.ncols() {
+                    let moment = scaled_raw_moment(
+                        observations,
+                        |observation| {
+                            weights[observation].sqrt() * effect.basis_value(channel, observation)
+                        },
+                        |observation| weights[observation].sqrt() * residuals[(observation, rhs)],
+                    );
+                    absolute_infinity_norm = absolute_infinity_norm.max(moment.abs());
+                }
             }
         }
     }
@@ -143,8 +217,143 @@ pub(crate) fn certify_residuals_with_reference_norms(
         absolute_infinity_norm,
         relative_infinity_norm,
         relative_two_norm,
-        passed: relative_infinity_norm <= tolerance && relative_two_norm <= tolerance,
+        passed: relative_infinity_norm <= tolerance,
     })
+}
+
+/// Column-pivoted, twice-reorthogonalized modified Gram-Schmidt.
+///
+/// Input columns are individually normalized before this routine. That makes
+/// rank selection insensitive to FE channel units. The cutoff is tied only to
+/// machine precision and block dimensions, never to the user's convergence
+/// tolerance.
+fn pivoted_reorthogonalized_qr(mut columns: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let nrows = columns.first().map_or(0, Vec::len);
+    let ncols = columns.len();
+    let rank_threshold = f64::EPSILON * nrows.max(ncols).max(1) as f64 * 8.0;
+    let mut basis = Vec::with_capacity(nrows.min(ncols));
+
+    while !columns.is_empty() && basis.len() < nrows {
+        let (pivot, pivot_norm) = columns
+            .iter()
+            .enumerate()
+            .map(|(index, column)| (index, euclidean_norm(column)))
+            .max_by(|left, right| left.1.total_cmp(&right.1))
+            .expect("nonempty QR column set");
+        if pivot_norm <= rank_threshold {
+            break;
+        }
+
+        let mut candidate = columns.swap_remove(pivot);
+        reorthogonalize(&mut candidate, &basis);
+        let norm = euclidean_norm(&candidate);
+        if norm <= rank_threshold {
+            continue;
+        }
+        for value in &mut candidate {
+            *value /= norm;
+        }
+
+        for column in &mut columns {
+            subtract_projection(column, &candidate);
+            subtract_projection(column, &candidate);
+        }
+        basis.push(candidate);
+    }
+    basis
+}
+
+fn reorthogonalize(candidate: &mut [f64], basis: &[Vec<f64>]) {
+    for _ in 0..2 {
+        for direction in basis {
+            subtract_projection(candidate, direction);
+        }
+    }
+}
+
+fn subtract_projection(values: &mut [f64], direction: &[f64]) {
+    let coefficient = values
+        .iter()
+        .zip(direction)
+        .fold(0.0_f64, |sum, (&value, &basis)| value.mul_add(basis, sum));
+    for (value, &basis) in values.iter_mut().zip(direction) {
+        *value = (-coefficient).mul_add(basis, *value);
+    }
+}
+
+fn euclidean_norm(values: &[f64]) -> f64 {
+    let mut scale = 0.0_f64;
+    let mut scaled_square_sum = 1.0_f64;
+    for &value in values {
+        update_scaled_sum_of_squares(value, &mut scale, &mut scaled_square_sum);
+    }
+    if scale == 0.0 {
+        0.0
+    } else {
+        scale * scaled_square_sum.sqrt()
+    }
+}
+
+fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, scaled_square_sum: &mut f64) {
+    let absolute = value.abs();
+    if absolute == 0.0 {
+        return;
+    }
+    if *scale < absolute {
+        let ratio = *scale / absolute;
+        *scaled_square_sum = 1.0 + *scaled_square_sum * ratio * ratio;
+        *scale = absolute;
+    } else {
+        let ratio = absolute / *scale;
+        *scaled_square_sum += ratio * ratio;
+    }
+}
+
+/// Accumulate a diagnostic dot product after separately scaling both vectors.
+///
+/// The certificate gate never consumes this value. A true nonzero result that
+/// exceeds the `f64` range saturates to infinity instead of turning a valid
+/// basis-invariant projection certificate into an error.
+fn scaled_raw_moment(
+    observations: &[usize],
+    left: impl Fn(usize) -> f64,
+    right: impl Fn(usize) -> f64,
+) -> f64 {
+    let mut left_scale = 0.0_f64;
+    let mut right_scale = 0.0_f64;
+    for &observation in observations {
+        left_scale = left_scale.max(left(observation).abs());
+        right_scale = right_scale.max(right(observation).abs());
+    }
+    if left_scale == 0.0 || right_scale == 0.0 {
+        return 0.0;
+    }
+
+    let mut sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    for &observation in observations {
+        let product = (left(observation) / left_scale) * (right(observation) / right_scale);
+        let updated = sum + product;
+        correction += if sum.abs() >= product.abs() {
+            (sum - updated) + product
+        } else {
+            (product - updated) + sum
+        };
+        sum = updated;
+    }
+    let normalized = sum + correction;
+    if normalized == 0.0 {
+        return 0.0;
+    }
+
+    let smaller_scale = left_scale.min(right_scale);
+    let larger_scale = left_scale.max(right_scale);
+    let moment = (normalized * smaller_scale) * larger_scale;
+    if moment.is_finite() {
+        moment
+    } else {
+        normalized.signum() * f64::INFINITY
+    }
 }
 
 fn validate_common(values: &DenseMatrix, weights: &[f64]) -> Result<()> {
