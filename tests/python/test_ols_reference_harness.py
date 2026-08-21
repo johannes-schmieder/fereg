@@ -30,6 +30,7 @@ from scripts.ols_reference import (
     _prepared_benchmark_manifest,
     _render_dataset_preparation_do,
     _run_fresh_process,
+    _select_persistent_private_ftools_mlib,
     seal_payload,
     sha256_file,
     validate_manifest,
@@ -298,6 +299,60 @@ class ReferencePreflightTests(unittest.TestCase):
         self.lock["reference"][0]["required_capture_sha256"]["src/reghdfe.ado"] = "0" * 64
         with self.assertRaisesRegex(PreflightError, "hash mismatch"):
             preflight_reference_root(self.reference_root, self.lock, self.repository)
+
+
+class PrivateFtoolsMlibTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.staged = {
+            name: self.root / "references" / name / "src"
+            for name in ("reghdfe", "ftools", "require")
+        }
+        for path in self.staged.values():
+            path.mkdir(parents=True)
+        self.sysdirs = self.root / "sysdirs"
+        self.sysdirs.mkdir()
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def test_accepts_mlib_in_either_persistent_resolver_root(self):
+        for root in (self.staged["reghdfe"], self.sysdirs):
+            with self.subTest(root=root):
+                library = root / "l" / "lftools.mlib"
+                library.parent.mkdir(parents=True, exist_ok=True)
+                library.write_bytes(b"compiled")
+                self.assertEqual(
+                    _select_persistent_private_ftools_mlib(self.staged, self.sysdirs),
+                    library,
+                )
+                library.unlink()
+
+    def test_rejects_missing_duplicate_symlinked_or_transient_mlib(self):
+        error = "exactly one persistent private lftools.mlib"
+        with self.assertRaisesRegex(ContractError, error):
+            _select_persistent_private_ftools_mlib(self.staged, self.sysdirs)
+
+        transient = self.root / "semantic" / "l" / "lftools.mlib"
+        transient.parent.mkdir(parents=True)
+        transient.write_bytes(b"not visible to later runs")
+        with self.assertRaisesRegex(ContractError, error):
+            _select_persistent_private_ftools_mlib(self.staged, self.sysdirs)
+
+        first = self.staged["reghdfe"] / "l" / "lftools.mlib"
+        second = self.sysdirs / "personal" / "l" / "lftools.mlib"
+        for library in (first, second):
+            library.parent.mkdir(parents=True, exist_ok=True)
+            library.write_bytes(b"compiled")
+        with self.assertRaisesRegex(ContractError, error):
+            _select_persistent_private_ftools_mlib(self.staged, self.sysdirs)
+
+        second.unlink()
+        first.unlink()
+        first.symlink_to(transient)
+        with self.assertRaisesRegex(ContractError, error):
+            _select_persistent_private_ftools_mlib(self.staged, self.sysdirs)
 
 
 class BenchmarkGateTests(unittest.TestCase):

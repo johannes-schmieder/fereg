@@ -1822,6 +1822,23 @@ def _execute_capture_unit(
     return parsed, rss, generated
 
 
+def _select_persistent_private_ftools_mlib(
+    staged_references: Mapping[str, Path],
+    isolated_sysdirs: Path,
+) -> Path:
+    """Select the one compiled ftools library visible to later fresh runs."""
+    search_roots = [*staged_references.values(), isolated_sysdirs]
+    candidates = sorted(
+        {candidate for search_root in search_roots for candidate in search_root.rglob("lftools.mlib")},
+        key=lambda candidate: candidate.as_posix(),
+    )
+    if len(candidates) != 1 or candidates[0].is_symlink() or not candidates[0].is_file():
+        raise ContractError(
+            "isolated ftools preflight did not produce exactly one persistent private lftools.mlib"
+        )
+    return candidates[0]
+
+
 def capture_reference(
     stata: str,
     reference_root: Path,
@@ -1861,10 +1878,8 @@ def capture_reference(
             runner,
             "preflight",
         )
-        private_mlibs = list(isolated_sysdirs.rglob("lftools.mlib"))
-        if len(private_mlibs) != 1 or private_mlibs[0].is_symlink() or not private_mlibs[0].is_file():
-            raise ContractError("isolated ftools preflight produced no private lftools.mlib")
-        private_mlib_hash = sha256_file(private_mlibs[0])
+        private_mlib = _select_persistent_private_ftools_mlib(staged_references, isolated_sysdirs)
+        private_mlib_hash = sha256_file(private_mlib)
         environment = semantic_parsed.environment
         captured_cases = list(semantic_parsed.cases)
         if semantic_generated:
@@ -1946,7 +1961,7 @@ def capture_reference(
             )
         if {dataset_id: sha256_file(path) for dataset_id, path in prepared_paths.items()} != generated_datasets:
             raise ContractError("a prepared benchmark dataset changed during measured estimator runs")
-        if sha256_file(private_mlibs[0]) != private_mlib_hash:
+        if sha256_file(private_mlib) != private_mlib_hash:
             raise ContractError("the private ftools mlib changed during measured estimator runs")
 
     # Detect edits made after preflight or while the licensed process ran.
