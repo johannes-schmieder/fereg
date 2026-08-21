@@ -34,11 +34,11 @@
   "capture": {
     "script": {
       "path": "benchmarks/stata/baseline_reghdfe.do",
-      "sha256": "053b51ae3f900413d32ac796dc534d54117da3e5357e7e4f9a6ad5fc57474483"
+      "sha256": "2176beb8f1de1e24dddf37eb3edd0c9c2d7868f880296c2565285cf29ea1642a"
     },
     "runner": {
       "path": "scripts/ols_reference.py",
-      "sha256": "b20b788277a8c62f197d715f7ea323b2c3ffe86acafd97017a6042816952a4c4"
+      "sha256": "a9dad0a8addb98a0e4b4128cf19b080911b6bb84a0da3a1a4bfc5364adc49fed"
     },
     "generator": {
       "path": "benchmarks/generators/generate_panel.do",

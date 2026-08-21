@@ -14,8 +14,10 @@ from unittest import mock
 from scripts.ols_reference import (
     CAPTURE_SENTINEL,
     ContractError,
+    DATASET_PREPARATION_SENTINEL,
     DEFAULT_LOCK,
     DEFAULT_MANIFEST,
+    ESTIMATOR_RSS_SCOPE,
     PreflightError,
     ReferenceIdentity,
     capture_reference,
@@ -25,6 +27,8 @@ from scripts.ols_reference import (
     parse_capture,
     preflight_reference_root,
     render_capture_do,
+    _prepared_benchmark_manifest,
+    _render_dataset_preparation_do,
     _run_fresh_process,
     seal_payload,
     sha256_file,
@@ -186,6 +190,23 @@ class OlsManifestTests(unittest.TestCase):
         self.assertNotIn("stfepois", rendered)
         self.assertEqual(rendered.strip().splitlines()[-2], f'file write __stfx_capture "{CAPTURE_SENTINEL}" _n')
 
+    def test_benchmark_dataset_generation_is_outside_estimator_process(self):
+        manifest = load_manifest()
+        staged = {dataset["id"]: Path("/private/tmp") / f"{dataset['id']}.csv" for dataset in manifest["datasets"]}
+        staged["__generator__"] = Path("/private/tmp/generate_panel.do")
+        preparation, prepared_paths = _render_dataset_preparation_do(manifest, staged, Path("/private/tmp/prepared"))
+        self.assertIn("generate_panel.do", preparation)
+        self.assertEqual(preparation.strip().splitlines()[-2], f'di as result "{DATASET_PREPARATION_SENTINEL}"')
+
+        staged.update(prepared_paths)
+        prepared_manifest = _prepared_benchmark_manifest(manifest)
+        benchmark_only = dict(prepared_manifest)
+        benchmark_only["semantic_cases"] = []
+        rendered = render_capture_do(benchmark_only, staged, Path("/private/tmp/measured"), "a" * 64)
+        self.assertNotIn("generate_panel.do", rendered)
+        self.assertNotIn("generated_dense.dta\"", rendered.split("use ", 1)[0])
+        self.assertIn('use "/private/tmp/prepared/generated_dense.dta", clear', rendered)
+
 
 class ReferencePreflightTests(unittest.TestCase):
     def setUp(self):
@@ -283,7 +304,12 @@ class BenchmarkGateTests(unittest.TestCase):
                                 "repetition": repetition,
                                 "kind": "cold" if repetition == 1 else "warm",
                                 "seconds": seconds * 1.1 if repetition == 1 else seconds,
-                                "peak_rss": {"value": 1000 if arm == "comparator" else 900, "unit": "bytes", "method": "os_wait4_ru_maxrss"},
+                                "peak_rss": {
+                                    "value": 1000 if arm == "comparator" else 900,
+                                    "unit": "bytes",
+                                    "method": "os_wait4_ru_maxrss",
+                                    "scope": ESTIMATOR_RSS_SCOPE,
+                                },
                                 "fresh_process": True,
                                 "stata_processors": case["thread_count"],
                             }
@@ -349,6 +375,28 @@ class BenchmarkGateTests(unittest.TestCase):
         evidence = self.evidence(manifest)
         evidence[1]["runs"][0]["fresh_process"] = False
         with self.assertRaisesRegex(ContractError, "process-isolated"):
+            evaluate_benchmark_gates(manifest, evidence)
+
+    def test_pre_estimation_high_water_cannot_mask_estimator_rss_regression(self):
+        manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "enabled"
+        evidence = self.evidence(manifest)
+        comparator = evidence[0]
+        candidate = evidence[1]
+        for run in comparator["runs"]:
+            run["peak_rss"]["value"] = 100
+        for run in candidate["runs"]:
+            run["peak_rss"]["value"] = 150
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("candidate_rss_worse", result["reason"])
+
+        # A comparator's larger generation/preflight high-water is ineligible
+        # evidence even though substituting it would make the ratio appear safe.
+        for run in comparator["runs"]:
+            run["peak_rss"]["value"] = 10_000
+            run["peak_rss"]["scope"] = "process_including_dataset_and_dependency_preparation"
+        with self.assertRaisesRegex(ContractError, "estimator-only scope"):
             evaluate_benchmark_gates(manifest, evidence)
 
     def test_fresh_process_monitor_records_method_and_bytes(self):

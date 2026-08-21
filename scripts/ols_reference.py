@@ -34,7 +34,9 @@ DEFAULT_LOCK = ROOT / "references.lock.toml"
 CAPTURE_PREFIX = "STFIXEST_OLS_CAPTURE|"
 CAPTURE_SENTINEL = "END_FIXTURE|ols_v1_reference_capture|rc=0"
 LOG_SENTINEL = "END_FIXTURE|baseline_reghdfe|rc=0"
+DATASET_PREPARATION_SENTINEL = "END_FIXTURE|ols_v1_dataset_preparation|rc=0"
 RECEIPT_TYPE = "stfixest-ols-v1-reference"
+ESTIMATOR_RSS_SCOPE = "fresh_estimator_process_prepared_inputs"
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 STATA_HEX = re.compile(r"^(?:\.|[+-][0-9A-Fa-f]+(?:\.[0-9A-Fa-f]+)?X[+-][0-9A-Fa-f]+)$")
@@ -750,6 +752,8 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     lines = ["clear"]
     if dataset["kind"] == "fixture_csv":
         lines.append(f"import delimited using {_stata_quote(staged[dataset['id']])}, clear varnames(1) case(preserve)")
+    elif dataset["kind"] == "prepared_dta":
+        lines.append(f"use {_stata_quote(staged[dataset['id']])}, clear")
     else:
         output = run_dir / f"{dataset['id']}.dta"
         arguments = " ".join(str(value) for value in dataset["arguments"])
@@ -1416,8 +1420,8 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
             if not isinstance(run, Mapping) or set(run) != {"repetition", "kind", "seconds", "peak_rss", "fresh_process", "stata_processors"} or run["repetition"] != index or run["kind"] != expected_kind or run["fresh_process"] is not True or run["stata_processors"] != record["thread_count"] or not _finite_number(run["seconds"]) or run["seconds"] <= 0:
                 raise ContractError("benchmark run sequence/timing is malformed or not process-isolated")
             rss = run["peak_rss"]
-            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"}:
-                raise ContractError("benchmark per-run RSS evidence lacks a valid method or byte unit")
+            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method", "scope"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"} or rss["scope"] != ESTIMATOR_RSS_SCOPE:
+                raise ContractError("benchmark per-run RSS evidence lacks a valid estimator-only scope, method, or byte unit")
         if not HEX_SHA256.fullmatch(record["sample_identity_sha256"]) or not HEX_SHA256.fullmatch(record["singleton_identity_sha256"]):
             raise ContractError("benchmark sample/singleton identity is malformed")
         for metadata in ("host", "stata"):
@@ -1569,8 +1573,8 @@ def verify_receipt(
             if not isinstance(run, Mapping) or set(run) != {"repetition", "kind", "seconds_hex", "peak_rss", "fresh_process", "stata_processors"} or run["repetition"] != repetition or run["kind"] != kind or run["fresh_process"] is not True or run["stata_processors"] != expected["thread_count"] or not isinstance(run["seconds_hex"], str) or not STATA_HEX.fullmatch(run["seconds_hex"]):
                 raise ContractError("receipt benchmark run timing/thread/process metadata is malformed")
             rss = run["peak_rss"]
-            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"}:
-                raise ContractError("receipt benchmark run RSS method/unit is malformed")
+            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method", "scope"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"} or rss["scope"] != ESTIMATOR_RSS_SCOPE:
+                raise ContractError("receipt benchmark run RSS scope/method/unit is malformed")
         if item["host"] != host:
             raise ContractError("receipt benchmark host metadata is contradictory")
         expected_stata = {"version": environment["stata_version"], "flavor": environment["stata_flavor"], "processors": environment["stata_processors"], "processors_limit": environment["stata_processors_limit"]}
@@ -1605,7 +1609,10 @@ def _write_wrapper(
     staged_references: Mapping[str, Path],
     manifest_sha256: str,
     isolated_sysdirs: Path,
+    execution_mode: str,
 ) -> None:
+    if execution_mode not in {"preflight", "estimator"}:
+        raise ContractError("capture wrapper execution mode is invalid")
     sysdirs = {}
     for name in ("personal", "plus", "oldplace", "site"):
         target = isolated_sysdirs / name
@@ -1626,6 +1633,7 @@ def _write_wrapper(
                 staged_references["ftools"],
                 staged_references["require"],
                 manifest_sha256,
+                execution_mode,
             )
         )
     )
@@ -1705,6 +1713,68 @@ def _run_fresh_process(
     }
 
 
+def _render_dataset_preparation_do(
+    manifest: Mapping[str, Any],
+    staged_inputs: Mapping[str, Path],
+    destination: Path,
+) -> tuple[str, dict[str, Path]]:
+    """Render deterministic large-data generation outside measured estimator children."""
+    prepared: dict[str, Path] = {}
+    lines = ["version 18.0", "set more off"]
+    for dataset in manifest["datasets"]:
+        if dataset["kind"] != "generated_dta":
+            continue
+        target = destination / f"{dataset['id']}.dta"
+        arguments = " ".join(str(value) for value in dataset["arguments"])
+        lines.extend(
+            [
+                f"capture noisily do {_stata_quote(staged_inputs['__generator__'])} {arguments} {_stata_quote(target)}",
+                "if _rc exit _rc",
+            ]
+        )
+        prepared[dataset["id"]] = target
+    lines.extend([f'di as result "{DATASET_PREPARATION_SENTINEL}"', "exit 0", ""])
+    return "\n".join(lines), prepared
+
+
+def _prepare_generated_datasets(
+    stata: str,
+    manifest: Mapping[str, Any],
+    staged_inputs: Mapping[str, Path],
+    destination: Path,
+    runner: Callable[..., subprocess.CompletedProcess[str]],
+) -> tuple[dict[str, Path], dict[str, str]]:
+    """Generate immutable benchmark inputs in a separate, unmeasured process."""
+    destination.mkdir()
+    preparation_do = destination / "prepare.do"
+    rendered, prepared = _render_dataset_preparation_do(manifest, staged_inputs, destination)
+    preparation_do.write_text(rendered, encoding="utf-8")
+    completed, _discarded_preparation_rss = _run_fresh_process(
+        [stata, "-b", "do", str(preparation_do)], destination, runner
+    )
+    log_path = destination / "prepare.log"
+    log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
+    log_sentinels = [line.strip() for line in log_text.splitlines() if line.strip().startswith("END_FIXTURE|")]
+    if completed.returncode != 0 or log_sentinels != [DATASET_PREPARATION_SENTINEL]:
+        raise ContractError("licensed Stata dataset preparation failed or lacked its unique success sentinel; raw log was not retained")
+    hashes: dict[str, str] = {}
+    for dataset_id, path in prepared.items():
+        if path.is_symlink() or not path.is_file():
+            raise ContractError(f"licensed Stata dataset preparation omitted {dataset_id}")
+        hashes[dataset_id] = sha256_file(path)
+        path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+    return prepared, hashes
+
+
+def _prepared_benchmark_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    prepared = dict(manifest)
+    prepared["datasets"] = [
+        {**dataset, "kind": "prepared_dta"} if dataset["kind"] == "generated_dta" else dataset
+        for dataset in manifest["datasets"]
+    ]
+    return prepared
+
+
 def _execute_capture_unit(
     stata: str,
     unit_manifest: Mapping[str, Any],
@@ -1715,13 +1785,23 @@ def _execute_capture_unit(
     isolated_sysdirs: Path,
     manifest_hash: str,
     runner: Callable[..., subprocess.CompletedProcess[str]],
+    execution_mode: str,
 ) -> tuple[ParsedCapture, dict[str, Any], dict[str, str]]:
     unit_dir.mkdir()
     case_do = unit_dir / "ols_v1_cases.do"
     case_do.write_text(render_capture_do(unit_manifest, staged_inputs, unit_dir, manifest_hash), encoding="utf-8")
     capture_file = unit_dir / "capture.machine"
     wrapper = unit_dir / "run.do"
-    _write_wrapper(wrapper, baseline, case_do, capture_file, staged_references, manifest_hash, isolated_sysdirs)
+    _write_wrapper(
+        wrapper,
+        baseline,
+        case_do,
+        capture_file,
+        staged_references,
+        manifest_hash,
+        isolated_sysdirs,
+        execution_mode,
+    )
     completed, rss = _run_fresh_process([stata, "-b", "do", str(wrapper)], unit_dir, runner)
     log_path = unit_dir / "run.log"
     log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
@@ -1737,6 +1817,8 @@ def _execute_capture_unit(
         dataset = dataset_by_id[case["dataset"]]
         if dataset["kind"] == "generated_dta":
             generated[dataset["id"]] = sha256_file(unit_dir / f"{dataset['id']}.dta")
+    if execution_mode == "estimator":
+        rss = {**rss, "scope": ESTIMATOR_RSS_SCOPE}
     return parsed, rss, generated
 
 
@@ -1768,11 +1850,30 @@ def capture_reference(
         semantic_manifest = dict(manifest)
         semantic_manifest["benchmark_cases"] = []
         semantic_parsed, _, semantic_generated = _execute_capture_unit(
-            stata, semantic_manifest, staged_inputs, staged_references, baseline, run_dir / "semantic", isolated_sysdirs, manifest_hash, runner
+            stata,
+            semantic_manifest,
+            staged_inputs,
+            staged_references,
+            baseline,
+            run_dir / "semantic",
+            isolated_sysdirs,
+            manifest_hash,
+            runner,
+            "preflight",
         )
+        private_mlibs = list(isolated_sysdirs.rglob("lftools.mlib"))
+        if len(private_mlibs) != 1 or private_mlibs[0].is_symlink() or not private_mlibs[0].is_file():
+            raise ContractError("isolated ftools preflight produced no private lftools.mlib")
+        private_mlib_hash = sha256_file(private_mlibs[0])
         environment = semantic_parsed.environment
         captured_cases = list(semantic_parsed.cases)
-        generated_datasets = dict(semantic_generated)
+        if semantic_generated:
+            raise ContractError("semantic preflight unexpectedly generated benchmark data")
+        prepared_paths, generated_datasets = _prepare_generated_datasets(
+            stata, manifest, staged_inputs, run_dir / "prepared-datasets", runner
+        )
+        prepared_inputs = {**staged_inputs, **prepared_paths}
+        prepared_manifest = _prepared_benchmark_manifest(manifest)
         benchmark_evidence: list[dict[str, Any]] = []
         for expected in manifest["benchmark_cases"]:
             merged_case: dict[str, Any] | None = None
@@ -1785,19 +1886,20 @@ def capture_reference(
                 run_case["repetitions"] = {"cold": 1, "warm": 0} if kind == "cold" else {"cold": 0, "warm": 1}
                 if kind == "warm":
                     run_case["_fresh_warmup"] = True
-                run_manifest = dict(manifest)
+                run_manifest = dict(prepared_manifest)
                 run_manifest["semantic_cases"] = []
                 run_manifest["benchmark_cases"] = [run_case]
                 parsed_run, rss, generated_run = _execute_capture_unit(
                     stata,
                     run_manifest,
-                    staged_inputs,
+                    prepared_inputs,
                     staged_references,
                     baseline,
                     run_dir / f"{expected['id']}-{repetition}",
                     isolated_sysdirs,
                     manifest_hash,
                     runner,
+                    "estimator",
                 )
                 if parsed_run.environment != environment:
                     raise ContractError("benchmark run Stata environment changed within one receipt")
@@ -1825,10 +1927,8 @@ def capture_reference(
                         "stata_processors": captured["runtime_thread_count"],
                     }
                 )
-                for dataset_id, digest in generated_run.items():
-                    previous = generated_datasets.setdefault(dataset_id, digest)
-                    if previous != digest:
-                        raise ContractError(f"generated benchmark dataset {dataset_id} changed across fresh runs")
+                if generated_run:
+                    raise ContractError("measured estimator process unexpectedly generated benchmark data")
             if merged_case is None or scientific_hash is None:
                 raise ContractError(f"benchmark {expected['id']} produced no fresh-run scientific evidence")
             _validate_case_evidence(expected, merged_case)
@@ -1844,6 +1944,10 @@ def capture_reference(
                     "runs": runs,
                 }
             )
+        if {dataset_id: sha256_file(path) for dataset_id, path in prepared_paths.items()} != generated_datasets:
+            raise ContractError("a prepared benchmark dataset changed during measured estimator runs")
+        if sha256_file(private_mlibs[0]) != private_mlib_hash:
+            raise ContractError("the private ftools mlib changed during measured estimator runs")
 
     # Detect edits made after preflight or while the licensed process ran.
     if sha256_file(manifest_path) != manifest_hash:

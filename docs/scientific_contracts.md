@@ -33,8 +33,9 @@ The OLS-v1 manifest is the sole command and input inventory. It freezes:
 The runner rejects unknown schema fields, unsafe command control syntax,
 missing coverage, duplicate case IDs, stale hashes, or an input that changes
 during the run. It accepts no user-supplied `.dta` cache. Fixture bytes are
-copied into a private directory; large benchmark data are regenerated there in
-the licensed Stata process.
+copied into a private directory; large benchmark data are regenerated once in
+a dedicated, unmeasured licensed-Stata preparation process, sealed by SHA-256,
+made read-only, and then loaded by every fresh measured estimator process.
 
 Reference discovery is also closed. The only eligible layout is an absolute
 external root containing direct-child `reghdfe`, `ftools`, and `require` git
@@ -76,8 +77,12 @@ and VCE-symmetry certificates at the frozen tolerances. A scientific mismatch
 blocks the gate before timing or memory is inspected. Every benchmark
 repetition runs in a fresh OS process; its receipt records whether RSS came from
 POSIX `wait4().ru_maxrss` or Windows `GetProcessMemoryInfo`, with values
-normalized to bytes. Warm repetitions perform one untimed in-process warm-up
-inside their otherwise fresh measured process.
+normalized to bytes and an exact `fresh_estimator_process_prepared_inputs`
+scope. Reference resolution, dependency checks, private `ftools` compilation,
+and deterministic dataset generation finish in separate processes before RSS
+measurement begins. Evidence whose high-water includes any of those preparation
+steps is rejected. Warm repetitions perform one untimed estimator warm-up inside
+their otherwise fresh measured estimator process.
 
 Matrix dimensions are emitted as separate records before matrix cells. Receipt
 verification requires every coordinate in the declared rectangle exactly once;
