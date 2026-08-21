@@ -1,83 +1,79 @@
-# StFixest 0.1.0 — Phase 0–1 architecture package
+# StFixest — pre-estimator development snapshot
 
 StFixest is a Rust-first Stata package intended to provide high-dimensional
-fixed-effect OLS/WLS (`stfeols`) and PPML (`stfepois`). This handoff implements
-the specification's **Phase 0 and Phase 1** architecture and safety boundary.
-It does **not** claim estimator functionality.
+fixed-effect OLS/WLS (`stfeols`) and PPML (`stfepois`). The repository contains
+substantial native preprocessing and numerical-core source, but neither public
+estimator is supported yet.
 
-## What works in this package
+## Current boundary
 
-- A dependency-free Rust workspace with a safe scientific core and a narrow FFI
-  crate.
-- Versioned protocol handshake, typed return-code mapping, panic containment,
-  deterministic diagnostics, and native self-tests.
-- Local scoped-thread execution using the Rust standard library, with work-bounded
-  thread counts and deterministic chunking suitable for 16/32-core servers.
-- Metadata objects and validators for ordinary factor terms, absorbed terms,
-  absorbed slopes, cluster interactions, variable roles, and candidate samples.
-- Collision-safe deterministic numeric/string factorization and tuple
-  interaction coding as independently tested preprocessing primitives.
-- Official Stata SPI 3.0 C sources and a minimal C bridge.
-- Explicit scientific, weight, memory, and performance contracts, with licensed-reference captures marked pending rather than invented.
-- Stata 18+ ado control-plane prototypes for plugin selection, `version`,
-  `doctor`, `selftest`, candidate-sample creation, and metadata-only parsing.
-- Native build scripts and CI for Linux x86-64, Windows x86-64, and a universal
-  macOS plugin containing x86-64 and arm64 slices.
-- Mock-SPI C tests, dynamic plugin-load/export tests, target-native final-plugin
-  harnesses, 38 deterministic and randomized Python contract/property tests,
-  binary audits, strict GCC/Clang checks, and clean-machine plans.
+`stfeols` and `stfepois` deliberately fail closed with `r(498)` and post no
+estimate. A narrow licensed-Stata installation/safety smoke passes on macOS,
+but parser/reference parity, enabled estimation, clean-machine testing,
+cross-platform native validation, and performance/memory certification remain
+open. This repository must not be presented as a production release.
 
-## What deliberately does not work yet
+## Implemented development components
 
-`stfeols` and `stfepois` parse their documented Phase 0–1 surface and then fail
-closed with `r(498)`. Fixed-effect solvers, OLS/WLS, PPML IRLS, separation,
-VCE, DoF, FE recovery, prediction, `margins`, and estimator `estat` are later
-phases. Returning an uncertified estimate would violate the governing contract.
+- A versioned Stata/plugin protocol, typed error mapping, panic containment,
+  diagnostics, native self-tests, scoped threading, and a narrow SPI bridge.
+- Metadata-only Stata parser prototypes for factor terms, absorbed terms and
+  slopes, clusters, and candidate samples.
+- Native sample preparation, weight validation, compact factorization and
+  interaction coding, blockwise model-matrix generation, singleton pruning,
+  connected components, and memory preflight.
+- Certified MAP and modified-LSMR fixed-effect paths.
+- Stata-independent OLS/FWL, rank, covariance, DoF, and fit-statistic kernels.
+- Stata-independent PPML IRLS, certificate, covariance, and `fe`/`simplex`/`ir`/
+  `mu` separation kernels.
+- Build machinery for one self-contained plugin per platform, binary
+  dependency/export audits, mock-SPI tests, and target-native ABI harnesses.
 
-## Build and test
+These claims describe source and local tests, not Stata-facing estimator
+availability.
 
-On a machine with Rust 1.85.1 and a platform C toolchain:
+## Checkpoint A evidence
+
+On 2026-08-21, local Apple-Silicon validation passed 60 Python tests, portable
+C/mock checks, formatting, strict Clippy, 76 debug and 76 release Rust unit
+tests, and the explicit plugin FFI suite. A universal macOS development plugin
+was built; both slices passed binary audits and the arm64 host-native ABI
+harness passed. After a one-line numeric version-guard repair, licensed Stata
+18 MP also passed version/doctor/selftest, both fail-closed estimator checks,
+and a 100-call reload loop.
+
+No licensed-Stata parser or reference-parity suite, real Linux or Windows
+build, enabled estimator run, or production certification has passed. See
+`STATUS.md`, `VALIDATION.md`, and `HANDOFF.md` for the exact boundary and
+continuation.
+
+## Local build and test
+
+The pinned Rust toolchain is 1.85.1. On the validated macOS host, put the pinned
+Rust tools and Homebrew Python ahead of the system Python:
 
 ```bash
-./scripts/run_tests.sh
-./scripts/build_linux.sh       # Linux
-./scripts/build_macos.sh       # macOS/Xcode, builds universal binary
+PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/run_tests.sh
+PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/build_macos.sh
 ```
 
-On Windows PowerShell with Visual Studio Build Tools:
+Native build entry points for the remaining targets are:
+
+```bash
+./scripts/build_linux.sh
+```
 
 ```powershell
 ./scripts/run_tests.ps1
 ./scripts/build_windows.ps1
 ```
 
-Each native build audits and dynamically loads the final Rust-linked artifact
-before writing its checksum. Generated files are placed in `dist/`. See
-`HANDOFF.md` for the exact local Codex/Stata validation sequence.
-
-## Source handoff versus installable release
-
-The handoff ZIP contains the complete source, tests, CI, and packaging system,
-but no placeholder `.plugin` binaries. Target-native CI produces Linux,
-Windows, and universal macOS plugins; `scripts/stage_release.py` verifies their
-checksums and assembles the one-file-per-platform installable release.
-
-## Stata installation after native build
-
-Copy the files in `stata/` and the applicable `dist/stfixest_*.plugin` into one
-personal ado directory. Then run:
-
-```stata
-stfixest, version
-stfixest, doctor
-stfixest, selftest
-```
-
-The loader supports Stata 18 and later and chooses the platform-specific plugin
-without launching another Stata process or loading a native sidecar.
+Each native build is designed to audit and dynamically load the final
+Rust-linked artifact before writing its checksum. Passing the script on one
+platform is not evidence for another platform or for licensed Stata.
 
 ## Design rule
 
-Stata is the control plane. Rust is the data and computation plane. Every later
-estimation command must make one substantive plugin call and must post results
-only after the native calculation and certificates succeed.
+Stata is the control plane. Rust is the data and computation plane. Each future
+estimation invocation must make one substantive plugin call and post results
+only after the native calculation and all scientific certificates succeed.

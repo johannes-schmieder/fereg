@@ -1,11 +1,54 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
+import tempfile
 import tomllib
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+MIN_NATIVE_PLUGIN_BYTES = 4096
+NATIVE_PLUGIN_MAGICS = frozenset(
+    {
+        b"\x7fELF",
+        b"MZ\x90\x00",
+        b"\xfe\xed\xfa\xce",
+        b"\xce\xfa\xed\xfe",
+        b"\xfe\xed\xfa\xcf",
+        b"\xcf\xfa\xed\xfe",
+        b"\xca\xfe\xba\xbe",
+        b"\xbe\xba\xfe\xca",
+        b"\xca\xfe\xba\xbf",
+        b"\xbf\xba\xfe\xca",
+    }
+)
+
+
+def tracked_plugins(repository: Path) -> list[Path]:
+    completed = subprocess.run(
+        ["git", "-C", str(repository), "ls-files", "-z", "--", "*.plugin"],
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    relative_paths = [
+        Path(raw.decode("utf-8"))
+        for raw in completed.stdout.split(b"\0")
+        if raw
+    ]
+    return [repository / relative for relative in relative_paths]
+
+
+def invalid_native_plugins(paths: list[Path]) -> list[Path]:
+    invalid: list[Path] = []
+    for path in paths:
+        if not path.is_file() or path.stat().st_size < MIN_NATIVE_PLUGIN_BYTES:
+            invalid.append(path)
+            continue
+        with path.open("rb") as handle:
+            if handle.read(4) not in NATIVE_PLUGIN_MAGICS:
+                invalid.append(path)
+    return invalid
 
 
 class PackageContractTests(unittest.TestCase):
@@ -55,8 +98,45 @@ class PackageContractTests(unittest.TestCase):
             self.assertIn(harness, text)
 
     def test_no_placeholder_native_binary_is_shipped(self):
-        plugins = list((ROOT / "dist").glob("*.plugin"))
-        self.assertEqual(plugins, [])
+        # Source snapshots are built from the Git index. Target-native build
+        # outputs under dist/ are intentionally ignored and must not make this
+        # source-tree contract non-reentrant after a successful local build.
+        plugins = tracked_plugins(ROOT)
+        invalid = [path.relative_to(ROOT) for path in invalid_native_plugins(plugins)]
+        self.assertEqual(invalid, [])
+
+    def test_ignored_build_output_is_not_treated_as_a_shipped_plugin(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            subprocess.run(
+                ["git", "init", "--quiet", str(repository)],
+                check=True,
+            )
+            (repository / ".gitignore").write_text("/dist/*.plugin\n", encoding="utf-8")
+            dist = repository / "dist"
+            dist.mkdir()
+            generated = dist / "stfixest_macos.plugin"
+            generated.write_bytes(b"\xca\xfe\xba\xbe" + b"native" * 1000)
+            subprocess.run(
+                ["git", "-C", str(repository), "add", ".gitignore"],
+                check=True,
+            )
+            self.assertEqual(tracked_plugins(repository), [])
+
+    def test_tracked_placeholder_plugin_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            subprocess.run(
+                ["git", "init", "--quiet", str(repository)],
+                check=True,
+            )
+            placeholder = repository / "stfixest_linux.plugin"
+            placeholder.write_text("placeholder, not a native binary\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(repository), "add", placeholder.name],
+                check=True,
+            )
+            self.assertEqual(invalid_native_plugins(tracked_plugins(repository)), [placeholder])
 
     def test_estimators_fail_closed(self):
         for filename in ("stfeols.ado", "stfepois.ado"):

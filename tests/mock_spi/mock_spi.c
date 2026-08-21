@@ -4,6 +4,12 @@
 #include <string.h>
 #include "stata_bridge.h"
 
+#if SYSTEM==STWIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 static char display_buffer[4096];
 static char error_buffer[4096];
 static char string_slot[128];
@@ -149,6 +155,109 @@ ST_retcode stfixest_dispatch(ST_int argc, const char *const *argv)
     return 0;
 }
 
+struct worker_results {
+    ST_int is_main_thread;
+    ST_int display_rc;
+    ST_int nobs;
+    ST_int ifobs;
+    ST_int is_missing;
+    ST_int stop_requested;
+    ST_int vdata_rc;
+    ST_retcode stata_call_rc;
+};
+
+static void run_worker_checks(struct worker_results *results)
+{
+    ST_double value = 0.0;
+    char *arguments[] = {"version"};
+    results->is_main_thread = stfixest_spi_is_main_thread();
+    results->display_rc = stfixest_spi_display("worker must not reach SPI\n");
+    results->nobs = stfixest_spi_nobs();
+    results->ifobs = stfixest_spi_ifobs(12);
+    results->is_missing = stfixest_spi_is_missing(1.0);
+    results->stop_requested = stfixest_spi_stop_requested();
+    results->vdata_rc = stfixest_spi_vdata(3, 11, &value);
+    results->stata_call_rc = stata_call(1, arguments);
+}
+
+#if SYSTEM==STWIN32
+static DWORD WINAPI worker_entry(LPVOID opaque)
+{
+    run_worker_checks((struct worker_results *) opaque);
+    return 0;
+}
+#else
+static void *worker_entry(void *opaque)
+{
+    run_worker_checks((struct worker_results *) opaque);
+    return NULL;
+}
+#endif
+
+static int check_worker_thread_refusal(void)
+{
+    struct worker_results results;
+    size_t display_length = strlen(display_buffer);
+    size_t error_length = strlen(error_buffer);
+    memset(&results, 0, sizeof(results));
+#if SYSTEM==STWIN32
+    {
+        HANDLE worker = CreateThread(NULL, 0, worker_entry, &results, 0, NULL);
+        DWORD wait_result;
+        if (worker == NULL) {
+            fprintf(stderr, "CreateThread failed\n");
+            return 1;
+        }
+        wait_result = WaitForSingleObject(worker, INFINITE);
+        if (CloseHandle(worker) == 0 || wait_result != WAIT_OBJECT_0) {
+            fprintf(stderr, "Windows worker join failed\n");
+            return 2;
+        }
+    }
+#else
+    {
+        pthread_t worker;
+        int rc = pthread_create(&worker, NULL, worker_entry, &results);
+        if (rc != 0) {
+            fprintf(stderr, "pthread_create failed: %d\n", rc);
+            return 1;
+        }
+        rc = pthread_join(worker, NULL);
+        if (rc != 0) {
+            fprintf(stderr, "pthread_join failed: %d\n", rc);
+            return 2;
+        }
+    }
+#endif
+    if (results.is_main_thread != 0 ||
+        results.display_rc != STFIXEST_SPI_RC_UNAVAILABLE ||
+        results.nobs != STFIXEST_SPI_VALUE_UNAVAILABLE ||
+        results.ifobs != 0 || results.is_missing != 1 ||
+        results.stop_requested != 1 ||
+        results.vdata_rc != STFIXEST_SPI_RC_UNAVAILABLE ||
+        results.stata_call_rc != STFIXEST_SPI_RC_UNAVAILABLE) {
+        fprintf(
+            stderr,
+            "worker wrapper refusal failed: %d %d %d %d %d %d %d %d\n",
+            results.is_main_thread,
+            results.display_rc,
+            results.nobs,
+            results.ifobs,
+            results.is_missing,
+            results.stop_requested,
+            results.vdata_rc,
+            results.stata_call_rc
+        );
+        return 3;
+    }
+    if (strlen(display_buffer) != display_length ||
+        strlen(error_buffer) != error_length) {
+        fprintf(stderr, "worker reached an SPI callback\n");
+        return 4;
+    }
+    return 0;
+}
+
 static int check_numeric_round_trips(void)
 {
     ST_double recovered = 0.0;
@@ -240,29 +349,55 @@ int main(void)
     plugin.macuse = mock_macro_use;
     plugin.stopflag = &stop_flag;
 
+    if (stfixest_spi_is_main_thread() != 0 ||
+        stfixest_spi_display("uninitialized\n") != STFIXEST_SPI_RC_UNAVAILABLE ||
+        stfixest_spi_nobs() != STFIXEST_SPI_VALUE_UNAVAILABLE ||
+        stata_call(0, NULL) != STFIXEST_SPI_RC_UNAVAILABLE) {
+        fprintf(stderr, "uninitialized bridge did not fail closed\n");
+        return 1;
+    }
     if (pginit(&plugin) != SD_PLUGINVER) {
         fprintf(stderr, "pginit returned the wrong SPI version\n");
-        return 1;
+        return 2;
+    }
+    if (_stata_ != &plugin || stfixest_spi_is_main_thread() != 0 ||
+        stfixest_spi_display("not bound\n") != STFIXEST_SPI_RC_UNAVAILABLE ||
+        stfixest_spi_nobs() != STFIXEST_SPI_VALUE_UNAVAILABLE) {
+        fprintf(stderr, "pginit did not initialize the SPI session\n");
+        return 3;
+    }
+    if (stata_call(-1, NULL) != STFIXEST_SPI_RC_SYNTAX ||
+        stfixest_spi_is_main_thread() != 0) {
+        fprintf(stderr, "invalid stata_call bound the bridge thread\n");
+        return 4;
+    }
+    if (stata_call(2, arguments) != 0 || stfixest_spi_is_main_thread() != 1) {
+        fprintf(stderr, "first valid stata_call did not bind and dispatch\n");
+        return 5;
+    }
+    rc = check_worker_thread_refusal();
+    if (rc != 0) {
+        return 6 + rc;
     }
     if (stfixest_spi_nobs() != 42 || stfixest_spi_nvars() != 7 ||
         stfixest_spi_in1() != 5 || stfixest_spi_in2() != 40 ||
         stfixest_spi_ifobs(12) != 1 || stfixest_spi_ifobs(13) != 0) {
         fprintf(stderr, "dimension wrappers failed\n");
-        return 2;
+        return 10;
     }
     if (stfixest_spi_poll() != 17 || stfixest_spi_stop_requested() != 0) {
         fprintf(stderr, "poll/stop wrappers failed\n");
-        return 3;
+        return 11;
     }
     stop_flag = 1;
     if (stfixest_spi_stop_requested() != 1) {
         fprintf(stderr, "stop flag transition failed\n");
-        return 4;
+        return 12;
     }
     stop_flag = 0;
     if (!stfixest_spi_is_missing(NAN) || stfixest_spi_is_missing(1.0)) {
         fprintf(stderr, "missing-value wrapper failed\n");
-        return 5;
+        return 13;
     }
     if (stfixest_spi_matrix_rows("mock_matrix") != 4 ||
         stfixest_spi_matrix_cols("mock_matrix") != 5 ||
@@ -270,7 +405,7 @@ int main(void)
         stfixest_spi_var_is_string(3) != 0 ||
         stfixest_spi_var_is_strl(5) != 1) {
         fprintf(stderr, "metadata wrappers failed\n");
-        return 6;
+        return 14;
     }
     rc = check_numeric_round_trips();
     if (rc != 0) return 10 + rc;
@@ -280,11 +415,7 @@ int main(void)
         fprintf(stderr, "display/error wrappers failed\n");
         return 30;
     }
-    if (stata_call(2, arguments) != 0) {
-        fprintf(stderr, "stata_call bridge failed\n");
-        return 31;
-    }
-    if (strcmp(display_buffer, "hello\ndispatch:version,threads=32\n") != 0) {
+    if (strcmp(display_buffer, "dispatch:version,threads=32\nhello\n") != 0) {
         fprintf(stderr, "unexpected display buffer: %s\n", display_buffer);
         return 32;
     }
@@ -292,9 +423,11 @@ int main(void)
         fprintf(stderr, "unexpected error buffer: %s\n", error_buffer);
         return 33;
     }
-    if (stfixest_spi_vdata(3, 11, NULL) != 198 ||
-        stfixest_spi_mat_el(NULL, 1, 1, &scalar_slot) != 198 ||
-        stfixest_spi_macro_use("_mock_macro", NULL, 1) != 198) {
+    if (stfixest_spi_vdata(3, 11, NULL) != STFIXEST_SPI_RC_SYNTAX ||
+        stfixest_spi_mat_el(NULL, 1, 1, &scalar_slot) != STFIXEST_SPI_RC_SYNTAX ||
+        stfixest_spi_macro_use("_mock_macro", NULL, 1) != STFIXEST_SPI_RC_SYNTAX ||
+        stfixest_spi_macro_use("_mock_macro", macro_slot, 0) !=
+            STFIXEST_SPI_RC_SYNTAX) {
         fprintf(stderr, "null-pointer guard failed\n");
         return 34;
     }

@@ -5,16 +5,28 @@ use crate::fe::FeDesign;
 
 use super::projection::{project_onto_model, weighted_norm, ProjectionConfig};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct IteratedRectifierConfig {
+    pub projection: ProjectionConfig,
+    pub tolerance: f64,
+    pub certificate_tolerance: f64,
+    pub max_iterations: usize,
+    pub strict: bool,
+}
+
 pub(crate) fn iterated_rectifier(
     outcome: &[f64],
     regressors: &DenseMatrix,
     fixed_effects: Option<&FeDesign>,
-    projection: ProjectionConfig,
-    tolerance: f64,
-    certificate_tolerance: f64,
-    max_iterations: usize,
-    strict: bool,
+    config: IteratedRectifierConfig,
 ) -> Result<DetectionResult> {
+    let IteratedRectifierConfig {
+        projection,
+        tolerance,
+        certificate_tolerance,
+        max_iterations,
+        strict,
+    } = config;
     let boundary = outcome
         .iter()
         .enumerate()
@@ -70,10 +82,7 @@ pub(crate) fn iterated_rectifier(
             .fold(f64::INFINITY, f64::min);
 
         if minimum_boundary >= -zero_threshold {
-            let positive_maximum = boundary
-                .iter()
-                .map(|row| z[*row])
-                .fold(0.0_f64, f64::max);
+            let positive_maximum = boundary.iter().map(|row| z[*row]).fold(0.0_f64, f64::max);
             if positive_maximum <= zero_threshold {
                 let certificate = SeparationCertificate {
                     interior_zero_relative: interior_zero / scale,
@@ -94,7 +103,7 @@ pub(crate) fn iterated_rectifier(
                     }
                     return Ok(DetectionResult {
                         dropped: Vec::new(),
-                        iterations,
+                        iterations: iteration,
                         status: MethodStatus::Uncertified,
                         certificate: Some(certificate),
                         note: message,
@@ -102,7 +111,7 @@ pub(crate) fn iterated_rectifier(
                 }
                 return Ok(DetectionResult {
                     dropped: Vec::new(),
-                    iterations,
+                    iterations: iteration,
                     status: MethodStatus::NoSeparation,
                     certificate: Some(certificate),
                     note: "iterated rectifier converged to the zero certificate".to_owned(),
@@ -111,7 +120,8 @@ pub(crate) fn iterated_rectifier(
 
             // A fitted value is mathematically in the model column space.  A
             // second independent projection makes that numerical claim explicit.
-            let span_check = project_onto_model(&z, regressors, &weights, fixed_effects, projection)?;
+            let span_check =
+                project_onto_model(&z, regressors, &weights, fixed_effects, projection)?;
             let span_denominator = weighted_norm(&z, &weights)?.max(f64::MIN_POSITIVE);
             let span_residual_relative =
                 weighted_norm(&span_check.residual, &weights)? / span_denominator;
@@ -137,7 +147,7 @@ pub(crate) fn iterated_rectifier(
                 }
                 return Ok(DetectionResult {
                     dropped: Vec::new(),
-                    iterations,
+                    iterations: iteration,
                     status: MethodStatus::Uncertified,
                     certificate: Some(certificate),
                     note: message,
@@ -150,7 +160,7 @@ pub(crate) fn iterated_rectifier(
                 .collect::<Vec<_>>();
             return Ok(DetectionResult {
                 dropped,
-                iterations,
+                iterations: iteration,
                 status: MethodStatus::Certified,
                 certificate: Some(certificate),
                 note: "iterated-rectifier separation certificate passed".to_owned(),
@@ -171,9 +181,8 @@ pub(crate) fn iterated_rectifier(
         }
     }
 
-    let message = format!(
-        "iterated-rectifier separation check exhausted {max_iterations} iterations"
-    );
+    let message =
+        format!("iterated-rectifier separation check exhausted {max_iterations} iterations");
     if strict {
         Err(StFixestError::new(ErrorCode::InvalidData, message))
     } else {

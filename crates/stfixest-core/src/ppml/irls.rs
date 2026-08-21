@@ -45,14 +45,19 @@ pub(crate) fn validate_inputs(
         || prior_weights.len() != outcome.len()
         || offset.len() != outcome.len()
         || fixed_effects.is_some_and(|design| design.nobs() != outcome.len())
-        || clusters.iter().any(|cluster| cluster.len() != outcome.len())
+        || clusters
+            .iter()
+            .any(|cluster| cluster.len() != outcome.len())
     {
         return Err(StFixestError::new(
             ErrorCode::InvalidArgument,
             "PPML inputs have inconsistent observation counts",
         ));
     }
-    if outcome.iter().any(|value| !value.is_finite() || *value < 0.0) {
+    if outcome
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
         return Err(StFixestError::new(
             ErrorCode::InvalidData,
             "PPML outcomes must be finite and nonnegative",
@@ -130,9 +135,8 @@ pub(crate) fn initialize(
     config: PpmlConfig,
 ) -> Result<(Vec<f64>, Vec<f64>)> {
     let mut coefficients = vec![0.0_f64; regressors.ncols()];
-    let has_fe_intercept = fixed_effects.is_some_and(|design| {
-        design.effects().iter().any(|effect| effect.has_intercept())
-    });
+    let has_fe_intercept = fixed_effects
+        .is_some_and(|design| design.effects().iter().any(|effect| effect.has_intercept()));
     let constant_column = detect_constant_column(regressors);
     let can_shift = has_fe_intercept || constant_column.is_some();
     let shift = if config.initialization == PpmlInitialization::Intercept && can_shift {
@@ -151,7 +155,10 @@ pub(crate) fn initialize(
     means_from_eta(&eta, config.bounds, &mut mean).map_err(|error| {
         StFixestError::new(
             error.code,
-            format!("PPML initialization is outside the finite domain: {}", error.message),
+            format!(
+                "PPML initialization is outside the finite domain: {}",
+                error.message
+            ),
         )
     })?;
     Ok((coefficients, eta))
@@ -175,8 +182,7 @@ pub(crate) fn profile_irls_step(
     let mut working_response = vec![0.0_f64; nrows];
     for row in 0..nrows {
         working_weights[row] = prior_weights[row] * mean[row];
-        working_response[row] =
-            eta[row] - offset[row] + (outcome[row] - mean[row]) / mean[row];
+        working_response[row] = eta[row] - offset[row] + (outcome[row] - mean[row]) / mean[row];
         if !working_weights[row].is_finite()
             || working_weights[row] <= 0.0
             || !working_response[row].is_finite()
@@ -208,7 +214,10 @@ pub(crate) fn profile_irls_step(
             if !report.certified() {
                 return Err(StFixestError::new(
                     ErrorCode::InvalidData,
-                    format!("PPML fixed-effect solve did not certify: {:?}", report.stop_reason),
+                    format!(
+                        "PPML fixed-effect solve did not certify: {:?}",
+                        report.stop_reason
+                    ),
                 ));
             }
             Some(report)
@@ -402,8 +411,7 @@ fn detect_constant_column(regressors: &DenseMatrix) -> Option<(usize, f64)> {
             continue;
         }
         let tolerance = 16.0 * f64::EPSILON * first.abs().max(1.0);
-        if (1..regressors.nrows())
-            .all(|row| (regressors[(row, column)] - first).abs() <= tolerance)
+        if (1..regressors.nrows()).all(|row| (regressors[(row, column)] - first).abs() <= tolerance)
         {
             return Some((column, first));
         }
@@ -415,9 +423,8 @@ fn log_weighted_outcome_sum(outcome: &[f64], weights: &[f64]) -> Result<f64> {
     let terms = outcome
         .iter()
         .zip(weights)
-        .filter_map(|(value, weight)| {
-            (*value > 0.0).then(|| value.ln() + weight.ln())
-        })
+        .filter(|(value, _)| **value > 0.0)
+        .map(|(value, weight)| value.ln() + weight.ln())
         .collect::<Vec<_>>();
     log_sum_exp(&terms, "weighted PPML outcome sum")
 }
@@ -439,7 +446,10 @@ fn log_sum_exp(terms: &[f64], label: &str) -> Result<f64> {
         ));
     }
     let maximum = terms.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    let scaled = terms.iter().map(|value| (value - maximum).exp()).collect::<Vec<_>>();
+    let scaled = terms
+        .iter()
+        .map(|value| (value - maximum).exp())
+        .collect::<Vec<_>>();
     let result = maximum + pairwise_sum(&scaled).ln();
     if result.is_finite() {
         Ok(result)

@@ -1,6 +1,6 @@
-use super::{DetectionResult, MethodStatus, SeparationCertificate, SeparationConfig};
 use super::projection::{project_onto_model, weighted_norm, ProjectionConfig};
 use super::subset::{select_rows, SubsetProblem};
+use super::{DetectionResult, MethodStatus, SeparationCertificate, SeparationConfig};
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::ols::FiniteSolver;
 use crate::ppml::{means_from_eta, PpmlConfig, PpmlStart};
@@ -158,4 +158,3 @@ pub(super) fn detect_mu(
         note: "mu candidates passed an independent column-space/sign certificate".to_owned(),
     })
 }
-

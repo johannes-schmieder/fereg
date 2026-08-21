@@ -1,30 +1,27 @@
-# Implementation status
+# Checkpoint A status
 
-This is a source-complete Phase 0–1 handoff. The table separates implemented
-source from artifacts that still require a target-native toolchain or licensed
-Stata.
+Checkpoint A has local macOS source/build evidence, but it is not merged as a
+baseline-repair commit and is not a release candidate.
 
 | Area | Status | Evidence / remaining gate |
 |---|---:|---|
-| Governing specification | Implemented | `AGENTS.md` is a byte-for-byte copy and its SHA-256 is locked in `references.lock.toml`. |
-| Safe Rust core | Implemented; compilation pending here | Protocol, metadata, deterministic factor/tuple coding, checked memory preflight (including zero-column edge case), scoped threading, and native self-test. `stfixest-core` forbids unsafe code. |
-| Rust/C panic boundary | Implemented; target-native execution pending here | `catch_unwind` contains the exported dispatcher; native build harnesses require the injected panic to return 3499. |
-| C/SPI boundary | Implemented and GCC-tested | Official SPI 3.0 sources plus a minimal main-thread wrapper. Every wrapper is exercised by the mock SPI test. |
-| Plugin exports/load path | Implemented and mock-loaded | A real shared-object mock proves `pginit`/`stata_call`, export hiding, dynamic loading, and ABI initialization on Linux. Native scripts repeat the same checks against the final Rust-linked plugin on every OS. |
-| Stata 18+ diagnostics | Implemented; licensed-Stata test pending | Platform loader plus `version`, `doctor`, and `selftest`; 1/16/32-thread native paths are encoded. |
-| Metadata-only Stata parser | Implemented prototype; licensed-Stata review pending | Uses `marksample, novarlist`, `fvexpand`, and `_ms_parse_parts`; creates no dummies, groups, or observation-scale FV expansions. |
-| Linux x86-64 plugin | Build/CI/audit complete in source | Requires Rust on a glibc-2.28 target-native runner; final loader harness is automatic. |
-| Windows x86-64 plugin | Build/CI/audit complete in source | Requires Rust MSVC and Visual Studio Build Tools; `/MT`/`crt-static` and final loader harness are automatic. |
-| macOS universal plugin | Build/CI/audit complete in source | Requires Xcode; builds x86-64 and arm64 slices, joins with `lipo`, signs, audits, and loads the final artifact. |
-| Cross-platform release ZIP | Implemented in CI | `stage_release.py` verifies all three plugin checksums before assembling one installable package. |
-| `stfeols` estimation | Not implemented by assignment | Fails closed with `r(498)` and posts no estimate. |
-| `stfepois` estimation | Not implemented by assignment | Fails closed with `r(498)` and posts no estimate. |
+| Repository baseline | Merged | `main` and the repair branch start at PR #1 merge `2980a2eccc97fd4cefa51dd763d2146dcbdec089`. |
+| Checkpoint A repairs | Uncommitted | The working tree restores the official `stplugin.c` hash/ownership contract, repairs bridge thread binding and guards, hardens binary audits, and makes the Linux mock-plugin audit platform-specific. |
+| Frozen governing files | Preserved | `AGENTS.md` SHA-256 is `7c43ce4128a993f1613fd129133c2d5df65eef70bc33bb4ebac4e2a4b430c07a`; official `stplugin.c` again matches its frozen SHA-256. No frozen reference was changed. |
+| Python/portable/C checks | Passed locally | 60 Python tests plus shell, bytecode, TOML, strict C, Clang, and mock-SPI checks passed. The GNU/ELF mock-plugin audit is correctly skipped on macOS and remains required on Linux. |
+| Rust formatting/lints | Passed locally | `cargo fmt --all -- --check` and workspace/all-target/all-feature Clippy with `-D warnings` passed. |
+| Rust debug tests | Passed locally | 76 unit tests: 68 core, 5 plugin, and 3 testkit. |
+| Rust release tests | Passed locally | The same 76 unit tests passed under `--release`; zero doc tests were present. |
+| Rust FFI test | Passed locally | `cargo test -p stfixest-plugin --features ffi --lib`: 5 passed. |
+| macOS universal plugin | Built and audited locally | The `x86_64` and `arm64` slices expose only `_pginit` and `_stata_call`, have only allowed OS dependencies, and have no unresolved symbols. |
+| macOS ABI harness | Passed locally | The final universal artifact passed the host-native version/doctor/protocol/panic-containment harness. This does not execute the Intel slice on Intel hardware. |
+| Licensed Stata 18 installation/safety smoke | Passed locally after loader repair | The first attempt failed before plugin entry with `r(109)` because the loader called `real()` on numeric `c(stata_version)`. After comparing `c(stata_version)` directly, Stata 18 MP passed version, doctor at 32 requested threads, native/overall self-tests, both fail-closed estimator checks, and 100 reload/self-test calls. |
+| Licensed-Stata parser and parity suites | Not run | Metadata semantics, reference-command behavior, enabled estimation, postestimation, and scientific parity remain open. |
+| Linux x86-64 | Not built locally | Python audit tests exercise ELF rules, but no real Linux artifact was built, audited, or loaded. |
+| Windows x86-64 | Not built locally | Python audit tests exercise PE/COFF rules, but no real Windows artifact was built, audited, or loaded. |
+| GitHub Actions | No Checkpoint A evidence | Actions was only recently enabled; there is no baseline-repair commit or associated job set yet. |
+| `stfeols` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
+| `stfepois` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
+| Release status | Not certified | No cross-platform Stata, clean-machine, parity, performance, or memory certification exists. |
 
-## Open Phase 0–1 exit gates
-
-1. Run `cargo fmt`, clippy with warnings denied, all Rust tests, and final-plugin
-   loader harnesses on target-native hosts.
-2. Load each artifact in licensed Stata 18 or newer and run the installation,
-   parser, and fail-closed postestimation fixtures.
-3. Record exact hashes, dependencies, OS versions, Stata versions, and logs under
-   `build_evidence/local/` before calling any binary a release artifact.
+The exact validation record and toolchain caveat are in `VALIDATION.md`.

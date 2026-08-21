@@ -135,8 +135,7 @@ fn pivot(
             continue;
         }
         for column in 0..width {
-            tableau[row * width + column] -=
-                factor * tableau[pivot_row * width + column];
+            tableau[row * width + column] -= factor * tableau[pivot_row * width + column];
         }
     }
     if tableau.iter().any(|value| !value.is_finite()) {
@@ -147,4 +146,3 @@ fn pivot(
     }
     Ok(())
 }
-

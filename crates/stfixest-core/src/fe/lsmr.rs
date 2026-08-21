@@ -132,22 +132,48 @@ pub fn absorb_lsmr(
             )
         })?;
 
-    let solved = pool
-        .install(|| {
-            within::solve_batch(
-                effects,
-                &rhs_views,
-                Some(weights),
-                Some(&options),
-                preconditioner,
-            )
-        })
-        .map_err(|error| {
-            StFixestError::new(
+    let initial = pool.install(|| {
+        within::solve_batch(
+            effects.clone(),
+            &rhs_views,
+            Some(weights),
+            Some(&options),
+            preconditioner,
+        )
+    });
+    let (solved, preconditioner_fallback) = match initial {
+        Ok(solved) => (solved, false),
+        Err(error)
+            if config.preconditioner == LsmrPreconditioner::Auto
+                && is_preconditioner_positivity_breakdown(&error) =>
+        {
+            let solved = pool
+                .install(|| {
+                    within::solve_batch(
+                        effects,
+                        &rhs_views,
+                        Some(weights),
+                        Some(&options),
+                        PreconditionerConfig::Off,
+                    )
+                })
+                .map_err(|fallback_error| {
+                    StFixestError::new(
+                        ErrorCode::Internal,
+                        format!(
+                            "modified LSMR failed after unpreconditioned fallback: {fallback_error}"
+                        ),
+                    )
+                })?;
+            (solved, true)
+        }
+        Err(error) => {
+            return Err(StFixestError::new(
                 ErrorCode::Internal,
                 format!("modified LSMR failed: {error}"),
-            )
-        })?;
+            ));
+        }
+    };
 
     for column in 0..values.ncols() {
         let demeaned = solved.demeaned(column);
@@ -175,6 +201,12 @@ pub fn absorb_lsmr(
         .iter()
         .map(|warning| format!("within preconditioner: {warning:?}"))
         .collect::<Vec<_>>();
+    if preconditioner_fallback {
+        warnings.insert(
+            0,
+            "automatic LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
+        );
+    }
     if recurrence_converged && !certificate.passed {
         warnings.push(
             "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
@@ -191,9 +223,17 @@ pub fn absorb_lsmr(
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
         setup_seconds: solved.time_setup,
         solve_seconds: solved.time_solve.iter().copied().sum(),
-        fallback_used: false,
+        fallback_used: preconditioner_fallback,
         warnings,
     })
+}
+
+fn is_preconditioner_positivity_breakdown(error: &within::WithinError) -> bool {
+    matches!(
+        error,
+        within::WithinError::Solve(within::SolveError::InvalidInput { context, message })
+            if *context == "mlsmr" && message.contains("preconditioner not positive definite")
+    )
 }
 
 fn resolve_preconditioner(
@@ -280,5 +320,32 @@ mod tests {
             absorb_lsmr(&design, &weights, &mut values, LsmrConfig::default()).expect("absorb");
         assert!(report.certified());
         assert!(values.as_slice().iter().all(|value| value.abs() < 1e-7));
+    }
+
+    #[test]
+    fn automatic_preconditioner_falls_back_for_roundoff_indefiniteness() {
+        let first = EffectTerm::new(vec![0, 0, 1, 1, 1], 2, true, vec![]).expect("first");
+        let second = EffectTerm::new(vec![0, 0, 0, 1, 1], 2, true, vec![]).expect("second");
+        let design = FeDesign::new(5, vec![first, second]).expect("design");
+        let tiny = 1e-5_f64 * 1e-5_f64 / 3.0;
+        let weights = vec![tiny, 1.0, tiny, tiny, 1.0];
+        let mut values =
+            DenseMatrix::from_columns(&[vec![1.0, 0.0, 1.0, 1.0, 0.0]]).expect("values");
+        let report = absorb_lsmr(
+            &design,
+            &weights,
+            &mut values,
+            LsmrConfig {
+                tolerance: 1e-10,
+                ..LsmrConfig::default()
+            },
+        )
+        .expect("certified fallback");
+        assert!(report.fallback_used);
+        assert!(report.certified());
+        assert!(report
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("positive-definiteness guard")));
     }
 }

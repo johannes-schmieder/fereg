@@ -14,13 +14,13 @@ pub use family::{
     means_from_eta, offset_from_exposure, poisson_objective, PoissonBounds, PoissonObjective,
 };
 
-use certificate::score_certificate;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{AbsorbConfig, FeDesign, SolveReport};
 use crate::ols::{
     compute_dof, DofConfig, DofReport, FiniteSolver, RegressorStatus, VceKind, VceReport,
 };
+use certificate::score_certificate;
 use irls::{
     accept_step, initialize, multiply, profile_irls_step, scheduled_inner_tolerance,
     validate_inputs, validate_start, weighted_outcome_sum,
@@ -376,16 +376,7 @@ mod tests {
     fn intercept_only_matches_the_mean() {
         let y = [1.0, 2.0, 4.0, 8.0, 3.0, 5.0];
         let x = DenseMatrix::from_columns(&[vec![1.0; y.len()]]).expect("matrix");
-        let fit = fit_ppml(
-            &y,
-            &x,
-            &[1.0; 6],
-            &[0.0; 6],
-            None,
-            &[],
-            model_based(),
-        )
-        .expect("fit");
+        let fit = fit_ppml(&y, &x, &[1.0; 6], &[0.0; 6], None, &[], model_based()).expect("fit");
         let expected = (y.iter().sum::<f64>() / y.len() as f64).ln();
         assert!((fit.coefficients[0] - expected).abs() < 1e-8);
         assert!(fit.diagnostics.final_certificate.passed);
@@ -397,25 +388,22 @@ mod tests {
         let y = exposure.map(|value| 2.5 * value);
         let offset = offset_from_exposure(&exposure).expect("offset");
         let x = DenseMatrix::from_columns(&[vec![1.0; y.len()]]).expect("matrix");
-        let fit = fit_ppml(
-            &y,
-            &x,
-            &[1.0; 6],
-            &offset,
-            None,
-            &[],
-            model_based(),
-        )
-        .expect("fit");
+        let fit = fit_ppml(&y, &x, &[1.0; 6], &offset, None, &[], model_based()).expect("fit");
         assert!((fit.coefficients[0] - 2.5_f64.ln()).abs() < 1e-8);
-        assert!(fit.mean.iter().zip(y).all(|(left, right)| (left - right).abs() < 1e-8));
+        assert!(fit
+            .mean
+            .iter()
+            .zip(y)
+            .all(|(left, right)| (left - right).abs() < 1e-8));
     }
 
     #[test]
     fn two_way_fixed_effects_recover_the_slope() {
         let worker_codes = vec![0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
         let firm_codes = vec![0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0];
-        let x_values = vec![0.0, 1.0, 1.5, 0.5, 2.0, 3.0, 2.5, 4.0, 1.2, 2.2, 3.2, 4.2];
+        let x_values = vec![
+            0.0_f64, 1.0, 1.5, 0.5, 2.0, 3.0, 2.5, 4.0, 1.2, 2.2, 3.2, 4.2,
+        ];
         let worker_effect = [0.2, -0.1, 0.3, -0.25];
         let firm_effect = [0.15, -0.2];
         let y = x_values
@@ -462,7 +450,10 @@ mod tests {
             &[0.0; 8],
             None,
             &[vec![0, 0, 1, 1, 2, 2, 3, 3]],
-            PpmlConfig { vce: VceKind::Clustered, ..PpmlConfig::default() },
+            PpmlConfig {
+                vce: VceKind::Clustered,
+                ..PpmlConfig::default()
+            },
         )
         .expect("fit");
         assert!(fit.standard_errors.iter().all(|value| value.is_finite()));

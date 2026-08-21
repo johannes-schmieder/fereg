@@ -74,7 +74,10 @@ pub(crate) fn finite_simplex(
     let cells = rows
         .checked_mul(total_variables.saturating_add(1))
         .ok_or_else(|| {
-            StFixestError::new(ErrorCode::Allocation, "simplex tableau dimensions overflowed")
+            StFixestError::new(
+                ErrorCode::Allocation,
+                "simplex tableau dimensions overflowed",
+            )
         })?;
     if cells > max_tableau_cells {
         return Ok(DetectionResult::empty(

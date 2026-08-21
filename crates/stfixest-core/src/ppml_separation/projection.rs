@@ -77,10 +77,10 @@ pub(crate) fn project_onto_model(
 
     let within_outcome = transformed.column(0)?;
     let mut candidate_columns = Vec::new();
-    for column in 0..ncols {
+    for (column, original_norm) in original_norms.iter().copied().enumerate() {
         let values = transformed.column(column + 1)?;
         let norm = weighted_norm(&values, weights)?;
-        if norm > config.collinearity_tolerance * original_norms[column].max(1.0) {
+        if norm > config.collinearity_tolerance * original_norm.max(1.0) {
             candidate_columns.push(values);
         }
     }

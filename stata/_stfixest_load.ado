@@ -1,8 +1,9 @@
 *! StFixest 0.1.0 Phase 0-1 20aug2026
 program define _stfixest_load, rclass
     version 18.0
+    syntax , ACTION(string) [THREADS(integer 0)]
 
-    if real(c(stata_version)) < 18 {
+    if c(stata_version) < 18 {
         di as error "StFixest requires Stata 18 or newer"
         exit 9
     }
@@ -30,8 +31,37 @@ program define _stfixest_load, rclass
     }
     local plugin_file `"`r(fn)'"'
 
-    capture program drop __stfixest_plugin
-    program __stfixest_plugin, plugin using(`"`plugin_file'"')
+    capture program __stfixest_plugin, plugin using(`"`plugin_file'"')
+    local load_rc = _rc
+    if `load_rc' != 0 & `load_rc' != 110 {
+        exit `load_rc'
+    }
+
+    if `"`action'"' == "version" {
+        plugin call __stfixest_plugin, version
+    }
+    else if `"`action'"' == "doctor" {
+        plugin call __stfixest_plugin, doctor ///
+            `"ado=0.1.0-phase01"' ///
+            `"protocol_major=1"' ///
+            `"protocol_minor=0"' ///
+            `"stata=`c(stata_version)'"' ///
+            `"threads=`threads'"' ///
+            `"plugin_file=`plugin_file'"' ///
+            `"dependency_audit=build-time-required"'
+    }
+    else if `"`action'"' == "selftest" {
+        plugin call __stfixest_plugin, selftest ///
+            `"ado=0.1.0-phase01"' ///
+            `"protocol_major=1"' ///
+            `"protocol_minor=0"' ///
+            `"stata=`c(stata_version)'"' ///
+            `"threads=`threads'"'
+    }
+    else {
+        di as error "unknown StFixest plugin action: `action'"
+        exit 198
+    }
 
     return local handle "__stfixest_plugin"
     return local plugin_name "`plugin_name'"

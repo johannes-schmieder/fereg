@@ -1,14 +1,79 @@
 # Implementation status
 
-This branch is developed in small, auditable checkpoints.
+As of 2026-08-21, `main` includes pull request #1 at merge commit
+`2980a2eccc97fd4cefa51dd763d2146dcbdec089`. The current working tree contains
+the uncommitted Checkpoint A baseline-repair set. This is development evidence,
+not a release or production certification.
 
-## Completed source checkpoints
+## Implemented source
 
-- Phase 0-1 architecture, metadata parser, protocol, mock SPI, diagnostics, and cross-platform build machinery.
-- Native authoritative sample preparation, weight validation, compact factor sources, interactions, and blockwise model-matrix generation.
-- Queue-based singleton pruning, connected components, weighted intercept/slope projection, symmetric MAP absorption, and scale-stable FE orthogonality certificates.
-- Pinned `within` modified-LSMR/Schwarz adapter, per-estimate Rayon pools, deterministic automatic MAP/LSMR routing, and certified fallback.
+- Phase 0-1 contracts, metadata-only Stata parsing, the versioned protocol,
+  diagnostics, self-tests, mock SPI, panic containment, and cross-platform
+  build/audit machinery.
+- Rust-first sample preparation, weight validation, compact categorical and
+  interaction coding, and blockwise ordinary factor-column generation.
+- Iterative singleton pruning, connected components, weighted fixed-effect
+  projection, MAP and modified-LSMR paths, preconditioning, automatic routing,
+  and independently recomputed FE certificates.
+- Stata-independent OLS/FWL, rank handling, fit statistics, DoF policy, and
+  homoskedastic, robust, and multiway-clustered covariance kernels.
+- Stata-independent PPML family, IRLS, certificates, covariance, and separation
+  kernels (`fe`, `simplex`, `ir`, and `mu`).
 
-## Current validation boundary
+These are source and local-unit-test claims. They do not mean that either Stata
+estimator is supported.
 
-The numerical Rust source is compiled and tested in GitHub Actions on the pull-request branch. Licensed-Stata parser, plugin-loading, reference-parity, and performance certification remain separate gates. Unsupported estimator entry points remain fail-closed until those gates are implemented and exercised.
+## Checkpoint A repair status
+
+- The official SPI 3.0 `plugin/stplugin.c` owns `pginit()` again and matches the
+  SHA-256 frozen in `references.lock.toml`:
+  `7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a`.
+- The separate StFixest bridge binds the Stata calling thread on the first
+  `stata_call`, rejects SPI access from worker threads, validates pointers and
+  lengths, and preserves the narrow C/Rust boundary.
+- The macOS test runner now skips the GNU/ELF-only mock-plugin audit instead of
+  passing Linux linker flags to Apple `ld`. The Linux-specific test remains a
+  Linux gate.
+
+## Locally validated
+
+On an Apple-Silicon macOS host with pinned Rust/Cargo 1.85.1 and Xcode Apple
+clang 21.0.0:
+
+- 60 Python contract/property tests passed;
+- portable shell, Python, TOML, strict C, Clang, and mock-SPI checks passed;
+- `cargo fmt --all -- --check` passed;
+- Clippy passed for the workspace, all targets, and all features with warnings
+  denied;
+- 76 Rust unit tests passed in debug and the same 76 passed in release
+  (68 core, 5 plugin, and 3 testkit);
+- the explicit plugin `ffi` test invocation passed all 5 plugin tests;
+- a universal `stfixest_macos.plugin` was built with `x86_64` and `arm64`
+  slices; both slices passed architecture, dependency, undefined-symbol, and
+  exact-export audits; and the host-native ABI/self-test harness passed;
+- licensed Stata 18 MP loaded the macOS plugin, passed `version`,
+  `doctor threads(32)`, and `selftest threads(32)`, observed the intended
+  `r(498)` result from both estimators without changing the dataset, and
+  completed 100 plugin reload/self-test calls.
+
+The first licensed-Stata attempt exposed a loader-only type mismatch before the
+plugin was entered: `real(c(stata_version))` returned `r(109)` because the Stata
+18 `c()` value is already numeric. The guard now compares `c(stata_version)`
+directly, and the repaired smoke run passed.
+
+The non-Stata transcripts are under `build_evidence/local/`; the final Stata
+transcript is `stata_smoke.log`.
+
+## Unsupported and unresolved
+
+- `stfeols` and `stfepois` remain explicitly unsupported and fail closed with
+  `r(498)` without posting estimates.
+- No licensed-Stata metadata-parser, enabled-estimator, or reference-parity
+  suite has passed yet; only the installation/safety smoke described above has
+  passed.
+- No real Linux x86-64 or Windows x86-64 plugin has been built or loaded in this
+  checkpoint.
+- No clean-machine, numerical parity, performance, memory, or cross-platform
+  release gate has passed.
+- GitHub Actions was only recently enabled, and there is no Checkpoint A
+  baseline commit or associated job record yet.

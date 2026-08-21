@@ -74,8 +74,7 @@ pub(super) fn nullspace_basis(
                 continue;
             }
             for column in rank..ncols {
-                matrix[row * ncols + column] -=
-                    factor * matrix[rank * ncols + column];
+                matrix[row * ncols + column] -= factor * matrix[rank * ncols + column];
             }
         }
         rank += 1;
@@ -111,4 +110,3 @@ pub(super) fn nullspace_basis(
     }
     Ok(basis)
 }
-
