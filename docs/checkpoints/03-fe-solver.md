@@ -15,4 +15,6 @@ Local validation completed before push:
 - portable repository/source checks;
 - Python contract and property tests.
 
+The first native run exposed a certificate-scaling edge case on nearly exact fits. The corrected certificate still recomputes every true weighted FE moment, but scales it by the weighted norm of the original right-hand side rather than the nearly zero returned residual. This prevents floating-point roundoff from being promoted to an order-one relative violation.
+
 Native Rust compilation, Clippy, unit tests, and all platform plugin builds are delegated to the GitHub Actions matrix attached to this checkpoint commit. Licensed-Stata parity remains a later release gate.
