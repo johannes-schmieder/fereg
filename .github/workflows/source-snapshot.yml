@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - codex/full-implementation
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
