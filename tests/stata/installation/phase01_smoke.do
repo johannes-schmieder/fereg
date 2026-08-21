@@ -3,11 +3,39 @@ clear all
 set more off
 
 capture noisily stfixest, version
-assert _rc == 0
+local version_rc = _rc
+local plugin_name "`r(plugin_name)'"
+if `version_rc' != 0 {
+    exit `version_rc'
+}
+if c(os) == "MacOSX" | (c(os) == "Unix" & strmatch(c(machine_type), "Mac*")) {
+    if "`plugin_name'" != "stfixest_macos.plugin" {
+        di as error "wrong plugin selected for macOS: `plugin_name'"
+        exit 9
+    }
+}
+else if c(os) == "Windows" {
+    if "`plugin_name'" != "stfixest_windows.plugin" {
+        di as error "wrong plugin selected for Windows: `plugin_name'"
+        exit 9
+    }
+}
+else if c(os) == "Unix" {
+    if "`plugin_name'" != "stfixest_linux.plugin" {
+        di as error "wrong plugin selected for Linux: `plugin_name'"
+        exit 9
+    }
+}
 capture noisily stfixest, doctor threads(32) verbose
-assert _rc == 0
+local doctor_rc = _rc
+if `doctor_rc' != 0 {
+    exit `doctor_rc'
+}
 capture noisily stfixest, selftest threads(32)
-assert _rc == 0
+local selftest_rc = _rc
+if `selftest_rc' != 0 {
+    exit `selftest_rc'
+}
 
 sysuse auto, clear
 local before_n = _N
@@ -23,3 +51,4 @@ assert _N == `before_n'
 assert c(k) == `before_k'
 
 di as result "phase01_smoke.do: PASS"
+di as result "END_FIXTURE|phase01_smoke|rc=0"

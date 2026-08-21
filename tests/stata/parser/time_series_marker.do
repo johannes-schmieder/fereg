@@ -17,3 +17,4 @@ else {
     exit _rc
 }
 di as result "time_series_marker.do: PASS"
+di as result "END_FIXTURE|time_series_marker|rc=0"

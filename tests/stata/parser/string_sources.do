@@ -14,3 +14,4 @@ assert strpos("`r(source_vars)'", "worker") > 0
 assert strpos("`r(source_vars)'", "firm") > 0
 assert c(k) == 4
 di as result "string_sources.do: PASS"
+di as result "END_FIXTURE|string_sources|rc=0"

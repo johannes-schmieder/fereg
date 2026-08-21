@@ -1,4 +1,30 @@
-2026-08-21T12:55:57Z
-$ /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp -b do build_evidence/local/stata_smoke.do
-result: PASS (phase01_smoke and reload_loop)
-e863e49fb21d264cb11b831505a474953927677ee159c8db73d2985cfbb1b353  stata_smoke.log
+2026-08-21 corrected licensed-Stata receipt
+
+RETRACTED: the prior PASS record trusted Stata's zero process status. The
+fixture had aborted because c(os)==Unix routed macOS to
+stfixest_linux.plugin. The prior raw-log hash is not accepted evidence.
+
+Native Apple-Silicon command:
+/opt/homebrew/bin/python3 scripts/run_stata_tests.py --stata /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
+
+Observed platform: c(os)=Unix; c(machine_type)=Mac (Apple Silicon)
+Observed plugin: dist/stfixest_macos.plugin; stfixest.arch=aarch64
+Result: PASS, all 9 fixtures produced exact END_FIXTURE|<name>|rc=0 sentinels
+Includes: version, doctor threads(32), selftest threads(32), expected r(498)
+estimator failures with unchanged data shape, 100 drop/reload/selftest calls,
+all current parser fixtures, and fail-closed postestimation.
+
+Rosetta x86-64 command:
+arch -x86_64 /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp -b do build_evidence/local/stata_smoke.do
+
+Observed platform: c(os)=Unix; c(machine_type)=Macintosh (Intel 64-bit)
+Observed plugin: dist/stfixest_macos.plugin; stfixest.arch=x86_64
+Result: PASS, phase01_smoke and reload_loop emitted exact success sentinels
+Classification: emulated x86-64 evidence, not native Intel-host certification
+
+Universal plugin SHA-256 after the recorded rebuild:
+845814eef1a0d18c7ac1e219bbeaf21a44666afbb315a9b1812ca620037e82d2
+
+Raw Stata logs contain license metadata and are intentionally not committed.
+Linux, Windows, native Intel macOS, clean-machine, pinned-reference parity,
+enabled-estimator, performance, and memory gates remain pending.

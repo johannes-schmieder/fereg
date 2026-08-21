@@ -19,3 +19,8 @@ Python, Julia, BLAS, or StFixest files.
    OS libraries may appear.
 8. On macOS, run the same artifact natively on Intel and Apple Silicon. On
    Windows and Linux, test the oldest supported OS/runtime baseline.
+
+Every do-file must print `END_FIXTURE|<name>|rc=0` only after its final
+assertion. Treat a missing or nonzero sentinel as failure even when the Stata
+process exits zero. Rosetta execution exercises the x86-64 slice and loader but
+does not satisfy the native Intel-host requirement in step 8.

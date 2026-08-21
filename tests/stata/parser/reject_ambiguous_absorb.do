@@ -7,3 +7,4 @@ gen double x = _n
 capture noisily stfixest_parse c.x, absorb(a##b)
 assert _rc == 198
 di as result "reject_ambiguous_absorb.do: PASS"
+di as result "END_FIXTURE|reject_ambiguous_absorb|rc=0"
