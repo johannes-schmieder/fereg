@@ -73,8 +73,8 @@ pub fn connected_components(
     }
     let mut union_find = UnionFind::new(offsets[level_counts.len()]);
     let mut observed = vec![false; offsets[level_counts.len()]];
-    for observation in 0..nobs {
-        if !active[observation] || codes_by_effect.is_empty() {
+    for (observation, is_active) in active.iter().copied().enumerate() {
+        if !is_active || codes_by_effect.is_empty() {
             continue;
         }
         let first = offsets[0] + codes_by_effect[0][observation] as usize;
