@@ -1,0 +1,62 @@
+use crate::fe::FeCertificate;
+
+/// Fixed-effect absorption implementation requested or actually used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FeSolverKind {
+    /// Choose from the certified MAP and modified-LSMR paths using design shape.
+    Auto,
+    /// Symmetric method of alternating projections.
+    Map,
+    /// Matrix-free modified LSMR with a configurable preconditioner.
+    Lsmr,
+}
+
+/// Why a fixed-effect absorption run stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SolveStopReason {
+    /// The design contains no fixed-effect terms.
+    NoFixedEffects,
+    /// The final true fixed-effect orthogonality certificate passed.
+    Certified,
+    /// The iterative method exhausted its budget before certification.
+    MaximumIterations,
+    /// The numerical recurrence stopped but the recomputed certificate failed.
+    Uncertified,
+}
+
+/// Diagnostics from one fixed-effect absorption run.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolveReport {
+    /// Solver requested by the caller (`Auto` is retained here).
+    pub requested_solver: FeSolverKind,
+    /// Solver that produced the returned residuals.
+    pub used_solver: FeSolverKind,
+    /// Iteration count reported by the selected solver.
+    pub iterations: usize,
+    /// Stop reason after the independently recomputed certificate.
+    pub stop_reason: SolveStopReason,
+    /// True fixed-effect moment certificate on the returned residuals.
+    pub certificate: FeCertificate,
+    /// Recurrence-based relative normal-equation residual, when available.
+    pub normal_equation_residual: f64,
+    /// Solver/preconditioner setup wall time in seconds.
+    pub setup_seconds: f64,
+    /// Iterative solve wall time in seconds.
+    pub solve_seconds: f64,
+    /// Whether `Auto` abandoned its first choice and certified the other path.
+    pub fallback_used: bool,
+    /// Deterministic, diagnostic-only warnings from routing or preconditioning.
+    pub warnings: Vec<String>,
+}
+
+impl SolveReport {
+    /// Whether the returned values satisfy the final scientific certificate.
+    #[must_use]
+    pub fn certified(&self) -> bool {
+        self.certificate.passed
+            && matches!(
+                self.stop_reason,
+                SolveStopReason::Certified | SolveStopReason::NoFixedEffects
+            )
+    }
+}

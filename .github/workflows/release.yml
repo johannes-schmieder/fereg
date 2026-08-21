@@ -1,0 +1,109 @@
+name: StFixest release package
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt, clippy
+      - name: Run source, Rust, and mock-SPI tests
+        run: ./scripts/run_tests.sh
+
+  linux-plugin:
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.85.1
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Build Linux plugin
+        shell: bash
+        run: ./scripts/build_linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            dist/stfixest_linux.plugin
+            dist/stfixest_linux.plugin.sha256
+
+  windows-plugin:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Exercise Windows SPI ABI and exports
+        shell: powershell
+        run: ./tests/mock_spi/run_mock_bridge_test.ps1
+      - name: Build Windows plugin
+        shell: powershell
+        run: ./scripts/build_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            dist/stfixest_windows.plugin
+            dist/stfixest_windows.plugin.sha256
+
+  macos-plugin:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - name: Build universal macOS plugin
+        run: ./scripts/build_macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: |
+            dist/stfixest_macos.plugin
+            dist/stfixest_macos.plugin.sha256
+
+  assemble:
+    needs: [validate, linux-plugin, windows-plugin, macos-plugin]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: native-artifacts
+          merge-multiple: true
+      - name: Create deterministic source handoff
+        run: |
+          mkdir -p release-artifacts
+          python3 scripts/package_release.py --source . --output release-artifacts/stfixest-0.1.0-phase01-source.zip
+      - name: Assemble verified Stata release
+        run: python3 scripts/stage_release.py --source . --plugins native-artifacts --output release-artifacts/stfixest-0.1.0-phase01-release.zip
+      - name: Hash release files
+        run: |
+          cd release-artifacts
+          sha256sum stfixest-0.1.0-phase01-source.zip > stfixest-0.1.0-phase01-source.zip.sha256
+          sha256sum stfixest-0.1.0-phase01-release.zip > stfixest-0.1.0-phase01-release.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stfixest-release
+          path: release-artifacts/*

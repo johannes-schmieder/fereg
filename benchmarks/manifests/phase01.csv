@@ -1,0 +1,6 @@
+id,n,workers,firms,years,model,threads,memory,status
+smoke_100k,100000,10000,1000,5,diagnostic,1,auto,ready
+threads_1m_16,1000000,100000,10000,10,diagnostic,16,auto,ready
+threads_1m_32,1000000,100000,10000,10,diagnostic,32,auto,ready
+ols_future_30m,30000000,30000000,1000000,20,ols,32,low,pending_phase3
+ppml_future_30m,30000000,30000000,1000000,20,ppml,32,low,pending_phase4
