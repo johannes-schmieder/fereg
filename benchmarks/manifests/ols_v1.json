@@ -14,7 +14,17 @@
     "primary_min_observations": 10000000,
     "thread_counts": [1, 8],
     "repetitions": {"cold": 1, "warm": 5},
-    "required_metadata": ["sample_identity_sha256", "singleton_identity_sha256", "peak_rss_bytes", "host", "stata", "thread_count"],
+    "required_metadata": ["sample_identity_sha256", "singleton_identity_sha256", "runs", "host", "stata", "thread_count", "scientific"],
+    "scientific_gate": {
+      "required_evidence": ["coefficient_names", "coefficient_status", "coefficients", "vce", "dof", "fit", "objective", "certificates"],
+      "coefficient_rtol": 1e-7,
+      "coefficient_atol": 1e-10,
+      "vce_rtol": 1e-6,
+      "vce_atol": 1e-10,
+      "fit_rtol": 1e-7,
+      "fit_atol": 1e-9,
+      "certificate_limits": {"normal_equation_inf_norm": 1e-8, "fe_orthogonality_inf_norm": 1e-8, "vce_symmetry_inf_norm": 1e-10}
+    },
     "thresholds": {
       "geometric_mean_speedup_min": 1.5,
       "primary_case_time_ratio_max": 1.0,
@@ -24,11 +34,11 @@
   "capture": {
     "script": {
       "path": "benchmarks/stata/baseline_reghdfe.do",
-      "sha256": "28fc1fc6d0929eb379570e7c863ff6f2ec8246fdbc10b89c3e1d477fb86632c1"
+      "sha256": "053b51ae3f900413d32ac796dc534d54117da3e5357e7e4f9a6ad5fc57474483"
     },
     "runner": {
       "path": "scripts/ols_reference.py",
-      "sha256": "3087b252b8f8f50ba80f546c11bfd60cf4c7f3fb7cf59385c336869cbf34e9f6"
+      "sha256": "b20b788277a8c62f197d715f7ea323b2c3ffe86acafd97017a6042816952a4c4"
     },
     "generator": {
       "path": "benchmarks/generators/generate_panel.do",
@@ -69,7 +79,15 @@
       "kind": "fixture_csv",
       "source": {
         "path": "tests/fixtures/ols/ols_weights.csv",
-        "sha256": "7d93ff1d49ba0021da3e9d2a638a253ec46b725d0719a51436c9d8e51b4b9d70"
+        "sha256": "b597783bf9cb431dbfea74857dca9f9437ec5a6710afc545919d0af39bbef869"
+      }
+    },
+    {
+      "id": "ols_ts",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_ts.csv",
+        "sha256": "f6fb4e1cfb120384d04b37f2a3e988e279442bf4f71550c53b7b731d0d7f4810"
       }
     },
     {
@@ -94,7 +112,7 @@
   "required_surface": {
     "models": ["no_fe", "one_fe", "multi_fe", "categorical_interaction", "intercept_slope", "slope_only", "multiple_slopes", "ordinary_factor", "ordinary_interaction", "time_series_operators", "string_fe", "disconnected_components", "no_regressors", "collinearity"],
     "sample": ["if_in", "missing", "missing_fe", "missing_cluster", "singleton_cascade", "keepsingletons", "empty_sample_error", "one_observation_error"],
-    "weights": ["unweighted", "aweight", "fweight", "pweight", "iweight_probe", "constant_rescaling", "zero_weight", "negative_weight", "fractional_fweight", "missing_weight", "large_weight", "weight_if_in", "weighted_singletons"],
+    "weights": ["unweighted", "aweight", "fweight", "pweight", "iweight_probe", "constant_rescaling", "zero_weight", "negative_weight", "fractional_fweight", "missing_weight", "large_weight", "weight_if_in", "invalid_weight_outside_candidate", "weighted_singletons"],
     "inference": ["vce_unadjusted", "vce_robust", "cluster_oneway", "cluster_twoway", "cluster_threeway", "cluster_interaction", "fe_nested_cluster", "dof_default", "dof_none", "dof_firstpair", "dof_continuous"],
     "outputs": ["ereturn_scalars", "coefficient_status", "e_sample", "residual", "predict_xb", "predict_xbd", "absorbed_sum", "saved_fe", "fit_statistics", "test", "estat_summarize"],
     "failures": ["invalid_weight_error", "perfect_collinearity", "insufficient_observations", "all_dropped"],
@@ -175,12 +193,22 @@
     },
     {
       "id": "time_series_lag",
-      "dataset": "ols_core",
-      "setup": ["xtset worker year"],
-      "command": "reghdfe y L.x1 c.x2, absorb(firm)",
+      "dataset": "ols_ts",
+      "setup": ["xtset panel year"],
+      "command": "reghdfe y L.x, absorb(panel)",
       "expected": "must_succeed",
       "covers": ["models:time_series_operators"],
       "capture": {"scalars": ["N", "df_m", "df_r", "df_a"], "macros": ["indepvars", "absvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "time_series_lead_difference_gaps",
+      "dataset": "ols_ts",
+      "setup": ["xtset panel year"],
+      "command": "reghdfe y F.x D.x",
+      "expected": "must_succeed",
+      "covers": ["models:time_series_operators"],
+      "capture": {"scalars": ["N", "df_m", "df_r"], "macros": ["indepvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
       "repetitions": {"cold": 1, "warm": 0}
     },
     {
@@ -328,6 +356,16 @@
       "repetitions": {"cold": 1, "warm": 0}
     },
     {
+      "id": "invalid_weight_outside_candidate",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x if obs_id >= 2 [aw=w_outside_negative], absorb(group)",
+      "expected": "must_succeed",
+      "expected_sample_count": 11,
+      "covers": ["weights:invalid_weight_outside_candidate"],
+      "capture": {"scalars": ["N", "sumweights", "df_r"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
       "id": "weighted_singletons",
       "dataset": "ols_singletons",
       "command": "reghdfe y c.x1 [aw=year], absorb(worker firm)",
@@ -459,7 +497,7 @@
       "thread_count": 1,
       "expected": "must_succeed",
       "covers": ["benchmarks:dense_two_fe"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -471,7 +509,7 @@
       "thread_count": 8,
       "expected": "must_succeed",
       "covers": ["benchmarks:dense_two_fe"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -483,7 +521,7 @@
       "thread_count": 1,
       "expected": "must_succeed",
       "covers": ["benchmarks:sparse_two_fe"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -495,7 +533,7 @@
       "thread_count": 8,
       "expected": "must_succeed",
       "covers": ["benchmarks:sparse_two_fe"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -507,7 +545,7 @@
       "thread_count": 1,
       "expected": "must_succeed",
       "covers": ["benchmarks:absorbed_slope"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -519,7 +557,7 @@
       "thread_count": 8,
       "expected": "must_succeed",
       "covers": ["benchmarks:absorbed_slope"],
-      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -531,7 +569,7 @@
       "thread_count": 1,
       "expected": "must_succeed",
       "covers": ["benchmarks:clustered_vce"],
-      "capture": {"scalars": ["N", "df_r", "N_clustervars", "N_clust1", "N_clust2", "num_singletons"], "macros": ["absvars", "vce", "clustvar"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "N_clustervars", "N_clust1", "N_clust2", "num_singletons"], "macros": ["absvars", "vce", "clustvar"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -543,7 +581,7 @@
       "thread_count": 8,
       "expected": "must_succeed",
       "covers": ["benchmarks:clustered_vce"],
-      "capture": {"scalars": ["N", "df_r", "N_clustervars", "N_clust1", "N_clust2", "num_singletons"], "macros": ["absvars", "vce", "clustvar"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "N_clustervars", "N_clust1", "N_clust2", "num_singletons"], "macros": ["absvars", "vce", "clustvar"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -555,7 +593,7 @@
       "thread_count": 1,
       "expected": "must_succeed",
       "covers": ["benchmarks:moderate_k"],
-      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     },
     {
@@ -567,7 +605,7 @@
       "thread_count": 8,
       "expected": "must_succeed",
       "covers": ["benchmarks:moderate_k"],
-      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "num_singletons"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V"], "outputs": [], "identities": ["sample", "singletons"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F", "num_singletons"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V", "dof_table"], "outputs": [], "identities": ["sample", "singletons"]},
       "repetitions": {"cold": 1, "warm": 5}
     }
   ]

@@ -99,6 +99,7 @@ REQUIRED_SURFACE = {
         "missing_weight",
         "large_weight",
         "weight_if_in",
+        "invalid_weight_outside_candidate",
         "weighted_singletons",
     },
     "inference": {
@@ -277,7 +278,7 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         raise ContractError("benchmark_contract must be an object")
     _expect_keys(
         benchmark_contract,
-        {"candidate_state", "arms", "primary_min_observations", "thread_counts", "repetitions", "required_metadata", "thresholds"},
+        {"candidate_state", "arms", "primary_min_observations", "thread_counts", "repetitions", "required_metadata", "scientific_gate", "thresholds"},
         set(),
         "benchmark_contract",
     )
@@ -294,12 +295,24 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
     if set(benchmark_contract["required_metadata"]) != {
         "sample_identity_sha256",
         "singleton_identity_sha256",
-        "peak_rss_bytes",
+        "runs",
         "host",
         "stata",
         "thread_count",
+        "scientific",
     }:
         raise ContractError("benchmark_contract: required evidence metadata is incomplete")
+    if benchmark_contract["scientific_gate"] != {
+        "required_evidence": ["coefficient_names", "coefficient_status", "coefficients", "vce", "dof", "fit", "objective", "certificates"],
+        "coefficient_rtol": 1e-7,
+        "coefficient_atol": 1e-10,
+        "vce_rtol": 1e-6,
+        "vce_atol": 1e-10,
+        "fit_rtol": 1e-7,
+        "fit_atol": 1e-9,
+        "certificate_limits": {"normal_equation_inf_norm": 1e-8, "fe_orthogonality_inf_norm": 1e-8, "vce_symmetry_inf_norm": 1e-10},
+    }:
+        raise ContractError("benchmark_contract: scientific parity and certificate gates are not frozen")
     if benchmark_contract["thresholds"] != {
         "geometric_mean_speedup_min": 1.5,
         "primary_case_time_ratio_max": 1.0,
@@ -358,7 +371,7 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
             _expect_keys(
                 case,
                 {"id", "dataset", "command", "expected", "covers", "capture", "repetitions"},
-                {"arms", "primary", "thread_count", "setup", "postestimation"},
+                {"arms", "primary", "thread_count", "setup", "postestimation", "expected_sample_count"},
                 where,
             )
             case_id = case["id"]
@@ -404,6 +417,8 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
                 raise ContractError(f"{where}.capture.outputs contains an unsupported output")
             if not set(capture_spec.get("identities", [])).issubset({"sample", "singletons"}):
                 raise ContractError(f"{where}.capture.identities contains an unsupported identity")
+            if "expected_sample_count" in case and (case["expected"] != "must_succeed" or not isinstance(case["expected_sample_count"], int) or case["expected_sample_count"] <= 0 or "N" not in capture_spec["scalars"] or "sample" not in capture_spec["outputs"]):
+                raise ContractError(f"{where}: expected_sample_count requires a successful N/sample capture")
             if "residual" in capture_spec["outputs"] and "residuals(__stfx_resid)" not in command:
                 raise ContractError(f"{where}: residual output requires a named residuals() target")
             for output in ("fe_worker", "fe_firm"):
@@ -449,6 +464,10 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
                     raise ContractError(f"{where}: sample and singleton identities are required")
                 if "num_singletons" not in capture_spec["scalars"]:
                     raise ContractError(f"{where}: num_singletons is required for benchmark parity")
+                if not {"N", "df_m", "df_r", "df_a", "rss", "tss", "r2", "r2_a", "rmse", "F"}.issubset(capture_spec["scalars"]):
+                    raise ContractError(f"{where}: benchmark scientific fit/DoF evidence is incomplete")
+                if not {"b", "V", "dof_table"}.issubset(capture_spec["matrices"]):
+                    raise ContractError(f"{where}: benchmark coefficient/VCE/DoF matrices are incomplete")
             else:
                 if any(name in case for name in ("arms", "primary", "thread_count")):
                     raise ContractError(f"{where}: benchmark-only fields appear on a semantic case")
@@ -697,8 +716,10 @@ def _emit_file_line(parts: Iterable[str]) -> str:
 
 def _render_matrix(case_id: str, name: str, source: str = "e", record: str = "matrix", post_id: str | None = None) -> list[str]:
     prefix = [CAPTURE_PREFIX[:-1], record, case_id]
+    dimensions_prefix = [CAPTURE_PREFIX[:-1], record + "_dimensions", case_id]
     if post_id is not None:
         prefix.append(post_id)
+        dimensions_prefix.append(post_id)
     return [
         f"capture matrix __stfx_matrix = {source}({name})",
         "if _rc {",
@@ -707,14 +728,17 @@ def _render_matrix(case_id: str, name: str, source: str = "e", record: str = "ma
         "else {",
         "    local __stfx_rows = rowsof(__stfx_matrix)",
         "    local __stfx_cols = colsof(__stfx_matrix)",
-        "    local __stfx_rownames : rowfullnames __stfx_matrix",
-        "    local __stfx_colnames : colfullnames __stfx_matrix",
-        "    forvalues __stfx_r = 1/`__stfx_rows' {",
-        "        local __stfx_rowname : word `__stfx_r' of `__stfx_rownames'",
-        "        forvalues __stfx_c = 1/`__stfx_cols' {",
-        "            local __stfx_colname : word `__stfx_c' of `__stfx_colnames'",
-        "            local __stfx_value : display %21x __stfx_matrix[`__stfx_r',`__stfx_c']",
-        f'            file write __stfx_capture "{"|".join(prefix)}|{name}|`__stfx_r\'|`__stfx_c\'|`__stfx_rowname\'|`__stfx_colname\'|`__stfx_value\'" _n',
+        f'    file write __stfx_capture "{"|".join(dimensions_prefix)}|{name}|`__stfx_rows\'|`__stfx_cols\'" _n',
+        "    if `__stfx_rows' > 0 & `__stfx_cols' > 0 {",
+        "        local __stfx_rownames : rowfullnames __stfx_matrix",
+        "        local __stfx_colnames : colfullnames __stfx_matrix",
+        "        forvalues __stfx_r = 1/`__stfx_rows' {",
+        "            local __stfx_rowname : word `__stfx_r' of `__stfx_rownames'",
+        "            forvalues __stfx_c = 1/`__stfx_cols' {",
+        "                local __stfx_colname : word `__stfx_c' of `__stfx_colnames'",
+        "                local __stfx_value : display %21x __stfx_matrix[`__stfx_r',`__stfx_c']",
+        f'                file write __stfx_capture "{"|".join(prefix)}|{name}|`__stfx_r\'|`__stfx_c\'|`__stfx_rowname\'|`__stfx_colname\'|`__stfx_value\'" _n',
+        "            }",
         "        }",
         "    }",
         "}",
@@ -740,9 +764,19 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     if "thread_count" in case:
         lines.append(f"set processors {case['thread_count']}")
     lines.append(_emit_file_line([CAPTURE_PREFIX[:-1], "case_begin", case_id]))
+    if "thread_count" in case:
+        lines.append(f'file write __stfx_capture "{CAPTURE_PREFIX}runtime_thread_count|{case_id}|`c(processors)\'" _n')
+    if case.get("_fresh_warmup"):
+        lines.extend(
+            [
+                f"capture noisily {case['command']}",
+                "if _rc exit _rc",
+                "estimates clear",
+            ]
+        )
     total = case["repetitions"]["cold"] + case["repetitions"]["warm"]
     for repetition in range(total):
-        timing_kind = "cold" if repetition == 0 else "warm"
+        timing_kind = "cold" if repetition < case["repetitions"]["cold"] else "warm"
         lines.extend(
             [
                 "timer clear 99",
@@ -767,6 +801,16 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
                 ]
             )
     lines.append(f'file write __stfx_capture "{CAPTURE_PREFIX}return_code|{case_id}|`__stfx_rc\'" _n')
+    if "expected_sample_count" in case:
+        lines.extend(
+            [
+                f"if `__stfx_rc' == 0 & e(N) != {case['expected_sample_count']} {{",
+                '    file write __stfx_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
+                "    file close __stfx_capture",
+                "    exit 9",
+                "}",
+            ]
+        )
 
     capture = case["capture"]
     lines.append("if `__stfx_rc' == 0 {")
@@ -941,10 +985,15 @@ def validate_terminal_sentinel(text: str, expected: str = CAPTURE_SENTINEL) -> N
         raise ContractError("capture sentinel is not the final nonblank record")
 
 
-def _validate_matrix_entries(entries: Any, requested: Sequence[str], where: str) -> None:
+def _validate_matrix_entries(entries: Any, dimensions: Any, requested: Sequence[str], where: str) -> None:
     if not isinstance(entries, list) or not all(isinstance(item, Mapping) for item in entries):
         raise ContractError(f"{where}: matrices must be a list of coordinate records")
-    by_name: dict[str, list[Mapping[str, Any]]] = {}
+    if not isinstance(dimensions, Mapping) or set(dimensions) != set(requested):
+        raise ContractError(f"{where}: declared matrix dimensions are incomplete or unknown")
+    for name, shape in dimensions.items():
+        if not isinstance(shape, Mapping) or set(shape) != {"rows", "columns"} or not isinstance(shape["rows"], int) or not isinstance(shape["columns"], int) or shape["rows"] < 0 or shape["columns"] < 0:
+            raise ContractError(f"{where}: declared dimensions for matrix {name} are invalid")
+    by_name: dict[str, list[Mapping[str, Any]]] = {name: [] for name in requested}
     seen: set[tuple[str, int, int]] = set()
     for item in entries:
         _expect_keys(item, {"name", "row", "column", "row_name", "column_name", "value_hex"}, set(), where)
@@ -959,15 +1008,15 @@ def _validate_matrix_entries(entries: Any, requested: Sequence[str], where: str)
             raise ContractError(f"{where}: matrix names must be nonempty")
         if not isinstance(item["value_hex"], str) or not STATA_HEX.fullmatch(item["value_hex"]):
             raise ContractError(f"{where}: matrix value is not canonical Stata hex")
-        by_name.setdefault(name, []).append(item)
+        by_name[name].append(item)
     if set(by_name) != set(requested):
         raise ContractError(f"{where}: requested matrix evidence is incomplete")
     for name, values in by_name.items():
-        max_row = max(item["row"] for item in values)
-        max_column = max(item["column"] for item in values)
-        expected_coordinates = {(row, column) for row in range(1, max_row + 1) for column in range(1, max_column + 1)}
+        rows = dimensions[name]["rows"]
+        columns = dimensions[name]["columns"]
+        expected_coordinates = {(row, column) for row in range(1, rows + 1) for column in range(1, columns + 1)}
         if {(item["row"], item["column"]) for item in values} != expected_coordinates:
-            raise ContractError(f"{where}: matrix {name} is not a complete rectangle")
+            raise ContractError(f"{where}: matrix {name} does not exactly fill its declared dimensions")
         row_names: dict[int, str] = {}
         column_names: dict[int, str] = {}
         for item in values:
@@ -983,12 +1032,15 @@ def _validate_case_evidence(expected: Mapping[str, Any], captured: Mapping[str, 
     case_id = expected["id"]
     _expect_keys(
         captured,
-        {"id", "return_code", "timings", "scalars", "macros", "matrices", "observation_count", "observations", "identities", "postestimation", "absent"},
+        {"id", "return_code", "runtime_thread_count", "timings", "scalars", "macros", "matrices", "matrix_dimensions", "observation_count", "observations", "identities", "postestimation", "absent"},
         set(),
         f"case {case_id}",
     )
     if captured["id"] != case_id or not isinstance(captured["return_code"], int):
         raise ContractError(f"case {case_id}: identity or return code is malformed")
+    expected_threads = expected.get("thread_count")
+    if captured["runtime_thread_count"] != expected_threads:
+        raise ContractError(f"case {case_id}: runtime thread metadata is missing or contradictory")
     rc = captured["return_code"]
     if expected["expected"] == "must_succeed" and rc != 0:
         raise ContractError(f"case {case_id} unexpectedly returned {rc}")
@@ -999,16 +1051,17 @@ def _validate_case_evidence(expected: Mapping[str, Any], captured: Mapping[str, 
     if not isinstance(timings, list) or len(timings) != total:
         raise ContractError(f"case {case_id} has incomplete timing repetitions")
     for index, timing in enumerate(timings, 1):
+        expected_kind = "cold" if index <= expected["repetitions"]["cold"] else "warm"
         if not isinstance(timing, Mapping) or timing != {
             "repetition": index,
-            "kind": "cold" if index == 1 else "warm",
+            "kind": expected_kind,
             "seconds_hex": timing.get("seconds_hex"),
         } or not isinstance(timing.get("seconds_hex"), str) or not STATA_HEX.fullmatch(timing["seconds_hex"]):
             raise ContractError(f"case {case_id}: timing sequence or hex value is malformed")
     if not isinstance(captured["absent"], list) or captured["absent"]:
         raise ContractError(f"case {case_id}: requested evidence cannot be absent")
     if rc != 0:
-        if any((captured["scalars"], captured["macros"], captured["matrices"], captured["observations"], captured["identities"], captured["postestimation"])):
+        if any((captured["scalars"], captured["macros"], captured["matrices"], captured["matrix_dimensions"], captured["observations"], captured["identities"], captured["postestimation"])):
             raise ContractError(f"case {case_id}: error result contains contradictory scientific evidence")
         if captured["observation_count"] is not None:
             raise ContractError(f"case {case_id}: error result contains an observation count")
@@ -1023,7 +1076,7 @@ def _validate_case_evidence(expected: Mapping[str, Any], captured: Mapping[str, 
             raise ContractError(f"case {case_id}: scalar value is not canonical Stata hex")
         if kind == "macros" and any(not isinstance(value, str) for value in values.values()):
             raise ContractError(f"case {case_id}: macro value is malformed")
-    _validate_matrix_entries(captured["matrices"], capture["matrices"], f"case {case_id}")
+    _validate_matrix_entries(captured["matrices"], captured["matrix_dimensions"], capture["matrices"], f"case {case_id}")
 
     requested_outputs = capture["outputs"]
     observations = captured["observations"]
@@ -1066,14 +1119,14 @@ def _validate_case_evidence(expected: Mapping[str, Any], captured: Mapping[str, 
     if not isinstance(posts, list) or [item.get("id") for item in posts if isinstance(item, Mapping)] != [item["id"] for item in requested_posts]:
         raise ContractError(f"case {case_id}: postestimation evidence is incomplete or out of order")
     for requested, post in zip(requested_posts, posts):
-        _expect_keys(post, {"id", "return_code", "scalars", "matrices"}, set(), f"case {case_id} post {requested['id']}")
+        _expect_keys(post, {"id", "return_code", "scalars", "matrices", "matrix_dimensions"}, set(), f"case {case_id} post {requested['id']}")
         if post["id"] != requested["id"] or post["return_code"] != 0:
             raise ContractError(f"case {case_id}: postestimation {requested['id']} failed")
         if not isinstance(post["scalars"], Mapping) or set(post["scalars"]) != set(requested["scalars"]):
             raise ContractError(f"case {case_id}: postestimation scalars are incomplete")
         if any(not isinstance(value, str) or not STATA_HEX.fullmatch(value) for value in post["scalars"].values()):
             raise ContractError(f"case {case_id}: postestimation scalar is not canonical Stata hex")
-        _validate_matrix_entries(post["matrices"], requested["matrices"], f"case {case_id} post {requested['id']}")
+        _validate_matrix_entries(post["matrices"], post["matrix_dimensions"], requested["matrices"], f"case {case_id} post {requested['id']}")
 
 
 def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) -> ParsedCapture:
@@ -1103,7 +1156,7 @@ def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) 
             if case_id not in expected_by_id or case_id in built:
                 raise ContractError("capture begins an unknown or duplicate case")
             active = case_id
-            built[case_id] = {"id": case_id, "return_code": None, "timings": [], "scalars": {}, "macros": {}, "matrices": [], "observation_count": None, "observations": [], "identities": {}, "postestimation": [], "absent": []}
+            built[case_id] = {"id": case_id, "return_code": None, "runtime_thread_count": None, "timings": [], "scalars": {}, "macros": {}, "matrices": [], "matrix_dimensions": {}, "observation_count": None, "observations": [], "identities": {}, "postestimation": [], "absent": []}
             continue
         if active is None or parts[2] != active:
             raise ContractError("capture record appears outside its active case")
@@ -1115,6 +1168,13 @@ def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) 
                 case["return_code"] = int(parts[3])
             except ValueError as exc:
                 raise ContractError("return code is not an integer") from exc
+        elif kind == "runtime_thread_count" and len(parts) == 4:
+            if case["runtime_thread_count"] is not None:
+                raise ContractError("duplicate runtime thread count")
+            try:
+                case["runtime_thread_count"] = int(parts[3])
+            except ValueError as exc:
+                raise ContractError("runtime thread count is not an integer") from exc
         elif kind == "timing" and len(parts) == 6:
             try:
                 repetition = int(parts[3])
@@ -1132,6 +1192,15 @@ def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) 
             except ValueError as exc:
                 raise ContractError("matrix coordinates are not integers") from exc
             case["matrices"].append({"name": parts[3], "row": row, "column": column, "row_name": parts[6], "column_name": parts[7], "value_hex": parts[8]})
+        elif kind == "matrix_dimensions" and len(parts) == 6:
+            name = parts[3]
+            if name in case["matrix_dimensions"]:
+                raise ContractError("duplicate matrix dimensions")
+            try:
+                rows, columns = int(parts[4]), int(parts[5])
+            except ValueError as exc:
+                raise ContractError("matrix dimensions are not integers") from exc
+            case["matrix_dimensions"][name] = {"rows": rows, "columns": columns}
         elif kind == "observation_count" and len(parts) == 4:
             if case["observation_count"] is not None:
                 raise ContractError("duplicate observation count")
@@ -1152,7 +1221,7 @@ def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) 
             case["identities"][name] = {"observation_count": count, "sha256": hashlib.sha256(f"{count}|{parts[5]}".encode("utf-8")).hexdigest()}
         elif kind == "post_begin" and len(parts) == 4 and active_post is None:
             active_post = parts[3]
-            case["postestimation"].append({"id": active_post, "return_code": None, "scalars": {}, "matrices": []})
+            case["postestimation"].append({"id": active_post, "return_code": None, "scalars": {}, "matrices": [], "matrix_dimensions": {}})
         elif kind == "post_return_code" and len(parts) == 5 and active_post == parts[3]:
             post = case["postestimation"][-1]
             if post["return_code"] is not None:
@@ -1172,6 +1241,16 @@ def parse_capture(text: str, manifest: Mapping[str, Any], manifest_sha256: str) 
             except ValueError as exc:
                 raise ContractError("postestimation matrix coordinates are not integers") from exc
             case["postestimation"][-1]["matrices"].append({"name": parts[4], "row": row, "column": column, "row_name": parts[7], "column_name": parts[8], "value_hex": parts[9]})
+        elif kind == "post_matrix_dimensions" and len(parts) == 7 and active_post == parts[3]:
+            post = case["postestimation"][-1]
+            name = parts[4]
+            if name in post["matrix_dimensions"]:
+                raise ContractError("duplicate postestimation matrix dimensions")
+            try:
+                rows, columns = int(parts[5]), int(parts[6])
+            except ValueError as exc:
+                raise ContractError("postestimation matrix dimensions are not integers") from exc
+            post["matrix_dimensions"][name] = {"rows": rows, "columns": columns}
         elif kind == "post_end" and len(parts) == 4 and active_post == parts[3]:
             if case["postestimation"][-1]["return_code"] is None:
                 raise ContractError("postestimation ended without a return code")
@@ -1243,8 +1322,64 @@ def write_sealed_receipt(path: Path, payload: Mapping[str, Any]) -> str:
     return document["seal"]["payload_sha256"]
 
 
+def _finite_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _scientific_mismatch(comparator: Mapping[str, Any], candidate: Mapping[str, Any], contract: Mapping[str, Any]) -> str | None:
+    required = set(contract["required_evidence"])
+    for label, scientific in (("comparator", comparator), ("candidate", candidate)):
+        if not isinstance(scientific, Mapping) or set(scientific) != required:
+            raise ContractError(f"benchmark {label} scientific evidence is incomplete or unknown")
+        names = scientific["coefficient_names"]
+        status = scientific["coefficient_status"]
+        coefficients = scientific["coefficients"]
+        if not isinstance(names, list) or not names or len(names) != len(set(names)) or not all(isinstance(value, str) and value for value in names):
+            raise ContractError(f"benchmark {label} coefficient names are malformed")
+        if not isinstance(status, list) or len(status) != len(names) or not all(value in {"kept", "omitted", "base"} for value in status):
+            raise ContractError(f"benchmark {label} coefficient status is malformed")
+        if not isinstance(coefficients, list) or len(coefficients) != len(names) or not all(_finite_number(value) for value in coefficients):
+            raise ContractError(f"benchmark {label} coefficients are malformed")
+        vce = scientific["vce"]
+        if not isinstance(vce, Mapping) or set(vce) != {"rows", "columns", "values"} or vce["rows"] != len(names) or vce["columns"] != len(names) or not isinstance(vce["values"], list) or len(vce["values"]) != len(names) ** 2 or not all(_finite_number(value) for value in vce["values"]):
+            raise ContractError(f"benchmark {label} VCE evidence is malformed")
+        for field in ("dof", "fit"):
+            if not isinstance(scientific[field], Mapping) or not scientific[field] or not all(isinstance(name, str) and name and _finite_number(value) for name, value in scientific[field].items()):
+                raise ContractError(f"benchmark {label} {field} evidence is malformed")
+        objective = scientific["objective"]
+        if not isinstance(objective, Mapping) or set(objective) != {"name", "value"} or not isinstance(objective["name"], str) or not objective["name"] or not _finite_number(objective["value"]):
+            raise ContractError(f"benchmark {label} objective evidence is malformed")
+        certificates = scientific["certificates"]
+        if not isinstance(certificates, Mapping) or set(certificates) != {"converged", *contract["certificate_limits"]} or certificates["converged"] is not True:
+            raise ContractError(f"benchmark {label} numerical certificates are incomplete or unconverged")
+        for name, limit in contract["certificate_limits"].items():
+            if not _finite_number(certificates[name]) or certificates[name] < 0 or certificates[name] > limit:
+                return f"certificate_failed:{label}:{name}"
+
+    if comparator["coefficient_names"] != candidate["coefficient_names"] or comparator["coefficient_status"] != candidate["coefficient_status"]:
+        return "coefficient_status"
+    for left, right in zip(comparator["coefficients"], candidate["coefficients"]):
+        if not math.isclose(left, right, rel_tol=contract["coefficient_rtol"], abs_tol=contract["coefficient_atol"]):
+            return "coefficients"
+    if (comparator["vce"]["rows"], comparator["vce"]["columns"]) != (candidate["vce"]["rows"], candidate["vce"]["columns"]):
+        return "vce_dimensions"
+    for left, right in zip(comparator["vce"]["values"], candidate["vce"]["values"]):
+        if not math.isclose(left, right, rel_tol=contract["vce_rtol"], abs_tol=contract["vce_atol"]):
+            return "vce"
+    if comparator["dof"] != candidate["dof"]:
+        return "dof"
+    if set(comparator["fit"]) != set(candidate["fit"]):
+        return "fit_inventory"
+    for name in comparator["fit"]:
+        if not math.isclose(comparator["fit"][name], candidate["fit"][name], rel_tol=contract["fit_rtol"], abs_tol=contract["fit_atol"]):
+            return f"fit:{name}"
+    if comparator["objective"]["name"] != candidate["objective"]["name"] or not math.isclose(comparator["objective"]["value"], candidate["objective"]["value"], rel_tol=contract["fit_rtol"], abs_tol=contract["fit_atol"]):
+        return "objective"
+    return None
+
+
 def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Evaluate a complete future two-arm benchmark run; never upgrade a disabled arm."""
+    """Require scientific parity/certificates before evaluating speed or RSS."""
     contract = manifest["benchmark_contract"]
     if contract["candidate_state"] != "enabled":
         return {"status": "blocked", "reason": "candidate_stfeols_disabled", "thresholds": contract["thresholds"]}
@@ -1255,13 +1390,12 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         "case_id",
         "arm",
         "thread_count",
-        "cold_seconds",
-        "warm_seconds",
-        "peak_rss_bytes",
+        "runs",
         "sample_identity_sha256",
         "singleton_identity_sha256",
         "host",
         "stata",
+        "scientific",
     }
     for record in evidence:
         if not isinstance(record, Mapping):
@@ -1273,15 +1407,17 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         case = next(item for item in cases if item["id"] == record["case_id"])
         if record["thread_count"] != case["thread_count"]:
             raise ContractError("benchmark gate evidence has contradictory thread metadata")
-        if not isinstance(record["cold_seconds"], (int, float)) or isinstance(record["cold_seconds"], bool) or not math.isfinite(record["cold_seconds"]) or record["cold_seconds"] <= 0:
-            raise ContractError("benchmark cold timing must be finite and positive")
-        warm = record["warm_seconds"]
-        if not isinstance(warm, list) or len(warm) < contract["repetitions"]["warm"] or any(
-            not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or value <= 0 for value in warm
-        ):
-            raise ContractError("benchmark warm timings are incomplete or invalid")
-        if not isinstance(record["peak_rss_bytes"], int) or record["peak_rss_bytes"] <= 0:
-            raise ContractError("benchmark peak RSS must be a positive byte count")
+        runs = record["runs"]
+        run_count = contract["repetitions"]["cold"] + contract["repetitions"]["warm"]
+        if not isinstance(runs, list) or len(runs) != run_count:
+            raise ContractError("benchmark per-run process evidence is incomplete")
+        for index, run in enumerate(runs, 1):
+            expected_kind = "cold" if index <= contract["repetitions"]["cold"] else "warm"
+            if not isinstance(run, Mapping) or set(run) != {"repetition", "kind", "seconds", "peak_rss", "fresh_process", "stata_processors"} or run["repetition"] != index or run["kind"] != expected_kind or run["fresh_process"] is not True or run["stata_processors"] != record["thread_count"] or not _finite_number(run["seconds"]) or run["seconds"] <= 0:
+                raise ContractError("benchmark run sequence/timing is malformed or not process-isolated")
+            rss = run["peak_rss"]
+            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"}:
+                raise ContractError("benchmark per-run RSS evidence lacks a valid method or byte unit")
         if not HEX_SHA256.fullmatch(record["sample_identity_sha256"]) or not HEX_SHA256.fullmatch(record["singleton_identity_sha256"]):
             raise ContractError("benchmark sample/singleton identity is malformed")
         for metadata in ("host", "stata"):
@@ -1304,10 +1440,13 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
             raise ContractError(f"benchmark {case['id']} arms were not run on the same host and Stata environment")
         if comparator["sample_identity_sha256"] != candidate["sample_identity_sha256"] or comparator["singleton_identity_sha256"] != candidate["singleton_identity_sha256"]:
             raise ContractError(f"benchmark {case['id']} arms disagree on sample or singleton identity")
-        comparator_time = median(comparator["warm_seconds"])
-        candidate_time = median(candidate["warm_seconds"])
+        scientific_mismatch = _scientific_mismatch(comparator["scientific"], candidate["scientific"], contract["scientific_gate"])
+        if scientific_mismatch is not None:
+            return {"status": "fail", "reason": f"scientific_gate:{case['id']}:{scientific_mismatch}", "thresholds": contract["thresholds"], "cases": per_case}
+        comparator_time = median(run["seconds"] for run in comparator["runs"] if run["kind"] == "warm")
+        candidate_time = median(run["seconds"] for run in candidate["runs"] if run["kind"] == "warm")
         time_ratio = candidate_time / comparator_time
-        rss_ratio = candidate["peak_rss_bytes"] / comparator["peak_rss_bytes"]
+        rss_ratio = max(run["peak_rss"]["value"] for run in candidate["runs"]) / max(run["peak_rss"]["value"] for run in comparator["runs"])
         speedup = comparator_time / candidate_time
         speedups.append(speedup)
         per_case.append({"case_id": case["id"], "thread_count": case["thread_count"], "speedup": speedup, "time_ratio": time_ratio, "rss_ratio": rss_ratio})
@@ -1413,14 +1552,25 @@ def verify_receipt(
     for item in evidence:
         if not isinstance(item, Mapping):
             raise ContractError("receipt benchmark evidence must be an object")
-        _expect_keys(item, {"case_id", "arm", "thread_count", "peak_rss_bytes", "sample_identity_sha256", "singleton_identity_sha256", "host", "stata"}, set(), "benchmark evidence")
+        _expect_keys(item, {"case_id", "arm", "thread_count", "runs", "sample_identity_sha256", "singleton_identity_sha256", "scientific_evidence_sha256", "host", "stata"}, set(), "benchmark evidence")
         expected = benchmark_by_id[item["case_id"]]
         if item["arm"] != "comparator" or item["thread_count"] != expected["thread_count"]:
             raise ContractError("receipt benchmark arm or thread metadata is stale")
-        if not isinstance(item["peak_rss_bytes"], int) or item["peak_rss_bytes"] <= 0:
-            raise ContractError("receipt benchmark RSS metadata is invalid")
         if not HEX_SHA256.fullmatch(item["sample_identity_sha256"]) or not HEX_SHA256.fullmatch(item["singleton_identity_sha256"]):
             raise ContractError("receipt benchmark sample/singleton identity is invalid")
+        if not HEX_SHA256.fullmatch(item["scientific_evidence_sha256"]):
+            raise ContractError("receipt benchmark scientific evidence seal is invalid")
+        runs = item["runs"]
+        total = expected["repetitions"]["cold"] + expected["repetitions"]["warm"]
+        if not isinstance(runs, list) or len(runs) != total:
+            raise ContractError("receipt benchmark per-run evidence is incomplete")
+        for repetition, run in enumerate(runs, 1):
+            kind = "cold" if repetition <= expected["repetitions"]["cold"] else "warm"
+            if not isinstance(run, Mapping) or set(run) != {"repetition", "kind", "seconds_hex", "peak_rss", "fresh_process", "stata_processors"} or run["repetition"] != repetition or run["kind"] != kind or run["fresh_process"] is not True or run["stata_processors"] != expected["thread_count"] or not isinstance(run["seconds_hex"], str) or not STATA_HEX.fullmatch(run["seconds_hex"]):
+                raise ContractError("receipt benchmark run timing/thread/process metadata is malformed")
+            rss = run["peak_rss"]
+            if not isinstance(rss, Mapping) or set(rss) != {"value", "unit", "method"} or not isinstance(rss["value"], int) or rss["value"] <= 0 or rss["unit"] != "bytes" or rss["method"] not in {"os_wait4_ru_maxrss", "windows_getprocessmemoryinfo"}:
+                raise ContractError("receipt benchmark run RSS method/unit is malformed")
         if item["host"] != host:
             raise ContractError("receipt benchmark host metadata is contradictory")
         expected_stata = {"version": environment["stata_version"], "flavor": environment["stata_flavor"], "processors": environment["stata_processors"], "processors_limit": environment["stata_processors_limit"]}
@@ -1437,6 +1587,13 @@ def verify_receipt(
         if not isinstance(captured, Mapping):
             raise ContractError("receipt case must be an object")
         _validate_case_evidence(expected, captured)
+        if expected["id"] in benchmark_by_id:
+            item = next(value for value in evidence if value["case_id"] == expected["id"])
+            scientific = {key: value for key, value in captured.items() if key != "timings"}
+            if hashlib.sha256(canonical_json_bytes(scientific)).hexdigest() != item["scientific_evidence_sha256"]:
+                raise ContractError("receipt benchmark scientific evidence seal is contradictory")
+            if item["sample_identity_sha256"] != captured["identities"]["sample"]["sha256"] or item["singleton_identity_sha256"] != captured["identities"]["singletons"]["sha256"]:
+                raise ContractError("receipt benchmark identities contradict captured scientific evidence")
     return document
 
 
@@ -1452,7 +1609,7 @@ def _write_wrapper(
     sysdirs = {}
     for name in ("personal", "plus", "oldplace", "site"):
         target = isolated_sysdirs / name
-        target.mkdir(parents=True)
+        target.mkdir(parents=True, exist_ok=True)
         sysdirs[name] = target
     lines = ["version 18.0", "clear all", "set more off"]
     for name, target in sysdirs.items():
@@ -1485,16 +1642,102 @@ def _host_metadata() -> dict[str, Any]:
     return {"system": system, "machine": machine, "cpu_count": cpu_count}
 
 
-def _children_peak_rss_bytes() -> int:
-    try:
-        import resource
+def _run_fresh_process(
+    command: Sequence[str],
+    cwd: Path,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, Any]]:
+    """Run exactly one child and measure that child's lifetime peak RSS."""
+    if runner is not subprocess.run:
+        completed = runner(command, cwd=cwd, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        rss = getattr(completed, "stfixest_peak_rss", None)
+        if not isinstance(rss, Mapping):
+            raise ContractError("injected process runner omitted per-process RSS evidence")
+        return completed, dict(rss)
+    with tempfile.TemporaryFile(mode="w+b") as output:
+        process = subprocess.Popen(command, cwd=cwd, stdout=output, stderr=subprocess.STDOUT)
+        if os.name == "posix" and hasattr(os, "wait4"):
+            _, status, usage = os.wait4(process.pid, 0)
+            process.returncode = os.waitstatus_to_exitcode(status)
+            raw_rss = int(usage.ru_maxrss)
+            rss_bytes = raw_rss if sys.platform == "darwin" else raw_rss * 1024
+            method = "os_wait4_ru_maxrss"
+        elif os.name == "nt":  # pragma: no cover - exercised on Windows release runners.
+            process.wait()
+            try:
+                import ctypes
+                from ctypes import wintypes
 
-        value = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
-    except (ImportError, AttributeError, OSError, ValueError) as exc:
-        raise ContractError("peak child RSS is unavailable; benchmark capture is fail closed") from exc
-    if value <= 0:
-        raise ContractError("peak child RSS is zero; benchmark capture is fail closed")
-    return value if sys.platform == "darwin" else value * 1024
+                class ProcessMemoryCounters(ctypes.Structure):
+                    _fields_ = [
+                        ("cb", wintypes.DWORD),
+                        ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t),
+                        ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t),
+                        ("PeakPagefileUsage", ctypes.c_size_t),
+                    ]
+
+                counters = ProcessMemoryCounters()
+                counters.cb = ctypes.sizeof(counters)
+                if not ctypes.windll.psapi.GetProcessMemoryInfo(int(process._handle), ctypes.byref(counters), counters.cb):
+                    raise OSError("GetProcessMemoryInfo failed")
+                rss_bytes = int(counters.PeakWorkingSetSize)
+                method = "windows_getprocessmemoryinfo"
+            except (AttributeError, OSError, ValueError) as exc:
+                raise ContractError("Windows per-process RSS monitor failed closed") from exc
+        else:
+            process.kill()
+            process.wait()
+            raise ContractError("no supported per-process RSS monitor is available")
+        output.seek(0)
+        stdout = output.read().decode("utf-8", errors="replace")
+    if rss_bytes <= 0:
+        raise ContractError("fresh child peak RSS is zero; benchmark capture is fail closed")
+    return subprocess.CompletedProcess(list(command), process.returncode, stdout=stdout, stderr=None), {
+        "value": rss_bytes,
+        "unit": "bytes",
+        "method": method,
+    }
+
+
+def _execute_capture_unit(
+    stata: str,
+    unit_manifest: Mapping[str, Any],
+    staged_inputs: Mapping[str, Path],
+    staged_references: Mapping[str, Path],
+    baseline: Path,
+    unit_dir: Path,
+    isolated_sysdirs: Path,
+    manifest_hash: str,
+    runner: Callable[..., subprocess.CompletedProcess[str]],
+) -> tuple[ParsedCapture, dict[str, Any], dict[str, str]]:
+    unit_dir.mkdir()
+    case_do = unit_dir / "ols_v1_cases.do"
+    case_do.write_text(render_capture_do(unit_manifest, staged_inputs, unit_dir, manifest_hash), encoding="utf-8")
+    capture_file = unit_dir / "capture.machine"
+    wrapper = unit_dir / "run.do"
+    _write_wrapper(wrapper, baseline, case_do, capture_file, staged_references, manifest_hash, isolated_sysdirs)
+    completed, rss = _run_fresh_process([stata, "-b", "do", str(wrapper)], unit_dir, runner)
+    log_path = unit_dir / "run.log"
+    log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
+    log_sentinels = [line.strip() for line in log_text.splitlines() if line.strip().startswith("END_FIXTURE|")]
+    if completed.returncode != 0 or log_sentinels != [LOG_SENTINEL]:
+        raise ContractError("licensed Stata capture failed or lacked its unique success sentinel; raw log was not retained")
+    if not capture_file.is_file():
+        raise ContractError("licensed Stata capture produced no machine record")
+    parsed = parse_capture(capture_file.read_text(encoding="utf-8", errors="strict"), unit_manifest, manifest_hash)
+    generated: dict[str, str] = {}
+    dataset_by_id = {dataset["id"]: dataset for dataset in unit_manifest["datasets"]}
+    for case in [*unit_manifest["semantic_cases"], *unit_manifest["benchmark_cases"]]:
+        dataset = dataset_by_id[case["dataset"]]
+        if dataset["kind"] == "generated_dta":
+            generated[dataset["id"]] = sha256_file(unit_dir / f"{dataset['id']}.dta")
+    return parsed, rss, generated
 
 
 def capture_reference(
@@ -1520,34 +1763,87 @@ def capture_reference(
         input_stage = run_dir / "inputs"
         input_stage.mkdir()
         staged_inputs = stage_manifest_inputs(manifest, root, input_stage)
-        case_do = run_dir / "ols_v1_cases.do"
-        case_do.write_text(render_capture_do(manifest, staged_inputs, run_dir, manifest_hash), encoding="utf-8")
-        capture_file = run_dir / "capture.machine"
-        wrapper = run_dir / "run.do"
+        isolated_sysdirs = run_dir / "sysdirs"
         baseline = _relative_input(root, manifest["capture"]["script"]["path"], "capture.script")
-        _write_wrapper(wrapper, baseline, case_do, capture_file, staged_references, manifest_hash, run_dir / "sysdirs")
-        completed = runner(
-            [stata, "-b", "do", str(wrapper)],
-            cwd=run_dir,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
+        semantic_manifest = dict(manifest)
+        semantic_manifest["benchmark_cases"] = []
+        semantic_parsed, _, semantic_generated = _execute_capture_unit(
+            stata, semantic_manifest, staged_inputs, staged_references, baseline, run_dir / "semantic", isolated_sysdirs, manifest_hash, runner
         )
-        peak_rss_bytes = _children_peak_rss_bytes()
-        log_path = run_dir / "run.log"
-        log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
-        log_sentinels = [line.strip() for line in log_text.splitlines() if line.strip().startswith("END_FIXTURE|")]
-        if completed.returncode != 0 or log_sentinels != [LOG_SENTINEL]:
-            raise ContractError("licensed Stata capture failed or lacked its unique success sentinel; raw log was not retained")
-        if not capture_file.is_file():
-            raise ContractError("licensed Stata capture produced no machine record")
-        parsed = parse_capture(capture_file.read_text(encoding="utf-8", errors="strict"), manifest, manifest_hash)
-        generated_datasets = {
-            dataset["id"]: sha256_file(run_dir / f"{dataset['id']}.dta")
-            for dataset in manifest["datasets"]
-            if dataset["kind"] == "generated_dta"
-        }
+        environment = semantic_parsed.environment
+        captured_cases = list(semantic_parsed.cases)
+        generated_datasets = dict(semantic_generated)
+        benchmark_evidence: list[dict[str, Any]] = []
+        for expected in manifest["benchmark_cases"]:
+            merged_case: dict[str, Any] | None = None
+            scientific_hash: str | None = None
+            runs = []
+            total = expected["repetitions"]["cold"] + expected["repetitions"]["warm"]
+            for repetition in range(1, total + 1):
+                kind = "cold" if repetition <= expected["repetitions"]["cold"] else "warm"
+                run_case = dict(expected)
+                run_case["repetitions"] = {"cold": 1, "warm": 0} if kind == "cold" else {"cold": 0, "warm": 1}
+                if kind == "warm":
+                    run_case["_fresh_warmup"] = True
+                run_manifest = dict(manifest)
+                run_manifest["semantic_cases"] = []
+                run_manifest["benchmark_cases"] = [run_case]
+                parsed_run, rss, generated_run = _execute_capture_unit(
+                    stata,
+                    run_manifest,
+                    staged_inputs,
+                    staged_references,
+                    baseline,
+                    run_dir / f"{expected['id']}-{repetition}",
+                    isolated_sysdirs,
+                    manifest_hash,
+                    runner,
+                )
+                if parsed_run.environment != environment:
+                    raise ContractError("benchmark run Stata environment changed within one receipt")
+                captured = parsed_run.cases[0]
+                timing = dict(captured["timings"][0])
+                timing.update({"repetition": repetition, "kind": kind})
+                scientific = {key: value for key, value in captured.items() if key != "timings"}
+                observed_hash = hashlib.sha256(canonical_json_bytes(scientific)).hexdigest()
+                if scientific_hash is None:
+                    scientific_hash = observed_hash
+                    merged_case = dict(captured)
+                    merged_case["timings"] = []
+                elif scientific_hash != observed_hash:
+                    raise ContractError(f"benchmark {expected['id']} scientific evidence changed across fresh repetitions")
+                if merged_case is None:
+                    raise ContractError("benchmark merge state was not initialized")
+                merged_case["timings"].append(timing)
+                runs.append(
+                    {
+                        "repetition": repetition,
+                        "kind": kind,
+                        "seconds_hex": timing["seconds_hex"],
+                        "peak_rss": rss,
+                        "fresh_process": True,
+                        "stata_processors": captured["runtime_thread_count"],
+                    }
+                )
+                for dataset_id, digest in generated_run.items():
+                    previous = generated_datasets.setdefault(dataset_id, digest)
+                    if previous != digest:
+                        raise ContractError(f"generated benchmark dataset {dataset_id} changed across fresh runs")
+            if merged_case is None or scientific_hash is None:
+                raise ContractError(f"benchmark {expected['id']} produced no fresh-run scientific evidence")
+            _validate_case_evidence(expected, merged_case)
+            captured_cases.append(merged_case)
+            benchmark_evidence.append(
+                {
+                    "case_id": expected["id"],
+                    "arm": "comparator",
+                    "thread_count": expected["thread_count"],
+                    "sample_identity_sha256": merged_case["identities"]["sample"]["sha256"],
+                    "singleton_identity_sha256": merged_case["identities"]["singletons"]["sha256"],
+                    "scientific_evidence_sha256": scientific_hash,
+                    "runs": runs,
+                }
+            )
 
     # Detect edits made after preflight or while the licensed process ran.
     if sha256_file(manifest_path) != manifest_hash:
@@ -1561,28 +1857,15 @@ def capture_reference(
         raise PreflightError("a reference checkout changed during capture")
 
     host = _host_metadata()
-    cases_by_id = {case["id"]: case for case in parsed.cases}
     stata = {
-        "version": parsed.environment["stata_version"],
-        "flavor": parsed.environment["stata_flavor"],
-        "processors": parsed.environment["stata_processors"],
-        "processors_limit": parsed.environment["stata_processors_limit"],
+        "version": environment["stata_version"],
+        "flavor": environment["stata_flavor"],
+        "processors": environment["stata_processors"],
+        "processors_limit": environment["stata_processors_limit"],
     }
-    benchmark_evidence = []
-    for expected in manifest["benchmark_cases"]:
-        captured = cases_by_id[expected["id"]]
-        benchmark_evidence.append(
-            {
-                "case_id": expected["id"],
-                "arm": "comparator",
-                "thread_count": expected["thread_count"],
-                "peak_rss_bytes": peak_rss_bytes,
-                "sample_identity_sha256": captured["identities"]["sample"]["sha256"],
-                "singleton_identity_sha256": captured["identities"]["singletons"]["sha256"],
-                "host": host,
-                "stata": stata,
-            }
-        )
+    for evidence in benchmark_evidence:
+        evidence["host"] = host
+        evidence["stata"] = stata
     payload = {
         "schema_version": 1,
         "receipt_type": RECEIPT_TYPE,
@@ -1590,7 +1873,7 @@ def capture_reference(
         "inputs": inputs_before,
         "generated_datasets": generated_datasets,
         "references": {name: identity.receipt_value() for name, identity in sorted(identities.items())},
-        "environment": parsed.environment,
+        "environment": environment,
         "host": host,
         "benchmark_evidence": benchmark_evidence,
         "benchmark_gate": {
@@ -1598,7 +1881,7 @@ def capture_reference(
             "reason": "candidate_stfeols_disabled",
             "thresholds": manifest["benchmark_contract"]["thresholds"],
         },
-        "cases": parsed.cases,
+        "cases": captured_cases,
     }
     return write_sealed_receipt(receipt_path, payload)
 

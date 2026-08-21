@@ -69,6 +69,20 @@ host/Stata/thread metadata, and remains explicitly blocked while `stfeols` is
 disabled. A future pass requires at least 1.5x geometric-mean speedup, no slower
 primary case, and no worse primary-case RSS.
 
+Performance is evaluated only after scientific parity. Each arm must provide
+coefficient names and kept/omitted status, coefficient values, the full VCE,
+DoF, fit statistics, objective, and converged normal-equation, FE-orthogonality,
+and VCE-symmetry certificates at the frozen tolerances. A scientific mismatch
+blocks the gate before timing or memory is inspected. Every benchmark
+repetition runs in a fresh OS process; its receipt records whether RSS came from
+POSIX `wait4().ru_maxrss` or Windows `GetProcessMemoryInfo`, with values
+normalized to bytes. Warm repetitions perform one untimed in-process warm-up
+inside their otherwise fresh measured process.
+
+Matrix dimensions are emitted as separate records before matrix cells. Receipt
+verification requires every coordinate in the declared rectangle exactly once;
+dimensions are never inferred from the largest observed coordinate.
+
 The capture intentionally excludes display text, raw `ereturn list` output,
 host paths, executable paths, usernames, license/serial text, and the raw Stata
 log. Those licensed/raw artifacts live only in a temporary directory.

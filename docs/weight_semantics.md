@@ -19,6 +19,7 @@ bytes and exact `reghdfe` commands:
 | Importance weights | `iweight_probe` | observed success/error status plus full results if accepted; no support is presumed |
 | Domain boundaries | `zero_weight_probe`, `negative_weight_error`, `missing_weight`, `large_weight` | exact return status, final sample, posted weight metadata, and results when defined |
 | Sample interactions | `weight_if_in`, `weighted_singletons` | `if`/`in` precedence, singleton fixed point, retained observation identities |
+| Candidate precedence | `invalid_weight_outside_candidate` | a negative analytic weight outside `if` is ignored; capture aborts unless the asserted 11-row sample is retained |
 
 `record` cases intentionally discover behavior whose success status has not yet
 been adjudicated. Their outcome becomes evidence only in a sealed receipt; it

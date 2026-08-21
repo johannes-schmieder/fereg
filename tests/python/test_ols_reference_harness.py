@@ -25,6 +25,7 @@ from scripts.ols_reference import (
     parse_capture,
     preflight_reference_root,
     render_capture_do,
+    _run_fresh_process,
     seal_payload,
     sha256_file,
     validate_manifest,
@@ -129,6 +130,16 @@ class OlsManifestTests(unittest.TestCase):
             self.assertEqual(set(case["capture"]["identities"]), {"sample", "singletons"})
         self.assertEqual({case["thread_count"] for case in manifest["benchmark_cases"]}, {1, 8})
         self.assertEqual(manifest["benchmark_contract"]["thresholds"]["geometric_mean_speedup_min"], 1.5)
+        ts_commands = " ".join(case["command"] for case in manifest["semantic_cases"] if "models:time_series_operators" in case["covers"])
+        self.assertIn("L.x", ts_commands)
+        self.assertIn("F.x", ts_commands)
+        self.assertIn("D.x", ts_commands)
+        ts_rows = (ROOT / "tests/fixtures/ols/ols_ts.csv").read_text(encoding="utf-8")
+        self.assertIn(",2003,", ts_rows)
+        self.assertIn(",2007,", ts_rows)
+        precedence = next(case for case in manifest["semantic_cases"] if case["id"] == "invalid_weight_outside_candidate")
+        self.assertEqual(precedence["expected_sample_count"], 11)
+        self.assertIn("if obs_id >= 2", precedence["command"])
 
     def test_stale_fixture_is_rejected(self):
         manifest = load_manifest()
@@ -252,18 +263,37 @@ class BenchmarkGateTests(unittest.TestCase):
         stata = {"version": "18", "flavor": "MP", "processors_limit": "8"}
         for case in manifest["benchmark_cases"]:
             for arm, seconds in (("comparator", 1.0), ("candidate", candidate_time)):
+                scientific = {
+                    "coefficient_names": ["x1"],
+                    "coefficient_status": ["kept"],
+                    "coefficients": [0.25],
+                    "vce": {"rows": 1, "columns": 1, "values": [0.04]},
+                    "dof": {"df_m": 1, "df_r": 100},
+                    "fit": {"rss": 10.0, "r2": 0.5},
+                    "objective": {"name": "rss", "value": 10.0},
+                    "certificates": {"converged": True, "normal_equation_inf_norm": 1e-10, "fe_orthogonality_inf_norm": 1e-10, "vce_symmetry_inf_norm": 0.0},
+                }
                 records.append(
                     {
                         "case_id": case["id"],
                         "arm": arm,
                         "thread_count": case["thread_count"],
-                        "cold_seconds": seconds * 1.1,
-                        "warm_seconds": [seconds] * 5,
-                        "peak_rss_bytes": 1000 if arm == "comparator" else 900,
+                        "runs": [
+                            {
+                                "repetition": repetition,
+                                "kind": "cold" if repetition == 1 else "warm",
+                                "seconds": seconds * 1.1 if repetition == 1 else seconds,
+                                "peak_rss": {"value": 1000 if arm == "comparator" else 900, "unit": "bytes", "method": "os_wait4_ru_maxrss"},
+                                "fresh_process": True,
+                                "stata_processors": case["thread_count"],
+                            }
+                            for repetition in range(1, 7)
+                        ],
                         "sample_identity_sha256": "a" * 64,
                         "singleton_identity_sha256": "b" * 64,
                         "host": host,
                         "stata": stata,
+                        "scientific": scientific,
                     }
                 )
         return records
@@ -292,6 +322,43 @@ class BenchmarkGateTests(unittest.TestCase):
         evidence[1]["sample_identity_sha256"] = "c" * 64
         with self.assertRaisesRegex(ContractError, "sample or singleton"):
             evaluate_benchmark_gates(manifest, evidence)
+
+    def test_scientific_mismatch_and_failed_certificate_block_speed_pass(self):
+        manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "enabled"
+        evidence = self.evidence(manifest)
+        evidence[1]["scientific"]["coefficients"] = [0.5]
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("scientific_gate", result["reason"])
+        evidence = self.evidence(manifest)
+        evidence[1]["scientific"]["certificates"]["normal_equation_inf_norm"] = 1e-4
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("certificate_failed", result["reason"])
+
+    def test_rss_regression_and_nonfresh_run_block_performance_pass(self):
+        manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "enabled"
+        evidence = self.evidence(manifest)
+        for run in evidence[1]["runs"]:
+            run["peak_rss"]["value"] = 1001
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("candidate_rss_worse", result["reason"])
+        evidence = self.evidence(manifest)
+        evidence[1]["runs"][0]["fresh_process"] = False
+        with self.assertRaisesRegex(ContractError, "process-isolated"):
+            evaluate_benchmark_gates(manifest, evidence)
+
+    def test_fresh_process_monitor_records_method_and_bytes(self):
+        if os.name != "posix" or not hasattr(os, "wait4"):
+            self.skipTest("POSIX wait4 monitor required")
+        completed, rss = _run_fresh_process(["/usr/bin/true"], ROOT)
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(rss["unit"], "bytes")
+        self.assertEqual(rss["method"], "os_wait4_ru_maxrss")
+        self.assertGreater(rss["value"], 0)
 
 
 class ReceiptAndSentinelTests(unittest.TestCase):
@@ -330,6 +397,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "STFIXEST_OLS_CAPTURE|return_code|semantic|0",
             "STFIXEST_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
             "STFIXEST_OLS_CAPTURE|macro|semantic|cmd|reghdfe",
+            "STFIXEST_OLS_CAPTURE|matrix_dimensions|semantic|b|1|1",
             "STFIXEST_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000",
             "STFIXEST_OLS_CAPTURE|observation_count|semantic|1",
             "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000",
@@ -373,6 +441,11 @@ class ReceiptAndSentinelTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ContractError, "duplicate matrix coordinate"):
             parse_capture(duplicate_matrix, self.minimal_capture_manifest(), "a" * 64)
+        incomplete_declared_shape = self.minimal_capture_text().replace(
+            "matrix_dimensions|semantic|b|1|1", "matrix_dimensions|semantic|b|1|2"
+        )
+        with self.assertRaisesRegex(ContractError, "declared dimensions"):
+            parse_capture(incomplete_declared_shape, self.minimal_capture_manifest(), "a" * 64)
 
     def test_terminal_sentinel_must_be_unique_successful_and_last(self):
         validate_terminal_sentinel("header\n" + CAPTURE_SENTINEL + "\n")
@@ -443,10 +516,12 @@ class ReceiptAndSentinelTests(unittest.TestCase):
                 {
                     "id": case_id,
                     "return_code": 0,
+                    "runtime_thread_count": None,
                     "timings": [{"repetition": 1, "kind": "cold", "seconds_hex": "+0X+000"}],
                     "scalars": {},
                     "macros": {},
                     "matrices": [],
+                    "matrix_dimensions": {},
                     "observation_count": None,
                     "observations": [],
                     "identities": {},

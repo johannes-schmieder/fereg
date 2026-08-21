@@ -11,12 +11,12 @@ captured on licensed Stata.
 |---|---|---|
 | No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Disabled pending one-call parity |
 | FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | Disabled pending FE certificates |
-| Ordinary regressors | continuous, factors, factor interactions, time-series operators, no-regressor, FE-collinear column | Parser metadata only; estimator disabled |
+| Ordinary regressors | continuous, factors, factor interactions, lag/lead/difference operators across panel calendar gaps, no-regressor, FE-collinear column | Parser metadata only; estimator disabled |
 | Samples/singletons | missing outcome/regressor/FE/cluster, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | Native pieces exist; composed parity pending |
-| Weights | unweighted, `aweight`, `fweight`, `pweight`, `iweight` probe, scaling and invalid-domain probes | Every kind disabled pending adjudication |
+| Weights | unweighted, `aweight`, `fweight`, `pweight`, `iweight` probe, scaling, invalid-domain probes, and invalid-weight-outside-candidate precedence | Every kind disabled pending adjudication |
 | Inference | iid, robust, one/two/three-way cluster, cluster interaction, nesting, default/none/firstpair/continuous DoF | Native pieces exist; posted parity pending |
 | Outputs | `e()` scalars, `e(b)`, `e(V)`, `e(sample)`, residual, `xb`, `xbd`, absorbed sum, named FEs, `test`, `estat summarize` | Postestimation remains fail-closed |
-| Benchmarks | dense and sparse two-FE, absorbed slope, clustered VCE, moderate K | 10M+ primary cases at 1/8 threads, 1 cold + 5 warm, sample/singleton/RSS metadata; candidate gate blocked |
+| Benchmarks | dense and sparse two-FE, absorbed slope, clustered VCE, moderate K | 10M+ primary cases at 1/8 threads; scientific parity/certificates precede 1 cold + 5 fresh-process timing/RSS gates; candidate blocked |
 
 Deferred 1.0 non-goals remain IV/GMM, group-level outcomes with individual FEs,
 general HAC/Driscoll–Kraay, other GLM families, GPU execution, and historical or

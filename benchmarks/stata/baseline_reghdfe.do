@@ -57,10 +57,13 @@ if _rc {
     di as error "isolated ftools failed its version preflight"
     exit _rc
 }
-capture noisily ftools, compile
+capture findfile lftools.mlib
 if _rc {
-    di as error "isolated tracked ftools sources failed private mlib compilation"
-    exit _rc
+    capture noisily ftools, compile
+    if _rc {
+        di as error "isolated tracked ftools sources failed private mlib compilation"
+        exit _rc
+    }
 }
 capture noisily reghdfe, version
 if _rc {
