@@ -190,7 +190,10 @@ fn initial_drop_reason(
     if input.poisson && outcome < 0.0 {
         return Err(StFixestError::new(
             ErrorCode::InvalidData,
-            format!("Poisson outcome is negative at observation {}", observation + 1),
+            format!(
+                "Poisson outcome is negative at observation {}",
+                observation + 1
+            ),
         ));
     }
     if input
@@ -237,13 +240,16 @@ fn initial_drop_reason(
 
 fn validate_lengths(input: &NumericPreparationInput<'_>, n: usize) -> Result<()> {
     let mut named_lengths = vec![("outcome", input.outcome.len())];
-    named_lengths.extend(
-        input
-            .regressors
-            .iter()
-            .enumerate()
-            .map(|(index, column)| (if index == 0 { "regressor" } else { "regressors" }, column.len())),
-    );
+    named_lengths.extend(input.regressors.iter().enumerate().map(|(index, column)| {
+        (
+            if index == 0 {
+                "regressor"
+            } else {
+                "regressors"
+            },
+            column.len(),
+        )
+    }));
     if let Some(column) = input.weights {
         named_lengths.push(("weights", column.len()));
     }
@@ -292,8 +298,26 @@ mod tests {
         let outcome = [1.0, f64::NAN, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
         let x = [1.0, 2.0, f64::NAN, 4.0, 5.0, 6.0, 7.0, 8.0];
         let weights = [1.0, 1.0, 1.0, f64::NAN, 1.0, 1.0, 1.0, 2.0];
-        let fe = [Some(0), Some(0), Some(0), Some(0), None, Some(1), Some(1), Some(1)];
-        let cluster = [Some(0), Some(0), Some(0), Some(0), Some(0), None, Some(1), Some(1)];
+        let fe = [
+            Some(0),
+            Some(0),
+            Some(0),
+            Some(0),
+            None,
+            Some(1),
+            Some(1),
+            Some(1),
+        ];
+        let cluster = [
+            Some(0),
+            Some(0),
+            Some(0),
+            Some(0),
+            Some(0),
+            None,
+            Some(1),
+            Some(1),
+        ];
         let exposure = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 2.0];
         let input = NumericPreparationInput {
             candidate: &candidate,

@@ -87,15 +87,25 @@ impl std::ops::IndexMut<(usize, usize)> for DenseMatrix {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColumnRecipe {
     Intercept,
-    Continuous { source: usize },
-    Categorical { source: usize, level: u32 },
-    CategoricalInteraction { sources: Vec<usize>, levels: Vec<u32> },
+    Continuous {
+        source: usize,
+    },
+    Categorical {
+        source: usize,
+        level: u32,
+    },
+    CategoricalInteraction {
+        sources: Vec<usize>,
+        levels: Vec<u32>,
+    },
     CategoricalByContinuous {
         categorical_source: usize,
         level: u32,
         continuous_source: usize,
     },
-    ContinuousInteraction { sources: Vec<usize> },
+    ContinuousInteraction {
+        sources: Vec<usize>,
+    },
 }
 
 /// Native model-matrix generator over compact continuous and categorical sources.
@@ -250,14 +260,23 @@ impl<'a> ModelMatrixBuilder<'a> {
             ColumnRecipe::Intercept => 1.0,
             ColumnRecipe::Continuous { source } => self.continuous[*source][row],
             ColumnRecipe::Categorical { source, level } => {
-                f64::from(self.categorical[*source][row] == *level)
+                if self.categorical[*source][row] == *level {
+                    1.0
+                } else {
+                    0.0
+                }
             }
-            ColumnRecipe::CategoricalInteraction { sources, levels } => f64::from(
-                sources
+            ColumnRecipe::CategoricalInteraction { sources, levels } => {
+                if sources
                     .iter()
                     .zip(levels)
-                    .all(|(source, level)| self.categorical[*source][row] == *level),
-            ),
+                    .all(|(source, level)| self.categorical[*source][row] == *level)
+                {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
             ColumnRecipe::CategoricalByContinuous {
                 categorical_source,
                 level,
@@ -289,7 +308,10 @@ mod tests {
         let recipes = vec![
             ColumnRecipe::Intercept,
             ColumnRecipe::Continuous { source: 0 },
-            ColumnRecipe::Categorical { source: 0, level: 1 },
+            ColumnRecipe::Categorical {
+                source: 0,
+                level: 1,
+            },
             ColumnRecipe::CategoricalInteraction {
                 sources: vec![0, 1],
                 levels: vec![1, 2],
