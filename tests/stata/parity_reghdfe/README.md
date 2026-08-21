@@ -16,13 +16,12 @@ python3 scripts/ols_reference.py verify \
   --receipt benchmarks/reports/captured/<platform>/<stata>/ols-v1/receipt.json
 ```
 
-The external root must contain clean exact-commit `reghdfe/` and `ftools/`
-checkouts. The runner stages committed bytes, isolates Stata system ado paths,
-and executes `benchmarks/stata/baseline_reghdfe.do`. It never invokes StFixest.
-
-At present `references.lock.toml` marks the exact `ftools` commit unresolved,
-so preflight must fail before Stata launches. Do not replace that gate with an
-installed `ftools`, a version string, a floating branch, or an invented hash.
+The external root must contain clean exact-commit `reghdfe/`, `ftools/`, and
+`require/` checkouts. The runner checks every locked tracked-file SHA, stages
+committed bytes, compiles the generated ftools Mata library only in the private
+stage, isolates Stata system ado paths, and executes
+`benchmarks/stata/baseline_reghdfe.do`. It never invokes StFixest. Missing or
+stale closure members fail before Stata launches.
 
 Raw Stata logs and the machine capture stream are temporary licensed artifacts
 and must not be copied into the repository. Only a sanitized, read-only,

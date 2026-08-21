@@ -11,7 +11,7 @@ validation. `stfeols` and `stfepois` remain fail-closed and post no estimate.
 | Fixed-effect absorption | Native solver source/tests exist | Explicit-dummy fitted/residual parity and strict FE certificate through the one-call path |
 | OLS/WLS coefficients | Native source/tests exist; public command disabled | Independent oracle plus sealed `reghdfe` parity at fixed tolerances |
 | VCE and DoF | Native source/tests exist; reference cases cover iid, robust, 1–3 way clustering, interactions, nesting, and `dof()` policies | Score/meat/correction oracle and posted `e(V)`/DoF parity |
-| OLS outputs | Reference cases request sample, residual, `xb`, `xbd`, absorbed sum, and named FEs | Observation-ID-aligned parity and atomic failure tests |
+| OLS outputs | Reference cases request sample, residual, `xb`, `xbd`, absorbed sum, named FEs, `test`, and `estat summarize` | Observation-ID-aligned parity and atomic failure tests |
 | PPML | Outside Checkpoint 1A; public command disabled | Later IRLS, separation, VCE, and postestimation gates |
 
 A successful `stfixest, selftest` proves only its documented native smoke
@@ -25,7 +25,8 @@ The OLS-v1 manifest is the sole command and input inventory. It freezes:
 - each source CSV or deterministic generator by SHA-256;
 - the reference-only Stata entrypoint by SHA-256;
 - seed, model command, expected success policy, capture fields, and case order;
-- at least five warm repetitions for every benchmark case;
+- one cold plus five warm repetitions at both one and eight threads for every
+  primary benchmark design of at least ten million observations;
 - a closed coverage vocabulary spanning model construction, samples, all
   weight probes, VCE/DoF, requested outputs, and errors.
 
@@ -36,16 +37,20 @@ copied into a private directory; large benchmark data are regenerated there in
 the licensed Stata process.
 
 Reference discovery is also closed. The only eligible layout is an absolute
-external root containing direct-child `reghdfe` and `ftools` git checkouts.
-Both must match the exact 40-character commits in `references.lock.toml`, have
+external root containing direct-child `reghdfe`, `ftools`, and `require` git
+checkouts. All three must match the exact 40-character commits in
+`references.lock.toml`, have
 clean worktrees, contain the locked tracked files, and resolve from the exact
 staged ado directories. PERSONAL, PLUS, OLDPLACE, SITE, and the working
 directory are isolated so a globally installed command cannot satisfy the
 preflight.
 
-The exact `ftools` pin has not yet been adjudicated. This is represented as
-`pin_status = "unresolved"`; no hash is guessed. Consequently every real OLS-v1
-capture currently fails before repository inspection or Stata launch.
+The dependency closure is reghdfe 6.14.1 at `29b2b203...`, ftools 2.50.0 at
+`d6e24d66...`, and require 1.3.1 at `f4760b86...`. Each required tracked source
+file is separately SHA-256 locked and verified after `git archive` staging.
+`lftools.mlib` is not a source input: it is generated from the locked ftools
+sources inside the temporary capture directory. No licensed capture has yet
+been sealed, so reference readiness is not a parity claim.
 
 ## Deterministic capture fields
 
@@ -55,6 +60,14 @@ selected macros with delimiter escaping, return code, timings, and requested
 observation outputs keyed by stable `obs_id`. Error cases capture their exact
 return code and no stale `e()` state. A case-begin/end pair and a unique final
 `END_FIXTURE|ols_v1_reference_capture|rc=0` record are mandatory.
+
+Requested evidence may not be recorded as absent. Verification requires
+canonical Stata hex values, positive unique matrix coordinates forming complete
+rectangles, and exactly one value per requested field and unique observation ID.
+Benchmark evidence additionally seals sample and singleton identities, peak RSS,
+host/Stata/thread metadata, and remains explicitly blocked while `stfeols` is
+disabled. A future pass requires at least 1.5x geometric-mean speedup, no slower
+primary case, and no worse primary-case RSS.
 
 The capture intentionally excludes display text, raw `ereturn list` output,
 host paths, executable paths, usernames, license/serial text, and the raw Stata

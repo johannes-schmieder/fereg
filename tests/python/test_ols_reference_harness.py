@@ -19,6 +19,7 @@ from scripts.ols_reference import (
     PreflightError,
     ReferenceIdentity,
     capture_reference,
+    evaluate_benchmark_gates,
     load_manifest,
     load_reference_lock,
     parse_capture,
@@ -61,7 +62,26 @@ def make_reference_checkout(root: Path, name: str, required: list[str]) -> tuple
     return git(checkout, "rev-parse", "HEAD"), git(checkout, "rev-parse", "HEAD^{tree}")
 
 
-def reference_lock(reghdfe_commit: str, ftools_commit: str, *, ftools_status: str = "resolved") -> dict:
+def reference_lock(
+    reghdfe_commit: str,
+    ftools_commit: str,
+    require_commit: str = "3" * 40,
+    *,
+    root: Path | None = None,
+    ftools_status: str = "resolved",
+    require_status: str = "resolved",
+) -> dict:
+    files = {
+        "reghdfe": ["src/reghdfe.ado", "src/reghdfe.mata"],
+        "ftools": ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"],
+        "require": ["src/require.ado", "src/require.pkg"],
+    }
+
+    def hashes(name: str) -> dict[str, str]:
+        if root is None:
+            return {relative: hashlib.sha256(f"{name}:{relative}".encode()).hexdigest() for relative in files[name]}
+        return {relative: sha256_file(root / name / relative) for relative in files[name]}
+
     return {
         "schema_version": 2,
         "reference": [
@@ -71,7 +91,8 @@ def reference_lock(reghdfe_commit: str, ftools_commit: str, *, ftools_status: st
                 "commit": reghdfe_commit,
                 "checkout_dir": "reghdfe",
                 "capture_ado_subdir": "src",
-                "required_capture_files": ["src/reghdfe.ado", "src/reghdfe.mata"],
+                "required_capture_files": files["reghdfe"],
+                "required_capture_sha256": hashes("reghdfe"),
             },
             {
                 "name": "ftools",
@@ -79,7 +100,17 @@ def reference_lock(reghdfe_commit: str, ftools_commit: str, *, ftools_status: st
                 "commit": ftools_commit if ftools_status == "resolved" else "",
                 "checkout_dir": "ftools",
                 "capture_ado_subdir": "src",
-                "required_capture_files": ["src/ftools.ado", "src/lftools.mlib"],
+                "required_capture_files": files["ftools"],
+                "required_capture_sha256": hashes("ftools"),
+            },
+            {
+                "name": "require",
+                "pin_status": require_status,
+                "commit": require_commit if require_status == "resolved" else "",
+                "checkout_dir": "require",
+                "capture_ado_subdir": "src",
+                "required_capture_files": files["require"],
+                "required_capture_sha256": hashes("require"),
             },
         ],
     }
@@ -92,7 +123,12 @@ class OlsManifestTests(unittest.TestCase):
         self.assertGreaterEqual(len(manifest["semantic_cases"]), 30)
         self.assertGreaterEqual(len(manifest["benchmark_cases"]), 5)
         for case in manifest["benchmark_cases"]:
-            self.assertGreaterEqual(case["repetitions"]["warm"], 5)
+            self.assertEqual(case["repetitions"], {"cold": 1, "warm": 5})
+            self.assertGreaterEqual(next(item for item in manifest["datasets"] if item["id"] == case["dataset"])["arguments"][0], 10_000_000)
+            self.assertEqual(set(case["arms"]), {"comparator", "candidate"})
+            self.assertEqual(set(case["capture"]["identities"]), {"sample", "singletons"})
+        self.assertEqual({case["thread_count"] for case in manifest["benchmark_cases"]}, {1, 8})
+        self.assertEqual(manifest["benchmark_contract"]["thresholds"]["geometric_mean_speedup_min"], 1.5)
 
     def test_stale_fixture_is_rejected(self):
         manifest = load_manifest()
@@ -152,9 +188,12 @@ class ReferencePreflightTests(unittest.TestCase):
             self.reference_root, "reghdfe", ["src/reghdfe.ado", "src/reghdfe.mata"]
         )
         ftools_commit, self.ftools_tree = make_reference_checkout(
-            self.reference_root, "ftools", ["src/ftools.ado", "src/lftools.mlib"]
+            self.reference_root, "ftools", ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"]
         )
-        self.lock = reference_lock(reghdfe_commit, ftools_commit)
+        require_commit, self.require_tree = make_reference_checkout(
+            self.reference_root, "require", ["src/require.ado", "src/require.pkg"]
+        )
+        self.lock = reference_lock(reghdfe_commit, ftools_commit, require_commit, root=self.reference_root)
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -163,6 +202,7 @@ class ReferencePreflightTests(unittest.TestCase):
         identities = preflight_reference_root(self.reference_root, self.lock, self.repository)
         self.assertEqual(identities["reghdfe"].tree, self.reghdfe_tree)
         self.assertEqual(identities["ftools"].tree, self.ftools_tree)
+        self.assertEqual(identities["require"].tree, self.require_tree)
         self.assertEqual(identities["reghdfe"].ado_dir, (self.reference_root / "reghdfe/src").resolve())
 
     def test_dirty_checkout_is_rejected(self):
@@ -184,16 +224,74 @@ class ReferencePreflightTests(unittest.TestCase):
             preflight_reference_root(self.reference_root, self.lock, self.repository)
 
     def test_unresolved_ftools_pin_fails_before_checkout_inspection(self):
-        lock = reference_lock(self.lock["reference"][0]["commit"], "", ftools_status="unresolved")
+        lock = reference_lock(self.lock["reference"][0]["commit"], "", self.lock["reference"][2]["commit"], root=self.reference_root, ftools_status="unresolved")
         (self.reference_root / "reghdfe").rename(self.base / "removed_reghdfe")
         with self.assertRaisesRegex(PreflightError, "ftools exact pin is unresolved"):
             preflight_reference_root(self.reference_root, lock, self.repository)
 
-    def test_checked_in_lock_explicitly_blocks_unadjudicated_ftools(self):
+    def test_checked_in_lock_resolves_full_source_only_dependency_closure(self):
         lock = load_reference_lock(DEFAULT_LOCK)
         ftools = next(entry for entry in lock["reference"] if entry["name"] == "ftools")
-        self.assertEqual(ftools["pin_status"], "unresolved")
-        self.assertNotIn("commit", ftools)
+        require = next(entry for entry in lock["reference"] if entry["name"] == "require")
+        self.assertEqual(ftools["commit"], "d6e24d66fd02ba1b37325c82c5040444c5b4c636")
+        self.assertEqual(require["commit"], "f4760b86e55cf73b82041ce59cf20e8e8224afb0")
+        self.assertNotIn("src/lftools.mlib", ftools["required_capture_files"])
+        self.assertEqual(set(ftools["required_capture_files"]), set(ftools["required_capture_sha256"]))
+
+    def test_tracked_file_hash_mismatch_is_rejected_even_at_locked_commit(self):
+        self.lock["reference"][0]["required_capture_sha256"]["src/reghdfe.ado"] = "0" * 64
+        with self.assertRaisesRegex(PreflightError, "hash mismatch"):
+            preflight_reference_root(self.reference_root, self.lock, self.repository)
+
+
+class BenchmarkGateTests(unittest.TestCase):
+    @staticmethod
+    def evidence(manifest: dict, *, candidate_time: float = 0.5) -> list[dict]:
+        records = []
+        host = {"system": "Darwin", "machine": "arm64", "cpu_count": 8}
+        stata = {"version": "18", "flavor": "MP", "processors_limit": "8"}
+        for case in manifest["benchmark_cases"]:
+            for arm, seconds in (("comparator", 1.0), ("candidate", candidate_time)):
+                records.append(
+                    {
+                        "case_id": case["id"],
+                        "arm": arm,
+                        "thread_count": case["thread_count"],
+                        "cold_seconds": seconds * 1.1,
+                        "warm_seconds": [seconds] * 5,
+                        "peak_rss_bytes": 1000 if arm == "comparator" else 900,
+                        "sample_identity_sha256": "a" * 64,
+                        "singleton_identity_sha256": "b" * 64,
+                        "host": host,
+                        "stata": stata,
+                    }
+                )
+        return records
+
+    def test_disabled_candidate_can_never_claim_a_pass(self):
+        manifest = load_manifest()
+        result = evaluate_benchmark_gates(manifest, [])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["reason"], "candidate_stfeols_disabled")
+
+    def test_future_complete_two_arm_evidence_enforces_all_thresholds(self):
+        manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "enabled"
+        self.assertEqual(evaluate_benchmark_gates(manifest, self.evidence(manifest))["status"], "pass")
+        slower = evaluate_benchmark_gates(manifest, self.evidence(manifest, candidate_time=1.01))
+        self.assertEqual(slower["status"], "fail")
+        self.assertTrue(slower["reason"].startswith("candidate_slower:"))
+
+    def test_future_gate_rejects_incomplete_or_identity_mismatched_evidence(self):
+        manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "enabled"
+        evidence = self.evidence(manifest)
+        with self.assertRaisesRegex(ContractError, "both arms"):
+            evaluate_benchmark_gates(manifest, evidence[:-1])
+        evidence = self.evidence(manifest)
+        evidence[1]["sample_identity_sha256"] = "c" * 64
+        with self.assertRaisesRegex(ContractError, "sample or singleton"):
+            evaluate_benchmark_gates(manifest, evidence)
 
 
 class ReceiptAndSentinelTests(unittest.TestCase):
@@ -222,6 +320,9 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "STFIXEST_OLS_CAPTURE|schema|1",
             "STFIXEST_OLS_CAPTURE|manifest_sha256|" + "a" * 64,
             "STFIXEST_OLS_CAPTURE|environment|stata_version|18",
+            "STFIXEST_OLS_CAPTURE|environment|stata_flavor|MP",
+            "STFIXEST_OLS_CAPTURE|environment|stata_processors|8",
+            "STFIXEST_OLS_CAPTURE|environment|stata_processors_limit|8",
             "STFIXEST_OLS_CAPTURE|environment|os|Unix",
             "STFIXEST_OLS_CAPTURE|environment|machine_type|Mac",
             "STFIXEST_OLS_CAPTURE|case_begin|semantic",
@@ -230,6 +331,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "STFIXEST_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
             "STFIXEST_OLS_CAPTURE|macro|semantic|cmd|reghdfe",
             "STFIXEST_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000",
+            "STFIXEST_OLS_CAPTURE|observation_count|semantic|1",
             "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000",
             "STFIXEST_OLS_CAPTURE|case_end|semantic",
         ]
@@ -244,8 +346,33 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\n",
             "",
         )
-        with self.assertRaisesRegex(ContractError, "observation outputs"):
+        with self.assertRaisesRegex(ContractError, "observation evidence"):
             parse_capture(missing, self.minimal_capture_manifest(), "a" * 64)
+
+    def test_requested_absent_and_bad_hex_are_rejected(self):
+        absent = self.minimal_capture_text().replace(
+            "STFIXEST_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
+            "STFIXEST_OLS_CAPTURE|absent|semantic|scalar|N",
+        )
+        with self.assertRaisesRegex(ContractError, "cannot be absent"):
+            parse_capture(absent, self.minimal_capture_manifest(), "a" * 64)
+        malformed = self.minimal_capture_text().replace("+0000000000001X+000|sample", "not-hex|sample")
+        with self.assertRaisesRegex(ContractError, "coordinate or value"):
+            parse_capture(malformed, self.minimal_capture_manifest(), "a" * 64)
+
+    def test_duplicate_observation_and_matrix_coordinates_are_rejected(self):
+        duplicate_observation = self.minimal_capture_text().replace(
+            "STFIXEST_OLS_CAPTURE|case_end|semantic",
+            "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\nSTFIXEST_OLS_CAPTURE|case_end|semantic",
+        )
+        with self.assertRaisesRegex(ContractError, "observation evidence is incomplete|duplicate observation"):
+            parse_capture(duplicate_observation, self.minimal_capture_manifest(), "a" * 64)
+        duplicate_matrix = self.minimal_capture_text().replace(
+            "STFIXEST_OLS_CAPTURE|observation_count",
+            "STFIXEST_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000\nSTFIXEST_OLS_CAPTURE|observation_count",
+        )
+        with self.assertRaisesRegex(ContractError, "duplicate matrix coordinate"):
+            parse_capture(duplicate_matrix, self.minimal_capture_manifest(), "a" * 64)
 
     def test_terminal_sentinel_must_be_unique_successful_and_last(self):
         validate_terminal_sentinel("header\n" + CAPTURE_SENTINEL + "\n")
@@ -277,6 +404,10 @@ class ReceiptAndSentinelTests(unittest.TestCase):
     def test_verifier_rejects_mutation_staleness_and_writable_receipt(self):
         manifest = {
             "manifest_id": "ols_v1",
+            "benchmark_contract": {
+                "candidate_state": "disabled_fail_closed",
+                "thresholds": {"geometric_mean_speedup_min": 1.5, "primary_case_time_ratio_max": 1.0, "primary_case_rss_ratio_max": 1.0},
+            },
             "datasets": [],
             "semantic_cases": [
                 {
@@ -286,16 +417,9 @@ class ReceiptAndSentinelTests(unittest.TestCase):
                     "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
                 }
             ],
-            "benchmark_cases": [
-                {
-                    "id": "benchmark",
-                    "expected": "must_succeed",
-                    "repetitions": {"cold": 1, "warm": 0},
-                    "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
-                }
-            ],
+            "benchmark_cases": [],
         }
-        lock = reference_lock("1" * 40, "2" * 40)
+        lock = reference_lock("1" * 40, "2" * 40, "3" * 40)
         payload = {
             "schema_version": 1,
             "receipt_type": "stfixest-ols-v1-reference",
@@ -305,8 +429,16 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "references": {
                 "reghdfe": {"commit": "1" * 40, "git_tree": "4" * 40},
                 "ftools": {"commit": "2" * 40, "git_tree": "5" * 40},
+                "require": {"commit": "3" * 40, "git_tree": "6" * 40},
             },
-            "environment": {"stata_version": "18", "os": "Unix", "machine_type": "Mac"},
+            "environment": {"stata_version": "18", "stata_flavor": "MP", "stata_processors": "8", "stata_processors_limit": "8", "os": "Unix", "machine_type": "Mac"},
+            "host": {"system": "Darwin", "machine": "arm64", "cpu_count": 8},
+            "benchmark_evidence": [],
+            "benchmark_gate": {
+                "status": "blocked",
+                "reason": "candidate_stfeols_disabled",
+                "thresholds": {"geometric_mean_speedup_min": 1.5, "primary_case_time_ratio_max": 1.0, "primary_case_rss_ratio_max": 1.0},
+            },
             "cases": [
                 {
                     "id": case_id,
@@ -315,10 +447,13 @@ class ReceiptAndSentinelTests(unittest.TestCase):
                     "scalars": {},
                     "macros": {},
                     "matrices": [],
+                    "observation_count": None,
                     "observations": [],
+                    "identities": {},
+                    "postestimation": [],
                     "absent": [],
                 }
-                for case_id in ("semantic", "benchmark")
+                for case_id in ("semantic",)
             ],
         }
         with tempfile.TemporaryDirectory() as temporary:
@@ -343,17 +478,19 @@ class ReceiptAndSentinelTests(unittest.TestCase):
                 with self.assertRaisesRegex(ContractError, "seal mismatch"):
                     verify_receipt(receipt, manifest_path, Path("unused"), Path(temporary))
 
-    def test_capture_never_launches_stata_while_ftools_pin_is_unresolved(self):
+    def test_capture_never_launches_stata_while_transitive_pin_is_unresolved(self):
         with tempfile.TemporaryDirectory() as temporary:
             reference_root = Path(temporary).resolve()
             runner = mock.Mock(side_effect=AssertionError("Stata must not start"))
-            with self.assertRaisesRegex(PreflightError, "ftools exact pin is unresolved"):
-                capture_reference(
-                    "stata",
-                    reference_root,
-                    reference_root / "receipt.json",
-                    runner=runner,
-                )
+            unresolved = reference_lock("1" * 40, "2" * 40, require_status="unresolved")
+            with mock.patch("scripts.ols_reference.load_reference_lock", return_value=unresolved):
+                with self.assertRaisesRegex(PreflightError, "require exact pin is unresolved"):
+                    capture_reference(
+                        "stata",
+                        reference_root,
+                        reference_root / "receipt.json",
+                        runner=runner,
+                    )
             runner.assert_not_called()
 
 

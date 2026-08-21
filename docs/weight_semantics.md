@@ -46,14 +46,15 @@ above.
 
 ## Evidence and enablement gate
 
-The capture runner uses only clean, exact-commit `reghdfe` and `ftools`
-checkouts staged from `git archive`. It records hex-formatted numerical fields,
+The capture runner uses only clean, exact-commit `reghdfe`, `ftools`, and
+`require` checkouts staged from `git archive`, with every required source file
+SHA-256 checked. It records hex-formatted numerical fields,
 case return codes, final-sample markers, and explicitly requested outputs. The
 machine stream and licensed Stata log are temporary and cannot be committed.
 Only the sanitized, sealed receipt is eligible for review.
 
 Before any weight kind is enabled, its sealed reference result must be paired
 with an independent explicit-dummy/WLS oracle and an end-to-end final-sample
-identity test. At present the exact `ftools` commit is unresolved in
-`references.lock.toml`, so the preflight stops before Stata starts and no OLS
-weight behavior is frozen yet.
+identity test. The full dependency closure is now exactly pinned, but no
+licensed OLS receipt has been captured or adjudicated, so no OLS weight behavior
+is frozen yet.

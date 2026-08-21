@@ -1,12 +1,12 @@
 schema_version = 2
-pinned_at_utc = "2026-08-20"
+pinned_at_utc = "2026-08-21"
 policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
 
 [ols_v1_capture]
 manifest = "benchmarks/manifests/ols_v1.json"
-reference_root_layout = "<absolute-root>/reghdfe and <absolute-root>/ftools must be clean direct-child git checkouts"
+reference_root_layout = "<absolute-root>/reghdfe, <absolute-root>/ftools, and <absolute-root>/require must be clean direct-child git checkouts"
 network_policy = "offline-only; the runner never installs or fetches reference commands"
-eligibility = "blocked until the ftools entry has an adjudicated exact commit and pin_status=resolved"
+eligibility = "exact source pins are resolved; capture still requires all three matching clean local checkouts and the disabled StFixest arm cannot claim a benchmark pass"
 raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
 
 
@@ -44,7 +44,7 @@ name = "reghdfe"
 repository = "https://github.com/sergiocorreia/reghdfe"
 commit = "29b2b203f534413369d675d0c0f674d61291f536"
 pin_status = "resolved"
-version = "6.13.x development tree"
+version = "6.14.1"
 license = "MIT"
 relevant_source_paths = ["src/reghdfe.ado", "src/reghdfe.mata", "current-code/"]
 relevant_test_paths = ["test/", "tests/"]
@@ -52,20 +52,39 @@ use = "Primary Stata-facing OLS compatibility oracle; never called at runtime."
 checkout_dir = "reghdfe"
 capture_ado_subdir = "src"
 required_capture_files = ["src/reghdfe.ado", "src/reghdfe.mata"]
+required_capture_sha256 = { "src/reghdfe.ado" = "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc", "src/reghdfe.mata" = "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6" }
 
 [[reference]]
 name = "ftools"
 repository = "https://github.com/sergiocorreia/ftools"
-pin_status = "unresolved"
-version = "UNRESOLVED — do not infer from an installed package or floating branch"
+commit = "d6e24d66fd02ba1b37325c82c5040444c5b4c636"
+pin_status = "resolved"
+version = "2.50.0"
 license = "MIT"
-relevant_source_paths = ["src/ftools.ado", "src/ftools.mata", "src/lftools.mlib"]
+relevant_source_paths = ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"]
 relevant_test_paths = ["test/", "tests/"]
 use = "Required dependency of the pinned reghdfe capture only; never called at StFixest runtime."
 checkout_dir = "ftools"
 capture_ado_subdir = "src"
-required_capture_files = ["src/ftools.ado", "src/lftools.mlib"]
-resolution_requirement = "An adjudicated 40-character commit must be added and pin_status changed to resolved before any OLS v1 reference capture."
+required_capture_files = ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"]
+required_capture_sha256 = { "src/ftools.ado" = "c7eba3272b5fcd1dfa157e65c37840a051c6e2bf327d5ee31d42df65cf330b00", "src/ftools.mata" = "4af859bca19614684d3dd45566e13e17c6cf44df951ecca538bda5a44ebd1744", "src/ftools.pkg" = "2f1f75711b3bf12980bdf9503b0ac9a73d5455863da966ae27a610f6fc07f5ae", "src/ms_parse_vce.ado" = "99af53ca13f325a917b7377762feab140914a5a6534c0953ea9ce6d55dcfa678" }
+generated_capture_artifacts = ["src/lftools.mlib"]
+generated_artifact_policy = "lftools.mlib is compiled inside the private Stata capture directory and is never a pinned source input"
+
+[[reference]]
+name = "require"
+repository = "https://github.com/sergiocorreia/stata-require"
+commit = "f4760b86e55cf73b82041ce59cf20e8e8224afb0"
+pin_status = "resolved"
+version = "1.3.1"
+license = "MIT"
+relevant_source_paths = ["src/require.ado", "src/require.pkg"]
+relevant_test_paths = ["tests/"]
+use = "Transitive dependency required by pinned reghdfe >=1.3.1; reference capture only."
+checkout_dir = "require"
+capture_ado_subdir = "src"
+required_capture_files = ["src/require.ado", "src/require.pkg"]
+required_capture_sha256 = { "src/require.ado" = "0f5a7bad374ade6c6ba0f05973666bb06b63d4acc36ddb0e277a060249a0e6de", "src/require.pkg" = "d9965f30b072949f7012fe3f0e6e83baf20dd6317ff2e21b15e185085a36ed62" }
 
 [[reference]]
 name = "ppmlhdfe"

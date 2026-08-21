@@ -152,7 +152,7 @@ require(
     "AGENTS.md hash does not match the governing specification lock",
 )
 refs = {entry["name"]: entry for entry in lock["reference"]}
-for name in ("pyfixest", "within", "reghdfe", "ppmlhdfe", "stata-spi"):
+for name in ("pyfixest", "within", "reghdfe", "ftools", "require", "ppmlhdfe", "stata-spi"):
     require(name in refs, f"reference lock missing {name}")
     if name in refs:
         require(len(refs[name]["commit"]) >= 12, f"reference {name} is not commit-pinned")
@@ -161,12 +161,18 @@ if spi:
     require(spi.get("local_stplugin_c_sha256") == sha256(ROOT / "plugin/stplugin.c"), "stplugin.c hash mismatch")
     require(spi.get("local_stplugin_h_sha256") == sha256(ROOT / "plugin/stplugin.h"), "stplugin.h hash mismatch")
 
-ftools = refs.get("ftools", {})
-require(ftools.get("pin_status") in {"resolved", "unresolved"}, "ftools pin status must be explicit")
-if ftools.get("pin_status") == "unresolved":
-    require("commit" not in ftools, "unresolved ftools entry must not contain an invented commit")
-else:
-    require(re.fullmatch(r"[0-9a-f]{40}", ftools.get("commit", "")) is not None, "resolved ftools pin must be exact")
+expected_capture_pins = {
+    "reghdfe": "29b2b203f534413369d675d0c0f674d61291f536",
+    "ftools": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+    "require": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+}
+for name, commit in expected_capture_pins.items():
+    entry = refs.get(name, {})
+    require(entry.get("pin_status") == "resolved" and entry.get("commit") == commit, f"{name} exact capture pin is stale")
+    files = entry.get("required_capture_files", [])
+    hashes = entry.get("required_capture_sha256", {})
+    require(set(files) == set(hashes) and all(re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()), f"{name} capture file hashes are not closed")
+require("src/lftools.mlib" not in refs.get("ftools", {}).get("required_capture_files", []), "generated lftools.mlib must not be a locked source input")
 
 try:
     ols_manifest = json.loads(read("benchmarks/manifests/ols_v1.json"))
