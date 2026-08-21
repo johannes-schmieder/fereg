@@ -39,13 +39,11 @@ pub fn validate_weight(kind: WeightKind, value: f64) -> Result<f64> {
             format!("{} must be finite and strictly positive", kind.label()),
         ));
     }
-    if kind == WeightKind::Frequency {
-        if value.fract() != 0.0 || value > u64::MAX as f64 {
-            return Err(StFixestError::new(
-                ErrorCode::InvalidData,
-                "frequency weights must be positive integers representable as u64",
-            ));
-        }
+    if kind == WeightKind::Frequency && (value.fract() != 0.0 || value > u64::MAX as f64) {
+        return Err(StFixestError::new(
+            ErrorCode::InvalidData,
+            "frequency weights must be positive integers representable as u64",
+        ));
     }
     Ok(value)
 }
