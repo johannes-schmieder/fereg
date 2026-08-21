@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `30d2841`
+**Branch / baseline:** `main` through `db4bf0b`
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -39,7 +39,7 @@ scientific gates are met.
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
-| OLS reference-contract harness | Complete; capture pending | Commits `01c4b560`, `178ca247`, `13cec3d`, and `30d2841` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, and estimator-only RSS measurement. |
+| OLS reference-contract harness | Complete; first capture running | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, and `db4bf0b` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib capture corrections. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
@@ -60,7 +60,8 @@ scientific gates are met.
   exists yet.
 - No pinned reference capture, benchmark timing, peak-RSS receipt, or
   constrained-memory receipt has been recorded yet. The exact isolated source
-  closure is now locked and the capture harness is ready to produce evidence.
+  closure is locked; its semantic stage passes all 40 cases, and the full
+  sealed capture is now being retried.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
   as a Stata-facing estimator. Independent audit and integration work are in
   progress.
