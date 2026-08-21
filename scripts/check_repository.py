@@ -2,7 +2,9 @@
 """Static Phase 0-1 contract checks that require neither Rust nor Stata."""
 from __future__ import annotations
 
+import ast
 import hashlib
+import json
 import re
 import sys
 import tomllib
@@ -37,6 +39,9 @@ required_files = [
     "Cargo.toml",
     "Cargo.lock",
     "references.lock.toml",
+    "benchmarks/manifests/ols_v1.json",
+    "benchmarks/stata/baseline_reghdfe.do",
+    "scripts/ols_reference.py",
     "crates/stfixest-core/src/lib.rs",
     "crates/stfixest-plugin/src/ffi.rs",
     "plugin/stplugin.c",
@@ -156,13 +161,43 @@ if spi:
     require(spi.get("local_stplugin_c_sha256") == sha256(ROOT / "plugin/stplugin.c"), "stplugin.c hash mismatch")
     require(spi.get("local_stplugin_h_sha256") == sha256(ROOT / "plugin/stplugin.h"), "stplugin.h hash mismatch")
 
+ftools = refs.get("ftools", {})
+require(ftools.get("pin_status") in {"resolved", "unresolved"}, "ftools pin status must be explicit")
+if ftools.get("pin_status") == "unresolved":
+    require("commit" not in ftools, "unresolved ftools entry must not contain an invented commit")
+else:
+    require(re.fullmatch(r"[0-9a-f]{40}", ftools.get("commit", "")) is not None, "resolved ftools pin must be exact")
+
+try:
+    ols_manifest = json.loads(read("benchmarks/manifests/ols_v1.json"))
+except json.JSONDecodeError as error:
+    ERRORS.append(f"OLS v1 manifest is invalid JSON: {error}")
+    ols_manifest = {}
+require(ols_manifest.get("manifest_id") == "ols_v1", "OLS v1 manifest identity missing")
+require(ols_manifest.get("frozen") is True, "OLS v1 manifest is not frozen")
+capture = ols_manifest.get("capture", {})
+for name in ("script", "runner", "generator"):
+    spec = capture.get(name, {})
+    relative = spec.get("path", "")
+    path = ROOT / relative
+    require(path.is_file(), f"OLS capture {name} is missing: {relative}")
+    if path.is_file():
+        require(spec.get("sha256") == sha256(path), f"OLS capture {name} hash mismatch")
+
 for manifest in ROOT.glob("crates/*/Cargo.toml"):
     text = manifest.read_text(encoding="utf-8").lower()
     for forbidden in ("openblas", "mkl", "openmp", "pyo3", "numpy", "julia"):
         require(forbidden not in text, f"forbidden runtime dependency in {manifest.relative_to(ROOT)}: {forbidden}")
 
-# Cheap delimiter check catches common generated-source damage before Cargo is available.
-for path in [*ROOT.glob("crates/**/*.rs"), *ROOT.glob("scripts/*.py")]:
+# Parse Python with its real grammar; use a cheap delimiter check only for Rust
+# when Cargo is unavailable.
+for path in ROOT.glob("scripts/*.py"):
+    try:
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except SyntaxError as error:
+        ERRORS.append(f"Python syntax error in {path.relative_to(ROOT)}: {error}")
+
+for path in ROOT.glob("crates/**/*.rs"):
     text = path.read_text(encoding="utf-8")
     pairs = {"(": ")", "[": "]", "{": "}"}
     stack: list[str] = []

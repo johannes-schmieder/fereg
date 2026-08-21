@@ -1,0 +1,445 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_v1",
+  "frozen": true,
+  "reference": {
+    "command": "reghdfe",
+    "lock_name": "reghdfe",
+    "dependencies": ["ftools"],
+    "isolation_required": true
+  },
+  "capture": {
+    "script": {
+      "path": "benchmarks/stata/baseline_reghdfe.do",
+      "sha256": "7dcee0f4f648abd41231e0f822f6215bac7dec09ed5c11742d3545f4b4381f25"
+    },
+    "runner": {
+      "path": "scripts/ols_reference.py",
+      "sha256": "806436182a240e6d2267779346e09543d418a2279f5bb859c904708561987bc0"
+    },
+    "generator": {
+      "path": "benchmarks/generators/generate_panel.do",
+      "sha256": "c0e2ed8b9c95c23563cd32100ffbb968ca16d13bbdbfc7282a62d7139558dcef"
+    },
+    "seed": 20260821,
+    "machine_protocol": 1,
+    "terminal_sentinel": "END_FIXTURE|ols_v1_reference_capture|rc=0",
+    "receipt_schema": 1
+  },
+  "datasets": [
+    {
+      "id": "ols_core",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_core.csv",
+        "sha256": "cb7d7e7ae21843f7c1dc5f84ac4daffa3954c9bfc54a9a109a3e2f6b50433bca"
+      }
+    },
+    {
+      "id": "ols_missing",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_missing.csv",
+        "sha256": "4036accdc53cd67dc05255d9c7e4b2d37a9049ac308e51b18591238301e1b457"
+      }
+    },
+    {
+      "id": "ols_singletons",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_singletons.csv",
+        "sha256": "43cceb783643ce730a6d5436c31389891a5281abc16ab121177a5a16e1a98e88"
+      }
+    },
+    {
+      "id": "ols_weights",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_weights.csv",
+        "sha256": "7d93ff1d49ba0021da3e9d2a638a253ec46b725d0719a51436c9d8e51b4b9d70"
+      }
+    },
+    {
+      "id": "generated_dense",
+      "kind": "generated_dta",
+      "source": {
+        "path": "benchmarks/generators/generate_panel.do",
+        "sha256": "c0e2ed8b9c95c23563cd32100ffbb968ca16d13bbdbfc7282a62d7139558dcef"
+      },
+      "arguments": [1000000, 10000, 1000, 10, 20260821]
+    },
+    {
+      "id": "generated_sparse",
+      "kind": "generated_dta",
+      "source": {
+        "path": "benchmarks/generators/generate_panel.do",
+        "sha256": "c0e2ed8b9c95c23563cd32100ffbb968ca16d13bbdbfc7282a62d7139558dcef"
+      },
+      "arguments": [1000000, 500000, 200000, 10, 20260821]
+    }
+  ],
+  "required_surface": {
+    "models": ["no_fe", "one_fe", "multi_fe", "categorical_interaction", "intercept_slope", "slope_only", "multiple_slopes", "ordinary_factor", "ordinary_interaction", "string_fe", "disconnected_components", "no_regressors", "collinearity"],
+    "sample": ["if_in", "missing", "singleton_cascade", "keepsingletons", "empty_sample_error", "one_observation_error"],
+    "weights": ["unweighted", "aweight", "fweight", "pweight", "iweight_probe", "constant_rescaling", "zero_weight", "negative_weight", "fractional_fweight", "missing_weight", "large_weight", "weight_if_in", "weighted_singletons"],
+    "inference": ["vce_unadjusted", "vce_robust", "cluster_oneway", "cluster_twoway", "cluster_threeway", "cluster_interaction", "fe_nested_cluster", "dof_default", "dof_none", "dof_firstpair", "dof_continuous"],
+    "outputs": ["ereturn_scalars", "coefficient_status", "e_sample", "residual", "predict_xb", "predict_xbd", "absorbed_sum", "saved_fe", "fit_statistics"],
+    "failures": ["invalid_weight_error", "perfect_collinearity", "insufficient_observations", "all_dropped"],
+    "benchmarks": ["dense_two_fe", "sparse_two_fe", "absorbed_slope", "clustered_vce", "moderate_k"]
+  },
+  "semantic_cases": [
+    {
+      "id": "unweighted_no_fe",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 c.x2",
+      "expected": "must_succeed",
+      "covers": ["models:no_fe", "weights:unweighted", "inference:vce_unadjusted", "outputs:ereturn_scalars", "outputs:coefficient_status", "outputs:e_sample", "outputs:fit_statistics"],
+      "capture": {"scalars": ["N", "df_m", "df_r", "rss", "tss", "r2", "r2_a", "rmse", "F"], "macros": ["cmd", "depvar", "indepvars", "vce", "vcetype", "wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "one_fe_robust",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 i.industry, absorb(firm) vce(robust)",
+      "expected": "must_succeed",
+      "covers": ["models:one_fe", "models:ordinary_factor", "inference:vce_robust", "inference:dof_default"],
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "r2_within", "r2_a_within"], "macros": ["absvars", "vce", "vcetype"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "multi_fe_interactions",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 i.industry##i.year, absorb(worker firm#year)",
+      "expected": "must_succeed",
+      "covers": ["models:multi_fe", "models:categorical_interaction", "models:ordinary_interaction"],
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "N_hdfe"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "intercept_and_slope",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(firm##c.time worker)",
+      "expected": "must_succeed",
+      "covers": ["models:intercept_slope"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "slope_only_multiple",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(firm#c.time worker#c.(time x2))",
+      "expected": "must_succeed",
+      "covers": ["models:slope_only", "models:multiple_slopes"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "string_fe",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(firm_s year)",
+      "expected": "must_succeed",
+      "covers": ["models:string_fe"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "disconnected_no_regressors",
+      "dataset": "ols_core",
+      "command": "reghdfe y, absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["models:disconnected_components", "models:no_regressors"],
+      "capture": {"scalars": ["N", "df_r", "df_a", "rss", "tss"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "collinear_with_fe",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 c.time, absorb(year)",
+      "expected": "must_succeed",
+      "covers": ["models:collinearity", "failures:perfect_collinearity"],
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a"], "macros": ["indepvars", "absvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "missing_and_if_in",
+      "dataset": "ols_missing",
+      "command": "reghdfe y c.x1 if obs_id >= 2 in 1/8, absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["sample:if_in", "sample:missing"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "singleton_cascade",
+      "dataset": "ols_singletons",
+      "command": "reghdfe y c.x1, absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["sample:singleton_cascade"],
+      "capture": {"scalars": ["N", "num_singletons", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "keep_singletons",
+      "dataset": "ols_singletons",
+      "command": "reghdfe y c.x1, absorb(worker firm) keepsingletons",
+      "expected": "must_succeed",
+      "covers": ["sample:keepsingletons"],
+      "capture": {"scalars": ["N", "num_singletons", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "aweight",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_valid], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:aweight"],
+      "capture": {"scalars": ["N", "sumweights", "rss", "df_r"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "aweight_rescaled",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_scaled], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:constant_rescaling"],
+      "capture": {"scalars": ["N", "sumweights", "rss", "df_r"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "fweight",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [fw=fw_valid], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:fweight"],
+      "capture": {"scalars": ["N", "sumweights", "rss", "df_r"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "pweight",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [pw=pw_valid], absorb(group) vce(robust)",
+      "expected": "must_succeed",
+      "covers": ["weights:pweight"],
+      "capture": {"scalars": ["N", "sumweights", "df_r"], "macros": ["wtype", "wexp", "vce"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "iweight_probe",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [iw=iw_probe], absorb(group)",
+      "expected": "record",
+      "covers": ["weights:iweight_probe"],
+      "capture": {"scalars": ["N", "sumweights", "df_r"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "zero_weight_probe",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_zero], absorb(group)",
+      "expected": "record",
+      "covers": ["weights:zero_weight"],
+      "capture": {"scalars": ["N", "sumweights"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "negative_weight_error",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_negative], absorb(group)",
+      "expected": "must_error",
+      "covers": ["weights:negative_weight", "failures:invalid_weight_error"],
+      "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "fractional_fweight_error",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [fw=w_fractional], absorb(group)",
+      "expected": "must_error",
+      "covers": ["weights:fractional_fweight"],
+      "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "missing_weight",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_missing], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:missing_weight"],
+      "capture": {"scalars": ["N", "sumweights"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "large_weight",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x [aw=w_huge], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:large_weight"],
+      "capture": {"scalars": ["N", "sumweights", "rss"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "weight_if_in",
+      "dataset": "ols_weights",
+      "command": "reghdfe y c.x if obs_id >= 3 in 1/10 [aw=w_valid], absorb(group)",
+      "expected": "must_succeed",
+      "covers": ["weights:weight_if_in"],
+      "capture": {"scalars": ["N", "sumweights"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "weighted_singletons",
+      "dataset": "ols_singletons",
+      "command": "reghdfe y c.x1 [aw=year], absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["weights:weighted_singletons"],
+      "capture": {"scalars": ["N", "num_singletons", "sumweights"], "macros": ["wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "cluster_oneway",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm) vce(cluster cluster_a)",
+      "expected": "must_succeed",
+      "covers": ["inference:cluster_oneway"],
+      "capture": {"scalars": ["N", "df_r", "N_clust", "N_clust1"], "macros": ["vce", "vcetype", "clustvar"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "cluster_twoway",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm) vce(cluster cluster_a cluster_b)",
+      "expected": "must_succeed",
+      "covers": ["inference:cluster_twoway"],
+      "capture": {"scalars": ["N", "df_r", "N_clustervars", "N_clust1", "N_clust2"], "macros": ["vce", "vcetype", "clustvar"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "cluster_threeway",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm) vce(cluster cluster_a cluster_b cluster_c)",
+      "expected": "must_succeed",
+      "covers": ["inference:cluster_threeway"],
+      "capture": {"scalars": ["N", "df_r", "N_clustervars", "N_clust1", "N_clust2", "N_clust3"], "macros": ["vce", "vcetype", "clustvar"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "cluster_interaction",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm) vce(cluster cluster_a#cluster_b)",
+      "expected": "must_succeed",
+      "covers": ["inference:cluster_interaction"],
+      "capture": {"scalars": ["N", "df_r", "N_clust"], "macros": ["vce", "vcetype", "clustvar"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "nested_fe_cluster",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(firm year) vce(cluster firm)",
+      "expected": "must_succeed",
+      "covers": ["inference:fe_nested_cluster"],
+      "capture": {"scalars": ["N", "df_r", "df_a", "N_clust"], "macros": ["absvars", "clustvar"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "dof_none",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm) dof(none)",
+      "expected": "must_succeed",
+      "covers": ["inference:dof_none"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "dof_firstpair",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(worker firm year) dof(firstpair)",
+      "expected": "must_succeed",
+      "covers": ["inference:dof_firstpair"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "dof_continuous",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(firm##c.time worker) dof(continuous)",
+      "expected": "must_succeed",
+      "covers": ["inference:dof_continuous"],
+      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V", "dof_table"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "saved_outputs",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1, absorb(__stfx_fe_worker=worker __stfx_fe_firm=firm) residuals(__stfx_resid)",
+      "expected": "must_succeed",
+      "covers": ["outputs:residual", "outputs:predict_xb", "outputs:predict_xbd", "outputs:absorbed_sum", "outputs:saved_fe"],
+      "capture": {"scalars": ["N", "rss", "df_r", "df_a"], "macros": ["absvars", "predict"], "matrices": ["b", "V"], "outputs": ["sample", "residual", "xb", "xbd", "d", "fe_worker", "fe_firm"]},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "empty_sample_error",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 if obs_id < 0, absorb(worker)",
+      "expected": "must_error",
+      "covers": ["sample:empty_sample_error", "failures:all_dropped"],
+      "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    },
+    {
+      "id": "one_observation_error",
+      "dataset": "ols_core",
+      "command": "reghdfe y c.x1 if obs_id == 1, absorb(worker)",
+      "expected": "must_error",
+      "covers": ["sample:one_observation_error", "failures:insufficient_observations"],
+      "capture": {"scalars": [], "macros": [], "matrices": [], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 0}
+    }
+  ],
+  "benchmark_cases": [
+    {
+      "id": "bench_dense_two_fe",
+      "dataset": "generated_dense",
+      "command": "reghdfe y_linear c.x1 c.x2, absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["benchmarks:dense_two_fe"],
+      "capture": {"scalars": ["N", "df_r", "df_a", "rss"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 5}
+    },
+    {
+      "id": "bench_sparse_two_fe",
+      "dataset": "generated_sparse",
+      "command": "reghdfe y_linear c.x1 c.x2, absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["benchmarks:sparse_two_fe"],
+      "capture": {"scalars": ["N", "df_r", "df_a", "rss"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 5}
+    },
+    {
+      "id": "bench_absorbed_slope",
+      "dataset": "generated_dense",
+      "command": "reghdfe y_linear c.x1 c.x2, absorb(worker firm##c.year)",
+      "expected": "must_succeed",
+      "covers": ["benchmarks:absorbed_slope"],
+      "capture": {"scalars": ["N", "df_r", "df_a", "rss"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 5}
+    },
+    {
+      "id": "bench_clustered_vce",
+      "dataset": "generated_dense",
+      "command": "reghdfe y_linear c.x1 c.x2, absorb(worker firm) vce(cluster firm year)",
+      "expected": "must_succeed",
+      "covers": ["benchmarks:clustered_vce"],
+      "capture": {"scalars": ["N", "df_r", "N_clustervars", "N_clust1", "N_clust2"], "macros": ["absvars", "vce", "clustvar"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 5}
+    },
+    {
+      "id": "bench_moderate_k",
+      "dataset": "generated_dense",
+      "command": "reghdfe y_linear i.year##c.(x1 x2), absorb(worker firm)",
+      "expected": "must_succeed",
+      "covers": ["benchmarks:moderate_k"],
+      "capture": {"scalars": ["N", "df_m", "df_r", "df_a", "rss"], "macros": ["absvars", "indepvars"], "matrices": ["b", "V"], "outputs": []},
+      "repetitions": {"cold": 1, "warm": 5}
+    }
+  ]
+}

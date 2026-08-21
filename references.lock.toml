@@ -1,6 +1,13 @@
-schema_version = 1
+schema_version = 2
 pinned_at_utc = "2026-08-20"
 policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
+
+[ols_v1_capture]
+manifest = "benchmarks/manifests/ols_v1.json"
+reference_root_layout = "<absolute-root>/reghdfe and <absolute-root>/ftools must be clean direct-child git checkouts"
+network_policy = "offline-only; the runner never installs or fetches reference commands"
+eligibility = "blocked until the ftools entry has an adjudicated exact commit and pin_status=resolved"
+raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
 
 
 [governing_spec]
@@ -36,11 +43,29 @@ use = "Potential later solver adapter; not linked or copied in Phase 0-1."
 name = "reghdfe"
 repository = "https://github.com/sergiocorreia/reghdfe"
 commit = "29b2b203f534413369d675d0c0f674d61291f536"
+pin_status = "resolved"
 version = "6.13.x development tree"
 license = "MIT"
 relevant_source_paths = ["src/reghdfe.ado", "src/reghdfe.mata", "current-code/"]
 relevant_test_paths = ["test/", "tests/"]
 use = "Primary Stata-facing OLS compatibility oracle; never called at runtime."
+checkout_dir = "reghdfe"
+capture_ado_subdir = "src"
+required_capture_files = ["src/reghdfe.ado", "src/reghdfe.mata"]
+
+[[reference]]
+name = "ftools"
+repository = "https://github.com/sergiocorreia/ftools"
+pin_status = "unresolved"
+version = "UNRESOLVED — do not infer from an installed package or floating branch"
+license = "MIT"
+relevant_source_paths = ["src/ftools.ado", "src/ftools.mata", "src/lftools.mlib"]
+relevant_test_paths = ["test/", "tests/"]
+use = "Required dependency of the pinned reghdfe capture only; never called at StFixest runtime."
+checkout_dir = "ftools"
+capture_ado_subdir = "src"
+required_capture_files = ["src/ftools.ado", "src/lftools.mlib"]
+resolution_requirement = "An adjudicated 40-character commit must be added and pin_status changed to resolved before any OLS v1 reference capture."
 
 [[reference]]
 name = "ppmlhdfe"

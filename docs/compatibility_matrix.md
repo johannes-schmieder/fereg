@@ -1,5 +1,28 @@
 # Compatibility matrix
 
+## OLS 1.0 scientific surface
+
+This is a target contract, not an implementation claim. `stfeols` still returns
+`r(498)`. The reference-only `ols_v1` manifest covers the rows below, but no
+receipt is valid until the exact `ftools` dependency is pinned and captured.
+
+| Surface | OLS-v1 reference cases | StFixest state |
+|---|---|---|
+| No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Disabled pending one-call parity |
+| FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | Disabled pending FE certificates |
+| Ordinary regressors | continuous, factors, factor interactions, no-regressor, FE-collinear column | Parser metadata only; estimator disabled |
+| Samples/singletons | missing values, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | Native pieces exist; composed parity pending |
+| Weights | unweighted, `aweight`, `fweight`, `pweight`, `iweight` probe, scaling and invalid-domain probes | Every kind disabled pending adjudication |
+| Inference | iid, robust, one/two/three-way cluster, cluster interaction, nesting, default/none/firstpair/continuous DoF | Native pieces exist; posted parity pending |
+| Outputs | `e()` scalars, `e(b)`, `e(V)`, `e(sample)`, residual, `xb`, `xbd`, absorbed sum, named FEs | Postestimation remains fail-closed |
+| Benchmarks | dense and sparse two-FE, absorbed slope, clustered VCE, moderate K | Manifested with one cold + five warm runs; no captured timing/RSS claim |
+
+Deferred 1.0 non-goals remain IV/GMM, group-level outcomes with individual FEs,
+general HAC/Driscoll–Kraay, other GLM families, GPU execution, and historical or
+undocumented compatibility modes. Unsupported requests must error explicitly.
+
+## Platform construction and validation
+
 The entries below distinguish an encoded build target from a target actually
 validated in licensed Stata.
 
