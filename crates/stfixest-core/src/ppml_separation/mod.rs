@@ -15,9 +15,7 @@ mod subset;
 
 use super::PpmlResult;
 
-pub use runner::{
-    detect_separation, fit_ppml_separated, fit_ppml_separated_with_start,
-};
+pub use runner::{detect_separation, fit_ppml_separated, fit_ppml_separated_with_start};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeparationMethod {
@@ -154,11 +152,10 @@ impl DetectionResult {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::subset::subset_fixed_effects;
+    use super::*;
     use crate::data::DenseMatrix;
     use crate::fe::{EffectTerm, FeDesign};
     use crate::ppml::PpmlConfig;
@@ -174,8 +171,7 @@ mod tests {
     fn exact_fe_method_preserves_original_drop_identities() {
         let outcome = [0.0, 0.0, 0.0, 1.0, 2.0, 3.0];
         let regressors = DenseMatrix::zeros(outcome.len(), 0).expect("matrix");
-        let effect = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![])
-            .expect("effect");
+        let effect = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).expect("effect");
         let design = FeDesign::new(outcome.len(), vec![effect]).expect("design");
         let report = detect_separation(
             &outcome,
@@ -240,10 +236,8 @@ mod tests {
     fn iterated_rectifier_finds_combined_two_way_fe_separation() {
         let outcome = [0.0, 1.0, 0.0, 0.0, 1.0];
         let regressors = DenseMatrix::zeros(outcome.len(), 0).expect("matrix");
-        let first = EffectTerm::new(vec![0, 0, 1, 1, 1], 2, true, vec![])
-            .expect("first");
-        let second = EffectTerm::new(vec![0, 0, 0, 1, 1], 2, true, vec![])
-            .expect("second");
+        let first = EffectTerm::new(vec![0, 0, 1, 1, 1], 2, true, vec![]).expect("first");
+        let second = EffectTerm::new(vec![0, 0, 0, 1, 1], 2, true, vec![]).expect("second");
         let design = FeDesign::new(outcome.len(), vec![first, second]).expect("design");
         let report = detect_separation(
             &outcome,

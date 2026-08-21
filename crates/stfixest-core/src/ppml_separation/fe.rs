@@ -34,9 +34,10 @@ pub(crate) fn zero_only_fixed_effect_levels(
         .filter(|&row| {
             active[row]
                 && outcome[row] == 0.0
-                && intercept_effects.iter().enumerate().any(|(index, effect)| {
-                    !positive_by_effect[index][effect.codes()[row] as usize]
-                })
+                && intercept_effects
+                    .iter()
+                    .enumerate()
+                    .any(|(index, effect)| !positive_by_effect[index][effect.codes()[row] as usize])
         })
         .collect()
 }
@@ -48,8 +49,7 @@ mod tests {
 
     #[test]
     fn finds_zero_only_intercept_levels() {
-        let effect = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![])
-            .expect("effect");
+        let effect = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).expect("effect");
         let design = FeDesign::new(6, vec![effect]).expect("design");
         let dropped = zero_only_fixed_effect_levels(
             &[0.0, 0.0, 0.0, 1.0, 2.0, 3.0],
@@ -61,19 +61,12 @@ mod tests {
 
     #[test]
     fn slope_only_terms_do_not_prove_zero_level_separation() {
-        let effect = EffectTerm::new(
-            vec![0, 0, 1, 1],
-            2,
-            false,
-            vec![vec![0.0, 1.0, 0.0, 1.0]],
-        )
-        .expect("effect");
+        let effect = EffectTerm::new(vec![0, 0, 1, 1], 2, false, vec![vec![0.0, 1.0, 0.0, 1.0]])
+            .expect("effect");
         let design = FeDesign::new(4, vec![effect]).expect("design");
-        assert!(zero_only_fixed_effect_levels(
-            &[0.0, 0.0, 1.0, 2.0],
-            Some(&design),
-            &[true; 4],
-        )
-        .is_empty());
+        assert!(
+            zero_only_fixed_effect_levels(&[0.0, 0.0, 1.0, 2.0], Some(&design), &[true; 4],)
+                .is_empty()
+        );
     }
 }

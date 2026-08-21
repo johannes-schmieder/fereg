@@ -99,4 +99,3 @@ pub(super) fn subset_fixed_effects(design: &FeDesign, rows: &[usize]) -> Result<
 pub(super) fn select_rows<T: Copy>(values: &[T], rows: &[usize]) -> Vec<T> {
     rows.iter().map(|row| values[*row]).collect()
 }
-

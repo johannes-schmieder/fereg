@@ -10,7 +10,12 @@ pub struct PoissonBounds {
 
 impl Default for PoissonBounds {
     fn default() -> Self {
-        Self { eta_min: -29.9, eta_max: 29.9, mu_min: 1e-13, mu_max: 1e13 }
+        Self {
+            eta_min: -29.9,
+            eta_max: 29.9,
+            mu_min: 1e-13,
+            mu_max: 1e13,
+        }
     }
 }
 
@@ -189,7 +194,7 @@ mod tests {
 
     #[test]
     fn deviance_is_zero_at_the_mean() {
-        let y = [0.0, 0.5, 2.0, 10.0];
+        let y = [0.0_f64, 0.5, 2.0, 10.0];
         let mean = y.map(|value| value.max(1e-12));
         let objective = poisson_objective(&y, &mean, &[1.0; 4]).expect("objective");
         assert!(objective.deviance < 3e-12);
@@ -197,7 +202,10 @@ mod tests {
 
     #[test]
     fn exposure_requires_strict_positivity() {
-        assert_eq!(offset_from_exposure(&[1.0, 2.0]).expect("offset"), [0.0, 2.0_f64.ln()]);
+        assert_eq!(
+            offset_from_exposure(&[1.0, 2.0]).expect("offset"),
+            [0.0, 2.0_f64.ln()]
+        );
         assert!(offset_from_exposure(&[1.0, 0.0]).is_err());
     }
 

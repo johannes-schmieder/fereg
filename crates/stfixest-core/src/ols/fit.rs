@@ -36,9 +36,7 @@ pub(crate) fn compute_fit_statistics(
     let root_mean_squared_error = (weighted_rss / residual_dof as f64).sqrt();
     let gaussian_log_likelihood = if weighted_rss > 0.0 && observations > 0 {
         -0.5 * observations as f64
-            * ((2.0 * std::f64::consts::PI).ln()
-                + 1.0
-                + (weighted_rss / observations as f64).ln())
+            * ((2.0 * std::f64::consts::PI).ln() + 1.0 + (weighted_rss / observations as f64).ln())
     } else if weighted_rss == 0.0 {
         f64::INFINITY
     } else {

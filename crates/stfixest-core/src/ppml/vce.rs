@@ -47,17 +47,30 @@ pub(crate) fn compute_ppml_vce(input: PpmlVceInput<'_>) -> Result<VceReport> {
             covariance[row * full + column] = identified[identified_row * rank + identified_column];
         }
     }
-    let kept = input.kept.iter().copied().collect::<std::collections::BTreeSet<_>>();
+    let kept = input
+        .kept
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
     let standard_errors = (0..full)
         .map(|column| {
             if !kept.contains(&column) {
                 return f64::NAN;
             }
             let variance = covariance[column * full + column];
-            if variance.is_finite() && variance >= 0.0 { variance.sqrt() } else { f64::NAN }
+            if variance.is_finite() && variance >= 0.0 {
+                variance.sqrt()
+            } else {
+                f64::NAN
+            }
         })
         .collect();
-    Ok(VceReport { kind: input.kind, covariance, standard_errors, cluster_subsets })
+    Ok(VceReport {
+        kind: input.kind,
+        covariance,
+        standard_errors,
+        cluster_subsets,
+    })
 }
 
 fn validate(input: &PpmlVceInput<'_>) -> Result<()> {
@@ -88,7 +101,10 @@ fn validate(input: &PpmlVceInput<'_>) -> Result<()> {
         ));
     }
     if input.score_residuals.iter().any(|value| !value.is_finite())
-        || input.prior_weights.iter().any(|weight| !weight.is_finite() || *weight <= 0.0)
+        || input
+            .prior_weights
+            .iter()
+            .any(|weight| !weight.is_finite() || *weight <= 0.0)
     {
         return Err(StFixestError::new(
             ErrorCode::InvalidData,
@@ -152,7 +168,11 @@ fn clustered_covariance(
         }
         let mut meat = vec![0.0_f64; rank * rank];
         for group in 0..groups {
-            add_outer(&mut meat, &group_scores[group * rank..(group + 1) * rank], 1.0);
+            add_outer(
+                &mut meat,
+                &group_scores[group * rank..(group + 1) * rank],
+                1.0,
+            );
         }
         let sign = if subset.len() % 2 == 1 { 1_i8 } else { -1_i8 };
         let correction = if input.small_sample {
@@ -164,7 +184,11 @@ fn clustered_covariance(
         for (target, value) in combined.iter_mut().zip(meat) {
             *target += f64::from(sign) * correction * value;
         }
-        reports.push(ClusterSubsetReport { dimensions: subset, groups, sign });
+        reports.push(ClusterSubsetReport {
+            dimensions: subset,
+            groups,
+            sign,
+        });
     }
     Ok((sandwich(bread, &combined, rank), reports))
 }
@@ -195,8 +219,8 @@ fn sandwich(bread: &[f64], meat: &[f64], dimension: usize) -> Vec<f64> {
         for column in 0..dimension {
             let mut value = 0.0_f64;
             for inner in 0..dimension {
-                value = bread[row * dimension + inner]
-                    .mul_add(meat[inner * dimension + column], value);
+                value =
+                    bread[row * dimension + inner].mul_add(meat[inner * dimension + column], value);
             }
             intermediate[row * dimension + column] = value;
         }
@@ -231,8 +255,8 @@ mod tests {
 
     #[test]
     fn model_based_covariance_equals_bread() {
-        let x = DenseMatrix::from_columns(&[vec![1.0; 4], vec![0.0, 1.0, 2.0, 3.0]])
-            .expect("matrix");
+        let x =
+            DenseMatrix::from_columns(&[vec![1.0; 4], vec![0.0, 1.0, 2.0, 3.0]]).expect("matrix");
         let bread = vec![0.7, -0.2, -0.2, 0.1];
         let report = compute_ppml_vce(PpmlVceInput {
             regressors: &x,

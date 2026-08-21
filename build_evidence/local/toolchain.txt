@@ -1,0 +1,15 @@
+2026-08-21T12:22:48Z
+Darwin Mac-Studio.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:28:24 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6020 arm64
+rustc 1.85.1 (4eb161250 2025-03-15)
+binary: rustc
+commit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181
+commit-date: 2025-03-15
+host: aarch64-apple-darwin
+release: 1.85.1
+LLVM version: 19.1.7
+cargo 1.85.1 (d73d2caf9 2024-12-31)
+Apple clang version 21.0.0 (clang-2100.1.1.101)
+Target: arm64-apple-darwin25.5.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+Python 3.9.6

@@ -69,10 +69,8 @@ pub(crate) fn score_certificate(
         let mut basis_square = 0.0_f64;
         for row in 0..nrows {
             let value = regressors[(row, column)];
-            moment = (prior_weights[row] * value)
-                .mul_add(outcome[row] - mean[row], moment);
-            basis_square = (prior_weights[row] * mean[row] * value)
-                .mul_add(value, basis_square);
+            moment = (prior_weights[row] * value).mul_add(outcome[row] - mean[row], moment);
+            basis_square = (prior_weights[row] * mean[row] * value).mul_add(value, basis_square);
         }
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative(
@@ -171,8 +169,8 @@ mod tests {
         let x = DenseMatrix::from_columns(&[vec![1.0; 4]]).expect("matrix");
         let y = [1.0, 2.0, 3.0, 4.0];
         let mean = [1.0 + 1e-15, 2.0 - 1e-15, 3.0 + 1e-15, 4.0 - 1e-15];
-        let certificate = score_certificate(&y, &mean, &[1.0; 4], &x, None, 1e-12)
-            .expect("certificate");
+        let certificate =
+            score_certificate(&y, &mean, &[1.0; 4], &x, None, 1e-12).expect("certificate");
         assert!(certificate.passed);
     }
 

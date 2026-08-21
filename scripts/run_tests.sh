@@ -7,7 +7,11 @@ python3 scripts/check_repository.py
 python3 -m unittest discover -s tests/python -v
 scripts/run_portable_static_checks.sh
 tests/mock_spi/run_mock_bridge_test.sh
-tests/mock_spi/run_mock_linux_plugin_audit.sh
+if [[ "$(uname -s)" == "Linux" ]]; then
+  tests/mock_spi/run_mock_linux_plugin_audit.sh
+else
+  printf '%s\n' 'SKIP: Linux mock-plugin audit requires a GNU ELF linker.'
+fi
 
 if command -v cargo >/dev/null 2>&1; then
   cargo fmt --all -- --check

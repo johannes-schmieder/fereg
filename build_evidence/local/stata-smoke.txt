@@ -1,0 +1,4 @@
+2026-08-21T12:55:57Z
+$ /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp -b do build_evidence/local/stata_smoke.do
+result: PASS (phase01_smoke and reload_loop)
+e863e49fb21d264cb11b831505a474953927677ee159c8db73d2985cfbb1b353  stata_smoke.log

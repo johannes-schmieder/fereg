@@ -1,11 +1,11 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{prune_singletons, FeDesign};
+use crate::ppml_separation::fe::zero_only_fixed_effect_levels;
 use crate::ppml_separation::{
     DetectionResult, MethodStatus, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport,
 };
-use crate::ppml_separation::fe::zero_only_fixed_effect_levels;
 
 pub(super) fn validate_detection_inputs(
     outcome: &[f64],
@@ -21,7 +21,9 @@ pub(super) fn validate_detection_inputs(
             "separation inputs have inconsistent observation counts",
         ));
     }
-    if outcome.iter().any(|value| !value.is_finite() || *value < 0.0)
+    if outcome
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
         || regressors.as_slice().iter().any(|value| !value.is_finite())
     {
         return Err(StFixestError::new(
@@ -70,7 +72,10 @@ pub(super) fn apply_exact_fe_fixed_point(
             break;
         }
         iterations = iterations.checked_add(1).ok_or_else(|| {
-            StFixestError::new(ErrorCode::Internal, "FE separation iteration count overflowed")
+            StFixestError::new(
+                ErrorCode::Internal,
+                "FE separation iteration count overflowed",
+            )
         })?;
         let report = apply_detection(
             SeparationMethod::FixedEffects,
@@ -107,8 +112,9 @@ pub(super) fn apply_exact_fe_fixed_point(
         dropped_observations: direct_drops,
         singleton_drops,
         certificate: None,
-        note: "exact zero-only intercept FE levels iterated with singleton cascades to a fixed point"
-            .to_owned(),
+        note:
+            "exact zero-only intercept FE levels iterated with singleton cascades to a fixed point"
+                .to_owned(),
     })
 }
 

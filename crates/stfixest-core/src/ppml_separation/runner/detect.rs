@@ -3,19 +3,18 @@ use super::accounting::{
     has_active_boundary, map_detection_to_original, validate_detection_inputs,
 };
 use crate::data::DenseMatrix;
-use crate::error::{Result, StFixestError};
+use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::FeDesign;
 use crate::ppml::{PpmlConfig, PpmlStart};
-use crate::ppml_separation::{
-    DetectionResult, MethodStatus, SeparationConfig, SeparationDropReason, SeparationMethod,
-    SeparationMethodReport, SeparationReport,
-};
-use crate::ppml_separation::fe::zero_only_fixed_effect_levels;
-use crate::ppml_separation::ir::iterated_rectifier;
+use crate::ppml_separation::ir::{iterated_rectifier, IteratedRectifierConfig};
 use crate::ppml_separation::mu::detect_mu;
 use crate::ppml_separation::projection::ProjectionConfig;
 use crate::ppml_separation::simplex::finite_simplex;
 use crate::ppml_separation::subset::subset_problem;
+use crate::ppml_separation::{
+    MethodStatus, SeparationConfig, SeparationDropReason, SeparationMethod, SeparationMethodReport,
+    SeparationReport,
+};
 
 pub fn detect_separation(
     outcome: &[f64],
@@ -103,11 +102,13 @@ pub fn detect_separation(
             &subset.outcome,
             &subset.regressors,
             subset.fixed_effects.as_ref(),
-            projection,
-            config.tolerance,
-            config.certificate_tolerance,
-            config.max_ir_iterations,
-            config.strict,
+            IteratedRectifierConfig {
+                projection,
+                tolerance: config.tolerance,
+                certificate_tolerance: config.certificate_tolerance,
+                max_iterations: config.max_ir_iterations,
+                strict: config.strict,
+            },
         )?;
         let detected = map_detection_to_original(detected, &subset.original_rows)?;
         reports.push(apply_detection(
@@ -131,13 +132,7 @@ pub fn detect_separation(
 
     if config.methods.mu && has_active_boundary(outcome, &active) {
         let subset = subset_problem(outcome, regressors, fixed_effects, &active)?;
-        let detected = detect_mu(
-            &subset,
-            ppml,
-            config,
-            start,
-            &active,
-        )?;
+        let detected = detect_mu(&subset, ppml, config, start, &active)?;
         let detected = map_detection_to_original(detected, &subset.original_rows)?;
         reports.push(apply_detection(
             SeparationMethod::Mu,
@@ -182,4 +177,3 @@ pub fn detect_separation(
         methods: reports,
     })
 }
-

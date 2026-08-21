@@ -3,8 +3,8 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::FeDesign;
 use crate::ppml::{fit_ppml_with_start, PpmlConfig, PpmlStart};
-use crate::ppml_separation::{SeparatedPpmlResult, SeparationConfig};
 use crate::ppml_separation::subset::{select_rows, subset_problem};
+use crate::ppml_separation::{SeparatedPpmlResult, SeparationConfig};
 
 #[allow(clippy::too_many_arguments)]
 pub fn fit_ppml_separated(
@@ -44,7 +44,9 @@ pub fn fit_ppml_separated_with_start(
 ) -> Result<SeparatedPpmlResult> {
     if prior_weights.len() != outcome.len()
         || offset.len() != outcome.len()
-        || clusters.iter().any(|cluster| cluster.len() != outcome.len())
+        || clusters
+            .iter()
+            .any(|cluster| cluster.len() != outcome.len())
     {
         return Err(StFixestError::new(
             ErrorCode::InvalidArgument,
