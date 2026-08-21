@@ -6,3 +6,4 @@ forvalues repetition = 1/100 {
     quietly stfixest, selftest threads(2)
 }
 di as result "reload_loop.do: PASS"
+di as result "END_FIXTURE|reload_loop|rc=0"

@@ -1,14 +1,17 @@
 use crate::options::ThreadConfig;
 use crate::protocol::{
-    ADO_VERSION, MINIMUM_STATA_MAJOR, PLUGIN_VERSION, PROTOCOL_VERSION, SPI_MAJOR, SPI_MINOR,
+    ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION, PLUGIN_VERSION,
+    SPI_MAJOR, SPI_MINOR,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildInfo {
     pub ado_version: &'static str,
     pub plugin_version: &'static str,
-    pub protocol_major: u16,
-    pub protocol_minor: u16,
+    pub action_protocol_major: u16,
+    pub action_protocol_minor: u16,
+    pub model_wire_major: u16,
+    pub model_wire_minor: u16,
     pub git_commit: &'static str,
     pub build_date: &'static str,
     pub operating_system: &'static str,
@@ -25,8 +28,10 @@ impl BuildInfo {
         Self {
             ado_version: ADO_VERSION,
             plugin_version: PLUGIN_VERSION,
-            protocol_major: PROTOCOL_VERSION.major,
-            protocol_minor: PROTOCOL_VERSION.minor,
+            action_protocol_major: ACTION_PROTOCOL_VERSION.major,
+            action_protocol_minor: ACTION_PROTOCOL_VERSION.minor,
+            model_wire_major: MODEL_WIRE_VERSION.major,
+            model_wire_minor: MODEL_WIRE_VERSION.minor,
             git_commit: env!("STFIXEST_GIT_COMMIT"),
             build_date: env!("STFIXEST_BUILD_DATE"),
             operating_system: std::env::consts::OS,
@@ -64,8 +69,12 @@ impl DoctorReport {
             format!("stfixest.ado_version={}", build.ado_version),
             format!("stfixest.plugin_version={}", build.plugin_version),
             format!(
-                "stfixest.model_protocol={}.{}",
-                build.protocol_major, build.protocol_minor
+                "stfixest.action_protocol={}.{}",
+                build.action_protocol_major, build.action_protocol_minor
+            ),
+            format!(
+                "stfixest.model_wire={}.{}",
+                build.model_wire_major, build.model_wire_minor
             ),
             format!("stfixest.git_commit={}", build.git_commit),
             format!("stfixest.build_date={}", build.build_date),
@@ -151,7 +160,9 @@ mod tests {
             },
         }
         .render();
-        assert!(report.contains("stfixest.model_protocol=1.0"));
+        assert!(report.contains("stfixest.action_protocol=1.0"));
+        assert!(report.contains("stfixest.model_wire=2.0"));
+        assert!(!report.contains("stfixest.model_protocol="));
         assert!(report.contains("stfixest.native_selftest=pass"));
     }
 }

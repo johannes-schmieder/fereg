@@ -1,6 +1,6 @@
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, factorize_i64, factorize_strings, interaction_codes};
-use crate::metadata::{ModelSpec, ModelTerm, OperatorType, VariableRole, VariableSpec};
+use crate::metadata::{CompiledTermGraph, ModelWireV2};
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
 use crate::protocol::Handshake;
@@ -96,7 +96,17 @@ pub fn run_native_selftest(threads: usize) -> SelfTestReport {
                 "interaction tuple count is incorrect",
             )
         }),
-        run_case("metadata", || minimal_model_spec().validate()),
+        run_case("metadata", || {
+            let graph = CompiledTermGraph {
+                sources: Vec::new(),
+                terms: Vec::new(),
+            };
+            let decoded = ModelWireV2::from_graph(&graph)?.decode()?;
+            require(
+                decoded == graph,
+                "model-wire v2 empty round trip changed graph",
+            )
+        }),
         run_case("threads", || {
             let config = ThreadConfig::from_requested(threads.max(1), true)?;
             let team = ThreadTeam::new(config);
@@ -132,45 +142,6 @@ fn require(condition: bool, message: &str) -> Result<()> {
         Ok(())
     } else {
         Err(StFixestError::new(ErrorCode::SelfTestFailed, message))
-    }
-}
-
-fn minimal_model_spec() -> ModelSpec {
-    ModelSpec {
-        protocol_major: crate::protocol::PROTOCOL_VERSION.major,
-        protocol_minor: crate::protocol::PROTOCOL_VERSION.minor,
-        candidate_sample_position: 1,
-        variables: vec![
-            VariableSpec {
-                position: 1,
-                role: VariableRole::CandidateSample,
-                source_name: "touse".to_owned(),
-            },
-            VariableSpec {
-                position: 2,
-                role: VariableRole::Dependent,
-                source_name: "y".to_owned(),
-            },
-            VariableSpec {
-                position: 3,
-                role: VariableRole::ContinuousSource,
-                source_name: "x".to_owned(),
-            },
-        ],
-        model_terms: vec![ModelTerm {
-            term_id: 1,
-            term_order: 1,
-            operator: OperatorType::Continuous,
-            source_positions: vec![3],
-            level_values: Vec::new(),
-            base: false,
-            omitted: false,
-            coefficient_column: 1,
-            canonical_name: "x".to_owned(),
-            pre_materialized_time_series: false,
-        }],
-        absorb_terms: Vec::new(),
-        cluster_terms: Vec::new(),
     }
 }
 

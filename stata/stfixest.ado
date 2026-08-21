@@ -37,7 +37,8 @@ program define stfixest, rclass
     }
 
     return local ado_version "0.1.0-phase01"
-    return local model_protocol "1.0"
+    return local action_protocol "1.0"
+    return local model_wire "2.0"
     return local plugin_name "`plugin_name'"
     return local plugin_file `"`plugin_file'"'
     return scalar requested_threads = `threads'

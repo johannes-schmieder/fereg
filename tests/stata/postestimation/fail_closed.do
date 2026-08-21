@@ -6,3 +6,4 @@ assert _rc == 498
 capture noisily stfixest_estat
 assert _rc == 498
 di as result "postestimation/fail_closed.do: PASS"
+di as result "END_FIXTURE|fail_closed|rc=0"

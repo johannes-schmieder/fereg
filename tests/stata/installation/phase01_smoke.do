@@ -23,3 +23,4 @@ assert _N == `before_n'
 assert c(k) == `before_k'
 
 di as result "phase01_smoke.do: PASS"
+di as result "END_FIXTURE|phase01_smoke|rc=0"

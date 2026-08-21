@@ -34,7 +34,9 @@ pub use fe::{
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
-    AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole, VariableSpec,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    MetadataFlag, ModelWireV2, NumericWireTable, RawTermKind, SourceEntry, SourceId, TermComponent,
+    TermId, TermOrder, TimeSeriesState, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 pub use ols::{
     compute_dof, fit_ols, solve_rank_revealing, ClusterSubsetReport, DofConfig, DofMethod,
@@ -53,5 +55,8 @@ pub use ppml_separation::{
     SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
     SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
 };
-pub use protocol::{Handshake, ProtocolVersion, ADO_VERSION, PLUGIN_VERSION, PROTOCOL_VERSION};
+pub use protocol::{
+    Handshake, ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
+    PLUGIN_VERSION,
+};
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};

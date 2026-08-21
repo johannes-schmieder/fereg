@@ -18,7 +18,7 @@
 
 {pstd}
 This Phase 0-1 package validates the Stata 18+ loader, Stata Plugin Interface
-3.0 bridge, versioned model protocol, panic boundary, preprocessing primitives,
+3.0 bridge, action handshake 1.0, model wire 2.0, panic boundary, preprocessing primitives,
 and native thread machinery. It does not contain an estimator.
 
 {pstd}
@@ -27,9 +27,10 @@ native thread team; Stata SPI calls remain on Stata's calling thread.
 
 {title:Stored results}
 
-{pstd}{cmd:stfixest} stores in {cmd:r()} the ado version, protocol version,
-resolved plugin name/path, and requested thread count. Native diagnostics are
-printed as machine-readable {cmd:stfixest.*=...} lines.
+{pstd}{cmd:stfixest} stores in {cmd:r()} the ado version,
+{cmd:r(action_protocol)}, {cmd:r(model_wire)}, resolved plugin name/path, and
+requested thread count. Native diagnostics are printed as unambiguously
+labeled machine-readable {cmd:stfixest.*=...} lines.
 
 {title:Requirements}
 
