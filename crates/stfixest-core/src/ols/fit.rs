@@ -20,9 +20,9 @@ pub(crate) fn compute_fit_statistics(
     residual_dof: usize,
 ) -> FitStatistics {
     let weighted_rss = weighted_sum_of_squares(residuals, weights, 0.0);
-    let weighted_mean = weighted_mean(outcome, weights);
+    let outcome_mean = weighted_mean(outcome, weights);
     let within_mean = weighted_mean(within_outcome, weights);
-    let weighted_tss = weighted_sum_of_squares(outcome, weights, weighted_mean);
+    let weighted_tss = weighted_sum_of_squares(outcome, weights, outcome_mean);
     let weighted_within_tss = weighted_sum_of_squares(within_outcome, weights, within_mean);
     let r_squared = ratio_r_squared(weighted_rss, weighted_tss);
     let within_r_squared = ratio_r_squared(weighted_rss, weighted_within_tss);
@@ -36,7 +36,9 @@ pub(crate) fn compute_fit_statistics(
     let root_mean_squared_error = (weighted_rss / residual_dof as f64).sqrt();
     let gaussian_log_likelihood = if weighted_rss > 0.0 && observations > 0 {
         -0.5 * observations as f64
-            * ((2.0 * std::f64::consts::PI).ln() + 1.0 + (weighted_rss / observations as f64).ln())
+            * ((2.0 * std::f64::consts::PI).ln()
+                + 1.0
+                + (weighted_rss / observations as f64).ln())
     } else if weighted_rss == 0.0 {
         f64::INFINITY
     } else {
