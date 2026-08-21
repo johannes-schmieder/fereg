@@ -18,8 +18,9 @@ pub mod protocol;
 pub mod selftest;
 
 pub use data::{
-    prepare_numeric_data, ColumnRecipe, DenseMatrix, DropReason, ModelMatrixBuilder,
-    NumericPreparationInput, PreparedData, WeightKind,
+    prepare_numeric_sample, AdjustmentInput, ColumnRecipe, DenseMatrix, DomainDecision, DropReason,
+    ModelMatrixBuilder, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
+    PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
 pub use diagnostics::{BuildInfo, DoctorInput, DoctorReport};
 pub use error::{ErrorCode, Result, StFixestError};

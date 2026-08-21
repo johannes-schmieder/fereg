@@ -5,5 +5,9 @@ mod sample;
 mod weights;
 
 pub use model_matrix::{ColumnRecipe, DenseMatrix, ModelMatrixBuilder};
-pub use sample::{prepare_numeric_data, DropReason, NumericPreparationInput, PreparedData};
-pub use weights::{validate_weight, WeightKind};
+pub use sample::{
+    prepare_numeric_sample, AdjustmentInput, DomainDecision, DropReason, NumericColumnView,
+    NumericDomainPolicy, NumericPreparationInput, PreparedAdjustment, PreparedNumericSample,
+    PreparedWeights, WeightInput,
+};
+pub use weights::WeightKind;
