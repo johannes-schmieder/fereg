@@ -10,9 +10,12 @@ They are not relicensed by StFixest.
 ## Frozen behavioral references
 
 The repositories listed in `references.lock.toml` are pinned scientific and
-behavioral references. No source from PyFixest, within, reghdfe, or ppmlhdfe is
-copied into this Phase 0–1 package. Later adaptations must retain the applicable
-MIT notices and document the exact source-to-module mapping.
+behavioral references. PyFixest, reghdfe, and ppmlhdfe remain behavioral references only. The Rust
+`within` crate and its transitive Rust dependencies are compiled statically from
+the immutable revision recorded in `references.lock.toml`; `within` is MIT
+licensed and its repository license is preserved by Cargo metadata and release
+source distributions. No upstream source is copied into the StFixest tree. The
+exact adapter mapping is documented in `docs/upstream_map.md`.
 
 ## Rust standard library
 

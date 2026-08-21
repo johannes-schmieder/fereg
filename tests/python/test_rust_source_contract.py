@@ -11,13 +11,27 @@ PLUGIN = ROOT / "crates/stfixest-plugin/src"
 
 
 class RustSourceContractTests(unittest.TestCase):
-    def test_workspace_contains_no_external_runtime_crates(self):
+    def test_external_rust_dependencies_are_immutable_and_statically_linked(self):
         for manifest in (ROOT / "crates").glob("*/Cargo.toml"):
             with manifest.open("rb") as handle:
                 parsed = tomllib.load(handle)
             for dependency, value in parsed.get("dependencies", {}).items():
                 self.assertIsInstance(value, dict, f"{manifest}: {dependency}")
-                self.assertIn("path", value, f"external dependency in {manifest}: {dependency}")
+                if "path" in value:
+                    continue
+                if "git" in value:
+                    revision = value.get("rev", "")
+                    self.assertRegex(
+                        revision,
+                        r"^[0-9a-f]{40}$",
+                        f"floating git dependency in {manifest}: {dependency}",
+                    )
+                    continue
+                version = value.get("version", "")
+                self.assertTrue(
+                    version.startswith("="),
+                    f"non-exact registry dependency in {manifest}: {dependency}",
+                )
 
     def test_safe_core_forbids_unsafe_and_contains_no_unsafe_blocks(self):
         lib = (CORE / "lib.rs").read_text(encoding="utf-8")

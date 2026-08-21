@@ -24,8 +24,10 @@ pub use factorize::{
     factorize_f64, factorize_i64, factorize_strings, interaction_codes, EncodedFactor,
 };
 pub use fe::{
-    absorb_map, certify_residuals, connected_components, prune_singletons, ComponentInfo,
-    EffectTerm, FeCertificate, FeDesign, MapConfig, SingletonResult, SolveReport, SolveStopReason,
+    absorb_fixed_effects, absorb_lsmr, absorb_map, certify_residuals, connected_components,
+    prune_singletons, AbsorbConfig, ComponentInfo, EffectTerm, FeCertificate, FeDesign,
+    FeSolverKind, LsmrConfig, LsmrPreconditioner, MapConfig, SingletonResult, SolveReport,
+    SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{

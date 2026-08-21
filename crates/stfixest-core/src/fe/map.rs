@@ -1,7 +1,11 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::ProjectionWorkspace;
-use crate::fe::{certify_residuals, project_effect_in_place, FeCertificate, FeDesign};
+use crate::fe::{
+    certify_residuals, project_effect_in_place, FeDesign, FeSolverKind, SolveReport,
+    SolveStopReason,
+};
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MapConfig {
@@ -22,20 +26,6 @@ impl Default for MapConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SolveStopReason {
-    NoFixedEffects,
-    Certified,
-    MaximumIterations,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct SolveReport {
-    pub iterations: usize,
-    pub stop_reason: SolveStopReason,
-    pub certificate: FeCertificate,
-}
-
 /// Residualize one or more right-hand sides with weighted symmetric MAP.
 pub fn absorb_map(
     design: &FeDesign,
@@ -44,6 +34,7 @@ pub fn absorb_map(
     config: MapConfig,
 ) -> Result<SolveReport> {
     validate_config(config)?;
+    let started = Instant::now();
     if design.nobs() != values.nrows() || weights.len() != values.nrows() {
         return Err(StFixestError::new(
             ErrorCode::InvalidArgument,
@@ -53,9 +44,16 @@ pub fn absorb_map(
     if design.effects().is_empty() {
         let certificate = certify_residuals(design, weights, values, config.tolerance)?;
         return Ok(SolveReport {
+            requested_solver: FeSolverKind::Map,
+            used_solver: FeSolverKind::Map,
             iterations: 0,
             stop_reason: SolveStopReason::NoFixedEffects,
             certificate,
+            normal_equation_residual: 0.0,
+            setup_seconds: 0.0,
+            solve_seconds: started.elapsed().as_secs_f64(),
+            fallback_used: false,
+            warnings: Vec::new(),
         });
     }
     let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
@@ -74,18 +72,32 @@ pub fn absorb_map(
             final_certificate = certify_residuals(design, weights, values, config.tolerance)?;
             if final_certificate.passed {
                 return Ok(SolveReport {
+                    requested_solver: FeSolverKind::Map,
+                    used_solver: FeSolverKind::Map,
                     iterations: iteration,
                     stop_reason: SolveStopReason::Certified,
+                    normal_equation_residual: final_certificate.relative_two_norm,
                     certificate: final_certificate,
+                    setup_seconds: 0.0,
+                    solve_seconds: started.elapsed().as_secs_f64(),
+                    fallback_used: false,
+                    warnings: Vec::new(),
                 });
             }
         }
     }
 
     Ok(SolveReport {
+        requested_solver: FeSolverKind::Map,
+        used_solver: FeSolverKind::Map,
         iterations: config.max_iterations,
         stop_reason: SolveStopReason::MaximumIterations,
+        normal_equation_residual: final_certificate.relative_two_norm,
         certificate: final_certificate,
+        setup_seconds: 0.0,
+        solve_seconds: started.elapsed().as_secs_f64(),
+        fallback_used: false,
+        warnings: Vec::new(),
     })
 }
 

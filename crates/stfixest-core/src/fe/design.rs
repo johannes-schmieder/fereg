@@ -178,4 +178,13 @@ impl FeDesign {
             .max()
             .unwrap_or(0)
     }
+
+    /// Total coefficient slots before identification normalization.
+    #[must_use]
+    pub fn total_coefficients(&self) -> usize {
+        self.effects
+            .iter()
+            .map(|effect| effect.n_levels().saturating_mul(effect.channels()))
+            .sum()
+    }
 }

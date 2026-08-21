@@ -6,7 +6,8 @@ This branch is developed in small, auditable checkpoints.
 
 - Phase 0-1 architecture, metadata parser, protocol, mock SPI, diagnostics, and cross-platform build machinery.
 - Native authoritative sample preparation, weight validation, compact factor sources, interactions, and blockwise model-matrix generation.
-- Queue-based singleton pruning, connected components, weighted intercept/slope projection, symmetric MAP absorption, and explicit FE orthogonality certificates.
+- Queue-based singleton pruning, connected components, weighted intercept/slope projection, symmetric MAP absorption, and scale-stable FE orthogonality certificates.
+- Pinned `within` modified-LSMR/Schwarz adapter, per-estimate Rayon pools, deterministic automatic MAP/LSMR routing, and certified fallback.
 
 ## Current validation boundary
 
