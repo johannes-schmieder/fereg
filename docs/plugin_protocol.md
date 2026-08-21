@@ -61,15 +61,23 @@ Return `r(498)` in this phase.
 It requires `confirm=developer-preparation-test`, the standard action
 handshake, model-wire v2 matrices and length-delimited registries, an explicit
 numeric binding matrix, and three pre-created diagnostic output variables. The
-binding roles are candidate (`1`), outcome (`2`), continuous source (`3`),
+binding roles are candidate (`1`), outcome (`2`), numeric model source (`3`),
 optional analytic weight (`4`), optional frequency weight (`5`), and optional
 probability weight (`6`). Importance-weight role `7` is deliberately undefined
 and rejected before observation reads. At most one weight binding is permitted.
 Inputs and outputs must cover the plugin varlist exactly.
 
-The action is restricted to continuous, unweighted, analytic-weighted,
-frequency-weighted, or probability-weighted no-fixed-effect models and never
-posts `e()` results.
+Role `3` describes numeric storage rather than continuous term semantics. One
+source can therefore serve both `c.g` and `i.g` without a duplicate binding or
+SPI read. The action is restricted to plain continuous terms and numeric factor
+main effects with optional analytic, frequency, or probability weights. Factor
+interactions, time-series terms, string sources, fixed effects, and clusters
+remain unsupported, and the action never posts `e()` results. Stata's model
+wire owns expanded levels, bases, omission, and coefficient slots. Rust retains
+omitted-base slots without generating numerical columns and factorizes each
+active categorical source deterministically. A level that existed in the
+candidate expansion but disappears after native sample preparation becomes an
+explicit all-zero recipe, not an error.
 Weights must be passed as one numeric source binding. Frequency weights must
 be finite, strictly positive integral values representable as `u32`; an
 explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or

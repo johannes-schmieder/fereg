@@ -45,6 +45,16 @@ static const ST_double term_matrix[1][8] = {{1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 
 static const ST_double component_matrix[1][13] = {
     {1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0}
 };
+static const ST_double factor_term_matrix[3][8] = {
+    {1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 0.0, 0.0},
+    {2.0, 2.0, 2.0, 2.0, 1.0, 0.0, 0.0, 0.0},
+    {3.0, 3.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0}
+};
+static const ST_double factor_component_matrix[3][13] = {
+    {1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0},
+    {2.0, 1.0, 1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 1.0, 2.0, 2.0, 0.0, 0.0},
+    {3.0, 1.0, 1.0, 2.0, 2.0, 3.0, 0.0, 0.0, 1.0, 3.0, 3.0, 0.0, 0.0}
+};
 static const ST_double binding_matrix[3][3] = {
     {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}
 };
@@ -65,6 +75,7 @@ static ST_int mock_rowsof(char *name)
     if (strcmp(name, "BW") == 0) return 4;
     if (strcmp(name, "BF") == 0) return 4;
     if (strcmp(name, "BP") == 0) return 4;
+    if (strcmp(name, "TF") == 0 || strcmp(name, "CF") == 0) return 3;
     return -1;
 }
 static ST_int mock_colsof(char *name)
@@ -76,6 +87,8 @@ static ST_int mock_colsof(char *name)
     if (strcmp(name, "BW") == 0) return 3;
     if (strcmp(name, "BF") == 0) return 3;
     if (strcmp(name, "BP") == 0) return 3;
+    if (strcmp(name, "TF") == 0) return 8;
+    if (strcmp(name, "CF") == 0) return 13;
     return -1;
 }
 static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *value)
@@ -91,6 +104,14 @@ static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *valu
     }
     if (strcmp(name, "C") == 0 && row == 1 && column <= 13) {
         *value = component_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "TF") == 0 && row <= 3 && column <= 8) {
+        *value = factor_term_matrix[row - 1][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "CF") == 0 && row <= 3 && column <= 13) {
+        *value = factor_component_matrix[row - 1][column - 1];
         return 0;
     }
     if (strcmp(name, "B") == 0 && row <= 3 && column <= 3) {
@@ -286,6 +307,70 @@ static int check_prepare_ols_test(stata_call_function call)
         plugin_data[5][2] != 3.0 || plugin_data[5][3] != 1.0 ||
         plugin_data[5][4] != 0.0) {
         return 5;
+    }
+    return 0;
+}
+
+static int check_prepare_ols_factor(stata_call_function call)
+{
+    char *arguments[] = {
+        "prepare-ols-test",
+        "ado=0.1.0-phase01",
+        "protocol_major=1",
+        "protocol_minor=0",
+        "stata=18.0",
+        "confirm=developer-preparation-test",
+        "model_major=2",
+        "model_minor=0",
+        "source_matrix=S",
+        "source_count=1",
+        "term_matrix=TF",
+        "term_count=3",
+        "component_matrix=CF",
+        "component_count=3",
+        "source_names=1:g",
+        "canonical_tokens=4:1b.g|3:2.g|3:3.g",
+        "raw_component_operators=2:1b|1:2|1:3",
+        "raw_time_series_operators=0:|0:|0:",
+        "binding_matrix=B",
+        "binding_count=3",
+        "include_intercept=1",
+        "output_original_observation=4",
+        "output_retained=5",
+        "output_drop_reason=6"
+    };
+    ST_int row;
+    plugin_nvars = 6;
+    for (row = 0; row < 5; ++row) {
+        plugin_data[3][row] = NAN;
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+    }
+    plugin_data[0][0] = 0.0;
+    plugin_data[0][1] = 1.0;
+    plugin_data[0][2] = 1.0;
+    plugin_data[0][3] = 0.0;
+    plugin_data[0][4] = 1.0;
+    plugin_data[1][1] = 2.0;
+    plugin_data[1][2] = 3.0;
+    plugin_data[1][4] = 5.0;
+    plugin_data[2][0] = -1.5;
+    plugin_data[2][1] = 1.0;
+    plugin_data[2][2] = NAN;
+    plugin_data[2][4] = 3.0;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
+    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_columns=3") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_coefficient_slots=4") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_categorical_sources=1") == NULL ||
+        error_buffer[0] != '\0') {
+        return 2;
+    }
+    if (plugin_data[5][0] != 1.0 || plugin_data[5][1] != 0.0 ||
+        plugin_data[5][2] != 3.0 || plugin_data[5][3] != 1.0 ||
+        plugin_data[5][4] != 0.0) {
+        return 3;
     }
     return 0;
 }
@@ -626,6 +711,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "prepare OLS aweight path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 70 + result;
+    }
+    result = check_prepare_ols_factor(call);
+    if (result != 0) {
+        fprintf(stderr, "prepare OLS factor path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 75 + result;
     }
     result = check_prepare_ols_fweight(call);
     if (result != 0) {

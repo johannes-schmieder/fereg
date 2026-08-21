@@ -42,9 +42,9 @@ pub use metadata::{
 pub use ols::{
     compute_dof, fit_ols, prepare_ols_data, solve_rank_revealing, ClusterSubsetReport, DofConfig,
     DofMethod, DofReport, FiniteSolver, FitStatistics, LoadedNumericColumn, LoadedOlsInput,
-    OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedOlsColumn,
-    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel, RankSolve, RegressorStatus, VceKind,
-    VceReport,
+    OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalSource,
+    PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
+    PreparedOlsData, PreparedOlsModel, RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

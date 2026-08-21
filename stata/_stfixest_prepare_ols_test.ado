@@ -1,4 +1,4 @@
-*! StFixest developer-only OLS preparation boundary 0.1.0 21aug2026
+*! StFixest developer-only numeric-main-effect OLS preparation boundary 0.1.0 21aug2026
 program define _stfixest_prepare_ols_test, rclass sortpreserve
     version 18.0
     syntax varlist(fv numeric min=1) [if] [in], ///

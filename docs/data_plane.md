@@ -4,9 +4,9 @@
 sample boundary. It accepts borrowed source views, an `if`/`in` candidate
 marker, and an explicit estimator/reference domain policy. It returns compact
 numeric columns and an original-length reason mask. It is not yet the complete
-Phase 2 data plane: model-wire binding, factorization, interactions, fixed
-effects, clusters, singleton deletion, separation, and SPI loading remain
-outside this slice.
+Phase 2 data plane: string factorization, interactions, fixed effects, clusters,
+singleton deletion, separation, and estimator SPI dispatch remain outside this
+slice.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -14,17 +14,19 @@ or PPML available.
 ## Developer OLS preparation boundary
 
 The internal `_stfixest_prepare_ols_test` command exercises a deliberately
-bounded one-call boundary: continuous regressors, at most one analytic- or
-frequency- or probability-weight variable, no fixed effects, and no time-series
-materialization. It is guarded
+bounded one-call boundary: plain continuous and numeric factor-main-effect
+regressors, at most one analytic-, frequency-, or probability-weight variable,
+no fixed effects, and no time-series materialization. It is guarded
 by an explicit developer confirmation token and does not post estimation
 results. `stfeols` and `stfepois` still return `r(498)`.
 
 The plugin decodes and validates model-wire v2, input bindings, matrix
 dimensions, numeric variable types, and diagnostic destinations before reading
 any observation. It reads the exact nonmissing `0`/`1` candidate marker for all
-observations, then reads outcomes, continuous sources, and any weight only for
-candidate rows. Raw numeric bits and a separate Stata-missing mask cross the
+observations, then reads outcomes, numeric model sources, and any weight only
+for candidate rows. Binding role 3 is generic numeric storage: the same source
+may be used by both `c.g` and `i.g` and is still read once. Raw numeric bits and
+a separate Stata-missing mask cross the
 boundary. Positive finite analytic weights are retained without normalization,
 zero and missing analytic weights receive drop reason 4, and a negative
 candidate-row analytic weight fails the action. Frequency weights must be
@@ -40,6 +42,18 @@ are rejected before observation reads. This boundary continues to count
 retained physical rows only; weight sums, frequency-weight effective
 observation counts, robust probability-weight VCE, and other inference are
 later estimation contracts.
+
+For numeric factor main effects, Stata remains authoritative for expanded
+levels, base selection, canonical coefficient names, and whole-column omission.
+Rust does not rediscover or change the base. Available candidate factor values
+must be nonnegative integers; masked or nonfinite values follow the ordinary
+missing-regressor precedence. Rust compacts the numeric sample once and deterministically
+factorizes active values. Signed zero is canonicalized only in factor codes;
+the retained raw numeric source remains bit-exact. Every Stata coefficient slot,
+including an omitted base, remains represented. A level removed by later
+outcome, source, or weight exclusions is retained as an all-zero recipe for
+later rank handling. Interactions, string factors, FE and cluster encoding, and
+model solving remain outside this checkpoint.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -107,6 +121,7 @@ zero-sized paths. No partially built sample escapes an error.
 
 ## Model construction remains separate
 
-The existing column-recipe primitive is not wired to the model protocol or to
-this numeric sample. Native factor-variable compilation, FE/cluster source
-loading, and one-call SPI integration require later independently tested work.
+The developer boundary now binds numeric factor main-effect recipes to compact
+codes, but it does not invoke the estimator or the generic model-matrix builder.
+Factor interactions, FE/cluster source loading, and production one-call result
+posting require later independently tested work.

@@ -40,7 +40,7 @@ struct PrepareAction {
     diagnostics: DiagnosticBindings,
 }
 
-/// Execute the developer-only continuous/optional-weight/no-FE preparation action.
+/// Execute the developer-only numeric-main-effect/optional-weight/no-FE preparation action.
 pub fn prepare_ols_test(
     args: &[String],
     output: &dyn OutputSink,
@@ -56,12 +56,16 @@ pub fn prepare_ols_test(
             "stfixest.prepare_ols.n_original={}\n",
             "stfixest.prepare_ols.n_candidate={}\n",
             "stfixest.prepare_ols.n_retained={}\n",
-            "stfixest.prepare_ols.n_columns={}\n"
+            "stfixest.prepare_ols.n_columns={}\n",
+            "stfixest.prepare_ols.n_coefficient_slots={}\n",
+            "stfixest.prepare_ols.n_categorical_sources={}\n"
         ),
         prepared.sample.n_original,
         prepared.sample.n_candidate,
         prepared.sample.n_active(),
         prepared.model.columns.len(),
+        prepared.model.coefficients.len(),
+        prepared.categorical_sources.len(),
     ));
     Ok(())
 }
@@ -232,12 +236,12 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
     }
 
     let mut outcome = empty_loaded_column(n, "outcome")?;
-    let mut continuous_sources = Vec::new();
-    continuous_sources
+    let mut numeric_sources = Vec::new();
+    numeric_sources
         .try_reserve_exact(action.request.model.sources.len())
-        .map_err(|_| allocation("unable to reserve continuous source table"))?;
+        .map_err(|_| allocation("unable to reserve numeric source table"))?;
     for source in &action.request.model.sources {
-        continuous_sources.push((source.id, empty_loaded_column(n, "continuous source")?));
+        numeric_sources.push((source.id, empty_loaded_column(n, "numeric source")?));
     }
 
     let outcome_position = role_position(&action.request, OlsInputRoleTag::Outcome)?;
@@ -276,7 +280,7 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
         let (value, missing) = spi.read_numeric(outcome_position, observation)?;
         outcome.values[zero_based] = value;
         outcome.missing[zero_based] = missing;
-        for ((_, destination), position) in continuous_sources.iter_mut().zip(&source_positions) {
+        for ((_, destination), position) in numeric_sources.iter_mut().zip(&source_positions) {
             let (value, missing) = spi.read_numeric(*position, observation)?;
             destination.values[zero_based] = value;
             destination.missing[zero_based] = missing;
@@ -309,7 +313,7 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
         &LoadedOlsInput {
             candidate,
             outcome,
-            continuous_sources,
+            numeric_sources,
             analytic_weight,
             frequency_weight,
             probability_weight,
@@ -462,7 +466,7 @@ fn read_bindings(spi: &mut dyn SpiApi, name: &str, count: usize) -> Result<Vec<O
         let role = match (role, source) {
             (1, 0) => OlsInputRole::Candidate,
             (2, 0) => OlsInputRole::Outcome,
-            (3, source) if source > 0 => OlsInputRole::ContinuousSource(SourceId::new(source)?),
+            (3, source) if source > 0 => OlsInputRole::NumericSource(SourceId::new(source)?),
             (4, 0) => OlsInputRole::AnalyticWeight,
             (5, 0) => OlsInputRole::FrequencyWeight,
             (6, 0) => OlsInputRole::ProbabilityWeight,
@@ -499,7 +503,7 @@ fn source_position(request: &OlsRequestV1, source: SourceId) -> Result<u32> {
         .bindings
         .iter()
         .find_map(|binding| match binding.role {
-            OlsInputRole::ContinuousSource(candidate) if candidate == source => {
+            OlsInputRole::NumericSource(candidate) if candidate == source => {
                 Some(binding.stata_var_position)
             }
             _ => None,
@@ -887,6 +891,80 @@ mod tests {
         (args, spi)
     }
 
+    fn factor_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixture();
+        let source = SourceEntry {
+            id: SourceId::new(1).expect("source"),
+            canonical_name: "g".to_owned(),
+        };
+        let terms = [
+            (1, 1.0, true, true, "1b.g", "1b"),
+            (2, 2.0, false, false, "2.g", "2"),
+            (3, 3.0, false, false, "3.g", "3"),
+        ]
+        .into_iter()
+        .map(
+            |(index, level, base, omitted, token, operator)| ExpandedTerm {
+                id: TermId::new(index).expect("term"),
+                order: TermOrder::new(index).expect("order"),
+                coefficient_slot: CoefficientSlot::new(index).expect("slot"),
+                raw_kind: RawTermKind::Factor,
+                whole_column_omitted: omitted,
+                canonical_token: token.to_owned(),
+                components: vec![TermComponent {
+                    order: ComponentOrder::new(1).expect("component"),
+                    source: source.id,
+                    kind: ComponentKind::Categorical,
+                    level_state: LevelState::Present,
+                    level_value: level,
+                    base: if base {
+                        MetadataFlag::True
+                    } else {
+                        MetadataFlag::False
+                    },
+                    omitted: if omitted {
+                        MetadataFlag::True
+                    } else {
+                        MetadataFlag::False
+                    },
+                    raw_operator: operator.to_owned(),
+                    time_series_state: TimeSeriesState::None,
+                    raw_time_series_operator: String::new(),
+                }],
+            },
+        )
+        .collect::<Vec<_>>();
+        let wire = ModelWireV2::from_graph(&CompiledTermGraph {
+            sources: vec![source],
+            terms,
+        })
+        .expect("factor wire");
+        spi.matrices.insert("S".to_owned(), wire.sources.rows);
+        spi.matrices.insert("T".to_owned(), wire.terms.rows);
+        spi.matrices.insert("C".to_owned(), wire.components.rows);
+        spi.data.insert((3, 2), (1.0, false));
+        spi.data.insert((3, 3), (2.0, true));
+        spi.data.insert((3, 5), (3.0, false));
+        for value in &mut args {
+            match value.as_str() {
+                "term_count=1" => *value = "term_count=3".to_owned(),
+                "component_count=1" => *value = "component_count=3".to_owned(),
+                "source_names=1:x" => *value = "source_names=1:g".to_owned(),
+                "canonical_tokens=3:c.x" => {
+                    *value = "canonical_tokens=4:1b.g|3:2.g|3:3.g".to_owned();
+                }
+                "raw_component_operators=1:c" => {
+                    *value = "raw_component_operators=2:1b|1:2|1:3".to_owned();
+                }
+                "raw_time_series_operators=0:" => {
+                    *value = "raw_time_series_operators=0:|0:|0:".to_owned();
+                }
+                _ => {}
+            }
+        }
+        (args, spi)
+    }
+
     #[test]
     fn successful_action_reads_only_candidate_rows_and_writes_exact_diagnostics() {
         let (args, mut spi) = fixture();
@@ -924,6 +1002,155 @@ mod tests {
         assert!(output
             .displayed()
             .contains("stfixest.prepare_ols.n_columns=2"));
+    }
+
+    #[test]
+    fn factor_main_effect_reads_one_numeric_source_once_and_preserves_atomic_diagnostics() {
+        let (args, mut spi) = factor_fixture();
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("factor preparation");
+        assert_eq!(
+            spi.reads
+                .iter()
+                .filter(|(variable, _)| *variable == 3)
+                .count(),
+            3
+        );
+        assert!(spi
+            .reads
+            .iter()
+            .filter(|(variable, _)| *variable == 3)
+            .all(|(_, observation)| matches!(*observation, 2 | 3 | 5)));
+        assert!(spi.writes.contains(&(6, 3, 3.0)));
+        let displayed = output.displayed();
+        assert!(displayed.contains("stfixest.prepare_ols.n_columns=3"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_coefficient_slots=4"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_categorical_sources=1"));
+    }
+
+    #[test]
+    fn invalid_candidate_factor_value_and_string_source_fail_without_writes() {
+        for invalid in [-1.0, 1.5] {
+            let (args, mut spi) = factor_fixture();
+            spi.data.insert((3, 2), (invalid, false));
+            let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+                .expect_err("invalid factor source");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert!(spi.writes.is_empty());
+        }
+
+        let (args, mut spi) = factor_fixture();
+        spi.strings.insert(3);
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("string factor source");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
+    }
+
+    #[test]
+    fn factor_interaction_and_pending_time_series_fail_before_observation_reads() {
+        let (mut args, mut spi) = factor_fixture();
+        spi.matrices.get_mut("C").expect("components")[0][8] = 2.0;
+        for value in &mut args {
+            if value == "raw_time_series_operators=0:|0:|0:" {
+                *value = "raw_time_series_operators=2:L.|0:|0:".to_owned();
+            }
+        }
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("pending time-series factor");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
+
+        let (mut args, mut spi) = fixture();
+        let categorical = SourceEntry {
+            id: SourceId::new(1).expect("source"),
+            canonical_name: "g".to_owned(),
+        };
+        let continuous = SourceEntry {
+            id: SourceId::new(2).expect("source"),
+            canonical_name: "x".to_owned(),
+        };
+        let graph = CompiledTermGraph {
+            sources: vec![categorical.clone(), continuous.clone()],
+            terms: vec![ExpandedTerm {
+                id: TermId::new(1).expect("term"),
+                order: TermOrder::new(1).expect("order"),
+                coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                raw_kind: RawTermKind::Interaction,
+                whole_column_omitted: false,
+                canonical_token: "2.g#c.x".to_owned(),
+                components: vec![
+                    TermComponent {
+                        order: ComponentOrder::new(1).expect("component"),
+                        source: categorical.id,
+                        kind: ComponentKind::Categorical,
+                        level_state: LevelState::Present,
+                        level_value: 2.0,
+                        base: MetadataFlag::False,
+                        omitted: MetadataFlag::False,
+                        raw_operator: "2".to_owned(),
+                        time_series_state: TimeSeriesState::None,
+                        raw_time_series_operator: String::new(),
+                    },
+                    TermComponent {
+                        order: ComponentOrder::new(2).expect("component"),
+                        source: continuous.id,
+                        kind: ComponentKind::Continuous,
+                        level_state: LevelState::Absent,
+                        level_value: 0.0,
+                        base: MetadataFlag::False,
+                        omitted: MetadataFlag::Unavailable,
+                        raw_operator: "c".to_owned(),
+                        time_series_state: TimeSeriesState::None,
+                        raw_time_series_operator: String::new(),
+                    },
+                ],
+            }],
+        };
+        let wire = ModelWireV2::from_graph(&graph).expect("interaction wire");
+        spi.matrices.insert("S".to_owned(), wire.sources.rows);
+        spi.matrices.insert("T".to_owned(), wire.terms.rows);
+        spi.matrices.insert("C".to_owned(), wire.components.rows);
+        spi.matrices.insert(
+            "B".to_owned(),
+            vec![
+                vec![1.0, 1.0, 0.0],
+                vec![2.0, 2.0, 0.0],
+                vec![3.0, 3.0, 1.0],
+                vec![4.0, 3.0, 2.0],
+            ],
+        );
+        spi.nvars = 7;
+        for value in &mut args {
+            match value.as_str() {
+                "source_count=1" => *value = "source_count=2".to_owned(),
+                "component_count=1" => *value = "component_count=2".to_owned(),
+                "source_names=1:x" => *value = "source_names=1:g|1:x".to_owned(),
+                "canonical_tokens=3:c.x" => {
+                    *value = "canonical_tokens=7:2.g#c.x".to_owned();
+                }
+                "raw_component_operators=1:c" => {
+                    *value = "raw_component_operators=1:2|1:c".to_owned();
+                }
+                "raw_time_series_operators=0:" => {
+                    *value = "raw_time_series_operators=0:|0:".to_owned();
+                }
+                "binding_count=3" => *value = "binding_count=4".to_owned(),
+                "output_original_observation=4" => {
+                    *value = "output_original_observation=5".to_owned();
+                }
+                "output_retained=5" => *value = "output_retained=6".to_owned(),
+                "output_drop_reason=6" => *value = "output_drop_reason=7".to_owned(),
+                _ => {}
+            }
+        }
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("factor-continuous interaction");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
     }
 
     #[test]

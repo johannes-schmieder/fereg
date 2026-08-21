@@ -5,6 +5,7 @@ use crate::data::{
     NumericDomainPolicy, NumericPreparationInput, PreparedNumericSample, WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, Result, StFixestError};
+use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::metadata::{
     CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag, RawTermKind,
     SourceId, TimeSeriesState,
@@ -15,7 +16,9 @@ use crate::metadata::{
 pub enum OlsInputRole {
     Candidate,
     Outcome,
-    ContinuousSource(SourceId),
+    /// One numeric model source. A single source may be used by both `c.x`
+    /// and `i.x`; the binding therefore describes storage, not term meaning.
+    NumericSource(SourceId),
     AnalyticWeight,
     FrequencyWeight,
     ProbabilityWeight,
@@ -43,13 +46,13 @@ pub struct LoadedNumericColumn {
     pub missing: Vec<bool>,
 }
 
-/// Complete raw input for the continuous, optionally weighted, no-FE
+/// Complete raw input for the numeric-source, optionally weighted, no-FE
 /// preparation slice. At most one weight column may be present.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedOlsInput {
     pub candidate: Vec<bool>,
     pub outcome: LoadedNumericColumn,
-    pub continuous_sources: Vec<(SourceId, LoadedNumericColumn)>,
+    pub numeric_sources: Vec<(SourceId, LoadedNumericColumn)>,
     pub analytic_weight: Option<LoadedNumericColumn>,
     pub frequency_weight: Option<LoadedNumericColumn>,
     pub probability_weight: Option<LoadedNumericColumn>,
@@ -62,6 +65,18 @@ pub enum PreparedOlsColumnKind {
         source: SourceId,
         prepared_source_index: usize,
     },
+    Categorical {
+        source: SourceId,
+        prepared_source_index: usize,
+        categorical_source_index: usize,
+        /// Canonicalized Stata level value, retained as bits so the recipe is
+        /// exactly comparable without making an `f64` enum non-`Eq`.
+        level_bits: u64,
+        /// `None` means Stata expanded this level in the candidate universe,
+        /// but the level disappeared after authoritative sample preparation.
+        /// The executable column is then identically zero.
+        level_code: Option<u32>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,25 +85,96 @@ pub struct PreparedOlsColumn {
     pub kind: PreparedOlsColumnKind,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparedOlsCoefficientStatus {
+    Active,
+    SyntaxOmitted,
+}
+
+/// One Stata-facing coefficient slot. Generated columns are stored separately
+/// so an omitted base remains represented without entering numerical work.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsCoefficient {
+    pub coefficient_slot: CoefficientSlot,
+    pub status: PreparedOlsCoefficientStatus,
+    pub generated_column_index: Option<usize>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedOlsModel {
+    pub coefficients: Vec<PreparedOlsCoefficient>,
     pub columns: Vec<PreparedOlsColumn>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PreparedCategoricalSource {
+    pub source: SourceId,
+    pub prepared_source_index: usize,
+    pub encoded: EncodedFactor<f64>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct PreparedOlsData {
     pub model: PreparedOlsModel,
     pub sample: PreparedNumericSample,
+    pub categorical_sources: Vec<PreparedCategoricalSource>,
+}
+
+impl PreparedOlsData {
+    /// Evaluate one prepared finite-dimensional recipe at one active row.
+    /// This is a testable preparation primitive, not an estimator dispatch.
+    pub fn column_value(&self, column: usize, active_row: usize) -> Result<f64> {
+        if active_row >= self.sample.n_active() {
+            return Err(invalid("prepared OLS active row is out of range"));
+        }
+        let column = self
+            .model
+            .columns
+            .get(column)
+            .ok_or_else(|| invalid("prepared OLS column is out of range"))?;
+        match column.kind {
+            PreparedOlsColumnKind::Intercept => Ok(1.0),
+            PreparedOlsColumnKind::Continuous {
+                prepared_source_index,
+                ..
+            } => self
+                .sample
+                .regressors
+                .get(prepared_source_index)
+                .and_then(|source| source.get(active_row))
+                .copied()
+                .ok_or_else(|| invalid("prepared continuous source is out of range")),
+            PreparedOlsColumnKind::Categorical {
+                categorical_source_index,
+                level_code,
+                ..
+            } => {
+                let Some(level_code) = level_code else {
+                    return Ok(0.0);
+                };
+                let code = self
+                    .categorical_sources
+                    .get(categorical_source_index)
+                    .and_then(|source| source.encoded.codes.get(active_row))
+                    .copied()
+                    .ok_or_else(|| invalid("prepared categorical source is out of range"))?;
+                Ok(if code == level_code { 1.0 } else { 0.0 })
+            }
+        }
+    }
 }
 
 impl OlsRequestV1 {
-    /// Validate the entire request and compile only the currently supported
-    /// continuous column recipes. This performs no observation reads.
+    /// Validate the entire request and compile the currently supported plain
+    /// continuous and numeric categorical main-effect recipes. This performs
+    /// no observation reads; categorical level codes are resolved later.
     pub fn validate_and_compile(&self) -> Result<PreparedOlsModel> {
         self.model.validate_executable_metadata()?;
         validate_bindings(self)?;
 
+        let categorical_source_indices = categorical_source_indices(&self.model)?;
         let mut columns = Vec::new();
+        let mut coefficients = Vec::new();
         columns
             .try_reserve_exact(
                 self.model
@@ -98,36 +184,75 @@ impl OlsRequestV1 {
                     .ok_or_else(|| allocation("prepared OLS column count overflows"))?,
             )
             .map_err(|_| allocation("unable to reserve prepared OLS columns"))?;
+        coefficients
+            .try_reserve_exact(
+                self.model
+                    .terms
+                    .len()
+                    .checked_add(usize::from(self.include_intercept))
+                    .ok_or_else(|| allocation("prepared OLS coefficient count overflows"))?,
+            )
+            .map_err(|_| allocation("unable to reserve prepared OLS coefficients"))?;
 
         for term in &self.model.terms {
-            if term.raw_kind != RawTermKind::Variable || term.components.len() != 1 {
+            if term.components.len() != 1 {
                 return Err(unsupported(
-                    "prepare-ols-test supports only plain continuous model terms",
+                    "prepare-ols-test supports only plain continuous and factor main-effect terms",
                 ));
             }
             let component = &term.components[0];
-            if component.kind != ComponentKind::Continuous
-                || component.level_state != LevelState::Absent
-                || component.base != MetadataFlag::False
-                || component.time_series_state != TimeSeriesState::None
-                || !matches!(component.raw_operator.as_str(), "" | "c" | "co")
-            {
-                return Err(unsupported(
-                    "prepare-ols-test supports only non-time-series continuous sources",
-                ));
-            }
+            let kind = match (term.raw_kind, component.kind) {
+                (RawTermKind::Variable, ComponentKind::Continuous)
+                    if component.level_state == LevelState::Absent
+                        && component.base == MetadataFlag::False
+                        && component.time_series_state == TimeSeriesState::None
+                        && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
+                {
+                    PreparedOlsColumnKind::Continuous {
+                        source: component.source,
+                        prepared_source_index: source_index(component.source)?,
+                    }
+                }
+                (RawTermKind::Factor, ComponentKind::Categorical)
+                    if component.level_state == LevelState::Present
+                        && component.time_series_state == TimeSeriesState::None =>
+                {
+                    validate_categorical_value(component.level_value, "factor metadata level")?;
+                    PreparedOlsColumnKind::Categorical {
+                        source: component.source,
+                        prepared_source_index: source_index(component.source)?,
+                        categorical_source_index: *categorical_source_indices
+                            .get(&component.source)
+                            .ok_or_else(|| invalid("categorical source plan disappeared"))?,
+                        level_bits: canonical_factor_value(component.level_value).to_bits(),
+                        level_code: None,
+                    }
+                }
+                _ => {
+                    return Err(unsupported(
+                        "prepare-ols-test supports only non-time-series continuous and numeric factor main-effect terms",
+                    ));
+                }
+            };
 
             // Never infer whole-column omission from component metadata. Stata's
             // term flag is the sole authority for whether this recipe is emitted.
             if !term.whole_column_omitted {
-                let prepared_source_index = usize::try_from(component.source.get() - 1)
-                    .map_err(|_| invalid("source id does not fit usize"))?;
+                let generated_column_index = columns.len();
                 columns.push(PreparedOlsColumn {
                     coefficient_slot: term.coefficient_slot,
-                    kind: PreparedOlsColumnKind::Continuous {
-                        source: component.source,
-                        prepared_source_index,
-                    },
+                    kind,
+                });
+                coefficients.push(PreparedOlsCoefficient {
+                    coefficient_slot: term.coefficient_slot,
+                    status: PreparedOlsCoefficientStatus::Active,
+                    generated_column_index: Some(generated_column_index),
+                });
+            } else {
+                coefficients.push(PreparedOlsCoefficient {
+                    coefficient_slot: term.coefficient_slot,
+                    status: PreparedOlsCoefficientStatus::SyntaxOmitted,
+                    generated_column_index: None,
                 });
             }
         }
@@ -144,8 +269,16 @@ impl OlsRequestV1 {
                 coefficient_slot: CoefficientSlot::new(next)?,
                 kind: PreparedOlsColumnKind::Intercept,
             });
+            coefficients.push(PreparedOlsCoefficient {
+                coefficient_slot: CoefficientSlot::new(next)?,
+                status: PreparedOlsCoefficientStatus::Active,
+                generated_column_index: Some(columns.len() - 1),
+            });
         }
-        Ok(PreparedOlsModel { columns })
+        Ok(PreparedOlsModel {
+            coefficients,
+            columns,
+        })
     }
 }
 
@@ -154,11 +287,12 @@ pub fn prepare_ols_data(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
 ) -> Result<PreparedOlsData> {
-    let model = request.validate_and_compile()?;
+    let mut model = request.validate_and_compile()?;
     validate_loaded(request, loaded)?;
+    validate_candidate_categorical_domain(request, loaded)?;
 
     let regressor_views = loaded
-        .continuous_sources
+        .numeric_sources
         .iter()
         .map(|(_, column)| NumericColumnView::with_missing(&column.values, &column.missing))
         .collect::<Vec<_>>();
@@ -195,7 +329,136 @@ pub fn prepare_ols_data(
         adjustment: AdjustmentInput::None,
     };
     let sample = prepare_numeric_sample(&input, &OlsPreparationPolicy)?;
-    Ok(PreparedOlsData { model, sample })
+    let categorical_sources = factorize_categorical_sources(request, &sample)?;
+    resolve_categorical_level_codes(&mut model, &categorical_sources)?;
+    Ok(PreparedOlsData {
+        model,
+        sample,
+        categorical_sources,
+    })
+}
+
+fn categorical_source_indices(model: &CompiledTermGraph) -> Result<BTreeMap<SourceId, usize>> {
+    let categorical = model
+        .terms
+        .iter()
+        .flat_map(|term| &term.components)
+        .filter(|component| component.kind == ComponentKind::Categorical)
+        .map(|component| component.source)
+        .collect::<BTreeSet<_>>();
+    let mut indices = BTreeMap::new();
+    for source in &model.sources {
+        if categorical.contains(&source.id) {
+            indices.insert(source.id, indices.len());
+        }
+    }
+    Ok(indices)
+}
+
+fn validate_candidate_categorical_domain(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+) -> Result<()> {
+    let categorical = categorical_source_indices(&request.model)?;
+    for (source, column) in &loaded.numeric_sources {
+        if !categorical.contains_key(source) {
+            continue;
+        }
+        for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
+            if !candidate || column.missing[row] || !column.values[row].is_finite() {
+                continue;
+            }
+            validate_categorical_value(
+                column.values[row],
+                &format!(
+                    "numeric categorical source {} at observation {}",
+                    source.get(),
+                    row + 1
+                ),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_categorical_value(value: f64, label: &str) -> Result<()> {
+    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 {
+        return Err(invalid_data(format!(
+            "{label} must be a finite nonnegative integer",
+        )));
+    }
+    Ok(())
+}
+
+fn canonical_factor_value(value: f64) -> f64 {
+    if value == 0.0 {
+        0.0
+    } else {
+        value
+    }
+}
+
+fn factorize_categorical_sources(
+    request: &OlsRequestV1,
+    sample: &PreparedNumericSample,
+) -> Result<Vec<PreparedCategoricalSource>> {
+    let categorical = categorical_source_indices(&request.model)?;
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(categorical.len())
+        .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
+    for source in &request.model.sources {
+        if !categorical.contains_key(&source.id) {
+            continue;
+        }
+        let prepared_source_index = source_index(source.id)?;
+        let values = sample
+            .regressors
+            .get(prepared_source_index)
+            .ok_or_else(|| invalid("prepared categorical source index is out of range"))?;
+        output.push(PreparedCategoricalSource {
+            source: source.id,
+            prepared_source_index,
+            encoded: factorize_f64(values)?,
+        });
+    }
+    Ok(output)
+}
+
+fn resolve_categorical_level_codes(
+    model: &mut PreparedOlsModel,
+    categorical_sources: &[PreparedCategoricalSource],
+) -> Result<()> {
+    for column in &mut model.columns {
+        let PreparedOlsColumnKind::Categorical {
+            categorical_source_index,
+            level_bits,
+            level_code,
+            ..
+        } = &mut column.kind
+        else {
+            continue;
+        };
+        let source = categorical_sources
+            .get(*categorical_source_index)
+            .ok_or_else(|| invalid("prepared categorical source plan is out of range"))?;
+        let level = f64::from_bits(*level_bits);
+        *level_code = source
+            .encoded
+            .levels
+            .binary_search_by(|candidate| candidate.total_cmp(&level))
+            .ok()
+            .map(|index| {
+                u32::try_from(index)
+                    .map_err(|_| invalid("prepared categorical level code exceeds u32"))
+            })
+            .transpose()?;
+    }
+    Ok(())
+}
+
+fn source_index(source: SourceId) -> Result<usize> {
+    usize::try_from(source.get() - 1).map_err(|_| invalid("source id does not fit usize"))
 }
 
 fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
@@ -215,9 +478,9 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
         match binding.role {
             OlsInputRole::Candidate => candidate_count += 1,
             OlsInputRole::Outcome => outcome_count += 1,
-            OlsInputRole::ContinuousSource(source) => {
+            OlsInputRole::NumericSource(source) => {
                 if sources.insert(source, binding.stata_var_position).is_some() {
-                    return Err(invalid("continuous source is bound more than once"));
+                    return Err(invalid("numeric source is bound more than once"));
                 }
             }
             OlsInputRole::AnalyticWeight => analytic_weight_count += 1,
@@ -250,18 +513,18 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
 fn validate_loaded(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> Result<()> {
     let n = loaded.candidate.len();
     validate_loaded_column("outcome", &loaded.outcome, n)?;
-    if loaded.continuous_sources.len() != request.model.sources.len() {
+    if loaded.numeric_sources.len() != request.model.sources.len() {
         return Err(invalid(
-            "loaded continuous source count does not match the model registry",
+            "loaded numeric source count does not match the model registry",
         ));
     }
-    for (index, (source, column)) in loaded.continuous_sources.iter().enumerate() {
+    for (index, (source, column)) in loaded.numeric_sources.iter().enumerate() {
         if *source != request.model.sources[index].id {
             return Err(invalid(
-                "loaded continuous sources are not in model-registry order",
+                "loaded numeric sources are not in model-registry order",
             ));
         }
-        validate_loaded_column("continuous source", column, n)?;
+        validate_loaded_column("numeric source", column, n)?;
     }
     let request_has_analytic_weight = request
         .bindings
@@ -489,7 +752,7 @@ mod tests {
                 .enumerate()
                 .map(|(index, source)| OlsInputBinding {
                     stata_var_position: u32::try_from(index + 3).expect("small fixture"),
-                    role: OlsInputRole::ContinuousSource(source.id),
+                    role: OlsInputRole::NumericSource(source.id),
                 }),
         );
         OlsRequestV1 {
@@ -506,6 +769,90 @@ mod tests {
         }
     }
 
+    fn mixed_numeric_factor_request() -> OlsRequestV1 {
+        let source = SourceEntry {
+            id: SourceId::new(1).expect("source"),
+            canonical_name: "g".to_owned(),
+        };
+        let mut terms = Vec::new();
+        terms.push(ExpandedTerm {
+            id: TermId::new(1).expect("term"),
+            order: TermOrder::new(1).expect("order"),
+            coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+            raw_kind: RawTermKind::Variable,
+            whole_column_omitted: false,
+            canonical_token: "c.g".to_owned(),
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).expect("component"),
+                source: source.id,
+                kind: ComponentKind::Continuous,
+                level_state: LevelState::Absent,
+                level_value: 0.0,
+                base: MetadataFlag::False,
+                omitted: MetadataFlag::Unavailable,
+                raw_operator: "c".to_owned(),
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        });
+        for (index, level, base, omitted, token, raw_operator) in [
+            (2, 0.0, true, true, "0b.g", "0b"),
+            (3, 1.0, false, false, "1.g", "1"),
+            (4, 2.0, false, false, "2.g", "2"),
+            (5, 3.0, false, false, "3.g", "3"),
+        ] {
+            terms.push(ExpandedTerm {
+                id: TermId::new(index).expect("term"),
+                order: TermOrder::new(index).expect("order"),
+                coefficient_slot: CoefficientSlot::new(index).expect("slot"),
+                raw_kind: RawTermKind::Factor,
+                whole_column_omitted: omitted,
+                canonical_token: token.to_owned(),
+                components: vec![TermComponent {
+                    order: ComponentOrder::new(1).expect("component"),
+                    source: source.id,
+                    kind: ComponentKind::Categorical,
+                    level_state: LevelState::Present,
+                    level_value: level,
+                    base: if base {
+                        MetadataFlag::True
+                    } else {
+                        MetadataFlag::False
+                    },
+                    omitted: if omitted {
+                        MetadataFlag::True
+                    } else {
+                        MetadataFlag::False
+                    },
+                    raw_operator: raw_operator.to_owned(),
+                    time_series_state: TimeSeriesState::None,
+                    raw_time_series_operator: String::new(),
+                }],
+            });
+        }
+        OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![source.clone()],
+                terms,
+            },
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(source.id),
+                },
+            ],
+            include_intercept: true,
+        }
+    }
+
     #[test]
     fn exact_row_map_drop_precedence_bits_and_intercept_are_preserved() {
         let request = request(2, true);
@@ -517,7 +864,7 @@ mod tests {
                 &[99.0, negative_zero, 2.0, 3.0, 4.0, tiny],
                 &[false, false, true, false, false, false],
             ),
-            continuous_sources: vec![
+            numeric_sources: vec![
                 (
                     SourceId::new(1).expect("id"),
                     column(
@@ -570,11 +917,117 @@ mod tests {
     }
 
     #[test]
+    fn numeric_factor_main_effects_preserve_slots_factorize_once_and_allow_dual_use() {
+        let request = mixed_numeric_factor_request();
+        let loaded = LoadedOlsInput {
+            candidate: vec![false, true, true, true, true, true],
+            outcome: column(
+                &[99.0, 1.0, 2.0, 3.0, 4.0, 5.0],
+                &[false, false, false, true, false, false],
+            ),
+            numeric_sources: vec![(
+                SourceId::new(1).expect("source"),
+                column(
+                    &[-7.5, -0.0, 1.0, 3.0, 2.0, 2.0],
+                    &[false, false, false, false, true, false],
+                ),
+            )],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("factor preparation");
+
+        assert_eq!(prepared.sample.retained_rows(), &[1, 2, 5]);
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![
+                crate::DropReason::ExcludedByIfIn,
+                crate::DropReason::Retained,
+                crate::DropReason::Retained,
+                crate::DropReason::MissingOutcome,
+                crate::DropReason::MissingRegressor,
+                crate::DropReason::Retained,
+            ]
+        );
+        assert_eq!(prepared.categorical_sources.len(), 1);
+        assert_eq!(
+            prepared.categorical_sources[0].encoded.levels,
+            vec![0.0, 1.0, 2.0]
+        );
+        assert_eq!(prepared.categorical_sources[0].encoded.codes, vec![0, 1, 2]);
+        assert_eq!(prepared.model.coefficients.len(), 6);
+        assert_eq!(
+            prepared.model.coefficients[1],
+            PreparedOlsCoefficient {
+                coefficient_slot: CoefficientSlot::new(2).expect("slot"),
+                status: PreparedOlsCoefficientStatus::SyntaxOmitted,
+                generated_column_index: None,
+            }
+        );
+        assert_eq!(prepared.model.columns.len(), 5);
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(0, row).expect("continuous"))
+                .collect::<Vec<_>>(),
+            vec![-0.0, 1.0, 2.0]
+        );
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(1, row).expect("level one"))
+                .collect::<Vec<_>>(),
+            vec![0.0, 1.0, 0.0]
+        );
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(2, row).expect("level two"))
+                .collect::<Vec<_>>(),
+            vec![0.0, 0.0, 1.0]
+        );
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(3, row).expect("vanished level"))
+                .collect::<Vec<_>>(),
+            vec![0.0, 0.0, 0.0]
+        );
+        let PreparedOlsColumnKind::Categorical { level_code, .. } = prepared.model.columns[3].kind
+        else {
+            panic!("fourth generated column must be categorical");
+        };
+        assert_eq!(level_code, None);
+    }
+
+    #[test]
+    fn categorical_domain_is_candidate_scoped_and_fails_before_sample_construction() {
+        for invalid_value in [-1.0, 1.5] {
+            let request = mixed_numeric_factor_request();
+            let loaded = LoadedOlsInput {
+                candidate: vec![false, true],
+                outcome: column(&[1.0, 2.0], &[false, false]),
+                numeric_sources: vec![(
+                    SourceId::new(1).expect("source"),
+                    column(&[invalid_value, 1.0], &[false, false]),
+                )],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            prepare_ols_data(&request, &loaded).expect("off-candidate invalid factor value");
+
+            let mut candidate_invalid = loaded;
+            candidate_invalid.candidate[0] = true;
+            let error = prepare_ols_data(&request, &candidate_invalid)
+                .expect_err("candidate invalid factor value");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+        }
+    }
+
+    #[test]
     fn empty_and_all_dropped_samples_are_valid_preparation_results() {
         let empty = LoadedOlsInput {
             candidate: Vec::new(),
             outcome: column(&[], &[]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
             probability_weight: None,
@@ -587,7 +1040,7 @@ mod tests {
         let dropped = LoadedOlsInput {
             candidate: vec![true, false],
             outcome: column(&[1.0, 2.0], &[true, false]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
             probability_weight: None,
@@ -634,11 +1087,14 @@ mod tests {
             1
         );
         request.model.terms[0].whole_column_omitted = true;
-        assert!(request
+        let model = request
             .validate_and_compile()
-            .expect("whole-column omission")
-            .columns
-            .is_empty());
+            .expect("whole-column omission");
+        assert!(model.columns.is_empty());
+        assert_eq!(
+            model.coefficients[0].status,
+            PreparedOlsCoefficientStatus::SyntaxOmitted
+        );
     }
 
     #[test]
@@ -653,7 +1109,7 @@ mod tests {
         let loaded = LoadedOlsInput {
             candidate: vec![false, true, true, true, true, true],
             outcome: column(&[9.0, 1.0, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
-            continuous_sources: vec![(
+            numeric_sources: vec![(
                 SourceId::new(1).expect("id"),
                 column(&[9.0, 10.0, 20.0, 30.0, 40.0, 50.0], &[false; 6]),
             )],
@@ -696,7 +1152,7 @@ mod tests {
         let off_candidate = LoadedOlsInput {
             candidate: vec![false, true],
             outcome: column(&[1.0, 2.0], &[false; 2]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: Some(column(&[-1.0, 2.0], &[false; 2])),
             frequency_weight: None,
             probability_weight: None,
@@ -735,7 +1191,7 @@ mod tests {
         let unbound_loaded = LoadedOlsInput {
             candidate: vec![true],
             outcome: column(&[1.0], &[false]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: Some(column(&[1.0], &[false])),
             frequency_weight: None,
             probability_weight: None,
@@ -759,7 +1215,7 @@ mod tests {
         let loaded = LoadedOlsInput {
             candidate: vec![true, true, true, true, false],
             outcome: column(&[1.0, 2.0, 3.0, 4.0, 5.0], &[false; 5]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: Some(column(
                 &[1.0, 2.0, maximum, f64::NAN, 1.5],
@@ -809,7 +1265,7 @@ mod tests {
             let loaded = LoadedOlsInput {
                 candidate: vec![true],
                 outcome: column(&[1.0], &[false]),
-                continuous_sources: Vec::new(),
+                numeric_sources: Vec::new(),
                 analytic_weight: None,
                 frequency_weight: Some(column(&[invalid_weight], &[false])),
                 probability_weight: None,
@@ -863,7 +1319,7 @@ mod tests {
         let unbound_loaded = LoadedOlsInput {
             candidate: vec![true],
             outcome: column(&[1.0], &[false]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: Some(column(&[1.0], &[false])),
             probability_weight: None,
@@ -888,7 +1344,7 @@ mod tests {
         let loaded = LoadedOlsInput {
             candidate: vec![false, true, true, true],
             outcome: column(&[1.0, 2.0, 3.0, 4.0], &[false; 4]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
             probability_weight: Some(column(
@@ -927,7 +1383,7 @@ mod tests {
             let loaded = LoadedOlsInput {
                 candidate: vec![true],
                 outcome: column(&[1.0], &[false]),
-                continuous_sources: Vec::new(),
+                numeric_sources: Vec::new(),
                 analytic_weight: None,
                 frequency_weight: None,
                 probability_weight: Some(column(&[invalid_weight], &[false])),
@@ -983,7 +1439,7 @@ mod tests {
         let unbound_loaded = LoadedOlsInput {
             candidate: vec![true],
             outcome: column(&[1.0], &[false]),
-            continuous_sources: Vec::new(),
+            numeric_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
             probability_weight: Some(column(&[1.0], &[false])),

@@ -107,6 +107,31 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("iweight(aw)", fixture)
         self.assertIn("assert _rc == 198", fixture)
 
+    def test_numeric_factor_main_effect_slice_reuses_role_three_and_stays_internal(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("NumericSource(SourceId)", core)
+        self.assertNotIn("ContinuousSource(SourceId)", core)
+        self.assertIn("PreparedOlsCoefficientStatus::SyntaxOmitted", core)
+        self.assertIn("factorize_f64", core)
+        self.assertIn("(3, source) if source > 0", plugin)
+        self.assertIn("OlsInputRole::NumericSource", plugin)
+        self.assertNotIn("(7, 0) =>", plugin)
+        self.assertIn("c.g ib2.g", fixture)
+        self.assertIn("ibn.g", fixture)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertNotIn("fvrevar", helper.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

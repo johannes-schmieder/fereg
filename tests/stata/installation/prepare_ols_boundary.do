@@ -171,6 +171,26 @@ confirm new variable _st_mixed_retained
 confirm new variable _st_mixed_reason
 restore
 
+gen double g = mod(_n, 3) + 1
+replace g = -1 in 1
+replace g = . in 10
+_stfixest_prepare_ols_test y c.g ib2.g if _n >= 3, ///
+    originalobs(_st_factor_original) retained(_st_factor_retained) ///
+    dropreason(_st_factor_reason)
+assert r(n_original) == 28
+assert r(n_retained) == 25
+assert _st_factor_original == _n
+assert _st_factor_reason == 1 in 1/2
+assert _st_factor_reason[10] == 3
+assert _st_factor_retained == (_n >= 3 & _n != 10)
+
+_stfixest_prepare_ols_test y ibn.g if _n >= 3, ///
+    originalobs(_st_factor_bn_original) retained(_st_factor_bn_retained) ///
+    dropreason(_st_factor_bn_reason)
+assert r(n_retained) == 25
+assert _st_factor_bn_reason == _st_factor_reason
+assert _st_factor_bn_retained == _st_factor_retained
+
 capture noisily stfeols y x z
 assert _rc == 498
 capture noisily stfepois y x z

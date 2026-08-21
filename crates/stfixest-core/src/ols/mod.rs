@@ -10,7 +10,8 @@ pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
 pub use prepared::{
     prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel,
+    OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
+    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
 pub use vce::{ClusterSubsetReport, VceKind, VceReport};
