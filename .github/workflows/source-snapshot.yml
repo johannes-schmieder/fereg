@@ -1,0 +1,26 @@
+name: Source Snapshot
+
+on:
+  push:
+    branches:
+      - codex/full-implementation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive exact repository source
+        shell: bash
+        run: git archive --format=zip --output=stfixest-source.zip HEAD
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: stfixest-source-${{ github.sha }}
+          path: stfixest-source.zip
+          if-no-files-found: error
+          retention-days: 7
