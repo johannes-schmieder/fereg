@@ -132,6 +132,28 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
         self.assertNotIn("fvrevar", helper.lower())
 
+    def test_all_categorical_interaction_slice_is_recipe_only_and_stays_internal(self):
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("PreparedOlsCategoricalComponent", core)
+        self.assertIn("PreparedOlsColumnKind::CategoricalInteraction", core)
+        self.assertNotIn("interaction_codes", core)
+        self.assertIn("categorical_interaction_fixture", plugin)
+        self.assertIn("ib2.g##ib1.h", fixture)
+        self.assertIn("i.g#c.x", fixture)
+        self.assertIn('\"estimate-ols\" | \"estimate-ppml\"', dispatch)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

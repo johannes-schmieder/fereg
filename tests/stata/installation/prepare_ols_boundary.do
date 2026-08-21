@@ -191,6 +191,26 @@ assert r(n_retained) == 25
 assert _st_factor_bn_reason == _st_factor_reason
 assert _st_factor_bn_retained == _st_factor_retained
 
+gen double h = mod(floor((_n - 1) / 3), 2) + 1
+replace h = . in 11
+_stfixest_prepare_ols_test y ib2.g##ib1.h if _n >= 3, ///
+    originalobs(_st_interaction_original) retained(_st_interaction_retained) ///
+    dropreason(_st_interaction_reason)
+assert r(n_retained) == 24
+assert _st_interaction_original == _n
+assert _st_interaction_reason == 1 in 1/2
+assert _st_interaction_reason[10] == 3
+assert _st_interaction_reason[11] == 3
+assert _st_interaction_retained == (_n >= 3 & !inlist(_n, 10, 11))
+
+capture noisily _stfixest_prepare_ols_test y i.g#c.x if _n >= 3, ///
+    originalobs(_st_mixed_factor_original) retained(_st_mixed_factor_retained) ///
+    dropreason(_st_mixed_factor_reason)
+assert _rc == 498
+assert missing(_st_mixed_factor_original)
+assert missing(_st_mixed_factor_retained)
+assert missing(_st_mixed_factor_reason)
+
 capture noisily stfeols y x z
 assert _rc == 498
 capture noisily stfepois y x z

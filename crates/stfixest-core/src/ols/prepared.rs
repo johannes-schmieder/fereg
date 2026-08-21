@@ -58,7 +58,7 @@ pub struct LoadedOlsInput {
     pub probability_weight: Option<LoadedNumericColumn>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreparedOlsColumnKind {
     Intercept,
     Continuous {
@@ -77,9 +77,25 @@ pub enum PreparedOlsColumnKind {
         /// The executable column is then identically zero.
         level_code: Option<u32>,
     },
+    /// An ordinary all-categorical interaction. The small component recipe is
+    /// retained per coefficient column; no observation-scale interaction
+    /// column or tuple table is materialized.
+    CategoricalInteraction {
+        components: Vec<PreparedOlsCategoricalComponent>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsCategoricalComponent {
+    pub source: SourceId,
+    pub categorical_source_index: usize,
+    pub level_bits: u64,
+    /// `None` means that Stata expanded the requested level in the candidate
+    /// universe but it disappeared after authoritative sample preparation.
+    pub level_code: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedOlsColumn {
     pub coefficient_slot: CoefficientSlot,
     pub kind: PreparedOlsColumnKind,
@@ -132,7 +148,7 @@ impl PreparedOlsData {
             .columns
             .get(column)
             .ok_or_else(|| invalid("prepared OLS column is out of range"))?;
-        match column.kind {
+        match &column.kind {
             PreparedOlsColumnKind::Intercept => Ok(1.0),
             PreparedOlsColumnKind::Continuous {
                 prepared_source_index,
@@ -140,7 +156,7 @@ impl PreparedOlsData {
             } => self
                 .sample
                 .regressors
-                .get(prepared_source_index)
+                .get(*prepared_source_index)
                 .and_then(|source| source.get(active_row))
                 .copied()
                 .ok_or_else(|| invalid("prepared continuous source is out of range")),
@@ -149,16 +165,35 @@ impl PreparedOlsData {
                 level_code,
                 ..
             } => {
-                let Some(level_code) = level_code else {
+                let Some(level_code) = *level_code else {
                     return Ok(0.0);
                 };
                 let code = self
                     .categorical_sources
-                    .get(categorical_source_index)
+                    .get(*categorical_source_index)
                     .and_then(|source| source.encoded.codes.get(active_row))
                     .copied()
                     .ok_or_else(|| invalid("prepared categorical source is out of range"))?;
                 Ok(if code == level_code { 1.0 } else { 0.0 })
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                for component in components {
+                    let Some(level_code) = component.level_code else {
+                        return Ok(0.0);
+                    };
+                    let code = self
+                        .categorical_sources
+                        .get(component.categorical_source_index)
+                        .and_then(|source| source.encoded.codes.get(active_row))
+                        .copied()
+                        .ok_or_else(|| {
+                            invalid("prepared categorical interaction source is out of range")
+                        })?;
+                    if code != level_code {
+                        return Ok(0.0);
+                    }
+                }
+                Ok(1.0)
             }
         }
     }
@@ -166,8 +201,9 @@ impl PreparedOlsData {
 
 impl OlsRequestV1 {
     /// Validate the entire request and compile the currently supported plain
-    /// continuous and numeric categorical main-effect recipes. This performs
-    /// no observation reads; categorical level codes are resolved later.
+    /// continuous, numeric categorical main-effect, and all-categorical
+    /// interaction recipes. This performs no observation reads; categorical
+    /// level codes are resolved later.
     pub fn validate_and_compile(&self) -> Result<PreparedOlsModel> {
         self.model.validate_executable_metadata()?;
         validate_bindings(self)?;
@@ -195,15 +231,10 @@ impl OlsRequestV1 {
             .map_err(|_| allocation("unable to reserve prepared OLS coefficients"))?;
 
         for term in &self.model.terms {
-            if term.components.len() != 1 {
-                return Err(unsupported(
-                    "prepare-ols-test supports only plain continuous and factor main-effect terms",
-                ));
-            }
-            let component = &term.components[0];
-            let kind = match (term.raw_kind, component.kind) {
-                (RawTermKind::Variable, ComponentKind::Continuous)
-                    if component.level_state == LevelState::Absent
+            let kind = match (term.raw_kind, term.components.as_slice()) {
+                (RawTermKind::Variable, [component])
+                    if component.kind == ComponentKind::Continuous
+                        && component.level_state == LevelState::Absent
                         && component.base == MetadataFlag::False
                         && component.time_series_state == TimeSeriesState::None
                         && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
@@ -213,24 +244,59 @@ impl OlsRequestV1 {
                         prepared_source_index: source_index(component.source)?,
                     }
                 }
-                (RawTermKind::Factor, ComponentKind::Categorical)
-                    if component.level_state == LevelState::Present
+                (RawTermKind::Factor, [component])
+                    if component.kind == ComponentKind::Categorical
+                        && component.level_state == LevelState::Present
                         && component.time_series_state == TimeSeriesState::None =>
                 {
                     validate_categorical_value(component.level_value, "factor metadata level")?;
                     PreparedOlsColumnKind::Categorical {
                         source: component.source,
                         prepared_source_index: source_index(component.source)?,
-                        categorical_source_index: *categorical_source_indices
-                            .get(&component.source)
-                            .ok_or_else(|| invalid("categorical source plan disappeared"))?,
+                        categorical_source_index: categorical_source_index(
+                            &categorical_source_indices,
+                            component.source,
+                        )?,
                         level_bits: canonical_factor_value(component.level_value).to_bits(),
                         level_code: None,
                     }
                 }
+                (RawTermKind::Interaction | RawTermKind::Product, components)
+                    if components.len() >= 2
+                        && components.iter().all(|component| {
+                            component.kind == ComponentKind::Categorical
+                                && component.level_state == LevelState::Present
+                                && component.time_series_state == TimeSeriesState::None
+                        }) =>
+                {
+                    let mut prepared_components = Vec::new();
+                    prepared_components
+                        .try_reserve_exact(components.len())
+                        .map_err(|_| {
+                            allocation("unable to reserve categorical interaction recipe")
+                        })?;
+                    for component in components {
+                        validate_categorical_value(
+                            component.level_value,
+                            "categorical interaction metadata level",
+                        )?;
+                        prepared_components.push(PreparedOlsCategoricalComponent {
+                            source: component.source,
+                            categorical_source_index: categorical_source_index(
+                                &categorical_source_indices,
+                                component.source,
+                            )?,
+                            level_bits: canonical_factor_value(component.level_value).to_bits(),
+                            level_code: None,
+                        });
+                    }
+                    PreparedOlsColumnKind::CategoricalInteraction {
+                        components: prepared_components,
+                    }
+                }
                 _ => {
                     return Err(unsupported(
-                        "prepare-ols-test supports only non-time-series continuous and numeric factor main-effect terms",
+                        "prepare-ols-test supports only non-time-series continuous terms, numeric factor main effects, and numeric all-categorical interactions",
                     ));
                 }
             };
@@ -355,6 +421,16 @@ fn categorical_source_indices(model: &CompiledTermGraph) -> Result<BTreeMap<Sour
     Ok(indices)
 }
 
+fn categorical_source_index(
+    indices: &BTreeMap<SourceId, usize>,
+    source: SourceId,
+) -> Result<usize> {
+    indices
+        .get(&source)
+        .copied()
+        .ok_or_else(|| invalid("categorical source plan disappeared"))
+}
+
 fn validate_candidate_categorical_domain(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
@@ -430,31 +506,52 @@ fn resolve_categorical_level_codes(
     categorical_sources: &[PreparedCategoricalSource],
 ) -> Result<()> {
     for column in &mut model.columns {
-        let PreparedOlsColumnKind::Categorical {
-            categorical_source_index,
-            level_bits,
-            level_code,
-            ..
-        } = &mut column.kind
-        else {
-            continue;
-        };
-        let source = categorical_sources
-            .get(*categorical_source_index)
-            .ok_or_else(|| invalid("prepared categorical source plan is out of range"))?;
-        let level = f64::from_bits(*level_bits);
-        *level_code = source
-            .encoded
-            .levels
-            .binary_search_by(|candidate| candidate.total_cmp(&level))
-            .ok()
-            .map(|index| {
-                u32::try_from(index)
-                    .map_err(|_| invalid("prepared categorical level code exceeds u32"))
-            })
-            .transpose()?;
+        match &mut column.kind {
+            PreparedOlsColumnKind::Categorical {
+                categorical_source_index,
+                level_bits,
+                level_code,
+                ..
+            } => {
+                *level_code = resolve_categorical_level_code(
+                    categorical_sources,
+                    *categorical_source_index,
+                    *level_bits,
+                )?;
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                for component in components {
+                    component.level_code = resolve_categorical_level_code(
+                        categorical_sources,
+                        component.categorical_source_index,
+                        component.level_bits,
+                    )?;
+                }
+            }
+            PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
+        }
     }
     Ok(())
+}
+
+fn resolve_categorical_level_code(
+    categorical_sources: &[PreparedCategoricalSource],
+    categorical_source_index: usize,
+    level_bits: u64,
+) -> Result<Option<u32>> {
+    let source = categorical_sources
+        .get(categorical_source_index)
+        .ok_or_else(|| invalid("prepared categorical source plan is out of range"))?;
+    let level = f64::from_bits(level_bits);
+    source
+        .encoded
+        .levels
+        .binary_search_by(|candidate| candidate.total_cmp(&level))
+        .ok()
+        .map(|index| {
+            u32::try_from(index).map_err(|_| invalid("prepared categorical level code exceeds u32"))
+        })
+        .transpose()
 }
 
 fn source_index(source: SourceId) -> Result<usize> {
@@ -853,6 +950,124 @@ mod tests {
         }
     }
 
+    fn categorical_component(order: u32, source: SourceId, level: f64) -> TermComponent {
+        TermComponent {
+            order: ComponentOrder::new(order).expect("component"),
+            source,
+            kind: ComponentKind::Categorical,
+            level_state: LevelState::Present,
+            level_value: level,
+            base: MetadataFlag::False,
+            omitted: MetadataFlag::False,
+            raw_operator: format!("{level}"),
+            time_series_state: TimeSeriesState::None,
+            raw_time_series_operator: String::new(),
+        }
+    }
+
+    fn all_categorical_interaction_request() -> OlsRequestV1 {
+        let sources = ["g", "h", "j"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| SourceEntry {
+                id: SourceId::new(u32::try_from(index + 1).expect("small fixture"))
+                    .expect("source"),
+                canonical_name: name.to_owned(),
+            })
+            .collect::<Vec<_>>();
+        let specifications: Vec<(RawTermKind, bool, &str, Vec<TermComponent>)> = vec![
+            (
+                RawTermKind::Factor,
+                true,
+                "1b.g",
+                vec![categorical_component(1, sources[0].id, 1.0)],
+            ),
+            (
+                RawTermKind::Factor,
+                false,
+                "2.g",
+                vec![categorical_component(1, sources[0].id, 2.0)],
+            ),
+            (
+                RawTermKind::Interaction,
+                false,
+                "1.g#1.h",
+                vec![
+                    categorical_component(1, sources[0].id, 1.0),
+                    categorical_component(2, sources[1].id, 1.0),
+                ],
+            ),
+            (
+                RawTermKind::Product,
+                false,
+                "2.g#2.h",
+                vec![
+                    categorical_component(1, sources[0].id, 2.0),
+                    categorical_component(2, sources[1].id, 2.0),
+                ],
+            ),
+            (
+                RawTermKind::Interaction,
+                false,
+                "3.g#1.h",
+                vec![
+                    categorical_component(1, sources[0].id, 3.0),
+                    categorical_component(2, sources[1].id, 1.0),
+                ],
+            ),
+            (
+                RawTermKind::Interaction,
+                false,
+                "1.g#2.h#2.j",
+                vec![
+                    categorical_component(1, sources[0].id, 1.0),
+                    categorical_component(2, sources[1].id, 2.0),
+                    categorical_component(3, sources[2].id, 2.0),
+                ],
+            ),
+        ];
+        let terms = specifications
+            .into_iter()
+            .enumerate()
+            .map(|(index, (raw_kind, omitted, token, components))| {
+                let one_based = u32::try_from(index + 1).expect("small fixture");
+                ExpandedTerm {
+                    id: TermId::new(one_based).expect("term"),
+                    order: TermOrder::new(one_based).expect("order"),
+                    coefficient_slot: CoefficientSlot::new(one_based).expect("slot"),
+                    raw_kind,
+                    whole_column_omitted: omitted,
+                    canonical_token: token.to_owned(),
+                    components,
+                }
+            })
+            .collect();
+        let mut bindings = vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+        ];
+        bindings.extend(
+            sources
+                .iter()
+                .enumerate()
+                .map(|(index, source)| OlsInputBinding {
+                    stata_var_position: u32::try_from(index + 3).expect("small fixture"),
+                    role: OlsInputRole::NumericSource(source.id),
+                }),
+        );
+        OlsRequestV1 {
+            model: CompiledTermGraph { sources, terms },
+            bindings,
+            include_intercept: true,
+        }
+    }
+
     #[test]
     fn exact_row_map_drop_precedence_bits_and_intercept_are_preserved() {
         let request = request(2, true);
@@ -990,11 +1205,11 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![0.0, 0.0, 0.0]
         );
-        let PreparedOlsColumnKind::Categorical { level_code, .. } = prepared.model.columns[3].kind
+        let PreparedOlsColumnKind::Categorical { level_code, .. } = &prepared.model.columns[3].kind
         else {
             panic!("fourth generated column must be categorical");
         };
-        assert_eq!(level_code, None);
+        assert_eq!(*level_code, None);
     }
 
     #[test]
@@ -1020,6 +1235,153 @@ mod tests {
                 .expect_err("candidate invalid factor value");
             assert_eq!(error.code, ErrorCode::InvalidData);
         }
+    }
+
+    #[test]
+    fn all_categorical_interactions_preserve_slots_and_evaluate_without_materialization() {
+        let request = all_categorical_interaction_request();
+        let loaded = LoadedOlsInput {
+            candidate: vec![true; 5],
+            outcome: column(
+                &[10.0, 11.0, 12.0, 13.0, 14.0],
+                &[false, false, false, true, true],
+            ),
+            numeric_sources: vec![
+                (
+                    SourceId::new(1).expect("g"),
+                    column(&[1.0, 1.0, 2.0, 2.0, 3.0], &[false; 5]),
+                ),
+                (
+                    SourceId::new(2).expect("h"),
+                    column(&[1.0, 2.0, 1.0, 2.0, 1.0], &[false; 5]),
+                ),
+                (
+                    SourceId::new(3).expect("j"),
+                    column(&[1.0, 2.0, 2.0, 1.0, 1.0], &[false; 5]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("interaction preparation");
+
+        assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
+        assert_eq!(prepared.categorical_sources.len(), 3);
+        assert_eq!(prepared.model.coefficients.len(), 7);
+        assert_eq!(
+            prepared.model.coefficients[0],
+            PreparedOlsCoefficient {
+                coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                status: PreparedOlsCoefficientStatus::SyntaxOmitted,
+                generated_column_index: None,
+            }
+        );
+        assert_eq!(prepared.model.columns.len(), 6);
+        let evaluated = (0..prepared.model.columns.len())
+            .map(|column| {
+                (0..prepared.sample.n_active())
+                    .map(|row| prepared.column_value(column, row).expect("column value"))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            evaluated,
+            vec![
+                vec![0.0, 0.0, 1.0],
+                vec![1.0, 0.0, 0.0],
+                vec![0.0, 0.0, 0.0],
+                vec![0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 0.0],
+                vec![1.0, 1.0, 1.0],
+            ]
+        );
+
+        let PreparedOlsColumnKind::CategoricalInteraction { components } =
+            &prepared.model.columns[2].kind
+        else {
+            panic!("third generated column must be a categorical interaction");
+        };
+        assert!(components
+            .iter()
+            .all(|component| component.level_code.is_some()));
+        let PreparedOlsColumnKind::CategoricalInteraction { components } =
+            &prepared.model.columns[3].kind
+        else {
+            panic!("fourth generated column must be a categorical interaction");
+        };
+        assert_eq!(components[0].level_code, None);
+    }
+
+    #[test]
+    fn categorical_interaction_values_are_stable_under_row_permutation() {
+        let request = all_categorical_interaction_request();
+        let make_loaded = |order: &[usize]| LoadedOlsInput {
+            candidate: vec![true; order.len()],
+            outcome: column(
+                &order
+                    .iter()
+                    .map(|row| [10.0, 11.0, 12.0][*row])
+                    .collect::<Vec<_>>(),
+                &vec![false; order.len()],
+            ),
+            numeric_sources: [[1.0, 1.0, 2.0], [1.0, 2.0, 1.0], [1.0, 2.0, 2.0]]
+                .into_iter()
+                .enumerate()
+                .map(|(source, values)| {
+                    (
+                        SourceId::new(u32::try_from(source + 1).expect("small fixture"))
+                            .expect("source"),
+                        column(
+                            &order.iter().map(|row| values[*row]).collect::<Vec<_>>(),
+                            &vec![false; order.len()],
+                        ),
+                    )
+                })
+                .collect(),
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let original = prepare_ols_data(&request, &make_loaded(&[0, 1, 2])).expect("original");
+        let permuted = prepare_ols_data(&request, &make_loaded(&[2, 0, 1])).expect("permuted");
+        for column in 0..original.model.columns.len() {
+            let original_values =
+                [0, 1, 2].map(|row| original.column_value(column, row).expect("original value"));
+            let permuted_values =
+                [1, 2, 0].map(|row| permuted.column_value(column, row).expect("permuted value"));
+            assert_eq!(original_values, permuted_values);
+        }
+    }
+
+    #[test]
+    fn mixed_and_time_series_interactions_remain_unsupported() {
+        let mut mixed = all_categorical_interaction_request();
+        let component = &mut mixed.model.terms[2].components[1];
+        component.kind = ComponentKind::Continuous;
+        component.level_state = LevelState::Absent;
+        component.level_value = 0.0;
+        component.base = MetadataFlag::False;
+        component.raw_operator = "c".to_owned();
+        assert_eq!(
+            mixed
+                .validate_and_compile()
+                .expect_err("mixed interaction")
+                .code,
+            ErrorCode::Unsupported
+        );
+
+        let mut pending = all_categorical_interaction_request();
+        pending.model.terms[2].components[0].time_series_state =
+            TimeSeriesState::PendingMaterialization;
+        pending.model.terms[2].components[0].raw_time_series_operator = "L".to_owned();
+        assert_eq!(
+            pending
+                .validate_and_compile()
+                .expect_err("pending time-series interaction")
+                .code,
+            ErrorCode::Unsupported
+        );
     }
 
     #[test]

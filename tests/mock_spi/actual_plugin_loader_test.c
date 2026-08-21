@@ -11,6 +11,7 @@ static char display_buffer[16384];
 static char error_buffer[16384];
 static ST_int stop_flag = 0;
 static ST_double plugin_data[7][5];
+static ST_int plugin_read_counts[7][5];
 static ST_int plugin_nvars = 6;
 
 static ST_int mock_poll(void) { return 0; }
@@ -30,6 +31,7 @@ static ST_int mock_vdata(ST_int variable, ST_int observation, ST_double *value)
     if (variable < 1 || variable > 7 || observation < 1 || observation > 5 || value == NULL) {
         return 111;
     }
+    plugin_read_counts[variable - 1][observation - 1] += 1;
     *value = plugin_data[variable - 1][observation - 1];
     return 0;
 }
@@ -55,6 +57,16 @@ static const ST_double factor_component_matrix[3][13] = {
     {2.0, 1.0, 1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 1.0, 2.0, 2.0, 0.0, 0.0},
     {3.0, 1.0, 1.0, 2.0, 2.0, 3.0, 0.0, 0.0, 1.0, 3.0, 3.0, 0.0, 0.0}
 };
+static const ST_double interaction_source_matrix[2][2] = {
+    {1.0, 0.0}, {2.0, 0.0}
+};
+static const ST_double interaction_term_matrix[1][8] = {
+    {1.0, 1.0, 1.0, 3.0, 2.0, 0.0, 0.0, 0.0}
+};
+static const ST_double interaction_component_matrix[2][13] = {
+    {1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0},
+    {1.0, 2.0, 2.0, 2.0, 2.0, 1.0, 0.0, 0.0, 1.0, 2.0, 2.0, 0.0, 0.0}
+};
 static const ST_double binding_matrix[3][3] = {
     {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}
 };
@@ -67,6 +79,10 @@ static const ST_double frequency_weight_binding_matrix[4][3] = {
 static const ST_double probability_weight_binding_matrix[4][3] = {
     {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}, {4.0, 6.0, 0.0}
 };
+static const ST_double interaction_binding_matrix[4][3] = {
+    {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0},
+    {3.0, 3.0, 1.0}, {4.0, 3.0, 2.0}
+};
 
 static ST_int mock_rowsof(char *name)
 {
@@ -76,6 +92,9 @@ static ST_int mock_rowsof(char *name)
     if (strcmp(name, "BF") == 0) return 4;
     if (strcmp(name, "BP") == 0) return 4;
     if (strcmp(name, "TF") == 0 || strcmp(name, "CF") == 0) return 3;
+    if (strcmp(name, "SI") == 0 || strcmp(name, "CI") == 0) return 2;
+    if (strcmp(name, "TI") == 0) return 1;
+    if (strcmp(name, "BI") == 0) return 4;
     return -1;
 }
 static ST_int mock_colsof(char *name)
@@ -89,6 +108,10 @@ static ST_int mock_colsof(char *name)
     if (strcmp(name, "BP") == 0) return 3;
     if (strcmp(name, "TF") == 0) return 8;
     if (strcmp(name, "CF") == 0) return 13;
+    if (strcmp(name, "SI") == 0) return 2;
+    if (strcmp(name, "TI") == 0) return 8;
+    if (strcmp(name, "CI") == 0) return 13;
+    if (strcmp(name, "BI") == 0) return 3;
     return -1;
 }
 static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *value)
@@ -114,6 +137,18 @@ static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *valu
         *value = factor_component_matrix[row - 1][column - 1];
         return 0;
     }
+    if (strcmp(name, "SI") == 0 && row <= 2 && column <= 2) {
+        *value = interaction_source_matrix[row - 1][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "TI") == 0 && row == 1 && column <= 8) {
+        *value = interaction_term_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "CI") == 0 && row <= 2 && column <= 13) {
+        *value = interaction_component_matrix[row - 1][column - 1];
+        return 0;
+    }
     if (strcmp(name, "B") == 0 && row <= 3 && column <= 3) {
         *value = binding_matrix[row - 1][column - 1];
         return 0;
@@ -128,6 +163,10 @@ static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *valu
     }
     if (strcmp(name, "BP") == 0 && row <= 4 && column <= 3) {
         *value = probability_weight_binding_matrix[row - 1][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "BI") == 0 && row <= 4 && column <= 3) {
+        *value = interaction_binding_matrix[row - 1][column - 1];
         return 0;
     }
     return 111;
@@ -371,6 +410,98 @@ static int check_prepare_ols_factor(stata_call_function call)
         plugin_data[5][2] != 3.0 || plugin_data[5][3] != 1.0 ||
         plugin_data[5][4] != 0.0) {
         return 3;
+    }
+    return 0;
+}
+
+static int check_prepare_ols_categorical_interaction(stata_call_function call)
+{
+    char *arguments[] = {
+        "prepare-ols-test",
+        "ado=0.1.0-phase01",
+        "protocol_major=1",
+        "protocol_minor=0",
+        "stata=18.0",
+        "confirm=developer-preparation-test",
+        "model_major=2",
+        "model_minor=0",
+        "source_matrix=SI",
+        "source_count=2",
+        "term_matrix=TI",
+        "term_count=1",
+        "component_matrix=CI",
+        "component_count=2",
+        "source_names=1:g|1:h",
+        "canonical_tokens=7:2.g#1.h",
+        "raw_component_operators=1:2|1:1",
+        "raw_time_series_operators=0:|0:",
+        "binding_matrix=BI",
+        "binding_count=4",
+        "include_intercept=1",
+        "output_original_observation=5",
+        "output_retained=6",
+        "output_drop_reason=7"
+    };
+    ST_int row;
+    ST_int variable;
+    plugin_nvars = 7;
+    memset(plugin_read_counts, 0, sizeof(plugin_read_counts));
+    for (row = 0; row < 5; ++row) {
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+        plugin_data[6][row] = NAN;
+    }
+    plugin_data[0][0] = 0.0;
+    plugin_data[0][1] = 1.0;
+    plugin_data[0][2] = 1.0;
+    plugin_data[0][3] = 0.0;
+    plugin_data[0][4] = 1.0;
+    plugin_data[1][1] = 2.0;
+    plugin_data[1][2] = 3.0;
+    plugin_data[1][4] = 5.0;
+    plugin_data[2][0] = -1.0;
+    plugin_data[2][1] = 2.0;
+    plugin_data[2][2] = 1.0;
+    plugin_data[2][4] = 2.0;
+    plugin_data[3][1] = 1.0;
+    plugin_data[3][2] = NAN;
+    plugin_data[3][4] = 2.0;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
+    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_columns=2") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_categorical_sources=2") == NULL ||
+        error_buffer[0] != '\0') {
+        return 2;
+    }
+    for (variable = 2; variable <= 4; ++variable) {
+        if (plugin_read_counts[variable - 1][0] != 0 ||
+            plugin_read_counts[variable - 1][1] != 1 ||
+            plugin_read_counts[variable - 1][2] != 1 ||
+            plugin_read_counts[variable - 1][3] != 0 ||
+            plugin_read_counts[variable - 1][4] != 1) {
+            return 3;
+        }
+    }
+    if (plugin_data[6][0] != 1.0 || plugin_data[6][1] != 0.0 ||
+        plugin_data[6][2] != 3.0 || plugin_data[6][3] != 1.0 ||
+        plugin_data[6][4] != 0.0) {
+        return 4;
+    }
+
+    for (row = 0; row < 5; ++row) {
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+        plugin_data[6][row] = NAN;
+    }
+    plugin_data[2][1] = -1.0;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 5;
+    for (row = 0; row < 5; ++row) {
+        if (!isnan(plugin_data[4][row]) || !isnan(plugin_data[5][row]) ||
+            !isnan(plugin_data[6][row])) {
+            return 6;
+        }
     }
     return 0;
 }
@@ -717,6 +848,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "prepare OLS factor path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 75 + result;
+    }
+    result = check_prepare_ols_categorical_interaction(call);
+    if (result != 0) {
+        fprintf(stderr, "prepare OLS categorical interaction path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 77 + result;
     }
     result = check_prepare_ols_fweight(call);
     if (result != 0) {

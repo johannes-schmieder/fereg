@@ -68,16 +68,20 @@ and rejected before observation reads. At most one weight binding is permitted.
 Inputs and outputs must cover the plugin varlist exactly.
 
 Role `3` describes numeric storage rather than continuous term semantics. One
-source can therefore serve both `c.g` and `i.g` without a duplicate binding or
-SPI read. The action is restricted to plain continuous terms and numeric factor
-main effects with optional analytic, frequency, or probability weights. Factor
-interactions, time-series terms, string sources, fixed effects, and clusters
-remain unsupported, and the action never posts `e()` results. Stata's model
-wire owns expanded levels, bases, omission, and coefficient slots. Rust retains
-omitted-base slots without generating numerical columns and factorizes each
-active categorical source deterministically. A level that existed in the
-candidate expansion but disappears after native sample preparation becomes an
-explicit all-zero recipe, not an error.
+source can therefore serve `c.g`, `i.g`, and multiple categorical interactions
+without a duplicate binding or SPI read. The action is restricted to plain
+continuous terms, numeric factor main effects, and numeric all-categorical
+interactions with optional analytic, frequency, or probability weights.
+Categorical-by-continuous and continuous products, time-series terms, string
+sources, fixed effects, and clusters remain unsupported, and the action never
+posts `e()` results. Stata's model wire owns expanded levels, bases, omission,
+and coefficient slots. Rust retains omitted-base slots without generating
+numerical columns and factorizes each active categorical source
+deterministically. All-categorical interactions are small ordered equality
+recipes over those codes; no observation-scale interaction column or tuple
+table is allocated. A level or tuple that existed in the candidate expansion
+but disappears after native sample preparation becomes an explicit all-zero
+recipe, not an error.
 Weights must be passed as one numeric source binding. Frequency weights must
 be finite, strictly positive integral values representable as `u32`; an
 explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or

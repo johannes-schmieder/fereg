@@ -40,7 +40,8 @@ struct PrepareAction {
     diagnostics: DiagnosticBindings,
 }
 
-/// Execute the developer-only numeric-main-effect/optional-weight/no-FE preparation action.
+/// Execute the developer-only numeric-main-effect/all-categorical-interaction/
+/// optional-weight/no-FE preparation action.
 pub fn prepare_ols_test(
     args: &[String],
     output: &dyn OutputSink,
@@ -965,6 +966,103 @@ mod tests {
         (args, spi)
     }
 
+    fn categorical_interaction_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixture();
+        let sources = ["g", "h"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| SourceEntry {
+                id: SourceId::new(u32::try_from(index + 1).expect("small fixture"))
+                    .expect("source"),
+                canonical_name: name.to_owned(),
+            })
+            .collect::<Vec<_>>();
+        let graph = CompiledTermGraph {
+            sources: sources.clone(),
+            terms: vec![ExpandedTerm {
+                id: TermId::new(1).expect("term"),
+                order: TermOrder::new(1).expect("order"),
+                coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                raw_kind: RawTermKind::Interaction,
+                whole_column_omitted: false,
+                canonical_token: "2.g#1.h".to_owned(),
+                components: vec![
+                    TermComponent {
+                        order: ComponentOrder::new(1).expect("component"),
+                        source: sources[0].id,
+                        kind: ComponentKind::Categorical,
+                        level_state: LevelState::Present,
+                        level_value: 2.0,
+                        base: MetadataFlag::False,
+                        omitted: MetadataFlag::False,
+                        raw_operator: "2".to_owned(),
+                        time_series_state: TimeSeriesState::None,
+                        raw_time_series_operator: String::new(),
+                    },
+                    TermComponent {
+                        order: ComponentOrder::new(2).expect("component"),
+                        source: sources[1].id,
+                        kind: ComponentKind::Categorical,
+                        level_state: LevelState::Present,
+                        level_value: 1.0,
+                        base: MetadataFlag::False,
+                        omitted: MetadataFlag::False,
+                        raw_operator: "1".to_owned(),
+                        time_series_state: TimeSeriesState::None,
+                        raw_time_series_operator: String::new(),
+                    },
+                ],
+            }],
+        };
+        let wire = ModelWireV2::from_graph(&graph).expect("interaction wire");
+        spi.matrices.insert("S".to_owned(), wire.sources.rows);
+        spi.matrices.insert("T".to_owned(), wire.terms.rows);
+        spi.matrices.insert("C".to_owned(), wire.components.rows);
+        spi.matrices.insert(
+            "B".to_owned(),
+            vec![
+                vec![1.0, 1.0, 0.0],
+                vec![2.0, 2.0, 0.0],
+                vec![3.0, 3.0, 1.0],
+                vec![4.0, 3.0, 2.0],
+            ],
+        );
+        spi.nvars = 7;
+        spi.data.insert((3, 1), (-1.0, false));
+        for (observation, g, h, h_missing) in [
+            (2, 2.0, 1.0, false),
+            (3, 1.0, 2.0, true),
+            (5, 2.0, 2.0, false),
+        ] {
+            spi.data.insert((3, observation), (g, false));
+            spi.data.insert((4, observation), (h, h_missing));
+        }
+        for value in &mut args {
+            match value.as_str() {
+                "source_count=1" => *value = "source_count=2".to_owned(),
+                "component_count=1" => *value = "component_count=2".to_owned(),
+                "source_names=1:x" => *value = "source_names=1:g|1:h".to_owned(),
+                "canonical_tokens=3:c.x" => {
+                    *value = "canonical_tokens=7:2.g#1.h".to_owned();
+                }
+                "raw_component_operators=1:c" => {
+                    *value = "raw_component_operators=1:2|1:1".to_owned();
+                }
+                "raw_time_series_operators=0:" => {
+                    *value = "raw_time_series_operators=0:|0:".to_owned();
+                }
+                "binding_count=3" => *value = "binding_count=4".to_owned(),
+                "output_original_observation=4" => {
+                    *value = "output_original_observation=5".to_owned();
+                }
+                "output_retained=5" => *value = "output_retained=6".to_owned(),
+                "output_drop_reason=6" => *value = "output_drop_reason=7".to_owned(),
+                _ => {}
+            }
+        }
+        (args, spi)
+    }
+
     #[test]
     fn successful_action_reads_only_candidate_rows_and_writes_exact_diagnostics() {
         let (args, mut spi) = fixture();
@@ -1029,6 +1127,38 @@ mod tests {
     }
 
     #[test]
+    fn categorical_interaction_reads_each_numeric_source_once_and_is_candidate_scoped() {
+        let (args, mut spi) = categorical_interaction_fixture();
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("interaction preparation");
+        for variable in [3, 4] {
+            assert_eq!(
+                spi.reads
+                    .iter()
+                    .filter(|(candidate, _)| *candidate == variable)
+                    .map(|(_, observation)| *observation)
+                    .collect::<Vec<_>>(),
+                vec![2, 3, 5]
+            );
+        }
+        assert!(!spi.reads.contains(&(3, 1)));
+        assert!(spi.writes.contains(&(7, 3, 3.0)));
+        assert!(output
+            .displayed()
+            .contains("stfixest.prepare_ols.n_columns=2"));
+        assert!(output
+            .displayed()
+            .contains("stfixest.prepare_ols.n_categorical_sources=2"));
+
+        let (args, mut invalid) = categorical_interaction_fixture();
+        invalid.data.insert((3, 2), (-1.0, false));
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut invalid)
+            .expect_err("candidate interaction source must be valid");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(invalid.writes.is_empty());
+    }
+
+    #[test]
     fn invalid_candidate_factor_value_and_string_source_fail_without_writes() {
         for invalid in [-1.0, 1.5] {
             let (args, mut spi) = factor_fixture();
@@ -1049,7 +1179,7 @@ mod tests {
     }
 
     #[test]
-    fn factor_interaction_and_pending_time_series_fail_before_observation_reads() {
+    fn mixed_interaction_and_pending_time_series_fail_before_observation_reads() {
         let (mut args, mut spi) = factor_fixture();
         spi.matrices.get_mut("C").expect("components")[0][8] = 2.0;
         for value in &mut args {

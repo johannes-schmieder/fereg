@@ -14,9 +14,10 @@ or PPML available.
 ## Developer OLS preparation boundary
 
 The internal `_stfixest_prepare_ols_test` command exercises a deliberately
-bounded one-call boundary: plain continuous and numeric factor-main-effect
-regressors, at most one analytic-, frequency-, or probability-weight variable,
-no fixed effects, and no time-series materialization. It is guarded
+bounded one-call boundary: plain continuous regressors, numeric factor main
+effects, numeric all-categorical interactions, at most one analytic-,
+frequency-, or probability-weight variable, no fixed effects, and no
+time-series materialization. It is guarded
 by an explicit developer confirmation token and does not post estimation
 results. `stfeols` and `stfepois` still return `r(498)`.
 
@@ -52,8 +53,13 @@ factorizes active values. Signed zero is canonicalized only in factor codes;
 the retained raw numeric source remains bit-exact. Every Stata coefficient slot,
 including an omitted base, remains represented. A level removed by later
 outcome, source, or weight exclusions is retained as an all-zero recipe for
-later rank handling. Interactions, string factors, FE and cluster encoding, and
-model solving remain outside this checkpoint.
+later rank handling. All-categorical interactions retain a small ordered
+component recipe per coefficient column and evaluate it against the already
+compact source codes. They do not allocate an observation-scale interaction
+column or tuple table. If any requested component level vanishes, or if the
+requested tuple is absent, the interaction recipe is identically zero.
+Categorical-by-continuous and continuous products, string factors, FE and
+cluster encoding, and model solving remain outside this checkpoint.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -121,7 +127,8 @@ zero-sized paths. No partially built sample escapes an error.
 
 ## Model construction remains separate
 
-The developer boundary now binds numeric factor main-effect recipes to compact
-codes, but it does not invoke the estimator or the generic model-matrix builder.
-Factor interactions, FE/cluster source loading, and production one-call result
-posting require later independently tested work.
+The developer boundary now binds numeric factor main-effect and all-categorical
+interaction recipes to compact source codes, but it does not invoke the
+estimator or the generic model-matrix builder. Mixed interactions, FE/cluster
+source loading, and production one-call result posting require later
+independently tested work.

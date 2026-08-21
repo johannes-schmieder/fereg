@@ -12,16 +12,18 @@ choose a sample, select factor bases, insert an intercept, construct
 `ColumnRecipe`s, or enable estimator dispatch. Those remain later gates.
 
 The developer-only OLS preparation action now consumes the subset consisting
-of plain continuous terms and numeric categorical main effects. This does not
-change model-wire 2.0: source role 3 binds one numeric storage column, while
-the ordered components determine whether that source is used continuously,
-categorically, or both. Stata's `whole_column_omitted` flag remains authoritative
+of plain continuous terms, numeric categorical main effects, and numeric
+all-categorical interactions. This does not change model-wire 2.0: source role
+3 binds one numeric storage column, while the ordered components determine how
+that source is used. Stata's `whole_column_omitted` flag remains authoritative
 for base slots. Rust neither selects a base nor infers omission from spelling.
 After authoritative numeric sample preparation, Rust assigns deterministic
-compact codes to active factor values; an expanded level absent from the final
-active sample is represented as an all-zero recipe. Interactions, strings,
-fixed effects, clusters, and estimator dispatch remain unsupported by this
-developer action.
+compact codes to active factor values. Main effects and all-categorical
+interactions retain small recipes over those codes; no observation-scale
+interaction column is materialized. An expanded level or tuple absent from the
+final active sample is represented as an all-zero recipe. Mixed interactions,
+strings, fixed effects, clusters, and estimator dispatch remain unsupported by
+this developer action.
 
 ## Candidate marker ownership
 
