@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `8d17c7c` plus the sealed reference receipt below
+**Branch / baseline:** `main` through `c6e1888` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -37,7 +37,7 @@ scientific gates are met.
 | Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, debug/release unit tests, and FFI tests passed at the repaired baseline. Re-run required after estimator changes. |
 | Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
-| Developer OLS request-to-prepared-data boundary | Complete for continuous inputs with one optional analytic, frequency, or probability weight | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7a` added a mutually exclusive frequency-weight binding; `2b5b57c` tightened its missing/nonfinite boundary after independent review; and `8d17c7c` added conservative probability-weight preparation. Positive finite probability weights remain bit-exact, explicitly masked missing values receive reason 4, and candidate-row zero, negative, or unmasked nonfinite values fail before writes. Binding role 6 identifies probability weights; importance-weight role 7 remains undefined and is rejected before observation reads, consistent with the sealed reference's `iweight` return code 101. Invalid values outside `if`/`in` are never read, retained counts remain physical rows, and model-wire/binding/layout/type/output validation still precedes observation reads. The 112-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite, universal macOS build/audit/actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
+| Developer OLS request-to-prepared-data boundary | Complete for plain continuous and numeric factor-main-effect inputs with one optional analytic, frequency, or probability weight | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7a` added a mutually exclusive frequency-weight binding; `2b5b57c` tightened its missing/nonfinite boundary after independent review; `8d17c7c` added conservative probability-weight preparation; and `c6e1888` added numeric ordinary-factor main-effect preparation. Binding role 3 now describes one generic numeric source, so a source used by both `c.g` and `i.g` crosses SPI once. Stata remains authoritative for factor expansion, base selection, canonical names, and whole-column omission; Rust preserves omitted coefficient slots, validates candidate-scoped category values, factorizes active values deterministically, and represents a level lost after later sample drops as an explicit zero recipe. Role 6 identifies probability weights; importance-weight role 7 remains undefined and rejected before observation reads. Factor interactions, time-series materialization, strings, FEs, clusters, solving, and result posting remain unsupported. The 113-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite, universal macOS build/audit/actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
@@ -62,11 +62,11 @@ scientific gates are met.
 - `stfeols` is deliberately disabled and returns `r(498)`; no successful
   Stata estimator invocation, result posting, or reference parity evidence
   exists yet.
-- The developer preparation action covers only continuous, unweighted,
-  analytic-weighted, frequency-weighted, or probability-weighted no-FE inputs.
-  Categorical/string factorization, interactions, FE/cluster sources,
-  singleton deletion, estimator execution, and result posting are not
-  connected to this request boundary yet.
+- The developer preparation action covers plain continuous and numeric factor
+  main-effect inputs with no FE and at most one supported weight. Factor
+  interactions, string factorization, FE/cluster sources, singleton deletion,
+  estimator execution, and result posting are not connected to this request
+  boundary yet.
 - No candidate `stfeols` parity, benchmark timing/RSS comparison, or
   constrained-memory receipt exists yet. The newly sealed receipt is
   reference-only and correctly reports the performance gate as blocked because
@@ -78,9 +78,9 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Independent review of the conservative probability-weight boundary, followed
-  by one bounded numeric categorical main-effect source/factorization expansion
-  retaining adversarial SPI failure tests and no public estimator enablement.
+- Independent review of the numeric factor-main-effect checkpoint, followed by
+  the next bounded model-source expansion. No review may enable the public
+  estimator or bypass the FE, VCE, DoF, posting, and parity gates.
 
 ## Historical qualification
 
