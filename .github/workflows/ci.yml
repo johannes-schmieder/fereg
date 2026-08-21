@@ -1,0 +1,85 @@
+name: StFixest CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust-and-static:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt, clippy
+      - name: Repository and oracle tests
+        run: ./scripts/run_tests.sh
+      - name: FFI panic-boundary unit tests
+        run: cargo test -p stfixest-plugin --features ffi --lib
+
+  linux-plugin:
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.85.1
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Build glibc 2.28-compatible plugin
+        shell: bash
+        run: ./scripts/build_linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stfixest-linux-x86_64
+          path: |
+            dist/stfixest_linux.plugin
+            dist/stfixest_linux.plugin.sha256
+
+  windows-plugin:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Exercise Windows SPI ABI and exports
+        shell: powershell
+        run: ./tests/mock_spi/run_mock_bridge_test.ps1
+      - name: Build Windows x86-64 plugin
+        shell: powershell
+        run: ./scripts/build_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stfixest-windows-x86_64
+          path: |
+            dist/stfixest_windows.plugin
+            dist/stfixest_windows.plugin.sha256
+
+  macos-universal-plugin:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - name: Build universal macOS plugin
+        run: ./scripts/build_macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stfixest-macos-universal
+          path: |
+            dist/stfixest_macos.plugin
+            dist/stfixest_macos.plugin.sha256
