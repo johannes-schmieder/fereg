@@ -157,7 +157,9 @@ mod tests {
 
     #[test]
     fn current_handshake_passes() {
-        Handshake::current(18).validate().expect("current handshake");
+        Handshake::current(18)
+            .validate()
+            .expect("current handshake");
     }
 
     #[test]
@@ -176,7 +178,10 @@ mod tests {
     #[test]
     fn old_stata_is_rejected() {
         assert_eq!(
-            Handshake::current(17).validate().expect_err("must reject").code,
+            Handshake::current(17)
+                .validate()
+                .expect_err("must reject")
+                .code,
             ErrorCode::Unsupported
         );
     }

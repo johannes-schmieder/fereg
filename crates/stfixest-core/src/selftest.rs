@@ -71,7 +71,10 @@ pub fn run_native_selftest(threads: usize) -> SelfTestReport {
         run_case("protocol", || Handshake::current(18).validate()),
         run_case("factor_i64", || {
             let encoded = factorize_i64(&[4, 2, 4, -3])?;
-            require(encoded.codes == vec![2, 1, 2, 0], "unexpected integer codes")
+            require(
+                encoded.codes == vec![2, 1, 2, 0],
+                "unexpected integer codes",
+            )
         }),
         run_case("factor_f64", || {
             let encoded = factorize_f64(&[-0.0, 0.0, 1.5])?;
@@ -88,7 +91,10 @@ pub fn run_native_selftest(threads: usize) -> SelfTestReport {
             let first = [0, 0, 1, 1];
             let second = [0, 1, 0, 1];
             let encoded = interaction_codes(&[&first, &second])?;
-            require(encoded.n_levels() == 4, "interaction tuple count is incorrect")
+            require(
+                encoded.n_levels() == 4,
+                "interaction tuple count is incorrect",
+            )
         }),
         run_case("metadata", || minimal_model_spec().validate()),
         run_case("threads", || {

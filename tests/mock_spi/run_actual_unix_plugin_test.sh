@@ -11,7 +11,7 @@ mkdir -p "$BUILD"
 case "$(uname -s)" in
   Darwin)
     SYSTEM_DEFINE=APPLEMAC
-    EXTRA_LIBS=()
+    EXTRA_LIBS=(-lc)
     ;;
   Linux)
     SYSTEM_DEFINE=OPUNIX

@@ -18,8 +18,7 @@ pub use factorize::{
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
-    AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole,
-    VariableSpec,
+    AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole, VariableSpec,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

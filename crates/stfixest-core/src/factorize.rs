@@ -146,8 +146,7 @@ mod tests {
 
     #[test]
     fn string_codes_are_collision_safe() {
-        let encoded = factorize_strings(&["a#b", "a", "a#b", "b"])
-            .expect("factorize");
+        let encoded = factorize_strings(&["a#b", "a", "a#b", "b"]).expect("factorize");
         assert_eq!(encoded.levels, vec!["a", "a#b", "b"]);
         assert_eq!(encoded.codes, vec![1, 0, 1, 2]);
     }

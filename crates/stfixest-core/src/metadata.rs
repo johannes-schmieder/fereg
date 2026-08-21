@@ -143,7 +143,11 @@ impl ModelSpec {
                     if term.base { 1.0 } else { 0.0 },
                     if term.omitted { 1.0 } else { 0.0 },
                     term.coefficient_column as f64,
-                    if term.pre_materialized_time_series { 1.0 } else { 0.0 },
+                    if term.pre_materialized_time_series {
+                        1.0
+                    } else {
+                        0.0
+                    },
                 ];
                 row.extend(term.source_positions.iter().map(|value| *value as f64));
                 row

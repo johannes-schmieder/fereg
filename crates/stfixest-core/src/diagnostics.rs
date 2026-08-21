@@ -86,7 +86,11 @@ impl DoctorReport {
             ),
             format!(
                 "stfixest.native_selftest={}",
-                if input.native_selftest_passed { "pass" } else { "fail" }
+                if input.native_selftest_passed {
+                    "pass"
+                } else {
+                    "fail"
+                }
             ),
             format!(
                 "stfixest.dependency_audit={}",

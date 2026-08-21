@@ -1,10 +1,10 @@
 use crate::dispatch::dispatch_args;
 use crate::output::OutputSink;
-use stfixest_core::error::{ErrorCode, StFixestError};
 use std::any::Any;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use stfixest_core::error::{ErrorCode, StFixestError};
 
 #[cfg(not(test))]
 extern "C" {
@@ -53,10 +53,7 @@ impl OutputSink for SpiSink {
 /// must remain valid for the duration of the call. Stata must have initialized
 /// the C SPI bridge with `pginit` before actions that emit output.
 #[no_mangle]
-pub unsafe extern "C" fn stfixest_dispatch(
-    argc: c_int,
-    argv: *const *const c_char,
-) -> c_int {
+pub unsafe extern "C" fn stfixest_dispatch(argc: c_int, argv: *const *const c_char) -> c_int {
     let outcome = catch_unwind(AssertUnwindSafe(|| {
         // SAFETY: the exported ABI validates argc/argv before dereferencing.
         let args = unsafe { read_arguments(argc, argv) }?;

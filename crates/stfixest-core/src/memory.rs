@@ -49,12 +49,24 @@ pub fn estimate_phase2_memory(
     let fast = checked_sum(&[
         base,
         checked_mul(checked_mul(n, k, "resident X")?, 16, "X plus transformed X")?,
-        checked_mul(checked_mul(k, k, "cross-product")?, 8, "cross-product bytes")?,
+        checked_mul(
+            checked_mul(k, k, "cross-product")?,
+            8,
+            "cross-product bytes",
+        )?,
     ])?;
     let low = checked_sum(&[
         base,
-        checked_mul(checked_mul(n, pool, "pooled X")?, 16, "X block plus transformed block")?,
-        checked_mul(checked_mul(k, k, "cross-product")?, 8, "cross-product bytes")?,
+        checked_mul(
+            checked_mul(n, pool, "pooled X")?,
+            16,
+            "X block plus transformed block",
+        )?,
+        checked_mul(
+            checked_mul(k, k, "cross-product")?,
+            8,
+            "cross-product bytes",
+        )?,
     ])?;
     Ok(MemoryEstimate {
         fast_bytes: fast,
