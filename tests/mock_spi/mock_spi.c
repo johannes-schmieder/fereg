@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../plugin/stata_bridge.h"
+#include "stata_bridge.h"
 
 static char display_buffer[4096];
 static char error_buffer[4096];
@@ -30,6 +30,31 @@ static ST_int append_error(char *message)
 static ST_int mock_poll(void) { return 17; }
 static ST_int mock_nobs(void) { return 42; }
 static ST_int mock_nvars(void) { return 7; }
+static ST_int mock_in1(void) { return 5; }
+static ST_int mock_in2(void) { return 40; }
+static ST_boolean mock_selobs(ST_int observation) { return (ST_boolean) (observation % 2 == 0); }
+static ST_boolean mock_isstr(ST_int variable) { return (ST_boolean) (variable == 4 || variable == 5); }
+static ST_boolean mock_isstrl(ST_int variable) { return (ST_boolean) (variable == 5); }
+static ST_boolean mock_isbinary(ST_int variable, ST_int observation)
+{
+    return (ST_boolean) (variable == 5 && observation == 99);
+}
+static ST_int mock_sdatalen(ST_int variable, ST_int observation)
+{
+    if ((variable != 4 && variable != 5) || observation != 12) return -111;
+    return (ST_int) strlen(string_slot);
+}
+static ST_int mock_strldata(ST_int variable, ST_int observation, char *buffer, ST_int length)
+{
+    size_t needed;
+    if (variable != 5 || observation != 12 || buffer == NULL || length <= 0) return 111;
+    needed = strlen(string_slot) + 1U;
+    if ((size_t) length < needed) return 920;
+    memcpy(buffer, string_slot, needed);
+    return 0;
+}
+static ST_int mock_rowsof(char *name) { return strcmp(name, "mock_matrix") == 0 ? 4 : -1; }
+static ST_int mock_colsof(char *name) { return strcmp(name, "mock_matrix") == 0 ? 5 : -1; }
 static ST_boolean mock_missing(ST_double value)
 {
     if (isnan(value)) return (ST_boolean) 1U;
@@ -161,6 +186,22 @@ static int check_string_round_trips(void)
         fprintf(stderr, "macro round trip failed: %s\n", buffer);
         return 2;
     }
+    if (stfixest_spi_sdatalen(4, 12) != (ST_int) strlen(string_slot)) {
+        fprintf(stderr, "string length wrapper failed\n");
+        return 3;
+    }
+    memset(buffer, 0, sizeof(buffer));
+    if (stfixest_spi_read_string(4, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
+        strcmp(buffer, "firm alpha") != 0) {
+        fprintf(stderr, "bounded fixed-string read failed: %s\n", buffer);
+        return 4;
+    }
+    memset(buffer, 0, sizeof(buffer));
+    if (stfixest_spi_read_string(5, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
+        strcmp(buffer, "firm alpha") != 0) {
+        fprintf(stderr, "bounded strL read failed: %s\n", buffer);
+        return 5;
+    }
     return 0;
 }
 
@@ -176,6 +217,16 @@ int main(void)
     plugin.nobs = mock_nobs;
     plugin.nvars = mock_nvars;
     plugin.nvar = mock_nvars;
+    plugin.nobs1 = mock_in1;
+    plugin.nobs2 = mock_in2;
+    plugin.selobs = mock_selobs;
+    plugin.isstr = mock_isstr;
+    plugin.isstrl = mock_isstrl;
+    plugin.isbinary = mock_isbinary;
+    plugin.sdatalen = mock_sdatalen;
+    plugin.strldata = mock_strldata;
+    plugin.rowsof = mock_rowsof;
+    plugin.colsof = mock_colsof;
     plugin.ismissing = mock_missing;
     plugin.safevdata = mock_vdata;
     plugin.safestore = mock_vstore;
@@ -193,7 +244,9 @@ int main(void)
         fprintf(stderr, "pginit returned the wrong SPI version\n");
         return 1;
     }
-    if (stfixest_spi_nobs() != 42 || stfixest_spi_nvars() != 7) {
+    if (stfixest_spi_nobs() != 42 || stfixest_spi_nvars() != 7 ||
+        stfixest_spi_in1() != 5 || stfixest_spi_in2() != 40 ||
+        stfixest_spi_ifobs(12) != 1 || stfixest_spi_ifobs(13) != 0) {
         fprintf(stderr, "dimension wrappers failed\n");
         return 2;
     }
@@ -210,6 +263,14 @@ int main(void)
     if (!stfixest_spi_is_missing(NAN) || stfixest_spi_is_missing(1.0)) {
         fprintf(stderr, "missing-value wrapper failed\n");
         return 5;
+    }
+    if (stfixest_spi_matrix_rows("mock_matrix") != 4 ||
+        stfixest_spi_matrix_cols("mock_matrix") != 5 ||
+        stfixest_spi_var_is_string(4) != 1 ||
+        stfixest_spi_var_is_string(3) != 0 ||
+        stfixest_spi_var_is_strl(5) != 1) {
+        fprintf(stderr, "metadata wrappers failed\n");
+        return 6;
     }
     rc = check_numeric_round_trips();
     if (rc != 0) return 10 + rc;
