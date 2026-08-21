@@ -28,7 +28,8 @@ boundary. Positive finite analytic weights are retained without normalization,
 zero and missing analytic weights receive drop reason 4, and a negative
 candidate-row analytic weight fails the action. Frequency weights must be
 finite, strictly positive, integral, and representable as `u32`; their raw
-`f64` bits are retained, while missing frequency weights receive reason 4.
+`f64` bits are retained. A value carrying the explicit Stata-missing mask
+receives reason 4, while an unmasked NaN or infinity is invalid data.
 Invalid candidate-row frequency weights fail the action. Any weight outside
 the candidate marker is never read. This boundary continues to count retained
 physical rows only; frequency-weight effective observation counts are a later
@@ -40,7 +41,8 @@ retained status, and the authoritative drop-reason code.
 ## Numeric source representation
 
 Each numeric source contains its raw `f64` values and may contain a separate
-missing mask. An entry is unavailable if either:
+missing mask. Except for the stricter frequency-weight preflight described
+above, an entry is unavailable if either:
 
 - the explicit missing-mask entry is true; or
 - the raw value is NaN or positive/negative infinity.

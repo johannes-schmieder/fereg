@@ -433,7 +433,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
         plugin_data[5][row] = NAN;
         plugin_data[6][row] = NAN;
     }
-    plugin_data[0][0] = 1.0;
+    plugin_data[3][1] = INFINITY;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 4;
     if (strstr(error_buffer, "frequency weight") == NULL) return 5;

@@ -46,10 +46,11 @@ sample. The developer-only preparation boundary accepts at most one analytic-
 or frequency-weight variable. Analytic weights retain positive finite values
 bit-for-bit without normalization, drop zero or missing values with reason 4,
 and error on a negative candidate-row value. Frequency weights retain finite,
-strictly positive integral values representable as `u32` bit-for-bit; missing
-values receive reason 4 and zero, negative, fractional, or out-of-range
-candidate-row values fail closed. No weight outside the `if`/`in` candidate
-marker is read. The frequency contract is anchored by the sealed successful
+strictly positive integral values representable as `u32` bit-for-bit. Values
+with the explicit Stata-missing mask receive reason 4; unmasked NaNs or
+infinities and zero, negative, fractional, or out-of-range candidate-row
+values fail closed. No weight outside the `if`/`in` candidate marker is read.
+The frequency contract is anchored by the sealed successful
 `fweight` and fractional-error cases plus the independent row-expansion oracle.
 The guarded action maps invalid-data failures to `459`; matching the public
 reference command's `401` error remains a later Stata-facing gate. This

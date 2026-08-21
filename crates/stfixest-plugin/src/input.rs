@@ -1001,7 +1001,15 @@ mod tests {
 
     #[test]
     fn invalid_candidate_frequency_weight_fails_before_any_write() {
-        for invalid_weight in [0.0, -1.0, 1.5, f64::from(u32::MAX) + 1.0] {
+        for invalid_weight in [
+            0.0,
+            -1.0,
+            1.5,
+            f64::from(u32::MAX) + 1.0,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
+        ] {
             let (args, mut spi) = frequency_weight_fixture();
             spi.data.insert((4, 2), (invalid_weight, false));
             let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
@@ -1009,6 +1017,12 @@ mod tests {
             assert_eq!(error.code, ErrorCode::InvalidData);
             assert!(spi.writes.is_empty());
         }
+
+        let (args, mut spi) = frequency_weight_fixture();
+        spi.data.insert((4, 2), (f64::NAN, true));
+        prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect("explicitly masked frequency weight");
+        assert!(spi.writes.contains(&(7, 2, 4.0)));
 
         let (args, mut spi) = frequency_weight_fixture();
         spi.fail_read = Some((4, 3));

@@ -69,8 +69,10 @@ varlist exactly.
 The action is restricted to continuous, unweighted, analytic-weighted, or
 frequency-weighted no-fixed-effect models and never posts `e()` results.
 Weights must be passed as one numeric source binding. Frequency weights must
-be finite, strictly positive integral values representable as `u32`; this
-developer action returns native invalid-data code `459` for a candidate-row
+be finite, strictly positive integral values representable as `u32`; an
+explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or
+infinity is invalid data. This developer action returns native invalid-data
+code `459` for a candidate-row
 domain violation and does not claim the public command's eventual Stata-facing
 error code. Weight expressions are not materialized by this developer helper.
 All binding, matrix, type, and output validation precedes

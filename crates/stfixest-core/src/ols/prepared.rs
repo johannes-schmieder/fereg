@@ -288,7 +288,7 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
         return Ok(());
     };
     for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
-        if !candidate || weight.missing[row] || !weight.values[row].is_finite() {
+        if !candidate || weight.missing[row] {
             continue;
         }
         let value = weight.values[row];
@@ -300,7 +300,10 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
                 )));
             }
             WeightKind::Frequency
-                if value <= 0.0 || value.fract() != 0.0 || value > f64::from(u32::MAX) =>
+                if !value.is_finite()
+                    || value <= 0.0
+                    || value.fract() != 0.0
+                    || value > f64::from(u32::MAX) =>
             {
                 return Err(invalid_data(format!(
                     "frequency weight at observation {} must be a positive integer representable as u32",
@@ -710,7 +713,7 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: Some(column(
-                &[1.0, 2.0, maximum, 7.0, 1.5],
+                &[1.0, 2.0, maximum, f64::NAN, 1.5],
                 &[false, false, false, true, false],
             )),
         };
@@ -739,7 +742,15 @@ mod tests {
 
     #[test]
     fn invalid_candidate_frequency_weights_fail_closed() {
-        for invalid_weight in [0.0, -1.0, 1.5, f64::from(u32::MAX) + 1.0] {
+        for invalid_weight in [
+            0.0,
+            -1.0,
+            1.5,
+            f64::from(u32::MAX) + 1.0,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
+        ] {
             let mut request = request(0, false);
             request.bindings.push(OlsInputBinding {
                 stata_var_position: 3,
