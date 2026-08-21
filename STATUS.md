@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `a5181f9` plus the sealed reference receipt below
+**Branch / baseline:** `main` through `93193b7` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -37,6 +37,7 @@ scientific gates are met.
 | Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, debug/release unit tests, and FFI tests passed at the repaired baseline. Re-run required after estimator changes. |
 | Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
+| Developer OLS request-to-prepared-data boundary | Complete for the audited narrow slice | Commit `93193b7` adds a guarded `prepare-ols-test` path for continuous, unweighted, no-FE requests. Model-wire and binding validation precede observation reads; outcomes/sources are read only for exact `0`/`1` candidate rows; diagnostics are written only after native preparation succeeds. The universal macOS build and actual-plugin loader passed, all 11 licensed Stata fixtures passed, and the boundary fixture retained exactly 24 observations with drops at 2, 5, 6, and 7. Public estimators remain disabled. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
@@ -47,16 +48,24 @@ scientific gates are met.
 1. Use the sealed pinned `reghdfe` captures to settle weight, DoF, VCE,
    fit-statistic, and
    postestimation contracts.
-2. Complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
-   integration gaps before enabling `estimate-ols`.
-3. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
-4. Optimize only after scientific correctness is certified.
+2. Expand the audited continuous/unweighted/no-FE preparation boundary to the
+   remaining source, weight, FE, and cluster roles without weakening its
+   one-call, thread-confinement, validation-before-read, or deferred-write
+   guarantees.
+3. Complete FE, OLS/VCE/DoF, result-posting, and Stata one-call integration
+   before enabling `estimate-ols`.
+4. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
+5. Optimize only after scientific correctness is certified.
 
 ## Current blockers
 
 - `stfeols` is deliberately disabled and returns `r(498)`; no successful
   Stata estimator invocation, result posting, or reference parity evidence
   exists yet.
+- The developer preparation action covers only continuous, unweighted, no-FE
+  inputs. Categorical/string factorization, interactions, weights, FE/cluster
+  sources, singleton deletion, estimator execution, and result posting are not
+  connected to this request boundary yet.
 - No candidate `stfeols` parity, benchmark timing/RSS comparison, or
   constrained-memory receipt exists yet. The newly sealed receipt is
   reference-only and correctly reports the performance gate as blocked because
@@ -68,8 +77,9 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Executable request-to-`PreparedOlsData` design and adversarial test suite,
-  with no public estimator enablement.
+- Independently reviewed expansion of the executable request boundary to the
+  next bounded source roles, retaining adversarial SPI failure tests and no
+  public estimator enablement.
 
 ## Historical qualification
 
