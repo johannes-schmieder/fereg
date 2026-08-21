@@ -33,6 +33,7 @@ jobs:
           mkdir -p /tmp/source-patch
           tar -xJf /tmp/source-patch.tar.xz -C /tmp/source-patch
           rsync -a /tmp/source-patch/ ./
+          cargo generate-lockfile
           cargo fmt --all
       - name: Commit patch
         shell: bash
