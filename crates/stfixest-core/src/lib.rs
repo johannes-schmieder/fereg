@@ -13,6 +13,7 @@ pub mod ols;
 pub mod options;
 pub mod parallel;
 pub mod ppml;
+pub mod ppml_separation;
 pub mod protocol;
 pub mod selftest;
 
@@ -46,6 +47,11 @@ pub use ppml::{
     fit_ppml, fit_ppml_with_start, means_from_eta, offset_from_exposure, poisson_objective,
     PoissonBounds, PoissonObjective, PpmlCertificate, PpmlConfig, PpmlDiagnostics,
     PpmlFitStatistics, PpmlInitialization, PpmlIterationReport, PpmlResult, PpmlStart,
+};
+pub use ppml_separation::{
+    detect_separation, fit_ppml_separated, fit_ppml_separated_with_start, MethodStatus,
+    SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
+    SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
 };
 pub use protocol::{Handshake, ProtocolVersion, ADO_VERSION, PLUGIN_VERSION, PROTOCOL_VERSION};
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
