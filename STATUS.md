@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `01c4b560`
+**Branch / baseline:** `main` through `30d2841`
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -39,13 +39,13 @@ scientific gates are met.
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
-| OLS reference-contract harness | Under P1 repair; capture pending | Commit `01c4b560` adds the semantic/benchmark manifest, isolated preflight, capture renderer, and sealed receipt verifier. Independent review found incomplete benchmark-gate/evidence validation; the harness continues to refuse capture pending those repairs and exact transitive dependency provenance. |
+| OLS reference-contract harness | Complete; capture pending | Commits `01c4b560`, `178ca247`, `13cec3d`, and `30d2841` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, and estimator-only RSS measurement. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
 
-1. Resolve and verify the exact transitive `ftools` reference, then run and seal
-   the pinned `reghdfe` semantic captures.
+1. Run and seal the pinned `reghdfe` semantic captures using the exact
+   `reghdfe` 6.14.1, `ftools` 2.50.0, and `require` 1.3.1 closure.
 2. Use the frozen captures to settle weight, DoF, VCE, fit-statistic, and
    postestimation contracts.
 3. Complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
@@ -58,11 +58,9 @@ scientific gates are met.
 - `stfeols` is deliberately disabled and returns `r(498)`; no successful
   Stata estimator invocation, result posting, or reference parity evidence
   exists yet.
-- The `reghdfe` capture harness is ready but cannot launch: the required
-  transitive `ftools` source/installed-file provenance is intentionally
-  unresolved and fail-closed. Pinned `reghdfe` also needs a separately pinned
-  `require` dependency. No pinned reference capture, benchmark timing,
-  peak-RSS receipt, or constrained-memory receipt has been recorded.
+- No pinned reference capture, benchmark timing, peak-RSS receipt, or
+  constrained-memory receipt has been recorded yet. The exact isolated source
+  closure is now locked and the capture harness is ready to produce evidence.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
   as a Stata-facing estimator. Independent audit and integration work are in
   progress.
@@ -70,9 +68,9 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Exact `ftools` and `reghdfe` installation/capture receipt, including
-  executable, source and installed-file hashes, commands, seed, `e()` output,
-  samples, timing, and RSS.
+- Exact isolated-reference capture receipt, including executable, source and
+  installed-file hashes, commands, seed, `e()` output, samples, timing, and
+  RSS.
 - Executable request-to-`PreparedOlsData` design and adversarial test suite,
   with no public estimator enablement.
 
