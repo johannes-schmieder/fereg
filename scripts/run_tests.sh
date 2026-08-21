@@ -19,5 +19,5 @@ if command -v cargo >/dev/null 2>&1; then
   cargo test --workspace --all-targets --no-default-features
   cargo test -p stfixest-plugin --features ffi --lib
 else
-  printf '%s\n' 'SKIP: Rust/Cargo not installed; see VALIDATION.md.'
+  printf '%s\n' 'SKIP: Rust/Cargo not installed; see STATUS.md.'
 fi

@@ -34,31 +34,12 @@ open. This repository must not be presented as a production release.
 These claims describe source and local tests, not Stata-facing estimator
 availability.
 
-## Checkpoint A evidence
+## Development status
 
-On 2026-08-21, local Apple-Silicon validation passed 60 Python tests, portable
-C/mock checks, formatting, strict Clippy, 76 debug and 76 release Rust unit
-tests, and the explicit plugin FFI suite. A universal macOS development plugin
-was built; both slices passed binary audits and the arm64 host-native ABI
-harness passed. The original licensed-Stata smoke claim was later found to be
-invalid: the loader mistook Stata's `c(os)==Unix` macOS runtime for Linux, and
-the old runner trusted a zero subprocess status even when a do-file aborted.
-After repairing platform selection and requiring an exact fixture sentinel,
-native arm64 Stata 18 MP passed version/doctor/selftest, both fail-closed
-estimator checks, the 100-call reload loop, and all current parser and
-postestimation fixtures.
-
-No licensed-Stata reference-parity suite, real Linux or Windows build, enabled
-estimator run, or production certification has passed. See
-`STATUS.md`, `VALIDATION.md`, and `HANDOFF.md` for the exact boundary and
-continuation.
-
-The baseline repair was merged in [PR #2](https://github.com/johannes-schmieder/StFixest/pull/2),
-and the numerical-core follow-up was merged in
-[PR #3](https://github.com/johannes-schmieder/StFixest/pull/3).
-This project does not use GitHub Actions. Validation is performed through the
-documented local and target-native commands below, with evidence recorded under
-`build_evidence/local/`.
+`STATUS.md` is the sole live progress record. This project does not use GitHub
+Actions: validation is performed through the documented local and
+target-native commands below, with immutable receipts stored under
+`build_evidence/` and `benchmarks/reports/captured/`.
 
 ## Local build and test
 

@@ -1,30 +1,75 @@
-# Checkpoint A status (loader correction)
+# StFixest implementation status
 
-Checkpoint A is merged, but its original licensed-Stata smoke claim has been
-retracted and superseded by the fail-closed runner evidence below. The project
-is not a release candidate.
+**Last updated:** 2026-08-21
+**Branch / baseline:** `main` at `a47137f`
+**Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
+**Release state:** development only — not a production or cross-platform release
 
-| Area | Status | Evidence / remaining gate |
-|---|---:|---|
-| Repository baseline | Merged | PR #2 merged the repaired baseline; PR #3 merged the first numerical-core certificate repair. The loader follow-up is based on `main` at `fd5cd42378152fae9ad60a4a753d42a701bbbaea`. |
-| Checkpoint A repairs | Merged, loader follow-up in progress | [PR #2](https://github.com/johannes-schmieder/StFixest/pull/2) restored the official `stplugin.c` hash/ownership contract, repaired bridge thread binding and guards, hardened binary audits, and removed GitHub Actions. The current branch corrects macOS platform selection and fail-closed Stata test evidence. |
-| Frozen governing files | Preserved | `AGENTS.md` SHA-256 is `7c43ce4128a993f1613fd129133c2d5df65eef70bc33bb4ebac4e2a4b430c07a`; official `stplugin.c` again matches its frozen SHA-256. No frozen reference was changed. |
-| Python/portable/C checks | Passed locally | 72 Python tests plus shell, bytecode, TOML, strict C, Clang, and mock-SPI checks passed. The GNU/ELF mock-plugin audit is correctly skipped on macOS and remains required on Linux. |
-| Rust formatting/lints | Passed locally | `cargo fmt --all -- --check` and workspace/all-target/all-feature Clippy with `-D warnings` passed. |
-| Rust debug tests | Passed locally | 76 unit tests: 68 core, 5 plugin, and 3 testkit. |
-| Rust release tests | Passed locally | The same 76 unit tests passed under `--release`; zero doc tests were present. |
-| Rust FFI test | Passed locally | `cargo test -p stfixest-plugin --features ffi --lib`: 5 passed. |
-| macOS universal plugin | Built and audited locally | The `x86_64` and `arm64` slices expose only `_pginit` and `_stata_call`, have only allowed OS dependencies, and have no unresolved symbols. |
-| macOS ABI harness | Passed locally | The final universal artifact passed the host-native version/doctor/protocol/panic-containment harness. This does not execute the Intel slice on Intel hardware. |
-| Original licensed-Stata smoke claim | Retracted | The loader selected Linux when native macOS Stata reported `c(os)==Unix`; the prior runner trusted process status and did not require proof that each fixture reached its final assertion. |
-| Licensed Stata 18 installation/safety suite | Passed locally after platform and runner repair | Native arm64 Stata reports `Unix` / `Mac (Apple Silicon)`, loads `stfixest_macos.plugin`, and passes version, doctor at 32 requested threads, native/overall self-tests, both `r(498)` estimator checks without data-shape changes, and 100 reload/self-test calls. All nine current Stata fixtures emit exact success sentinels. |
-| Rosetta x86-64 loader exercise | Passed locally, emulated | Rosetta Stata reports `Unix` / `Macintosh (Intel 64-bit)`, selects the universal macOS plugin, and passes the installation and 100-reload fixtures. This is not native Intel certification. |
-| Licensed-Stata parser and parity suites | Parser fixtures passed; parity not run | Current parser and fail-closed postestimation fixtures pass under native arm64 Stata. Reference-command behavior, enabled estimation, and scientific parity remain open. |
-| Linux x86-64 | Not built locally | Python audit tests exercise ELF rules, but no real Linux artifact was built, audited, or loaded. |
-| Windows x86-64 | Not built locally | Python audit tests exercise PE/COFF rules, but no real Windows artifact was built, audited, or loaded. |
-| GitHub Actions | Disabled by project policy | Workflows have been removed and repository Actions disabled. Cross-platform validation requires recorded target-native build, audit, loader, and licensed-Stata evidence. |
-| `stfeols` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
-| `stfepois` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
-| Release status | Not certified | No cross-platform Stata, clean-machine, parity, performance, or memory certification exists. |
+`STATUS.md` is the repository's only mutable progress record. Immutable command
+receipts live under `build_evidence/` and `benchmarks/reports/captured/`.
+Contracts and reference documentation record requirements, not live progress.
 
-The exact validation record and toolchain caveat are in `VALIDATION.md`.
+## Milestone exit criteria
+
+The milestone is complete only when `stfeols` implements the full OLS 1.0
+surface specified in `AGENTS.md`, passes independent numerical and
+Stata-reference parity tests, and meets all of the following on the frozen
+benchmark manifest against the pinned `reghdfe` reference:
+
+- At least five warm repetitions per primary case; median suite speedup of at
+  least 1.5x, with no primary case slower than the reference.
+- Peak observed RSS no greater than the reference for every primary case.
+- Fast and low-memory modes have the same sample/statuses and meet the fixed
+  numerical tolerances in the scientific contract.
+- Failure paths never post a partial estimate or silently weaken a requested
+  numerical, sample, VCE, DoF, or convergence rule.
+
+PPML, cross-platform release validation, signing, packaging, and publication
+are explicitly deferred. `stfepois` must remain fail-closed until its own
+scientific gates are met.
+
+## Completed, evidence-backed baseline
+
+| Gate | State | Evidence |
+|---|---|---|
+| Native/plugin foundation | Complete | Universal macOS plugin has `arm64` and `x86_64` slices; bridge, protocol rejection, diagnostics, and panic containment passed locally. |
+| macOS loader and safety smoke | Complete | Native arm64 Stata 18 and Rosetta loader/reload fixtures passed; the Rosetta run is not native Intel certification. Sanitized receipts are under `build_evidence/local/`. |
+| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, debug/release unit tests, and FFI tests passed at the repaired baseline. Re-run required after estimator changes. |
+| Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
+| Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
+| Single-status-file rule | Complete | Commit `6783775` consolidated live project state into this file and repository checks reject duplicate status documents. |
+| GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
+
+## Active checkpoint — make `stfeols` executable
+
+1. Freeze pinned `reghdfe` reference captures and the OLS benchmark manifest.
+2. Audit and complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
+   integration gaps before enabling `estimate-ols`.
+3. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
+4. Optimize only after scientific correctness is certified.
+
+## Current blockers
+
+- `stfeols` is deliberately disabled and returns `r(498)`; no successful
+  Stata estimator invocation, result posting, or reference parity evidence
+  exists yet.
+- No pinned `reghdfe` capture, benchmark timing, peak-RSS receipt, or
+  constrained-memory receipt has been recorded.
+- Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
+  as a Stata-facing estimator. Independent audit and integration work are in
+  progress.
+- No real Linux/Windows validation or native Intel-host macOS validation exists.
+
+## Next evidence to record
+
+- Exact pinned `reghdfe` installation/capture receipt, including executable,
+  reference hash, commands, seed, `e()` output, samples, timing, and RSS.
+- A dependency-ordered OLS integration audit identifying the first safely
+  enableable implementation slice and its tests.
+
+## Historical qualification
+
+Earlier documentation described a loader-selection defect and a runner that
+accepted Stata's zero process status without a fixture terminal sentinel. The
+merged repair selects macOS correctly for Stata's `Unix` report and requires
+`END_FIXTURE|...|rc=0`; only the corrected receipt is accepted as evidence.

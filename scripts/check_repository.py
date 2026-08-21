@@ -33,6 +33,7 @@ def sha256(path: Path) -> str:
 
 required_files = [
     "AGENTS.md",
+    "STATUS.md",
     "Cargo.toml",
     "Cargo.lock",
     "references.lock.toml",
@@ -50,6 +51,33 @@ required_files = [
 ]
 for item in required_files:
     read(item)
+
+status_files = [
+    path.relative_to(ROOT).as_posix()
+    for path in ROOT.rglob("*.md")
+    if "status" in path.name.lower()
+    or path.name
+    in {
+        "HANDOFF.md",
+        "IMPLEMENTATION_STATUS.md",
+        "LOCAL_CODEX_PROMPT.md",
+        "VALIDATION.md",
+    }
+]
+require(
+    sorted(status_files) == ["STATUS.md"],
+    "STATUS.md must be the only mutable project-status document; found: "
+    + ", ".join(sorted(status_files)),
+)
+status = read("STATUS.md")
+for heading in (
+    "## Milestone exit criteria",
+    "## Completed, evidence-backed baseline",
+    "## Active checkpoint",
+    "## Current blockers",
+    "## Next evidence to record",
+):
+    require(heading in status, f"STATUS.md is missing required section: {heading}")
 
 agents = read("AGENTS.md")
 require("# StFixest 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
