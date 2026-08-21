@@ -38,7 +38,7 @@
     },
     "runner": {
       "path": "scripts/ols_reference.py",
-      "sha256": "9cdb41f104f788904596d9aabfd0522593974932a82d71a58e652c1950376df8"
+      "sha256": "f3600a2530177e45423aa4223fa6f7258b78737c049f651633fa26b18f000c94"
     },
     "generator": {
       "path": "benchmarks/generators/generate_panel.do",

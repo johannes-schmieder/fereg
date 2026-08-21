@@ -884,7 +884,7 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
                 f"    quietly keep if {condition}",
                 "    if _N == 0 local __stfx_identity empty",
                 "    else {",
-                "        quietly datasignature obs_id",
+                "        quietly _datasignature obs_id",
                 "        local __stfx_identity `\"`r(datasignature)'\"'",
                 "    }",
                 f'    file write __stfx_capture "{CAPTURE_PREFIX}identity|{case_id}|{identity}|`=_N\'|`__stfx_identity\'" _n',

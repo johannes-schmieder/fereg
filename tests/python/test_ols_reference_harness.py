@@ -213,6 +213,8 @@ class OlsManifestTests(unittest.TestCase):
         self.assertIn("reghdfe y", rendered)
         self.assertNotIn("stfeols", rendered)
         self.assertNotIn("stfepois", rendered)
+        self.assertIn("quietly _datasignature obs_id", rendered)
+        self.assertNotIn("quietly datasignature obs_id", rendered)
         self.assertEqual(rendered.strip().splitlines()[-2], f'file write __stfx_capture "{CAPTURE_SENTINEL}" _n')
 
     def test_benchmark_dataset_generation_is_outside_estimator_process(self):
