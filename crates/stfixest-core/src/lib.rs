@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![doc = "Safe, Stata-independent Phase 0-1 core for StFixest."]
 
+pub mod data;
 pub mod diagnostics;
 pub mod error;
 pub mod factorize;
@@ -11,6 +12,10 @@ pub mod parallel;
 pub mod protocol;
 pub mod selftest;
 
+pub use data::{
+    prepare_numeric_data, ColumnRecipe, DenseMatrix, DropReason, ModelMatrixBuilder,
+    NumericPreparationInput, PreparedData, WeightKind,
+};
 pub use diagnostics::{BuildInfo, DoctorInput, DoctorReport};
 pub use error::{ErrorCode, Result, StFixestError};
 pub use factorize::{
@@ -18,7 +23,8 @@ pub use factorize::{
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
-    AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole, VariableSpec,
+    AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole,
+    VariableSpec,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
