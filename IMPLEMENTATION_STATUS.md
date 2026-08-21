@@ -76,9 +76,6 @@ transcript is `stata_smoke.log`.
   checkpoint.
 - No clean-machine, numerical parity, performance, memory, or cross-platform
   release gate has passed.
-- GitHub Actions is enabled and both PR workflows triggered, but every job was
-  prevented from starting by GitHub's account billing/spending restriction.
-  The [CI run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
-  and [Source Snapshot run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
-  therefore provide neither a code pass nor a code failure. The repository
-  owner must resolve **Billing & plans** and rerun the PR checks.
+- GitHub Actions is disabled by project policy. Cross-platform validation must
+  use the documented target-native build, audit, loader, and licensed-Stata
+  commands with recorded local evidence.

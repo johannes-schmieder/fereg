@@ -57,14 +57,9 @@ The universal plugin SHA-256 is
 
 ## Unpassed gates
 
-- GitHub Actions triggered for draft PR #2, but every job in
-  [CI run 32484658566](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
-  and
-  [Source Snapshot run 32484658624](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
-  was prevented from starting. GitHub reports failed recent account payments or
-  a spending limit requiring an increase. This external billing restriction is
-  not a code failure, but it provides no CI pass. Resolve **Billing & plans**
-  and rerun the PR checks.
+- GitHub Actions is disabled by project policy. No CI result is claimed;
+  Linux and Windows target-native build, audit, loader, and licensed-Stata
+  evidence must be collected manually.
 - No licensed-Stata metadata-parser, enabled-estimator, or reference-parity
   suite has passed beyond the narrow installation/safety smoke.
 - No real Linux or Windows plugin has been built or loaded.

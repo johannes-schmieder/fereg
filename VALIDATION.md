@@ -103,18 +103,11 @@ The final `stata_smoke.log` has SHA-256
 This validates only the Phase 0-1 installation/safety fixtures. It does not
 validate parser semantics, estimation, scientific parity, or postestimation.
 
-## GitHub Actions status
+## GitHub Actions policy
 
-Actions is enabled and the two draft-PR workflows triggered correctly:
-
-- [CI run 32484658566](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
-- [Source Snapshot run 32484658624](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
-
-Every job was prevented from starting. GitHub's annotation says recent account
-payments failed or the spending limit must be increased. This is an external
-billing/account restriction, not a test or code failure, but it also supplies
-no CI pass. The repository owner must resolve **Billing & plans** and rerun the
-PR checks before CI can count as validation.
+GitHub Actions is disabled for this project and the repository workflow files
+have been removed. This validation record relies only on commands run locally
+or on the applicable target-native host; no CI result is claimed.
 
 ## Not validated
 
@@ -127,8 +120,7 @@ PR checks before CI can count as validation.
 - Intel-host execution of the macOS x86-64 slice.
 - Cross-platform release staging from three target-native artifacts.
 - Clean-machine, sanitizer, Miri, fuzz, leak, peak-memory, or performance gates.
-- Executed GitHub Actions jobs for Checkpoint A; the triggered runs are blocked
-  before job start by the external billing/spending restriction.
+- Target-native Linux and Windows build, loader, and licensed-Stata evidence.
 
 The locally built plugin is therefore development evidence only. It must not be
 described or distributed as a production-certified release.

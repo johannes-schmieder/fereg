@@ -54,12 +54,10 @@ gates remain open.
 3. Preserve the passing licensed-Stata smoke log and its hash. Run the remaining
    metadata-parser fixtures and record the exact executable/version, commands,
    output, and any failures.
-4. Resolve the repository's **Billing & plans** issue, then rerun the
-   [CI](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
-   and [Source Snapshot](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
-   checks on draft PR #2. All jobs were prevented from starting because GitHub
-   reports failed recent payments or a spending limit requiring an increase.
-   This is not a code failure, but it is not a CI pass and must not be waived.
+4. GitHub Actions is intentionally disabled. Complete the Linux and Windows
+   target-native build, audit, loader, and licensed-Stata checks manually and
+   record their exact commands and evidence before treating this baseline as
+   cross-platform validated.
 
 ## Open platform and scientific gates
 

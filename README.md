@@ -47,16 +47,10 @@ build, enabled estimator run, or production certification has passed. See
 `STATUS.md`, `VALIDATION.md`, and `HANDOFF.md` for the exact boundary and
 continuation.
 
-The repair source is committed at
-`80d9283d38fab520d546d50937feb6bffba02ca3` in
-[draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2). GitHub
-Actions triggered, but every job in the
-[CI run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
-and
-[Source Snapshot run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
-was prevented from starting by an account billing/spending restriction. This is
-not a code failure and is not a CI pass. The repository owner must resolve
-**Billing & plans** and rerun the PR checks.
+The repair source is in [draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
+This project does not use GitHub Actions. Validation is performed through the
+documented local and target-native commands below, with evidence recorded under
+`build_evidence/local/`.
 
 ## Local build and test
 

@@ -47,7 +47,6 @@ required_files = [
     "scripts/build_linux.sh",
     "scripts/build_macos.sh",
     "scripts/build_windows.ps1",
-    ".github/workflows/ci.yml",
 ]
 for item in required_files:
     read(item)
