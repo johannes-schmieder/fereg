@@ -54,6 +54,9 @@ static const ST_double analytic_weight_binding_matrix[4][3] = {
 static const ST_double frequency_weight_binding_matrix[4][3] = {
     {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}, {4.0, 5.0, 0.0}
 };
+static const ST_double probability_weight_binding_matrix[4][3] = {
+    {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}, {4.0, 6.0, 0.0}
+};
 
 static ST_int mock_rowsof(char *name)
 {
@@ -61,6 +64,7 @@ static ST_int mock_rowsof(char *name)
     if (strcmp(name, "B") == 0) return 3;
     if (strcmp(name, "BW") == 0) return 4;
     if (strcmp(name, "BF") == 0) return 4;
+    if (strcmp(name, "BP") == 0) return 4;
     return -1;
 }
 static ST_int mock_colsof(char *name)
@@ -71,6 +75,7 @@ static ST_int mock_colsof(char *name)
     if (strcmp(name, "B") == 0) return 3;
     if (strcmp(name, "BW") == 0) return 3;
     if (strcmp(name, "BF") == 0) return 3;
+    if (strcmp(name, "BP") == 0) return 3;
     return -1;
 }
 static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *value)
@@ -98,6 +103,10 @@ static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *valu
     }
     if (strcmp(name, "BF") == 0 && row <= 4 && column <= 3) {
         *value = frequency_weight_binding_matrix[row - 1][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "BP") == 0 && row <= 4 && column <= 3) {
+        *value = probability_weight_binding_matrix[row - 1][column - 1];
         return 0;
     }
     return 111;
@@ -446,6 +455,86 @@ static int check_prepare_ols_fweight(stata_call_function call)
     return 0;
 }
 
+static int check_prepare_ols_pweight(stata_call_function call)
+{
+    char *arguments[] = {
+        "prepare-ols-test",
+        "ado=0.1.0-phase01",
+        "protocol_major=1",
+        "protocol_minor=0",
+        "stata=18.0",
+        "confirm=developer-preparation-test",
+        "model_major=2",
+        "model_minor=0",
+        "source_matrix=S",
+        "source_count=1",
+        "term_matrix=T",
+        "term_count=1",
+        "component_matrix=C",
+        "component_count=1",
+        "source_names=1:x",
+        "canonical_tokens=3:c.x",
+        "raw_component_operators=1:c",
+        "raw_time_series_operators=0:",
+        "binding_matrix=BP",
+        "binding_count=4",
+        "include_intercept=1",
+        "output_original_observation=5",
+        "output_retained=6",
+        "output_drop_reason=7"
+    };
+    ST_int row;
+    plugin_nvars = 7;
+    for (row = 0; row < 5; ++row) {
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+        plugin_data[6][row] = NAN;
+    }
+    plugin_data[0][0] = 0.0;
+    plugin_data[0][1] = 1.0;
+    plugin_data[0][2] = 1.0;
+    plugin_data[0][3] = 0.0;
+    plugin_data[0][4] = 1.0;
+    plugin_data[1][1] = 2.0;
+    plugin_data[1][2] = 3.0;
+    plugin_data[1][4] = 5.0;
+    plugin_data[2][1] = 2.0;
+    plugin_data[2][2] = 3.0;
+    plugin_data[2][4] = 4.0;
+    plugin_data[3][0] = -1.0;
+    plugin_data[3][1] = 0.8;
+    plugin_data[3][2] = 1.1;
+    plugin_data[3][4] = 1.4;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
+    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=3") == NULL ||
+        error_buffer[0] != '\0') {
+        return 2;
+    }
+    if (plugin_data[5][0] != 0.0 || plugin_data[5][1] != 1.0 ||
+        plugin_data[5][2] != 1.0 || plugin_data[5][3] != 0.0 ||
+        plugin_data[5][4] != 1.0) {
+        return 3;
+    }
+
+    for (row = 0; row < 5; ++row) {
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+        plugin_data[6][row] = NAN;
+    }
+    plugin_data[3][1] = 0.0;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 4;
+    if (strstr(error_buffer, "probability weight") == NULL) return 5;
+    for (row = 0; row < 5; ++row) {
+        if (!isnan(plugin_data[4][row]) || !isnan(plugin_data[5][row]) ||
+            !isnan(plugin_data[6][row])) {
+            return 6;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     void *library;
@@ -543,6 +632,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "prepare OLS fweight path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 80 + result;
+    }
+    result = check_prepare_ols_pweight(call);
+    if (result != 0) {
+        fprintf(stderr, "prepare OLS pweight path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 90 + result;
     }
 
     dlclose(library);

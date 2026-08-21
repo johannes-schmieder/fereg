@@ -247,11 +247,17 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
     let frequency_weight_position = action.request.bindings.iter().find_map(|binding| {
         (binding.role == OlsInputRole::FrequencyWeight).then_some(binding.stata_var_position)
     });
+    let probability_weight_position = action.request.bindings.iter().find_map(|binding| {
+        (binding.role == OlsInputRole::ProbabilityWeight).then_some(binding.stata_var_position)
+    });
     let mut analytic_weight = analytic_weight_position
         .map(|_| empty_loaded_column(n, "analytic weight"))
         .transpose()?;
     let mut frequency_weight = frequency_weight_position
         .map(|_| empty_loaded_column(n, "frequency weight"))
+        .transpose()?;
+    let mut probability_weight = probability_weight_position
+        .map(|_| empty_loaded_column(n, "probability weight"))
         .transpose()?;
     let source_positions = action
         .request
@@ -289,6 +295,13 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
             destination.values[zero_based] = value;
             destination.missing[zero_based] = missing;
         }
+        if let (Some(position), Some(destination)) =
+            (probability_weight_position, probability_weight.as_mut())
+        {
+            let (value, missing) = spi.read_numeric(position, observation)?;
+            destination.values[zero_based] = value;
+            destination.missing[zero_based] = missing;
+        }
     }
 
     prepare_ols_data(
@@ -299,6 +312,7 @@ fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<Prep
             continuous_sources,
             analytic_weight,
             frequency_weight,
+            probability_weight,
         },
     )
 }
@@ -451,6 +465,7 @@ fn read_bindings(spi: &mut dyn SpiApi, name: &str, count: usize) -> Result<Vec<O
             (3, source) if source > 0 => OlsInputRole::ContinuousSource(SourceId::new(source)?),
             (4, 0) => OlsInputRole::AnalyticWeight,
             (5, 0) => OlsInputRole::FrequencyWeight,
+            (6, 0) => OlsInputRole::ProbabilityWeight,
             _ => return Err(invalid(format!("invalid OLS input binding at row {row}"))),
         };
         bindings.push(OlsInputBinding {
@@ -863,6 +878,15 @@ mod tests {
         (args, spi)
     }
 
+    fn probability_weight_fixture() -> (Vec<String>, FakeSpi) {
+        let (args, mut spi) = analytic_weight_fixture();
+        spi.matrices.get_mut("B").expect("bindings")[3][1] = 6.0;
+        spi.data.insert((4, 2), (0.8, false));
+        spi.data.insert((4, 3), (1.1, false));
+        spi.data.insert((4, 5), (1.4, false));
+        (args, spi)
+    }
+
     #[test]
     fn successful_action_reads_only_candidate_rows_and_writes_exact_diagnostics() {
         let (args, mut spi) = fixture();
@@ -1033,6 +1057,70 @@ mod tests {
     }
 
     #[test]
+    fn probability_weight_is_read_only_for_candidates_and_preserves_physical_rows() {
+        let (args, mut spi) = probability_weight_fixture();
+        // An invalid value outside the candidate sample must never be read.
+        spi.data.insert((4, 1), (-1.0, false));
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("probability-weight action");
+        assert_eq!(
+            spi.reads,
+            vec![
+                (1, 1),
+                (1, 2),
+                (1, 3),
+                (1, 4),
+                (1, 5),
+                (2, 2),
+                (3, 2),
+                (4, 2),
+                (2, 3),
+                (3, 3),
+                (4, 3),
+                (2, 5),
+                (3, 5),
+                (4, 5),
+            ]
+        );
+        assert_eq!(
+            spi.writes
+                .iter()
+                .filter(|(variable, _, value)| *variable == 6 && *value == 1.0)
+                .map(|(_, observation, _)| *observation)
+                .collect::<Vec<_>>(),
+            vec![2, 3, 5]
+        );
+        assert!(output
+            .displayed()
+            .contains("stfixest.prepare_ols.n_retained=3"));
+    }
+
+    #[test]
+    fn invalid_candidate_probability_weight_fails_before_any_write() {
+        for invalid_weight in [0.0, -1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            let (args, mut spi) = probability_weight_fixture();
+            spi.data.insert((4, 2), (invalid_weight, false));
+            let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+                .expect_err("invalid probability weight");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert!(spi.writes.is_empty());
+        }
+
+        let (args, mut spi) = probability_weight_fixture();
+        spi.data.insert((4, 2), (f64::NAN, true));
+        prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect("explicitly masked probability weight");
+        assert!(spi.writes.contains(&(7, 2, 4.0)));
+
+        let (args, mut spi) = probability_weight_fixture();
+        spi.fail_read = Some((4, 3));
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("probability-weight read failure");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(spi.writes.is_empty());
+    }
+
+    #[test]
     fn mixed_weight_bindings_fail_before_observation_reads() {
         let (mut args, mut spi) = analytic_weight_fixture();
         spi.nvars = 8;
@@ -1056,6 +1144,31 @@ mod tests {
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert!(spi.reads.is_empty());
         assert!(spi.writes.is_empty());
+
+        for other_role in [4.0, 5.0] {
+            let (mut args, mut spi) = probability_weight_fixture();
+            spi.nvars = 8;
+            spi.matrices
+                .get_mut("B")
+                .expect("bindings")
+                .push(vec![5.0, other_role, 0.0]);
+            for value in &mut args {
+                if value == "binding_count=4" {
+                    *value = "binding_count=5".to_owned();
+                } else if value == "output_original_observation=5" {
+                    *value = "output_original_observation=6".to_owned();
+                } else if value == "output_retained=6" {
+                    *value = "output_retained=7".to_owned();
+                } else if value == "output_drop_reason=7" {
+                    *value = "output_drop_reason=8".to_owned();
+                }
+            }
+            let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+                .expect_err("probability weight must be mutually exclusive");
+            assert_eq!(error.code, ErrorCode::InvalidArgument);
+            assert!(spi.reads.is_empty());
+            assert!(spi.writes.is_empty());
+        }
     }
 
     #[test]
@@ -1146,6 +1259,22 @@ mod tests {
         let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
             .expect_err("string frequency weight");
         assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
+
+        let (args, mut spi) = probability_weight_fixture();
+        spi.strings.insert(4);
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("string probability weight");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
+
+        let (args, mut spi) = probability_weight_fixture();
+        spi.matrices.get_mut("B").expect("bindings")[3][1] = 7.0;
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+            .expect_err("importance weights remain unsupported");
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert!(spi.reads.is_empty());
         assert!(spi.writes.is_empty());
     }

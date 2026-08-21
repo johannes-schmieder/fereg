@@ -3,10 +3,13 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     version 18.0
     syntax varlist(fv numeric min=1) [if] [in], ///
         ORIGINALOBS(name) RETAINED(name) DROPREASON(name) ///
-        [NOCONStant AWEIGHT(varname numeric) FWEIGHT(varname numeric)]
+        [NOCONStant AWEIGHT(varname numeric) FWEIGHT(varname numeric) ///
+         PWEIGHT(varname numeric)]
 
-    if `"`aweight'"' != "" & `"`fweight'"' != "" {
-        di as error "aweight() and fweight() are mutually exclusive"
+    local requested_weights = (`"`aweight'"' != "") + ///
+        (`"`fweight'"' != "") + (`"`pweight'"' != "")
+    if `requested_weights' > 1 {
+        di as error "aweight(), fweight(), and pweight() are mutually exclusive"
         exit 198
     }
 
@@ -69,7 +72,8 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
 
     local has_aweight = (`"`aweight'"' != "")
     local has_fweight = (`"`fweight'"' != "")
-    local has_weight = `has_aweight' + `has_fweight'
+    local has_pweight = (`"`pweight'"' != "")
+    local has_weight = `has_aweight' + `has_fweight' + `has_pweight'
     local n_bindings = 2 + `n_sources' + `has_weight'
     matrix `input_bindings' = J(`n_bindings', 3, 0)
     matrix `input_bindings'[1,1] = 1
@@ -98,6 +102,12 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         matrix `input_bindings'[`row',1] = `position'
         matrix `input_bindings'[`row',2] = 5
     }
+    if `has_pweight' {
+        local row = 3 + `n_sources'
+        local position = 3 + `n_sources'
+        matrix `input_bindings'[`row',1] = `position'
+        matrix `input_bindings'[`row',2] = 6
+    }
 
     generate double `originalobs' = .
     generate byte `retained' = .
@@ -107,7 +117,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     local output_retained = 4 + `n_sources' + `has_weight'
     local output_reason = 5 + `n_sources' + `has_weight'
     local include_intercept = (`"`noconstant'"' == "")
-    local weight_variable `"`aweight'`fweight'"'
+    local weight_variable `"`aweight'`fweight'`pweight'"'
 
     _stfixest_load, action(loadonly)
     local plugin_file `"`r(plugin_file)'"'
@@ -150,6 +160,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     local weight_type
     if `has_aweight' local weight_type "aweight"
     if `has_fweight' local weight_type "fweight"
+    if `has_pweight' local weight_type "pweight"
     return local weight_type "`weight_type'"
     return local weight_variable "`weight_variable'"
 end

@@ -62,19 +62,25 @@ It requires `confirm=developer-preparation-test`, the standard action
 handshake, model-wire v2 matrices and length-delimited registries, an explicit
 numeric binding matrix, and three pre-created diagnostic output variables. The
 binding roles are candidate (`1`), outcome (`2`), continuous source (`3`),
-optional analytic weight (`4`), and optional frequency weight (`5`). At most
-one weight binding is permitted. Inputs and outputs must cover the plugin
-varlist exactly.
+optional analytic weight (`4`), optional frequency weight (`5`), and optional
+probability weight (`6`). Importance-weight role `7` is deliberately undefined
+and rejected before observation reads. At most one weight binding is permitted.
+Inputs and outputs must cover the plugin varlist exactly.
 
-The action is restricted to continuous, unweighted, analytic-weighted, or
-frequency-weighted no-fixed-effect models and never posts `e()` results.
+The action is restricted to continuous, unweighted, analytic-weighted,
+frequency-weighted, or probability-weighted no-fixed-effect models and never
+posts `e()` results.
 Weights must be passed as one numeric source binding. Frequency weights must
 be finite, strictly positive integral values representable as `u32`; an
 explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or
-infinity is invalid data. This developer action returns native invalid-data
-code `459` for a candidate-row
-domain violation and does not claim the public command's eventual Stata-facing
-error code. Weight expressions are not materialized by this developer helper.
+infinity is invalid data. Probability weights must be positive and finite;
+retained values cross the boundary bit-for-bit, explicitly masked missing
+values receive reason 4, and zero, negative, or unmasked nonfinite candidate
+values fail before diagnostic writes. This developer action returns native
+invalid-data code `459` for a candidate-row domain violation. It does not
+compute or claim the robust VCE required by the sealed reference case and does
+not claim the public command's eventual Stata-facing error code. Weight
+expressions are not materialized by this developer helper.
 All binding, matrix, type, and output validation precedes
 observation reads, and diagnostic writes begin only after native preparation
 succeeds. Both `estimate-ols` and `estimate-ppml` remain unconditionally

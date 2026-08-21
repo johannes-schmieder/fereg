@@ -15,7 +15,8 @@ or PPML available.
 
 The internal `_stfixest_prepare_ols_test` command exercises a deliberately
 bounded one-call boundary: continuous regressors, at most one analytic- or
-frequency-weight variable, no fixed effects, and no time-series materialization. It is guarded
+frequency- or probability-weight variable, no fixed effects, and no time-series
+materialization. It is guarded
 by an explicit developer confirmation token and does not post estimation
 results. `stfeols` and `stfepois` still return `r(498)`.
 
@@ -31,9 +32,14 @@ finite, strictly positive, integral, and representable as `u32`; their raw
 `f64` bits are retained. A value carrying the explicit Stata-missing mask
 receives reason 4, while an unmasked NaN or infinity is invalid data.
 Invalid candidate-row frequency weights fail the action. Any weight outside
-the candidate marker is never read. This boundary continues to count retained
-physical rows only; frequency-weight effective observation counts are a later
-estimation contract.
+the candidate marker is never read. Positive finite probability weights are
+retained bit-for-bit. Explicitly masked missing probability weights receive
+reason 4; zero, negative, or unmasked nonfinite candidate-row probability
+weights fail before writes. Importance weights have no executable binding and
+are rejected before observation reads. This boundary continues to count
+retained physical rows only; weight sums, frequency-weight effective
+observation counts, robust probability-weight VCE, and other inference are
+later estimation contracts.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.

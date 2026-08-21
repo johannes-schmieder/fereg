@@ -18,6 +18,7 @@ pub enum OlsInputRole {
     ContinuousSource(SourceId),
     AnalyticWeight,
     FrequencyWeight,
+    ProbabilityWeight,
 }
 
 /// One-based binding from semantic input role to Stata's plugin varlist.
@@ -51,6 +52,7 @@ pub struct LoadedOlsInput {
     pub continuous_sources: Vec<(SourceId, LoadedNumericColumn)>,
     pub analytic_weight: Option<LoadedNumericColumn>,
     pub frequency_weight: Option<LoadedNumericColumn>,
+    pub probability_weight: Option<LoadedNumericColumn>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -161,17 +163,25 @@ pub fn prepare_ols_data(
         .map(|(_, column)| NumericColumnView::with_missing(&column.values, &column.missing))
         .collect::<Vec<_>>();
     validate_candidate_weight_domain(loaded)?;
-    let weights = match (&loaded.analytic_weight, &loaded.frequency_weight) {
-        (None, None) => WeightInput::None,
-        (Some(column), None) => WeightInput::Provided {
+    let weights = match (
+        &loaded.analytic_weight,
+        &loaded.frequency_weight,
+        &loaded.probability_weight,
+    ) {
+        (None, None, None) => WeightInput::None,
+        (Some(column), None, None) => WeightInput::Provided {
             kind: WeightKind::Analytic,
             column: NumericColumnView::with_missing(&column.values, &column.missing),
         },
-        (None, Some(column)) => WeightInput::Provided {
+        (None, Some(column), None) => WeightInput::Provided {
             kind: WeightKind::Frequency,
             column: NumericColumnView::with_missing(&column.values, &column.missing),
         },
-        (Some(_), Some(_)) => {
+        (None, None, Some(column)) => WeightInput::Provided {
+            kind: WeightKind::Probability,
+            column: NumericColumnView::with_missing(&column.values, &column.missing),
+        },
+        _ => {
             return Err(invalid(
                 "loaded OLS input cannot contain more than one weight column",
             ));
@@ -194,6 +204,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
     let mut outcome_count = 0_usize;
     let mut analytic_weight_count = 0_usize;
     let mut frequency_weight_count = 0_usize;
+    let mut probability_weight_count = 0_usize;
     let mut sources = BTreeMap::new();
     for binding in &request.bindings {
         if binding.stata_var_position == 0 || !positions.insert(binding.stata_var_position) {
@@ -211,6 +222,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
             }
             OlsInputRole::AnalyticWeight => analytic_weight_count += 1,
             OlsInputRole::FrequencyWeight => frequency_weight_count += 1,
+            OlsInputRole::ProbabilityWeight => probability_weight_count += 1,
         }
     }
     if candidate_count != 1 || outcome_count != 1 {
@@ -218,7 +230,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
             "OLS request requires exactly one candidate and one outcome binding",
         ));
     }
-    if analytic_weight_count + frequency_weight_count > 1 {
+    if analytic_weight_count + frequency_weight_count + probability_weight_count > 1 {
         return Err(invalid("OLS request permits at most one weight binding"));
     }
     if sources.len() != request.model.sources.len()
@@ -275,7 +287,23 @@ fn validate_loaded(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> Result<()
     if let Some(column) = &loaded.frequency_weight {
         validate_loaded_column("frequency weight", column, n)?;
     }
-    if loaded.analytic_weight.is_some() && loaded.frequency_weight.is_some() {
+    let request_has_probability_weight = request
+        .bindings
+        .iter()
+        .any(|binding| binding.role == OlsInputRole::ProbabilityWeight);
+    if request_has_probability_weight != loaded.probability_weight.is_some() {
+        return Err(invalid(
+            "loaded probability weight does not match the OLS request binding",
+        ));
+    }
+    if let Some(column) = &loaded.probability_weight {
+        validate_loaded_column("probability weight", column, n)?;
+    }
+    if usize::from(loaded.analytic_weight.is_some())
+        + usize::from(loaded.frequency_weight.is_some())
+        + usize::from(loaded.probability_weight.is_some())
+        > 1
+    {
         return Err(invalid(
             "loaded OLS input cannot contain more than one weight column",
         ));
@@ -310,8 +338,14 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
                     row + 1,
                 )));
             }
-            WeightKind::Analytic | WeightKind::Frequency => {}
-            WeightKind::Probability | WeightKind::Importance => {
+            WeightKind::Probability if !value.is_finite() || value <= 0.0 => {
+                return Err(invalid_data(format!(
+                    "probability weight at observation {} must be positive and finite",
+                    row + 1,
+                )));
+            }
+            WeightKind::Analytic | WeightKind::Frequency | WeightKind::Probability => {}
+            WeightKind::Importance => {
                 return Err(unsupported(
                     "OLS preparation received an unsupported weight kind",
                 ));
@@ -322,10 +356,15 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
 }
 
 fn loaded_weight(loaded: &LoadedOlsInput) -> Option<(WeightKind, &LoadedNumericColumn)> {
-    match (&loaded.analytic_weight, &loaded.frequency_weight) {
-        (Some(column), None) => Some((WeightKind::Analytic, column)),
-        (None, Some(column)) => Some((WeightKind::Frequency, column)),
-        (None, None) | (Some(_), Some(_)) => None,
+    match (
+        &loaded.analytic_weight,
+        &loaded.frequency_weight,
+        &loaded.probability_weight,
+    ) {
+        (Some(column), None, None) => Some((WeightKind::Analytic, column)),
+        (None, Some(column), None) => Some((WeightKind::Frequency, column)),
+        (None, None, Some(column)) => Some((WeightKind::Probability, column)),
+        _ => None,
     }
 }
 
@@ -358,7 +397,11 @@ impl NumericDomainPolicy for OlsPreparationPolicy {
             WeightKind::Frequency => Err(invalid_data(
                 "frequency weight must be a positive integer representable as u32",
             )),
-            WeightKind::Probability | WeightKind::Importance => Err(unsupported(
+            WeightKind::Probability if value > 0.0 => Ok(DomainDecision::Retain),
+            WeightKind::Probability => Err(invalid_data(
+                "probability weight must be positive and finite",
+            )),
+            WeightKind::Importance => Err(unsupported(
                 "OLS preparation received an unsupported weight kind",
             )),
         }
@@ -492,6 +535,7 @@ mod tests {
             ],
             analytic_weight: None,
             frequency_weight: None,
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 5]);
@@ -533,6 +577,7 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request(0, false), &empty).expect("empty");
         assert_eq!(prepared.sample.n_original, 0);
@@ -545,6 +590,7 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: None,
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request(0, true), &dropped).expect("all dropped");
         assert_eq!(prepared.sample.n_candidate, 1);
@@ -616,6 +662,7 @@ mod tests {
                 &[false, false, false, false, false, true],
             )),
             frequency_weight: None,
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("analytic-weight prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
@@ -652,6 +699,7 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: Some(column(&[-1.0, 2.0], &[false; 2])),
             frequency_weight: None,
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &off_candidate).expect("off-candidate weight");
         assert_eq!(prepared.sample.retained_rows(), &[1]);
@@ -690,6 +738,7 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: Some(column(&[1.0], &[false])),
             frequency_weight: None,
+            probability_weight: None,
         };
         assert_eq!(
             prepare_ols_data(&request(0, false), &unbound_loaded)
@@ -716,6 +765,7 @@ mod tests {
                 &[1.0, 2.0, maximum, f64::NAN, 1.5],
                 &[false, false, false, true, false],
             )),
+            probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("frequency-weight prepare");
         assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
@@ -762,6 +812,7 @@ mod tests {
                 continuous_sources: Vec::new(),
                 analytic_weight: None,
                 frequency_weight: Some(column(&[invalid_weight], &[false])),
+                probability_weight: None,
             };
             let error = prepare_ols_data(&request, &loaded)
                 .expect_err("invalid candidate frequency weight");
@@ -815,10 +866,131 @@ mod tests {
             continuous_sources: Vec::new(),
             analytic_weight: None,
             frequency_weight: Some(column(&[1.0], &[false])),
+            probability_weight: None,
         };
         assert_eq!(
             prepare_ols_data(&request(0, false), &unbound_loaded)
                 .expect_err("unbound loaded frequency weight")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+    }
+
+    #[test]
+    fn probability_weights_preserve_positive_bits_and_candidate_scope() {
+        let mut request = request(0, false);
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 3,
+            role: OlsInputRole::ProbabilityWeight,
+        });
+        let tiny = f64::from_bits(1);
+        let huge = 1.0e300_f64;
+        let loaded = LoadedOlsInput {
+            candidate: vec![false, true, true, true],
+            outcome: column(&[1.0, 2.0, 3.0, 4.0], &[false; 4]),
+            continuous_sources: Vec::new(),
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: Some(column(
+                &[-1.0, tiny, huge, f64::NAN],
+                &[false, false, false, true],
+            )),
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("probability-weight prepare");
+        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![
+                crate::DropReason::ExcludedByIfIn,
+                crate::DropReason::Retained,
+                crate::DropReason::Retained,
+                crate::DropReason::InvalidOrMissingWeight,
+            ]
+        );
+        let crate::data::PreparedWeights::Provided { kind, values } = &prepared.sample.weights
+        else {
+            panic!("probability weights must remain present");
+        };
+        assert_eq!(*kind, WeightKind::Probability);
+        assert_eq!(values[0].to_bits(), tiny.to_bits());
+        assert_eq!(values[1].to_bits(), huge.to_bits());
+    }
+
+    #[test]
+    fn invalid_candidate_probability_weights_fail_closed() {
+        for invalid_weight in [0.0, -0.0, -1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            let mut request = request(0, false);
+            request.bindings.push(OlsInputBinding {
+                stata_var_position: 3,
+                role: OlsInputRole::ProbabilityWeight,
+            });
+            let loaded = LoadedOlsInput {
+                candidate: vec![true],
+                outcome: column(&[1.0], &[false]),
+                continuous_sources: Vec::new(),
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: Some(column(&[invalid_weight], &[false])),
+            };
+            let error = prepare_ols_data(&request, &loaded)
+                .expect_err("invalid candidate probability weight");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+        }
+    }
+
+    #[test]
+    fn probability_weight_binding_is_unique_and_mutually_exclusive() {
+        let mut duplicate = request(0, false);
+        duplicate.bindings.extend([
+            OlsInputBinding {
+                stata_var_position: 3,
+                role: OlsInputRole::ProbabilityWeight,
+            },
+            OlsInputBinding {
+                stata_var_position: 4,
+                role: OlsInputRole::ProbabilityWeight,
+            },
+        ]);
+        assert_eq!(
+            duplicate
+                .validate_and_compile()
+                .expect_err("duplicate probability-weight bindings")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        for other in [OlsInputRole::AnalyticWeight, OlsInputRole::FrequencyWeight] {
+            let mut mixed = request(0, false);
+            mixed.bindings.extend([
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::ProbabilityWeight,
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: other,
+                },
+            ]);
+            assert_eq!(
+                mixed
+                    .validate_and_compile()
+                    .expect_err("mixed weight bindings")
+                    .code,
+                ErrorCode::InvalidArgument
+            );
+        }
+
+        let unbound_loaded = LoadedOlsInput {
+            candidate: vec![true],
+            outcome: column(&[1.0], &[false]),
+            continuous_sources: Vec::new(),
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: Some(column(&[1.0], &[false])),
+        };
+        assert_eq!(
+            prepare_ols_data(&request(0, false), &unbound_loaded)
+                .expect_err("unbound loaded probability weight")
                 .code,
             ErrorCode::InvalidArgument
         );

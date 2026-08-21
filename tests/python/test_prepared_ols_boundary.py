@@ -84,6 +84,29 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('assert "`r(weight_type)\'" == "fweight"', fixture)
         self.assertIn("assert _rc == 459", fixture)
 
+    def test_probability_weight_slice_is_bounded_and_importance_weight_is_rejected(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("PWEIGHT(varname numeric)", helper)
+        self.assertNotIn("IWEIGHT(varname numeric)", helper)
+        self.assertIn("OlsInputRole::ProbabilityWeight", core)
+        self.assertIn("WeightKind::Probability", core)
+        self.assertIn("(6, 0) => OlsInputRole::ProbabilityWeight", plugin)
+        self.assertNotIn("(7, 0) =>", plugin)
+        self.assertIn('assert "`r(weight_type)\'" == "pweight"', fixture)
+        self.assertIn("iweight(aw)", fixture)
+        self.assertIn("assert _rc == 198", fixture)
+
 
 if __name__ == "__main__":
     unittest.main()

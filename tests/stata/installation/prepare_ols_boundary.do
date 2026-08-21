@@ -80,6 +80,43 @@ assert missing(_st_aw_bad_original)
 assert missing(_st_aw_bad_retained)
 assert missing(_st_aw_bad_reason)
 
+gen double pw = 0.5 + _n / 20
+replace pw = -1 in 1
+replace pw = . in 9
+_stfixest_prepare_ols_test y c.x c.z if _n >= 2, pweight(pw) ///
+    originalobs(_st_pw_original) retained(_st_pw_retained) ///
+    dropreason(_st_pw_reason)
+assert r(n_original) == 28
+assert r(n_retained) == 22
+assert "`r(weight_type)'" == "pweight"
+assert "`r(weight_variable)'" == "pw"
+assert _st_pw_original == _n
+assert _st_pw_reason[1] == 1
+assert _st_pw_reason[2] == 2
+assert _st_pw_reason[5] == 3
+assert _st_pw_reason[6] == 3
+assert _st_pw_reason[7] == 3
+assert _st_pw_reason[9] == 4
+assert _st_pw_retained == !inlist(_n, 1, 2, 5, 6, 7, 9)
+
+gen double pw_zero = 1
+replace pw_zero = 0 in 10
+capture noisily _stfixest_prepare_ols_test y c.x c.z, pweight(pw_zero) ///
+    originalobs(_st_pw_bad_original) retained(_st_pw_bad_retained) ///
+    dropreason(_st_pw_bad_reason)
+assert _rc == 459
+assert missing(_st_pw_bad_original)
+assert missing(_st_pw_bad_retained)
+assert missing(_st_pw_bad_reason)
+
+capture noisily _stfixest_prepare_ols_test y c.x c.z, iweight(aw) ///
+    originalobs(_st_iw_original) retained(_st_iw_retained) ///
+    dropreason(_st_iw_reason)
+assert _rc == 198
+confirm new variable _st_iw_original
+confirm new variable _st_iw_retained
+confirm new variable _st_iw_reason
+
 preserve
 clear
 input double(y x fw_valid)
@@ -125,7 +162,7 @@ assert _st_fw_if_reason[1] == 1
 assert _st_fw_if_retained == (_n >= 2)
 
 capture noisily _stfixest_prepare_ols_test y c.x, ///
-    aweight(fw_valid) fweight(fw_valid) ///
+    aweight(fw_valid) fweight(fw_valid) pweight(fw_valid) ///
     originalobs(_st_mixed_original) retained(_st_mixed_retained) ///
     dropreason(_st_mixed_reason)
 assert _rc == 198
