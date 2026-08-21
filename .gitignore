@@ -1,5 +1,6 @@
 /target/
 /dist/*.plugin
+/dist/*.sha256
 /dist/*.dll
 /dist/*.so
 /dist/*.dylib
