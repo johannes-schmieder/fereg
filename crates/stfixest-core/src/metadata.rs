@@ -208,7 +208,12 @@ impl CompiledTermGraph {
         validate_graph(self)
     }
 
-    /// Rejects explicit unavailable metadata before a later binder may use it.
+    /// Rejects unavailable metadata that an executable binder must interpret.
+    ///
+    /// Component-level omission is deliberately not required. Stata does not
+    /// define that field for every component shape (notably a plain `c.x`),
+    /// and the authoritative omission decision is the term's
+    /// `whole_column_omitted` flag.
     pub fn validate_bindable(&self) -> Result<()> {
         self.validate()?;
         for term in &self.terms {
@@ -219,7 +224,6 @@ impl CompiledTermGraph {
                 if component.kind == ComponentKind::Unavailable
                     || component.level_state == LevelState::Unavailable
                     || component.base == MetadataFlag::Unavailable
-                    || component.omitted == MetadataFlag::Unavailable
                     || component.time_series_state == TimeSeriesState::Unavailable
                 {
                     return Err(unsupported(format!(
@@ -851,5 +855,36 @@ mod tests {
         assert_eq!(wire.terms.rows, vec![vec![0.0; TERM_ROW_WIDTH]]);
         assert_eq!(wire.components.rows, vec![vec![0.0; COMPONENT_ROW_WIDTH]]);
         assert_eq!(wire.decode().expect("round trip"), graph);
+    }
+
+    #[test]
+    fn bindable_continuous_component_may_have_inapplicable_omission_metadata() {
+        let graph = CompiledTermGraph {
+            sources: vec![SourceEntry {
+                id: SourceId::new(1).expect("id"),
+                canonical_name: "x".to_owned(),
+            }],
+            terms: vec![ExpandedTerm {
+                id: TermId::new(1).expect("term"),
+                order: TermOrder::new(1).expect("order"),
+                coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                raw_kind: RawTermKind::Variable,
+                whole_column_omitted: false,
+                canonical_token: "c.x".to_owned(),
+                components: vec![TermComponent {
+                    order: ComponentOrder::new(1).expect("component"),
+                    source: SourceId::new(1).expect("source"),
+                    kind: ComponentKind::Continuous,
+                    level_state: LevelState::Absent,
+                    level_value: 0.0,
+                    base: MetadataFlag::False,
+                    omitted: MetadataFlag::Unavailable,
+                    raw_operator: "c".to_owned(),
+                    time_series_state: TimeSeriesState::None,
+                    raw_time_series_operator: String::new(),
+                }],
+            }],
+        };
+        graph.validate_bindable().expect("plain c.x must bind");
     }
 }

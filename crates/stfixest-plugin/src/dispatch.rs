@@ -25,6 +25,10 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
         ACTION_DOCTOR => doctor(tail, output),
         ACTION_SELFTEST => selftest(tail, output),
         ACTION_PANIC_TEST => panic_test(tail),
+        crate::input::ACTION_PREPARE_OLS_TEST => Err(StFixestError::new(
+            ErrorCode::Unsupported,
+            "prepare-ols-test is developer-only and requires a live Stata SPI session",
+        )),
         "estimate-ols" | "estimate-ppml" => Err(StFixestError::new(
             ErrorCode::Unsupported,
             "estimator actions are intentionally disabled in the Phase 0-1 architecture build",

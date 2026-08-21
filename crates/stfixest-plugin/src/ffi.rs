@@ -1,15 +1,35 @@
 use crate::dispatch::dispatch_args;
+use crate::input::{prepare_ols_test, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
 use std::any::Any;
 use std::ffi::{CStr, CString};
+use std::marker::PhantomData;
 use std::os::raw::{c_char, c_int};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::rc::Rc;
 use stfixest_core::error::{ErrorCode, StFixestError};
 
 #[cfg(not(test))]
 extern "C" {
     fn stfixest_spi_display(message: *const c_char) -> c_int;
     fn stfixest_spi_error(message: *const c_char) -> c_int;
+    fn stfixest_spi_poll() -> c_int;
+    fn stfixest_spi_stop_requested() -> c_int;
+    fn stfixest_spi_nobs() -> c_int;
+    fn stfixest_spi_nvars() -> c_int;
+    fn stfixest_spi_is_missing(value: f64) -> c_int;
+    fn stfixest_spi_var_is_string(variable: c_int) -> c_int;
+    fn stfixest_spi_vdata(variable: c_int, observation: c_int, value: *mut f64) -> c_int;
+    fn stfixest_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
+    fn stfixest_spi_matrix_rows(name: *const c_char) -> c_int;
+    fn stfixest_spi_matrix_cols(name: *const c_char) -> c_int;
+    fn stfixest_spi_mat_el(
+        name: *const c_char,
+        row: c_int,
+        column: c_int,
+        value: *mut f64,
+    ) -> c_int;
+    fn stfixest_spi_is_main_thread() -> c_int;
 }
 
 #[cfg(test)]
@@ -22,7 +42,240 @@ unsafe fn stfixest_spi_error(_message: *const c_char) -> c_int {
     0
 }
 
+#[cfg(test)]
+unsafe fn stfixest_spi_poll() -> c_int {
+    0
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_stop_requested() -> c_int {
+    0
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_nobs() -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_nvars() -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_is_missing(_value: f64) -> c_int {
+    0
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_var_is_string(_variable: c_int) -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_vdata(_variable: c_int, _observation: c_int, _value: *mut f64) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_vstore(_variable: c_int, _observation: c_int, _value: f64) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_matrix_rows(_name: *const c_char) -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_matrix_cols(_name: *const c_char) -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_mat_el(
+    _name: *const c_char,
+    _row: c_int,
+    _column: c_int,
+    _value: *mut f64,
+) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_is_main_thread() -> c_int {
+    0
+}
+
 struct SpiSink;
+
+/// A token proving that all SPI calls remain on Stata's bound calling thread.
+/// `Rc` makes the session neither `Send` nor `Sync` without any unsafe marker impl.
+struct SpiSession {
+    _not_send_or_sync: PhantomData<Rc<()>>,
+}
+
+impl SpiSession {
+    fn new() -> Result<Self, StFixestError> {
+        // SAFETY: the C bridge exposes this predicate for calls from any thread.
+        if unsafe { stfixest_spi_is_main_thread() } != 1 {
+            return Err(StFixestError::new(
+                ErrorCode::Internal,
+                "Stata SPI session is unavailable or not on the bound calling thread",
+            ));
+        }
+        Ok(Self {
+            _not_send_or_sync: PhantomData,
+        })
+    }
+
+    fn position(value: u32, label: &str) -> Result<c_int, StFixestError> {
+        c_int::try_from(value).map_err(|_| {
+            StFixestError::new(
+                ErrorCode::InvalidArgument,
+                format!("{label} exceeds the Stata SPI integer range"),
+            )
+        })
+    }
+
+    fn observation(value: usize) -> Result<c_int, StFixestError> {
+        c_int::try_from(value).map_err(|_| {
+            StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "observation number exceeds the Stata SPI integer range",
+            )
+        })
+    }
+
+    fn spi_rc(rc: c_int, operation: &str) -> Result<(), StFixestError> {
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(StFixestError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI {operation} failed with return code {rc}"),
+            ))
+        }
+    }
+
+    fn matrix_name(name: &str) -> CString {
+        sanitize_c_string(name)
+    }
+}
+
+impl SpiApi for SpiSession {
+    fn nobs(&mut self) -> Result<usize, StFixestError> {
+        // SAFETY: `SpiSession` exists only on the bound Stata thread.
+        let value = unsafe { stfixest_spi_nobs() };
+        usize::try_from(value).map_err(|_| {
+            StFixestError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid observation count {value}"),
+            )
+        })
+    }
+
+    fn nvars(&mut self) -> Result<usize, StFixestError> {
+        // SAFETY: `SpiSession` exists only on the bound Stata thread.
+        let value = unsafe { stfixest_spi_nvars() };
+        usize::try_from(value).map_err(|_| {
+            StFixestError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid plugin-varlist width {value}"),
+            )
+        })
+    }
+
+    fn variable_is_string(&mut self, variable: u32) -> Result<bool, StFixestError> {
+        let variable = Self::position(variable, "variable position")?;
+        // SAFETY: position is representable and session is thread-confined.
+        match unsafe { stfixest_spi_var_is_string(variable) } {
+            0 => Ok(false),
+            1 => Ok(true),
+            value => Err(StFixestError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid string status {value}"),
+            )),
+        }
+    }
+
+    fn read_numeric(
+        &mut self,
+        variable: u32,
+        observation: usize,
+    ) -> Result<(f64, bool), StFixestError> {
+        let variable = Self::position(variable, "variable position")?;
+        let observation = Self::observation(observation)?;
+        let mut value = 0.0_f64;
+        // SAFETY: output pointer is live; indices are checked and the session is confined.
+        Self::spi_rc(
+            unsafe { stfixest_spi_vdata(variable, observation, &mut value) },
+            "numeric read",
+        )?;
+        // SAFETY: missing-value classification occurs on the same bound thread.
+        let missing = unsafe { stfixest_spi_is_missing(value) };
+        match missing {
+            0 => Ok((value, false)),
+            1 => Ok((value, true)),
+            other => Err(StFixestError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid missing status {other}"),
+            )),
+        }
+    }
+
+    fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize), StFixestError> {
+        let name = Self::matrix_name(name);
+        // SAFETY: name is NUL-terminated and session is thread-confined.
+        let rows = unsafe { stfixest_spi_matrix_rows(name.as_ptr()) };
+        // SAFETY: same argument as above.
+        let columns = unsafe { stfixest_spi_matrix_cols(name.as_ptr()) };
+        let rows = usize::try_from(rows).map_err(|_| {
+            StFixestError::new(ErrorCode::InvalidArgument, "Stata matrix was not found")
+        })?;
+        let columns = usize::try_from(columns).map_err(|_| {
+            StFixestError::new(ErrorCode::InvalidArgument, "Stata matrix was not found")
+        })?;
+        Ok((rows, columns))
+    }
+
+    fn matrix_element(
+        &mut self,
+        name: &str,
+        row: usize,
+        column: usize,
+    ) -> Result<f64, StFixestError> {
+        let name = Self::matrix_name(name);
+        let row = Self::observation(row)?;
+        let column = Self::observation(column)?;
+        let mut value = 0.0_f64;
+        // SAFETY: output pointer/name are live and indices/session are checked.
+        Self::spi_rc(
+            unsafe { stfixest_spi_mat_el(name.as_ptr(), row, column, &mut value) },
+            "matrix read",
+        )?;
+        Ok(value)
+    }
+
+    fn store_numeric(
+        &mut self,
+        variable: u32,
+        observation: usize,
+        value: f64,
+    ) -> Result<(), StFixestError> {
+        let variable = Self::position(variable, "output variable position")?;
+        let observation = Self::observation(observation)?;
+        // SAFETY: indices are checked and the session remains on Stata's thread.
+        Self::spi_rc(
+            unsafe { stfixest_spi_vstore(variable, observation, value) },
+            "numeric store",
+        )
+    }
+
+    fn check_interrupted(&mut self) -> Result<(), StFixestError> {
+        // SAFETY: polling and stop inspection occur on the bound Stata thread.
+        let poll = unsafe { stfixest_spi_poll() };
+        // SAFETY: same argument as above.
+        let stopped = unsafe { stfixest_spi_stop_requested() };
+        if poll != 0 || stopped != 0 {
+            Err(StFixestError::new(
+                ErrorCode::Interrupted,
+                "Stata requested interruption during OLS input preparation",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
 
 impl OutputSink for SpiSink {
     fn display(&self, message: &str) {
@@ -58,7 +311,15 @@ pub unsafe extern "C" fn stfixest_dispatch(argc: c_int, argv: *const *const c_ch
         // SAFETY: the exported ABI validates argc/argv before dereferencing.
         let args = unsafe { read_arguments(argc, argv) }?;
         let sink = SpiSink;
-        dispatch_args(&args, &sink)
+        if args
+            .first()
+            .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_PREPARE_OLS_TEST))
+        {
+            let mut session = SpiSession::new()?;
+            prepare_ols_test(&args[1..], &sink, &mut session)
+        } else {
+            dispatch_args(&args, &sink)
+        }
     }));
 
     match outcome {

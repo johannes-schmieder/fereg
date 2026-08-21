@@ -2,6 +2,7 @@ v 3
 p stfixest Rust-first high-dimensional fixed-effect architecture package
 f stfixest.ado
 f _stfixest_load.ado
+f _stfixest_prepare_ols_test.ado
 f stfeols.ado
 f stfepois.ado
 f stfixest_parse.ado

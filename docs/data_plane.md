@@ -11,6 +11,23 @@ outside this slice.
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
 
+## Developer OLS preparation boundary
+
+The internal `_stfixest_prepare_ols_test` command exercises the smallest safe
+one-call boundary: continuous regressors, no weights, no fixed effects, and no
+time-series materialization. It is guarded by an explicit developer
+confirmation token and does not post estimation results. `stfeols` and
+`stfepois` still return `r(498)`.
+
+The plugin decodes and validates model-wire v2, input bindings, matrix
+dimensions, numeric variable types, and diagnostic destinations before reading
+any observation. It reads the exact nonmissing `0`/`1` candidate marker for all
+observations, then reads outcomes and continuous sources only for candidate
+rows. Raw numeric bits and a separate Stata-missing mask cross the boundary.
+After native sample preparation and a final interruption check succeed, the
+plugin writes only three developer diagnostics: original observation number,
+retained status, and the authoritative drop-reason code.
+
 ## Numeric source representation
 
 Each numeric source contains its raw `f64` values and may contain a separate

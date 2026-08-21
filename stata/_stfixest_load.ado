@@ -41,7 +41,10 @@ program define _stfixest_load, rclass
         exit `load_rc'
     }
 
-    if `"`action'"' == "version" {
+    if `"`action'"' == "loadonly" {
+        /* Developer/internal callers perform their own single substantive call. */
+    }
+    else if `"`action'"' == "version" {
         plugin call __stfixest_plugin, version
     }
     else if `"`action'"' == "doctor" {

@@ -1,4 +1,5 @@
 #include <dlfcn.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "../../plugin/stplugin.h"
@@ -9,6 +10,79 @@ typedef ST_retcode (*stata_call_function)(int argc, char *argv[]);
 static char display_buffer[16384];
 static char error_buffer[16384];
 static ST_int stop_flag = 0;
+static ST_double plugin_data[6][5];
+
+static ST_int mock_poll(void) { return 0; }
+static ST_int mock_nobs(void) { return 5; }
+static ST_int mock_nvars(void) { return 6; }
+static ST_boolean mock_isstr(ST_int variable)
+{
+    (void) variable;
+    return (ST_boolean) 0U;
+}
+static ST_boolean mock_missing(ST_double value)
+{
+    return (ST_boolean) (isnan(value) ? 1U : 0U);
+}
+static ST_int mock_vdata(ST_int variable, ST_int observation, ST_double *value)
+{
+    if (variable < 1 || variable > 6 || observation < 1 || observation > 5 || value == NULL) {
+        return 111;
+    }
+    *value = plugin_data[variable - 1][observation - 1];
+    return 0;
+}
+static ST_int mock_vstore(ST_int variable, ST_int observation, ST_double value)
+{
+    if (variable < 1 || variable > 6 || observation < 1 || observation > 5) return 111;
+    plugin_data[variable - 1][observation - 1] = value;
+    return 0;
+}
+
+static const ST_double source_matrix[1][2] = {{1.0, 0.0}};
+static const ST_double term_matrix[1][8] = {{1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0}};
+static const ST_double component_matrix[1][13] = {
+    {1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0}
+};
+static const ST_double binding_matrix[3][3] = {
+    {1.0, 1.0, 0.0}, {2.0, 2.0, 0.0}, {3.0, 3.0, 1.0}
+};
+
+static ST_int mock_rowsof(char *name)
+{
+    if (strcmp(name, "S") == 0 || strcmp(name, "T") == 0 || strcmp(name, "C") == 0) return 1;
+    if (strcmp(name, "B") == 0) return 3;
+    return -1;
+}
+static ST_int mock_colsof(char *name)
+{
+    if (strcmp(name, "S") == 0) return 2;
+    if (strcmp(name, "T") == 0) return 8;
+    if (strcmp(name, "C") == 0) return 13;
+    if (strcmp(name, "B") == 0) return 3;
+    return -1;
+}
+static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *value)
+{
+    if (value == NULL || row < 1 || column < 1) return 111;
+    if (strcmp(name, "S") == 0 && row == 1 && column <= 2) {
+        *value = source_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "T") == 0 && row == 1 && column <= 8) {
+        *value = term_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "C") == 0 && row == 1 && column <= 13) {
+        *value = component_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "B") == 0 && row <= 3 && column <= 3) {
+        *value = binding_matrix[row - 1][column - 1];
+        return 0;
+    }
+    return 111;
+}
 
 static ST_int append_text(char *destination, size_t capacity, const char *message)
 {
@@ -108,6 +182,85 @@ static int check_panic_boundary(stata_call_function call)
     return 0;
 }
 
+static int check_estimator_actions_disabled(stata_call_function call)
+{
+    char *ols[] = {"estimate-ols"};
+    char *ppml[] = {"estimate-ppml"};
+    clear_output();
+    if (call(1, ols) != 498 || strstr(error_buffer, "unsupported") == NULL) return 1;
+    clear_output();
+    if (call(1, ppml) != 498 || strstr(error_buffer, "unsupported") == NULL) return 2;
+    return 0;
+}
+
+static int check_prepare_ols_test(stata_call_function call)
+{
+    char *arguments[] = {
+        "prepare-ols-test",
+        "ado=0.1.0-phase01",
+        "protocol_major=1",
+        "protocol_minor=0",
+        "stata=18.0",
+        "confirm=developer-preparation-test",
+        "model_major=2",
+        "model_minor=0",
+        "source_matrix=S",
+        "source_count=1",
+        "term_matrix=T",
+        "term_count=1",
+        "component_matrix=C",
+        "component_count=1",
+        "source_names=1:x",
+        "canonical_tokens=3:c.x",
+        "raw_component_operators=1:c",
+        "raw_time_series_operators=0:",
+        "binding_matrix=B",
+        "binding_count=3",
+        "include_intercept=1",
+        "output_original_observation=4",
+        "output_retained=5",
+        "output_drop_reason=6"
+    };
+    ST_int row;
+    for (row = 0; row < 5; ++row) {
+        plugin_data[3][row] = NAN;
+        plugin_data[4][row] = NAN;
+        plugin_data[5][row] = NAN;
+    }
+    plugin_data[0][0] = 0.0;
+    plugin_data[0][1] = 1.0;
+    plugin_data[0][2] = 1.0;
+    plugin_data[0][3] = 0.0;
+    plugin_data[0][4] = 1.0;
+    plugin_data[1][1] = -0.0;
+    plugin_data[1][2] = 3.0;
+    plugin_data[1][4] = 5.0;
+    plugin_data[2][1] = 2.0;
+    plugin_data[2][2] = NAN;
+    plugin_data[2][4] = 4.0;
+    clear_output();
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
+    if (strstr(display_buffer, "stfixest.prepare_ols_test=pass") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
+        error_buffer[0] != '\0') {
+        return 2;
+    }
+    for (row = 0; row < 5; ++row) {
+        if (plugin_data[3][row] != (ST_double) (row + 1)) return 3;
+    }
+    if (plugin_data[4][0] != 0.0 || plugin_data[4][1] != 1.0 ||
+        plugin_data[4][2] != 0.0 || plugin_data[4][3] != 0.0 ||
+        plugin_data[4][4] != 1.0) {
+        return 4;
+    }
+    if (plugin_data[5][0] != 1.0 || plugin_data[5][1] != 0.0 ||
+        plugin_data[5][2] != 3.0 || plugin_data[5][3] != 1.0 ||
+        plugin_data[5][4] != 0.0) {
+        return 5;
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     void *library;
@@ -140,6 +293,17 @@ int main(int argc, char *argv[])
     memset(&plugin, 0, sizeof(plugin));
     plugin.spoutsml = append_display;
     plugin.spouterr = append_error;
+    plugin.pollstd = mock_poll;
+    plugin.nobs = mock_nobs;
+    plugin.nvars = mock_nvars;
+    plugin.nvar = mock_nvars;
+    plugin.isstr = mock_isstr;
+    plugin.ismissing = mock_missing;
+    plugin.safevdata = mock_vdata;
+    plugin.safestore = mock_vstore;
+    plugin.rowsof = mock_rowsof;
+    plugin.colsof = mock_colsof;
+    plugin.safematel = mock_mat_el;
     plugin.stopflag = &stop_flag;
     if (initialize(&plugin) != SD_PLUGINVER) {
         fprintf(stderr, "pginit ABI mismatch\n");
@@ -170,6 +334,18 @@ int main(int argc, char *argv[])
         fprintf(stderr, "panic path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 40 + result;
+    }
+    result = check_estimator_actions_disabled(call);
+    if (result != 0) {
+        fprintf(stderr, "disabled estimator path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 50 + result;
+    }
+    result = check_prepare_ols_test(call);
+    if (result != 0) {
+        fprintf(stderr, "prepare OLS test path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 60 + result;
     }
 
     dlclose(library);

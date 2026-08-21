@@ -55,6 +55,19 @@ Requires `confirm=panic-boundary-test`. It injects a panic solely to verify that
 
 Return `r(498)` in this phase.
 
+## Developer-only preparation action
+
+`prepare-ols-test` is an internal integration action, not an estimator action.
+It requires `confirm=developer-preparation-test`, the standard action
+handshake, model-wire v2 matrices and length-delimited registries, an explicit
+numeric binding matrix, and three pre-created diagnostic output variables. The
+binding roles are candidate, outcome, and continuous source. Inputs and outputs
+must cover the plugin varlist exactly.
+
+The action is restricted to continuous, unweighted, no-fixed-effect models and
+never posts `e()` results. Both `estimate-ols` and `estimate-ppml` remain
+unconditionally unsupported.
+
 ## Return-code map
 
 | Class | Stata code |
