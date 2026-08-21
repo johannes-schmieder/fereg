@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![doc = "Safe, Stata-independent Phase 0-1 core for StFixest."]
+#![doc = "Safe, Stata-independent numerical core for StFixest."]
 
 pub mod data;
 pub mod diagnostics;
@@ -12,6 +12,7 @@ pub mod metadata;
 pub mod ols;
 pub mod options;
 pub mod parallel;
+pub mod ppml;
 pub mod protocol;
 pub mod selftest;
 
@@ -41,5 +42,10 @@ pub use ols::{
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
+pub use ppml::{
+    fit_ppml, fit_ppml_with_start, means_from_eta, offset_from_exposure, poisson_objective,
+    PoissonBounds, PoissonObjective, PpmlCertificate, PpmlConfig, PpmlDiagnostics,
+    PpmlFitStatistics, PpmlInitialization, PpmlIterationReport, PpmlResult, PpmlStart,
+};
 pub use protocol::{Handshake, ProtocolVersion, ADO_VERSION, PLUGIN_VERSION, PROTOCOL_VERSION};
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
