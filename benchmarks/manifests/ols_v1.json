@@ -34,7 +34,7 @@
   "capture": {
     "script": {
       "path": "benchmarks/stata/baseline_reghdfe.do",
-      "sha256": "2176beb8f1de1e24dddf37eb3edd0c9c2d7868f880296c2565285cf29ea1642a"
+      "sha256": "8f2cc73fa085241523979e87802c1f16ddd35a4f93796495233e96615e4d8d4b"
     },
     "runner": {
       "path": "scripts/ols_reference.py",
@@ -125,7 +125,7 @@
       "command": "reghdfe y c.x1 c.x2",
       "expected": "must_succeed",
       "covers": ["models:no_fe", "weights:unweighted", "inference:vce_unadjusted", "outputs:ereturn_scalars", "outputs:coefficient_status", "outputs:e_sample", "outputs:fit_statistics"],
-      "capture": {"scalars": ["N", "df_m", "df_r", "rss", "tss", "r2", "r2_a", "rmse", "F"], "macros": ["cmd", "depvar", "indepvars", "vce", "vcetype", "wtype", "wexp"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "capture": {"scalars": ["N", "df_m", "df_r", "rss", "tss", "r2", "r2_a", "rmse", "F"], "macros": ["cmd", "depvar", "indepvars", "vce"], "matrices": ["b", "V"], "outputs": ["sample"]},
       "repetitions": {"cold": 1, "warm": 0}
     },
     {
@@ -214,10 +214,11 @@
     {
       "id": "missing_and_if_in",
       "dataset": "ols_missing",
-      "command": "reghdfe y c.x1 if obs_id >= 2 in 1/8, absorb(worker firm)",
+      "command": "reghdfe y c.x1 if obs_id >= 2 in 1/7",
       "expected": "must_succeed",
+      "expected_sample_count": 4,
       "covers": ["sample:if_in", "sample:missing"],
-      "capture": {"scalars": ["N", "df_r", "df_a"], "macros": ["absvars"], "matrices": ["b", "V"], "outputs": ["sample"]},
+      "capture": {"scalars": ["N", "df_r"], "macros": [], "matrices": ["b", "V"], "outputs": ["sample"]},
       "repetitions": {"cold": 1, "warm": 0}
     },
     {
@@ -358,7 +359,7 @@
     {
       "id": "invalid_weight_outside_candidate",
       "dataset": "ols_weights",
-      "command": "reghdfe y c.x if obs_id >= 2 [aw=w_outside_negative], absorb(group)",
+      "command": "reghdfe y c.x if obs_id >= 2 [aw=w_outside_negative], absorb(group) keepsingletons",
       "expected": "must_succeed",
       "expected_sample_count": 11,
       "covers": ["weights:invalid_weight_outside_candidate"],

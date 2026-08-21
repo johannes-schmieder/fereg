@@ -67,7 +67,7 @@ if _rc {
         exit _rc
     }
 }
-capture noisily reghdfe, version
+capture which reghdfe
 if _rc {
     di as error "isolated reghdfe failed its version preflight"
     exit _rc

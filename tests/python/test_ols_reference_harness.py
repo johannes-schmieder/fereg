@@ -145,6 +145,30 @@ class OlsManifestTests(unittest.TestCase):
         self.assertEqual(precedence["expected_sample_count"], 11)
         self.assertIn("if obs_id >= 2", precedence["command"])
 
+    def test_capture_contract_regressions_match_real_reghdfe_semantics(self):
+        manifest = load_manifest()
+        cases = {case["id"]: case for case in manifest["semantic_cases"]}
+
+        no_fe = cases["unweighted_no_fe"]
+        self.assertIn("vce", no_fe["capture"]["macros"])
+        self.assertTrue({"vcetype", "wtype", "wexp"}.isdisjoint(no_fe["capture"]["macros"]))
+
+        missing = cases["missing_and_if_in"]
+        self.assertNotIn("absorb(", missing["command"])
+        self.assertIn("in 1/7", missing["command"])
+        self.assertEqual(missing["expected_sample_count"], 4)
+        self.assertNotIn("df_a", missing["capture"]["scalars"])
+        self.assertNotIn("absvars", missing["capture"]["macros"])
+
+        precedence = cases["invalid_weight_outside_candidate"]
+        self.assertIn("keepsingletons", precedence["command"])
+        self.assertEqual(precedence["expected_sample_count"], 11)
+
+    def test_baseline_preflight_resolves_reghdfe_without_invoking_it(self):
+        baseline = (ROOT / "benchmarks/stata/baseline_reghdfe.do").read_text(encoding="utf-8")
+        self.assertIn("capture which reghdfe", baseline)
+        self.assertNotIn("capture noisily reghdfe, version", baseline)
+
     def test_stale_fixture_is_rejected(self):
         manifest = load_manifest()
         with tempfile.TemporaryDirectory() as temporary:
