@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod explicit_dummy;
+pub mod explicit_ols;
 
 use stfixest_plugin::{dispatch_args, BufferSink};
 
