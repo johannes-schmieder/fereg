@@ -9,6 +9,7 @@ pub mod fe;
 pub mod linalg;
 pub mod memory;
 pub mod metadata;
+pub mod ols;
 pub mod options;
 pub mod parallel;
 pub mod protocol;
@@ -32,6 +33,11 @@ pub use fe::{
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
     AbsorbTerm, ClusterTerm, ModelSpec, ModelTerm, OperatorType, VariableRole, VariableSpec,
+};
+pub use ols::{
+    compute_dof, fit_ols, solve_rank_revealing, ClusterSubsetReport, DofConfig, DofMethod,
+    DofReport, FiniteSolver, FitStatistics, OlsConfig, OlsResult, RankSolve, RegressorStatus,
+    VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
