@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+pub mod explicit_dummy;
+
 use stfixest_plugin::{dispatch_args, BufferSink};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
