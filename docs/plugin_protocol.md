@@ -61,14 +61,19 @@ Return `r(498)` in this phase.
 It requires `confirm=developer-preparation-test`, the standard action
 handshake, model-wire v2 matrices and length-delimited registries, an explicit
 numeric binding matrix, and three pre-created diagnostic output variables. The
-binding roles are candidate, outcome, continuous source, and an optional
-analytic-weight source. Inputs and outputs must cover the plugin varlist
-exactly.
+binding roles are candidate (`1`), outcome (`2`), continuous source (`3`),
+optional analytic weight (`4`), and optional frequency weight (`5`). At most
+one weight binding is permitted. Inputs and outputs must cover the plugin
+varlist exactly.
 
-The action is restricted to continuous, unweighted or analytic-weighted,
-no-fixed-effect models and never posts `e()` results. Analytic weights must be
-passed as one numeric source binding; expressions are not materialized by this
-developer helper. All binding, matrix, type, and output validation precedes
+The action is restricted to continuous, unweighted, analytic-weighted, or
+frequency-weighted no-fixed-effect models and never posts `e()` results.
+Weights must be passed as one numeric source binding. Frequency weights must
+be finite, strictly positive integral values representable as `u32`; this
+developer action returns native invalid-data code `459` for a candidate-row
+domain violation and does not claim the public command's eventual Stata-facing
+error code. Weight expressions are not materialized by this developer helper.
+All binding, matrix, type, and output validation precedes
 observation reads, and diagnostic writes begin only after native preparation
 succeeds. Both `estimate-ols` and `estimate-ppml` remain unconditionally
 unsupported.

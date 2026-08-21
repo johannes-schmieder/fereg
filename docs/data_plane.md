@@ -14,20 +14,25 @@ or PPML available.
 ## Developer OLS preparation boundary
 
 The internal `_stfixest_prepare_ols_test` command exercises a deliberately
-bounded one-call boundary: continuous regressors, an optional analytic-weight
-variable, no fixed effects, and no time-series materialization. It is guarded
+bounded one-call boundary: continuous regressors, at most one analytic- or
+frequency-weight variable, no fixed effects, and no time-series materialization. It is guarded
 by an explicit developer confirmation token and does not post estimation
 results. `stfeols` and `stfepois` still return `r(498)`.
 
 The plugin decodes and validates model-wire v2, input bindings, matrix
 dimensions, numeric variable types, and diagnostic destinations before reading
 any observation. It reads the exact nonmissing `0`/`1` candidate marker for all
-observations, then reads outcomes, continuous sources, and any analytic weight
-only for candidate rows. Raw numeric bits and a separate Stata-missing mask
-cross the boundary. Positive finite analytic weights are retained without
-normalization, zero and missing weights receive drop reason 4, a negative
-candidate-row weight fails the action, and invalid weights outside the
-candidate marker are never read.
+observations, then reads outcomes, continuous sources, and any weight only for
+candidate rows. Raw numeric bits and a separate Stata-missing mask cross the
+boundary. Positive finite analytic weights are retained without normalization,
+zero and missing analytic weights receive drop reason 4, and a negative
+candidate-row analytic weight fails the action. Frequency weights must be
+finite, strictly positive, integral, and representable as `u32`; their raw
+`f64` bits are retained, while missing frequency weights receive reason 4.
+Invalid candidate-row frequency weights fail the action. Any weight outside
+the candidate marker is never read. This boundary continues to count retained
+physical rows only; frequency-weight effective observation counts are a later
+estimation contract.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.

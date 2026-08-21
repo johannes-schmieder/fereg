@@ -42,12 +42,21 @@ separately specify and test:
 
 The ado layer may parse the weight expression and pass its source role, but it
 must not normalize weights, replace invalid values, or pre-drop a different
-sample. The developer-only preparation boundary now accepts one
-analytic-weight variable. It retains positive finite values bit-for-bit without
-normalization, drops zero or missing values with reason 4, errors on a negative
-candidate-row weight, and never reads a weight outside the `if`/`in` candidate
-marker. This establishes sample preparation only; objective normalization,
-effective `N`, VCE, DoF, singleton behavior, and posting remain later gates.
+sample. The developer-only preparation boundary accepts at most one analytic-
+or frequency-weight variable. Analytic weights retain positive finite values
+bit-for-bit without normalization, drop zero or missing values with reason 4,
+and error on a negative candidate-row value. Frequency weights retain finite,
+strictly positive integral values representable as `u32` bit-for-bit; missing
+values receive reason 4 and zero, negative, fractional, or out-of-range
+candidate-row values fail closed. No weight outside the `if`/`in` candidate
+marker is read. The frequency contract is anchored by the sealed successful
+`fweight` and fractional-error cases plus the independent row-expansion oracle.
+The guarded action maps invalid-data failures to `459`; matching the public
+reference command's `401` error remains a later Stata-facing gate. This
+establishes sample preparation only. It deliberately does not convert the
+retained physical-row count to effective `N = sum(fweight)`, expand rows,
+normalize objective weights, or compute VCE, DoF, singleton behavior, or
+posted results.
 
 ## Evidence and enablement gate
 
@@ -61,6 +70,6 @@ Only the sanitized, sealed receipt is eligible for review.
 Before any weight kind is enabled, its sealed reference result must be paired
 with an independent explicit-dummy/WLS oracle and an end-to-end final-sample
 identity test. The full dependency closure and licensed OLS receipt are frozen.
-Only the analytic-weight preparation rules implemented in the guarded
-developer action have crossed an executable boundary; no weight kind is
-enabled in `stfeols`.
+Only the analytic- and frequency-weight preparation rules implemented in the
+guarded developer action have crossed an executable boundary; no weight kind
+is enabled in `stfeols`.

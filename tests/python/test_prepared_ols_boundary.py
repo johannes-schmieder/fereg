@@ -62,6 +62,28 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("_st_aw_reason[8] == 4", fixture)
         self.assertIn("_rc == 459", fixture)
 
+    def test_frequency_weight_slice_is_bounded_and_remains_preparation_only(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("FWEIGHT(varname numeric)", helper)
+        self.assertIn("OlsInputRole::FrequencyWeight", core)
+        self.assertIn("WeightKind::Frequency", core)
+        self.assertIn("(5, 0) => OlsInputRole::FrequencyWeight", plugin)
+        self.assertIn("r(n_retained) == 12", fixture)
+        self.assertIn("r(n_retained) == 11", fixture)
+        self.assertIn('assert "`r(weight_type)\'" == "fweight"', fixture)
+        self.assertIn("assert _rc == 459", fixture)
+
 
 if __name__ == "__main__":
     unittest.main()
