@@ -1,7 +1,12 @@
-# Plugin action protocol
+# Plugin action protocol (separate from model wire)
 
 The C ABI exports only Stata's required `pginit` and `stata_call` symbols.
 `stata_call` forwards `argc/argv` to Rust's `stfixest_dispatch`.
+
+The action/diagnostics handshake remains version `1.0`. The expanded-model
+metadata wire is independently versioned at `2.0`; neither version number is
+an alias for the other. An action handshake never performs a lossy model-wire
+conversion.
 
 ## Actions
 
@@ -21,6 +26,16 @@ protocol_minor=0
 stata=18.0
 threads=0
 plugin_file=<resolved path>
+```
+
+The `protocol_major`/`protocol_minor` input keys are retained for compatibility
+with the Phase 0 ado loader. They identify the **action handshake**, not the
+model wire. Machine-readable `version` and `doctor` output uses the unambiguous
+labels:
+
+```text
+stfixest.action_protocol=1.0
+stfixest.model_wire=2.0
 ```
 
 The action validates compatibility, resolves the local thread count, runs the

@@ -54,7 +54,8 @@ static int check_version(stata_call_function call)
     clear_output();
     if (call(1, arguments) != 0) return 1;
     if (strstr(display_buffer, "stfixest.plugin_version=0.1.0") == NULL ||
-        strstr(display_buffer, "stfixest.model_protocol=1.0") == NULL ||
+        strstr(display_buffer, "stfixest.action_protocol=1.0") == NULL ||
+        strstr(display_buffer, "stfixest.model_wire=2.0") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }

@@ -1,13 +1,14 @@
-*! StFixest metadata-only parser prototype 0.1.0 20aug2026
+*! StFixest model-wire v2 metadata parser 0.2.0 21aug2026
 program define stfixest_parse, rclass
     version 18.0
-    syntax [varlist(fv ts numeric)] [if] [in], ///
-        [ABSorb(string asis) CLUster(string asis)]
+    syntax [varlist(fv ts numeric)], ///
+        TOUSE(varname numeric) [ABSorb(string asis) CLUster(string asis) EMPTYMODEL]
 
     local rhs `"`varlist'"'
-    marksample touse, novarlist
+    if `"`emptymodel'"' != "" local rhs
+    confirm variable `touse'
 
-    tempname term_meta component_meta absorb_meta absorb_component_meta
+    tempname source_meta term_meta component_meta absorb_meta absorb_component_meta
     tempname cluster_meta cluster_component_meta
     local term_rows 0
     local component_rows 0
@@ -17,6 +18,8 @@ program define stfixest_parse, rclass
     local cluster_component_rows 0
     local source_vars
     local coefficient_names
+    local component_raw_operators
+    local component_ts_operators
     local absorb_labels
     local absorb_saved_names
     local cluster_labels
@@ -30,11 +33,15 @@ program define stfixest_parse, rclass
             local ++term_order
             quietly _ms_parse_parts `token'
             local rtype `"`r(type)'"'
-            local type_code 9
+            local type_code 0
             if `"`rtype'"' == "variable" local type_code 1
-            if `"`rtype'"' == "factor" local type_code 2
-            if `"`rtype'"' == "interaction" local type_code 3
-            if `"`rtype'"' == "product" local type_code 4
+            else if `"`rtype'"' == "factor" local type_code 2
+            else if `"`rtype'"' == "interaction" local type_code 3
+            else if `"`rtype'"' == "product" local type_code 4
+            else {
+                di as error "unsupported _ms_parse_parts term type: `rtype'"
+                exit 198
+            }
 
             local omit 0
             capture local omit = r(omit)
@@ -44,19 +51,21 @@ program define stfixest_parse, rclass
             if inlist(`"`rtype'"', "interaction", "product") {
                 local n_components = r(k_names)
             }
-            local any_base 0
-            local any_ts_pending 0
-
             forvalues component = 1/`n_components' {
                 if inlist(`"`rtype'"', "interaction", "product") {
                     local source `"`r(name`component')'"'
                     local ts_op `"`r(ts_op`component')'"'
+                    local raw_op `"`r(op`component')'"'
                 }
                 else {
                     local source `"`r(name)'"'
                     local ts_op `"`r(ts_op)'"'
+                    local raw_op `"`r(op)'"'
                 }
-                if `"`source'"' == "" local source `"`token'"'
+                if `"`source'"' == "" {
+                    di as error "missing component source metadata for `token'"
+                    exit 198
+                }
 
                 local source_position : list posof `"`source'"' in source_vars
                 if `source_position' == 0 {
@@ -65,38 +74,64 @@ program define stfixest_parse, rclass
                 }
 
                 local component_kind 1
-                local base 0
-                local level .
+                local level_state 1
+                local level 0
+                local base_status 0
+                local component_omit_status 2
                 if `"`rtype'"' == "factor" {
                     local component_kind 2
-                    local base = r(base)
+                    local level_state 2
                     local level = r(level)
+                    local base_status = r(base)
+                    local component_omit_status = r(omit)
                 }
                 else if inlist(`"`rtype'"', "interaction", "product") {
-                    capture local level = r(level`component')
-                    if !_rc & !missing(`level') {
+                    local captured_level .
+                    capture local captured_level = r(level`component')
+                    if !_rc & !missing(`captured_level') {
                         local component_kind 2
-                        local base = r(base`component')
+                        local level_state 2
+                        local level = `captured_level'
+                        local captured_base .
+                        capture local captured_base = r(base`component')
+                        if !_rc & !missing(`captured_base') local base_status = `captured_base'
+                        else local base_status 2
+                    }
+                    else if inlist(`"`raw_op'"', "c", "co") {
+                        local component_kind 1
+                        local level_state 1
+                        local level 0
+                        local base_status 0
                     }
                     else {
-                        local level .
+                        local component_kind 3
+                        local level_state 3
+                        local level 0
+                        local base_status 2
                     }
                 }
-                if `base' local any_base 1
 
-                /* Phase 0 only marks TS operators; it does not materialize them. */
-                local ts_pending = (`"`ts_op'"' != "")
-                if `ts_pending' local any_ts_pending 1
+                /* This parser records TS work but never materializes it. */
+                local ts_state 1
+                if `"`ts_op'"' != "" local ts_state 2
+
+                local ++component_rows
+                local raw_op_length = strlen(`"`raw_op'"')
+                local ts_op_length = strlen(`"`ts_op'"')
+                local component_raw_operators ///
+                    `"`component_raw_operators' `raw_op_length':`raw_op'"'
+                local component_ts_operators ///
+                    `"`component_ts_operators' `ts_op_length':`ts_op'"'
 
                 matrix `component_meta' = nullmat(`component_meta') \ ///
                     (`term_order', `component', `source_position', `component_kind', ///
-                     `level', `base', `omit', `ts_pending')
-                local ++component_rows
+                     `level_state', `level', `base_status', `component_omit_status', ///
+                     `ts_state', `component_rows', `component_rows', 0, 0)
             }
 
             matrix `term_meta' = nullmat(`term_meta') \ ///
-                (`term_order', `type_code', `n_components', `omit', `any_base', ///
-                 `term_order', `any_ts_pending', 0)
+                (`term_order', `term_order', `term_order', `type_code', ///
+                 `n_components', `omit', 0, 0)
             local ++term_rows
             local coefficient_names `"`coefficient_names' `token'"'
         }
@@ -244,22 +279,33 @@ program define stfixest_parse, rclass
         local cluster_labels `"`cluster_labels' `raw_cluster'"'
     }
 
-    if `term_rows' == 0 matrix `term_meta' = J(1, 8, .)
-    if `component_rows' == 0 matrix `component_meta' = J(1, 8, .)
-    if `absorb_rows' == 0 matrix `absorb_meta' = J(1, 4, .)
-    if `absorb_component_rows' == 0 matrix `absorb_component_meta' = J(1, 4, .)
-    if `cluster_rows' == 0 matrix `cluster_meta' = J(1, 2, .)
-    if `cluster_component_rows' == 0 matrix `cluster_component_meta' = J(1, 3, .)
+    local source_rows : word count `source_vars'
+    if `source_rows' > 0 {
+        forvalues source_id = 1/`source_rows' {
+            matrix `source_meta' = nullmat(`source_meta') \ (`source_id', 0)
+        }
+    }
 
-    matrix colnames `term_meta' = term type n_components omitted base coef_col ts_pending reserved
-    matrix colnames `component_meta' = term component source kind level base omitted ts_pending
+    /* Count zero is encoded by exactly one all-zero row of the documented width. */
+    if `source_rows' == 0 matrix `source_meta' = J(1, 2, 0)
+    if `term_rows' == 0 matrix `term_meta' = J(1, 8, 0)
+    if `component_rows' == 0 matrix `component_meta' = J(1, 13, 0)
+    if `absorb_rows' == 0 matrix `absorb_meta' = J(1, 4, 0)
+    if `absorb_component_rows' == 0 matrix `absorb_component_meta' = J(1, 4, 0)
+    if `cluster_rows' == 0 matrix `cluster_meta' = J(1, 2, 0)
+    if `cluster_component_rows' == 0 matrix `cluster_component_meta' = J(1, 3, 0)
+
+    matrix colnames `source_meta' = source reserved
+    matrix colnames `term_meta' = term order coef_slot raw_type n_components omitted reserved1 reserved2
+    matrix colnames `component_meta' = term component source kind level_state level base_status omit_status ts_state raw_op_slot ts_op_slot reserved1 reserved2
     matrix colnames `absorb_meta' = term n_categorical intercept n_slopes
     matrix colnames `absorb_component_meta' = term role order source
     matrix colnames `cluster_meta' = term n_sources
     matrix colnames `cluster_component_meta' = term order source
 
-    return scalar protocol_major = 1
-    return scalar protocol_minor = 0
+    return scalar model_wire_major = 2
+    return scalar model_wire_minor = 0
+    return scalar n_sources = `source_rows'
     return scalar n_model_terms = `term_rows'
     return scalar n_model_components = `component_rows'
     return scalar n_absorb_terms = `absorb_rows'
@@ -269,9 +315,12 @@ program define stfixest_parse, rclass
     return local touse "`touse'"
     return local source_vars `"`source_vars'"'
     return local coefficient_names `"`coefficient_names'"'
+    return local component_raw_operators `"`component_raw_operators'"'
+    return local component_ts_operators `"`component_ts_operators'"'
     return local absorb_labels `"`absorb_labels'"'
     return local absorb_saved_names `"`absorb_saved_names'"'
     return local cluster_labels `"`cluster_labels'"'
+    return matrix model_sources = `source_meta'
     return matrix model_terms = `term_meta'
     return matrix model_components = `component_meta'
     return matrix absorb_terms = `absorb_meta'

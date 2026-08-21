@@ -20,7 +20,10 @@ impl ProtocolVersion {
     }
 }
 
-pub const PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
+/// Version of the small action/diagnostics handshake accepted by the plugin.
+pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
+/// Version of the data-independent expanded-model metadata wire.
+pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Handshake {
@@ -34,27 +37,27 @@ impl Handshake {
     pub fn current(stata_major: u16) -> Self {
         Self {
             ado_version: ADO_VERSION.to_owned(),
-            protocol: PROTOCOL_VERSION,
+            protocol: ACTION_PROTOCOL_VERSION,
             stata_major,
         }
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.protocol.major != PROTOCOL_VERSION.major {
+        if self.protocol.major != ACTION_PROTOCOL_VERSION.major {
             return Err(StFixestError::new(
                 ErrorCode::ProtocolMismatch,
                 format!(
-                    "model protocol major {} is incompatible with plugin major {}",
-                    self.protocol.major, PROTOCOL_VERSION.major
+                    "action protocol major {} is incompatible with plugin major {}",
+                    self.protocol.major, ACTION_PROTOCOL_VERSION.major
                 ),
             ));
         }
-        if self.protocol.minor > PROTOCOL_VERSION.minor {
+        if self.protocol.minor > ACTION_PROTOCOL_VERSION.minor {
             return Err(StFixestError::new(
                 ErrorCode::ProtocolMismatch,
                 format!(
-                    "model protocol minor {} is newer than plugin minor {}",
-                    self.protocol.minor, PROTOCOL_VERSION.minor
+                    "action protocol minor {} is newer than plugin minor {}",
+                    self.protocol.minor, ACTION_PROTOCOL_VERSION.minor
                 ),
             ));
         }
@@ -163,16 +166,39 @@ mod tests {
     }
 
     #[test]
+    fn action_handshake_and_model_wire_are_distinct_versions() {
+        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 0));
+        assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 0));
+        assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
+    }
+
+    #[test]
     fn newer_protocol_major_fails_closed() {
         let handshake = Handshake {
             ado_version: ADO_VERSION.to_owned(),
-            protocol: ProtocolVersion::new(PROTOCOL_VERSION.major + 1, 0),
+            protocol: ProtocolVersion::new(ACTION_PROTOCOL_VERSION.major + 1, 0),
             stata_major: 18,
         };
-        assert_eq!(
-            handshake.validate().expect_err("must reject").code,
-            ErrorCode::ProtocolMismatch
-        );
+        let error = handshake.validate().expect_err("must reject");
+        assert_eq!(error.code, ErrorCode::ProtocolMismatch);
+        assert!(error.message.contains("action protocol major"));
+        assert!(!error.message.contains("model protocol"));
+    }
+
+    #[test]
+    fn newer_action_protocol_minor_is_labeled_unambiguously() {
+        let handshake = Handshake {
+            ado_version: ADO_VERSION.to_owned(),
+            protocol: ProtocolVersion::new(
+                ACTION_PROTOCOL_VERSION.major,
+                ACTION_PROTOCOL_VERSION.minor + 1,
+            ),
+            stata_major: 18,
+        };
+        let error = handshake.validate().expect_err("must reject");
+        assert_eq!(error.code, ErrorCode::ProtocolMismatch);
+        assert!(error.message.contains("action protocol minor"));
+        assert!(!error.message.contains("model protocol"));
     }
 
     #[test]
@@ -190,7 +216,7 @@ mod tests {
     fn pre_one_ado_contract_must_match_exactly() {
         let handshake = Handshake {
             ado_version: "0.99.0".to_owned(),
-            protocol: PROTOCOL_VERSION,
+            protocol: ACTION_PROTOCOL_VERSION,
             stata_major: 18,
         };
         assert_eq!(

@@ -86,7 +86,9 @@ code_lines = [line for line in parse_ado.splitlines() if not line.lstrip().start
 parse_code = "\n".join(code_lines).lower()
 for forbidden in ("fvrevar ", "egen group", "tabulate, generate", "reghdfe", "ppmlhdfe", "ftools"):
     require(forbidden not in parse_code, f"metadata parser contains forbidden materialization/runtime command: {forbidden}")
-require("marksample touse, novarlist" in parse_code, "parser does not create candidate marker with novarlist")
+require("touse(varname numeric)" in parse_code, "parser does not require a caller-owned candidate marker")
+require("marksample touse" not in parse_code, "parser creates a short-lived candidate marker")
+require("fvexpand `rhs' if `touse'" in parse_code, "factor expansion does not use the caller-owned candidate marker")
 require("fvexpand" in parse_code and "_ms_parse_parts" in parse_code, "parser does not use Stata factor metadata machinery")
 
 for estimator in ("stfeols.ado", "stfepois.ado"):

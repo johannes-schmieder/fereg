@@ -15,7 +15,8 @@ ST_retcode stfixest_dispatch(ST_int argc, const char *const *argv)
     if (argc <= 0 || argv == NULL) return 198;
     if (strcmp(argv[0], "version") == 0) {
         stfixest_spi_display("stfixest.plugin_version=0.1.0\n");
-        stfixest_spi_display("stfixest.model_protocol=1.0\n");
+        stfixest_spi_display("stfixest.action_protocol=1.0\n");
+        stfixest_spi_display("stfixest.model_wire=2.0\n");
         return 0;
     }
     if (strcmp(argv[0], "doctor") == 0) {
