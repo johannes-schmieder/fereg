@@ -42,6 +42,26 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("inlist(_n, 2, 5, 6, 7)", fixture)
         self.assertIn("assert _rc == 498", fixture)
 
+    def test_analytic_weight_slice_is_explicit_and_remains_preparation_only(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("AWEIGHT(varname numeric)", helper)
+        self.assertIn("OlsInputRole::AnalyticWeight", core)
+        self.assertIn("WeightKind::Analytic", core)
+        self.assertIn("(4, 0) => OlsInputRole::AnalyticWeight", plugin)
+        self.assertIn("_st_aw_reason[8] == 4", fixture)
+        self.assertIn("_rc == 459", fixture)
+
 
 if __name__ == "__main__":
     unittest.main()

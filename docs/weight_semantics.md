@@ -2,8 +2,9 @@
 
 Weight behavior is a reference-captured scientific contract, not an inference
 from Stata's `syntax` declaration or from the native storage type. StFixest
-still enables no public OLS estimator, and this document does not claim that a
-licensed reference capture has occurred.
+still enables no public OLS estimator. The licensed, sealed ARM64 macOS/Stata
+18 OLS reference receipt identified in `STATUS.md` now freezes the probe
+outcomes below.
 
 ## Frozen reference probes
 
@@ -41,9 +42,12 @@ separately specify and test:
 
 The ado layer may parse the weight expression and pass its source role, but it
 must not normalize weights, replace invalid values, or pre-drop a different
-sample. Native numeric preparation currently preserves the requested kind and
-finite values; that storage fact establishes none of the estimator semantics
-above.
+sample. The developer-only preparation boundary now accepts one
+analytic-weight variable. It retains positive finite values bit-for-bit without
+normalization, drops zero or missing values with reason 4, errors on a negative
+candidate-row weight, and never reads a weight outside the `if`/`in` candidate
+marker. This establishes sample preparation only; objective normalization,
+effective `N`, VCE, DoF, singleton behavior, and posting remain later gates.
 
 ## Evidence and enablement gate
 
@@ -56,6 +60,7 @@ Only the sanitized, sealed receipt is eligible for review.
 
 Before any weight kind is enabled, its sealed reference result must be paired
 with an independent explicit-dummy/WLS oracle and an end-to-end final-sample
-identity test. The full dependency closure is now exactly pinned, but no
-licensed OLS receipt has been captured or adjudicated, so no OLS weight behavior
-is frozen yet.
+identity test. The full dependency closure and licensed OLS receipt are frozen.
+Only the analytic-weight preparation rules implemented in the guarded
+developer action have crossed an executable boundary; no weight kind is
+enabled in `stfeols`.

@@ -2,7 +2,8 @@
 program define _stfixest_prepare_ols_test, rclass sortpreserve
     version 18.0
     syntax varlist(fv numeric min=1) [if] [in], ///
-        ORIGINALOBS(name) RETAINED(name) DROPREASON(name) [NOCONStant]
+        ORIGINALOBS(name) RETAINED(name) DROPREASON(name) ///
+        [NOCONStant AWEIGHT(varname numeric)]
 
     foreach output in `originalobs' `retained' `dropreason' {
         confirm new variable `output'
@@ -61,7 +62,8 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         local ts_registry "."
     }
 
-    local n_bindings = 2 + `n_sources'
+    local has_aweight = (`"`aweight'"' != "")
+    local n_bindings = 2 + `n_sources' + `has_aweight'
     matrix `input_bindings' = J(`n_bindings', 3, 0)
     matrix `input_bindings'[1,1] = 1
     matrix `input_bindings'[1,2] = 1
@@ -77,13 +79,20 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         }
     }
 
+    if `has_aweight' {
+        local row = 3 + `n_sources'
+        local position = 3 + `n_sources'
+        matrix `input_bindings'[`row',1] = `position'
+        matrix `input_bindings'[`row',2] = 4
+    }
+
     generate double `originalobs' = .
     generate byte `retained' = .
     generate byte `dropreason' = .
 
-    local output_original = 3 + `n_sources'
-    local output_retained = 4 + `n_sources'
-    local output_reason = 5 + `n_sources'
+    local output_original = 3 + `n_sources' + `has_aweight'
+    local output_retained = 4 + `n_sources' + `has_aweight'
+    local output_reason = 5 + `n_sources' + `has_aweight'
     local include_intercept = (`"`noconstant'"' == "")
 
     _stfixest_load, action(loadonly)
@@ -91,7 +100,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     capture program __stfixest_prepare_plugin, plugin using(`"`plugin_file'"')
     local load_rc = _rc
     if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    plugin call __stfixest_prepare_plugin `touse' `depvar' `source_vars' ///
+    plugin call __stfixest_prepare_plugin `touse' `depvar' `source_vars' `aweight' ///
         `originalobs' `retained' `dropreason', ///
         `"prepare-ols-test"' ///
         `"ado=0.1.0-phase01"' ///
@@ -124,4 +133,8 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     return local original_observation "`originalobs'"
     return local retained "`retained'"
     return local drop_reason "`dropreason'"
+    local weight_type
+    if `has_aweight' local weight_type "aweight"
+    return local weight_type "`weight_type'"
+    return local weight_variable "`aweight'"
 end

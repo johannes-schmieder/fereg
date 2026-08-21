@@ -61,12 +61,17 @@ Return `r(498)` in this phase.
 It requires `confirm=developer-preparation-test`, the standard action
 handshake, model-wire v2 matrices and length-delimited registries, an explicit
 numeric binding matrix, and three pre-created diagnostic output variables. The
-binding roles are candidate, outcome, and continuous source. Inputs and outputs
-must cover the plugin varlist exactly.
+binding roles are candidate, outcome, continuous source, and an optional
+analytic-weight source. Inputs and outputs must cover the plugin varlist
+exactly.
 
-The action is restricted to continuous, unweighted, no-fixed-effect models and
-never posts `e()` results. Both `estimate-ols` and `estimate-ppml` remain
-unconditionally unsupported.
+The action is restricted to continuous, unweighted or analytic-weighted,
+no-fixed-effect models and never posts `e()` results. Analytic weights must be
+passed as one numeric source binding; expressions are not materialized by this
+developer helper. All binding, matrix, type, and output validation precedes
+observation reads, and diagnostic writes begin only after native preparation
+succeeds. Both `estimate-ols` and `estimate-ppml` remain unconditionally
+unsupported.
 
 ## Return-code map
 

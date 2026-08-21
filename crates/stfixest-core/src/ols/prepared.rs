@@ -16,6 +16,7 @@ pub enum OlsInputRole {
     Candidate,
     Outcome,
     ContinuousSource(SourceId),
+    AnalyticWeight,
 }
 
 /// One-based binding from semantic input role to Stata's plugin varlist.
@@ -40,12 +41,14 @@ pub struct LoadedNumericColumn {
     pub missing: Vec<bool>,
 }
 
-/// Complete raw input for the continuous, unweighted, no-FE preparation slice.
+/// Complete raw input for the continuous, optionally analytic-weighted,
+/// no-FE preparation slice.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedOlsInput {
     pub candidate: Vec<bool>,
     pub outcome: LoadedNumericColumn,
     pub continuous_sources: Vec<(SourceId, LoadedNumericColumn)>,
+    pub analytic_weight: Option<LoadedNumericColumn>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,11 +158,19 @@ pub fn prepare_ols_data(
         .iter()
         .map(|(_, column)| NumericColumnView::with_missing(&column.values, &column.missing))
         .collect::<Vec<_>>();
+    validate_candidate_weight_domain(loaded)?;
+    let weights = loaded
+        .analytic_weight
+        .as_ref()
+        .map_or(WeightInput::None, |column| WeightInput::Provided {
+            kind: WeightKind::Analytic,
+            column: NumericColumnView::with_missing(&column.values, &column.missing),
+        });
     let input = NumericPreparationInput {
         candidate: &loaded.candidate,
         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
         regressors: &regressor_views,
-        weights: WeightInput::None,
+        weights,
         adjustment: AdjustmentInput::None,
     };
     let sample = prepare_numeric_sample(&input, &OlsPreparationPolicy)?;
@@ -170,6 +181,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
     let mut positions = BTreeSet::new();
     let mut candidate_count = 0_usize;
     let mut outcome_count = 0_usize;
+    let mut analytic_weight_count = 0_usize;
     let mut sources = BTreeMap::new();
     for binding in &request.bindings {
         if binding.stata_var_position == 0 || !positions.insert(binding.stata_var_position) {
@@ -185,11 +197,17 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
                     return Err(invalid("continuous source is bound more than once"));
                 }
             }
+            OlsInputRole::AnalyticWeight => analytic_weight_count += 1,
         }
     }
     if candidate_count != 1 || outcome_count != 1 {
         return Err(invalid(
             "OLS request requires exactly one candidate and one outcome binding",
+        ));
+    }
+    if analytic_weight_count > 1 {
+        return Err(invalid(
+            "OLS request permits at most one analytic-weight binding",
         ));
     }
     if sources.len() != request.model.sources.len()
@@ -222,6 +240,37 @@ fn validate_loaded(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> Result<()
         }
         validate_loaded_column("continuous source", column, n)?;
     }
+    let request_has_analytic_weight = request
+        .bindings
+        .iter()
+        .any(|binding| binding.role == OlsInputRole::AnalyticWeight);
+    if request_has_analytic_weight != loaded.analytic_weight.is_some() {
+        return Err(invalid(
+            "loaded analytic weight does not match the OLS request binding",
+        ));
+    }
+    if let Some(column) = &loaded.analytic_weight {
+        validate_loaded_column("analytic weight", column, n)?;
+    }
+    Ok(())
+}
+
+fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
+    let Some(weight) = &loaded.analytic_weight else {
+        return Ok(());
+    };
+    for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
+        if candidate
+            && !weight.missing[row]
+            && weight.values[row].is_finite()
+            && weight.values[row] < 0.0
+        {
+            return Err(invalid_data(format!(
+                "analytic weight at observation {} is negative",
+                row + 1,
+            )));
+        }
+    }
     Ok(())
 }
 
@@ -241,8 +290,19 @@ impl NumericDomainPolicy for OlsPreparationPolicy {
         Ok(DomainDecision::Retain)
     }
 
-    fn weight(&self, _row: usize, _kind: WeightKind, _value: f64) -> Result<DomainDecision> {
-        Err(invalid("unweighted OLS preparation received a weight"))
+    fn weight(&self, _row: usize, kind: WeightKind, value: f64) -> Result<DomainDecision> {
+        if kind != WeightKind::Analytic {
+            return Err(unsupported(
+                "OLS preparation currently supports only analytic weights",
+            ));
+        }
+        if value == 0.0 {
+            Ok(DomainDecision::Drop)
+        } else if value < 0.0 {
+            Err(invalid_data("analytic weight is negative"))
+        } else {
+            Ok(DomainDecision::Retain)
+        }
     }
 
     fn offset(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
@@ -256,6 +316,10 @@ impl NumericDomainPolicy for OlsPreparationPolicy {
 
 fn invalid(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn invalid_data(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidData, message)
 }
 
 fn unsupported(message: impl Into<String>) -> StFixestError {
@@ -367,6 +431,7 @@ mod tests {
                     ),
                 ),
             ],
+            analytic_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 5]);
@@ -406,6 +471,7 @@ mod tests {
             candidate: Vec::new(),
             outcome: column(&[], &[]),
             continuous_sources: Vec::new(),
+            analytic_weight: None,
         };
         let prepared = prepare_ols_data(&request(0, false), &empty).expect("empty");
         assert_eq!(prepared.sample.n_original, 0);
@@ -416,6 +482,7 @@ mod tests {
             candidate: vec![true, false],
             outcome: column(&[1.0, 2.0], &[true, false]),
             continuous_sources: Vec::new(),
+            analytic_weight: None,
         };
         let prepared = prepare_ols_data(&request(0, true), &dropped).expect("all dropped");
         assert_eq!(prepared.sample.n_candidate, 1);
@@ -464,5 +531,106 @@ mod tests {
             .expect("whole-column omission")
             .columns
             .is_empty());
+    }
+
+    #[test]
+    fn analytic_weights_preserve_positive_bits_and_lock_drop_semantics() {
+        let mut request = request(1, false);
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 4,
+            role: OlsInputRole::AnalyticWeight,
+        });
+        let tiny = f64::from_bits(1);
+        let huge = 1.0e300_f64;
+        let loaded = LoadedOlsInput {
+            candidate: vec![false, true, true, true, true, true],
+            outcome: column(&[9.0, 1.0, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
+            continuous_sources: vec![(
+                SourceId::new(1).expect("id"),
+                column(&[9.0, 10.0, 20.0, 30.0, 40.0, 50.0], &[false; 6]),
+            )],
+            analytic_weight: Some(column(
+                &[-1.0, tiny, huge, 0.0, -0.0, 7.0],
+                &[false, false, false, false, false, true],
+            )),
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("analytic-weight prepare");
+        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![
+                crate::DropReason::ExcludedByIfIn,
+                crate::DropReason::Retained,
+                crate::DropReason::Retained,
+                crate::DropReason::InvalidOrMissingWeight,
+                crate::DropReason::InvalidOrMissingWeight,
+                crate::DropReason::InvalidOrMissingWeight,
+            ]
+        );
+        let crate::data::PreparedWeights::Provided { kind, values } = &prepared.sample.weights
+        else {
+            panic!("analytic weights must remain present");
+        };
+        assert_eq!(*kind, WeightKind::Analytic);
+        assert_eq!(values[0].to_bits(), tiny.to_bits());
+        assert_eq!(values[1].to_bits(), huge.to_bits());
+    }
+
+    #[test]
+    fn candidate_negative_weight_fails_but_off_candidate_negative_is_ignored() {
+        let mut request = request(0, false);
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 3,
+            role: OlsInputRole::AnalyticWeight,
+        });
+        let off_candidate = LoadedOlsInput {
+            candidate: vec![false, true],
+            outcome: column(&[1.0, 2.0], &[false; 2]),
+            continuous_sources: Vec::new(),
+            analytic_weight: Some(column(&[-1.0, 2.0], &[false; 2])),
+        };
+        let prepared = prepare_ols_data(&request, &off_candidate).expect("off-candidate weight");
+        assert_eq!(prepared.sample.retained_rows(), &[1]);
+
+        let mut candidate_negative = off_candidate;
+        candidate_negative.candidate = vec![true, true];
+        let error = prepare_ols_data(&request, &candidate_negative)
+            .expect_err("candidate-negative analytic weight");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn analytic_weight_binding_and_loaded_column_must_match_exactly() {
+        let mut duplicate = request(0, false);
+        duplicate.bindings.extend([
+            OlsInputBinding {
+                stata_var_position: 3,
+                role: OlsInputRole::AnalyticWeight,
+            },
+            OlsInputBinding {
+                stata_var_position: 4,
+                role: OlsInputRole::AnalyticWeight,
+            },
+        ]);
+        assert_eq!(
+            duplicate
+                .validate_and_compile()
+                .expect_err("duplicate analytic weight")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let unbound_loaded = LoadedOlsInput {
+            candidate: vec![true],
+            outcome: column(&[1.0], &[false]),
+            continuous_sources: Vec::new(),
+            analytic_weight: Some(column(&[1.0], &[false])),
+        };
+        assert_eq!(
+            prepare_ols_data(&request(0, false), &unbound_loaded)
+                .expect_err("unbound loaded weight")
+                .code,
+            ErrorCode::InvalidArgument
+        );
     }
 }
