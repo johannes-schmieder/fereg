@@ -12,6 +12,7 @@ mod singleton;
 
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub use certificate::{certify_residuals, FeCertificate};
+pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub use components::{connected_components, ComponentInfo};
 pub use design::{EffectTerm, FeDesign, LevelIndex};
 pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};

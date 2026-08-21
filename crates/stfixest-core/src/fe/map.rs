@@ -2,8 +2,8 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::ProjectionWorkspace;
 use crate::fe::{
-    certify_residuals, project_effect_in_place, FeDesign, FeSolverKind, SolveReport,
-    SolveStopReason,
+    certify_residuals_with_reference_norms, project_effect_in_place, weighted_column_norms,
+    FeDesign, FeSolverKind, SolveReport, SolveStopReason,
 };
 use std::time::Instant;
 
@@ -41,8 +41,15 @@ pub fn absorb_map(
             "MAP inputs have inconsistent observation counts",
         ));
     }
+    let reference_norms = weighted_column_norms(values, weights)?;
     if design.effects().is_empty() {
-        let certificate = certify_residuals(design, weights, values, config.tolerance)?;
+        let certificate = certify_residuals_with_reference_norms(
+            design,
+            weights,
+            values,
+            &reference_norms,
+            config.tolerance,
+        )?;
         return Ok(SolveReport {
             requested_solver: FeSolverKind::Map,
             used_solver: FeSolverKind::Map,
@@ -57,7 +64,13 @@ pub fn absorb_map(
         });
     }
     let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
-    let mut final_certificate = certify_residuals(design, weights, values, config.tolerance)?;
+    let mut final_certificate = certify_residuals_with_reference_norms(
+        design,
+        weights,
+        values,
+        &reference_norms,
+        config.tolerance,
+    )?;
 
     for iteration in 1..=config.max_iterations {
         for effect in design.effects() {
@@ -69,7 +82,13 @@ pub fn absorb_map(
             }
         }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
-            final_certificate = certify_residuals(design, weights, values, config.tolerance)?;
+            final_certificate = certify_residuals_with_reference_norms(
+                design,
+                weights,
+                values,
+                &reference_norms,
+                config.tolerance,
+            )?;
             if final_certificate.passed {
                 return Ok(SolveReport {
                     requested_solver: FeSolverKind::Map,

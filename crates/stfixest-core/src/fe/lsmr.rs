@@ -1,6 +1,9 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
-use crate::fe::{certify_residuals, FeDesign, FeSolverKind, SolveReport, SolveStopReason};
+use crate::fe::{
+    certify_residuals_with_reference_norms, weighted_column_norms, FeDesign, FeSolverKind,
+    SolveReport, SolveStopReason,
+};
 use crate::options::ThreadConfig;
 use rayon::ThreadPoolBuilder;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
@@ -67,8 +70,15 @@ pub fn absorb_lsmr(
             "LSMR weights must be finite and positive",
         ));
     }
+    let reference_norms = weighted_column_norms(values, weights)?;
     if design.effects().is_empty() || values.ncols() == 0 {
-        let certificate = certify_residuals(design, weights, values, config.tolerance)?;
+        let certificate = certify_residuals_with_reference_norms(
+            design,
+            weights,
+            values,
+            &reference_norms,
+            config.tolerance,
+        )?;
         return Ok(SolveReport {
             requested_solver: FeSolverKind::Lsmr,
             used_solver: FeSolverKind::Lsmr,
@@ -145,7 +155,13 @@ pub fn absorb_lsmr(
             values[(row, column)] = value;
         }
     }
-    let certificate = certify_residuals(design, weights, values, config.tolerance)?;
+    let certificate = certify_residuals_with_reference_norms(
+        design,
+        weights,
+        values,
+        &reference_norms,
+        config.tolerance,
+    )?;
     let recurrence_converged = solved.converged.iter().copied().all(|value| value);
     let stop_reason = if certificate.passed {
         SolveStopReason::Certified
