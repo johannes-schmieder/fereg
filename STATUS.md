@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `3da43a4`
+**Branch / baseline:** `main` through `a5181f9` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -39,29 +39,28 @@ scientific gates are met.
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
-| OLS reference-contract harness | Complete; first capture running | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The first 10M reference fit converged; its invalid checksum command was fixed before evidence could be sealed. |
+| OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
 
-1. Run and seal the pinned `reghdfe` semantic captures using the exact
-   `reghdfe` 6.14.1, `ftools` 2.50.0, and `require` 1.3.1 closure.
-2. Use the frozen captures to settle weight, DoF, VCE, fit-statistic, and
+1. Use the sealed pinned `reghdfe` captures to settle weight, DoF, VCE,
+   fit-statistic, and
    postestimation contracts.
-3. Complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
+2. Complete the data-plane, FE, OLS/VCE/DoF, and Stata one-call
    integration gaps before enabling `estimate-ols`.
-4. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
-5. Optimize only after scientific correctness is certified.
+3. Enable `stfeols` only after the scoped parity and atomic-result tests pass.
+4. Optimize only after scientific correctness is certified.
 
 ## Current blockers
 
 - `stfeols` is deliberately disabled and returns `r(498)`; no successful
   Stata estimator invocation, result posting, or reference parity evidence
   exists yet.
-- No pinned reference capture, benchmark timing, peak-RSS receipt, or
-  constrained-memory receipt has been recorded yet. The exact isolated source
-  closure is locked; its semantic stage passes all 40 cases, and the full
-  sealed capture is now being retried.
+- No candidate `stfeols` parity, benchmark timing/RSS comparison, or
+  constrained-memory receipt exists yet. The newly sealed receipt is
+  reference-only and correctly reports the performance gate as blocked because
+  `stfeols` remains disabled.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
   as a Stata-facing estimator. Independent audit and integration work are in
   progress.
@@ -69,9 +68,6 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Exact isolated-reference capture receipt, including executable, source and
-  installed-file hashes, commands, seed, `e()` output, samples, timing, and
-  RSS.
 - Executable request-to-`PreparedOlsData` design and adversarial test suite,
   with no public estimator enablement.
 
