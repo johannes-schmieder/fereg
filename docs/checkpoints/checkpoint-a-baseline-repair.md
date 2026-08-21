@@ -1,11 +1,15 @@
 # Checkpoint A — baseline repair and local native evidence
 
-**Status:** local macOS native validation and a licensed-Stata 18
-installation/safety smoke passed; merge, CI, cross-platform, parser, and parity
-gates remain open.
+**Status:** repair source committed; local macOS native validation and a
+licensed-Stata 18 installation/safety smoke passed; merge, executable CI,
+cross-platform, parser, and parity gates remain open.
 
 **Base:** merged PR #1,
 `2980a2eccc97fd4cefa51dd763d2146dcbdec089`.
+
+**Checkpoint source:**
+`80d9283d38fab520d546d50937feb6bffba02ca3` in
+[draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
 
 ## Repair scope
 
@@ -53,7 +57,14 @@ The universal plugin SHA-256 is
 
 ## Unpassed gates
 
-- The repair set is not yet represented by a commit or GitHub Actions jobs.
+- GitHub Actions triggered for draft PR #2, but every job in
+  [CI run 32484658566](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
+  and
+  [Source Snapshot run 32484658624](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
+  was prevented from starting. GitHub reports failed recent account payments or
+  a spending limit requiring an increase. This external billing restriction is
+  not a code failure, but it provides no CI pass. Resolve **Billing & plans**
+  and rerun the PR checks.
 - No licensed-Stata metadata-parser, enabled-estimator, or reference-parity
   suite has passed beyond the narrow installation/safety smoke.
 - No real Linux or Windows plugin has been built or loaded.

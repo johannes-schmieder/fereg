@@ -8,15 +8,16 @@ artifact.
 ## Source state
 
 - Base: PR #1 merge `2980a2eccc97fd4cefa51dd763d2146dcbdec089` on `main`.
-- Validation target: the uncommitted baseline-repair working tree based on that
-  merge.
+- Validation target: Checkpoint A baseline code commit
+  `80d9283d38fab520d546d50937feb6bffba02ca3` in
+  [draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
 - Frozen references: unchanged.
 - Official SPI source check: `plugin/stplugin.c` SHA-256
   `7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a`,
   matching `references.lock.toml`.
 
-Because the repair set is not committed, the evidence is tied to the recorded
-working tree and logs rather than to a reproducible commit identifier.
+The repair source now has a reproducible commit identifier. The local logs
+remain the primary evidence for the macOS and licensed-Stata runs.
 
 ## Local construction environment
 
@@ -102,6 +103,19 @@ The final `stata_smoke.log` has SHA-256
 This validates only the Phase 0-1 installation/safety fixtures. It does not
 validate parser semantics, estimation, scientific parity, or postestimation.
 
+## GitHub Actions status
+
+Actions is enabled and the two draft-PR workflows triggered correctly:
+
+- [CI run 32484658566](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
+- [Source Snapshot run 32484658624](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
+
+Every job was prevented from starting. GitHub's annotation says recent account
+payments failed or the spending limit must be increased. This is an external
+billing/account restriction, not a test or code failure, but it also supplies
+no CI pass. The repository owner must resolve **Billing & plans** and rerun the
+PR checks before CI can count as validation.
+
 ## Not validated
 
 - Licensed-Stata metadata parser fixtures beyond the installation smoke.
@@ -113,7 +127,8 @@ validate parser semantics, estimation, scientific parity, or postestimation.
 - Intel-host execution of the macOS x86-64 slice.
 - Cross-platform release staging from three target-native artifacts.
 - Clean-machine, sanitizer, Miri, fuzz, leak, peak-memory, or performance gates.
-- A Checkpoint A commit and associated GitHub Actions job record.
+- Executed GitHub Actions jobs for Checkpoint A; the triggered runs are blocked
+  before job start by the external billing/spending restriction.
 
 The locally built plugin is therefore development evidence only. It must not be
 described or distributed as a production-certified release.

@@ -1,10 +1,12 @@
 # Checkpoint A handoff
 
 The repository is based on merged PR #1 at
-`2980a2eccc97fd4cefa51dd763d2146dcbdec089`. The current uncommitted repair set
-restores the official SPI source contract, repairs bridge behavior, hardens the
-binary audit, and makes the Linux-only mock-plugin test skip explicitly on
-macOS. Preserve the fail-closed estimator boundary.
+`2980a2eccc97fd4cefa51dd763d2146dcbdec089`. The repair source is committed at
+`80d9283d38fab520d546d50937feb6bffba02ca3` in
+[draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2). It restores
+the official SPI source contract, repairs bridge behavior, hardens the binary
+audit, and makes the Linux-only mock-plugin test skip explicitly on macOS.
+Preserve the fail-closed estimator boundary.
 
 ## Current evidence
 
@@ -39,7 +41,7 @@ gates remain open.
 
 ## Before merging Checkpoint A
 
-1. Review the complete working-tree diff against `2980a2e` and confirm that no
+1. Review the complete draft-PR diff against `2980a2e` and confirm that no
    frozen reference changed.
 2. Re-run the local suite with the pinned Rust and Homebrew Python first on
    `PATH`:
@@ -52,9 +54,12 @@ gates remain open.
 3. Preserve the passing licensed-Stata smoke log and its hash. Run the remaining
    metadata-parser fixtures and record the exact executable/version, commands,
    output, and any failures.
-4. Commit the repair and documentation only after the recorded source state and
-   evidence agree, then require the newly enabled GitHub Actions jobs on that
-   commit. Do not treat the absence of jobs as a pass.
+4. Resolve the repository's **Billing & plans** issue, then rerun the
+   [CI](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
+   and [Source Snapshot](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
+   checks on draft PR #2. All jobs were prevented from starting because GitHub
+   reports failed recent payments or a spending limit requiring an increase.
+   This is not a code failure, but it is not a CI pass and must not be waived.
 
 ## Open platform and scientific gates
 

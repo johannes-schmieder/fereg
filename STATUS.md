@@ -1,12 +1,12 @@
 # Checkpoint A status
 
-Checkpoint A has local macOS source/build evidence, but it is not merged as a
-baseline-repair commit and is not a release candidate.
+Checkpoint A has local macOS source/build evidence and a committed repair
+baseline in draft PR #2, but it is not merged and is not a release candidate.
 
 | Area | Status | Evidence / remaining gate |
 |---|---:|---|
 | Repository baseline | Merged | `main` and the repair branch start at PR #1 merge `2980a2eccc97fd4cefa51dd763d2146dcbdec089`. |
-| Checkpoint A repairs | Uncommitted | The working tree restores the official `stplugin.c` hash/ownership contract, repairs bridge thread binding and guards, hardens binary audits, and makes the Linux mock-plugin audit platform-specific. |
+| Checkpoint A repairs | Committed in draft PR | Baseline code commit `80d9283d38fab520d546d50937feb6bffba02ca3` in [draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2) restores the official `stplugin.c` hash/ownership contract, repairs bridge thread binding and guards, hardens binary audits, and makes the Linux mock-plugin audit platform-specific. |
 | Frozen governing files | Preserved | `AGENTS.md` SHA-256 is `7c43ce4128a993f1613fd129133c2d5df65eef70bc33bb4ebac4e2a4b430c07a`; official `stplugin.c` again matches its frozen SHA-256. No frozen reference was changed. |
 | Python/portable/C checks | Passed locally | 60 Python tests plus shell, bytecode, TOML, strict C, Clang, and mock-SPI checks passed. The GNU/ELF mock-plugin audit is correctly skipped on macOS and remains required on Linux. |
 | Rust formatting/lints | Passed locally | `cargo fmt --all -- --check` and workspace/all-target/all-feature Clippy with `-D warnings` passed. |
@@ -19,7 +19,7 @@ baseline-repair commit and is not a release candidate.
 | Licensed-Stata parser and parity suites | Not run | Metadata semantics, reference-command behavior, enabled estimation, postestimation, and scientific parity remain open. |
 | Linux x86-64 | Not built locally | Python audit tests exercise ELF rules, but no real Linux artifact was built, audited, or loaded. |
 | Windows x86-64 | Not built locally | Python audit tests exercise PE/COFF rules, but no real Windows artifact was built, audited, or loaded. |
-| GitHub Actions | No Checkpoint A evidence | Actions was only recently enabled; there is no baseline-repair commit or associated job set yet. |
+| GitHub Actions | Externally unavailable | Actions enabled and both workflows triggered, but all jobs in the [CI run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566) and [Source Snapshot run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624) were not started. GitHub reports failed recent account payments or a spending limit requiring an increase. This is neither a code pass nor a code failure; resolve **Billing & plans** and rerun the PR checks. |
 | `stfeols` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
 | `stfepois` | Unsupported / fail-closed | Licensed Stata and native tests observe `r(498)`; the smoke fixture confirms no observation/variable-count change and no estimate is posted. |
 | Release status | Not certified | No cross-platform Stata, clean-machine, parity, performance, or memory certification exists. |

@@ -1,9 +1,10 @@
 # Implementation status
 
 As of 2026-08-21, `main` includes pull request #1 at merge commit
-`2980a2eccc97fd4cefa51dd763d2146dcbdec089`. The current working tree contains
-the uncommitted Checkpoint A baseline-repair set. This is development evidence,
-not a release or production certification.
+`2980a2eccc97fd4cefa51dd763d2146dcbdec089`. The Checkpoint A repair source is
+committed at `80d9283d38fab520d546d50937feb6bffba02ca3` and published as
+[draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2). This is
+development evidence, not a release or production certification.
 
 ## Implemented source
 
@@ -75,5 +76,9 @@ transcript is `stata_smoke.log`.
   checkpoint.
 - No clean-machine, numerical parity, performance, memory, or cross-platform
   release gate has passed.
-- GitHub Actions was only recently enabled, and there is no Checkpoint A
-  baseline commit or associated job record yet.
+- GitHub Actions is enabled and both PR workflows triggered, but every job was
+  prevented from starting by GitHub's account billing/spending restriction.
+  The [CI run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658566)
+  and [Source Snapshot run](https://github.com/johannes-schmieder/StFixest/actions/runs/32484658624)
+  therefore provide neither a code pass nor a code failure. The repository
+  owner must resolve **Billing & plans** and rerun the PR checks.
