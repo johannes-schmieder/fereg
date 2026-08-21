@@ -287,6 +287,60 @@ fn regressor_slope_and_wls_rescaling_preserve_identified_results() {
 }
 
 #[test]
+fn tiny_common_wls_scale_preserves_hc_and_cluster_vces() {
+    let outcome = vec![1.0, 2.5, 1.8, 4.2, 3.1, 7.0, 6.4, 9.2];
+    let regressors = vec![vec![1.0; 8], vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 6.0]];
+    let weights = vec![0.5, 2.0, 1.25, 3.0, 0.8, 1.5, 2.5, 4.0];
+    let clusters = vec![vec![0, 0, 1, 1, 2, 2, 3, 3], vec![0, 1, 0, 1, 0, 1, 0, 1]];
+    let baseline = ExplicitOlsProblem {
+        outcome: outcome.clone(),
+        regressors: regressors.clone(),
+        effects: vec![],
+        weights: OracleWeights::Wls(weights.clone()),
+        clusters: clusters.clone(),
+    };
+    let tiny_scale = 1e-200;
+    let tiny = ExplicitOlsProblem {
+        outcome,
+        regressors,
+        effects: vec![],
+        weights: OracleWeights::Wls(weights.iter().map(|weight| tiny_scale * weight).collect()),
+        clusters,
+    };
+
+    let baseline = fit_explicit_ols(&baseline).expect("baseline-scale WLS");
+    let tiny = fit_explicit_ols(&tiny).expect("tiny-scale WLS");
+
+    assert_option_slice_close(&baseline.coefficients, &tiny.coefficients, 5e-11);
+    assert_slice_close(&baseline.fitted_values, &tiny.fitted_values, 5e-11);
+    assert_slice_close(&baseline.residuals, &tiny.residuals, 5e-11);
+    assert_oracle_matrix_close(&baseline.iid_vce, &tiny.iid_vce, 5e-10);
+    assert_oracle_matrix_close(&baseline.hc1_vce, &tiny.hc1_vce, 5e-10);
+    for (baseline_vce, tiny_vce) in baseline
+        .one_way_cluster_vces
+        .iter()
+        .zip(&tiny.one_way_cluster_vces)
+    {
+        assert_oracle_matrix_close(baseline_vce, tiny_vce, 5e-10);
+    }
+    assert_oracle_matrix_close(
+        baseline.clustered_vce.as_ref().expect("baseline VCE"),
+        tiny.clustered_vce.as_ref().expect("tiny-scale VCE"),
+        5e-10,
+    );
+    assert_close(tiny.weighted_rss, baseline.weighted_rss * tiny_scale, 5e-10);
+    for row in 0..baseline.bread.nrows() {
+        for column in 0..baseline.bread.ncols() {
+            assert_close(
+                tiny.bread[(row, column)],
+                baseline.bread[(row, column)] / tiny_scale,
+                5e-10,
+            );
+        }
+    }
+}
+
+#[test]
 fn rank_deficiency_returns_dropped_columns_but_identified_fitted_values() {
     let intercept = vec![1.0; 6];
     let duplicate = vec![2.0; 6];
@@ -310,6 +364,28 @@ fn rank_deficiency_returns_dropped_columns_but_identified_fitted_values() {
     );
     assert_eq!(result.coefficients[1], None);
     assert_slice_close(&result.fitted_values, &[3.0; 6], TIGHT);
+}
+
+#[test]
+fn regressor_exactly_collinear_with_group_dummies_has_zero_finite_rank() {
+    let problem = ExplicitOlsProblem {
+        outcome: vec![1.0, -1.0, 2.0, -2.0, 3.0, -3.0],
+        regressors: vec![vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0]],
+        effects: vec![
+            DummyEffect::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).expect("group effect")
+        ],
+        weights: OracleWeights::Unit,
+        clusters: vec![],
+    };
+
+    let result = fit_explicit_ols(&problem).expect("FE-collinear regressor");
+
+    assert_eq!(result.explicit_dummy_rank, 3);
+    assert_eq!(result.finite_regressor_rank, 0);
+    assert_eq!(result.model_rank, 3);
+    assert_eq!(result.coefficients, vec![None]);
+    assert_eq!(result.dropped_regressors, vec![0]);
+    assert_slice_close(&result.finite_fitted_values, &[0.0; 6], TIGHT);
 }
 
 #[test]
@@ -467,6 +543,18 @@ fn invalid_inputs_and_undefined_inference_fail_closed() {
     assert!(matches!(
         fit_explicit_ols(&one_cluster),
         Err(OracleError::InsufficientDegreesOfFreedom(_))
+    ));
+
+    let overflowing_rss = ExplicitOlsProblem {
+        outcome: vec![1e308, -1e308],
+        regressors: vec![],
+        effects: vec![],
+        weights: OracleWeights::Unit,
+        clusters: vec![],
+    };
+    assert!(matches!(
+        fit_explicit_ols(&overflowing_rss),
+        Err(OracleError::NumericalFailure(_))
     ));
 }
 

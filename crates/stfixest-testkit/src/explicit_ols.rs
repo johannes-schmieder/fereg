@@ -257,16 +257,25 @@ pub fn fit_explicit_ols_with_config(
 
     let weighted_outcome = weight_column(&problem.outcome, &validated.sqrt_weights);
     let residualized_weighted_outcome = dummy_qr.residualize(&weighted_outcome);
-    let residualized_weighted_regressors = problem
+    let weighted_regressors = problem
         .regressors
         .iter()
-        .map(|column| dummy_qr.residualize(&weight_column(column, &validated.sqrt_weights)))
+        .map(|column| weight_column(column, &validated.sqrt_weights))
+        .collect::<Vec<_>>();
+    let regressor_reference_scales = weighted_regressors
+        .iter()
+        .map(|column| stable_norm(column.iter().copied()))
+        .collect::<Vec<_>>();
+    let residualized_weighted_regressors = weighted_regressors
+        .iter()
+        .map(|column| dummy_qr.residualize(column))
         .collect::<Vec<_>>();
 
-    let finite_qr = PivotedQr::factor(
+    let finite_qr = PivotedQr::factor_with_scales(
         residualized_weighted_regressors.clone(),
         nobs,
         rank_tolerance,
+        regressor_reference_scales,
     )?;
     let pivot_coefficients = finite_qr.solve(&residualized_weighted_outcome)?;
     let mut coefficients = vec![None; problem.regressors.len()];
@@ -332,17 +341,24 @@ pub fn fit_explicit_ols_with_config(
         )));
     }
     let residual_degrees_of_freedom = validated.effective_observations - model_rank;
-    let weighted_rss = weighted_regression_residual
+    let normalized_weighted_rss = weighted_regression_residual
         .iter()
         .map(|residual| residual * residual)
         .sum::<f64>();
+    let weighted_rss = normalized_weighted_rss * validated.raw_weight_scale;
+    if normalized_weighted_rss > 0.0 && weighted_rss == 0.0 {
+        return Err(OracleError::NumericalFailure(
+            "raw-scale weighted RSS underflowed".to_owned(),
+        ));
+    }
 
-    let bread_in_pivot_order = finite_qr.bread()?;
-    let bread = reorder_matrix(
-        &bread_in_pivot_order,
+    let normalized_bread_in_pivot_order = finite_qr.bread()?;
+    let normalized_bread = reorder_matrix(
+        &normalized_bread_in_pivot_order,
         finite_qr.kept_original_indices(),
         &kept_regressors,
     );
+    let bread = scale_matrix(&normalized_bread, validated.raw_weight_scale.recip());
     let residualized_regressors = kept_regressors
         .iter()
         .map(|&column| {
@@ -354,21 +370,21 @@ pub fn fit_explicit_ols_with_config(
         })
         .collect::<Vec<_>>();
 
-    let iid_scale = weighted_rss / residual_degrees_of_freedom as f64;
-    let iid_vce = scale_matrix(&bread, iid_scale);
+    let iid_scale = normalized_weighted_rss / residual_degrees_of_freedom as f64;
+    let iid_vce = scale_matrix(&normalized_bread, iid_scale);
     let hc0_meat = observation_meat(
         &residualized_regressors,
         &residuals,
         &validated.hc0_multipliers,
     );
     let hc1_scale = validated.effective_observations as f64 / residual_degrees_of_freedom as f64;
-    let hc1_vce = scale_matrix(&sandwich(&bread, &hc0_meat), hc1_scale);
+    let hc1_vce = scale_matrix(&sandwich(&normalized_bread, &hc0_meat), hc1_scale);
 
     let mut one_way_cluster_vces = Vec::with_capacity(problem.clusters.len());
     let mut cluster_counts = Vec::with_capacity(problem.clusters.len());
     for cluster in &problem.clusters {
         let (vce, count) = clustered_component(
-            &bread,
+            &normalized_bread,
             &residualized_regressors,
             &residuals,
             &validated.objective_weights,
@@ -384,7 +400,7 @@ pub fn fit_explicit_ols_with_config(
         [_] => Some(one_way_cluster_vces[0].clone()),
         [first, second] => {
             let (intersection, _) = clustered_component(
-                &bread,
+                &normalized_bread,
                 &residualized_regressors,
                 &residuals,
                 &validated.objective_weights,
@@ -409,11 +425,14 @@ pub fn fit_explicit_ols_with_config(
         &validated.objective_weights,
         &fitted_values,
         &residuals,
-        &bread,
+        &normalized_bread,
     );
     validate_certificate(certificate, config.certificate_tolerance)?;
     validate_finite_outputs(
         &coefficients,
+        weighted_rss,
+        &finite_fitted_values,
+        &absorbed_fitted_values,
         &fitted_values,
         &residuals,
         &bread,
@@ -449,9 +468,14 @@ pub fn fit_explicit_ols_with_config(
 }
 
 struct ValidatedProblem {
+    /// Objective weights are internally normalized for WLS so a harmless
+    /// common scale cannot underflow robust scores.
     objective_weights: Vec<f64>,
     sqrt_weights: Vec<f64>,
     hc0_multipliers: Vec<f64>,
+    /// Converts normalized WLS objective quantities back to the caller's
+    /// weight scale. Unit and frequency weights use one.
+    raw_weight_scale: f64,
     effective_observations: usize,
 }
 
@@ -531,37 +555,59 @@ fn validate_problem(
         ));
     }
 
-    let (objective_weights, hc0_multipliers, effective_observations) = match &problem.weights {
-        OracleWeights::Unit => (vec![1.0; nobs], vec![1.0; nobs], nobs),
-        OracleWeights::Wls(weights) => {
-            validate_positive_weights(weights, nobs)?;
-            (
-                weights.clone(),
-                weights.iter().map(|weight| weight * weight).collect(),
-                nobs,
-            )
-        }
-        OracleWeights::Frequency(frequencies) => {
-            if frequencies.len() != nobs || frequencies.contains(&0) {
-                return Err(OracleError::InvalidInput(
-                    "frequency weights must be positive and match the outcome length".to_owned(),
-                ));
+    let (objective_weights, hc0_multipliers, raw_weight_scale, effective_observations) =
+        match &problem.weights {
+            OracleWeights::Unit => (vec![1.0; nobs], vec![1.0; nobs], 1.0, nobs),
+            OracleWeights::Wls(weights) => {
+                validate_positive_weights(weights, nobs)?;
+                let raw_weight_scale = weights.iter().copied().fold(0.0_f64, f64::max);
+                let normalized = weights
+                    .iter()
+                    .map(|weight| weight / raw_weight_scale)
+                    .collect::<Vec<_>>();
+                if normalized
+                    .iter()
+                    .any(|weight| !weight.is_finite() || *weight <= 0.0)
+                {
+                    return Err(OracleError::NumericalFailure(
+                        "relative WLS weight normalization underflowed".to_owned(),
+                    ));
+                }
+                let squared = normalized
+                    .iter()
+                    .map(|weight| weight * weight)
+                    .collect::<Vec<_>>();
+                if squared.iter().any(|multiplier| *multiplier == 0.0) {
+                    return Err(OracleError::NumericalFailure(
+                        "relative WLS weights are too extreme for a robust-score calculation"
+                            .to_owned(),
+                    ));
+                }
+                (normalized, squared, raw_weight_scale, nobs)
             }
-            let effective_observations = frequencies.iter().try_fold(0_usize, |sum, &frequency| {
-                sum.checked_add(frequency as usize)
-            });
-            let effective_observations = effective_observations.ok_or_else(|| {
-                OracleError::InvalidInput(
-                    "frequency-weight observation count overflowed".to_owned(),
-                )
-            })?;
-            let weights = frequencies
-                .iter()
-                .map(|&frequency| f64::from(frequency))
-                .collect::<Vec<_>>();
-            (weights.clone(), weights, effective_observations)
-        }
-    };
+            OracleWeights::Frequency(frequencies) => {
+                if frequencies.len() != nobs || frequencies.contains(&0) {
+                    return Err(OracleError::InvalidInput(
+                        "frequency weights must be positive and match the outcome length"
+                            .to_owned(),
+                    ));
+                }
+                let effective_observations =
+                    frequencies.iter().try_fold(0_usize, |sum, &frequency| {
+                        sum.checked_add(frequency as usize)
+                    });
+                let effective_observations = effective_observations.ok_or_else(|| {
+                    OracleError::InvalidInput(
+                        "frequency-weight observation count overflowed".to_owned(),
+                    )
+                })?;
+                let weights = frequencies
+                    .iter()
+                    .map(|&frequency| f64::from(frequency))
+                    .collect::<Vec<_>>();
+                (weights.clone(), weights, 1.0, effective_observations)
+            }
+        };
     if objective_weights.iter().any(|weight| !weight.is_finite())
         || hc0_multipliers
             .iter()
@@ -579,6 +625,7 @@ fn validate_problem(
         objective_weights,
         sqrt_weights,
         hc0_multipliers,
+        raw_weight_scale,
         effective_observations,
     })
 }
@@ -667,29 +714,52 @@ struct PivotedQr {
 }
 
 impl PivotedQr {
-    fn factor(
+    fn factor(columns: Vec<Vec<f64>>, nrows: usize, tolerance: f64) -> Result<Self, OracleError> {
+        let scales = columns
+            .iter()
+            .map(|column| stable_norm(column.iter().copied()))
+            .collect::<Vec<_>>();
+        Self::factor_with_scales(columns, nrows, tolerance, scales)
+    }
+
+    /// Factor residualized columns relative to their scale before projection.
+    /// Using their post-projection norm would inflate roundoff left behind by
+    /// an exact FE-collinear column into a full-strength regressor.
+    fn factor_with_scales(
         mut columns: Vec<Vec<f64>>,
         nrows: usize,
         tolerance: f64,
+        mut scales: Vec<f64>,
     ) -> Result<Self, OracleError> {
         if columns.iter().any(|column| column.len() != nrows) {
             return Err(OracleError::InvalidInput(
                 "QR columns have inconsistent lengths".to_owned(),
             ));
         }
-        let mut scales = columns
-            .iter()
-            .map(|column| stable_norm(column.iter().copied()))
-            .collect::<Vec<_>>();
-        if scales.iter().any(|scale| !scale.is_finite()) {
+        if scales.len() != columns.len()
+            || scales
+                .iter()
+                .any(|scale| !scale.is_finite() || *scale < 0.0)
+        {
             return Err(OracleError::NumericalFailure(
-                "a design-column norm is not finite".to_owned(),
+                "a design-column reference norm is invalid".to_owned(),
             ));
         }
         for (column, &scale) in columns.iter_mut().zip(&scales) {
-            if scale != 0.0 {
-                for value in column {
-                    *value /= scale;
+            if scale == 0.0 {
+                if column.iter().any(|value| *value != 0.0) {
+                    return Err(OracleError::NumericalFailure(
+                        "a zero-scale design column contains a nonzero value".to_owned(),
+                    ));
+                }
+                continue;
+            }
+            for value in column {
+                *value /= scale;
+                if !value.is_finite() {
+                    return Err(OracleError::NumericalFailure(
+                        "design-column scaling produced a nonfinite value".to_owned(),
+                    ));
                 }
             }
         }
@@ -1172,6 +1242,9 @@ fn validate_certificate(certificate: OracleCertificate, tolerance: f64) -> Resul
 #[allow(clippy::too_many_arguments)]
 fn validate_finite_outputs(
     coefficients: &[Option<f64>],
+    weighted_rss: f64,
+    finite_fitted_values: &[f64],
+    absorbed_fitted_values: &[f64],
     fitted_values: &[f64],
     residuals: &[f64],
     bread: &OracleMatrix,
@@ -1181,6 +1254,9 @@ fn validate_finite_outputs(
     clustered_vce: Option<&OracleMatrix>,
 ) -> Result<(), OracleError> {
     let finite = coefficients.iter().flatten().all(|value| value.is_finite())
+        && weighted_rss.is_finite()
+        && finite_fitted_values.iter().all(|value| value.is_finite())
+        && absorbed_fitted_values.iter().all(|value| value.is_finite())
         && fitted_values.iter().all(|value| value.is_finite())
         && residuals.iter().all(|value| value.is_finite())
         && bread.as_slice().iter().all(|value| value.is_finite())
@@ -1196,7 +1272,8 @@ fn validate_finite_outputs(
             .all(|value| value.is_finite());
     if !finite {
         return Err(OracleError::NumericalFailure(
-            "a coefficient, fitted value, residual, bread, or VCE is not finite".to_owned(),
+            "a coefficient, RSS, fitted component, residual, bread, or VCE is not finite"
+                .to_owned(),
         ));
     }
     Ok(())
