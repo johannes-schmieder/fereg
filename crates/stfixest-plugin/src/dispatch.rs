@@ -3,7 +3,8 @@ use stfixest_core::diagnostics::{BuildInfo, DoctorInput, DoctorReport};
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::options::ThreadConfig;
 use stfixest_core::protocol::{
-    parse_key_values, Handshake, ADO_VERSION, PLUGIN_VERSION, PROTOCOL_VERSION,
+    parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
+    PLUGIN_VERSION,
 };
 use stfixest_core::selftest::run_native_selftest;
 
@@ -47,15 +48,18 @@ fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
         concat!(
             "stfixest.plugin_version={}\n",
             "stfixest.ado_contract={}\n",
-            "stfixest.model_protocol={}.{}\n",
+            "stfixest.action_protocol={}.{}\n",
+            "stfixest.model_wire={}.{}\n",
             "stfixest.plugin_abi={}.{}\n",
             "stfixest.git_commit={}\n",
             "stfixest.build_date={}\n"
         ),
         PLUGIN_VERSION,
         ADO_VERSION,
-        PROTOCOL_VERSION.major,
-        PROTOCOL_VERSION.minor,
+        ACTION_PROTOCOL_VERSION.major,
+        ACTION_PROTOCOL_VERSION.minor,
+        MODEL_WIRE_VERSION.major,
+        MODEL_WIRE_VERSION.minor,
         build.plugin_abi_major,
         build.plugin_abi_minor,
         build.git_commit,
@@ -142,7 +146,9 @@ mod tests {
     fn version_is_machine_readable() {
         let sink = BufferSink::default();
         dispatch_args(&["version".to_owned()], &sink).expect("version");
-        assert!(sink.displayed().contains("stfixest.model_protocol=1.0"));
+        assert!(sink.displayed().contains("stfixest.action_protocol=1.0"));
+        assert!(sink.displayed().contains("stfixest.model_wire=2.0"));
+        assert!(!sink.displayed().contains("stfixest.model_protocol="));
     }
 
     #[test]

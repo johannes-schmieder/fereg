@@ -6,12 +6,15 @@ input str12 worker str12 firm int year double x
 "w#1" "firm-a" 2021 3
 "w#2" "firm#a" 2021 4
 end
+tempvar touse
+gen byte `touse' = 1
+local before_k = c(k)
 
-stfixest_parse c.x, absorb(worker firm) cluster(firm#year worker)
+stfixest_parse c.x, touse(`touse') absorb(worker firm) cluster(firm#year worker)
 assert r(n_absorb_terms) == 2
 assert r(n_cluster_terms) == 2
 assert strpos("`r(source_vars)'", "worker") > 0
 assert strpos("`r(source_vars)'", "firm") > 0
-assert c(k) == 4
+assert c(k) == `before_k'
 di as result "string_sources.do: PASS"
 di as result "END_FIXTURE|string_sources|rc=0"
