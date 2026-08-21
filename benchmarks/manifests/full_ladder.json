@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "manifest-only until estimator phases",
+  "designs": [
+    {"id": "tiny_exact", "n": 200, "features": ["factors", "interactions", "one-way-fe"]},
+    {"id": "two_way_chain", "n": 1000000, "features": ["low-mobility", "two-way-fe", "cluster"]},
+    {"id": "slope_near_collinear", "n": 1000000, "features": ["two-way-fe", "absorbed-slopes"]},
+    {"id": "string_collision", "n": 100000, "features": ["string-fe", "cluster-interaction"]},
+    {"id": "ppml_separation", "n": 1000000, "features": ["zeros", "separation", "offset"]},
+    {"id": "server_scale", "n": 30000000, "workers": 30000000, "firms": 1000000, "years": 20, "threads": [1, 16, 32]}
+  ]
+}

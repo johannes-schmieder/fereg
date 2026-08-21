@@ -1,0 +1,65 @@
+schema_version = 1
+pinned_at_utc = "2026-08-20"
+policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
+
+
+[governing_spec]
+file = "AGENTS.md"
+sha256 = "7c43ce4128a993f1613fd129133c2d5df65eef70bc33bb4ebac4e2a4b430c07a"
+source_filename = "StFixest 1.0 Rust-First Implementation Plan for Codex.md"
+
+[[reference]]
+name = "pyfixest"
+repository = "https://github.com/py-econometrics/pyfixest"
+commit = "b6f2d284adf033f4b05a40db45a383784f73afd2"
+version = "commit-pinned development tree"
+license = "MIT"
+relevant_source_paths = [
+  "pyfixest/estimation/feols_.py",
+  "pyfixest/estimation/fepois_.py",
+  "pyfixest/estimation/demean_.py",
+]
+relevant_test_paths = ["tests/", "tests/estimation/"]
+use = "Development reference for model-matrix, OLS, PPML, and tests; not a runtime dependency."
+
+[[reference]]
+name = "within"
+repository = "https://github.com/py-econometrics/within"
+commit = "b7779cbab7a3116be56aae4389fde1f6e6a99a9f"
+version = "commit-pinned development tree"
+license = "MIT"
+relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
+relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
+use = "Potential later solver adapter; not linked or copied in Phase 0-1."
+
+[[reference]]
+name = "reghdfe"
+repository = "https://github.com/sergiocorreia/reghdfe"
+commit = "29b2b203f534413369d675d0c0f674d61291f536"
+version = "6.13.x development tree"
+license = "MIT"
+relevant_source_paths = ["src/reghdfe.ado", "src/reghdfe.mata", "current-code/"]
+relevant_test_paths = ["test/", "tests/"]
+use = "Primary Stata-facing OLS compatibility oracle; never called at runtime."
+
+[[reference]]
+name = "ppmlhdfe"
+repository = "https://github.com/sergiocorreia/ppmlhdfe"
+commit = "b85665d8f674e93c1e07446a9a2b29be7f797910"
+version = "commit-pinned development tree"
+license = "MIT"
+relevant_source_paths = ["src/ppmlhdfe.ado", "src/ppmlhdfe.mata", "src/ppmlhdfe_p.ado"]
+relevant_test_paths = ["test/", "tests/"]
+use = "Primary Stata-facing PPML and separation compatibility oracle; never called at runtime."
+
+[[reference]]
+name = "stata-spi"
+repository = "https://www.stata.com/plugins/"
+commit = "SPI-3.0-official-source"
+version = "3.0.0"
+license = "Copyright StataCorp LP; distributed as the official plugin interface source"
+relevant_source_paths = ["plugin/stplugin.c", "plugin/stplugin.h"]
+relevant_test_paths = ["tests/mock_spi/"]
+use = "Compiled into each platform plugin."
+local_stplugin_c_sha256 = "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a"
+local_stplugin_h_sha256 = "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"

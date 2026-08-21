@@ -1,0 +1,17 @@
+v 3
+p stfixest Rust-first high-dimensional fixed-effect architecture package
+f stfixest.ado
+f _stfixest_load.ado
+f stfeols.ado
+f stfepois.ado
+f stfixest_parse.ado
+f stfixest_p.ado
+f stfixest_estat.ado
+f stfixest.sthlp
+f stfeols.sthlp
+f stfepois.sthlp
+f stfixest_parse.sthlp
+f stfixest_postestimation.sthlp
+f stfixest_windows.plugin
+f stfixest_linux.plugin
+f stfixest_macos.plugin

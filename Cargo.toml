@@ -1,0 +1,33 @@
+[workspace]
+members = [
+    "crates/stfixest-core",
+    "crates/stfixest-plugin",
+    "crates/stfixest-testkit",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["StFixest contributors"]
+license = "MIT"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+[profile.profiling]
+inherits = "release"
+lto = "thin"
+strip = false
+debug = true

@@ -1,0 +1,22 @@
+[package]
+name = "stfixest-plugin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["staticlib", "rlib"]
+doctest = false
+
+[features]
+default = ["ffi"]
+ffi = []
+
+[dependencies]
+stfixest-core = { path = "../stfixest-core" }
+
+[lints.rust]
+unsafe_code = "allow"

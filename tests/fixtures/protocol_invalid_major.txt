@@ -1,0 +1,6 @@
+action=doctor
+ado=0.1.0-phase01
+protocol_major=99
+protocol_minor=0
+stata=18.0
+threads=1
