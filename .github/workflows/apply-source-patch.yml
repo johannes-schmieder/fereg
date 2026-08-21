@@ -1,0 +1,47 @@
+name: Apply staged source patch
+
+on:
+  push:
+    branches:
+      - codex/full-implementation
+    paths:
+      - '.patch/**'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/full-implementation
+          fetch-depth: 0
+      - name: Verify and expand patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .patch/source.part* | base64 --decode > /tmp/source-patch.tar.xz
+          actual="$(sha256sum /tmp/source-patch.tar.xz | awk '{print $1}')"
+          expected="$(cat .patch/source.sha256)"
+          test "$actual" = "$expected"
+          rm -rf /tmp/source-patch
+          mkdir -p /tmp/source-patch
+          tar -xJf /tmp/source-patch.tar.xz -C /tmp/source-patch
+          rsync -a /tmp/source-patch/ ./
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          message="$(cat .patch/COMMIT_MESSAGE)"
+          rm -rf .patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m "$message"
+            git push origin HEAD:codex/full-implementation
+          fi
