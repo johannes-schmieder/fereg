@@ -1,15 +1,17 @@
 # Checkpoint A — baseline repair and local native evidence
 
-**Status:** repair source committed; local macOS native validation and a
-licensed-Stata 18 installation/safety smoke passed; merge, executable CI,
-cross-platform, parser, and parity gates remain open.
+**Status:** merged baseline; original licensed-Stata smoke claim retracted and
+superseded by corrected native arm64 sentinel-based evidence. Cross-platform,
+clean-machine, reference-parity, and release gates remain open.
 
 **Base:** merged PR #1,
 `2980a2eccc97fd4cefa51dd763d2146dcbdec089`.
 
 **Checkpoint source:**
-`80d9283d38fab520d546d50937feb6bffba02ca3` in
-[draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
+`80d9283d38fab520d546d50937feb6bffba02ca3`, merged in
+[PR #2](https://github.com/johannes-schmieder/StFixest/pull/2). The loader
+correction is based on `main` at
+`fd5cd42378152fae9ad60a4a753d42a701bbbaea`.
 
 ## Repair scope
 
@@ -40,28 +42,39 @@ With pinned Rust/Cargo 1.85.1, Xcode Apple clang 21.0.0, and Homebrew Python
   `arm64`, exactly `_pginit` and `_stata_call` exported per slice, allowed OS
   dependencies only, and no unresolved symbols. The host-native final-plugin
   ABI/self-test harness passed.
-- after the loader repair, Stata 18 MP passed version, doctor with 32 requested
-  threads, native and overall self-tests, both `r(498)` fail-closed estimator
-  checks without dataset-shape changes, and a 100-call reload loop.
+- the initial licensed-Stata result recorded for this checkpoint is not valid
+  evidence. A later audit found that macOS Stata reports `c(os)==Unix`, which
+  selected the nonexistent Linux artifact, while the runner accepted Stata's
+  zero subprocess status without a fixture completion marker.
+
+After the follow-up platform repair, native arm64 Stata 18 reports
+`Unix` / `Mac (Apple Silicon)`, selects `stfixest_macos.plugin`, and passes
+version, doctor with 32 requested threads, native and overall self-tests, both
+`r(498)` fail-closed estimator checks without dataset-shape changes, the
+100-call reload loop, and all current parser/postestimation fixtures. Each
+accepted fixture has an exact terminal success sentinel. Rosetta passes the
+installation and reload fixtures as x86-64 emulation, not native Intel proof.
 
 Evidence transcripts:
 
 - `build_evidence/local/toolchain.txt`
 - `build_evidence/local/rust-tests.txt`
 - `build_evidence/local/macos-build.txt`
-- `stata_smoke.log` (SHA-256
-  `e863e49fb21d264cb11b831505a474953927677ee159c8db73d2985cfbb1b353`)
+- `build_evidence/local/stata-smoke.txt` (sanitized corrected receipt; raw
+  license-bearing logs are not committed)
 
-The universal plugin SHA-256 is
+The historical checkpoint build SHA-256 was
 `db265ee715fc147026321c13dc7eaaf9362a89a7c4778873c7fda8b3f628cf09`.
+The plugin rebuilt for the corrected loader evidence has SHA-256
+`845814eef1a0d18c7ac1e219bbeaf21a44666afbb315a9b1812ca620037e82d2`.
 
 ## Unpassed gates
 
 - GitHub Actions is disabled by project policy. No CI result is claimed;
   Linux and Windows target-native build, audit, loader, and licensed-Stata
   evidence must be collected manually.
-- No licensed-Stata metadata-parser, enabled-estimator, or reference-parity
-  suite has passed beyond the narrow installation/safety smoke.
+- No enabled-estimator or reference-parity suite has passed. Current parser
+  fixtures passing is not pinned-reference parity.
 - No real Linux or Windows plugin has been built or loaded.
 - The x86-64 macOS slice has not run on an Intel host.
 - No clean-machine, release, parity, performance, or peak-memory gate has

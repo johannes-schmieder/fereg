@@ -1,16 +1,20 @@
 # Validation record
 
-This record describes local Checkpoint A evidence collected on 2026-08-21. It
-includes a narrow licensed-Stata installation/safety smoke, but does not certify
-estimator correctness, broad Stata compatibility, other platforms, or a release
-artifact.
+This record describes local Checkpoint A evidence collected on 2026-08-21. The
+original licensed-Stata smoke claim is retracted: macOS was misclassified as
+Linux, and the runner accepted Stata's zero process status without proving that
+the do-files completed. The corrected evidence below requires an exact terminal
+sentinel from each fixture. It does not certify estimator correctness, broad
+Stata compatibility, other platforms, or a release artifact.
 
 ## Source state
 
 - Base: PR #1 merge `2980a2eccc97fd4cefa51dd763d2146dcbdec089` on `main`.
-- Validation target: Checkpoint A baseline code commit
-  `80d9283d38fab520d546d50937feb6bffba02ca3` in
-  [draft PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
+- Historical validation target: Checkpoint A baseline code commit
+  `80d9283d38fab520d546d50937feb6bffba02ca3`, later merged in
+  [PR #2](https://github.com/johannes-schmieder/StFixest/pull/2).
+- Corrected loader validation base: `main` at
+  `fd5cd42378152fae9ad60a4a753d42a701bbbaea` after merged PR #3.
 - Frozen references: unchanged.
 - Official SPI source check: `plugin/stplugin.c` SHA-256
   `7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a`,
@@ -88,7 +92,16 @@ used `real(c(stata_version))`, but Stata 18 supplies a numeric `c()` value, so
 the guard returned type-mismatch `r(109)`. The loader repair compares
 `c(stata_version)` directly.
 
-After that repair, licensed Stata 18 MP on the Apple-Silicon host passed:
+That earlier run is not accepted as evidence. A second loader defect remained:
+native macOS Stata 18 reports `c(os)==Unix`, so the loader selected
+`stfixest_linux.plugin`. The old runner also failed to set the repository
+ado-path itself and checked only the process return code, which can remain zero
+after a do-file error.
+
+After selecting macOS when `c(os)==MacOSX` or when `c(os)==Unix` and
+`c(machine_type)` starts with `Mac`, licensed Stata 18 MP running natively on
+Apple Silicon reported `Unix` / `Mac (Apple Silicon)`, loaded the universal
+`stfixest_macos.plugin` arm64 slice, and passed:
 
 - `stfixest, version`;
 - `stfixest, doctor threads(32) verbose`, reporting
@@ -96,12 +109,20 @@ After that repair, licensed Stata 18 MP on the Apple-Silicon host passed:
 - `stfixest, selftest threads(32)`, reporting `overall=pass`;
 - the `stfeols` and `stfepois` fail-closed checks, each returning `r(498)`
   without changing `_N` or `c(k)`; and
-- the reload loop containing 100 `selftest threads(2)` calls.
+- the reload loop containing 100 drop/reload/`selftest threads(2)` calls; and
+- all current parser and fail-closed postestimation fixtures.
 
-The final `stata_smoke.log` has SHA-256
-`e863e49fb21d264cb11b831505a474953927677ee159c8db73d2985cfbb1b353`.
-This validates only the Phase 0-1 installation/safety fixtures. It does not
-validate parser semantics, estimation, scientific parity, or postestimation.
+Every accepted fixture emitted `END_FIXTURE|<name>|rc=0` after its final
+assertion. The runner rejects a missing or nonzero sentinel even if Stata exits
+zero and runs each fixture through a wrapper that prepends the repository
+`stata/` and `dist/` directories to the ado-path. Raw Stata logs contain license
+details and are not committed; `build_evidence/local/stata-smoke.txt` is the
+sanitized receipt.
+
+The installation and 100-reload fixtures also passed under Rosetta. That run
+reported `Unix` / `Macintosh (Intel 64-bit)` and loaded the x86-64 slice from
+the same universal plugin. It is emulated loader/slice evidence, not native
+Intel-host certification.
 
 ## GitHub Actions policy
 
@@ -111,7 +132,6 @@ or on the applicable target-native host; no CI result is claimed.
 
 ## Not validated
 
-- Licensed-Stata metadata parser fixtures beyond the installation smoke.
 - Any enabled estimator invocation or successful estimate posting.
 - Any `reghdfe` or `ppmlhdfe` reference capture or parity comparison.
 - Estimation-sample, coefficient, VCE, DoF, prediction, `margins`, or `estat`

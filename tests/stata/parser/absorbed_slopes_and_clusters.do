@@ -20,3 +20,4 @@ assert r(n_absorb_terms) == 5
 assert r(n_cluster_terms) == 3
 assert c(k) == 6
 di as result "absorbed_slopes_and_clusters.do: PASS"
+di as result "END_FIXTURE|absorbed_slopes_and_clusters|rc=0"

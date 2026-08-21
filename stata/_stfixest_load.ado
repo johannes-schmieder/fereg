@@ -9,17 +9,21 @@ program define _stfixest_load, rclass
     }
 
     local os `"`c(os)'"'
+    local machine_type `"`c(machine_type)'"'
     if `"`os'"' == "Windows" {
         local plugin_name "stfixest_windows.plugin"
     }
     else if `"`os'"' == "MacOSX" {
         local plugin_name "stfixest_macos.plugin"
     }
+    else if `"`os'"' == "Unix" & strmatch(`"`machine_type'"', "Mac*") {
+        local plugin_name "stfixest_macos.plugin"
+    }
     else if `"`os'"' == "Unix" {
         local plugin_name "stfixest_linux.plugin"
     }
     else {
-        di as error "StFixest does not recognize operating system: `os'"
+        di as error "StFixest does not recognize operating system/machine type: `os' / `machine_type'"
         exit 9
     }
 

@@ -18,3 +18,4 @@ assert strpos("`r(source_vars)'", "h") > 0
 confirm variable id x g h
 assert c(k) == 4
 di as result "ordinary_factor_terms.do: PASS"
+di as result "END_FIXTURE|ordinary_factor_terms|rc=0"
