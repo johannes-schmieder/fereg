@@ -39,7 +39,7 @@ scientific gates are met.
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
-| OLS reference-contract harness | Implemented; capture pending | Commit `01c4b560` freezes the semantic/benchmark manifest, isolated preflight, capture renderer, and sealed receipt verifier. It deliberately refuses to run without an exact `ftools` provenance pin. |
+| OLS reference-contract harness | Under P1 repair; capture pending | Commit `01c4b560` adds the semantic/benchmark manifest, isolated preflight, capture renderer, and sealed receipt verifier. Independent review found incomplete benchmark-gate/evidence validation; the harness continues to refuse capture pending those repairs and exact transitive dependency provenance. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
@@ -60,7 +60,8 @@ scientific gates are met.
   exists yet.
 - The `reghdfe` capture harness is ready but cannot launch: the required
   transitive `ftools` source/installed-file provenance is intentionally
-  unresolved and fail-closed. No pinned reference capture, benchmark timing,
+  unresolved and fail-closed. Pinned `reghdfe` also needs a separately pinned
+  `require` dependency. No pinned reference capture, benchmark timing,
   peak-RSS receipt, or constrained-memory receipt has been recorded.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
   as a Stata-facing estimator. Independent audit and integration work are in
