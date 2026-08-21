@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `c726c7a` plus the sealed reference receipt below
+**Branch / baseline:** `main` through `2b5b57c` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -37,7 +37,7 @@ scientific gates are met.
 | Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, debug/release unit tests, and FFI tests passed at the repaired baseline. Re-run required after estimator changes. |
 | Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
-| Developer OLS request-to-prepared-data boundary | Complete for continuous inputs with one optional analytic or frequency weight | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; and `c726c7a` adds a mutually exclusive frequency-weight binding. Positive integral frequency weights through `u32::MAX` remain bit-exact, missing values receive reason 4, and zero, negative, fractional, or out-of-range candidate-row values fail before writes. Invalid values outside `if`/`in` are never read, retained counts remain physical rows rather than effective frequency-weight `N`, and model-wire/binding/layout/type/output validation still precedes observation reads. The 111-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite, universal macOS build/audit/actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
+| Developer OLS request-to-prepared-data boundary | Complete for continuous inputs with one optional analytic or frequency weight | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7a` added a mutually exclusive frequency-weight binding; and `2b5b57c` tightened its missing/nonfinite boundary after independent review. Positive integral frequency weights through `u32::MAX` remain bit-exact. Only an explicitly Stata-masked missing frequency weight receives reason 4; an unmasked NaN or infinity, or a zero, negative, fractional, or out-of-range candidate-row value, fails before writes. Invalid values outside `if`/`in` are never read, retained counts remain physical rows rather than effective frequency-weight `N`, and model-wire/binding/layout/type/output validation still precedes observation reads. The 111-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite, universal macOS build/audit/actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
@@ -78,9 +78,10 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Independent review of the frequency-weight boundary, followed by exactly one
-  bounded categorical, FE, cluster, or remaining-weight source-role expansion
-  retaining adversarial SPI failure tests and no public estimator enablement.
+- Independent re-review of the strict frequency-weight missing/nonfinite
+  boundary, followed by exactly one bounded categorical, FE, cluster, or
+  remaining-weight source-role expansion retaining adversarial SPI failure
+  tests and no public estimator enablement.
 
 ## Historical qualification
 
