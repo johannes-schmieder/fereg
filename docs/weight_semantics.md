@@ -1,14 +1,19 @@
 # Weight-semantics contract
 
-Phase 0–1 accepts Stata weight syntax only so the command surface and metadata
-protocol can be frozen. It does not interpret, validate, rescale, or apply
-weights and therefore makes no estimator claim for `fweight`, `aweight`,
-`pweight`, or `iweight`.
+The native numeric preparation layer now preserves the actual requested kind
+(`fweight`, `aweight`, `pweight`, or `iweight`) and compacts raw finite values
+bit-for-bit. It has no unweighted pseudo-kind and allocates no pseudo-column for
+an unweighted model. It does not itself decide a weight domain, normalize,
+rescale, or apply weights and therefore makes no estimator claim for any weight
+type.
 
 ## Control-plane and data-plane split
 
-Stata may parse the weight expression and identify its source variable. After
-Phase 2, Rust must load the values once and remain authoritative for:
+Stata may parse the weight expression and identify its source variable. Rust
+numeric preparation is authoritative for explicit missing masks and nonfinite
+values. A required caller-supplied policy decides whether each otherwise
+available value is retained or dropped. Later fully specified native stages
+must remain authoritative for:
 
 - missing, nonfinite, zero, and negative values;
 - the effective sample induced by weight rules;
@@ -19,7 +24,10 @@ Phase 2, Rust must load the values once and remain authoritative for:
 - alignment of weights after singleton or separation deletion.
 
 The ado layer must not silently replace invalid values, pre-drop observations,
-normalize weights, or send a different sample to the native estimator.
+normalize weights, or send a different sample to the native estimator. A row
+outside the candidate `if`/`in` sample does not invoke a weight policy; the
+reference behavior for invalid weights outside that sample remains a parity
+fixture rather than an assumption in preparation code.
 
 ## Required reference capture before enablement
 
@@ -38,3 +46,9 @@ No weight type is enabled merely because Stata's `syntax` command accepts it.
 Each type requires a written mathematical interpretation, an independent small
 oracle, differential tests against its pinned reference, and a final-sample
 identity test.
+
+Still deferred to that capture and estimator-specific policy are exact accepted
+domains (including zero, negative, fractional, and very large values), the
+frequency-weight integer and upper-bound rule, constant-rescaling invariance,
+objective and score scaling, VCE/DoF treatment, and alignment after singleton
+or separation deletion.

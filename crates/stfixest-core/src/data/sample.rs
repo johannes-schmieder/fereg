@@ -1,4 +1,6 @@
-use crate::data::weights::{validate_weight, WeightKind};
+use std::mem::size_of;
+
+use crate::data::weights::WeightKind;
 use crate::error::{ErrorCode, Result, StFixestError};
 
 /// Authoritative observation-level exclusion reason.
@@ -28,344 +30,665 @@ impl DropReason {
     }
 }
 
-/// Borrowed numeric columns needed to construct the initial native sample.
+/// A borrowed numeric source plus an optional explicit Stata-missing mask.
+///
+/// A value is unavailable when its mask entry is true or its value is not
+/// finite. A finite placeholder under a true mask is therefore still missing.
+#[derive(Debug, Clone, Copy)]
+pub struct NumericColumnView<'a> {
+    pub values: &'a [f64],
+    pub missing: Option<&'a [bool]>,
+}
+
+impl<'a> NumericColumnView<'a> {
+    #[must_use]
+    pub const fn new(values: &'a [f64]) -> Self {
+        Self {
+            values,
+            missing: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn with_missing(values: &'a [f64], missing: &'a [bool]) -> Self {
+        Self {
+            values,
+            missing: Some(missing),
+        }
+    }
+
+    fn is_unavailable(self, original_row: usize) -> bool {
+        self.missing.is_some_and(|mask| mask[original_row])
+            || !self.values[original_row].is_finite()
+    }
+}
+
+/// Weight input without an invented unweighted pseudo-kind or pseudo-column.
+#[derive(Debug, Clone, Copy)]
+pub enum WeightInput<'a> {
+    None,
+    Provided {
+        kind: WeightKind,
+        column: NumericColumnView<'a>,
+    },
+}
+
+/// Mutually exclusive offset/exposure input preserving its raw scale.
+#[derive(Debug, Clone, Copy)]
+pub enum AdjustmentInput<'a> {
+    None,
+    Offset(NumericColumnView<'a>),
+    Exposure(NumericColumnView<'a>),
+}
+
+/// Borrowed numeric sources used to construct the authoritative numeric sample.
 #[derive(Debug)]
 pub struct NumericPreparationInput<'a> {
     pub candidate: &'a [bool],
-    pub outcome: &'a [f64],
-    pub regressors: &'a [&'a [f64]],
-    pub weight_kind: WeightKind,
-    pub weights: Option<&'a [f64]>,
-    pub offset: Option<&'a [f64]>,
-    pub exposure: Option<&'a [f64]>,
-    /// Missing values in categorical sources must be represented as `None`.
-    pub fixed_effect_sources: &'a [&'a [Option<u32>]],
-    pub cluster_sources: &'a [&'a [Option<u32>]],
-    pub poisson: bool,
+    pub outcome: NumericColumnView<'a>,
+    pub regressors: &'a [NumericColumnView<'a>],
+    pub weights: WeightInput<'a>,
+    pub adjustment: AdjustmentInput<'a>,
 }
 
-/// Compact native data after initial missing-value and domain validation.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PreparedData {
+/// Result of a caller-supplied domain decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DomainDecision {
+    Retain,
+    Drop,
+}
+
+/// Scientific domain decisions required by numeric sample preparation.
+///
+/// There is intentionally no default implementation: callers must choose an
+/// estimator/reference-specific policy explicitly. Methods borrow `self`
+/// immutably so decisions cannot depend on mutable row history. Returning an
+/// error is fatal.
+pub trait NumericDomainPolicy {
+    fn outcome(&self, original_row: usize, value: f64) -> Result<DomainDecision>;
+
+    fn weight(&self, original_row: usize, kind: WeightKind, value: f64) -> Result<DomainDecision>;
+
+    fn offset(&self, original_row: usize, value: f64) -> Result<DomainDecision>;
+
+    fn exposure(&self, original_row: usize, value: f64) -> Result<DomainDecision>;
+}
+
+/// Compact weights, absent for an unweighted model.
+#[derive(Debug, PartialEq)]
+pub enum PreparedWeights {
+    None,
+    Provided { kind: WeightKind, values: Vec<f64> },
+}
+
+/// Compact raw offset or exposure values.
+#[derive(Debug, PartialEq)]
+pub enum PreparedAdjustment {
+    None,
+    Offset(Vec<f64>),
+    Exposure(Vec<f64>),
+}
+
+/// Compact native numeric data after availability and policy validation.
+#[derive(Debug, PartialEq)]
+pub struct PreparedNumericSample {
     pub n_original: usize,
     pub n_candidate: usize,
-    pub obs_map: Vec<usize>,
+    pub original_row_by_active: Vec<usize>,
     pub outcome: Vec<f64>,
     pub regressors: Vec<Vec<f64>>,
-    pub weights: Vec<f64>,
-    pub offset: Vec<f64>,
-    pub fixed_effect_sources: Vec<Vec<u32>>,
-    pub cluster_sources: Vec<Vec<u32>>,
+    pub weights: PreparedWeights,
+    pub adjustment: PreparedAdjustment,
     pub drop_reasons: Vec<DropReason>,
 }
 
-impl PreparedData {
+impl PreparedNumericSample {
     #[must_use]
     pub fn n_active(&self) -> usize {
-        self.obs_map.len()
+        self.original_row_by_active.len()
     }
 
     #[must_use]
-    pub fn retained_mask(&self) -> Vec<bool> {
-        self.drop_reasons
-            .iter()
-            .map(|reason| *reason == DropReason::Retained)
-            .collect()
+    pub fn is_retained(&self, original_row: usize) -> bool {
+        self.drop_reason(original_row) == Some(DropReason::Retained)
     }
 
     #[must_use]
-    pub fn drop_reason_codes(&self) -> Vec<u8> {
-        self.drop_reasons
-            .iter()
-            .map(|reason| reason.code())
-            .collect()
+    pub fn drop_reason(&self, original_row: usize) -> Option<DropReason> {
+        self.drop_reasons.get(original_row).copied()
+    }
+
+    /// Zero-based original row numbers, in strictly increasing order.
+    #[must_use]
+    pub fn retained_rows(&self) -> &[usize] {
+        &self.original_row_by_active
     }
 }
 
-/// Construct the authoritative initial sample from original-order numeric data.
+/// Identifies every output reservation made by numeric preparation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PreparationBuffer {
+    DropReasons,
+    OriginalRowByActive,
+    Outcome,
+    RegressorColumns,
+    RegressorColumn(usize),
+    Weights,
+    Offset,
+    Exposure,
+}
+
+/// Injection seam for deterministic reservation-failure tests.
+trait Reserve {
+    fn allow_reservation(
+        &mut self,
+        buffer: PreparationBuffer,
+        elements: usize,
+        element_size: usize,
+    ) -> bool;
+}
+
+#[derive(Debug, Default)]
+struct SystemReserve;
+
+impl Reserve for SystemReserve {
+    fn allow_reservation(
+        &mut self,
+        _buffer: PreparationBuffer,
+        _elements: usize,
+        _element_size: usize,
+    ) -> bool {
+        true
+    }
+}
+
+/// Construct the authoritative compact numeric sample in original row order.
 ///
-/// Reason precedence follows the specification: `if`/`in`, outcome,
-/// regressors, weights, fixed effects, clusters, then offset/exposure.
-pub fn prepare_numeric_data(input: &NumericPreparationInput<'_>) -> Result<PreparedData> {
-    let n = input.candidate.len();
-    validate_lengths(input, n)?;
-    if input.offset.is_some() && input.exposure.is_some() {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidArgument,
-            "offset and exposure are mutually exclusive",
-        ));
+/// This function performs availability classification and applies an explicit
+/// scientific domain policy. It does not transform, normalize, or reinterpret
+/// retained numeric values.
+pub fn prepare_numeric_sample<P: NumericDomainPolicy>(
+    input: &NumericPreparationInput<'_>,
+    policy: &P,
+) -> Result<PreparedNumericSample> {
+    prepare_numeric_sample_with_reserve(input, policy, &mut SystemReserve)
+}
+
+fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
+    input: &NumericPreparationInput<'_>,
+    policy: &P,
+    reserve: &mut R,
+) -> Result<PreparedNumericSample> {
+    let n_original = input.candidate.len();
+    validate_input(input, n_original)?;
+    let n_candidate = input
+        .candidate
+        .iter()
+        .filter(|candidate| **candidate)
+        .count();
+    check_output_dimensions(input, n_original, n_candidate)?;
+
+    let mut drop_reasons = reserved_vec(
+        reserve,
+        PreparationBuffer::DropReasons,
+        n_original,
+        "drop-reason mask",
+    )?;
+    let mut original_row_by_active = reserved_vec(
+        reserve,
+        PreparationBuffer::OriginalRowByActive,
+        n_candidate,
+        "observation map",
+    )?;
+    let mut outcome = reserved_vec(reserve, PreparationBuffer::Outcome, n_candidate, "outcome")?;
+
+    let mut regressors = reserved_vec(
+        reserve,
+        PreparationBuffer::RegressorColumns,
+        input.regressors.len(),
+        "regressor column table",
+    )?;
+    for index in 0..input.regressors.len() {
+        regressors.push(reserved_vec(
+            reserve,
+            PreparationBuffer::RegressorColumn(index),
+            n_candidate,
+            "regressor column",
+        )?);
     }
 
-    let n_candidate = input.candidate.iter().filter(|value| **value).count();
-    let mut drop_reasons = vec![DropReason::Retained; n];
-    let mut obs_map = Vec::with_capacity(n_candidate);
-    let mut outcome = Vec::with_capacity(n_candidate);
-    let mut regressors: Vec<Vec<f64>> = input
-        .regressors
-        .iter()
-        .map(|_| Vec::with_capacity(n_candidate))
-        .collect();
-    let mut weights = Vec::with_capacity(n_candidate);
-    let mut offset = Vec::with_capacity(n_candidate);
-    let mut fixed_effect_sources: Vec<Vec<u32>> = input
-        .fixed_effect_sources
-        .iter()
-        .map(|_| Vec::with_capacity(n_candidate))
-        .collect();
-    let mut cluster_sources: Vec<Vec<u32>> = input
-        .cluster_sources
-        .iter()
-        .map(|_| Vec::with_capacity(n_candidate))
-        .collect();
+    let mut weights = match input.weights {
+        WeightInput::None => PreparedWeights::None,
+        WeightInput::Provided { kind, .. } => PreparedWeights::Provided {
+            kind,
+            values: reserved_vec(
+                reserve,
+                PreparationBuffer::Weights,
+                n_candidate,
+                "weight column",
+            )?,
+        },
+    };
+    let mut adjustment = match input.adjustment {
+        AdjustmentInput::None => PreparedAdjustment::None,
+        AdjustmentInput::Offset(_) => PreparedAdjustment::Offset(reserved_vec(
+            reserve,
+            PreparationBuffer::Offset,
+            n_candidate,
+            "offset column",
+        )?),
+        AdjustmentInput::Exposure(_) => PreparedAdjustment::Exposure(reserved_vec(
+            reserve,
+            PreparationBuffer::Exposure,
+            n_candidate,
+            "exposure column",
+        )?),
+    };
 
-    for observation in 0..n {
-        let reason = initial_drop_reason(input, observation)?;
-        drop_reasons[observation] = reason;
+    for original_row in 0..n_original {
+        let reason = classify_row(input, policy, original_row)?;
+        drop_reasons.push(reason);
         if reason != DropReason::Retained {
             continue;
         }
 
-        let y = input.outcome[observation];
-        let weight = match input.weights {
-            Some(column) => validate_weight(input.weight_kind, column[observation])?,
-            None => validate_weight(WeightKind::None, 1.0)?,
-        };
-        let observation_offset = match (input.offset, input.exposure) {
-            (Some(column), None) => column[observation],
-            (None, Some(column)) => column[observation].ln(),
-            (None, None) => 0.0,
-            (Some(_), Some(_)) => unreachable!("validated above"),
-        };
-
-        obs_map.push(observation);
-        outcome.push(y);
-        weights.push(weight);
-        offset.push(observation_offset);
+        original_row_by_active.push(original_row);
+        outcome.push(input.outcome.values[original_row]);
         for (destination, source) in regressors.iter_mut().zip(input.regressors) {
-            destination.push(source[observation]);
+            destination.push(source.values[original_row]);
         }
-        for (destination, source) in fixed_effect_sources
-            .iter_mut()
-            .zip(input.fixed_effect_sources)
+        if let (PreparedWeights::Provided { values, .. }, WeightInput::Provided { column, .. }) =
+            (&mut weights, input.weights)
         {
-            destination.push(source[observation].expect("validated fixed-effect source"));
+            values.push(column.values[original_row]);
         }
-        for (destination, source) in cluster_sources.iter_mut().zip(input.cluster_sources) {
-            destination.push(source[observation].expect("validated cluster source"));
+        match (&mut adjustment, input.adjustment) {
+            (PreparedAdjustment::Offset(values), AdjustmentInput::Offset(column))
+            | (PreparedAdjustment::Exposure(values), AdjustmentInput::Exposure(column)) => {
+                values.push(column.values[original_row]);
+            }
+            _ => {}
         }
     }
 
-    if obs_map.is_empty() {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidData,
-            "no observations remain after native sample validation",
-        ));
-    }
+    debug_assert_eq!(drop_reasons.len(), n_original);
+    debug_assert!(original_row_by_active
+        .windows(2)
+        .all(|rows| rows[0] < rows[1]));
+    debug_assert_eq!(outcome.len(), original_row_by_active.len());
+    debug_assert!(regressors
+        .iter()
+        .all(|column| column.len() == original_row_by_active.len()));
 
-    Ok(PreparedData {
-        n_original: n,
+    Ok(PreparedNumericSample {
+        n_original,
         n_candidate,
-        obs_map,
+        original_row_by_active,
         outcome,
         regressors,
         weights,
-        offset,
-        fixed_effect_sources,
-        cluster_sources,
+        adjustment,
         drop_reasons,
     })
 }
 
-fn initial_drop_reason(
+fn classify_row<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
-    observation: usize,
+    policy: &P,
+    original_row: usize,
 ) -> Result<DropReason> {
-    if !input.candidate[observation] {
+    if !input.candidate[original_row] {
         return Ok(DropReason::ExcludedByIfIn);
     }
-    let outcome = input.outcome[observation];
-    if !outcome.is_finite() {
+
+    if input.outcome.is_unavailable(original_row) {
         return Ok(DropReason::MissingOutcome);
     }
-    if input.poisson && outcome < 0.0 {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidData,
-            format!(
-                "Poisson outcome is negative at observation {}",
-                observation + 1
-            ),
-        ));
+    if policy.outcome(original_row, input.outcome.values[original_row])? == DomainDecision::Drop {
+        return Ok(DropReason::OtherModelExclusion);
     }
+
     if input
         .regressors
         .iter()
-        .any(|column| !column[observation].is_finite())
+        .any(|column| column.is_unavailable(original_row))
     {
         return Ok(DropReason::MissingRegressor);
     }
-    if let Some(column) = input.weights {
-        let value = column[observation];
-        if !value.is_finite() {
+
+    if let WeightInput::Provided { kind, column } = input.weights {
+        if column.is_unavailable(original_row) {
             return Ok(DropReason::InvalidOrMissingWeight);
         }
-        validate_weight(input.weight_kind, value)?;
-    }
-    if input
-        .fixed_effect_sources
-        .iter()
-        .any(|column| column[observation].is_none())
-    {
-        return Ok(DropReason::MissingFixedEffect);
-    }
-    if input
-        .cluster_sources
-        .iter()
-        .any(|column| column[observation].is_none())
-    {
-        return Ok(DropReason::MissingCluster);
-    }
-    if let Some(column) = input.offset {
-        if !column[observation].is_finite() {
-            return Ok(DropReason::MissingOffsetOrExposure);
+        if policy.weight(original_row, kind, column.values[original_row])? == DomainDecision::Drop {
+            return Ok(DropReason::InvalidOrMissingWeight);
         }
     }
-    if let Some(column) = input.exposure {
-        let value = column[observation];
-        if !value.is_finite() || value <= 0.0 {
-            return Ok(DropReason::MissingOffsetOrExposure);
+
+    match input.adjustment {
+        AdjustmentInput::None => {}
+        AdjustmentInput::Offset(column) => {
+            if column.is_unavailable(original_row) {
+                return Ok(DropReason::MissingOffsetOrExposure);
+            }
+            if policy.offset(original_row, column.values[original_row])? == DomainDecision::Drop {
+                return Ok(DropReason::MissingOffsetOrExposure);
+            }
+        }
+        AdjustmentInput::Exposure(column) => {
+            if column.is_unavailable(original_row) {
+                return Ok(DropReason::MissingOffsetOrExposure);
+            }
+            if policy.exposure(original_row, column.values[original_row])? == DomainDecision::Drop {
+                return Ok(DropReason::MissingOffsetOrExposure);
+            }
         }
     }
+
     Ok(DropReason::Retained)
 }
 
-fn validate_lengths(input: &NumericPreparationInput<'_>, n: usize) -> Result<()> {
-    let mut named_lengths = vec![("outcome", input.outcome.len())];
-    named_lengths.extend(input.regressors.iter().enumerate().map(|(index, column)| {
-        (
-            if index == 0 {
-                "regressor"
-            } else {
-                "regressors"
-            },
-            column.len(),
-        )
-    }));
-    if let Some(column) = input.weights {
-        named_lengths.push(("weights", column.len()));
+fn validate_input(input: &NumericPreparationInput<'_>, n: usize) -> Result<()> {
+    validate_column("outcome", input.outcome, n)?;
+    for column in input.regressors {
+        validate_column("regressor", *column, n)?;
     }
-    if let Some(column) = input.offset {
-        named_lengths.push(("offset", column.len()));
+    if let WeightInput::Provided { column, .. } = input.weights {
+        validate_column("weight", column, n)?;
     }
-    if let Some(column) = input.exposure {
-        named_lengths.push(("exposure", column.len()));
-    }
-    named_lengths.extend(
-        input
-            .fixed_effect_sources
-            .iter()
-            .map(|column| ("fixed-effect source", column.len())),
-    );
-    named_lengths.extend(
-        input
-            .cluster_sources
-            .iter()
-            .map(|column| ("cluster source", column.len())),
-    );
-    for (name, length) in named_lengths {
-        if length != n {
-            return Err(StFixestError::new(
-                ErrorCode::InvalidArgument,
-                format!("{name} has length {length}, expected {n}"),
-            ));
-        }
-    }
-    if input.weight_kind != WeightKind::None && input.weights.is_none() {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidArgument,
-            "a non-default weight kind requires a weight column",
-        ));
+    match input.adjustment {
+        AdjustmentInput::None => {}
+        AdjustmentInput::Offset(column) => validate_column("offset", column, n)?,
+        AdjustmentInput::Exposure(column) => validate_column("exposure", column, n)?,
     }
     Ok(())
 }
 
+fn validate_column(name: &str, column: NumericColumnView<'_>, expected: usize) -> Result<()> {
+    if column.values.len() != expected {
+        return Err(StFixestError::new(
+            ErrorCode::InvalidArgument,
+            format!(
+                "{name} has {} values, expected {expected}",
+                column.values.len()
+            ),
+        ));
+    }
+    if let Some(mask) = column.missing {
+        if mask.len() != expected {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                format!(
+                    "{name} missing mask has length {}, expected {expected}",
+                    mask.len()
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn check_output_dimensions(
+    input: &NumericPreparationInput<'_>,
+    n_original: usize,
+    n_candidate: usize,
+) -> Result<()> {
+    let mut bytes = checked_bytes::<DropReason>(n_original, "drop-reason mask")?;
+    bytes = checked_add(
+        bytes,
+        checked_bytes::<usize>(n_candidate, "observation map")?,
+        "numeric sample outputs",
+    )?;
+    bytes = checked_add(
+        bytes,
+        checked_bytes::<f64>(n_candidate, "outcome")?,
+        "numeric sample outputs",
+    )?;
+    bytes = checked_add(
+        bytes,
+        checked_bytes::<Vec<f64>>(input.regressors.len(), "regressor column table")?,
+        "numeric sample outputs",
+    )?;
+    let regressor_elements = n_candidate
+        .checked_mul(input.regressors.len())
+        .ok_or_else(|| allocation_error("regressor dimensions overflow"))?;
+    bytes = checked_add(
+        bytes,
+        checked_bytes::<f64>(regressor_elements, "regressor values")?,
+        "numeric sample outputs",
+    )?;
+    if matches!(input.weights, WeightInput::Provided { .. }) {
+        bytes = checked_add(
+            bytes,
+            checked_bytes::<f64>(n_candidate, "weight values")?,
+            "numeric sample outputs",
+        )?;
+    }
+    if !matches!(input.adjustment, AdjustmentInput::None) {
+        let _total_bytes = checked_add(
+            bytes,
+            checked_bytes::<f64>(n_candidate, "adjustment values")?,
+            "numeric sample outputs",
+        )?;
+    }
+    Ok(())
+}
+
+fn checked_bytes<T>(elements: usize, label: &str) -> Result<usize> {
+    elements
+        .checked_mul(size_of::<T>())
+        .ok_or_else(|| allocation_error(format!("{label} size overflows")))
+}
+
+fn checked_add(left: usize, right: usize, label: &str) -> Result<usize> {
+    left.checked_add(right)
+        .ok_or_else(|| allocation_error(format!("{label} size overflows")))
+}
+
+fn reserved_vec<T, R: Reserve>(
+    reserve: &mut R,
+    buffer: PreparationBuffer,
+    elements: usize,
+    label: &str,
+) -> Result<Vec<T>> {
+    let _bytes = checked_bytes::<T>(elements, label)?;
+    let mut values = Vec::new();
+    if !reserve.allow_reservation(buffer, elements, size_of::<T>()) {
+        return Err(allocation_error(format!(
+            "injected reservation failure for {label}"
+        )));
+    }
+    values
+        .try_reserve_exact(elements)
+        .map_err(|_| allocation_error(format!("unable to reserve {label}")))?;
+    Ok(values)
+}
+
+fn allocation_error(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::Allocation, message)
+}
+
 #[cfg(test)]
-mod tests {
+mod allocation_tests {
     use super::*;
 
-    #[test]
-    fn applies_reason_precedence_and_compacts_in_original_order() {
-        let candidate = [false, true, true, true, true, true, true, true];
-        let outcome = [1.0, f64::NAN, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-        let x = [1.0, 2.0, f64::NAN, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let weights = [1.0, 1.0, 1.0, f64::NAN, 1.0, 1.0, 1.0, 2.0];
-        let fe = [
-            Some(0),
-            Some(0),
-            Some(0),
-            Some(0),
-            None,
-            Some(1),
-            Some(1),
-            Some(1),
-        ];
-        let cluster = [
-            Some(0),
-            Some(0),
-            Some(0),
-            Some(0),
-            Some(0),
-            None,
-            Some(1),
-            Some(1),
-        ];
-        let exposure = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 2.0];
-        let input = NumericPreparationInput {
-            candidate: &candidate,
-            outcome: &outcome,
-            regressors: &[&x],
-            weight_kind: WeightKind::Analytic,
-            weights: Some(&weights),
-            offset: None,
-            exposure: Some(&exposure),
-            fixed_effect_sources: &[&fe],
-            cluster_sources: &[&cluster],
-            poisson: true,
-        };
-        let prepared = prepare_numeric_data(&input).expect("prepared data");
-        assert_eq!(prepared.obs_map, vec![7]);
-        assert_eq!(prepared.outcome, vec![7.0]);
-        assert_eq!(prepared.offset, vec![2.0_f64.ln()]);
-        assert_eq!(
-            prepared.drop_reasons,
-            vec![
-                DropReason::ExcludedByIfIn,
-                DropReason::MissingOutcome,
-                DropReason::MissingRegressor,
-                DropReason::InvalidOrMissingWeight,
-                DropReason::MissingFixedEffect,
-                DropReason::MissingCluster,
-                DropReason::MissingOffsetOrExposure,
-                DropReason::Retained,
-            ]
-        );
+    struct Retain;
+
+    impl NumericDomainPolicy for Retain {
+        fn outcome(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
+            Ok(DomainDecision::Retain)
+        }
+
+        fn weight(&self, _row: usize, _kind: WeightKind, _value: f64) -> Result<DomainDecision> {
+            Ok(DomainDecision::Retain)
+        }
+
+        fn offset(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
+            Ok(DomainDecision::Retain)
+        }
+
+        fn exposure(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
+            Ok(DomainDecision::Retain)
+        }
+    }
+
+    struct CountingReserve {
+        fail_at: Option<usize>,
+        calls: Vec<(PreparationBuffer, usize, usize)>,
+    }
+
+    impl CountingReserve {
+        fn succeeds() -> Self {
+            Self {
+                fail_at: None,
+                calls: Vec::new(),
+            }
+        }
+
+        fn fails_at(call: usize) -> Self {
+            Self {
+                fail_at: Some(call),
+                calls: Vec::new(),
+            }
+        }
+    }
+
+    impl Reserve for CountingReserve {
+        fn allow_reservation(
+            &mut self,
+            buffer: PreparationBuffer,
+            elements: usize,
+            element_size: usize,
+        ) -> bool {
+            let call = self.calls.len();
+            self.calls.push((buffer, elements, element_size));
+            self.fail_at != Some(call)
+        }
     }
 
     #[test]
-    fn rejects_negative_poisson_outcome() {
-        let candidate = [true];
-        let outcome = [-1.0];
+    fn every_output_reservation_fails_closed_as_stata_909() {
+        let candidate = [true, false, true];
+        let y = [1.0, 2.0, 3.0];
+        let x1 = [4.0, 5.0, 6.0];
+        let x2 = [7.0, 8.0, 9.0];
+        let weights = [1.0, 1.0, 1.0];
+        let offset = [0.0, 0.0, 0.0];
+        let regressors = [NumericColumnView::new(&x1), NumericColumnView::new(&x2)];
         let input = NumericPreparationInput {
             candidate: &candidate,
-            outcome: &outcome,
-            regressors: &[],
-            weight_kind: WeightKind::None,
-            weights: None,
-            offset: None,
-            exposure: None,
-            fixed_effect_sources: &[],
-            cluster_sources: &[],
-            poisson: true,
+            outcome: NumericColumnView::new(&y),
+            regressors: &regressors,
+            weights: WeightInput::Provided {
+                kind: WeightKind::Analytic,
+                column: NumericColumnView::new(&weights),
+            },
+            adjustment: AdjustmentInput::Offset(NumericColumnView::new(&offset)),
         };
-        assert!(prepare_numeric_data(&input).is_err());
+        let expected = [
+            (PreparationBuffer::DropReasons, 3, size_of::<DropReason>()),
+            (
+                PreparationBuffer::OriginalRowByActive,
+                2,
+                size_of::<usize>(),
+            ),
+            (PreparationBuffer::Outcome, 2, size_of::<f64>()),
+            (
+                PreparationBuffer::RegressorColumns,
+                2,
+                size_of::<Vec<f64>>(),
+            ),
+            (PreparationBuffer::RegressorColumn(0), 2, size_of::<f64>()),
+            (PreparationBuffer::RegressorColumn(1), 2, size_of::<f64>()),
+            (PreparationBuffer::Weights, 2, size_of::<f64>()),
+            (PreparationBuffer::Offset, 2, size_of::<f64>()),
+        ];
+
+        for failure in 0..expected.len() {
+            let mut reserve = CountingReserve::fails_at(failure);
+            let error =
+                prepare_numeric_sample_with_reserve(&input, &Retain, &mut reserve).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(error.return_code(), 909);
+            assert_eq!(reserve.calls, expected[..=failure]);
+        }
+
+        let mut reserve = CountingReserve::succeeds();
+        let prepared = prepare_numeric_sample_with_reserve(&input, &Retain, &mut reserve).unwrap();
+        assert_eq!(reserve.calls, expected);
+        assert_eq!(prepared.n_active(), 2);
+        assert!(prepared.original_row_by_active.capacity() >= prepared.n_candidate);
+        assert!(prepared.outcome.capacity() >= prepared.n_candidate);
+        assert!(prepared.regressors.capacity() >= regressors.len());
+        assert!(prepared
+            .regressors
+            .iter()
+            .all(|column| column.capacity() >= prepared.n_candidate));
+    }
+
+    #[test]
+    fn absent_optional_columns_have_no_buffers_or_reservations() {
+        let candidate = [true];
+        let y = [1.0];
+        let input = NumericPreparationInput {
+            candidate: &candidate,
+            outcome: NumericColumnView::new(&y),
+            regressors: &[],
+            weights: WeightInput::None,
+            adjustment: AdjustmentInput::None,
+        };
+        let mut reserve = CountingReserve::succeeds();
+        let prepared = prepare_numeric_sample_with_reserve(&input, &Retain, &mut reserve).unwrap();
+        assert_eq!(
+            reserve.calls,
+            [
+                (PreparationBuffer::DropReasons, 1, size_of::<DropReason>()),
+                (
+                    PreparationBuffer::OriginalRowByActive,
+                    1,
+                    size_of::<usize>()
+                ),
+                (PreparationBuffer::Outcome, 1, size_of::<f64>()),
+                (
+                    PreparationBuffer::RegressorColumns,
+                    0,
+                    size_of::<Vec<f64>>()
+                ),
+            ]
+        );
+        assert!(matches!(prepared.weights, PreparedWeights::None));
+        assert!(matches!(prepared.adjustment, PreparedAdjustment::None));
+    }
+
+    #[test]
+    fn zero_sized_supplied_columns_use_the_same_fallible_path() {
+        let regressors = [NumericColumnView::new(&[])];
+        let input = NumericPreparationInput {
+            candidate: &[],
+            outcome: NumericColumnView::new(&[]),
+            regressors: &regressors,
+            weights: WeightInput::Provided {
+                kind: WeightKind::Frequency,
+                column: NumericColumnView::new(&[]),
+            },
+            adjustment: AdjustmentInput::Exposure(NumericColumnView::new(&[])),
+        };
+        let expected_buffers = [
+            PreparationBuffer::DropReasons,
+            PreparationBuffer::OriginalRowByActive,
+            PreparationBuffer::Outcome,
+            PreparationBuffer::RegressorColumns,
+            PreparationBuffer::RegressorColumn(0),
+            PreparationBuffer::Weights,
+            PreparationBuffer::Exposure,
+        ];
+        for (failure, expected_buffer) in expected_buffers.iter().enumerate() {
+            let mut reserve = CountingReserve::fails_at(failure);
+            let error =
+                prepare_numeric_sample_with_reserve(&input, &Retain, &mut reserve).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(reserve.calls.last().unwrap().0, *expected_buffer);
+            assert!(reserve.calls.iter().all(|(_, elements, _)| *elements <= 1));
+        }
     }
 }
