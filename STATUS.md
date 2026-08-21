@@ -37,7 +37,7 @@ scientific gates are met.
 | Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, debug/release unit tests, and FFI tests passed at the repaired baseline. Re-run required after estimator changes. |
 | Model wire 2.0 | Complete | Versioned lossless Stata model specification is merged. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
-| Single-status-file rule | Complete | Commit `6783775` consolidated live project state into this file and repository checks reject duplicate status documents. |
+| Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
 ## Active checkpoint — make `stfeols` executable
