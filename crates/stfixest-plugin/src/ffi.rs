@@ -515,6 +515,19 @@ mod tests {
     }
 
     #[test]
+    fn pinned_estimation_domain_errors_keep_their_ffi_return_codes() {
+        for (kind, expected) in [
+            (ErrorCode::NegativeWeight, 402),
+            (ErrorCode::InvalidFrequencyWeight, 401),
+            (ErrorCode::InsufficientObservations, 2001),
+            (ErrorCode::InvalidData, 459),
+        ] {
+            let error = StFixestError::new(kind, "injected return-code mapping");
+            assert_eq!(error.return_code(), expected);
+        }
+    }
+
+    #[test]
     fn atomic_store_errors_have_static_preformatted_reports() {
         for (message, expected) in [
             (NUMERIC_STORE_ERROR, NUMERIC_STORE_ERROR_REPORT),

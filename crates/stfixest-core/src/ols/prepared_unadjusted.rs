@@ -857,7 +857,9 @@ pub(super) fn build_residual_dof(
         .checked_sub(model_rank)
         .filter(|value| *value > 0)
         .ok_or_else(|| {
-            invalid_data("prepared iid model has no positive residual degrees of freedom")
+            insufficient_observations(
+                "prepared iid model has no positive residual degrees of freedom",
+            )
         })?;
     let has_structural_intercept = prepared.structural_intercept;
     Ok(PreparedOlsResidualDofReport {
@@ -1695,6 +1697,10 @@ fn invalid_data(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidData, message)
 }
 
+fn insufficient_observations(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InsufficientObservations, message)
+}
+
 fn unsupported(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Unsupported, message)
 }
@@ -2340,12 +2346,12 @@ mod tests {
         let error =
             fit_prepared_ols_unadjusted_map(&saturated, PreparedOlsUnadjustedConfig::default())
                 .expect_err("zero residual DoF must fail");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::InsufficientObservations);
 
         let empty = prepared(&[], &[], None, false, TestWeights::Unit);
         let error = fit_prepared_ols_unadjusted_map(&empty, PreparedOlsUnadjustedConfig::default())
             .expect_err("empty inference sample must fail");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::InsufficientObservations);
 
         let mut misaligned = prepared(&y, &x, None, true, TestWeights::Analytic(&pweights));
         let PreparedWeights::Provided { values, .. } = &mut misaligned.sample.weights else {

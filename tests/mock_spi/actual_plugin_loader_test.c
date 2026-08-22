@@ -749,7 +749,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
     }
     plugin_data[0][0] = 1.0;
     clear_output();
-    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 5;
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 402) return 5;
     if (strstr(error_buffer, "analytic weight") == NULL) return 6;
     for (row = 0; row < 5; ++row) {
         if (!isnan(plugin_data[4][row]) || !isnan(plugin_data[5][row]) ||
@@ -836,7 +836,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
     }
     plugin_data[3][1] = INFINITY;
     clear_output();
-    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 4;
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 401) return 4;
     if (strstr(error_buffer, "frequency weight") == NULL) return 5;
     for (row = 0; row < 5; ++row) {
         if (!isnan(plugin_data[4][row]) || !isnan(plugin_data[5][row]) ||

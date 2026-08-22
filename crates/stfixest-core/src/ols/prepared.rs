@@ -1443,7 +1443,7 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
         let value = weight.values[row];
         match kind {
             WeightKind::Analytic if value < 0.0 => {
-                return Err(invalid_data(format!(
+                return Err(negative_weight(format!(
                     "analytic weight at observation {} is negative",
                     row + 1,
                 )));
@@ -1454,7 +1454,7 @@ fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
                     || value.fract() != 0.0
                     || value > f64::from(u32::MAX) =>
             {
-                return Err(invalid_data(format!(
+                return Err(invalid_frequency_weight(format!(
                     "frequency weight at observation {} must be a positive integer representable as u32",
                     row + 1,
                 )));
@@ -1508,14 +1508,16 @@ impl NumericDomainPolicy for OlsPreparationPolicy {
     fn weight(&self, _row: usize, kind: WeightKind, value: f64) -> Result<DomainDecision> {
         match kind {
             WeightKind::Analytic if value == 0.0 => Ok(DomainDecision::Drop),
-            WeightKind::Analytic if value < 0.0 => Err(invalid_data("analytic weight is negative")),
+            WeightKind::Analytic if value < 0.0 => {
+                Err(negative_weight("analytic weight is negative"))
+            }
             WeightKind::Analytic => Ok(DomainDecision::Retain),
             WeightKind::Frequency
                 if value > 0.0 && value.fract() == 0.0 && value <= f64::from(u32::MAX) =>
             {
                 Ok(DomainDecision::Retain)
             }
-            WeightKind::Frequency => Err(invalid_data(
+            WeightKind::Frequency => Err(invalid_frequency_weight(
                 "frequency weight must be a positive integer representable as u32",
             )),
             WeightKind::Probability if value > 0.0 => Ok(DomainDecision::Retain),
@@ -1543,6 +1545,14 @@ fn invalid(message: impl Into<String>) -> StFixestError {
 
 fn invalid_data(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidData, message)
+}
+
+fn negative_weight(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::NegativeWeight, message)
+}
+
+fn invalid_frequency_weight(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidFrequencyWeight, message)
 }
 
 fn unsupported(message: impl Into<String>) -> StFixestError {
@@ -2371,7 +2381,7 @@ mod tests {
         candidate_negative.candidate = vec![true, true];
         let error = prepare_ols_data(&request, &candidate_negative)
             .expect_err("candidate-negative analytic weight");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::NegativeWeight);
     }
 
     #[test]
@@ -2479,7 +2489,7 @@ mod tests {
             };
             let error = prepare_ols_data(&request, &loaded)
                 .expect_err("invalid candidate frequency weight");
-            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(error.code, ErrorCode::InvalidFrequencyWeight);
         }
     }
 
@@ -2884,6 +2894,69 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![-0.8, -0.2, 0.3, 0.9]
         );
+    }
+
+    #[test]
+    fn singleton_fixture_omits_additive_slope_before_residual_dof() {
+        for keep_singletons in [false, true] {
+            let mut request = two_way_singleton_request(keep_singletons);
+            request.model.terms.truncate(1);
+            let mut loaded = two_way_singleton_input();
+            for value in &mut loaded.outcome.values {
+                *value = (*value as f32) as f64;
+            }
+            for (_, column) in &mut loaded.numeric_sources {
+                for value in &mut column.values {
+                    *value = (*value as f32) as f64;
+                }
+            }
+            let prepared = prepare_ols_data(&request, &loaded).expect("singleton preparation");
+            let inference = super::super::fit_prepared_ols_unadjusted_map(
+                &prepared,
+                super::super::PreparedOlsUnadjustedConfig::default(),
+            )
+            .expect("rank-zero singleton inference");
+            assert_eq!(inference.fit().finite_rank(), 0);
+            // The FE-collinear slope has no finite score coordinate, while the
+            // deferred reported constant retains its raw score-mutation check.
+            assert_eq!(inference.fit().score_certificate().moments, 1);
+            assert_eq!(
+                inference.fit().coefficients()[0].status,
+                super::super::PreparedOlsFitStatus::CollinearWithFixedEffects
+            );
+            assert_eq!(inference.dof().finite_model_dof, 0);
+            assert_eq!(
+                inference.dof().absorbed_rank,
+                if keep_singletons { 8 } else { 3 }
+            );
+            assert_eq!(inference.dof().residual_dof, 1);
+            assert!(inference.statistics().f_statistic.is_none());
+            assert_eq!(inference.covariance().dimension(), 1);
+            assert_eq!(inference.fit().bread().coordinates().len(), 1);
+            assert_eq!(
+                inference.fit().bread().values(),
+                &[1.0 / prepared.sample.n_active() as f64]
+            );
+            assert_eq!(
+                prepared.singletons.num_singletons,
+                if keep_singletons { 0 } else { 5 }
+            );
+            if !keep_singletons {
+                assert!(
+                    (inference.fit().coefficients()[1]
+                        .value
+                        .expect("normalized intercept")
+                        - 4.774_999_976_158_142)
+                        .abs()
+                        <= 1e-15
+                );
+                assert!((inference.statistics().rss - 0.002_499_995_231_630_682_4).abs() <= 2e-15);
+                assert!(
+                    (inference.covariance().values()[0] - 0.000_624_998_807_907_670_6).abs()
+                        <= 5e-16
+                );
+            }
+        }
     }
 
     #[test]

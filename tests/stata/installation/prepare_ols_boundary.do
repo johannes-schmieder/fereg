@@ -91,7 +91,7 @@ replace aw_negative = -1 in 10
 capture noisily _stfixest_prepare_ols_test y c.x c.z, aweight(aw_negative) ///
     originalobs(_st_aw_bad_original) retained(_st_aw_bad_retained) ///
     dropreason(_st_aw_bad_reason)
-assert _rc == 459
+assert _rc == 402
 assert missing(_st_aw_bad_original)
 assert missing(_st_aw_bad_retained)
 assert missing(_st_aw_bad_reason)
@@ -165,7 +165,7 @@ replace fw_fractional = 1.5 in 1
 capture noisily _stfixest_prepare_ols_test y c.x, fweight(fw_fractional) ///
     originalobs(_st_fw_bad_original) retained(_st_fw_bad_retained) ///
     dropreason(_st_fw_bad_reason)
-assert _rc == 459
+assert _rc == 401
 assert missing(_st_fw_bad_original)
 assert missing(_st_fw_bad_retained)
 assert missing(_st_fw_bad_reason)

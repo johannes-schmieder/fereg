@@ -9,6 +9,9 @@ pub enum ErrorCode {
     InvalidArgument,
     ProtocolMismatch,
     Unsupported,
+    NegativeWeight,
+    InvalidFrequencyWeight,
+    InsufficientObservations,
     InvalidData,
     Allocation,
     Interrupted,
@@ -24,6 +27,9 @@ impl ErrorCode {
             Self::Syntax => 198,
             Self::InvalidArgument | Self::Unsupported => 498,
             Self::ProtocolMismatch => 499,
+            Self::NegativeWeight => 402,
+            Self::InvalidFrequencyWeight => 401,
+            Self::InsufficientObservations => 2001,
             Self::InvalidData => 459,
             Self::Allocation => 909,
             Self::Interrupted => 1,
@@ -39,6 +45,9 @@ impl ErrorCode {
             Self::InvalidArgument => "invalid_argument",
             Self::ProtocolMismatch => "protocol_mismatch",
             Self::Unsupported => "unsupported",
+            Self::NegativeWeight => "negative_weight",
+            Self::InvalidFrequencyWeight => "invalid_frequency_weight",
+            Self::InsufficientObservations => "insufficient_observations",
             Self::InvalidData => "invalid_data",
             Self::Allocation => "allocation",
             Self::Interrupted => "interrupted",
@@ -77,3 +86,19 @@ impl Display for StFixestError {
 }
 
 impl Error for StFixestError {}
+
+#[cfg(test)]
+mod tests {
+    use super::ErrorCode;
+
+    #[test]
+    fn pinned_estimation_domain_return_codes_are_distinct() {
+        assert_eq!(ErrorCode::NegativeWeight.stata_return_code(), 402);
+        assert_eq!(ErrorCode::InvalidFrequencyWeight.stata_return_code(), 401);
+        assert_eq!(
+            ErrorCode::InsufficientObservations.stata_return_code(),
+            2001
+        );
+        assert_eq!(ErrorCode::InvalidData.stata_return_code(), 459);
+    }
+}

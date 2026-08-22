@@ -2086,7 +2086,7 @@ mod tests {
         spi.data.insert((4, 2), (-1.0, false));
         let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
             .expect_err("negative analytic weight");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::NegativeWeight);
         assert!(spi.writes.is_empty());
 
         let (args, mut spi) = analytic_weight_fixture();
@@ -2151,7 +2151,7 @@ mod tests {
             spi.data.insert((4, 2), (invalid_weight, false));
             let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
                 .expect_err("invalid frequency weight");
-            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(error.code, ErrorCode::InvalidFrequencyWeight);
             assert!(spi.writes.is_empty());
         }
 

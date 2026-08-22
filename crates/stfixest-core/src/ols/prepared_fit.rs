@@ -17,7 +17,9 @@ pub struct PreparedOlsFitConfig {
     /// Multiplier on `eps * max(N, K, 1)` after finite columns are scaled by
     /// their pre-absorption weighted norms.
     pub rank_tolerance_multiplier: f64,
-    /// Relative weighted-norm cutoff for columns annihilated by fixed effects.
+    /// Squared relative weighted-norm cutoff for columns annihilated by fixed
+    /// effects.  This matches pinned reghdfe's `cross(data,data) / norm2`
+    /// collinearity statistic rather than applying its tolerance to the norm.
     pub fixed_effect_collinearity_tolerance: f64,
     /// Maximum recomputed normalized finite-score moment.
     pub score_tolerance: f64,
@@ -35,7 +37,7 @@ impl Default for PreparedOlsFitConfig {
                 symmetric: true,
             },
             rank_tolerance_multiplier: 128.0,
-            fixed_effect_collinearity_tolerance: 1e-8,
+            fixed_effect_collinearity_tolerance: 1e-9,
             score_tolerance: 5e-10,
             bread_tolerance: 5e-10,
         }
@@ -502,6 +504,7 @@ fn fit_with_controls_internal<R: FitReservation>(
         weights,
         &reference_norms,
         &score_norms,
+        &qr.generated_statuses,
         within_outcome_norm,
         config.score_tolerance,
     )?;
@@ -551,7 +554,7 @@ fn fit_with_controls<R: FitReservation>(
 
 fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> Result<()> {
     if prepared.sample.n_active() == 0 {
-        return Err(invalid_data(
+        return Err(insufficient_observations(
             "prepared OLS coefficient fitting requires a nonempty final sample",
         ));
     }
@@ -701,7 +704,13 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
                 "prepared OLS fixed-effect collinearity ratio is not finite",
             ));
         }
-        if has_absorbed_intercept && ratio <= config.fixed_effect_collinearity_tolerance {
+        let squared_ratio = ratio * ratio;
+        if !squared_ratio.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS fixed-effect squared collinearity ratio is not finite",
+            ));
+        }
+        if has_absorbed_intercept && squared_ratio <= config.fixed_effect_collinearity_tolerance {
             generated_statuses[column] = PreparedOlsFitStatus::CollinearWithFixedEffects;
         } else {
             push_reserved(
@@ -2049,12 +2058,14 @@ fn certify_scores(
     weights: NormalizedWeights<'_>,
     reference_norms: &[f64],
     score_norms: &[f64],
+    statuses: &[PreparedOlsFitStatus],
     within_outcome_norm: f64,
     tolerance: f64,
 ) -> Result<PreparedOlsScoreCertificate> {
     if residuals.len() != prepared.sample.n_active()
         || reference_norms.len() != prepared.model.columns.len()
         || score_norms.len() != prepared.model.columns.len()
+        || statuses.len() != prepared.model.columns.len()
         || !within_outcome_norm.is_finite()
         || within_outcome_norm < 0.0
     {
@@ -2069,10 +2080,11 @@ fn certify_scores(
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
     let mut moments = 0_usize;
-    for (column, (reference_norm, score_norm)) in reference_norms
+    for (column, ((reference_norm, score_norm), status)) in reference_norms
         .iter()
         .copied()
         .zip(score_norms.iter().copied())
+        .zip(statuses.iter().copied())
         .enumerate()
     {
         if !reference_norm.is_finite()
@@ -2083,6 +2095,14 @@ fn certify_scores(
             return Err(invalid_data(
                 "prepared OLS within regressor score norm is invalid",
             ));
+        }
+        // A coordinate certified as lying in the absorbed span has no finite
+        // score equation: its normal equation is already covered by the
+        // independent FE certificate. Do not divide its MAP-noise within norm
+        // into a manufactured order-one moment. Deferred/normalized constants
+        // and finite rank-deficient coordinates remain explicitly checked.
+        if status == PreparedOlsFitStatus::CollinearWithFixedEffects {
+            continue;
         }
         let denominator = if score_norm > 0.0 {
             score_norm
@@ -2259,6 +2279,10 @@ fn invalid_argument(message: &'static str) -> StFixestError {
 
 fn invalid_data(message: &'static str) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidData, message)
+}
+
+fn insufficient_observations(message: &'static str) -> StFixestError {
+    StFixestError::new(ErrorCode::InsufficientObservations, message)
 }
 
 #[cfg(test)]
@@ -3354,7 +3378,10 @@ mod tests {
             .iter()
             .zip(&g)
             .map(|(within, group)| {
-                let fixed_effect = if *group == 1.0 { 1e7 } else { -1e7 };
+                // Large enough to exercise scale separation, but outside the
+                // pinned squared 1e-9 FE-collinearity cutoff so this remains
+                // an identified-coordinate score-certificate mutation test.
+                let fixed_effect = if *group == 1.0 { 1e4 } else { -1e4 };
                 fixed_effect + within
             })
             .collect::<Vec<_>>();
@@ -3453,7 +3480,7 @@ mod tests {
             fit_prepared_ols_coefficients_map(&empty, PreparedOlsFitConfig::default())
                 .expect_err("empty fit")
                 .code,
-            ErrorCode::InvalidData
+            ErrorCode::InsufficientObservations
         );
         let x = vec![0.0, 1.0, 2.0];
         let y = vec![1.0, 2.0, 3.0];

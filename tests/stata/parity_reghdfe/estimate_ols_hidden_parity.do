@@ -59,7 +59,7 @@ assert e(V)[2,2] == 0
 assert rowsof(e(dof_table)) == 1 & colsof(e(dof_table)) == 5
 local dof_rows : rowfullnames e(dof_table)
 local dof_columns : colnames e(dof_table)
-assert `"`dof_rows'"' == "firm"
+assert `"`dof_rows'"' == "1.firm"
 assert `"`dof_columns'"' == "Categories Redundant Num Coefs Inexact? Nested?"
 assert e(dof_table)[1,1] == 8
 assert e(dof_table)[1,2] == 0
@@ -73,6 +73,8 @@ assert abs(e(V)[5,5] - +1.31b4b891013a3X-009) <= 3e-6
 
 _stfixest_estimate_ols_test y c.x1, absorb(worker firm) cluster(cluster_a)
 assert e(df_r) == 7
+local clustered_dof_rows : rowfullnames e(dof_table)
+assert `"`clustered_dof_rows'"' == "1.worker 1.firm"
 assert e(N_clust) == 8 & e(N_clust1) == 8
 assert e(stfixest_certificate)[25,2] == 1
 assert e(stfixest_certificate)[26,2] == 0
@@ -166,5 +168,18 @@ assert `"`e(vce)'"' == "robust" & `"`e(vcetype)'"' == "Robust"
 assert abs(e(b)[1,1] - +1.0a633d2c1dd4cX+001) <= 3e-6
 assert abs(e(V)[1,1] - +1.464d18a4af078X-005) <= 3e-6
 assert abs(e(V)[2,2] - +1.6ca0cbb6a2a2aX-007) <= 3e-6
+
+generate double __stfx_aw_negative = 1
+replace __stfx_aw_negative = -1 in 1
+capture noisily _stfixest_estimate_ols_test y c.x, absorb(group) aweight(__stfx_aw_negative)
+assert _rc == 402
+
+generate double __stfx_fw_fractional = fw_valid
+replace __stfx_fw_fractional = 1.5 in 1
+capture noisily _stfixest_estimate_ols_test y c.x, absorb(group) fweight(__stfx_fw_fractional)
+assert _rc == 401
+
+capture noisily _stfixest_estimate_ols_test y c.x if 0, absorb(group)
+assert _rc == 2001
 
 di as result "END_FIXTURE|estimate_ols_hidden_parity|rc=0"

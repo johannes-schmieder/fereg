@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_hidden_numeric_v1",
+  "mode": "developer_hidden_current_surface",
+  "public_activation": false,
+  "performance": "unmeasured",
+  "parent_manifest": {
+    "path": "benchmarks/manifests/ols_v1.json",
+    "sha256": "f11daeaee235d068bf928f4ebdf1067de2efd80e9daffdbf6dd5eb23a95b06d4"
+  },
+  "comparator_receipt": {
+    "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9",
+    "file_sha256": "e0486c288c598df0322ba7a498a928220d017722e036499c1bd86b14574e9df8",
+    "payload_sha256": "6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002"
+  },
+  "candidate_command": "_stfixest_ols_hidden_numeric_v1",
+  "intended_public_command": "stfeols",
+  "tolerances": {
+    "coefficient_rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-6,
+    "vce_atol": 1e-10,
+    "fit_rtol": 1e-7,
+    "fit_atol": 1e-9
+  },
+  "executable_case_ids": [
+    "unweighted_no_fe",
+    "one_fe_robust",
+    "disconnected_no_regressors",
+    "collinear_with_fe",
+    "missing_and_if_in",
+    "missing_fe_source",
+    "missing_cluster_source",
+    "singleton_cascade",
+    "keep_singletons",
+    "aweight",
+    "aweight_rescaled",
+    "fweight",
+    "pweight",
+    "zero_weight_probe",
+    "negative_weight_error",
+    "fractional_fweight_error",
+    "missing_weight",
+    "large_weight",
+    "weight_if_in",
+    "invalid_weight_outside_candidate",
+    "weighted_singletons",
+    "cluster_oneway",
+    "cluster_twoway",
+    "cluster_threeway",
+    "cluster_interaction",
+    "nested_fe_cluster",
+    "dof_none",
+    "dof_firstpair",
+    "empty_sample_error",
+    "one_observation_error"
+  ],
+  "blockers": [
+    {"case_id": "multi_fe_interactions", "reason": "absorbed_categorical_interaction"},
+    {"case_id": "intercept_and_slope", "reason": "absorbed_intercept_slope"},
+    {"case_id": "slope_only_multiple", "reason": "absorbed_slope_only_multiple"},
+    {"case_id": "string_fe", "reason": "string_source_ingestion"},
+    {"case_id": "time_series_lag", "reason": "time_series_materialization"},
+    {"case_id": "time_series_lead_difference_gaps", "reason": "time_series_materialization"},
+    {"case_id": "iweight_probe", "reason": "importance_weight_semantics"},
+    {"case_id": "dof_continuous", "reason": "absorbed_slope_continuous_dof"},
+    {"case_id": "saved_outputs", "reason": "fixed_effect_recovery_outputs"},
+    {"case_id": "postestimation_test_summarize", "reason": "public_postestimation"}
+  ]
+}
