@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SENTINEL_PREFIX = "END_FIXTURE|"
+FORBIDDEN_SUCCESS_DIAGNOSTICS = (
+    "warning: variance matrix is nonsymmetric or highly singular.",
+)
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,10 @@ def expected_sentinel(path: Path) -> str:
 
 def validate_fixture_log(path: Path, log_text: str) -> str | None:
     """Require exactly one sentinel-prefixed line equal to the expected value."""
+    lowered = log_text.lower()
+    for diagnostic in FORBIDDEN_SUCCESS_DIAGNOSTICS:
+        if diagnostic in lowered:
+            return f"forbidden Stata success diagnostic {diagnostic!r}"
     expected = expected_sentinel(path)
     sentinels = [
         line.strip()

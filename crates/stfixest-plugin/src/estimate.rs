@@ -178,7 +178,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
 
 impl EstimateActionSpec {
     fn parse(args: &[String]) -> Result<Self> {
-        let values = parse_key_values(args)?;
+        let values = parse_estimate_key_values(args)?;
         let handshake = Handshake::from_key_values(&values)?;
         handshake.validate()?;
         if handshake.protocol != ACTION_PROTOCOL_VERSION {
@@ -445,6 +445,95 @@ impl EstimateActionSpec {
             matrices,
         })
     }
+}
+
+/// Stata 18 rejects a plugin call with the complete guarded estimate protocol
+/// as "too many options" before native dispatch.  Keep the ordinary argv form
+/// for the C and Fake SPI boundaries, and additionally accept one explicitly
+/// tagged, byte-length-framed bundle for the hidden licensed-Stata caller.
+/// Decoding is complete and canonical before the handshake and before any SPI
+/// metadata or observation read.
+fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
+    let Some(bundle) = (args.len() == 1)
+        .then(|| args[0].strip_prefix("bundle="))
+        .flatten()
+    else {
+        if args.iter().any(|argument| argument.starts_with("bundle=")) {
+            return Err(syntax(
+                "guarded OLS bundle must be the only action argument",
+            ));
+        }
+        return parse_key_values(args);
+    };
+    let fields = decode_estimate_bundle(bundle)?;
+    parse_key_values(&fields)
+}
+
+fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
+    const MAX_FIELDS: usize = 64;
+    let bytes = bundle.as_bytes();
+    let (count, mut cursor) = parse_bundle_decimal(bytes, 0, "field count")?;
+    if count == 0 || count > MAX_FIELDS {
+        return Err(syntax(
+            "guarded OLS bundle field count must be between one and 64",
+        ));
+    }
+    let mut fields = reserved_empty(count, "guarded OLS bundle fields")?;
+    for _ in 0..count {
+        let (length, payload_start) = parse_bundle_decimal(bytes, cursor, "field length")?;
+        if length == 0 {
+            return Err(syntax("guarded OLS bundle field is empty"));
+        }
+        let payload_end = payload_start
+            .checked_add(length)
+            .filter(|end| *end <= bytes.len())
+            .ok_or_else(|| syntax("guarded OLS bundle field is truncated"))?;
+        let payload = bundle
+            .get(payload_start..payload_end)
+            .ok_or_else(|| syntax("guarded OLS bundle length splits UTF-8 data"))?;
+        let mut field = String::new();
+        field
+            .try_reserve_exact(payload.len())
+            .map_err(|_| allocation("unable to reserve guarded OLS bundle field"))?;
+        if field.capacity() < payload.len() {
+            return Err(allocation(
+                "guarded OLS bundle field reservation was undersized",
+            ));
+        }
+        field.push_str(payload);
+        push_reserved(
+            &mut fields,
+            field,
+            "guarded OLS bundle field capacity exhausted",
+        )?;
+        cursor = payload_end;
+    }
+    if cursor != bytes.len() {
+        return Err(syntax("guarded OLS bundle has trailing data"));
+    }
+    Ok(fields)
+}
+
+fn parse_bundle_decimal(bytes: &[u8], start: usize, label: &str) -> Result<(usize, usize)> {
+    let mut cursor = start;
+    while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
+        cursor += 1;
+    }
+    if cursor == start || cursor >= bytes.len() || bytes[cursor] != b':' {
+        return Err(syntax(format!(
+            "guarded OLS bundle {label} lacks a decimal length delimiter"
+        )));
+    }
+    if cursor - start > 1 && bytes[start] == b'0' {
+        return Err(syntax(format!(
+            "guarded OLS bundle {label} is not canonically encoded"
+        )));
+    }
+    let value = std::str::from_utf8(&bytes[start..cursor])
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .ok_or_else(|| syntax(format!("guarded OLS bundle {label} overflows")))?;
+    Ok((value, cursor + 1))
 }
 
 fn validate_cluster_request_shape(request: &OlsClusteredRequestV1) -> Result<()> {
@@ -1497,6 +1586,16 @@ mod tests {
             .join("|")
     }
 
+    fn bundled(args: &[String]) -> Vec<String> {
+        let mut payload = format!("{}:", args.len());
+        for argument in args {
+            payload.push_str(&argument.len().to_string());
+            payload.push(':');
+            payload.push_str(argument);
+        }
+        vec![format!("bundle={payload}")]
+    }
+
     fn zero_matrix(rows: usize, columns: usize) -> Vec<Vec<f64>> {
         vec![vec![0.0; columns]; rows]
     }
@@ -1775,6 +1874,76 @@ mod tests {
                 Some(&StoreEvent::Matrix(11, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
         }
+    }
+
+    #[test]
+    fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() {
+        let (args, mut ordinary) = fixture(OlsVceKind::Iid);
+        estimate_ols_test(&args, &mut ordinary).expect("ordinary argv succeeds");
+
+        let (args, mut packed) = fixture(OlsVceKind::Iid);
+        estimate_ols_test(&bundled(&args), &mut packed).expect("bundle succeeds");
+        for name in [
+            "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RREC",
+        ] {
+            assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
+        }
+        for row in 0..SOLVER_ROWS {
+            for column in 0..SOLVER_COLUMNS {
+                if !matches!(column, 8 | 9) {
+                    assert_eq!(
+                        packed.matrices["RSOLVER"][row][column],
+                        ordinary.matrices["RSOLVER"][row][column]
+                    );
+                }
+            }
+        }
+        assert_eq!(packed.store_calls, ordinary.store_calls);
+        assert_eq!(packed.stores.last(), ordinary.stores.last());
+        assert_eq!(packed.numeric_reads, ordinary.numeric_reads);
+
+        let malformed = [
+            "bundle=0:",
+            "bundle=01:3:a=b",
+            "bundle=1:03:a=b",
+            "bundle=1:4:a=b",
+            "bundle=1:3:a=bx",
+            "bundle=1:0:",
+            "bundle=1:x:a=b",
+            "bundle=1:1:\u{00e9}",
+            "bundle=2:3:a=b3:a=b",
+            "bundle=1:3:abc",
+        ];
+        for argument in malformed {
+            let (_, mut spi) = fixture(OlsVceKind::Iid);
+            let error = estimate_ols_test(&[argument.to_owned()], &mut spi)
+                .expect_err("malformed or incomplete bundle is rejected");
+            assert!(matches!(
+                error.code,
+                ErrorCode::Syntax | ErrorCode::InvalidArgument
+            ));
+            assert_eq!(spi.numeric_reads, 0, "{argument}");
+            assert_eq!(spi.store_calls, 0, "{argument}");
+            assert_eq!(spi.receipt_complete(), 0.0, "{argument}");
+        }
+
+        let (args, mut unknown_spi) = fixture(OlsVceKind::Iid);
+        let mut unknown = args;
+        unknown.push("surprise=1".to_owned());
+        let error = estimate_ols_test(&bundled(&unknown), &mut unknown_spi)
+            .expect_err("unknown bundled field is rejected");
+        assert_eq!(error.code, ErrorCode::Syntax);
+        assert_eq!(unknown_spi.numeric_reads, 0);
+        assert_eq!(unknown_spi.store_calls, 0);
+
+        let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
+        let mut mixed = bundled(&args);
+        mixed.push("ado=0.1.0-phase01".to_owned());
+        let error = estimate_ols_test(&mixed, &mut mixed_spi)
+            .expect_err("mixed bundle and argv are rejected");
+        assert_eq!(error.code, ErrorCode::Syntax);
+        assert_eq!(mixed_spi.numeric_reads, 0);
+        assert_eq!(mixed_spi.store_calls, 0);
     }
 
     #[test]

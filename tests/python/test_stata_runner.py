@@ -43,6 +43,15 @@ class StataRunnerSentinelTests(unittest.TestCase):
         error = validate_fixture_log(self.fixture, log)
         self.assertIn("missing", error or "")
 
+    def test_rejects_singularity_warning_even_with_success_sentinel(self):
+        sentinel = expected_sentinel(self.fixture)
+        log = (
+            "warning: variance matrix is nonsymmetric or highly singular.\n"
+            f"{sentinel}\n"
+        )
+        error = validate_fixture_log(self.fixture, log)
+        self.assertIn("forbidden", error or "")
+
     def test_zero_process_status_cannot_mask_missing_sentinel(self):
         def fake_runner(args, *, cwd, **kwargs):
             Path(cwd, "run.log").write_text("assertion is false\nr(9);\n", encoding="utf-8")
