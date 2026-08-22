@@ -46,6 +46,7 @@ pub(super) struct CertifiedPreparedOlsScoreDesign {
     pub(super) within: DenseMatrix,
     means: Vec<f64>,
     finite_positions: Vec<usize>,
+    reported_to_finite: Vec<usize>,
     normalized_intercept_position: Option<usize>,
     pub(super) certificate: PreparedOlsScoreDesignCertificate,
 }
@@ -67,10 +68,10 @@ impl CertifiedPreparedOlsScoreDesign {
         if self.normalized_intercept_position == Some(position) {
             return Ok(1.0);
         }
-        let finite = self
-            .finite_positions
-            .iter()
-            .position(|candidate| *candidate == position)
+        let finite = *self
+            .reported_to_finite
+            .get(position)
+            .filter(|finite| **finite != usize::MAX)
             .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
         let value = self.finite_value(row, finite)
             + if self.normalized_intercept_position.is_some() {
@@ -121,6 +122,12 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
         0_usize,
         "unable to reserve prepared robust finite score positions",
     )?;
+    let mut reported_to_finite = reserved_filled(
+        reservation,
+        dimension,
+        usize::MAX,
+        "unable to reserve prepared robust reported-score coordinate map",
+    )?;
     let mut normalized_intercept_position = None;
     let mut finite = 0_usize;
     for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
@@ -137,6 +144,7 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
                 }
                 generated_columns[finite] = coordinate.generated_column_index;
                 finite_positions[finite] = position;
+                reported_to_finite[position] = finite;
                 finite = finite
                     .checked_add(1)
                     .ok_or_else(|| allocation("prepared robust finite score rank overflows"))?;
@@ -231,6 +239,7 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
         within,
         means,
         finite_positions,
+        reported_to_finite,
         normalized_intercept_position,
         certificate,
     })

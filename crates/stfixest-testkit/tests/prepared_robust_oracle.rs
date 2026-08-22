@@ -107,6 +107,151 @@ fn randomized_row_permuted_hc1_matches_explicit_dummy_ground_truth() {
 }
 
 #[test]
+fn virtual_constant_matches_one_level_dummy_for_default_and_noconstant() {
+    let x = vec![vec![-3.0, -1.5, -0.5, 0.5, 1.5, 2.5, 4.0, 6.0]];
+    let outcome = [1.2, 2.4, 2.8, 4.9, 5.1, 7.4, 7.8, 9.7];
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome: outcome.to_vec(),
+        regressors: x.clone(),
+        effects: vec![DummyEffect::new(vec![0; outcome.len()], 1, true, vec![])
+            .expect("one-level virtual-constant dummy")],
+        weights: OracleWeights::Unit,
+        clusters: vec![],
+    })
+    .expect("virtual-constant explicit oracle");
+    assert_eq!(oracle.explicit_dummy_rank, 1);
+    assert_eq!(oracle.model_rank, 2);
+    assert_eq!(oracle.residual_degrees_of_freedom, outcome.len() - 2);
+    for include_intercept in [true, false] {
+        let production = fit_prepared_ols_robust_map(
+            &prepare_continuous_case(&outcome, &x, &[], include_intercept, CaseWeights::Unit),
+            PreparedOlsRobustConfig::default(),
+        )
+        .expect("virtual-constant prepared robust fit");
+        assert_eq!(production.dof().absorbed_rank, 1);
+        assert_eq!(production.dof().model_rank, oracle.model_rank);
+        assert_eq!(
+            production.dof().residual_dof,
+            oracle.residual_degrees_of_freedom
+        );
+        let expected = if include_intercept {
+            oracle
+                .normalized_reported_intercept_hc1_vce
+                .as_ref()
+                .expect("oracle reported virtual constant")
+        } else {
+            &oracle.hc1_vce
+        };
+        assert_slice_close(
+            production.covariance().values(),
+            expected.as_slice(),
+            COVARIANCE_TOLERANCE,
+        );
+        assert!(production.certificate().passed);
+    }
+}
+
+#[test]
+fn disconnected_two_way_fe_matches_explicit_dummy_rank_and_full_hc1() {
+    let first = vec![0_u32, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3];
+    let second = vec![0_u32, 1, 0, 1, 0, 1, 0, 1, 2, 3, 2, 3, 2, 3, 2, 3];
+    let x = vec![vec![
+        -3.0, -1.0, 0.5, 2.0, -2.5, -0.25, 1.0, 3.5, -4.0, -1.5, 1.5, 4.0, -3.5, -0.5, 2.5, 5.0,
+    ]];
+    let outcome = (0..first.len())
+        .map(|row| {
+            1.6 * x[0][row]
+                + [0.5, -0.8, 1.4, -1.2][first[row] as usize]
+                + [0.3, -0.4, 0.9, -0.6][second[row] as usize]
+                + 0.19 * (row as f64).sin()
+        })
+        .collect::<Vec<_>>();
+    let production = fit_prepared_ols_robust_map(
+        &prepare_continuous_case(
+            &outcome,
+            &x,
+            &[first.clone(), second.clone()],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsRobustConfig::default(),
+    )
+    .expect("disconnected prepared robust fit");
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome,
+        regressors: x,
+        effects: vec![
+            DummyEffect::new(first, 4, true, vec![]).expect("first disconnected effect"),
+            DummyEffect::new(second, 4, true, vec![]).expect("second disconnected effect"),
+        ],
+        weights: OracleWeights::Unit,
+        clusters: vec![],
+    })
+    .expect("disconnected explicit oracle");
+    assert_eq!(oracle.explicit_dummy_rank, 6);
+    assert_eq!(production.dof().absorbed_rank, oracle.explicit_dummy_rank);
+    assert_eq!(production.dof().model_rank, oracle.model_rank);
+    assert_eq!(
+        production.dof().residual_dof,
+        oracle.residual_degrees_of_freedom
+    );
+    assert_slice_close(
+        production.covariance().values(),
+        oracle
+            .normalized_reported_intercept_hc1_vce
+            .as_ref()
+            .expect("disconnected reported intercept oracle")
+            .as_slice(),
+        COVARIANCE_TOLERANCE,
+    );
+    assert!(production.certificate().passed);
+}
+
+#[test]
+fn repeated_identical_fe_terms_match_one_span_oracle_and_ranks() {
+    let codes = vec![0_u32, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
+    let x = vec![
+        -3.0, -1.0, 1.0, -2.0, 0.5, 3.0, -4.0, 1.5, 4.5, -2.5, 2.0, 5.0,
+    ];
+    let outcome = (0..codes.len())
+        .map(|row| {
+            1.9 * x[row] + [0.4, -0.7, 1.3, -1.1][codes[row] as usize] + 0.13 * (row as f64).cos()
+        })
+        .collect::<Vec<_>>();
+    let production = fit_prepared_ols_robust_map(
+        &prepare_repeated_effect_case(&outcome, &x, &codes),
+        PreparedOlsRobustConfig::default(),
+    )
+    .expect("repeated-FE prepared robust fit");
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome,
+        regressors: vec![x],
+        effects: vec![DummyEffect::new(codes, 4, true, vec![]).expect("single-span dummy")],
+        weights: OracleWeights::Unit,
+        clusters: vec![],
+    })
+    .expect("single-span repeated-FE oracle");
+    assert_eq!(production.absorbed_dof().effects.len(), 2);
+    assert_eq!(production.dof().absorbed_rank, 4);
+    assert_eq!(production.dof().absorbed_rank, oracle.explicit_dummy_rank);
+    assert_eq!(production.dof().model_rank, oracle.model_rank);
+    assert_eq!(
+        production.dof().residual_dof,
+        oracle.residual_degrees_of_freedom
+    );
+    assert_slice_close(
+        production.covariance().values(),
+        oracle
+            .normalized_reported_intercept_hc1_vce
+            .as_ref()
+            .expect("repeated-FE reported intercept oracle")
+            .as_slice(),
+        COVARIANCE_TOLERANCE,
+    );
+    assert!(production.certificate().passed);
+}
+
+#[test]
 fn sealed_stata18_one_fe_robust_and_pweight_covariances_match() {
     // Immutable reference receipt:
     // benchmarks/reports/captured/darwin-arm64/stata18/ols/
@@ -527,6 +672,72 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
         },
     )
     .expect("prepared one-FE factor robust case")
+}
+
+fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> PreparedOlsData {
+    let x_source = source_id(0);
+    let effect_source = source_id(1);
+    let repeated = |term: u32, label: &str| AbsorbedTerm {
+        id: AbsorbTermId::new(term).expect("repeated effect id"),
+        intercept: true,
+        categorical_sources: vec![effect_source],
+        slope_sources: vec![],
+        label: label.to_owned(),
+        saved_name: String::new(),
+    };
+    prepare_ols_data(
+        &OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![
+                    SourceEntry {
+                        id: x_source,
+                        canonical_name: "x".to_owned(),
+                    },
+                    SourceEntry {
+                        id: effect_source,
+                        canonical_name: "g".to_owned(),
+                    },
+                ],
+                terms: vec![continuous_term(0, x_source)],
+            },
+            absorbed_terms: vec![repeated(1, "g_first"), repeated(2, "g_second")],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x_source),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(effect_source),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        },
+        &LoadedOlsInput {
+            candidate: vec![true; outcome.len()],
+            outcome: loaded_column(outcome.to_vec()),
+            numeric_sources: vec![
+                (x_source, loaded_column(x.to_vec())),
+                (
+                    effect_source,
+                    loaded_column(codes.iter().map(|code| f64::from(*code)).collect()),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        },
+    )
+    .expect("prepared repeated-FE robust case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {
