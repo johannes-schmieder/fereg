@@ -5,6 +5,7 @@ mod borrowed_map;
 mod certificate;
 mod components;
 mod design;
+mod interaction;
 mod lsmr;
 mod map;
 mod projection;
@@ -22,6 +23,9 @@ pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;
 pub use design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
+};
+pub use interaction::{
+    factorize_code_interaction, CategoricalCodeView, EncodedInteraction,
 };
 pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};
 pub use map::{absorb_map, MapConfig};
