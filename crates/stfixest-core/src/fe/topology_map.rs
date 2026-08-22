@@ -170,14 +170,15 @@ mod tests {
         .expect("MAP");
         assert!(result.report().certified());
 
+        let compacted_views = [
+            topology.compacted_sources()[0].view(),
+            topology.compacted_sources()[1].view(),
+        ];
         let interaction_codes = topology
             .registry()
             .source(0)
             .expect("interaction source")
-            .codes(&[
-                topology.compacted_sources()[0].view(),
-                topology.compacted_sources()[1].view(),
-            ])
+            .codes(&compacted_views)
             .expect("interaction codes");
         for column in 0..2 {
             let original = if column == 0 { &first } else { &second };
@@ -211,12 +212,9 @@ mod tests {
         ];
         let single = finalize_categorical_topology(&sources, &[&[0, 1]], &[true; 8])
             .expect("single topology");
-        let repeated = finalize_categorical_topology(
-            &sources,
-            &[&[0, 1], &[1, 0], &[0, 1, 0]],
-            &[true; 8],
-        )
-        .expect("repeated topology");
+        let repeated =
+            finalize_categorical_topology(&sources, &[&[0, 1], &[1, 0], &[0, 1, 0]], &[true; 8])
+                .expect("repeated topology");
         let values = matrix(&[vec![1.0, 5.0, 2.0, 6.0, 3.0, 8.0, 4.0, 10.0]]);
         let left = absorb_finalized_categorical_topology_map_certified(
             &single,
@@ -246,12 +244,8 @@ mod tests {
             CategoricalCodeView::new(&year, 2),
             CategoricalCodeView::new(&region, 2),
         ];
-        let topology = finalize_categorical_topology(
-            &sources,
-            &[&[0, 1], &[2]],
-            &[true; 8],
-        )
-        .expect("mixed topology");
+        let topology = finalize_categorical_topology(&sources, &[&[0, 1], &[2]], &[true; 8])
+            .expect("mixed topology");
         let values = matrix(&[vec![1.0, 3.0, 2.0, 6.0, 4.0, 8.0, 5.0, 9.0]]);
         let result = absorb_finalized_categorical_topology_map_certified(
             &topology,
@@ -272,8 +266,8 @@ mod tests {
     fn empty_effect_table_preserves_values_under_generic_map_contract() {
         let raw = [0, 1, 0];
         let sources = [CategoricalCodeView::new(&raw, 2)];
-        let topology = finalize_categorical_topology(&sources, &[], &[true; 3])
-            .expect("empty topology");
+        let topology =
+            finalize_categorical_topology(&sources, &[], &[true; 3]).expect("empty topology");
         let values = matrix(&[vec![1.0, 2.0, 3.0]]);
         let result = absorb_finalized_categorical_topology_map_certified(
             &topology,
@@ -289,8 +283,8 @@ mod tests {
     fn observation_mismatch_fails_before_map() {
         let raw = [0, 1, 0];
         let sources = [CategoricalCodeView::new(&raw, 2)];
-        let topology = finalize_categorical_topology(&sources, &[&[0]], &[true; 3])
-            .expect("topology");
+        let topology =
+            finalize_categorical_topology(&sources, &[&[0]], &[true; 3]).expect("topology");
         let error = absorb_finalized_categorical_topology_map_certified(
             &topology,
             BorrowedMapWeights::Unit,
@@ -309,8 +303,8 @@ mod tests {
             CategoricalCodeView::new(&firm, 2),
             CategoricalCodeView::new(&year, 2),
         ];
-        let topology = finalize_categorical_topology(&sources, &[&[0, 1]], &[true; 4])
-            .expect("topology");
+        let topology =
+            finalize_categorical_topology(&sources, &[&[0, 1]], &[true; 4]).expect("topology");
         let values = matrix(&[vec![1.0, 2.0, 3.0, 4.0]]);
 
         let mut failed = InjectedReservation {
