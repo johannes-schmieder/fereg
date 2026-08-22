@@ -71,8 +71,8 @@ frequency-weighted models use exact checked integer multiplicity per FE level.
 Singleton counts report physical rows removed, not summed frequency weight.
 The sealed `weighted_singletons` analytic-weight case fixes the retained and
 deleted identities; the pinned `reghdfe` source supplies the frequency-weight
-multiplicity rule. Solver, VCE, DoF, and posted-weight semantics remain later
-gates.
+multiplicity rule. Prepared iid inference is now defined below; robust/cluster
+VCE and all posted-weight semantics remain later gates.
 
 The separate core-only prepared coefficient checkpoint now supplies a bounded
 objective-semantic test without changing those Stata-facing limits. For
@@ -89,10 +89,32 @@ scale: raw integer cross-product weights and exact summed `N_ref` for frequency
 weights; analytic/probability weights rescaled to sum to physical N; and unit
 weights otherwise. Common analytic/probability scaling therefore leaves bread
 unchanged, whereas multiplying frequency weights by an integer divides bread
-by that integer, matching literal row expansion. It still does not decide a
-variance scale or score meat, effective posted metadata, VCE, residual DoF, fit
-statistics, display metadata, or public probability-weight defaults, and it is
-not callable through the plugin or `stfeols`.
+by that integer, matching literal row expansion.
+
+The separate same-call `CertifiedPreparedOlsUnadjusted` checkpoint is the only
+current consumer allowed to turn that bread into conventional homoskedastic
+covariance. Its reference objective and count policies are:
+
+| Kind | Reference weight | Effective N | Raw sum metadata | IID policy |
+|---|---|---|---|---|
+| none | 1 | physical retained rows | absent | supported |
+| analytic | `raw * physical_N / sum(raw)` | physical retained rows | supplied positive-weight sum | supported |
+| frequency | raw positive integer multiplicity | exact checked frequency sum | exact frequency sum | supported |
+| probability | same prepared objective normalization as analytic | physical retained rows | supplied positive-weight sum | rejected: pinned reference requires robust inference |
+
+For supported kinds, residual DoF is effective N minus finite kept rank and
+absorbed rank; the normalized absorbed `_cons` is not an additional rank.
+`RSS`, `TSS`, within TSS, RMSE, R-squared statistics, conditional F, likelihoods,
+and iid covariance all use that reference scale. The analytic and rescaled-
+analytic sealed cases therefore have the same RSS and covariance within
+tolerance while retaining distinct raw `sumweights`; frequency inference is
+identical to literal row expansion. Independent tests also cover common
+analytic scales from `1e-150` through `1e150` and exact effective frequency N.
+
+This remains core-only. It does not define robust/cluster score meat, cluster
+corrections, posted `e(N)`/`e(sumweights)`, display metadata, or public
+probability-weight defaults, and it is not callable through the plugin or
+`stfeols`.
 
 ## Evidence and enablement gate
 

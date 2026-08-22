@@ -187,6 +187,72 @@ frequency-weight observation counts, residual DoF, covariance corrections,
 and fit statistics. It has no plugin action or SPI write and does not enable
 `stfeols`.
 
+## Certified prepared unadjusted-inference checkpoint
+
+`fit_prepared_ols_unadjusted_map` is the only eligible prepared iid composition.
+It constructs the certified coefficient/bread fit and the requested structural
+absorbed-DoF report inside the same call, so callers cannot accidentally combine
+artifacts from different prepared samples. It does not call the older generic
+fit, VCE, fit-statistic, or DoF routines.
+
+The fit retains one scalar that would otherwise be destroyed by QR: the
+reference-weight sum of squares of Y immediately after the initial certified
+MAP. With fixed effects this is within TSS. With no fixed effects the composite
+instead uses overall TSS, centered when the model has a structural intercept
+and uncentered otherwise. The returned rank report centralizes:
+
+```text
+q          = kept finite rank
+df_m       = q - kept ordinary finite intercept count
+model_rank = q + absorbed_rank
+df_r       = N_effective - model_rank > 0
+```
+
+The normalized absorbed `_cons` covariance coordinate contributes neither
+finite nor absorbed rank. Unweighted and analytic models use physical row count
+as effective N; analytic reference weights are raw weights rescaled to sum to
+physical N. Frequency models use raw positive integer weights and their exact
+checked sum as effective N. The raw supplied weight sum is reported separately.
+Probability-weight iid inference is rejected because the pinned reference
+changes positive pweights to robust inference.
+
+On the fit's canonical kept-plus-normalized-intercept coordinate axis, the
+checkpoint computes:
+
+```text
+sigma2       = RSS / df_r
+V_iid        = sigma2 * bread
+R2           = 1 - RSS / TSS
+R2_within    = 1 - RSS / within_TSS
+R2_adjusted  = 1 - (RSS / df_r) / (TSS / (N_effective - has_intercept))
+R2a_within   = 1 - (RSS / df_r) / (within_TSS / (df_r + df_m))
+RMSE         = sqrt(RSS / df_r)
+F            = ((within_TSS - RSS) / df_m) / (RSS / df_r)
+```
+
+Ratios, F, and Gaussian likelihoods that have no finite mathematical value are
+`None`, never NaN sentinels. F is returned only when `df_m>0`, `RSS>0`, and the
+explained within sum is nonnegative. The null Gaussian likelihood uses the
+fixed-effect-only within objective.
+
+Before publication, the composite independently checks the reference-weight
+sum, RSS/TSS/within primitives and ordering, residual-DoF identity, covariance
+scale, symmetry, diagonals and standard errors, and every reported formula.
+Only the checked K-by-K covariance and K standard-error vectors are newly
+allocated, through fallible capacity-guarded reservations; no observation-scale
+copy is introduced. Allocation sweeps, undersized reservations, corrupt
+absorbed-DoF artifacts, and injected RSS/DoF/covariance/within/statistic errors
+all fail closed.
+
+Independent explicit-dummy tests cover unit, analytic, and frequency objectives;
+no/one/two/repeated and disconnected FEs; random designs and row permutations;
+literal frequency expansion; and extreme common analytic scaling. The sealed
+Stata 18 receipt anchors no-FE scalar statistics and full iid covariance,
+disconnected FE-only covariance, analytic and rescaled-analytic weights,
+frequency weights, one-FE within statistics, and `None`/`FirstPair`/`Pairwise`
+DoF policies. The checkpoint has no plugin action or SPI write, performs no FE
+recovery, and does not enable `stfeols`.
+
 ## Legacy covariance source
 
 The older generic core contains:
@@ -203,9 +269,10 @@ Any required cluster subset with fewer than two groups fails closed.
 
 Those covariance routines and the older generic DoF routine are not certified
 for the prepared estimator and must not be used for Stata result posting.
-Prepared IID/robust score construction, weight-specific meat semantics,
-finite-sample corrections, cluster intersections/nesting, residual DoF, and
-fit-statistic parity remain later checkpoints.
+Prepared iid covariance, residual DoF, and fit statistics now have the separate
+certified checkpoint above. Prepared robust/cluster score construction,
+weight-specific meat semantics, finite-sample corrections, and cluster
+intersections/nesting remain later checkpoints.
 
 ## Current boundary
 
