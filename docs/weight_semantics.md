@@ -71,8 +71,8 @@ frequency-weighted models use exact checked integer multiplicity per FE level.
 Singleton counts report physical rows removed, not summed frequency weight.
 The sealed `weighted_singletons` analytic-weight case fixes the retained and
 deleted identities; the pinned `reghdfe` source supplies the frequency-weight
-multiplicity rule. Prepared iid inference is now defined below; robust/cluster
-VCE and all posted-weight semantics remain later gates.
+multiplicity rule. Prepared iid and HC1 robust inference are now defined below;
+clustered VCE and all posted-weight semantics remain later gates.
 
 The separate core-only prepared coefficient checkpoint now supplies a bounded
 objective-semantic test without changing those Stata-facing limits. For
@@ -91,9 +91,9 @@ weights otherwise. Common analytic/probability scaling therefore leaves bread
 unchanged, whereas multiplying frequency weights by an integer divides bread
 by that integer, matching literal row expansion.
 
-The separate same-call `CertifiedPreparedOlsUnadjusted` checkpoint is the only
-current consumer allowed to turn that bread into conventional homoskedastic
-covariance. Its reference objective and count policies are:
+The separate same-call `CertifiedPreparedOlsUnadjusted` checkpoint is the
+consumer allowed to turn that bread into conventional homoskedastic covariance.
+Its reference objective and count policies are:
 
 | Kind | Reference weight | Effective N | Raw sum metadata | IID policy |
 |---|---|---|---|---|
@@ -118,7 +118,24 @@ tolerance while retaining distinct raw `sumweights`; frequency inference is
 identical to literal row expansion. Independent tests also cover common
 analytic scales from `1e-150` through `1e150` and exact effective frequency N.
 
-This remains core-only. It does not define robust/cluster score meat, cluster
+The separate same-call `CertifiedPreparedOlsRobust` checkpoint consumes the
+same reference-weight and effective-N report. Its HC1 policy is:
+
+| Kind | Effective N | Per-row score-meat multiplier `lambda_i` | Robust scaling rule |
+|---|---|---|---|
+| none | physical retained rows | `1` | unweighted HC1 |
+| analytic | physical retained rows | `(raw_i * physical_N / sum(raw))^2` | invariant to a common positive scale |
+| frequency | exact checked frequency sum | raw integer multiplicity | identical to literal row expansion |
+| probability | physical retained rows | `(raw_i * physical_N / sum(raw))^2` | invariant to a common positive scale |
+
+For every kind, `c_HC1=N_effective/df_r` and
+`V=c_HC1 * bread * sum_i(lambda_i e_i^2 z_i z_i') * bread`. The robust
+checkpoint therefore crosses the previously gated positive-pweight scientific
+core boundary without changing any public or posted weight behavior.
+Independent explicit-dummy WLS and literal-expansion oracles cover these
+formulas; the sealed receipt anchors the full probability-weight covariance.
+
+This remains core-only. It does not define cluster score aggregation or
 corrections, posted `e(N)`/`e(sumweights)`, display metadata, or public
 probability-weight defaults, and it is not callable through the plugin or
 `stfeols`.

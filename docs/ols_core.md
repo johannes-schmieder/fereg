@@ -208,7 +208,7 @@ and fit statistics. It has no plugin action or SPI write and does not enable
 
 ## Certified prepared unadjusted-inference checkpoint
 
-`fit_prepared_ols_unadjusted_map` is the only eligible prepared iid composition.
+`fit_prepared_ols_unadjusted_map` is the eligible prepared iid composition.
 It constructs the certified coefficient/bread fit and the requested structural
 absorbed-DoF report inside the same call, so callers cannot accidentally combine
 artifacts from different prepared samples. It does not call the older generic
@@ -283,6 +283,74 @@ DoF policies. The checkpoint has no plugin action or SPI write, performs no FE
 recovery, and does not enable `stfeols`. Independent final review approves the
 complete repair series through `adbc345`.
 
+## Certified prepared HC1 robust-inference checkpoint
+
+`fit_prepared_ols_robust_map` is a separate same-call composition over the
+same certified prepared fit and absorbed-DoF artifacts. It does not call the
+legacy VCE or DoF implementations, write through SPI, recover fixed effects,
+or enable a public estimator. Unlike the iid composition, it accepts positive
+probability weights under the robust policy frozen by the reference receipt.
+
+For kept finite rank `q`, reported covariance dimension `P`, reference
+objective weights `omega_i`, and compact residuals `e_i`, the checkpoint
+recomputes an ephemeral `N x q` score design directly from the prepared model
+recipes and absorbs it through strict MAP. It neither materializes a constant
+column nor retains this design in `CertifiedPreparedOlsRobust`. On a reported
+absorbed-intercept axis the score coordinate is
+`z_i = [x_tilde_i + mean_omega(X), 1]`; under `noconstant` it is only the
+within finite block. A fallibly allocated direct reported-position-to-finite-
+column map makes every production coordinate lookup constant time. The
+separate finite-position list remains available to the independent inverse
+certificate.
+
+The covariance is
+
+```text
+c_HC1 = N_effective / df_r
+M     = sum_i lambda_i e_i^2 z_i z_i'
+V_HC1 = c_HC1 * bread * M * bread
+```
+
+with the pinned weight rules:
+
+| Weight kind | `omega_i` and `N_effective` | `lambda_i` |
+|---|---|---|
+| none | `1`, physical N | `1` |
+| analytic | `N * raw_i / sum(raw)`, physical N | `omega_i^2` |
+| frequency | raw integer multiplicity, exact frequency sum | `omega_i` |
+| probability | `N * raw_i / sum(raw)`, physical N | `omega_i^2` |
+
+Thus analytic and probability covariance is invariant to common positive
+weight scaling, while compact frequency-weight inference equals literal row
+expansion. The absorbed-DoF policy changes `df_r` and therefore only the HC1
+scalar when fit, score design, and meat are otherwise unchanged.
+
+The production path accumulates a Gram matrix of bread-transformed influence
+rows. Its independent certificate instead constructs the score meat and then
+multiplies bread on both sides. Publication also requires independently checked
+score-design left/right inverse identities, absorbed-intercept coordinate,
+reference-weight sum, HC1 scalar, covariance symmetry and standard errors,
+positive-semidefinite pivoted factorization, robust Wald solve, and every
+reported statistic formula. Singular positive-semidefinite covariance is
+valid; a singular slope covariance makes the robust F statistic undefined
+(`None`). Material indefiniteness, a non-PSD singular remainder, a nonfinite
+quantity, a failed allocation, or any failed certificate is fatal.
+
+Independent explicit-dummy oracles cover all four weight rules, default and
+`noconstant`, random row permutations, a virtual one-level constant, genuinely
+disconnected two-way fixed effects, and repeated identical FE terms compared
+with their single-span equivalent. Mutation tests cover every certificate and
+statistic family, including symmetry and indefiniteness, while fail-at-every
+and undersize-at-every sweeps cover all reservations. The sealed Stata 18
+receipt anchors the full one-FE robust covariance and probability-weight
+covariance. Independent review approves implementation commits `a7a01a4` and
+`32008af` with no P0/P1 findings.
+
+The checkpoint remains core-only and limited to the current prepared
+intercept-only numeric-FE surface. It implements neither clustered covariance,
+cluster intersections/nesting and finite-sample corrections, result posting,
+nor estimator-level parity.
+
 ## Legacy covariance source
 
 The older generic core contains:
@@ -299,10 +367,10 @@ Any required cluster subset with fewer than two groups fails closed.
 
 Those covariance routines and the older generic DoF routine are not certified
 for the prepared estimator and must not be used for Stata result posting.
-Prepared iid covariance, residual DoF, and fit statistics now have the separate
-certified checkpoint above. Prepared robust/cluster score construction,
-weight-specific meat semantics, finite-sample corrections, and cluster
-intersections/nesting remain later checkpoints.
+Prepared iid and robust covariance, residual DoF, and fit statistics now have
+the separate certified checkpoints above. Prepared clustered score
+aggregation, intersection coding, nesting, and cluster finite-sample
+corrections remain later checkpoints.
 
 ## Current boundary
 

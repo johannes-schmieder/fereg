@@ -82,5 +82,34 @@ structural, and prepared weights are borrowed rather than copied.
 This is not the low-memory estimator gate. The deterministic QR currently
 recomputes exact trailing norms, so its work is O(NK^2), and the initial
 prepared RHS remains resident. Blocked RHS generation, large-K performance,
-VCE/bread, result-container storage, and observed RSS still require their own
-preflight and benchmark evidence before public enablement.
+clustered VCE, result-container storage, and observed RSS still require their
+own preflight and benchmark evidence before public enablement.
+
+## Prepared HC1 robust-inference allocation discipline
+
+The core-only robust checkpoint composes fit and absorbed DoF in one call, then
+recomputes only the `q` kept finite score columns from prepared recipes. Its
+sole added observation-by-coordinate object is an ephemeral `N x q` matrix:
+it is filled from the recipes and strict MAP consumes it in place as the within
+score design. It does not materialize the full generated `N x K` design, an
+N-row constant, or an additional N-vector for weights or residuals, and it does
+not retain the score matrix in the returned certified result.
+
+All robust-only production and certificate workspaces are fallibly reserved
+with checked dimensions and verified capacity. Besides the ephemeral `N x q`
+score matrix, their asymptotic bound is `O(P^2 + q^2 + P + q)`: covariance and
+compensation, independent meat reconstruction and bread product, PSD factor,
+robust-Wald factor/solution, influence and certificate rows, score means and
+identities, standard errors, and the direct reported-coordinate lookup. The
+lookup is constructed once as a P-entry reported-position-to-finite-column map;
+production covariance therefore performs constant-time coordinate resolution
+inside its observation/coordinate loops. A separate q-entry position list is
+retained only while certifying the score design.
+
+Fail-at-every-reservation and undersize-at-every-reservation tests include the
+direct coordinate map and every other robust workspace. Allocation, capacity,
+checked-arithmetic, nonfinite, and certificate failures return no partial
+`CertifiedPreparedOlsRobust`. This is still not the end-to-end low-memory gate:
+the prepared fit retains its compact residuals and bread, cluster aggregation
+has not been implemented on this path, and observed estimator RSS has not been
+measured.
