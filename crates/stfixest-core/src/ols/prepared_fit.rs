@@ -247,6 +247,16 @@ fn fit_with_controls<R: FitReservation>(
         ));
     }
     let (mut within, absorption_report) = absorbed.into_parts();
+    let within_outcome_norm = weighted_matrix_column_norm(&within, 0, weights)?;
+    let mut score_norms = reserved_filled(
+        reservation,
+        generated_columns,
+        0.0_f64,
+        "unable to reserve prepared OLS within score norms",
+    )?;
+    for (column, norm) in score_norms.iter_mut().enumerate() {
+        *norm = weighted_matrix_column_norm(&within, column + 1, weights)?;
+    }
 
     let mut qr = fit_scaled_pivoted_qr(
         prepared,
@@ -305,7 +315,8 @@ fn fit_with_controls<R: FitReservation>(
         prepared,
         residuals.as_slice(),
         weights,
-        &reference_norms,
+        &score_norms,
+        within_outcome_norm,
         config.score_tolerance,
     )?;
     if !score_certificate.passed {
@@ -839,24 +850,33 @@ fn certify_scores(
     prepared: &PreparedOlsData,
     residuals: &[f64],
     weights: NormalizedWeights<'_>,
-    reference_norms: &[f64],
+    score_norms: &[f64],
+    within_outcome_norm: f64,
     tolerance: f64,
 ) -> Result<PreparedOlsScoreCertificate> {
     if residuals.len() != prepared.sample.n_active()
-        || reference_norms.len() != prepared.model.columns.len()
+        || score_norms.len() != prepared.model.columns.len()
+        || !within_outcome_norm.is_finite()
+        || within_outcome_norm < 0.0
     {
         return Err(invalid_argument(
             "prepared OLS score-certificate dimensions are inconsistent",
         ));
     }
     let residual_norm = weighted_slice_norm(residuals, weights)?;
-    let outcome_norm = weighted_slice_norm(&prepared.sample.outcome, weights)?;
-    let response_scale = outcome_norm.max(residual_norm).max(f64::MIN_POSITIVE);
+    let response_scale = within_outcome_norm
+        .max(residual_norm)
+        .max(f64::MIN_POSITIVE);
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
     let mut moments = 0_usize;
-    for (column, reference_norm) in reference_norms.iter().copied().enumerate() {
-        let relative = if reference_norm == 0.0 {
+    for (column, score_norm) in score_norms.iter().copied().enumerate() {
+        if !score_norm.is_finite() || score_norm < 0.0 {
+            return Err(invalid_data(
+                "prepared OLS within regressor score norm is invalid",
+            ));
+        }
+        let relative = if score_norm == 0.0 {
             0.0
         } else {
             let mut sum = 0.0_f64;
@@ -864,7 +884,7 @@ fn certify_scores(
             for (row, residual) in residuals.iter().copied().enumerate() {
                 let root_weight = weights.root(row)?;
                 let regressor = prepared.column_value(column, row)?;
-                let left = (root_weight * regressor) / reference_norm;
+                let left = (root_weight * regressor) / score_norm;
                 let right = (root_weight * residual) / response_scale;
                 let term = left * right;
                 compensated_add(term, &mut sum, &mut correction)?;
@@ -1621,6 +1641,104 @@ mod tests {
                 true,
             )
             .expect_err("perturbed coefficient must fail score certificate")
+            .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    fn fixed_effect_only_outcome_scale_cannot_mask_score_failure() {
+        let g = vec![1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0];
+        let x = vec![-2.0, -0.5, 1.0, 2.5, -1.5, 0.0, 0.5, 1.0];
+        let y = x
+            .iter()
+            .zip(&g)
+            .map(|(x, group)| {
+                let fixed_effect = if *group == 1.0 { 1e10 } else { -1e10 };
+                fixed_effect + 2.5 * x
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            false,
+            TestWeights::Unit,
+        );
+        let mut control_reservation = InjectedReservation::default();
+        let control = fit_with_controls(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut control_reservation,
+            false,
+        )
+        .expect("unperturbed large-FE-outcome fit");
+        assert_close(
+            control.coefficients()[0].value.expect("control slope"),
+            2.5,
+            2e-6,
+        );
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                true,
+            )
+            .expect_err("FE-only outcome scale must not hide a perturbed coefficient")
+            .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    fn fixed_effect_only_regressor_scale_cannot_mask_score_failure() {
+        let g = vec![1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0];
+        let within_x = [-2.0, -0.5, 1.0, 2.5, -1.5, 0.0, 0.5, 1.0];
+        let x = within_x
+            .iter()
+            .zip(&g)
+            .map(|(within, group)| {
+                let fixed_effect = if *group == 1.0 { 1e7 } else { -1e7 };
+                fixed_effect + within
+            })
+            .collect::<Vec<_>>();
+        let y = within_x
+            .iter()
+            .map(|within| 100.0 * within)
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            false,
+            TestWeights::Unit,
+        );
+        let mut control_reservation = InjectedReservation::default();
+        let control = fit_with_controls(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut control_reservation,
+            false,
+        )
+        .expect("unperturbed large-FE-regressor fit");
+        assert_close(
+            control.coefficients()[0].value.expect("control slope"),
+            100.0,
+            2e-8,
+        );
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                true,
+            )
+            .expect_err("FE-only regressor scale must not hide a perturbed coefficient")
             .code,
             ErrorCode::InvalidData
         );
