@@ -10,10 +10,12 @@ interaction coding, memory preflight, threading, future fixed-effect transforms,
 and all future numerical estimation.
 
 The development build includes diagnostics, native preparation, certified
-prepared OLS inference, a hidden shadow-result transport, and a developer-only
-licensed-Stata eclass transaction. The transaction is not public activation.
-No public command may post `e()` results until broader sealed parity and an
-independently reviewed activation gate accept the complete supported surface.
+prepared OLS inference, a hidden shadow-result transport, a developer-only
+licensed-Stata eclass transaction, and the bounded
+`_stfixest_ols_hidden_numeric_v1` manifest-projection adapter. These are not
+public activation. No public command may post `e()` results until broader
+sealed parity and an independently reviewed activation gate accept the complete
+supported surface.
 
 ## Call graph
 
@@ -38,6 +40,12 @@ _stfixest_estimate_ols_test.ado (developer-only)
   -> one estimate-ols-test plugin call through the graph above
   -> complete receipt/table/sample validation
   -> whole-Mata b/V copies, eclass posting, final nobreak commit
+
+_stfixest_ols_hidden_numeric_v1.ado (developer-only candidate adapter)
+  -> public-shaped bounded numeric syntax
+  -> exactly one _stfixest_estimate_ols_test invocation
+  -> unmistakably private e(cmd)/cmdline identity
+  -> sanitized sealed comparison against the frozen reference receipt
 ```
 
 The hidden transport already proves one substantive plugin call for its bounded
@@ -48,11 +56,13 @@ count as substantive numerical calls.
 ## Atomicity boundary
 
 Rust completes and certifies the selected estimator in owned memory before any
-output store, then fallibly adapts the full result. All 11 result-matrix names
-and layouts are converted to stable borrowed C handles before commit. The final
-receipt cell is written only after sample/residual/reason shadows and all result
-metadata; no work follows a successful `COMPLETE=1` store. Store errors and
-their C reports are prepared before commit.
+output store, then fallibly adapts and validates the full result. All N-, K-,
+and K²-scale checks, including native omission markers, occur in Rust before
+the first store. All 11 result-matrix names and layouts are converted to stable
+borrowed C handles before commit. The final receipt cell is written only after
+sample/residual/reason shadows and all result metadata; no work follows a
+successful `COMPLETE=1` store. Store errors and their C reports are prepared
+before commit.
 
 This is logical atomicity, not physical SPI rollback. SPI can leave private
 shadow cells changed if a later store fails, but `COMPLETE` remains zero and the
@@ -65,6 +75,18 @@ failure stages, real scientific failure, and an actual Control-C after the sole
 plugin call restore prior named/null estimates and `e(sample)` exactly. Only a
 final `nobreak` residual rename plus unhold commits success. Public `stfeols`
 remains `r(498)` pending broader sealed parity and activation review.
+
+The active candidate receipt binds all Stata capture, rollback, parity,
+store-failure, and actual-Break gates to one isolated staged universal plugin.
+That plugin has SHA-256
+`eda2629198429d419a476151886936e0761eca26f2a8cc34fe83c52146703980`
+and embeds commit `d731b3276eab`. An external identity manifest separately
+binds the committed receipt path, payload and file hashes, git blob, and mode;
+committed content cannot be substituted by merely resealing a payload.
+Candidate-bound failure injection covers 222 Fake-SPI and 219 live C-loader
+store ordinals, each leaving `COMPLETE=0`. Stata's post-call work is limited to
+constant-size receipt/table identity checks, transaction control, and final
+`ereturn` posting.
 
 ## Safety boundary
 

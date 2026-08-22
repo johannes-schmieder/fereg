@@ -1,8 +1,8 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-22
-**Branch / baseline:** `main` implementation and independent review through `3473f49` plus the sealed reference receipt below
-**Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
+**Branch / baseline:** `main` implementation and independent review through `d731b327`, with the active candidate receipt sealed by `9e2f23e`
+**Active milestone:** complete the ten blocked OLS semantic cases, beginning with native numeric categorical FE interactions
 **Release state:** development only — not a production or cross-platform release
 
 `STATUS.md` is the repository's only mutable progress record. Immutable command
@@ -34,7 +34,7 @@ scientific gates are met.
 |---|---|---|
 | Native/plugin foundation | Complete | Universal macOS plugin has `arm64` and `x86_64` slices; bridge, protocol rejection, diagnostics, and panic containment passed locally. |
 | macOS loader and safety smoke | Complete | Native arm64 Stata 18 and Rosetta loader/reload fixtures passed; the Rosetta run is not native Intel certification. Sanitized receipts are under `build_evidence/local/`. |
-| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, repository/portable checks, 123 Python tests, 183 core tests, the full workspace, and 36 FFI-feature plugin tests pass through `3473f49`. The universal macOS x86_64+arm64 build, binary audit, and actual-plugin loader also pass. |
+| Rust/source validation baseline | Complete through the active candidate | The full workspace passes through `d731b327`, including 185 core unit tests, 41 plugin unit tests, and all oracle/integration suites; 139 Python tests and all 13 licensed-Stata fixtures pass. Repository/diff checks and the active receipt verifier pass. The candidate-bound universal macOS plugin contains x86_64+arm64, embeds `d731b327`, passes binary audit and the actual-plugin loader, and is shared identically by every receipt supporting gate. |
 | Model wire 2.1 | Complete | Versioned ordinary and absorbed-term model specification is merged. Wire 2.0 remains readable only with empty absorbed tables and registries. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
 | Developer OLS request-to-prepared-data boundary | Implemented and reviewed for the current continuous/numeric-factor, intercept-only numeric-FE, and unit/a/f/p-weight preparation surface; public estimators remain disabled | The guarded action validates before reads, constructs the compact sample/singleton fixed point and deduplicated borrowed FE topology, then optionally builds exact prepared Y/X and runs certified MAP before any diagnostic write. Empty explicit FE topology now invokes the pinned virtual one-level structural constant: the existing RHS is globally weighted-demeaned in one certified iteration with six fallible O(K) workspaces and no N-row constant codes or membership. The actual plugin reports `map_iterations=1` and `map_stop=certified`; Rust and C loader tests lock that contract. Failure remains atomic and the residualized batch is discarded. Unsupported strings, mixed/continuous interactions, FE interactions/slopes/saved outputs, clusters, numerical result posting, and estimator actions remain outside this boundary. Full repository tests and the universal x86_64+arm64 build/audit/loader pass through `adbc345`. |
@@ -43,61 +43,60 @@ scientific gates are met.
 | Core-only prepared unadjusted OLS/WLS inference | Implemented, fully validated, and independently reviewed for the current prepared intercept-only-FE surface through `adbc345`; not plugin-enabled | The same-call `CertifiedPreparedOlsUnadjusted` composition now implements the pinned virtual one-level structural constant for empty explicit FE topology under both default and `noconstant`. Weighted global demeaning uses the existing RHS and six fallible O(K) buffers without N-row codes; `_cons` is a report-only normalized coordinate, and a tagged `ImplicitNoAbsorb` DoF row contributes `df_a=1` without invented wire/source IDs. Literal constants are FE-collinear and full `ibn.` spans have L-1 finite rank. Reference-scaled RSS/TSS/within TSS, both R-squared families, RMSE, Gaussian likelihoods, iid `RSS/df_r * bread`, and Wald `b' inv(V_slopes)b/df_m` are published only after independent primitive, DoF, covariance/SE, solve, and formula certificates pass; mutation coverage spans every statistic family. Unweighted/analytic effective N is physical N, frequency effective N is exact multiplicity, and positive pweight iid inference fails closed. Paired default/`noconstant`, explicit-dummy, random/permutation, extreme scaling, frequency expansion, weak-signal Wald, every-allocation/capacity, corruption, and sealed Stata 18 tests pass. The universal macOS build/audit/actual-loader contract also passes. No robust/cluster meat, nesting, plugin/SPI result write, result posting, or public estimator action was added. |
 | Core-only prepared HC1 robust OLS/WLS inference | Implemented, fully validated, and independently reviewed for the current prepared intercept-only-FE surface through `32008af`; not plugin-enabled | `CertifiedPreparedOlsRobust` composes fit, absorbed DoF, residual DoF, statistics, and HC1 covariance in one call. It rebuilds an ephemeral kept-coordinate `N x q` score design through strict MAP, uses the normalized absorbed-intercept coordinate without materializing a constant, and destroys the score design before return. `c=N_effective/df_r`; meat multipliers are one for unit weights, raw multiplicity for fweights, and squared normalized objective weights for aweights/pweights. The production influence Gram and independent meat-then-sandwich certificate agree; score inverse/intercept, HC1, symmetry/SE, PSD, robust-Wald, and statistic certificates all gate publication. Singular PSD covariance is allowed, singular slope covariance makes F undefined, and material indefiniteness fails closed. All allocations are fallible, including the O(1) reported-coordinate map. Explicit-dummy/random/permutation/frequency-expansion oracles cover default/`noconstant`, virtual constant, disconnected two-way FE, repeated identical FE spans, all four weight rules, and full covariance. Sealed one-FE robust and pweight covariances pass. Review of `a7a01a4` plus repair `32008af` found no P0/P1 issue. No legacy VCE, cluster logic, plugin/SPI/public posting, or estimator action was used. |
 | Core-only prepared one-/multiway clustered OLS/WLS inference | Implemented, fully validated, and independently reviewed for the current prepared intercept-only numeric-FE surface through `b226d62` plus repair `89132055`; not plugin-enabled | Sample-bound numeric cluster preparation supports 1--10 declared dimensions, treats a declared source tuple as one interaction dimension, applies reason 6 before FE singleton deletion, never uses cluster counts to delete singletons, and factorizes final-sample interactions collision-free after pruning. `CertifiedPreparedOlsClustered` composes fit, cluster-aware absorbed DoF, reported/fit/correction DoF, statistics, score design, inclusion--exclusion meat, one common reghdfe correction, CGM repair, slope-only Wald, and independent certificates in one core call. Group scores are `sum(omega_i e_i z_i)` for unit/a/f/p reference weights; every required subset must have at least two groups. One-way covariance is strictly PSD with no repair. Multiway covariance follows the pinned two-stage transform exactly: when the raw full matrix is indefinite, clip the full eigensystem, independently clip the original raw slope block when a reported `_cons` and slopes exist, restore that slope block, and never reclip the final full matrix. Only that exact restored state may retain a diagnostic final negative eigenvalue; the pre-restore full matrix and restored slope block remain strictly certified PSD. Internal explicit-dummy/raw/transform/certificate comparisons are at most `2e-10`. Separate frozen DEFAULT-`reghdfe` receipt comparisons, after exact structural assertions, use absolute behavioral caps only of `1e-7` (one-way), `2e-6` (two-way), `4e-6` (three-way), and `1e-7` (one declared interaction), documenting the upstream MAP stopping artifact rather than weakening scientific tolerances. All allocations are fallible; subset aggregation holds one ordering and one P-vector at a time and never a G x P table. Mutation, undersize, allocation, nesting, weight, virtual-constant, disconnected/repeated-FE, default/`noconstant`, rank-zero, intercept-only, paired-cluster, and sealed receipt tests pass. No legacy VCE/DoF, plugin/SPI/public posting, or estimator action was used. |
-| Hidden atomic prepared-OLS transport | Implemented and independently approved through `7f61650` plus allocation-safety repair `0623241`; developer-only and not an eclass estimator | Guarded action `estimate-ols-test` requires exact action protocol 1.1, result wire 1.0, loaded-plugin version, and `confirm=developer-estimation-test` before any observation read. It performs one native source-loading phase and one same-call certified iid, HC1, or clustered composition, then fallibly adapts the complete result into private shadow coefficient, covariance, status, fit, DoF, solver, FE, cluster, subset, certificate, receipt, sample, residual, and drop-reason destinations. All 11 result-matrix names and dimensions are validated and converted to borrowed C handles before commit. The receipt `COMPLETE` cell is the final operation. SPI cannot physically roll back earlier writes, so a failed commit may dirty only private shadow destinations; they have no logical meaning unless the final receipt is complete. Numeric/matrix store errors and their C reports are prepared before commit and allocate nothing after a store failure. Fake SPI fails each of 216 stores; the actual C loader fails each of 213 stores and verifies stable prepared-name pointers. Every failure leaves `COMPLETE=0`. The universal macOS build/audit/loader passes. Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain `r(498)` and no `e()` state is posted. |
-| Hidden licensed-Stata OLS eclass transaction | Implemented, fully validated, and independently approved through `3473f49`; developer-only and non-public | `_stfixest_estimate_ols_test` creates private matrix/variable shadows, holds prior estimates with `_estimates hold ..., restore nullok varname()`, sends the complete guarded request as one canonical length-framed bundle, and makes exactly one substantive `estimate-ols-test` plugin call. It revalidates the complete receipt, counts, tables, sample, optional residual, canonical status coordinates, covariance, solver/FE/cluster metadata, and mandatory certificates before posting. Protected `_ms_findomitted` marker matrices establish omission stripes; the K=0 branch posts no b/V. A whole-matrix Mata copy preserves the pinned two-/three-way CGM covariance, including its certified restored-state negative determinant, without Stata's nonsymmetry warning or numerical alteration. The helper posts the selected fit/DoF/diagnostic/e(sample)/weight/cluster mapping, then commits only in a `nobreak` residual rename plus `_estimates unhold ..., not` block. Seven deterministic failure stages, a real scientific failure, null/non-null prior estimates, and an actual PTY Control-C after the sole plugin call restore prior `e()` state and sample exactly and expose no requested residual. Licensed iid/HC1/one-/multiway clustered, weights, default/`noconstant`, omission, K=0, sample/residual, and sealed q2/q3 covariance fixtures pass. Public commands/actions remain `r(498)`. |
+| Hidden atomic prepared-OLS transport | Implemented and independently approved through `7f61650`, allocation-safety repair `0623241`, and candidate hardening `d731b327`; developer-only and not a public estimator | Guarded action `estimate-ols-test` requires exact action protocol 1.1, result wire 1.0, loaded-plugin version, and `confirm=developer-estimation-test` before any observation read. It performs one native source-loading phase and one same-call certified iid, HC1, or clustered composition, then fallibly adapts the complete result into private shadow coefficient, covariance, status, fit, DoF, solver, FE, cluster, subset, certificate, receipt, sample, residual, and drop-reason destinations. Rust validates the entire N/K/K² result, including native omission markers, before the first store. All 11 result-matrix names and dimensions are converted to borrowed C handles before commit. The receipt `COMPLETE` cell is the final operation. SPI cannot physically roll back earlier writes, so a failed commit may dirty only private shadow destinations; they have no logical meaning unless the final receipt is complete. Numeric/matrix store errors and their C reports are prepared before commit and allocate nothing after a store failure. Current candidate-bound sweeps fail each of 222 Fake stores and 219 actual-loader stores; every failure leaves `COMPLETE=0`. The universal macOS build/audit/loader passes. Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain `r(498)` and no public `e()` state is posted. |
+| Hidden licensed-Stata OLS eclass transaction | Implemented, fully validated, and independently approved through `3473f49` plus candidate hardening `d731b327`; developer-only and non-public | `_stfixest_estimate_ols_test` creates private matrix/variable shadows, holds prior estimates with `_estimates hold ..., restore nullok varname()`, sends the complete guarded request as one canonical length-framed bundle, and makes exactly one substantive `estimate-ols-test` plugin call. Rust has already validated all N/K/K² results and omission markers; the helper retains only constant-size receipt/table/transaction checks before posting. The K=0 branch posts no b/V. A whole-matrix Mata copy preserves the pinned two-/three-way CGM covariance, including its certified restored-state negative determinant, without Stata's nonsymmetry warning or numerical alteration. The helper posts the selected fit/DoF/diagnostic/e(sample)/weight/cluster mapping, then commits only in a `nobreak` residual rename plus `_estimates unhold ..., not` block. Deterministic failure stages, a real scientific failure, null/non-null prior estimates, and an actual PTY Control-C after the sole plugin call restore prior `e()` state and sample exactly and expose no requested residual. Licensed iid/HC1/one-/multiway clustered, weights, default/`noconstant`, omission, K=0, sample/residual, and sealed q2/q3 covariance fixtures pass. Public commands/actions remain `r(498)`. |
+| Hidden numeric OLS candidate projection | Implemented, candidate-bound, sealed, and independently approved through `d731b327` plus receipt commit `9e2f23e`; developer-only and non-public | `_stfixest_ols_hidden_numeric_v1` projects exactly 30 executable cases from the frozen 40-case `ols_v1` semantic manifest through the hidden eclass helper. It captures result, sample, residual/error, certificate, store-failure, rollback, and actual-Break evidence while retaining ten explicit blockers. Every Stata capture and supporting gate loads the identical isolated staged plugin (`sha256=eda2629198429d419a476151886936e0761eca26f2a8cc34fe83c52146703980`, embedded `d731b3276eab`); the external identity manifest binds the committed receipt path, payload/file hashes, git blob, and mode against resealing. Rust validates all N-, K-, and K²-scale outputs and native omission markers before stores; Stata performs only constant-size transaction and identity checks. The active receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260822T132813Z-d731b32`, payload seal `1558571563006bd3f5a1ce5a39b33f1f552256a83212a865d51cebdbdfe37279`, file SHA-256 `3cc24fa4fefa5917a74e8d89a1d03170df487a93db3141c35715a5bddaf86a1a`, git blob `f5317de6d199d4fa735f0282ce1299a5813e666d`, mode `100644`. Full Rust, Python, licensed-Stata, universal binary/loader, failure-injection, rollback/Break, repository, and receipt-verification gates pass. `public_activation=false`; performance is unmeasured and no speed/RSS claim is made. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
-## Active checkpoint — broader sealed parity and public-activation readiness
+## Active checkpoint — first blocked semantic case
 
-1. Expand the licensed Stata parity inventory beyond the bounded hidden fixture
-   to the complete supported candidate surface, with sealed result/sample/
-   residual/error identities and no warning or transaction-state leakage.
-2. Complete the remaining model, FE, output, and postestimation gates required
-   by the OLS 1.0 compatibility matrix, including strings, mixed and time-series
-   terms, FE interactions/slopes/recovery, prediction, and saved outputs.
-3. Prove activation wiring preserves the existing one-call transaction and all
-   fail-closed public syntax semantics before changing any public dispatch.
-4. Expand remaining model/FE/output forms only through separately reviewed
-   gates; keep public `estimate-ols` and `stfeols` disabled throughout.
-5. Optimize only after scientific correctness and transaction atomicity are
-   certified.
+The highest-leverage next gate is native numeric categorical absorbed
+interaction support, beginning with the frozen `multi_fe_interactions` case
+(`firm#year`). It must extend preparation, topology/DoF, certified MAP,
+candidate-bound capture, mutation/allocation tests, and sealed licensed parity
+without materializing the interaction in Stata or weakening the one-call
+transaction. Public dispatch stays disabled throughout this gate.
 
-## Current blockers
+After that repair, rerun the same candidate-bound 40-case projection and replace
+the active receipt only when the external identity manifest binds a new reviewed
+commit, plugin, immutable receipt, and exact case inventory. Performance/RSS is
+a later gate; the current candidate makes no performance claim.
 
-- `stfeols` is deliberately disabled and returns `r(498)`. The hidden helper
-  successfully posts and transactionally commits a bounded licensed-Stata
-  estimate, but that evidence is not public-command activation evidence and
-  does not cover the full OLS 1.0 surface.
-- The older developer preparation action remains bounded to diagnostics and an
-  optional discarded MAP check. The separate hidden `estimate-ols-test` action
-  now reaches the certified prepared coefficient/iid/HC1/clustered compositions
-  for the supported continuous/numeric-factor, intercept-only numeric-FE,
-  numeric-cluster, and unit/a/f/p surface. It loads native sources once, runs the
-  selected same-call composite, adapts every result fallibly, and writes only
-  precreated shadow destinations. The separately reviewed hidden eclass helper
-  now revalidates and posts this result under `_estimates hold`, with rollback
-  and bounded licensed parity evidence; SPI itself still has no physical
-  rollback, and public actions remain disabled. Mixed continuous interactions,
-  strings, FE interactions and
-  slopes, recovered/saved FEs, prediction, `xb`/`xbd`, and the remaining public
-  syntax surface are still outside the hidden action.
-- No candidate `stfeols` parity, benchmark timing/RSS comparison, or
-  constrained-memory receipt exists yet. The newly sealed receipt is
-  reference-only and correctly reports the performance gate as blocked because
-  `stfeols` remains disabled.
-- Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
-  as a Stata-facing estimator. The prepared scientific series is independently
-  reviewed through `89132055`, its hidden native result transport is approved
-  through `0623241`, and its licensed eclass transaction is approved through
-  `3473f49`. Broader estimator-level sealed parity and public activation remain
-  gated.
-- No real Linux/Windows validation or native Intel-host macOS validation exists.
+## Current blockers — exact frozen manifest inventory
+
+The active candidate executes 30 of the frozen 40 semantic cases. These ten
+cases remain explicit blockers:
+
+1. `multi_fe_interactions` — absorbed categorical interaction; next priority.
+2. `intercept_and_slope` — absorbed intercept plus slope.
+3. `slope_only_multiple` — multiple absorbed slope-only terms.
+4. `string_fe` — string-source ingestion.
+5. `time_series_lag` — Stata time-series materialization.
+6. `time_series_lead_difference_gaps` — time-series materialization across gaps.
+7. `iweight_probe` — importance-weight semantics.
+8. `dof_continuous` — absorbed continuous-slope DoF.
+9. `saved_outputs` — recovered/saved fixed-effect outputs.
+10. `postestimation_test_summarize` — public postestimation.
+
+Ordinary factor support is present only for the bounded numeric surface; broader
+ordinary factor/interactions and their public parser/display contract remain
+activation work alongside the listed blockers. Prediction (`xb`/`xbd`), saved
+absorbed contributions, and the full public syntax/postestimation surface also
+remain gated. Public `stfeols`, `stfepois`, `estimate-ols`, and `estimate-ppml`
+all continue to return `r(498)`. No real Linux/Windows or native Intel-host
+macOS validation exists.
 
 ## Next evidence to record
 
+- Replace the active 30/10 candidate receipt only after the numeric categorical
+  FE-interaction gate passes independent core/oracle review, all failure and
+  allocation sweeps, the complete licensed 40-case projection, identical staged
+  plugin binding, rollback/Break fixtures, and external receipt-identity
+  verification. The next receipt must continue to say
+  `public_activation=false` and `performance=unmeasured`.
 - The borrowed-adapter rereview is complete through `1b1954f`: it confirms
   exact wire ordering, one structural validation per unique topology source,
   constant-time repeated-term construction and pointer reuse without a code or
@@ -214,7 +213,8 @@ scientific gates are met.
   intercept-only tests pass. No legacy VCE/DoF, plugin/public/posting path, FE
   recovery, or public action is used.
 - The hidden atomic prepared-OLS transport is independently approved through
-  `7f61650` plus repair `0623241`. Action/result/plugin handshakes, complete
+  `7f61650`, repair `0623241`, and candidate hardening `d731b327`.
+  Action/result/plugin handshakes, complete
   result adaptation, one-load/one-call iid/HC1/cluster selection, exact shadow
   layouts, receipt-last ordering, no work after `COMPLETE`, and exhaustive fake
   and actual-loader output-store failures pass. All 11 C matrix names are
@@ -222,22 +222,28 @@ scientific gates are met.
   preallocated/static. This is logical atomicity over private shadow outputs,
   not physical SPI rollback.
 - The hidden licensed-Stata eclass transaction is independently approved through
-  `3473f49`. Its canonical count/byte-length bundle is fully decoded before the
+  `3473f49` and candidate hardening `d731b327`. Its canonical count/byte-length
+  bundle is fully decoded before the
   handshake or SPI reads; ordinary argv remains available to the mock and C
   harnesses. `_estimates hold ..., restore nullok varname()` protects prior
-  state, exact shadow/table/sample validation precedes posting, and only the
+  state; Rust completes N/K/K² validation and omission markers before stores,
+  while Stata retains constant-size receipt/table/transaction checks. Only the
   final `nobreak` residual rename plus unhold makes the estimate logical. A
   whole-Mata b/V copy preserves the adjudicated multiway CGM restored state
   exactly. Seven deterministic rollback stages plus an actual Control-C after
   the one plugin call restore named and null prior estimates and leave no
   requested residual; all licensed hidden parity/transaction fixtures pass.
-- Next seal broader estimator-level parity and activation wiring. Continue the independently
-  gated preparation roadmap for mixed ordinary interactions and
-  string/interaction/slope/saved fixed effects. Neither checkpoint may enable
-  the public estimator or bypass the FE, solver-certificate, VCE, DoF,
-  transaction, and sealed-parity gates.
+- Next implement and seal native numeric categorical FE interactions, starting
+  with `firm#year`, then continue independently gated string, absorbed-slope,
+  broader ordinary-factor/time-series, saved-output, and postestimation work.
+  No checkpoint may enable the public estimator or bypass the FE,
+  solver-certificate, VCE, DoF, transaction, and sealed-parity gates.
 
 ## Historical qualification
+
+Older hidden numeric receipts remain immutable historical artifacts. They are
+not active candidate evidence and must not be used in place of the external
+identity manifest's current `20260822T132813Z-d731b32` target.
 
 Earlier documentation described a loader-selection defect and a runner that
 accepted Stata's zero process status without a fixture terminal sentinel. The

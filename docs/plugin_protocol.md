@@ -156,14 +156,15 @@ and output validation occurs before any observation read. The developer ado
 also rejects string sources with `r(498)` before `plugin call`, because Stata's
 plugin varlist otherwise rejects them first. Unsupported FE shapes and string
 FE sources therefore return `r(498)` before reads or diagnostic writes.
-Weights must be passed as one numeric source binding. Frequency weights must
-be finite, strictly positive integral values representable as `u32`; an
-explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or
-infinity is invalid data. Probability weights must be positive and finite;
+Weights must be passed as one numeric source binding. A negative candidate-row
+analytic weight returns pinned code 402. Frequency weights must be finite,
+strictly positive integral values representable as `u32`; a domain violation
+returns pinned code 401. An explicit Stata-missing mask is a reason-4 exclusion.
+Probability weights must be positive and finite;
 retained values cross the boundary bit-for-bit, explicitly masked missing
 values receive reason 4, and zero, negative, or unmasked nonfinite candidate
 values fail before diagnostic writes. This developer action returns native
-invalid-data code `459` for a candidate-row domain violation. It does not
+invalid-data code `459` for other candidate-row domain violations. It does not
 compute or claim the robust VCE required by the sealed reference case and does
 not claim the public command's eventual Stata-facing error code. Weight
 expressions are not materialized by this developer helper.
@@ -194,9 +195,10 @@ source-loading phase, prepares the authoritative sample once, and calls the
 selected certified same-call core composition. It never calls the legacy VCE,
 DoF, fit, or posting paths and never returns residualized N-by-K data to Stata.
 
-After every core certificate passes, the plugin fallibly builds a complete
-Rust-owned shadow result. Stata or the test harness must have precreated these
-11 private result matrices:
+After every core certificate passes, the plugin fallibly builds and validates a
+complete Rust-owned shadow result. Rust performs every N-, K-, and K²-scale
+check, including native omission-marker construction, before any store. Stata
+or the test harness must have precreated these 11 private result matrices:
 
 | Protocol key | Logical contents | Required layout |
 |---|---|---|
@@ -235,11 +237,11 @@ The SPI session prepares fixed numeric-store and matrix-store errors before
 commit. The ABI boundary uses static preformatted C reports for those exact
 errors, so even reporting an injected partial-store failure performs no Rust
 allocation or second logical output store. The Fake SPI fixture preallocates
-its event log and error and injects failure at all 216 store ordinals. The
-actual C loader injects all 213 live-store failures, verifies one stable borrowed
+its event log and error and injects failure at all 222 store ordinals. The
+actual C loader injects all 219 live-store failures, verifies one stable borrowed
 name pointer for every result matrix, and observes `COMPLETE=0` in every failure
-case. The successful universal macOS x86_64+arm64 build, binary audit, and live
-loader harness pass through `0623241`.
+case. The successful candidate-bound universal macOS x86_64+arm64 build, binary
+audit, and live loader harness pass through `d731b327`.
 
 Stata 18 rejects the full guarded key/value list as too many plugin options.
 The hidden helper therefore sends exactly one canonical bundle argument:
@@ -271,13 +273,39 @@ Only after the selected fit, DoF, solver, FE, cluster, certificate, weight,
 sample, and command metadata have been posted does a `nobreak` block rename a
 requested residual and run `_estimates unhold ..., not`.
 
-Seven deterministic failure stages, real scientific failure, named and null
+Deterministic failure stages, real scientific failure, named and null
 prior-estimate cases, and an interactive PTY Control-C after the sole plugin
 call restore prior `e()` state and `e(sample)` exactly and leave no requested
 residual. Licensed iid/HC1/one-/multiway cluster, unit/a/f/p, default/
 `noconstant`, omitted-coordinate, K=0, sample/residual, and frozen q2/q3
-covariance fixtures pass through `3473f49`; the Stata runner rejects the
+covariance fixtures pass through candidate hardening `d731b327`; the Stata runner rejects the
 nonsymmetric/highly-singular warning on any successful fixture.
+
+All observation-, coefficient-, and covariance-scale result validation is
+native. After the one plugin call, the helper performs only constant-size
+receipt/table identity checks, transaction control, whole-matrix posting, and
+the final residual/estimate commit.
+
+## Hidden numeric candidate projection and receipt
+
+`_stfixest_ols_hidden_numeric_v1` is a developer-only adapter over the hidden
+eclass helper. It retains the private command identity in `e(cmd)` and
+`e(cmdline)` while recording `stfeols` only as an intended future public
+command. It projects the frozen 40-case `ols_v1` semantic manifest without
+enabling public syntax: 30 cases execute and ten remain exact, named blockers.
+
+The active candidate receipt is
+`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260822T132813Z-d731b32`.
+Every Stata capture and supporting gate loads one identical isolated staged
+plugin (SHA-256
+`eda2629198429d419a476151886936e0761eca26f2a8cc34fe83c52146703980`,
+universal x86_64+arm64, embedded `d731b3276eab`). The receipt's payload seal is
+`1558571563006bd3f5a1ce5a39b33f1f552256a83212a865d51cebdbdfe37279`.
+`benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json` separately
+binds the complete file SHA-256, git blob, and mode, so changing and resealing
+committed receipt content does not preserve eligibility. Older receipts are
+historical only. The receipt explicitly records `public_activation=false` and
+unmeasured performance.
 
 Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain
 fail-closed at `r(498)`. The next gate is broader sealed estimator-level parity
@@ -290,6 +318,9 @@ and reviewed activation wiring across the complete supported public surface.
 | Syntax | 198 |
 | Unsupported/invalid option | 498 |
 | Protocol mismatch | 499 |
+| Negative analytic weight | 402 |
+| Invalid frequency-weight domain | 401 |
+| Insufficient final observations/DoF | 2001 |
 | Invalid data | 459 |
 | Allocation | 909 |
 | User interruption | 1 |
