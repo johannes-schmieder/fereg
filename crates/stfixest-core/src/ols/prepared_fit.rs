@@ -118,11 +118,15 @@ pub struct PreparedOlsBreadWeightScale {
 /// normalized reported intercept.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsBreadCertificate {
+    /// Inverse check for the finite within-regressor block.
     pub left_inverse_relative_infinity_norm: f64,
     pub right_inverse_relative_infinity_norm: f64,
+    /// Independent inverse check for the complete reported coordinate system,
+    /// including a normalized absorbed-model intercept when present.
+    pub reported_left_inverse_relative_infinity_norm: f64,
+    pub reported_right_inverse_relative_infinity_norm: f64,
     pub symmetry_relative_infinity_norm: f64,
     pub minimum_diagonal: f64,
-    pub intercept_extension_relative_error: f64,
     pub intercept_formula_relative_error: f64,
     pub intercept_normalization_relative_error: f64,
     pub passed: bool,
@@ -305,6 +309,7 @@ impl<'a> NormalizedWeights<'a> {
 struct FiniteBreadDraft {
     generated_columns: Vec<usize>,
     values: Vec<f64>,
+    reference_crossproduct: Vec<f64>,
     weight_scale: PreparedOlsBreadWeightScale,
     left_inverse_relative_infinity_norm: f64,
     right_inverse_relative_infinity_norm: f64,
@@ -331,6 +336,15 @@ struct QrFit {
     bread: Option<FiniteBreadDraft>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct FitPerturbations {
+    first_coefficient: bool,
+    final_residual_constant: bool,
+    finite_bread: bool,
+    reported_intercept: bool,
+    reported_bread_extension: bool,
+}
+
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
 /// the strict borrowed-intercept MAP path and a certified scaled pivoted QR.
 pub fn fit_prepared_ols_coefficients_map(
@@ -342,10 +356,7 @@ pub fn fit_prepared_ols_coefficients_map(
         prepared,
         config,
         &mut reservation,
-        false,
-        false,
-        false,
-        false,
+        FitPerturbations::default(),
     )
 }
 
@@ -353,10 +364,7 @@ fn fit_with_controls_internal<R: FitReservation>(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
-    perturb_first_coefficient: bool,
-    perturb_final_residual_constant: bool,
-    perturb_bread: bool,
-    perturb_reported_intercept: bool,
+    perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let design = prepared.borrowed_intercept_fe_design()?;
@@ -400,9 +408,9 @@ fn fit_with_controls_internal<R: FitReservation>(
         &reference_norms,
         config,
         reservation,
-        perturb_bread,
+        perturbations.finite_bread,
     )?;
-    if perturb_first_coefficient {
+    if perturbations.first_coefficient {
         let coefficient = qr
             .generated_coefficients
             .iter_mut()
@@ -440,7 +448,7 @@ fn fit_with_controls_internal<R: FitReservation>(
         weights,
         config.bread_tolerance,
         reservation,
-        perturb_reported_intercept,
+        perturbations,
     )?;
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.sample.n_active(), 1, raw_residuals)?;
@@ -456,7 +464,7 @@ fn fit_with_controls_internal<R: FitReservation>(
         ));
     }
     let (mut residuals, residual_absorption_report) = residual_absorbed.into_parts();
-    if perturb_final_residual_constant {
+    if perturbations.final_residual_constant {
         for row in 0..residuals.nrows() {
             residuals[(row, 0)] += 0.25;
         }
@@ -505,10 +513,11 @@ fn fit_with_controls<R: FitReservation>(
         prepared,
         config,
         reservation,
-        perturb_first_coefficient,
-        perturb_final_residual_constant,
-        false,
-        false,
+        FitPerturbations {
+            first_coefficient: perturb_first_coefficient,
+            final_residual_constant: perturb_final_residual_constant,
+            ..FitPerturbations::default()
+        },
     )
 }
 
@@ -1151,9 +1160,34 @@ fn build_finite_bread_draft<R: FitReservation>(
         }
     }
 
+    // Reuse the now-dead canonical-inverse allocation for an independently
+    // derived reference-scale finite cross-product. Keeping this pre-QR Gram
+    // block permits the reported-coordinate certificate to check the full
+    // intercept extension without allocating another O(K^2) buffer.
+    let mut reference_crossproduct = canonical_inverse;
+    for left in 0..rank {
+        let left_scale = reference_norms[generated_columns[left]];
+        for right in left..rank {
+            let right_scale = reference_norms[generated_columns[right]];
+            let value = standardized_gram[canonical_candidate_positions[left] * candidate_count
+                + canonical_candidate_positions[right]]
+                * left_scale
+                * right_scale
+                * weight_scale.reference_weight_multiplier;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS reference-scale finite cross-product is not finite",
+                ));
+            }
+            reference_crossproduct[left * rank + right] = value;
+            reference_crossproduct[right * rank + left] = value;
+        }
+    }
+
     Ok(FiniteBreadDraft {
         generated_columns,
         values,
+        reference_crossproduct,
         weight_scale,
         left_inverse_relative_infinity_norm,
         right_inverse_relative_infinity_norm,
@@ -1316,7 +1350,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
     weights: NormalizedWeights<'_>,
     tolerance: f64,
     reservation: &mut R,
-    perturb_reported_intercept: bool,
+    perturbations: FitPerturbations,
 ) -> Result<PreparedOlsBread> {
     if raw_residuals.len() != prepared.sample.n_active() {
         return Err(invalid_argument(
@@ -1336,7 +1370,8 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
         finite.generated_columns.len(),
         "prepared OLS finite bread dimensions overflow usize",
     )?;
-    if finite.values.len() != finite_square {
+    if finite.values.len() != finite_square || finite.reference_crossproduct.len() != finite_square
+    {
         return Err(invalid_argument(
             "prepared OLS finite bread dimensions are inconsistent",
         ));
@@ -1415,9 +1450,12 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
         finite.values
     };
 
-    let mut intercept_extension_relative_error = 0.0_f64;
     let mut intercept_formula_relative_error = 0.0_f64;
     let mut intercept_normalization_relative_error = 0.0_f64;
+    let mut reported_left_inverse_relative_infinity_norm =
+        finite.left_inverse_relative_infinity_norm;
+    let mut reported_right_inverse_relative_infinity_norm =
+        finite.right_inverse_relative_infinity_norm;
     if let Some(intercept_generated) = deferred_intercept {
         let finite_dimension = finite.generated_columns.len();
         let mut means = reserved_filled(
@@ -1434,7 +1472,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
 
         let raw_residual_mean = weighted_mean_slice(raw_residuals, weights)?;
         let mut reported_intercept = raw_residual_mean;
-        if perturb_reported_intercept {
+        if perturbations.reported_intercept {
             reported_intercept += 0.25;
         }
         if !reported_intercept.is_finite() {
@@ -1549,32 +1587,32 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
             ));
         }
         values[intercept_position * reported_dimension + intercept_position] = corner;
-
-        let mut maximum_extension_error = 0.0_f64;
-        for row in 0..finite_dimension {
-            let mut expected_side = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for column in 0..finite_dimension {
-                compensated_add(
-                    -values[row * reported_dimension + column] * means[column],
-                    &mut expected_side,
-                    &mut correction,
-                )?;
+        if perturbations.reported_bread_extension {
+            if finite_dimension == 0 {
+                values[intercept_position * reported_dimension + intercept_position] += 0.25;
+            } else {
+                values[intercept_position] += 0.25;
+                values[intercept_position * reported_dimension] += 0.25;
             }
-            maximum_extension_error = maximum_extension_error.max(relative_difference(
-                values[row * reported_dimension + intercept_position],
-                expected_side + correction,
-                expected_side.abs().max(side[row].abs()).max(1.0),
-            )?);
         }
-        let expected_corner =
-            finite.weight_scale.reference_weight_sum.recip() + quadratic + quadratic_correction;
-        maximum_extension_error = maximum_extension_error.max(relative_difference(
-            corner,
-            expected_corner,
-            corner.abs().max(expected_corner.abs()).max(1.0),
-        )?);
-        intercept_extension_relative_error = maximum_extension_error;
+        reported_left_inverse_relative_infinity_norm = reported_inverse_relative_infinity_norm(
+            &finite.reference_crossproduct,
+            &means,
+            finite.weight_scale.reference_weight_sum,
+            &values,
+            false,
+        )?;
+        reported_right_inverse_relative_infinity_norm = reported_inverse_relative_infinity_norm(
+            &finite.reference_crossproduct,
+            &means,
+            finite.weight_scale.reference_weight_sum,
+            &values,
+            true,
+        )?;
+    } else if perturbations.reported_bread_extension {
+        return Err(invalid_argument(
+            "injected prepared OLS reported-bread extension requires an absorbed intercept",
+        ));
     }
 
     if coordinates.len() != reported_dimension || values.len() != reported_square {
@@ -1593,9 +1631,10 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
     };
     let passed = finite.left_inverse_relative_infinity_norm <= tolerance
         && finite.right_inverse_relative_infinity_norm <= tolerance
+        && reported_left_inverse_relative_infinity_norm <= tolerance
+        && reported_right_inverse_relative_infinity_norm <= tolerance
         && symmetry_relative_infinity_norm <= tolerance
         && (reported_dimension == 0 || minimum_diagonal.is_finite() && minimum_diagonal > 0.0)
-        && intercept_extension_relative_error <= tolerance
         && intercept_formula_relative_error <= tolerance
         && intercept_normalization_relative_error <= tolerance
         && values.iter().all(|value| value.is_finite());
@@ -1611,14 +1650,111 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
         certificate: PreparedOlsBreadCertificate {
             left_inverse_relative_infinity_norm: finite.left_inverse_relative_infinity_norm,
             right_inverse_relative_infinity_norm: finite.right_inverse_relative_infinity_norm,
+            reported_left_inverse_relative_infinity_norm,
+            reported_right_inverse_relative_infinity_norm,
             symmetry_relative_infinity_norm,
             minimum_diagonal,
-            intercept_extension_relative_error,
             intercept_formula_relative_error,
             intercept_normalization_relative_error,
             passed,
         },
     })
+}
+
+fn reported_inverse_relative_infinity_norm(
+    finite_crossproduct: &[f64],
+    means: &[f64],
+    reference_weight_sum: f64,
+    inverse: &[f64],
+    reverse: bool,
+) -> Result<f64> {
+    let finite_dimension = means.len();
+    let finite_square = checked_square(
+        finite_dimension,
+        "prepared OLS reported inverse finite dimensions overflow usize",
+    )?;
+    let dimension = finite_dimension
+        .checked_add(1)
+        .ok_or_else(|| allocation("prepared OLS reported inverse dimension overflows usize"))?;
+    let square = checked_square(
+        dimension,
+        "prepared OLS reported inverse dimensions overflow usize",
+    )?;
+    if finite_crossproduct.len() != finite_square
+        || inverse.len() != square
+        || !reference_weight_sum.is_finite()
+        || reference_weight_sum <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared OLS reported inverse-certificate inputs are inconsistent",
+        ));
+    }
+
+    let crossproduct = |row: usize, column: usize| -> Result<f64> {
+        let value = match (row < finite_dimension, column < finite_dimension) {
+            (true, true) => {
+                finite_crossproduct[row * finite_dimension + column]
+                    + reference_weight_sum * means[row] * means[column]
+            }
+            (true, false) => reference_weight_sum * means[row],
+            (false, true) => reference_weight_sum * means[column],
+            (false, false) => reference_weight_sum,
+        };
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(invalid_data(
+                "prepared OLS reported cross-product is not finite",
+            ))
+        }
+    };
+
+    let mut maximum = 0.0_f64;
+    for row in 0..dimension {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..dimension {
+            let mut product = 0.0_f64;
+            let mut correction = 0.0_f64;
+            let mut absolute_products = 0.0_f64;
+            for inner in 0..dimension {
+                let (left, right) = if reverse {
+                    (
+                        inverse[row * dimension + inner],
+                        crossproduct(inner, column)?,
+                    )
+                } else {
+                    (
+                        crossproduct(row, inner)?,
+                        inverse[inner * dimension + column],
+                    )
+                };
+                let term = left * right;
+                compensated_add(term, &mut product, &mut correction)?;
+                absolute_products += term.abs();
+                if !absolute_products.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS reported inverse-certificate scale is not finite",
+                    ));
+                }
+            }
+            row_error += (product + correction - f64::from(row == column)).abs();
+            row_scale += absolute_products;
+            if !row_error.is_finite() || !row_scale.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS reported inverse-certificate accumulation is not finite",
+                ));
+            }
+        }
+        maximum = maximum.max(row_error / row_scale);
+    }
+    if maximum.is_finite() {
+        Ok(maximum)
+    } else {
+        Err(invalid_data(
+            "prepared OLS reported inverse certificate is not finite",
+        ))
+    }
 }
 
 fn weighted_mean_slice(values: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
@@ -2110,6 +2246,7 @@ mod tests {
         calls: usize,
         fail_at: Option<usize>,
         undersize: bool,
+        records: Vec<(usize, &'static str)>,
     }
 
     impl FitReservation for InjectedReservation {
@@ -2117,9 +2254,10 @@ mod tests {
             &mut self,
             target: &mut Vec<T>,
             elements: usize,
-            _label: &'static str,
+            label: &'static str,
         ) -> Result<()> {
             self.calls += 1;
+            self.records.push((elements, label));
             if self.fail_at == Some(self.calls) {
                 return Err(allocation("injected prepared OLS fit reservation failure"));
             }
@@ -2920,10 +3058,10 @@ mod tests {
                 &prepared,
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
-                false,
-                false,
-                true,
-                false,
+                FitPerturbations {
+                    finite_bread: true,
+                    ..FitPerturbations::default()
+                },
             )
             .expect_err("perturbed bread must fail its inverse certificate")
             .code,
@@ -2942,12 +3080,14 @@ mod tests {
 
     #[test]
     fn reported_intercept_certificate_fails_closed_before_fit_publication() {
-        let g = vec![1.0, 1.0, 2.0, 2.0];
-        let x = vec![-1.0, 1.0, -2.0, 2.0];
+        let g = (0..64).map(|row| (row / 8) as f64).collect::<Vec<_>>();
+        let x = (0..64)
+            .map(|row| (row % 8) as f64 - 3.5)
+            .collect::<Vec<_>>();
         let y = x
             .iter()
             .zip(&g)
-            .map(|(value, group)| 2.0 * value + if *group == 1.0 { 5.0 } else { -1.0 })
+            .map(|(value, group)| 2.0 * value + 0.75 * group - 1.0)
             .collect::<Vec<_>>();
         let prepared = prepared(
             &y,
@@ -2957,18 +3097,90 @@ mod tests {
             true,
             TestWeights::Unit,
         );
+        let mut successful = InjectedReservation::default();
+        fit_with_controls_internal(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut successful,
+            FitPerturbations::default(),
+        )
+        .expect("absorbed-intercept allocation control");
+        let covariance_bound = checked_square(
+            prepared.model.columns.len(),
+            "test prepared OLS covariance bound overflow",
+        )
+        .expect("small covariance bound");
+        assert!(prepared.sample.n_active() > covariance_bound);
+        let covariance_records = successful
+            .records
+            .iter()
+            .filter(|(_, label)| {
+                label.contains("Gram")
+                    || label.contains("bread")
+                    || label.contains("inverse R")
+                    || label.contains("reported-intercept")
+            })
+            .collect::<Vec<_>>();
+        assert!(!covariance_records.is_empty());
+        assert!(covariance_records
+            .iter()
+            .all(|(elements, _)| *elements <= covariance_bound));
+        for (label, elements) in [
+            ("unable to reserve prepared OLS reported bread", 4),
+            ("unable to reserve prepared OLS reported-intercept means", 1),
+            (
+                "unable to reserve prepared OLS reported-intercept bread side",
+                1,
+            ),
+        ] {
+            assert!(successful
+                .records
+                .iter()
+                .any(|record| *record == (elements, label)));
+        }
+        for fail_at in 1..=successful.calls {
+            let mut injected = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            let error = fit_with_controls_internal(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut injected,
+                FitPerturbations::default(),
+            )
+            .expect_err("absorbed-intercept injected allocation failure");
+            assert_eq!(error.code, ErrorCode::Allocation, "failure {fail_at}");
+        }
+
         let mut reservation = InjectedReservation::default();
         assert_eq!(
             fit_with_controls_internal(
                 &prepared,
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
-                false,
-                false,
-                false,
-                true,
+                FitPerturbations {
+                    reported_intercept: true,
+                    ..FitPerturbations::default()
+                },
             )
             .expect_err("perturbed reported intercept must not publish a partial fit")
+            .code,
+            ErrorCode::InvalidData
+        );
+
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls_internal(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                FitPerturbations {
+                    reported_bread_extension: true,
+                    ..FitPerturbations::default()
+                },
+            )
+            .expect_err("perturbed reported-bread extension must fail its inverse certificate")
             .code,
             ErrorCode::InvalidData
         );
