@@ -94,9 +94,11 @@ impl CategoricalPartitionRegistry {
         canonical.sort_unstable();
         canonical.dedup();
 
-        if let Some(existing) = self.partitions.iter().position(|partition| {
-            partition.categorical_source_indices() == canonical.as_slice()
-        }) {
+        if let Some(existing) = self
+            .partitions
+            .iter()
+            .position(|partition| partition.categorical_source_indices() == canonical.as_slice())
+        {
             return Ok(existing);
         }
 
@@ -204,14 +206,9 @@ mod tests {
         ];
         let mut registry = CategoricalPartitionRegistry::new();
         let first = registry.intern(&[0, 1], &sources).expect("first");
+        assert_eq!(registry.intern(&[1, 0], &sources).expect("reverse"), first);
         assert_eq!(
-            registry.intern(&[1, 0], &sources).expect("reverse"),
-            first
-        );
-        assert_eq!(
-            registry
-                .intern(&[0, 1, 0, 1], &sources)
-                .expect("repeated"),
+            registry.intern(&[0, 1, 0, 1], &sources).expect("repeated"),
             first
         );
         assert_eq!(registry.partitions().len(), 1);
