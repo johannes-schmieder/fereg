@@ -120,9 +120,53 @@ intercept moment is checked rather than hard-coded to pass.
 This checkpoint has no plugin action, performs no SPI write, posts no VCE or
 DoF, and does not enable `stfeols`.
 
-## Covariance estimators
+## Prepared absorbed-DoF checkpoint
 
-The current core supports:
+`compute_prepared_ols_absorbed_dof` is a separate core-only structural-rank
+checkpoint for the currently prepared single-source, intercept-only numeric FE
+surface. It takes `&PreparedOlsData` because that object retains the single
+authoritative categorical code slice for each unique source. Absorbed-term
+order, identities, labels, level counts, and memberships come from
+`PreparedOlsFeTopology`; the categorical slices are only borrowed to form
+linear-time pair edges. The calculation does not inspect model columns,
+outcomes, regressors, weights, or singleton diagnostics, and it allocates no
+observation-scale copy.
+
+For wire-ordered effects with category counts `K_j`, the report implements the
+pinned reference policies as follows:
+
+- `None` skips mobility searches but still applies the mandatory intercept
+  redundancy: `M_1=0` and `M_j=1` for each later nonempty effect.
+- `FirstPair` replaces `M_2` with the number of connected components in the
+  first two effects' bipartite graph; later nonempty effects retain `M_j=1`.
+- `Pairwise`, the default, uses `M_j=max_i C_ij` over every earlier/later
+  bipartite pair, with the mandatory one as the initial bound.
+
+The absorbed rank is the checked sum of `K_j-M_j`. Each wire effect reports its
+term/source identity, label, category count, redundancy, coefficient count,
+exactness flag, and `nested=false`. The first effect is exact; the second is
+exact when its first-pair mobility calculation runs; later pairwise bounds are
+explicitly approximate. Repeated wire terms keep separate rows but reuse their
+single topology source.
+
+Pair mobility uses iterative, path-compressing union-find with union by rank.
+All production vectors and strings are fallibly reserved and capacity-guarded;
+all totals and node offsets use checked arithmetic. Corrupt identity,
+membership, dimension, code, cycle, overflow, allocation, or capacity state is
+fatal. Independent graph-search tests exercise randomized pair topologies, and
+the sealed licensed-Stata receipt anchors `df_a=8` for one firm FE,
+`df_a=19` for `dof(none)` on worker plus firm, and `df_a=21` for
+`dof(firstpair)` on worker, firm, and year.
+
+This checkpoint deliberately excludes absorbed slopes, FE/cluster nesting,
+finite-regressor rank, normalized absorbed-model intercept handling, effective
+frequency-weight observation counts, residual DoF, covariance corrections,
+and fit statistics. It has no plugin action or SPI write and does not enable
+`stfeols`.
+
+## Legacy covariance source
+
+The older generic core contains:
 
 - conventional homoskedastic covariance;
 - HC1-style heteroskedastic covariance;
@@ -134,19 +178,16 @@ converted according to the frozen weight-semantics contract before this layer.
 Cluster intersections are encoded as tuples rather than concatenated strings.
 Any required cluster subset with fewer than two groups fails closed.
 
-## Degrees of freedom
-
-The default absorbed-rank count is exact for one- and two-way intercept-only
-fixed effects, including disconnected graphs. Higher-way categorical designs
-and absorbed-slope designs use a conservative coefficient-slot upper bound and
-set `absorbed_rank_is_approximate=true`. Exact reference-compatible higher-way,
-nesting, and slope accounting remains a later release gate; callers can inspect
-the flag and must not silently present the approximation as exact parity.
+Those covariance routines and the older generic DoF routine are not certified
+for the prepared estimator and must not be used for Stata result posting.
+Prepared IID/robust score construction, weight-specific meat semantics,
+finite-sample corrections, cluster intersections/nesting, residual DoF, and
+fit-statistic parity remain later checkpoints.
 
 ## Current boundary
 
 These checkpoints are scientific-core implementations, not a claim that
 `stfeols` is production-ready. Remaining work includes FE coefficient recovery,
 prediction, Stata data ingestion and result posting, weight-type parity,
-reference DoF policy, licensed-Stata differential tests, and large-scale speed
-and memory gates.
+remaining reference DoF/VCE policy, licensed-Stata differential tests, and
+large-scale speed and memory gates.
