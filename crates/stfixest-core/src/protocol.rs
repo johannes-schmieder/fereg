@@ -23,7 +23,7 @@ impl ProtocolVersion {
 /// Version of the small action/diagnostics handshake accepted by the plugin.
 pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
 /// Version of the data-independent expanded-model metadata wire.
-pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 0);
+pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Handshake {
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn action_handshake_and_model_wire_are_distinct_versions() {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 0));
-        assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 0));
+        assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }
 

@@ -1,10 +1,62 @@
 use std::cell::RefCell;
 
 use stfixest_core::{
-    prepare_numeric_sample, AdjustmentInput, DomainDecision, DropReason, ErrorCode,
-    NumericColumnView, NumericDomainPolicy, NumericPreparationInput, PreparedAdjustment,
-    PreparedWeights, Result, StFixestError, WeightInput, WeightKind,
+    prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput,
+    DomainDecision, DropReason, ErrorCode, NumericColumnView, NumericDomainPolicy,
+    NumericPreparationInput, NumericSourceUse, PreparedAdjustment, PreparedWeights, Result,
+    StFixestError, WeightInput, WeightKind,
 };
+
+#[test]
+fn unified_source_roles_lock_regressor_weight_and_fixed_effect_precedence() {
+    let candidate = [false, true, true, true, true, true];
+    let outcome = [0.0, f64::NAN, 2.0, 3.0, 4.0, 5.0];
+    let ordinary_and_fe = [f64::NAN, 1.0, f64::NAN, 1.0, 1.0, -1.5];
+    let fe_only = [f64::NAN, f64::NAN, f64::NAN, f64::NAN, 2.5, -3.25];
+    let weight = [1.0, 1.0, 1.0, f64::NAN, 1.0, 2.0];
+    let regressors = [
+        NumericColumnView::new(&ordinary_and_fe),
+        NumericColumnView::new(&fe_only),
+    ];
+    let input = NumericPreparationInput {
+        candidate: &candidate,
+        outcome: NumericColumnView::new(&outcome),
+        regressors: &regressors,
+        weights: WeightInput::Provided {
+            kind: WeightKind::Analytic,
+            column: NumericColumnView::new(&weight),
+        },
+        adjustment: AdjustmentInput::None,
+    };
+    let uses = [
+        NumericSourceUse::ordinary_and_fixed_effect(),
+        NumericSourceUse::fixed_effect(),
+    ];
+    let prepared =
+        prepare_numeric_sample_with_source_uses(&input, &uses, &LiteralPolicy::default()).unwrap();
+    assert_eq!(
+        prepared.drop_reasons,
+        vec![
+            DropReason::ExcludedByIfIn,
+            DropReason::MissingOutcome,
+            DropReason::MissingRegressor,
+            DropReason::InvalidOrMissingWeight,
+            DropReason::Retained,
+            DropReason::Retained,
+        ]
+    );
+    assert_eq!(prepared.retained_rows(), &[4, 5]);
+    assert_eq!(prepared.regressors[1], vec![2.5, -3.25]);
+
+    let no_weight = NumericPreparationInput {
+        weights: WeightInput::None,
+        ..input
+    };
+    let prepared =
+        prepare_numeric_sample_with_source_uses(&no_weight, &uses, &LiteralPolicy::default())
+            .unwrap();
+    assert_eq!(prepared.drop_reasons[3], DropReason::MissingFixedEffect);
+}
 
 #[derive(Default)]
 struct LiteralPolicy {

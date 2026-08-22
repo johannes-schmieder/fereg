@@ -154,6 +154,40 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('\"estimate-ols\" | \"estimate-ppml\"', dispatch)
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 
+    def test_numeric_fixed_effect_preparation_is_bounded_and_stays_internal(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ABSorb(string asis)", helper)
+        self.assertIn("does not support string model or fixed-effect sources", helper)
+        self.assertIn('"absorb_term_matrix=', helper)
+        self.assertIn("PreparedOlsEffect", core)
+        self.assertIn("NumericSourceUse", core)
+        sample = (ROOT / "crates/stfixest-core/src/data/sample.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("DropReason::MissingFixedEffect", sample)
+        self.assertIn("absorb_component_count", plugin)
+        self.assertIn("absorb(g h g)", fixture)
+        self.assertIn("_st_shared_fe_reason[10] == 3", fixture)
+        self.assertIn("_st_shared_fe_reason[11] == 5", fixture)
+        self.assertIn("absorb(g#h)", fixture)
+        self.assertIn("absorb(g##c.x)", fixture)
+        self.assertIn("absorb(saved_fe=g)", fixture)
+        self.assertIn("absorb(fe_string)", fixture)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', (
+            ROOT / "crates/stfixest-plugin/src/dispatch.rs"
+        ).read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

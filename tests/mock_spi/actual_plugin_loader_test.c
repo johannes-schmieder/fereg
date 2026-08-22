@@ -47,6 +47,8 @@ static const ST_double term_matrix[1][8] = {{1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 
 static const ST_double component_matrix[1][13] = {
     {1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0}
 };
+static const ST_double empty_absorb_term_matrix[1][4] = {{0.0, 0.0, 0.0, 0.0}};
+static const ST_double empty_absorb_component_matrix[1][4] = {{0.0, 0.0, 0.0, 0.0}};
 static const ST_double factor_term_matrix[3][8] = {
     {1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 0.0, 0.0},
     {2.0, 2.0, 2.0, 2.0, 1.0, 0.0, 0.0, 0.0},
@@ -86,7 +88,8 @@ static const ST_double interaction_binding_matrix[4][3] = {
 
 static ST_int mock_rowsof(char *name)
 {
-    if (strcmp(name, "S") == 0 || strcmp(name, "T") == 0 || strcmp(name, "C") == 0) return 1;
+    if (strcmp(name, "S") == 0 || strcmp(name, "T") == 0 || strcmp(name, "C") == 0 ||
+        strcmp(name, "A") == 0 || strcmp(name, "AC") == 0) return 1;
     if (strcmp(name, "B") == 0) return 3;
     if (strcmp(name, "BW") == 0) return 4;
     if (strcmp(name, "BF") == 0) return 4;
@@ -102,6 +105,7 @@ static ST_int mock_colsof(char *name)
     if (strcmp(name, "S") == 0) return 2;
     if (strcmp(name, "T") == 0) return 8;
     if (strcmp(name, "C") == 0) return 13;
+    if (strcmp(name, "A") == 0 || strcmp(name, "AC") == 0) return 4;
     if (strcmp(name, "B") == 0) return 3;
     if (strcmp(name, "BW") == 0) return 3;
     if (strcmp(name, "BF") == 0) return 3;
@@ -127,6 +131,14 @@ static ST_int mock_mat_el(char *name, ST_int row, ST_int column, ST_double *valu
     }
     if (strcmp(name, "C") == 0 && row == 1 && column <= 13) {
         *value = component_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "A") == 0 && row == 1 && column <= 4) {
+        *value = empty_absorb_term_matrix[0][column - 1];
+        return 0;
+    }
+    if (strcmp(name, "AC") == 0 && row == 1 && column <= 4) {
+        *value = empty_absorb_component_matrix[0][column - 1];
         return 0;
     }
     if (strcmp(name, "TF") == 0 && row <= 3 && column <= 8) {
@@ -217,7 +229,7 @@ static int check_version(stata_call_function call)
     if (call(1, arguments) != 0) return 1;
     if (strstr(display_buffer, "stfixest.plugin_version=0.1.0") == NULL ||
         strstr(display_buffer, "stfixest.action_protocol=1.0") == NULL ||
-        strstr(display_buffer, "stfixest.model_wire=2.0") == NULL ||
+        strstr(display_buffer, "stfixest.model_wire=2.1") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -291,7 +303,7 @@ static int check_prepare_ols_test(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=S",
         "source_count=1",
         "term_matrix=T",
@@ -302,6 +314,12 @@ static int check_prepare_ols_test(stata_call_function call)
         "canonical_tokens=3:c.x",
         "raw_component_operators=1:c",
         "raw_time_series_operators=0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
@@ -360,7 +378,7 @@ static int check_prepare_ols_factor(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=S",
         "source_count=1",
         "term_matrix=TF",
@@ -371,6 +389,12 @@ static int check_prepare_ols_factor(stata_call_function call)
         "canonical_tokens=4:1b.g|3:2.g|3:3.g",
         "raw_component_operators=2:1b|1:2|1:3",
         "raw_time_series_operators=0:|0:|0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
@@ -424,7 +448,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=SI",
         "source_count=2",
         "term_matrix=TI",
@@ -435,6 +459,12 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
         "canonical_tokens=7:2.g#1.h",
         "raw_component_operators=1:2|1:1",
         "raw_time_series_operators=0:|0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=BI",
         "binding_count=4",
         "include_intercept=1",
@@ -516,7 +546,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=S",
         "source_count=1",
         "term_matrix=T",
@@ -527,6 +557,12 @@ static int check_prepare_ols_aweight(stata_call_function call)
         "canonical_tokens=3:c.x",
         "raw_component_operators=1:c",
         "raw_time_series_operators=0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=BW",
         "binding_count=4",
         "include_intercept=1",
@@ -601,7 +637,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=S",
         "source_count=1",
         "term_matrix=T",
@@ -612,6 +648,12 @@ static int check_prepare_ols_fweight(stata_call_function call)
         "canonical_tokens=3:c.x",
         "raw_component_operators=1:c",
         "raw_time_series_operators=0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=BF",
         "binding_count=4",
         "include_intercept=1",
@@ -681,7 +723,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
         "stata=18.0",
         "confirm=developer-preparation-test",
         "model_major=2",
-        "model_minor=0",
+        "model_minor=1",
         "source_matrix=S",
         "source_count=1",
         "term_matrix=T",
@@ -692,6 +734,12 @@ static int check_prepare_ols_pweight(stata_call_function call)
         "canonical_tokens=3:c.x",
         "raw_component_operators=1:c",
         "raw_time_series_operators=0:",
+        "absorb_term_matrix=A",
+        "absorb_term_count=0",
+        "absorb_component_matrix=AC",
+        "absorb_component_count=0",
+        "absorb_labels=.",
+        "absorb_saved_names=.",
         "binding_matrix=BP",
         "binding_count=4",
         "include_intercept=1",

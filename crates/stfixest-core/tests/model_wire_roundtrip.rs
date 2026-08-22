@@ -1,8 +1,65 @@
 use stfixest_core::{
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    MetadataFlag, ModelWireV2, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledModelSpecification, CompiledTermGraph,
+    ComponentKind, ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, ModelWireV2,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
+
+#[test]
+fn model_wire_21_round_trips_absorbed_terms_without_losing_empty_saved_names() {
+    let specification = CompiledModelSpecification {
+        model: CompiledTermGraph {
+            sources: vec![
+                SourceEntry {
+                    id: SourceId::new(1).unwrap(),
+                    canonical_name: "x".into(),
+                },
+                SourceEntry {
+                    id: SourceId::new(2).unwrap(),
+                    canonical_name: "g".into(),
+                },
+                SourceEntry {
+                    id: SourceId::new(3).unwrap(),
+                    canonical_name: "time".into(),
+                },
+            ],
+            terms: vec![ExpandedTerm {
+                id: TermId::new(1).unwrap(),
+                order: TermOrder::new(1).unwrap(),
+                coefficient_slot: CoefficientSlot::new(1).unwrap(),
+                raw_kind: RawTermKind::Variable,
+                whole_column_omitted: false,
+                canonical_token: "c.x".into(),
+                components: vec![continuous(1, 1, "c", TimeSeriesState::None, "")],
+            }],
+        },
+        absorbed_terms: vec![
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(2).unwrap()],
+                slope_sources: Vec::new(),
+                label: "g".into(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(2).unwrap(),
+                intercept: false,
+                categorical_sources: vec![SourceId::new(2).unwrap()],
+                slope_sources: vec![SourceId::new(3).unwrap()],
+                label: "g#c.time".into(),
+                saved_name: "alpha".into(),
+            },
+        ],
+    };
+    let wire = ModelWireV2::from_specification(&specification).unwrap();
+    assert_eq!(wire.minor, 1.0);
+    assert_eq!(wire.absorb_saved_names, vec!["", "alpha"]);
+    assert_eq!(wire.decode_specification().unwrap(), specification);
+    assert!(
+        wire.decode().is_err(),
+        "finite-only decode must not drop FEs"
+    );
+}
 
 #[test]
 fn literal_expanded_graph_round_trips_without_reclassification() {

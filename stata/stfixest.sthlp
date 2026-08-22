@@ -18,7 +18,7 @@
 
 {pstd}
 This Phase 0-1 package validates the Stata 18+ loader, Stata Plugin Interface
-3.0 bridge, action handshake 1.0, model wire 2.0, panic boundary, preprocessing primitives,
+3.0 bridge, action handshake 1.0, model wire 2.1, panic boundary, preprocessing primitives,
 and native thread machinery. It does not contain an estimator.
 
 {pstd}

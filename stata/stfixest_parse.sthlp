@@ -31,3 +31,10 @@ Results include {cmd:r(model_sources)}, {cmd:r(model_terms)}, {cmd:r(model_compo
 {cmd:r(cluster_components)} plus exact counts, canonical-token macros, and raw
 component/time-series operator registries. The returned model wire version is
 {cmd:r(model_wire_major)}.{cmd:r(model_wire_minor)}.
+
+{pstd}
+Model wire 2.1 adds length-framed absorbed-term labels and saved-name entries;
+an absent saved name is represented unambiguously as {cmd:0:}. The current
+developer preparation action executes only unnamed, single numeric-source,
+intercept-only absorbed terms. Other absorbed shapes remain metadata-only and
+fail closed at that action boundary.

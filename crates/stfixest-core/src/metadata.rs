@@ -5,6 +5,8 @@ use std::collections::BTreeSet;
 pub const SOURCE_ROW_WIDTH: usize = 2;
 pub const TERM_ROW_WIDTH: usize = 8;
 pub const COMPONENT_ROW_WIDTH: usize = 13;
+pub const ABSORB_TERM_ROW_WIDTH: usize = 4;
+pub const ABSORB_COMPONENT_ROW_WIDTH: usize = 4;
 
 macro_rules! one_based_id {
     ($name:ident, $label:literal) => {
@@ -40,6 +42,7 @@ one_based_id!(TermId, "term id");
 one_based_id!(TermOrder, "term order");
 one_based_id!(CoefficientSlot, "coefficient slot");
 one_based_id!(ComponentOrder, "component order");
+one_based_id!(AbsorbTermId, "absorbed-term id");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -256,6 +259,59 @@ impl CompiledTermGraph {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum AbsorbComponentRole {
+    Categorical = 1,
+    Slope = 2,
+}
+
+impl AbsorbComponentRole {
+    fn from_code(code: u32) -> Result<Self> {
+        match code {
+            1 => Ok(Self::Categorical),
+            2 => Ok(Self::Slope),
+            _ => Err(invalid(format!(
+                "unknown absorbed-component role code {code}"
+            ))),
+        }
+    }
+
+    const fn code(self) -> u32 {
+        self as u32
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AbsorbComponent {
+    pub role: AbsorbComponentRole,
+    pub order: u32,
+    pub source: SourceId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AbsorbedTerm {
+    pub id: AbsorbTermId,
+    pub intercept: bool,
+    pub categorical_sources: Vec<SourceId>,
+    pub slope_sources: Vec<SourceId>,
+    pub label: String,
+    pub saved_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompiledModelSpecification {
+    pub model: CompiledTermGraph,
+    pub absorbed_terms: Vec<AbsorbedTerm>,
+}
+
+impl CompiledModelSpecification {
+    pub fn validate(&self) -> Result<()> {
+        self.model.validate()?;
+        validate_absorbed_terms(&self.absorbed_terms, self.model.sources.len())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NumericWireTable {
     pub declared_count: f64,
@@ -273,6 +329,10 @@ pub struct ModelWireV2 {
     pub canonical_tokens: Vec<String>,
     pub raw_component_operators: Vec<String>,
     pub raw_time_series_operators: Vec<String>,
+    pub absorb_terms: NumericWireTable,
+    pub absorb_components: NumericWireTable,
+    pub absorb_labels: Vec<String>,
+    pub absorb_saved_names: Vec<String>,
 }
 
 impl ModelWireV2 {
@@ -348,10 +408,87 @@ impl ModelWireV2 {
                 .collect(),
             raw_component_operators,
             raw_time_series_operators,
+            absorb_terms: encode_table(Vec::new(), ABSORB_TERM_ROW_WIDTH),
+            absorb_components: encode_table(Vec::new(), ABSORB_COMPONENT_ROW_WIDTH),
+            absorb_labels: Vec::new(),
+            absorb_saved_names: Vec::new(),
         })
     }
 
+    pub fn from_specification(specification: &CompiledModelSpecification) -> Result<Self> {
+        specification.validate()?;
+        let mut wire = Self::from_graph(&specification.model)?;
+        let mut term_rows = Vec::new();
+        let component_count =
+            specification
+                .absorbed_terms
+                .iter()
+                .try_fold(0_usize, |total, term| {
+                    total
+                        .checked_add(term.categorical_sources.len())
+                        .and_then(|value| value.checked_add(term.slope_sources.len()))
+                        .ok_or_else(|| invalid("absorbed-component cardinality overflows usize"))
+                })?;
+        term_rows
+            .try_reserve_exact(specification.absorbed_terms.len())
+            .map_err(|_| allocation("unable to reserve absorbed-term wire rows"))?;
+        let mut component_rows = Vec::new();
+        component_rows
+            .try_reserve_exact(component_count)
+            .map_err(|_| allocation("unable to reserve absorbed-component wire rows"))?;
+        let mut labels = Vec::new();
+        labels
+            .try_reserve_exact(specification.absorbed_terms.len())
+            .map_err(|_| allocation("unable to reserve absorbed-term labels"))?;
+        let mut saved_names = Vec::new();
+        saved_names
+            .try_reserve_exact(specification.absorbed_terms.len())
+            .map_err(|_| allocation("unable to reserve absorbed saved-name registry"))?;
+
+        for term in &specification.absorbed_terms {
+            term_rows.push(vec![
+                f64::from(term.id.get()),
+                term.categorical_sources.len() as f64,
+                if term.intercept { 1.0 } else { 0.0 },
+                term.slope_sources.len() as f64,
+            ]);
+            for (index, source) in term.categorical_sources.iter().enumerate() {
+                component_rows.push(vec![
+                    f64::from(term.id.get()),
+                    f64::from(AbsorbComponentRole::Categorical.code()),
+                    f64::from(checked_index(index, "absorbed categorical component")?),
+                    f64::from(source.get()),
+                ]);
+            }
+            for (index, source) in term.slope_sources.iter().enumerate() {
+                component_rows.push(vec![
+                    f64::from(term.id.get()),
+                    f64::from(AbsorbComponentRole::Slope.code()),
+                    f64::from(checked_index(index, "absorbed slope component")?),
+                    f64::from(source.get()),
+                ]);
+            }
+            labels.push(term.label.clone());
+            saved_names.push(term.saved_name.clone());
+        }
+        wire.absorb_terms = encode_table(term_rows, ABSORB_TERM_ROW_WIDTH);
+        wire.absorb_components = encode_table(component_rows, ABSORB_COMPONENT_ROW_WIDTH);
+        wire.absorb_labels = labels;
+        wire.absorb_saved_names = saved_names;
+        Ok(wire)
+    }
+
     pub fn decode(&self) -> Result<CompiledTermGraph> {
+        let specification = self.decode_specification()?;
+        if !specification.absorbed_terms.is_empty() {
+            return Err(unsupported(
+                "model wire contains absorbed terms; decode the complete specification",
+            ));
+        }
+        Ok(specification.model)
+    }
+
+    pub fn decode_specification(&self) -> Result<CompiledModelSpecification> {
         let major = positive_u16(self.major, "model-wire major")?;
         let minor = nonnegative_u16(self.minor, "model-wire minor")?;
         if major != MODEL_WIRE_VERSION.major {
@@ -539,8 +676,186 @@ impl ModelWireV2 {
         }
         let graph = CompiledTermGraph { sources, terms };
         graph.validate()?;
-        Ok(graph)
+        let absorbed_terms = decode_absorbed_terms(self, minor, graph.sources.len())?;
+        let specification = CompiledModelSpecification {
+            model: graph,
+            absorbed_terms,
+        };
+        specification.validate()?;
+        Ok(specification)
     }
+}
+
+fn decode_absorbed_terms(
+    wire: &ModelWireV2,
+    minor: u16,
+    source_count: usize,
+) -> Result<Vec<AbsorbedTerm>> {
+    let term_rows = normalized_rows(&wire.absorb_terms, ABSORB_TERM_ROW_WIDTH, "absorbed term")?;
+    let component_rows = normalized_rows(
+        &wire.absorb_components,
+        ABSORB_COMPONENT_ROW_WIDTH,
+        "absorbed component",
+    )?;
+    require_registry(&wire.absorb_labels, term_rows.len(), "absorbed-label")?;
+    require_registry(
+        &wire.absorb_saved_names,
+        term_rows.len(),
+        "absorbed-saved-name",
+    )?;
+    if minor == 0 {
+        if !term_rows.is_empty()
+            || !component_rows.is_empty()
+            || !wire.absorb_labels.is_empty()
+            || !wire.absorb_saved_names.is_empty()
+        {
+            return Err(StFixestError::new(
+                ErrorCode::ProtocolMismatch,
+                "model-wire 2.0 cannot carry absorbed-term metadata",
+            ));
+        }
+        return Ok(Vec::new());
+    }
+
+    let mut headers = Vec::new();
+    headers
+        .try_reserve_exact(term_rows.len())
+        .map_err(|_| allocation("unable to reserve absorbed-term headers"))?;
+    let mut expected_components = 0_usize;
+    for (index, row) in term_rows.iter().enumerate() {
+        let expected_id = checked_index(index, "absorbed term")?;
+        let id = positive_u32(row[0], "absorbed-term id")?;
+        if id != expected_id {
+            return Err(invalid(format!(
+                "absorbed-term ids must be contiguous and ordered; expected {expected_id}, found {id}"
+            )));
+        }
+        let n_categorical = positive_usize(row[1], "absorbed categorical count")?;
+        let intercept = strict_bool(row[2], "absorbed intercept flag")?;
+        let n_slopes = nonnegative_usize(row[3], "absorbed slope count")?;
+        if !intercept && n_slopes == 0 {
+            return Err(invalid(
+                "absorbed term must contain an intercept or at least one slope",
+            ));
+        }
+        expected_components = expected_components
+            .checked_add(n_categorical)
+            .and_then(|value| value.checked_add(n_slopes))
+            .ok_or_else(|| invalid("absorbed-component cardinality overflows usize"))?;
+        let label = wire.absorb_labels[index].trim();
+        if label.is_empty() {
+            return Err(invalid("absorbed-label registry contains an empty entry"));
+        }
+        let saved_name = wire.absorb_saved_names[index].trim();
+        headers.push((
+            AbsorbTermId::validated(id),
+            n_categorical,
+            intercept,
+            n_slopes,
+            label.to_owned(),
+            saved_name.to_owned(),
+        ));
+    }
+    if component_rows.len() != expected_components {
+        return Err(invalid(format!(
+            "absorbed-term component counts total {expected_components}, but absorbed-component table declares {}",
+            component_rows.len()
+        )));
+    }
+
+    let mut component_index = 0_usize;
+    let mut terms = Vec::new();
+    terms
+        .try_reserve_exact(headers.len())
+        .map_err(|_| allocation("unable to reserve absorbed terms"))?;
+    for (id, n_categorical, intercept, n_slopes, label, saved_name) in headers {
+        let mut categorical_sources = Vec::new();
+        categorical_sources
+            .try_reserve_exact(n_categorical)
+            .map_err(|_| allocation("unable to reserve absorbed categorical sources"))?;
+        let mut slope_sources = Vec::new();
+        slope_sources
+            .try_reserve_exact(n_slopes)
+            .map_err(|_| allocation("unable to reserve absorbed slope sources"))?;
+        for expected_role in [
+            (AbsorbComponentRole::Categorical, n_categorical),
+            (AbsorbComponentRole::Slope, n_slopes),
+        ] {
+            for local_index in 0..expected_role.1 {
+                let row = &component_rows[component_index];
+                let row_term = positive_u32(row[0], "absorbed-component term id")?;
+                let role = AbsorbComponentRole::from_code(positive_u32(
+                    row[1],
+                    "absorbed-component role",
+                )?)?;
+                let order = positive_u32(row[2], "absorbed-component order")?;
+                let expected_order = checked_index(local_index, "absorbed component")?;
+                if row_term != id.get() || role != expected_role.0 || order != expected_order {
+                    return Err(invalid(format!(
+                        "absorbed components are orphaned, out of role order, or misordered at global row {}",
+                        component_index + 1
+                    )));
+                }
+                let source = positive_u32(row[3], "absorbed-component source id")?;
+                if source as usize > source_count {
+                    return Err(invalid(format!(
+                        "absorbed component references source id {source} outside the source registry"
+                    )));
+                }
+                match role {
+                    AbsorbComponentRole::Categorical => {
+                        categorical_sources.push(SourceId::validated(source));
+                    }
+                    AbsorbComponentRole::Slope => {
+                        slope_sources.push(SourceId::validated(source));
+                    }
+                }
+                component_index += 1;
+            }
+        }
+        terms.push(AbsorbedTerm {
+            id,
+            intercept,
+            categorical_sources,
+            slope_sources,
+            label,
+            saved_name,
+        });
+    }
+    Ok(terms)
+}
+
+fn validate_absorbed_terms(terms: &[AbsorbedTerm], source_count: usize) -> Result<()> {
+    for (index, term) in terms.iter().enumerate() {
+        let expected = checked_index(index, "absorbed term")?;
+        if term.id.get() != expected {
+            return Err(invalid("absorbed-term ids must be contiguous and ordered"));
+        }
+        if term.categorical_sources.is_empty() {
+            return Err(invalid(
+                "absorbed term requires at least one categorical source",
+            ));
+        }
+        if !term.intercept && term.slope_sources.is_empty() {
+            return Err(invalid(
+                "absorbed term must contain an intercept or at least one slope",
+            ));
+        }
+        if term.label.trim().is_empty() {
+            return Err(invalid("absorbed-term label must be nonempty"));
+        }
+        if term
+            .categorical_sources
+            .iter()
+            .chain(&term.slope_sources)
+            .any(|source| source.get() as usize > source_count)
+        {
+            return Err(invalid(
+                "absorbed term references a source outside the source registry",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn validate_graph(graph: &CompiledTermGraph) -> Result<()> {
@@ -829,6 +1144,10 @@ fn invalid(message: impl Into<String>) -> StFixestError {
 
 fn unsupported(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Unsupported, message)
+}
+
+fn allocation(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

@@ -22,6 +22,8 @@ program define stfixest_parse, rclass
     local component_ts_operators
     local absorb_labels
     local absorb_saved_names
+    local absorb_label_registry
+    local absorb_saved_name_registry
     local cluster_labels
 
     /* Ordinary factor-variable terms: expand names only; do not call fvrevar. */
@@ -240,6 +242,16 @@ program define stfixest_parse, rclass
             (`absorb_rows', `n_categorical', `intercept', `n_slopes')
         local absorb_labels `"`absorb_labels' `raw_absorb'"'
         local absorb_saved_names `"`absorb_saved_names' `saved_name'"'
+        local absorb_label_piece `"`=strlen(`"`raw_absorb'"')':`raw_absorb'"'
+        local absorb_saved_piece `"`=strlen(`"`saved_name'"')':`saved_name'"'
+        if `"`absorb_label_registry'"' == "" {
+            local absorb_label_registry `"`absorb_label_piece'"'
+            local absorb_saved_name_registry `"`absorb_saved_piece'"'
+        }
+        else {
+            local absorb_label_registry `"`absorb_label_registry'|`absorb_label_piece'"'
+            local absorb_saved_name_registry `"`absorb_saved_name_registry'|`absorb_saved_piece'"'
+        }
     }
 
     /* Cluster interactions are represented as tuples of original sources. */
@@ -304,7 +316,7 @@ program define stfixest_parse, rclass
     matrix colnames `cluster_component_meta' = term order source
 
     return scalar model_wire_major = 2
-    return scalar model_wire_minor = 0
+    return scalar model_wire_minor = 1
     return scalar n_sources = `source_rows'
     return scalar n_model_terms = `term_rows'
     return scalar n_model_components = `component_rows'
@@ -319,6 +331,12 @@ program define stfixest_parse, rclass
     return local component_ts_operators `"`component_ts_operators'"'
     return local absorb_labels `"`absorb_labels'"'
     return local absorb_saved_names `"`absorb_saved_names'"'
+    if `absorb_rows' == 0 {
+        local absorb_label_registry "."
+        local absorb_saved_name_registry "."
+    }
+    return local absorb_label_registry `"`absorb_label_registry'"'
+    return local absorb_saved_name_registry `"`absorb_saved_name_registry'"'
     return local cluster_labels `"`cluster_labels'"'
     return matrix model_sources = `source_meta'
     return matrix model_terms = `term_meta'

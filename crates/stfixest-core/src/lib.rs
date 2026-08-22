@@ -18,9 +18,10 @@ pub mod protocol;
 pub mod selftest;
 
 pub use data::{
-    prepare_numeric_sample, AdjustmentInput, ColumnRecipe, DenseMatrix, DomainDecision, DropReason,
-    ModelMatrixBuilder, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
-    PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
+    prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, ColumnRecipe,
+    DenseMatrix, DomainDecision, DropReason, ModelMatrixBuilder, NumericColumnView,
+    NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedAdjustment,
+    PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
 pub use diagnostics::{BuildInfo, DoctorInput, DoctorReport};
 pub use error::{ErrorCode, Result, StFixestError};
@@ -35,17 +36,19 @@ pub use fe::{
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    MetadataFlag, ModelWireV2, NumericWireTable, RawTermKind, SourceEntry, SourceId, TermComponent,
-    TermId, TermOrder, TimeSeriesState, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
+    AbsorbComponent, AbsorbComponentRole, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
+    CompiledModelSpecification, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, MetadataFlag, ModelWireV2, NumericWireTable, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState, ABSORB_COMPONENT_ROW_WIDTH,
+    ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 pub use ols::{
     compute_dof, fit_ols, prepare_ols_data, solve_rank_revealing, ClusterSubsetReport, DofConfig,
     DofMethod, DofReport, FiniteSolver, FitStatistics, LoadedNumericColumn, LoadedOlsInput,
     OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalSource,
     PreparedOlsCategoricalComponent, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
-    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel, RankSolve,
-    RegressorStatus, VceKind, VceReport,
+    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect, PreparedOlsModel,
+    RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

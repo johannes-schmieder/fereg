@@ -4,7 +4,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     syntax varlist(fv numeric min=1) [if] [in], ///
         ORIGINALOBS(name) RETAINED(name) DROPREASON(name) ///
         [NOCONStant AWEIGHT(varname numeric) FWEIGHT(varname numeric) ///
-         PWEIGHT(varname numeric)]
+         PWEIGHT(varname numeric) ABSorb(string asis)]
 
     local requested_weights = (`"`aweight'"' != "") + ///
         (`"`fweight'"' != "") + (`"`pweight'"' != "")
@@ -19,13 +19,16 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
 
     marksample touse, novarlist
     gettoken depvar indepvars : varlist
-    tempname model_sources model_terms model_components input_bindings
+    local absorb_option
+    if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
+    tempname model_sources model_terms model_components absorb_terms
+    tempname absorb_components input_bindings
 
     if strtrim(`"`indepvars'"') == "" {
-        stfixest_parse, touse(`touse') emptymodel
+        stfixest_parse, touse(`touse') emptymodel `absorb_option'
     }
     else {
-        stfixest_parse `indepvars', touse(`touse')
+        stfixest_parse `indepvars', touse(`touse') `absorb_option'
     }
 
     local source_vars `"`r(source_vars)'"'
@@ -35,9 +38,26 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     local n_sources = r(n_sources)
     local n_terms = r(n_model_terms)
     local n_components = r(n_model_components)
+    local model_major = r(model_wire_major)
+    local model_minor = r(model_wire_minor)
+    local n_absorb_terms = r(n_absorb_terms)
+    local n_absorb_components = r(n_absorb_components)
+    local absorb_label_registry `"`r(absorb_label_registry)'"'
+    local absorb_saved_name_registry `"`r(absorb_saved_name_registry)'"'
     matrix `model_sources' = r(model_sources)
     matrix `model_terms' = r(model_terms)
     matrix `model_components' = r(model_components)
+    matrix `absorb_terms' = r(absorb_terms)
+    matrix `absorb_components' = r(absorb_components)
+
+    /* Stata's plugin varlist rejects strings before Rust can return r(498). */
+    foreach source of local source_vars {
+        capture confirm numeric variable `source'
+        if _rc {
+            di as error "prepare-ols-test does not support string model or fixed-effect sources"
+            exit 498
+        }
+    }
 
     local source_registry
     foreach value of local source_vars {
@@ -132,8 +152,8 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         `"protocol_minor=0"' ///
         `"stata=`c(stata_version)'"' ///
         `"confirm=developer-preparation-test"' ///
-        `"model_major=2"' ///
-        `"model_minor=0"' ///
+        `"model_major=`model_major'"' ///
+        `"model_minor=`model_minor'"' ///
         `"source_matrix=`model_sources'"' ///
         `"source_count=`n_sources'"' ///
         `"term_matrix=`model_terms'"' ///
@@ -144,6 +164,12 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         `"canonical_tokens=`token_registry'"' ///
         `"raw_component_operators=`raw_registry'"' ///
         `"raw_time_series_operators=`ts_registry'"' ///
+        `"absorb_term_matrix=`absorb_terms'"' ///
+        `"absorb_term_count=`n_absorb_terms'"' ///
+        `"absorb_component_matrix=`absorb_components'"' ///
+        `"absorb_component_count=`n_absorb_components'"' ///
+        `"absorb_labels=`absorb_label_registry'"' ///
+        `"absorb_saved_names=`absorb_saved_name_registry'"' ///
         `"binding_matrix=`input_bindings'"' ///
         `"binding_count=`n_bindings'"' ///
         `"include_intercept=`include_intercept'"' ///

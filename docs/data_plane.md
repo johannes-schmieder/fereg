@@ -4,9 +4,10 @@
 sample boundary. It accepts borrowed source views, an `if`/`in` candidate
 marker, and an explicit estimator/reference domain policy. It returns compact
 numeric columns and an original-length reason mask. It is not yet the complete
-Phase 2 data plane: string factorization, interactions, fixed effects, clusters,
-singleton deletion, separation, and estimator SPI dispatch remain outside this
-slice.
+Phase 2 data plane: string factorization, cluster encoding, singleton deletion,
+separation, and estimator SPI dispatch remain outside this slice. A bounded
+numeric fixed-effect source preparation path is included, but no `FeDesign` or
+solver state is constructed.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -16,18 +17,18 @@ or PPML available.
 The internal `_stfixest_prepare_ols_test` command exercises a deliberately
 bounded one-call boundary: plain continuous regressors, numeric factor main
 effects, numeric all-categorical interactions, at most one analytic-,
-frequency-, or probability-weight variable, no fixed effects, and no
-time-series materialization. It is guarded
+frequency-, or probability-weight variable, zero or more unnamed single-source
+intercept-only numeric fixed effects, and no time-series materialization. It is guarded
 by an explicit developer confirmation token and does not post estimation
 results. `stfeols` and `stfepois` still return `r(498)`.
 
-The plugin decodes and validates model-wire v2, input bindings, matrix
+The plugin decodes and validates model-wire 2.1, input bindings, matrix
 dimensions, numeric variable types, and diagnostic destinations before reading
 any observation. It reads the exact nonmissing `0`/`1` candidate marker for all
 observations, then reads outcomes, numeric model sources, and any weight only
 for candidate rows. Binding role 3 is generic numeric storage: the same source
-may be used by both `c.g` and `i.g` and is still read once. Raw numeric bits and
-a separate Stata-missing mask cross the
+may be used by `c.g`, `i.g`, and repeated ordinary or fixed-effect recipes and
+is still read once. Raw numeric bits and a separate Stata-missing mask cross the
 boundary. Positive finite analytic weights are retained without normalization,
 zero and missing analytic weights receive drop reason 4, and a negative
 candidate-row analytic weight fails the action. Frequency weights must be
@@ -58,8 +59,13 @@ component recipe per coefficient column and evaluate it against the already
 compact source codes. They do not allocate an observation-scale interaction
 column or tuple table. If any requested component level vanishes, or if the
 requested tuple is absent, the interaction recipe is identically zero.
-Categorical-by-continuous and continuous products, string factors, FE and
-cluster encoding, and model solving remain outside this checkpoint.
+Categorical-by-continuous and continuous products, strings, fixed-effect
+interactions/slopes/saved outputs, cluster encoding, singleton deletion,
+`FeDesign`, and model solving remain outside this checkpoint. A supported
+numeric fixed-effect source accepts any finite `f64`, including negative and
+fractional values, and is factorized only after the authoritative sample is
+compacted. Prepared absorbed-term recipes reference the shared encoded source;
+they contain no copied codes.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -89,12 +95,21 @@ For each original row, the current numeric stage applies this exact order:
 1. candidate false: `ExcludedByIfIn`;
 2. unavailable outcome: `MissingOutcome`;
 3. outcome-policy drop: `OtherModelExclusion`;
-4. first unavailable regressor: `MissingRegressor`;
+4. first unavailable ordinary source: `MissingRegressor`;
 5. unavailable weight: `InvalidOrMissingWeight`;
 6. weight-policy drop: `InvalidOrMissingWeight`;
-7. unavailable offset or exposure: `MissingOffsetOrExposure`;
-8. offset- or exposure-policy drop: `MissingOffsetOrExposure`;
-9. otherwise: `Retained`.
+7. first unavailable FE-only source: `MissingFixedEffect`;
+8. unavailable offset or exposure: `MissingOffsetOrExposure`;
+9. offset- or exposure-policy drop: `MissingOffsetOrExposure`;
+10. otherwise: `Retained`.
+
+A source used by both an ordinary and a fixed-effect recipe is classified at
+the ordinary-source step, so its missing value is reason 3, never reason 5.
+An FE-only missing source is reason 5. This locks the externally documented
+reason ordering `1, 2, 3, 4, 5, 7` for the roles currently executable; cluster
+reason 6 will be inserted between FE and adjustment when cluster preparation
+is implemented. The sample is classified and compacted once; FE factorization
+does not trigger a second filter or compaction pass.
 
 Candidate-excluded rows invoke no policy hooks. A policy error is fatal rather
 than converted into a drop. The policy has no default implementation: the
@@ -107,10 +122,9 @@ Policy hooks receive an immutable policy reference: domain decisions must not
 drift with row history or traversal order. Tests may record calls through
 interior mutability, but that instrumentation cannot define the decision rule.
 
-Fixed-effect and cluster availability are intentionally not part of this
-precedence yet. Those source types require their own native representations and
-will extend the authoritative reason mask without changing the locked numeric
-ordering above.
+Cluster availability is intentionally not part of this precedence yet. It will
+extend the authoritative reason mask without changing the locked ordering
+above.
 
 ## Row map and allocation boundary
 
@@ -127,8 +141,8 @@ zero-sized paths. No partially built sample escapes an error.
 
 ## Model construction remains separate
 
-The developer boundary now binds numeric factor main-effect and all-categorical
-interaction recipes to compact source codes, but it does not invoke the
-estimator or the generic model-matrix builder. Mixed interactions, FE/cluster
-source loading, and production one-call result posting require later
-independently tested work.
+The developer boundary now binds numeric factor main-effect,
+all-categorical-interaction, and simple numeric fixed-effect recipes to compact
+shared source codes, but it does not invoke the estimator or the generic
+model-matrix builder. Mixed interactions, general FE/cluster construction, and
+production one-call result posting require later independently tested work.

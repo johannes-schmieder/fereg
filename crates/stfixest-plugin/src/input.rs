@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use crate::output::OutputSink;
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::metadata::{
-    ModelWireV2, NumericWireTable, SourceId, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
+    ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
+    COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 use stfixest_core::ols::{
     prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
@@ -41,7 +42,7 @@ struct PrepareAction {
 }
 
 /// Execute the developer-only numeric-main-effect/all-categorical-interaction/
-/// optional-weight/no-FE preparation action.
+/// optional-weight/simple-numeric-FE preparation action.
 pub fn prepare_ols_test(
     args: &[String],
     output: &dyn OutputSink,
@@ -59,7 +60,9 @@ pub fn prepare_ols_test(
             "stfixest.prepare_ols.n_retained={}\n",
             "stfixest.prepare_ols.n_columns={}\n",
             "stfixest.prepare_ols.n_coefficient_slots={}\n",
-            "stfixest.prepare_ols.n_categorical_sources={}\n"
+            "stfixest.prepare_ols.n_categorical_sources={}\n",
+            "stfixest.prepare_ols.n_absorb_terms={}\n",
+            "stfixest.prepare_ols.n_fixed_effect_sources={}\n"
         ),
         prepared.sample.n_original,
         prepared.sample.n_candidate,
@@ -67,6 +70,13 @@ pub fn prepare_ols_test(
         prepared.model.columns.len(),
         prepared.model.coefficients.len(),
         prepared.categorical_sources.len(),
+        prepared.fixed_effects.len(),
+        prepared
+            .fixed_effects
+            .iter()
+            .map(|effect| effect.categorical_source_index)
+            .collect::<BTreeSet<_>>()
+            .len(),
     ));
     Ok(())
 }
@@ -85,6 +95,12 @@ struct PrepareActionSpec {
     canonical_tokens: Vec<String>,
     raw_component_operators: Vec<String>,
     raw_time_series_operators: Vec<String>,
+    absorb_term_matrix: String,
+    absorb_term_count: usize,
+    absorb_component_matrix: String,
+    absorb_component_count: usize,
+    absorb_labels: Vec<String>,
+    absorb_saved_names: Vec<String>,
     binding_matrix: String,
     binding_count: usize,
     include_intercept: bool,
@@ -103,6 +119,8 @@ impl PrepareActionSpec {
         let source_count = parse_usize(&values, "source_count")?;
         let term_count = parse_usize(&values, "term_count")?;
         let component_count = parse_usize(&values, "component_count")?;
+        let absorb_term_count = parse_usize(&values, "absorb_term_count")?;
+        let absorb_component_count = parse_usize(&values, "absorb_component_count")?;
         let specification = Self {
             model_major: f64::from(parse_u16(&values, "model_major")?),
             model_minor: f64::from(parse_u16(&values, "model_minor")?),
@@ -122,6 +140,15 @@ impl PrepareActionSpec {
                 required(&values, "raw_time_series_operators")?,
                 component_count,
             )?,
+            absorb_term_matrix: required(&values, "absorb_term_matrix")?.to_owned(),
+            absorb_term_count,
+            absorb_component_matrix: required(&values, "absorb_component_matrix")?.to_owned(),
+            absorb_component_count,
+            absorb_labels: decode_registry(required(&values, "absorb_labels")?, absorb_term_count)?,
+            absorb_saved_names: decode_registry(
+                required(&values, "absorb_saved_names")?,
+                absorb_term_count,
+            )?,
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
@@ -139,7 +166,7 @@ impl PrepareActionSpec {
         &self,
         values: &std::collections::BTreeMap<String, String>,
     ) -> Result<()> {
-        const ALLOWED: [&str; 23] = [
+        const ALLOWED: [&str; 29] = [
             "ado",
             "protocol_major",
             "protocol_minor",
@@ -157,6 +184,12 @@ impl PrepareActionSpec {
             "canonical_tokens",
             "raw_component_operators",
             "raw_time_series_operators",
+            "absorb_term_matrix",
+            "absorb_term_count",
+            "absorb_component_matrix",
+            "absorb_component_count",
+            "absorb_labels",
+            "absorb_saved_names",
             "binding_matrix",
             "binding_count",
             "include_intercept",
@@ -203,11 +236,28 @@ impl PrepareActionSpec {
             canonical_tokens: self.canonical_tokens.clone(),
             raw_component_operators: self.raw_component_operators.clone(),
             raw_time_series_operators: self.raw_time_series_operators.clone(),
+            absorb_terms: read_table(
+                spi,
+                &self.absorb_term_matrix,
+                self.absorb_term_count,
+                ABSORB_TERM_ROW_WIDTH,
+                "absorbed term",
+            )?,
+            absorb_components: read_table(
+                spi,
+                &self.absorb_component_matrix,
+                self.absorb_component_count,
+                ABSORB_COMPONENT_ROW_WIDTH,
+                "absorbed component",
+            )?,
+            absorb_labels: self.absorb_labels.clone(),
+            absorb_saved_names: self.absorb_saved_names.clone(),
         };
-        let model = wire.decode()?;
+        let specification = wire.decode_specification()?;
         let bindings = read_bindings(spi, &self.binding_matrix, self.binding_count)?;
         let request = OlsRequestV1 {
-            model,
+            model: specification.model,
+            absorbed_terms: specification.absorbed_terms,
             bindings,
             include_intercept: self.include_intercept,
         };
@@ -672,7 +722,8 @@ mod tests {
     use crate::output::BufferSink;
     use std::collections::{BTreeMap, BTreeSet};
     use stfixest_core::metadata::{
-        CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+        AbsorbComponentRole, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
+        CompiledModelSpecification, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
         LevelState, MetadataFlag, ModelWireV2, RawTermKind, SourceEntry, TermComponent, TermId,
         TermOrder, TimeSeriesState,
     };
@@ -787,6 +838,8 @@ mod tests {
             ("S".to_owned(), wire.sources.rows),
             ("T".to_owned(), wire.terms.rows),
             ("C".to_owned(), wire.components.rows),
+            ("A".to_owned(), wire.absorb_terms.rows),
+            ("AC".to_owned(), wire.absorb_components.rows),
             (
                 "B".to_owned(),
                 vec![
@@ -839,6 +892,12 @@ mod tests {
             "canonical_tokens=3:c.x".to_owned(),
             "raw_component_operators=1:c".to_owned(),
             "raw_time_series_operators=0:".to_owned(),
+            "absorb_term_matrix=A".to_owned(),
+            "absorb_term_count=0".to_owned(),
+            "absorb_component_matrix=AC".to_owned(),
+            "absorb_component_count=0".to_owned(),
+            "absorb_labels=.".to_owned(),
+            "absorb_saved_names=.".to_owned(),
             "binding_matrix=B".to_owned(),
             "binding_count=3".to_owned(),
             "include_intercept=1".to_owned(),
@@ -1063,6 +1122,109 @@ mod tests {
         (args, spi)
     }
 
+    fn fixed_effect_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixture();
+        let sources = ["x", "g", "h"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| SourceEntry {
+                id: SourceId::new(u32::try_from(index + 1).expect("small fixture"))
+                    .expect("source"),
+                canonical_name: name.to_owned(),
+            })
+            .collect::<Vec<_>>();
+        let model = CompiledTermGraph {
+            sources: sources.clone(),
+            terms: vec![ExpandedTerm {
+                id: TermId::new(1).expect("term"),
+                order: TermOrder::new(1).expect("order"),
+                coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                raw_kind: RawTermKind::Variable,
+                whole_column_omitted: false,
+                canonical_token: "c.x".to_owned(),
+                components: vec![TermComponent {
+                    order: ComponentOrder::new(1).expect("component"),
+                    source: sources[0].id,
+                    kind: ComponentKind::Continuous,
+                    level_state: LevelState::Absent,
+                    level_value: 0.0,
+                    base: MetadataFlag::False,
+                    omitted: MetadataFlag::Unavailable,
+                    raw_operator: "c".to_owned(),
+                    time_series_state: TimeSeriesState::None,
+                    raw_time_series_operator: String::new(),
+                }],
+            }],
+        };
+        let absorbed_terms = [
+            (1, sources[1].id, "g"),
+            (2, sources[2].id, "h"),
+            (3, sources[1].id, "g_again"),
+        ]
+        .into_iter()
+        .map(|(id, source, label)| AbsorbedTerm {
+            id: AbsorbTermId::new(id).expect("absorbed term"),
+            intercept: true,
+            categorical_sources: vec![source],
+            slope_sources: Vec::new(),
+            label: label.to_owned(),
+            saved_name: String::new(),
+        })
+        .collect::<Vec<_>>();
+        let wire = ModelWireV2::from_specification(&CompiledModelSpecification {
+            model,
+            absorbed_terms,
+        })
+        .expect("FE wire");
+        spi.matrices.insert("S".to_owned(), wire.sources.rows);
+        spi.matrices.insert("T".to_owned(), wire.terms.rows);
+        spi.matrices.insert("C".to_owned(), wire.components.rows);
+        spi.matrices.insert("A".to_owned(), wire.absorb_terms.rows);
+        spi.matrices
+            .insert("AC".to_owned(), wire.absorb_components.rows);
+        spi.matrices.insert(
+            "B".to_owned(),
+            vec![
+                vec![1.0, 1.0, 0.0],
+                vec![2.0, 2.0, 0.0],
+                vec![3.0, 3.0, 1.0],
+                vec![4.0, 3.0, 2.0],
+                vec![5.0, 3.0, 3.0],
+            ],
+        );
+        spi.nvars = 8;
+        for (observation, g, h, h_missing) in [
+            (2, 1.0, 1.5, true),
+            (3, 2.0, 2.5, false),
+            (5, 3.0, -3.25, false),
+        ] {
+            spi.data.insert((4, observation), (g, false));
+            spi.data.insert((5, observation), (h, h_missing));
+        }
+        for value in &mut args {
+            match value.as_str() {
+                "source_count=1" => *value = "source_count=3".to_owned(),
+                "source_names=1:x" => *value = "source_names=1:x|1:g|1:h".to_owned(),
+                "absorb_term_count=0" => *value = "absorb_term_count=3".to_owned(),
+                "absorb_component_count=0" => {
+                    *value = "absorb_component_count=3".to_owned();
+                }
+                "absorb_labels=." => *value = "absorb_labels=1:g|1:h|7:g_again".to_owned(),
+                "absorb_saved_names=." => {
+                    *value = "absorb_saved_names=0:|0:|0:".to_owned();
+                }
+                "binding_count=3" => *value = "binding_count=5".to_owned(),
+                "output_original_observation=4" => {
+                    *value = "output_original_observation=6".to_owned();
+                }
+                "output_retained=5" => *value = "output_retained=7".to_owned(),
+                "output_drop_reason=6" => *value = "output_drop_reason=8".to_owned(),
+                _ => {}
+            }
+        }
+        (args, spi)
+    }
+
     #[test]
     fn successful_action_reads_only_candidate_rows_and_writes_exact_diagnostics() {
         let (args, mut spi) = fixture();
@@ -1156,6 +1318,88 @@ mod tests {
             .expect_err("candidate interaction source must be valid");
         assert_eq!(error.code, ErrorCode::InvalidData);
         assert!(invalid.writes.is_empty());
+    }
+
+    #[test]
+    fn fixed_effect_sources_are_read_once_and_missingness_uses_reason_five() {
+        let (args, mut spi) = fixed_effect_fixture();
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("fixed-effect preparation");
+        for variable in [3, 4, 5] {
+            assert_eq!(
+                spi.reads
+                    .iter()
+                    .filter(|(candidate, _)| *candidate == variable)
+                    .map(|(_, observation)| *observation)
+                    .collect::<Vec<_>>(),
+                vec![2, 3, 5]
+            );
+        }
+        assert!(spi.writes.contains(&(8, 2, 5.0)));
+        assert!(spi.writes.contains(&(8, 3, 3.0)));
+        assert!(spi.writes.contains(&(8, 5, 0.0)));
+        let displayed = output.displayed();
+        assert!(displayed.contains("stfixest.prepare_ols.n_absorb_terms=3"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fixed_effect_sources=2"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_retained=1"));
+    }
+
+    #[test]
+    fn unsupported_fixed_effect_shapes_and_strings_fail_before_observation_reads() {
+        let (args, mut string_spi) = fixed_effect_fixture();
+        string_spi.strings.insert(4);
+        let error = prepare_ols_test(&args, &BufferSink::default(), &mut string_spi)
+            .expect_err("string FE must be rejected");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(string_spi.reads.is_empty());
+        assert!(string_spi.writes.is_empty());
+
+        let (mut saved_args, mut saved_spi) = fixed_effect_fixture();
+        for value in &mut saved_args {
+            if value == "absorb_saved_names=0:|0:|0:" {
+                *value = "absorb_saved_names=5:alpha|0:|0:".to_owned();
+            }
+        }
+        let error = prepare_ols_test(&saved_args, &BufferSink::default(), &mut saved_spi)
+            .expect_err("saved FE must be rejected");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(saved_spi.reads.is_empty());
+        assert!(saved_spi.writes.is_empty());
+
+        for role in [AbsorbComponentRole::Categorical, AbsorbComponentRole::Slope] {
+            let (mut args, mut spi) = fixed_effect_fixture();
+            if role == AbsorbComponentRole::Categorical {
+                spi.matrices.get_mut("A").expect("absorb terms")[0][1] = 2.0;
+            } else {
+                spi.matrices.get_mut("A").expect("absorb terms")[0][3] = 1.0;
+            }
+            spi.matrices
+                .get_mut("AC")
+                .expect("absorb components")
+                .insert(
+                    1,
+                    vec![
+                        1.0,
+                        f64::from(role as u32),
+                        if role == AbsorbComponentRole::Categorical {
+                            2.0
+                        } else {
+                            1.0
+                        },
+                        3.0,
+                    ],
+                );
+            for value in &mut args {
+                if value == "absorb_component_count=3" {
+                    *value = "absorb_component_count=4".to_owned();
+                }
+            }
+            let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+                .expect_err("unsupported FE shape");
+            assert_eq!(error.code, ErrorCode::Unsupported);
+            assert!(spi.reads.is_empty());
+            assert!(spi.writes.is_empty());
+        }
     }
 
     #[test]

@@ -1,14 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::data::{
-    prepare_numeric_sample, AdjustmentInput, DomainDecision, NumericColumnView,
-    NumericDomainPolicy, NumericPreparationInput, PreparedNumericSample, WeightInput, WeightKind,
+    prepare_numeric_sample_with_source_uses, AdjustmentInput, DomainDecision, NumericColumnView,
+    NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedNumericSample,
+    WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::metadata::{
-    CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag, RawTermKind,
-    SourceId, TimeSeriesState,
+    AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState,
+    MetadataFlag, RawTermKind, SourceId, TimeSeriesState,
 };
 
 /// Role of one Stata plugin-varlist input in the developer OLS preparation request.
@@ -35,6 +36,7 @@ pub struct OlsInputBinding {
 #[derive(Debug, Clone, PartialEq)]
 pub struct OlsRequestV1 {
     pub model: CompiledTermGraph,
+    pub absorbed_terms: Vec<AbsorbedTerm>,
     pub bindings: Vec<OlsInputBinding>,
     pub include_intercept: bool,
 }
@@ -46,8 +48,9 @@ pub struct LoadedNumericColumn {
     pub missing: Vec<bool>,
 }
 
-/// Complete raw input for the numeric-source, optionally weighted, no-FE
-/// preparation slice. At most one weight column may be present.
+/// Complete raw input for the numeric-source, optionally weighted preparation
+/// slice. At most one weight column may be present. Fixed-effect terms reuse
+/// entries in `numeric_sources`; no separate observation-scale FE copy exists.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedOlsInput {
     pub candidate: Vec<bool>,
@@ -129,11 +132,24 @@ pub struct PreparedCategoricalSource {
     pub encoded: EncodedFactor<f64>,
 }
 
+/// One prepared single-source, intercept-only absorbed term.
+///
+/// Codes remain owned by the deduplicated categorical-source table. This
+/// checkpoint does not construct a solver `FeDesign` or delete singletons.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedOlsEffect {
+    pub term_id: AbsorbTermId,
+    pub label: String,
+    pub source: SourceId,
+    pub categorical_source_index: usize,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct PreparedOlsData {
     pub model: PreparedOlsModel,
     pub sample: PreparedNumericSample,
     pub categorical_sources: Vec<PreparedCategoricalSource>,
+    pub fixed_effects: Vec<PreparedOlsEffect>,
 }
 
 impl PreparedOlsData {
@@ -206,9 +222,10 @@ impl OlsRequestV1 {
     /// level codes are resolved later.
     pub fn validate_and_compile(&self) -> Result<PreparedOlsModel> {
         self.model.validate_executable_metadata()?;
+        validate_absorbed_preparation(self)?;
         validate_bindings(self)?;
 
-        let categorical_source_indices = categorical_source_indices(&self.model)?;
+        let categorical_source_indices = categorical_source_indices(self)?;
         let mut columns = Vec::new();
         let mut coefficients = Vec::new();
         columns
@@ -394,26 +411,37 @@ pub fn prepare_ols_data(
         weights,
         adjustment: AdjustmentInput::None,
     };
-    let sample = prepare_numeric_sample(&input, &OlsPreparationPolicy)?;
+    let source_uses = source_uses(request)?;
+    let sample =
+        prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?;
     let categorical_sources = factorize_categorical_sources(request, &sample)?;
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
+    let fixed_effects = prepare_fixed_effects(request, &categorical_sources)?;
     Ok(PreparedOlsData {
         model,
         sample,
         categorical_sources,
+        fixed_effects,
     })
 }
 
-fn categorical_source_indices(model: &CompiledTermGraph) -> Result<BTreeMap<SourceId, usize>> {
-    let categorical = model
+fn ordinary_categorical_sources(model: &CompiledTermGraph) -> BTreeSet<SourceId> {
+    model
         .terms
         .iter()
         .flat_map(|term| &term.components)
         .filter(|component| component.kind == ComponentKind::Categorical)
         .map(|component| component.source)
-        .collect::<BTreeSet<_>>();
+        .collect()
+}
+
+fn categorical_source_indices(request: &OlsRequestV1) -> Result<BTreeMap<SourceId, usize>> {
+    let mut categorical = ordinary_categorical_sources(&request.model);
+    for term in &request.absorbed_terms {
+        categorical.extend(term.categorical_sources.iter().copied());
+    }
     let mut indices = BTreeMap::new();
-    for source in &model.sources {
+    for source in &request.model.sources {
         if categorical.contains(&source.id) {
             indices.insert(source.id, indices.len());
         }
@@ -435,9 +463,9 @@ fn validate_candidate_categorical_domain(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
 ) -> Result<()> {
-    let categorical = categorical_source_indices(&request.model)?;
+    let categorical = ordinary_categorical_sources(&request.model);
     for (source, column) in &loaded.numeric_sources {
-        if !categorical.contains_key(source) {
+        if !categorical.contains(source) {
             continue;
         }
         for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
@@ -478,7 +506,7 @@ fn factorize_categorical_sources(
     request: &OlsRequestV1,
     sample: &PreparedNumericSample,
 ) -> Result<Vec<PreparedCategoricalSource>> {
-    let categorical = categorical_source_indices(&request.model)?;
+    let categorical = categorical_source_indices(request)?;
     let mut output = Vec::new();
     output
         .try_reserve_exact(categorical.len())
@@ -499,6 +527,33 @@ fn factorize_categorical_sources(
         });
     }
     Ok(output)
+}
+
+fn prepare_fixed_effects(
+    request: &OlsRequestV1,
+    categorical_sources: &[PreparedCategoricalSource],
+) -> Result<Vec<PreparedOlsEffect>> {
+    let indices = categorical_source_indices(request)?;
+    let mut fixed_effects = Vec::new();
+    fixed_effects
+        .try_reserve_exact(request.absorbed_terms.len())
+        .map_err(|_| allocation("unable to reserve prepared fixed-effect terms"))?;
+    for term in &request.absorbed_terms {
+        let source = term.categorical_sources[0];
+        let categorical_source_index = categorical_source_index(&indices, source)?;
+        if categorical_source_index >= categorical_sources.len() {
+            return Err(invalid(
+                "prepared fixed-effect categorical source is out of range",
+            ));
+        }
+        fixed_effects.push(PreparedOlsEffect {
+            term_id: term.id,
+            label: term.label.clone(),
+            source,
+            categorical_source_index,
+        });
+    }
+    Ok(fixed_effects)
 }
 
 fn resolve_categorical_level_codes(
@@ -558,6 +613,53 @@ fn source_index(source: SourceId) -> Result<usize> {
     usize::try_from(source.get() - 1).map_err(|_| invalid("source id does not fit usize"))
 }
 
+fn validate_absorbed_preparation(request: &OlsRequestV1) -> Result<()> {
+    for term in &request.absorbed_terms {
+        if term.categorical_sources.len() != 1
+            || !term.intercept
+            || !term.slope_sources.is_empty()
+            || !term.saved_name.is_empty()
+        {
+            return Err(unsupported(
+                "prepare-ols-test supports only unnamed single-source intercept-only numeric fixed effects",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn source_uses(request: &OlsRequestV1) -> Result<Vec<NumericSourceUse>> {
+    let ordinary = request
+        .model
+        .terms
+        .iter()
+        .flat_map(|term| &term.components)
+        .map(|component| component.source)
+        .collect::<BTreeSet<_>>();
+    let fixed_effect = request
+        .absorbed_terms
+        .iter()
+        .flat_map(|term| term.categorical_sources.iter().copied())
+        .collect::<BTreeSet<_>>();
+    let mut uses = Vec::new();
+    uses.try_reserve_exact(request.model.sources.len())
+        .map_err(|_| allocation("unable to reserve numeric source-use plan"))?;
+    for source in &request.model.sources {
+        let usage = NumericSourceUse {
+            ordinary: ordinary.contains(&source.id),
+            fixed_effect: fixed_effect.contains(&source.id),
+        };
+        if !usage.ordinary && !usage.fixed_effect {
+            return Err(invalid(format!(
+                "source {} is not used by an ordinary or fixed-effect term",
+                source.id.get()
+            )));
+        }
+        uses.push(usage);
+    }
+    Ok(uses)
+}
+
 fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
     let mut positions = BTreeSet::new();
     let mut candidate_count = 0_usize;
@@ -604,6 +706,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
             "OLS request must bind every model source exactly once",
         ));
     }
+    source_uses(request)?;
     Ok(())
 }
 
@@ -796,7 +899,8 @@ fn allocation(message: impl Into<String>) -> StFixestError {
 mod tests {
     use super::*;
     use crate::metadata::{
-        ComponentOrder, ExpandedTerm, SourceEntry, TermComponent, TermId, TermOrder,
+        AbsorbTermId, AbsorbedTerm, ComponentOrder, ExpandedTerm, SourceEntry, TermComponent,
+        TermId, TermOrder,
     };
 
     fn request(source_count: usize, include_intercept: bool) -> OlsRequestV1 {
@@ -854,6 +958,7 @@ mod tests {
         );
         OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
+            absorbed_terms: Vec::new(),
             bindings,
             include_intercept,
         }
@@ -932,6 +1037,7 @@ mod tests {
                 sources: vec![source.clone()],
                 terms,
             },
+            absorbed_terms: Vec::new(),
             bindings: vec![
                 OlsInputBinding {
                     stata_var_position: 1,
@@ -1063,6 +1169,7 @@ mod tests {
         );
         OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
+            absorbed_terms: Vec::new(),
             bindings,
             include_intercept: true,
         }
@@ -1812,5 +1919,126 @@ mod tests {
                 .code,
             ErrorCode::InvalidArgument
         );
+    }
+
+    #[test]
+    fn fixed_effect_preparation_deduplicates_shared_sources_and_preserves_reason_five() {
+        let mut request = mixed_numeric_factor_request();
+        let h = SourceEntry {
+            id: SourceId::new(2).expect("source"),
+            canonical_name: "h".to_owned(),
+        };
+        request.model.sources.push(h.clone());
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 4,
+            role: OlsInputRole::NumericSource(h.id),
+        });
+        request.absorbed_terms = vec![
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("absorb term"),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(1).expect("g")],
+                slope_sources: Vec::new(),
+                label: "g".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(2).expect("absorb term"),
+                intercept: true,
+                categorical_sources: vec![h.id],
+                slope_sources: Vec::new(),
+                label: "h".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(3).expect("absorb term"),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(1).expect("g")],
+                slope_sources: Vec::new(),
+                label: "g_again".to_owned(),
+                saved_name: String::new(),
+            },
+        ];
+        let loaded = LoadedOlsInput {
+            candidate: vec![false, true, true, true, true, true],
+            outcome: column(&[0.0, f64::NAN, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
+            numeric_sources: vec![
+                (
+                    SourceId::new(1).expect("g"),
+                    column(&[f64::NAN, 1.0, f64::NAN, 2.0, 2.0, 3.0], &[false; 6]),
+                ),
+                (
+                    h.id,
+                    column(&[f64::NAN, 1.5, 2.5, f64::NAN, -3.25, 2.5], &[false; 6]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("FE preparation");
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![
+                crate::DropReason::ExcludedByIfIn,
+                crate::DropReason::MissingOutcome,
+                crate::DropReason::MissingRegressor,
+                crate::DropReason::MissingFixedEffect,
+                crate::DropReason::Retained,
+                crate::DropReason::Retained,
+            ]
+        );
+        assert_eq!(prepared.sample.retained_rows(), &[4, 5]);
+        assert_eq!(prepared.categorical_sources.len(), 2);
+        assert_eq!(prepared.fixed_effects.len(), 3);
+        assert_eq!(
+            prepared.fixed_effects[0].categorical_source_index,
+            prepared.fixed_effects[2].categorical_source_index
+        );
+        assert_eq!(
+            prepared.categorical_sources[1].encoded.levels,
+            vec![-3.25, 2.5]
+        );
+    }
+
+    #[test]
+    fn unsupported_fixed_effect_shapes_fail_before_loaded_data_is_considered() {
+        let source = SourceId::new(1).expect("source");
+        for term in [
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("term"),
+                intercept: true,
+                categorical_sources: vec![source, source],
+                slope_sources: Vec::new(),
+                label: "g#g".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("term"),
+                intercept: false,
+                categorical_sources: vec![source],
+                slope_sources: vec![source],
+                label: "g#c.g".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("term"),
+                intercept: true,
+                categorical_sources: vec![source],
+                slope_sources: Vec::new(),
+                label: "saved=g".to_owned(),
+                saved_name: "saved".to_owned(),
+            },
+        ] {
+            let mut request = mixed_numeric_factor_request();
+            request.absorbed_terms = vec![term];
+            assert_eq!(
+                request
+                    .validate_and_compile()
+                    .expect_err("unsupported FE shape")
+                    .code,
+                ErrorCode::Unsupported
+            );
+        }
     }
 }

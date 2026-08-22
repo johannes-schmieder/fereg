@@ -20,7 +20,7 @@ matrix model_sources = r(model_sources)
 matrix model_terms = r(model_terms)
 matrix model_components = r(model_components)
 assert `wire_major' == 2
-assert `wire_minor' == 0
+assert `wire_minor' == 1
 assert `n_sources' == 4
 assert `n_terms' > 10
 assert `n_components' > `n_terms'
@@ -74,5 +74,17 @@ assert rowsof(empty_components) == 1 & colsof(empty_components) == 13
 assert empty_sources[1,1] == 0 & empty_sources[1,2] == 0
 assert empty_terms[1,1] == 0 & empty_terms[1,8] == 0
 assert empty_components[1,1] == 0 & empty_components[1,13] == 0
+
+stfixest_parse, touse(`touse') emptymodel absorb(g h)
+assert r(n_absorb_terms) == 2
+assert r(n_absorb_components) == 2
+assert `"`r(absorb_label_registry)'"' == "1:g|1:h"
+assert `"`r(absorb_saved_name_registry)'"' == "0:|0:"
+matrix absorb_terms = r(absorb_terms)
+matrix absorb_components = r(absorb_components)
+assert rowsof(absorb_terms) == 2 & colsof(absorb_terms) == 4
+assert rowsof(absorb_components) == 2 & colsof(absorb_components) == 4
+assert absorb_terms[1,1] == 1 & absorb_terms[2,1] == 2
+assert absorb_components[1,4] != absorb_components[2,4]
 di as result "model_wire_v2_capture.do: PASS"
 di as result "END_FIXTURE|model_wire_v2_capture|rc=0"

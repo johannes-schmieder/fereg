@@ -91,6 +91,42 @@ pub struct NumericPreparationInput<'a> {
     pub adjustment: AdjustmentInput<'a>,
 }
 
+/// Availability roles for one unified numeric model source.
+///
+/// A source can serve both an ordinary regressor recipe and a fixed-effect
+/// recipe while crossing the SPI and compaction boundaries only once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NumericSourceUse {
+    pub ordinary: bool,
+    pub fixed_effect: bool,
+}
+
+impl NumericSourceUse {
+    #[must_use]
+    pub const fn ordinary() -> Self {
+        Self {
+            ordinary: true,
+            fixed_effect: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn fixed_effect() -> Self {
+        Self {
+            ordinary: false,
+            fixed_effect: true,
+        }
+    }
+
+    #[must_use]
+    pub const fn ordinary_and_fixed_effect() -> Self {
+        Self {
+            ordinary: true,
+            fixed_effect: true,
+        }
+    }
+}
+
 /// Result of a caller-supplied domain decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DomainDecision {
@@ -211,16 +247,42 @@ pub fn prepare_numeric_sample<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
     policy: &P,
 ) -> Result<PreparedNumericSample> {
-    prepare_numeric_sample_with_reserve(input, policy, &mut SystemReserve)
+    prepare_numeric_sample_with_plan(input, None, policy, &mut SystemReserve)
 }
 
+/// Prepare a unified source registry with role-specific missingness precedence.
+///
+/// The source-use table must correspond one-for-one with `input.regressors`.
+/// Ordinary-source availability is checked before weights; fixed-effect-source
+/// availability is checked after weights. A shared unavailable source therefore
+/// receives `MissingRegressor`, while an FE-only unavailable source receives
+/// `MissingFixedEffect`.
+pub fn prepare_numeric_sample_with_source_uses<P: NumericDomainPolicy>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: &[NumericSourceUse],
+    policy: &P,
+) -> Result<PreparedNumericSample> {
+    prepare_numeric_sample_with_plan(input, Some(source_uses), policy, &mut SystemReserve)
+}
+
+#[cfg(test)]
 fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
     input: &NumericPreparationInput<'_>,
     policy: &P,
     reserve: &mut R,
 ) -> Result<PreparedNumericSample> {
+    prepare_numeric_sample_with_plan(input, None, policy, reserve)
+}
+
+fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: Option<&[NumericSourceUse]>,
+    policy: &P,
+    reserve: &mut R,
+) -> Result<PreparedNumericSample> {
     let n_original = input.candidate.len();
     validate_input(input, n_original)?;
+    validate_source_uses(input, source_uses)?;
     let n_candidate = input
         .candidate
         .iter()
@@ -286,7 +348,7 @@ fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
     };
 
     for original_row in 0..n_original {
-        let reason = classify_row(input, policy, original_row)?;
+        let reason = classify_row(input, source_uses, policy, original_row)?;
         drop_reasons.push(reason);
         if reason != DropReason::Retained {
             continue;
@@ -334,6 +396,7 @@ fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
 
 fn classify_row<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
+    source_uses: Option<&[NumericSourceUse]>,
     policy: &P,
     original_row: usize,
 ) -> Result<DropReason> {
@@ -348,11 +411,9 @@ fn classify_row<P: NumericDomainPolicy>(
         return Ok(DropReason::OtherModelExclusion);
     }
 
-    if input
-        .regressors
-        .iter()
-        .any(|column| column.is_unavailable(original_row))
-    {
+    if input.regressors.iter().enumerate().any(|(index, column)| {
+        source_is_ordinary(source_uses, index) && column.is_unavailable(original_row)
+    }) {
         return Ok(DropReason::MissingRegressor);
     }
 
@@ -363,6 +424,12 @@ fn classify_row<P: NumericDomainPolicy>(
         if policy.weight(original_row, kind, column.values[original_row])? == DomainDecision::Drop {
             return Ok(DropReason::InvalidOrMissingWeight);
         }
+    }
+
+    if input.regressors.iter().enumerate().any(|(index, column)| {
+        source_is_fixed_effect(source_uses, index) && column.is_unavailable(original_row)
+    }) {
+        return Ok(DropReason::MissingFixedEffect);
     }
 
     match input.adjustment {
@@ -386,6 +453,43 @@ fn classify_row<P: NumericDomainPolicy>(
     }
 
     Ok(DropReason::Retained)
+}
+
+fn source_is_ordinary(source_uses: Option<&[NumericSourceUse]>, index: usize) -> bool {
+    source_uses.is_none_or(|uses| uses[index].ordinary)
+}
+
+fn source_is_fixed_effect(source_uses: Option<&[NumericSourceUse]>, index: usize) -> bool {
+    source_uses.is_some_and(|uses| uses[index].fixed_effect)
+}
+
+fn validate_source_uses(
+    input: &NumericPreparationInput<'_>,
+    source_uses: Option<&[NumericSourceUse]>,
+) -> Result<()> {
+    let Some(source_uses) = source_uses else {
+        return Ok(());
+    };
+    if source_uses.len() != input.regressors.len() {
+        return Err(StFixestError::new(
+            ErrorCode::InvalidArgument,
+            format!(
+                "numeric source-use table has {} entries, expected {}",
+                source_uses.len(),
+                input.regressors.len()
+            ),
+        ));
+    }
+    if source_uses
+        .iter()
+        .any(|usage| !usage.ordinary && !usage.fixed_effect)
+    {
+        return Err(StFixestError::new(
+            ErrorCode::InvalidArgument,
+            "numeric source-use entries must select an ordinary or fixed-effect role",
+        ));
+    }
+    Ok(())
 }
 
 fn validate_input(input: &NumericPreparationInput<'_>, n: usize) -> Result<()> {

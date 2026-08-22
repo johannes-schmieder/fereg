@@ -4,7 +4,7 @@ The C ABI exports only Stata's required `pginit` and `stata_call` symbols.
 `stata_call` forwards `argc/argv` to Rust's `stfixest_dispatch`.
 
 The action/diagnostics handshake remains version `1.0`. The expanded-model
-metadata wire is independently versioned at `2.0`; neither version number is
+metadata wire is independently versioned at `2.1`; neither version number is
 an alias for the other. An action handshake never performs a lossy model-wire
 conversion.
 
@@ -35,7 +35,7 @@ labels:
 
 ```text
 stfixest.action_protocol=1.0
-stfixest.model_wire=2.0
+stfixest.model_wire=2.1
 ```
 
 The action validates compatibility, resolves the local thread count, runs the
@@ -59,7 +59,7 @@ Return `r(498)` in this phase.
 
 `prepare-ols-test` is an internal integration action, not an estimator action.
 It requires `confirm=developer-preparation-test`, the standard action
-handshake, model-wire v2 matrices and length-delimited registries, an explicit
+handshake, model-wire 2.1 matrices and length-delimited registries, an explicit
 numeric binding matrix, and three pre-created diagnostic output variables. The
 binding roles are candidate (`1`), outcome (`2`), numeric model source (`3`),
 optional analytic weight (`4`), optional frequency weight (`5`), and optional
@@ -68,20 +68,38 @@ and rejected before observation reads. At most one weight binding is permitted.
 Inputs and outputs must cover the plugin varlist exactly.
 
 Role `3` describes numeric storage rather than continuous term semantics. One
-source can therefore serve `c.g`, `i.g`, and multiple categorical interactions
-without a duplicate binding or SPI read. The action is restricted to plain
-continuous terms, numeric factor main effects, and numeric all-categorical
-interactions with optional analytic, frequency, or probability weights.
+source can therefore serve `c.g`, `i.g`, multiple categorical interactions,
+and one or more supported fixed-effect terms without a duplicate binding, SPI
+read, compact column, or encoded-factor table. The action supports plain
+continuous terms, numeric factor main effects, numeric all-categorical
+interactions, and unnamed single-source intercept-only numeric fixed effects,
+with optional analytic, frequency, or probability weights. Fixed-effect source
+values may be any finite `f64`, including negative and fractional values;
+ordinary factor-variable sources retain the finite nonnegative-integer rule.
 Categorical-by-continuous and continuous products, time-series terms, string
-sources, fixed effects, and clusters remain unsupported, and the action never
-posts `e()` results. Stata's model wire owns expanded levels, bases, omission,
-and coefficient slots. Rust retains omitted-base slots without generating
-numerical columns and factorizes each active categorical source
+sources, absorbed interactions, absorbed slopes, saved-FE outputs, clusters,
+singleton deletion, `FeDesign`, and solving remain unsupported. The action
+never posts `e()` results. Stata's model wire owns expanded ordinary levels,
+bases, omission, and coefficient slots. Rust retains omitted-base slots without
+generating numerical columns and factorizes each active categorical source
 deterministically. All-categorical interactions are small ordered equality
 recipes over those codes; no observation-scale interaction column or tuple
 table is allocated. A level or tuple that existed in the candidate expansion
 but disappears after native sample preparation becomes an explicit all-zero
-recipe, not an error.
+recipe, not an error. Prepared fixed-effect recipes retain only the term id,
+label, shared source id, and index into the deduplicated categorical-source
+table.
+
+Model-wire 2.1 adds `absorb_term_matrix`, `absorb_term_count`,
+`absorb_component_matrix`, `absorb_component_count`, `absorb_labels`, and
+`absorb_saved_names`. Empty tables use the standard one-row all-zero sentinel;
+nonempty label and saved-name registries are byte-length framed. Model-wire 2.0
+is accepted only with empty absorbed tables and registries. All absorb-table
+cardinality, ordering, role, source-range, registry, variable-type, binding,
+and output validation occurs before any observation read. The developer ado
+also rejects string sources with `r(498)` before `plugin call`, because Stata's
+plugin varlist otherwise rejects them first. Unsupported FE shapes and string
+FE sources therefore return `r(498)` before reads or diagnostic writes.
 Weights must be passed as one numeric source binding. Frequency weights must
 be finite, strictly positive integral values representable as `u32`; an
 explicit Stata-missing mask is a reason-4 exclusion, while an unmasked NaN or

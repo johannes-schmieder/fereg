@@ -9,10 +9,10 @@ captured on licensed Stata.
 
 | Surface | OLS-v1 reference cases | StFixest state |
 |---|---|---|
-| No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Disabled pending one-call parity |
+| No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Developer boundary prepares repeated single-source numeric FE recipes and reason-5 missingness only; no `FeDesign`, singleton deletion, solve, or public estimator |
 | FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | Disabled pending FE certificates |
 | Ordinary regressors | continuous, factors, factor interactions, lag/lead/difference operators across panel calendar gaps, no-regressor, FE-collinear column | Parser metadata only; estimator disabled |
-| Samples/singletons | missing outcome/regressor/FE/cluster, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | Native pieces exist; composed parity pending |
+| Samples/singletons | missing outcome/regressor/FE/cluster, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | Native candidate/outcome/ordinary/weight/FE reason precedence is composed through reason 5; clusters and singleton iteration remain pending |
 | Weights | unweighted, `aweight`, `fweight`, `pweight`, `iweight` probe, scaling, invalid-domain probes, and invalid-weight-outside-candidate precedence | Every kind disabled pending adjudication |
 | Inference | iid, robust, one/two/three-way cluster, cluster interaction, nesting, default/none/firstpair/continuous DoF | Native pieces exist; posted parity pending |
 | Outputs | `e()` scalars, `e(b)`, `e(V)`, `e(sample)`, residual, `xb`, `xbd`, absorbed sum, named FEs, `test`, `estat summarize` | Postestimation remains fail-closed |
