@@ -4,7 +4,7 @@ use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::result::{
     build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind, CERTIFICATE_ROWS,
     CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
-    RECEIPT_COMPLETE_COLUMN, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
+    RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::metadata::{
@@ -33,6 +33,8 @@ struct ResultMatrices {
     b: String,
     covariance: String,
     coefficient_status: String,
+    omission_b_marker: String,
+    omission_v_marker: String,
     fit: String,
     dof: String,
     solver: String,
@@ -48,6 +50,8 @@ struct PreparedResultMatrices {
     b: PreparedMatrixStoreName,
     covariance: PreparedMatrixStoreName,
     coefficient_status: PreparedMatrixStoreName,
+    omission_b_marker: PreparedMatrixStoreName,
+    omission_v_marker: PreparedMatrixStoreName,
     fit: PreparedMatrixStoreName,
     dof: PreparedMatrixStoreName,
     solver: PreparedMatrixStoreName,
@@ -269,6 +273,8 @@ impl EstimateActionSpec {
                 b: required(&values, "output_b_matrix")?.to_owned(),
                 covariance: required(&values, "output_v_matrix")?.to_owned(),
                 coefficient_status: required(&values, "output_status_matrix")?.to_owned(),
+                omission_b_marker: required(&values, "output_marker_b_matrix")?.to_owned(),
+                omission_v_marker: required(&values, "output_marker_v_matrix")?.to_owned(),
                 fit: required(&values, "output_fit_matrix")?.to_owned(),
                 dof: required(&values, "output_dof_matrix")?.to_owned(),
                 solver: required(&values, "output_solver_matrix")?.to_owned(),
@@ -329,6 +335,8 @@ impl EstimateActionSpec {
             "output_b_matrix",
             "output_v_matrix",
             "output_status_matrix",
+            "output_marker_b_matrix",
+            "output_marker_v_matrix",
             "output_fit_matrix",
             "output_dof_matrix",
             "output_solver_matrix",
@@ -763,6 +771,8 @@ fn validate_shadow_against_outputs(
     if shadow.b.len() != matrix_dimension
         || shadow.covariance.len() != matrix_dimension * matrix_dimension
         || shadow.coefficient_status.len() != matrix_dimension * COEFFICIENT_STATUS_COLUMNS
+        || shadow.omission_b_marker.len() != matrix_dimension
+        || shadow.omission_v_marker.len() != matrix_dimension * matrix_dimension
         || shadow.fit.len() != FIT_ROWS * 2
         || shadow.dof.len() != DOF_ROWS * 2
         || shadow.solver.len() != SOLVER_ROWS * SOLVER_COLUMNS
@@ -802,6 +812,241 @@ fn validate_shadow_against_outputs(
         return Err(invalid(
             "OLS shadow receipt disagrees with requested outputs",
         ));
+    }
+    validate_shadow_receipt(action, shadow)?;
+    validate_shadow_coefficients(shadow)?;
+    validate_defined_value_table(&shadow.fit, "OLS fit-statistics shadow")?;
+    validate_defined_value_table(&shadow.dof, "OLS DoF shadow")?;
+    validate_defined_value_table(&shadow.certificates, "OLS certificate shadow")?;
+    validate_shadow_diagnostics(action, shadow)?;
+    Ok(())
+}
+
+fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>) -> Result<()> {
+    if shadow.receipt.iter().any(|value| !value.is_finite()) {
+        return Err(invalid("OLS shadow receipt contains a nonfinite field"));
+    }
+    let logical_clusters = usize::from(action.vce == OlsVceKind::Clustered) * action.clusters.len();
+    let logical_subsets = usize::from(action.vce == OlsVceKind::Clustered) * shadow.subset_rows;
+    let expected = [
+        RESULT_MAGIC,
+        1.0,
+        0.0,
+        action.vce.code(),
+        shadow.coefficient_count as f64,
+        shadow.covariance_dimension as f64,
+        shadow.drop_reasons.len() as f64,
+        shadow.dof[5],
+        shadow.retained_rows.len() as f64,
+        logical_clusters as f64,
+        shadow.fixed_effect_rows as f64,
+        logical_subsets as f64,
+        1.0,
+        f64::from(action.outputs.residual.is_some()),
+        1.0,
+        0.0,
+    ];
+    if shadow.receipt != expected {
+        return Err(invalid(
+            "OLS shadow receipt failed final native identity validation",
+        ));
+    }
+    let candidate = exact_usize(shadow.receipt[7], "OLS candidate count")?;
+    if candidate > shadow.drop_reasons.len() || shadow.retained_rows.len() > candidate {
+        return Err(invalid("OLS shadow receipt sample counts are out of range"));
+    }
+    Ok(())
+}
+
+fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
+    let dimension = shadow.coefficient_count.max(1);
+    if shadow.coefficient_count == 0 {
+        if shadow.covariance_dimension != 0
+            || shadow.b != [0.0]
+            || shadow.covariance != [0.0]
+            || shadow.coefficient_status != [0.0; COEFFICIENT_STATUS_COLUMNS]
+            || shadow.omission_b_marker != [0.0]
+            || shadow.omission_v_marker != [0.0]
+        {
+            return Err(invalid("OLS zero-coordinate shadow sentinel is invalid"));
+        }
+        return Ok(());
+    }
+
+    let mut reported_coordinates = 0_usize;
+    for row in 0..dimension {
+        let offset = row * COEFFICIENT_STATUS_COLUMNS;
+        let slot = exact_usize(shadow.coefficient_status[offset], "OLS coefficient slot")?;
+        let code = exact_usize(
+            shadow.coefficient_status[offset + 1],
+            "OLS coefficient status",
+        )?;
+        let _generated = exact_usize(
+            shadow.coefficient_status[offset + 2],
+            "OLS generated-column status",
+        )?;
+        let coordinate = exact_usize(
+            shadow.coefficient_status[offset + 3],
+            "OLS covariance coordinate",
+        )?;
+        if slot != row + 1 || !(1..=5).contains(&code) || !shadow.b[row].is_finite() {
+            return Err(invalid("OLS coefficient shadow identity is invalid"));
+        }
+        let reported = matches!(code, 1 | 5);
+        if reported {
+            reported_coordinates = reported_coordinates
+                .checked_add(1)
+                .ok_or_else(|| allocation("OLS reported-coordinate count overflows"))?;
+            if coordinate == 0
+                || coordinate > shadow.covariance_dimension
+                || shadow.omission_b_marker[row] != 1.0
+            {
+                return Err(invalid("OLS reported covariance coordinate is invalid"));
+            }
+            let duplicates = (0..dimension)
+                .filter(|other| {
+                    exact_usize(
+                        shadow.coefficient_status[other * COEFFICIENT_STATUS_COLUMNS + 3],
+                        "OLS covariance coordinate",
+                    )
+                    .is_ok_and(|other_coordinate| other_coordinate == coordinate)
+                })
+                .count();
+            if duplicates != 1 {
+                return Err(invalid("OLS covariance coordinate is duplicated"));
+            }
+        } else if coordinate != 0 || shadow.b[row] != 0.0 || shadow.omission_b_marker[row] != 0.0 {
+            return Err(invalid("OLS omitted coefficient shadow is not zero"));
+        }
+
+        for column in 0..dimension {
+            let value = shadow.covariance[row * dimension + column];
+            let transposed = shadow.covariance[column * dimension + row];
+            if !value.is_finite()
+                || !transposed.is_finite()
+                || (value - transposed).abs()
+                    > 1e-10_f64 * value.abs().max(transposed.abs()).max(1.0)
+            {
+                return Err(invalid("OLS covariance shadow is nonfinite or asymmetric"));
+            }
+            let expected_marker = f64::from(reported && row == column);
+            if shadow.omission_v_marker[row * dimension + column] != expected_marker {
+                return Err(invalid("OLS omission covariance marker is invalid"));
+            }
+            if !reported && (value != 0.0 || transposed != 0.0) {
+                return Err(invalid("OLS omitted covariance row is not zero"));
+            }
+        }
+        if shadow.covariance[row * dimension + row] < 0.0 {
+            return Err(invalid("OLS covariance shadow has a negative diagonal"));
+        }
+    }
+    if reported_coordinates != shadow.covariance_dimension {
+        return Err(invalid(
+            "OLS covariance dimension disagrees with coefficient statuses",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_defined_value_table(values: &[f64], label: &str) -> Result<()> {
+    if values.len() % 2 != 0 {
+        return Err(invalid(format!("{label} has an invalid width")));
+    }
+    for row in values.chunks_exact(2) {
+        if !matches!(row[0], 0.0 | 1.0) || !row[1].is_finite() || (row[0] == 0.0 && row[1] != 0.0) {
+            return Err(invalid(format!("{label} has an invalid defined/value row")));
+        }
+    }
+    Ok(())
+}
+
+fn validate_shadow_diagnostics(
+    action: &EstimateAction,
+    shadow: &OlsShadowResult<'_>,
+) -> Result<()> {
+    for row in [0_usize, 1, 2, 23, 31] {
+        if shadow.certificates[row * 2] != 1.0 || shadow.certificates[row * 2 + 1] != 1.0 {
+            return Err(invalid("OLS mandatory native certificate did not pass"));
+        }
+    }
+    if shadow.certificates[30 * 2] != 1.0 || !shadow.certificates[30 * 2 + 1].is_finite() {
+        return Err(invalid("OLS covariance determinant certificate is invalid"));
+    }
+    for row in shadow.solver.chunks_exact(SOLVER_COLUMNS) {
+        if row.iter().any(|value| !value.is_finite())
+            || !matches!(row[0], 1.0 | 2.0 | 3.0)
+            || !matches!(row[1], 1.0 | 2.0 | 3.0)
+            || exact_usize(row[2], "OLS solver iteration count").is_err()
+            || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0)
+            || !matches!(row[10], 0.0 | 1.0)
+            || exact_usize(row[11], "OLS solver warning count").is_err()
+        {
+            return Err(invalid("OLS solver shadow metadata is invalid"));
+        }
+    }
+    for row in shadow.fixed_effects.chunks_exact(FE_COLUMNS) {
+        if !matches!(row[0], 1.0 | 2.0)
+            || exact_usize(row[1], "OLS FE term identity").is_err()
+            || exact_usize(row[2], "OLS FE source identity").is_err()
+            || exact_usize(row[3], "OLS FE category count").is_err()
+            || row[3] < 1.0
+            || exact_usize(row[4], "OLS FE redundancy").is_err()
+            || exact_usize(row[5], "OLS FE coefficient count").is_err()
+            || !matches!(row[6], 0.0 | 1.0)
+            || !matches!(row[7], 0.0 | 1.0)
+        {
+            return Err(invalid("OLS FE shadow metadata is invalid"));
+        }
+    }
+    if shadow.dof[0] != 1.0
+        || shadow.dof[12] != 1.0
+        || shadow.dof[14] != 1.0
+        || shadow.dof[18] != 1.0
+        || shadow.dof[1] <= 0.0
+        || shadow.dof[19] <= 0.0
+    {
+        return Err(invalid("OLS required DoF shadow fields are invalid"));
+    }
+    if action.vce != OlsVceKind::Clustered {
+        if shadow.clusters.iter().any(|value| *value != 0.0)
+            || shadow.subsets.iter().any(|value| *value != 0.0)
+        {
+            return Err(invalid("nonclustered OLS has nonempty cluster shadows"));
+        }
+    } else {
+        let maximum_mask = 1_usize
+            .checked_shl(
+                u32::try_from(action.clusters.len())
+                    .map_err(|_| allocation("OLS cluster count exceeds u32"))?,
+            )
+            .ok_or_else(|| allocation("OLS cluster subset mask overflows"))?
+            - 1;
+        for (index, row) in shadow.clusters.chunks_exact(CLUSTER_COLUMNS).enumerate() {
+            if exact_usize(row[0], "OLS cluster identity")? != index + 1
+                || exact_usize(row[1], "OLS cluster arity").is_err()
+                || row[1] < 1.0
+                || exact_usize(row[2], "OLS cluster group count").is_err()
+                || row[2] < 2.0
+                || !matches!(row[3], 0.0 | 1.0)
+            {
+                return Err(invalid("OLS cluster shadow metadata is invalid"));
+            }
+        }
+        for row in shadow.subsets.chunks_exact(SUBSET_COLUMNS) {
+            let mask = exact_usize(row[0], "OLS cluster subset mask")?;
+            let dimensions = exact_usize(row[1], "OLS cluster subset dimension count")?;
+            if mask == 0
+                || mask > maximum_mask
+                || dimensions == 0
+                || dimensions > action.clusters.len()
+                || !matches!(row[2], -1.0 | 1.0)
+                || exact_usize(row[3], "OLS cluster subset group count").is_err()
+                || row[3] < 1.0
+            {
+                return Err(invalid("OLS cluster-subset shadow metadata is invalid"));
+            }
+        }
     }
     Ok(())
 }
@@ -846,6 +1091,20 @@ fn store_shadow(
         dimension,
         COEFFICIENT_STATUS_COLUMNS,
         &shadow.coefficient_status,
+    )?;
+    store_matrix(
+        spi,
+        &action.matrices.omission_b_marker,
+        1,
+        dimension,
+        &shadow.omission_b_marker,
+    )?;
+    store_matrix(
+        spi,
+        &action.matrices.omission_v_marker,
+        dimension,
+        dimension,
+        &shadow.omission_v_marker,
     )?;
     store_matrix(spi, &action.matrices.fit, FIT_ROWS, 2, &shadow.fit)?;
     store_matrix(spi, &action.matrices.dof, DOF_ROWS, 2, &shadow.dof)?;
@@ -980,6 +1239,16 @@ fn validate_layout(
             matrix_dimension,
             COEFFICIENT_STATUS_COLUMNS,
         )?,
+        omission_b_marker: PreparedMatrixStoreName::try_new(
+            &matrices.omission_b_marker,
+            1,
+            matrix_dimension,
+        )?,
+        omission_v_marker: PreparedMatrixStoreName::try_new(
+            &matrices.omission_v_marker,
+            matrix_dimension,
+            matrix_dimension,
+        )?,
         fit: PreparedMatrixStoreName::try_new(&matrices.fit, FIT_ROWS, 2)?,
         dof: PreparedMatrixStoreName::try_new(&matrices.dof, DOF_ROWS, 2)?,
         solver: PreparedMatrixStoreName::try_new(&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS)?,
@@ -1012,6 +1281,16 @@ fn validate_layout(
             prepared_matrices.coefficient_status.as_str(),
             matrix_dimension,
             COEFFICIENT_STATUS_COLUMNS,
+        ),
+        (
+            prepared_matrices.omission_b_marker.as_str(),
+            1,
+            matrix_dimension,
+        ),
+        (
+            prepared_matrices.omission_v_marker.as_str(),
+            matrix_dimension,
+            matrix_dimension,
         ),
         (prepared_matrices.fit.as_str(), FIT_ROWS, 2),
         (prepared_matrices.dof.as_str(), DOF_ROWS, 2),
@@ -1363,7 +1642,6 @@ fn allocation(message: impl Into<String>) -> StFixestError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::result::RESULT_MAGIC;
     use std::collections::{BTreeMap, BTreeSet};
     use stfixest_core::metadata::{
         CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
@@ -1500,14 +1778,16 @@ mod tests {
             "RB" => 1,
             "RV" => 2,
             "RSTATUS" => 3,
-            "RFIT" => 4,
-            "RDOF" => 5,
-            "RSOLVER" => 6,
-            "RFE" => 7,
-            "RCLUSTER" => 8,
-            "RSUBSET" => 9,
-            "RCERT" => 10,
-            "RREC" => 11,
+            "RMARKB" => 4,
+            "RMARKV" => 5,
+            "RFIT" => 6,
+            "RDOF" => 7,
+            "RSOLVER" => 8,
+            "RFE" => 9,
+            "RCLUSTER" => 10,
+            "RSUBSET" => 11,
+            "RCERT" => 12,
+            "RREC" => 13,
             _ => panic!("unprepared test matrix-store name {name:?}"),
         }
     }
@@ -1600,6 +1880,32 @@ mod tests {
         vec![vec![0.0; columns]; rows]
     }
 
+    fn coefficient_shadow() -> OlsShadowResult<'static> {
+        OlsShadowResult {
+            b: vec![2.0, 3.0],
+            covariance: vec![4.0, 1.0, 1.0, 5.0],
+            coefficient_status: vec![1.0, 1.0, 1.0, 1.0, 2.0, 5.0, 0.0, 2.0],
+            omission_b_marker: vec![1.0, 1.0],
+            omission_v_marker: vec![1.0, 0.0, 0.0, 1.0],
+            fit: Vec::new(),
+            dof: Vec::new(),
+            solver: Vec::new(),
+            fixed_effects: Vec::new(),
+            clusters: Vec::new(),
+            subsets: Vec::new(),
+            certificates: Vec::new(),
+            receipt: Vec::new(),
+            coefficient_count: 2,
+            covariance_dimension: 2,
+            fixed_effect_rows: 0,
+            cluster_rows: 0,
+            subset_rows: 0,
+            drop_reasons: &[],
+            retained_rows: &[],
+            residuals: &[],
+        }
+    }
+
     fn fixture(vce: OlsVceKind) -> (Vec<String>, FakeSpi) {
         let clustered = vce == OlsVceKind::Clustered;
         let sources = if clustered {
@@ -1665,6 +1971,8 @@ mod tests {
                 "RSTATUS".to_owned(),
                 zero_matrix(2, COEFFICIENT_STATUS_COLUMNS),
             ),
+            ("RMARKB".to_owned(), zero_matrix(1, 2)),
+            ("RMARKV".to_owned(), zero_matrix(2, 2)),
             ("RFIT".to_owned(), zero_matrix(FIT_ROWS, 2)),
             ("RDOF".to_owned(), zero_matrix(DOF_ROWS, 2)),
             (
@@ -1759,6 +2067,8 @@ mod tests {
             "output_b_matrix=RB".to_owned(),
             "output_v_matrix=RV".to_owned(),
             "output_status_matrix=RSTATUS".to_owned(),
+            "output_marker_b_matrix=RMARKB".to_owned(),
+            "output_marker_v_matrix=RMARKV".to_owned(),
             "output_fit_matrix=RFIT".to_owned(),
             "output_dof_matrix=RDOF".to_owned(),
             "output_solver_matrix=RSOLVER".to_owned(),
@@ -1814,6 +2124,8 @@ mod tests {
             "RSTATUS".to_owned(),
             zero_matrix(3, COEFFICIENT_STATUS_COLUMNS),
         );
+        spi.matrices.insert("RMARKB".to_owned(), zero_matrix(1, 3));
+        spi.matrices.insert("RMARKV".to_owned(), zero_matrix(3, 3));
         for observation in 1..=6 {
             spi.data.insert(
                 (3, observation),
@@ -1871,8 +2183,50 @@ mod tests {
                 .all(|value| value.is_finite()));
             assert_eq!(
                 spi.stores.last(),
-                Some(&StoreEvent::Matrix(11, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
+                Some(&StoreEvent::Matrix(13, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
+        }
+    }
+
+    #[test]
+    fn native_coefficient_shadow_certification_rejects_every_scatter_family() {
+        validate_shadow_coefficients(&coefficient_shadow()).expect("valid native shadow");
+
+        let mut duplicate = coefficient_shadow();
+        duplicate.coefficient_status[7] = 1.0;
+        assert!(validate_shadow_coefficients(&duplicate).is_err());
+
+        let mut asymmetric = coefficient_shadow();
+        asymmetric.covariance[1] += 1.0;
+        assert!(validate_shadow_coefficients(&asymmetric).is_err());
+
+        let mut negative_diagonal = coefficient_shadow();
+        negative_diagonal.covariance[0] = -1.0;
+        assert!(validate_shadow_coefficients(&negative_diagonal).is_err());
+
+        let mut marker = coefficient_shadow();
+        marker.omission_v_marker[1] = 1.0;
+        assert!(validate_shadow_coefficients(&marker).is_err());
+
+        let mut omitted = coefficient_shadow();
+        omitted.coefficient_status[1] = 2.0;
+        omitted.coefficient_status[3] = 0.0;
+        omitted.b[0] = 0.0;
+        omitted.omission_b_marker[0] = 0.0;
+        omitted.omission_v_marker[0] = 0.0;
+        assert!(validate_shadow_coefficients(&omitted).is_err());
+    }
+
+    #[test]
+    fn native_defined_value_table_certification_rejects_malformed_rows() {
+        validate_defined_value_table(&[1.0, 2.0, 0.0, 0.0], "test").expect("valid table");
+        for malformed in [
+            vec![2.0, 0.0],
+            vec![0.0, 1.0],
+            vec![1.0, f64::NAN],
+            vec![1.0],
+        ] {
+            assert!(validate_defined_value_table(&malformed, "test").is_err());
         }
     }
 
@@ -1884,7 +2238,8 @@ mod tests {
         let (args, mut packed) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&bundled(&args), &mut packed).expect("bundle succeeds");
         for name in [
-            "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RREC",
+            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER",
+            "RSUBSET", "RCERT", "RREC",
         ] {
             assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
         }
@@ -1951,7 +2306,7 @@ mod tests {
         let (args, mut successful) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
         let total_stores = successful.store_calls;
-        assert_eq!(total_stores, 216);
+        assert_eq!(total_stores, 222);
         assert_eq!(successful.stores.capacity(), 512);
 
         for failing_ordinal in 1..=total_stores {
@@ -1975,12 +2330,18 @@ mod tests {
         assert_eq!(factor_spi.matrices["RSTATUS"][0][0], 1.0);
         assert_eq!(factor_spi.matrices["RSTATUS"][0][1], 2.0);
         assert_eq!(factor_spi.matrices["RSTATUS"][0][3], 0.0);
+        assert_eq!(factor_spi.matrices["RMARKB"][0][0], 0.0);
+        assert_eq!(factor_spi.matrices["RMARKV"][0][0], 0.0);
         for index in 0..3 {
             assert_eq!(factor_spi.matrices["RV"][0][index], 0.0);
             assert_eq!(factor_spi.matrices["RV"][index][0], 0.0);
         }
         assert!(matches!(factor_spi.matrices["RSTATUS"][1][1], 1.0 | 5.0));
         assert!(matches!(factor_spi.matrices["RSTATUS"][2][1], 1.0 | 5.0));
+        for index in 1..3 {
+            assert_eq!(factor_spi.matrices["RMARKB"][0][index], 1.0);
+            assert_eq!(factor_spi.matrices["RMARKV"][index][index], 1.0);
+        }
 
         let (mut noconstant_args, mut noconstant_spi) = fixture(OlsVceKind::Iid);
         replace_argument(
@@ -1998,6 +2359,12 @@ mod tests {
             "RSTATUS".to_owned(),
             zero_matrix(1, COEFFICIENT_STATUS_COLUMNS),
         );
+        noconstant_spi
+            .matrices
+            .insert("RMARKB".to_owned(), zero_matrix(1, 1));
+        noconstant_spi
+            .matrices
+            .insert("RMARKV".to_owned(), zero_matrix(1, 1));
         estimate_ols_test(&noconstant_args, &mut noconstant_spi)
             .expect("noconstant estimate succeeds");
         assert_eq!(noconstant_spi.matrices["RREC"][0][4], 1.0);

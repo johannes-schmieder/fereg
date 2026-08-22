@@ -4,9 +4,11 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from scripts.ols_hidden_numeric import (
@@ -14,9 +16,13 @@ from scripts.ols_hidden_numeric import (
     EXECUTABLE_CASE_IDS,
     Q_ANCHORS,
     SEALED_DEFAULT_V_ABS_CAPS,
+    DEFAULT_CANDIDATE_RECEIPT_IDENTITY,
+    _assert_canonical_candidate_receipt,
     _assert_committed_git_blob,
     _candidate_source_identity,
+    _expected_plugin_filename,
     _supplied_plugin_identity,
+    _run_supporting_gates,
     _validate_internal_candidate,
     _validate_plugin_identity,
     _validate_warning_audit,
@@ -26,8 +32,9 @@ from scripts.ols_hidden_numeric import (
     load_projection,
     projected_manifest,
     stata_hex_to_float,
+    verify_candidate_receipt,
 )
-from scripts.ols_reference import ContractError, seal_payload
+from scripts.ols_reference import ContractError, canonical_json_bytes, seal_payload
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -216,6 +223,40 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ContractError, "plugin identity"):
                     _validate_plugin_identity(mutation)
 
+    def test_supporting_gates_bind_every_loader_to_one_staged_candidate(self):
+        with tempfile.TemporaryDirectory() as raw:
+            plugin = Path(raw) / _expected_plugin_filename()
+            plugin.write_bytes(b"one exact staged plugin")
+            _, identity = _supplied_plugin_identity(plugin, plugin.name)
+            identity["embedded_git_commit"] = "0123456789ab"
+            commands = []
+
+            def fake_run(command, **kwargs):
+                commands.append([str(value) for value in command])
+                return subprocess.CompletedProcess(command, 0, stdout="PASS\n")
+
+            with mock.patch("scripts.ols_hidden_numeric.subprocess.run", fake_run):
+                evidence = _run_supporting_gates(
+                    Path("/Applications/Stata"), plugin, identity, Path("/usr/bin/true")
+                )
+            self.assertEqual(
+                evidence["candidate_plugin_binding"]["sha256"], identity["sha256"]
+            )
+            stata_commands = [
+                command for command in commands if "run_stata_tests.py" in " ".join(command)
+            ]
+            break_commands = [
+                command for command in commands if "run_stata_break_test.py" in " ".join(command)
+            ]
+            self.assertEqual(len(stata_commands), 2)
+            self.assertEqual(len(break_commands), 1)
+            for command in [*stata_commands, *break_commands]:
+                self.assertIn("--plugin", command)
+                self.assertIn(str(plugin.resolve()), command)
+                self.assertIn("--plugin-sha256", command)
+                self.assertIn(identity["sha256"], command)
+                self.assertNotIn(str((ROOT / "dist").resolve()), " ".join(command))
+
     def test_source_identity_binds_complete_commit_tree_and_rejects_staleness(self):
         with tempfile.TemporaryDirectory() as raw:
             repository = Path(raw)
@@ -289,6 +330,84 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             with self.assertRaisesRegex(ContractError, "committed Git blob"):
                 _assert_committed_git_blob(receipt)
 
+    def test_direct_verifier_rejects_committed_receipt_mutation_families(self):
+        identity = json.loads(
+            DEFAULT_CANDIDATE_RECEIPT_IDENTITY.read_text(encoding="utf-8")
+        )
+        canonical_receipt = ROOT / identity["receipt_path"]
+        original = json.loads(canonical_receipt.read_text(encoding="utf-8"))
+
+        mutations = []
+        schema = copy.deepcopy(original)
+        schema["payload"]["schema_version"] = 999
+        mutations.append(schema)
+        redaction = copy.deepcopy(original)
+        redaction["payload"]["host"]["system"] = "/Users/licensed/private"
+        mutations.append(redaction)
+        mode = copy.deepcopy(original)
+        mode["payload"]["mode"] = "public-production"
+        mutations.append(mode)
+        warning = copy.deepcopy(original)
+        warning["payload"]["warning_audit"]["forbidden_match_count"] = 1
+        mutations.append(warning)
+        resealed = copy.deepcopy(original)
+        resealed["payload"]["candidate"]["plugin"]["sha256"] = "0" * 64
+        mutations.append(resealed)
+
+        for index, mutation in enumerate(mutations):
+            mutation["seal"] = {
+                "algorithm": "sha256",
+                "canonicalization": "json-sort-keys-compact-ascii-v1",
+                "payload_sha256": hashlib.sha256(
+                    canonical_json_bytes(mutation["payload"])
+                ).hexdigest(),
+            }
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as raw:
+                repository = Path(raw)
+                subprocess.run(["git", "init", "-q", str(repository)], check=True)
+                receipt = repository / identity["receipt_path"]
+                receipt.parent.mkdir(parents=True)
+                shutil.copyfile(canonical_receipt, receipt)
+                identity_path = repository / "benchmarks/manifests/identity.json"
+                identity_path.parent.mkdir(parents=True)
+                identity_path.write_text(json.dumps(identity), encoding="utf-8")
+                subprocess.run(["git", "-C", str(repository), "add", "."], check=True)
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "-c",
+                        "user.name=StFixest Test",
+                        "-c",
+                        "user.email=stfixest@example.invalid",
+                        "commit",
+                        "-qm",
+                        "canonical receipt",
+                    ],
+                    check=True,
+                )
+                _assert_canonical_candidate_receipt(receipt, identity_path)
+                receipt.write_text(json.dumps(mutation), encoding="utf-8")
+                subprocess.run(["git", "-C", str(repository), "add", str(receipt)], check=True)
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "-c",
+                        "user.name=StFixest Test",
+                        "-c",
+                        "user.email=stfixest@example.invalid",
+                        "commit",
+                        "-qm",
+                        "committed reseal",
+                    ],
+                    check=True,
+                )
+                with self.assertRaisesRegex(ContractError, "external canonical identity"):
+                    verify_candidate_receipt(receipt, identity_path=identity_path)
+
     def test_receipt_writer_is_exclusive_without_chmod_contract(self):
         with tempfile.TemporaryDirectory() as raw:
             receipt = Path(raw) / "receipt.json"
@@ -317,12 +436,46 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )[1].split("program define _stfixest_eols_validate", 1)[0]
         for forbidden in ("count if", "capture assert", "summarize", "egen "):
             self.assertNotIn(forbidden, post_plugin.lower())
+        validator = source.split("program define _stfixest_eols_validate", 1)[1]
+        for forbidden in (
+            "forvalues",
+            "foreach",
+            "while ",
+            "floor(",
+            "abs(`v'",
+            "coordinate_seen",
+            "covariance_count",
+        ):
+            self.assertNotIn(forbidden, validator.lower())
+        self.assertNotRegex(
+            validator.lower(),
+            r"(?:`b'|`v'|`status'|`marker_b'|`marker_v')\s*\[[^]]+\]",
+        )
+        self.assertIn("output_marker_b_matrix=", source)
+        self.assertIn("output_marker_v_matrix=", source)
+        self.assertIn("_ms_findomitted `marker_b_shadow' `marker_v_shadow'", source)
+        marker_section = post_plugin.split("_ms_findomitted", 1)[0]
+        self.assertNotRegex(
+            marker_section,
+            r"matrix\s+`marker_[bv][^']*'\s*\[[^]]+\]\s*=",
+        )
         native = (ROOT / "crates/stfixest-plugin/src/estimate.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("OLS shadow observation outputs failed final preflight", native)
         self.assertIn(".eq(shadow.retained_rows.iter().copied())", native)
         self.assertIn("if retained { 1.0 } else { 0.0 }", native)
+        precommit = native.split("fn precommit_and_store", 1)[1].split(
+            "fn validate_shadow_against_outputs", 1
+        )[0]
+        self.assertLess(
+            precommit.index("validate_shadow_against_outputs(action, shadow)?"),
+            precommit.index("store_shadow(action, shadow, spi)"),
+        )
+        native_validator = native.split("fn validate_shadow_against_outputs", 1)[1].split(
+            "fn store_shadow", 1
+        )[0]
+        self.assertIn("validate_shadow_coefficients(shadow)?", native_validator)
 
     def test_hidden_adapter_uses_native_determinant_and_handles_k0(self):
         adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(

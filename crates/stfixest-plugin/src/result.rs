@@ -109,6 +109,8 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) b: Vec<f64>,
     pub(crate) covariance: Vec<f64>,
     pub(crate) coefficient_status: Vec<f64>,
+    pub(crate) omission_b_marker: Vec<f64>,
+    pub(crate) omission_v_marker: Vec<f64>,
     pub(crate) fit: Vec<f64>,
     pub(crate) dof: Vec<f64>,
     pub(crate) solver: Vec<f64>,
@@ -152,6 +154,17 @@ pub(crate) fn build_shadow_result<'a>(
         )?,
         0.0,
         "OLS coefficient-status table",
+    )?;
+    let mut omission_b_marker =
+        reserved_filled(matrix_dimension, 0.0, "OLS omission coefficient marker")?;
+    let mut omission_v_marker = reserved_filled(
+        checked_product(
+            matrix_dimension,
+            matrix_dimension,
+            "OLS omission covariance marker",
+        )?,
+        0.0,
+        "OLS omission covariance marker",
     )?;
 
     if fit.coefficients().len() != coefficient_count {
@@ -239,6 +252,8 @@ pub(crate) fn build_shadow_result<'a>(
             ));
         }
         coefficient_status[status_offset + 3] = (coordinate_index + 1) as f64;
+        omission_b_marker[slot] = 1.0;
+        omission_v_marker[slot * matrix_dimension + slot] = 1.0;
     }
     for row in 0..covariance_dimension {
         let target_row = one_based_index(
@@ -294,6 +309,8 @@ pub(crate) fn build_shadow_result<'a>(
         b,
         covariance,
         coefficient_status,
+        omission_b_marker,
+        omission_v_marker,
         fit: fit_values,
         dof,
         solver,

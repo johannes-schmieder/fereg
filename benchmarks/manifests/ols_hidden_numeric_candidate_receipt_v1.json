@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "identity": "stfixest-ols-hidden-numeric-v1-canonical-receipt",
+  "receipt_path": "benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260822T125401Z-1c1f372",
+  "git_object_format": "sha1",
+  "git_blob": "dd42e2df98171552bf150c47f3dda2ec5d74e6fa",
+  "git_mode": "100644",
+  "file_sha256": "8c86325dd3cc69f38f4a191eb19dc23db58301ebc66777c6e58cfd1787f5afcd",
+  "payload_sha256": "14bf4aa6dfd1c3a35d70ec4db162b8b70ae356e81e3ef3129c3b3e4276719c5d"
+}

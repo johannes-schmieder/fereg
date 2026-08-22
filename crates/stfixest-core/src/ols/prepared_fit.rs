@@ -2052,6 +2052,7 @@ fn checked_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn certify_scores(
     prepared: &PreparedOlsData,
     residuals: &[f64],

@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.run_stata_tests import expected_sentinel, run_fixture, validate_fixture_log
+from scripts.run_stata_tests import (
+    expected_plugin_filename,
+    expected_sentinel,
+    run_fixture,
+    sha256_file,
+    validate_fixture_log,
+)
 
 
 class StataRunnerSentinelTests(unittest.TestCase):
@@ -73,6 +80,57 @@ class StataRunnerSentinelTests(unittest.TestCase):
         result = run_fixture("stata", root / self.fixture, root, runner=fake_runner)
         self.assertEqual(result.process_returncode, 0)
         self.assertIn("expected", result.error or "")
+
+    def test_explicit_candidate_binding_never_falls_back_to_dist(self):
+        observed_wrapper = ""
+
+        def fake_runner(args, *, cwd, **kwargs):
+            nonlocal observed_wrapper
+            observed_wrapper = Path(cwd, "run.do").read_text(encoding="utf-8")
+            Path(cwd, "run.log").write_text(
+                expected_sentinel(self.fixture) + "\n", encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(args, 0)
+
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as raw:
+            plugin = Path(raw) / expected_plugin_filename()
+            plugin.write_bytes(b"exact staged candidate")
+            result = run_fixture(
+                "stata",
+                root / self.fixture,
+                root,
+                runner=fake_runner,
+                plugin=plugin,
+                plugin_sha256=sha256_file(plugin),
+            )
+            self.assertIsNone(result.error)
+            self.assertIn(str(plugin.resolve()), observed_wrapper)
+            self.assertNotIn(str((root / "dist").resolve()), observed_wrapper)
+            self.assertIn("__stfixest_runner_provenance", observed_wrapper)
+
+    def test_missing_or_wrong_candidate_binding_fails_before_stata(self):
+        root = Path(__file__).resolve().parents[2]
+        missing = Path(tempfile.gettempdir()) / expected_plugin_filename()
+        with self.assertRaises(ValueError):
+            run_fixture(
+                "stata",
+                root / self.fixture,
+                root,
+                plugin=missing,
+                plugin_sha256="0" * 64,
+            )
+        with tempfile.TemporaryDirectory() as raw:
+            plugin = Path(raw) / expected_plugin_filename()
+            plugin.write_bytes(b"wrong binding")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                run_fixture(
+                    "stata",
+                    root / self.fixture,
+                    root,
+                    plugin=plugin,
+                    plugin_sha256="0" * 64,
+                )
 
 
 if __name__ == "__main__":

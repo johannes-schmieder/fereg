@@ -48,6 +48,9 @@ except ModuleNotFoundError:  # Importable as scripts.ols_hidden_numeric in tests
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROJECTION = ROOT / "benchmarks/manifests/ols_hidden_numeric_v1.json"
+DEFAULT_CANDIDATE_RECEIPT_IDENTITY = (
+    ROOT / "benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json"
+)
 RECEIPT_TYPE = "stfixest-ols-hidden-numeric-v1-candidate"
 TERMINAL_SENTINEL = "END_FIXTURE|ols_v1_reference_capture|rc=0"
 FORBIDDEN_WARNING = "warning: variance matrix is nonsymmetric or highly singular."
@@ -272,7 +275,7 @@ def _verify_candidate_source_identity(
         raise ContractError("candidate source commit is not an ancestor of HEAD")
 
 
-def _assert_committed_git_blob(path: Path) -> None:
+def _assert_committed_git_blob(path: Path) -> dict[str, Any]:
     resolved = path.resolve()
     try:
         repository = Path(_git_output(resolved.parent, "rev-parse", "--show-toplevel"))
@@ -287,8 +290,81 @@ def _assert_committed_git_blob(path: Path) -> None:
     if observed_blob != head_blob:
         raise ContractError("candidate receipt bytes differ from the committed Git blob")
     tree_entry = _git_output(repository, "ls-tree", "HEAD", "--", relative).split()
-    if len(tree_entry) < 3 or tree_entry[0] not in {"100644", "100755"} or tree_entry[1] != "blob":
+    if len(tree_entry) < 3 or tree_entry[0] != "100644" or tree_entry[1] != "blob":
         raise ContractError("candidate receipt has an unsupported committed Git mode")
+    return {
+        "repository": repository.resolve(),
+        "path": relative,
+        "object_format": _git_output(repository, "rev-parse", "--show-object-format"),
+        "blob": head_blob,
+        "mode": tree_entry[0],
+    }
+
+
+def load_candidate_receipt_identity(
+    path: Path = DEFAULT_CANDIDATE_RECEIPT_IDENTITY,
+) -> dict[str, Any]:
+    committed = _assert_committed_git_blob(path)
+    try:
+        identity = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ContractError(f"cannot read candidate receipt identity: {exc}") from exc
+    if not isinstance(identity, Mapping):
+        raise ContractError("candidate receipt identity must be an object")
+    _require_keys(
+        identity,
+        {
+            "schema_version",
+            "identity",
+            "receipt_path",
+            "git_object_format",
+            "git_blob",
+            "git_mode",
+            "file_sha256",
+            "payload_sha256",
+        },
+        "candidate receipt identity",
+    )
+    if (
+        identity["schema_version"] != 1
+        or identity["identity"] != "stfixest-ols-hidden-numeric-v1-canonical-receipt"
+        or not isinstance(identity["receipt_path"], str)
+        or Path(identity["receipt_path"]).is_absolute()
+        or ".." in Path(identity["receipt_path"]).parts
+        or identity["git_object_format"] != committed["object_format"]
+        or not isinstance(identity["git_blob"], str)
+        or not GIT_OBJECT_ID.fullmatch(identity["git_blob"])
+        or identity["git_mode"] != "100644"
+        or not isinstance(identity["file_sha256"], str)
+        or not HEX_SHA256.fullmatch(identity["file_sha256"])
+        or not isinstance(identity["payload_sha256"], str)
+        or not HEX_SHA256.fullmatch(identity["payload_sha256"])
+    ):
+        raise ContractError("candidate receipt identity is malformed")
+    return dict(identity)
+
+
+def _assert_canonical_candidate_receipt(
+    path: Path,
+    identity_path: Path = DEFAULT_CANDIDATE_RECEIPT_IDENTITY,
+) -> dict[str, Any]:
+    identity_commit = _assert_committed_git_blob(identity_path)
+    identity = load_candidate_receipt_identity(identity_path)
+    repository = identity_commit["repository"]
+    expected_path = (repository / identity["receipt_path"]).resolve()
+    if path.resolve() != expected_path:
+        raise ContractError("candidate receipt path is not the canonical sealed path")
+    committed = _assert_committed_git_blob(path)
+    if committed["repository"] != repository:
+        raise ContractError("candidate receipt and identity are in different repositories")
+    if (
+        committed["object_format"] != identity["git_object_format"]
+        or committed["blob"] != identity["git_blob"]
+        or committed["mode"] != identity["git_mode"]
+        or sha256_file(path) != identity["file_sha256"]
+    ):
+        raise ContractError("candidate receipt differs from its external canonical identity")
+    return identity
 
 
 def _write_exclusive_receipt(path: Path, encoded: str) -> None:
@@ -723,7 +799,7 @@ def _run_stata_capture(
     projected = projected_manifest(projection)
     projection_hash = sha256_file(projection_path)
     expected_plugin_name = _expected_plugin_filename()
-    supplied_plugin, plugin_identity = _supplied_plugin_identity(
+    staged_plugin, plugin_identity = _supplied_plugin_identity(
         plugin, expected_plugin_name
     )
     plugin_sha256 = plugin_identity["sha256"]
@@ -738,16 +814,6 @@ def _run_stata_capture(
         case_do = run_dir / "candidate_cases.do"
         capture_file = run_dir / "candidate.capture"
         wrapper = run_dir / "candidate_wrapper.do"
-        plugin_dir = run_dir / "candidate-plugin"
-        plugin_dir.mkdir()
-        staged_plugin = plugin_dir / expected_plugin_name
-        shutil.copyfile(supplied_plugin, staged_plugin)
-        staged_plugin.chmod(supplied_plugin.stat().st_mode & 0o777)
-        if (
-            sha256_file(staged_plugin) != plugin_sha256
-            or staged_plugin.stat().st_size != plugin_size
-        ):
-            raise ContractError("staged candidate plugin differs from the supplied plugin")
         case_do.write_text(
             render_capture_do(projected, staged, run_dir, projection_hash),
             encoding="utf-8",
@@ -761,7 +827,7 @@ def _run_stata_capture(
         lines.extend(
             [
                 f"adopath ++ {_stata_quote(ROOT / 'stata')}",
-                f"adopath ++ {_stata_quote(plugin_dir)}",
+                f"adopath ++ {_stata_quote(staged_plugin.parent)}",
                 f"capture program __stfixest_candidate_provenance, plugin using({_stata_quote(staged_plugin)})",
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 exit `provenance_load_rc'",
@@ -798,9 +864,7 @@ def _run_stata_capture(
                 "loaded candidate plugin does not embed the captured source commit"
             )
         if (
-            sha256_file(supplied_plugin) != plugin_sha256
-            or sha256_file(staged_plugin) != plugin_sha256
-            or supplied_plugin.stat().st_size != plugin_size
+            sha256_file(staged_plugin) != plugin_sha256
             or staged_plugin.stat().st_size != plugin_size
         ):
             raise ContractError("candidate plugin bytes changed during licensed Stata capture")
@@ -833,16 +897,23 @@ def _cargo_binary(explicit: Path | None) -> Path:
     return candidate.resolve()
 
 
-def _supporting_gate_evidence() -> dict[str, Any]:
+def _supporting_gate_evidence(plugin: Mapping[str, Any]) -> dict[str, Any]:
+    binding = {
+        "sha256": plugin["sha256"],
+        "size_bytes": plugin["size_bytes"],
+        "embedded_git_commit": plugin["embedded_git_commit"],
+        "loader_policy": "one-shared-isolated-staged-candidate-v1",
+    }
     return {
+        "candidate_plugin_binding": binding,
         "fake_spi_store_failures": {
             "status": "pass",
-            "ordinals": 216,
+            "ordinals": 222,
             "test_sha256": sha256_file(ROOT / "crates/stfixest-plugin/src/estimate.rs"),
         },
         "actual_plugin_loader": {
             "status": "pass",
-            "ordinals": 213,
+            "ordinals": 219,
             "test_sha256": sha256_file(ROOT / "tests/mock_spi/actual_plugin_loader_test.c"),
         },
         "stata_eclass_rollback": {
@@ -860,7 +931,12 @@ def _supporting_gate_evidence() -> dict[str, Any]:
     }
 
 
-def _run_supporting_gates(stata: Path, plugin: Path, cargo: Path | None) -> dict[str, Any]:
+def _run_supporting_gates(
+    stata: Path,
+    plugin: Path,
+    plugin_identity: Mapping[str, Any],
+    cargo: Path | None,
+) -> dict[str, Any]:
     cargo = _cargo_binary(cargo)
     environment = os.environ.copy()
     environment["PATH"] = str(cargo.parent) + os.pathsep + environment.get("PATH", "")
@@ -886,6 +962,10 @@ def _run_supporting_gates(stata: Path, plugin: Path, cargo: Path | None) -> dict
                 str(ROOT / "scripts/run_stata_tests.py"),
                 "--stata",
                 str(stata),
+                "--plugin",
+                str(plugin.resolve()),
+                "--plugin-sha256",
+                plugin_identity["sha256"],
                 str(ROOT / "tests/stata/installation/estimate_ols_eclass_transaction.do"),
             ],
         ),
@@ -896,6 +976,10 @@ def _run_supporting_gates(stata: Path, plugin: Path, cargo: Path | None) -> dict
                 str(ROOT / "scripts/run_stata_tests.py"),
                 "--stata",
                 str(stata),
+                "--plugin",
+                str(plugin.resolve()),
+                "--plugin-sha256",
+                plugin_identity["sha256"],
                 str(ROOT / "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do"),
             ],
         ),
@@ -908,6 +992,10 @@ def _run_supporting_gates(stata: Path, plugin: Path, cargo: Path | None) -> dict
                 str(stata),
                 "--timeout",
                 "30",
+                "--plugin",
+                str(plugin.resolve()),
+                "--plugin-sha256",
+                plugin_identity["sha256"],
             ],
         ),
     )
@@ -924,7 +1012,12 @@ def _run_supporting_gates(stata: Path, plugin: Path, cargo: Path | None) -> dict
         if completed.returncode != 0:
             tail = "\n".join(completed.stdout.splitlines()[-80:])
             raise ContractError(f"supporting gate {name} failed:\n{tail}")
-    return _supporting_gate_evidence()
+        if (
+            sha256_file(plugin) != plugin_identity["sha256"]
+            or plugin.stat().st_size != plugin_identity["size_bytes"]
+        ):
+            raise ContractError(f"supporting gate {name} changed the staged candidate plugin")
+    return _supporting_gate_evidence(plugin_identity)
 
 
 def capture_receipt(
@@ -943,11 +1036,37 @@ def capture_receipt(
     )
     if comparator_document["seal"]["payload_sha256"] != projection["comparator_receipt"]["payload_sha256"]:
         raise ContractError("comparator payload seal differs from projection")
-    environment, cases, capture_sha, plugin_identity, warning_audit = _run_stata_capture(
-        stata, plugin, projection_path, source_identity
-    )
-    comparisons = compare_cases(cases, comparator_document["payload"]["cases"], projection)
-    supporting_gates = _run_supporting_gates(stata, plugin, cargo)
+    supplied_plugin, supplied_identity = _supplied_plugin_identity(plugin)
+    with tempfile.TemporaryDirectory(prefix="stfixest-candidate-transaction-") as raw:
+        plugin_dir = Path(raw) / "candidate-plugin"
+        plugin_dir.mkdir()
+        staged_plugin = plugin_dir / supplied_identity["filename"]
+        shutil.copyfile(supplied_plugin, staged_plugin)
+        staged_plugin.chmod(supplied_plugin.stat().st_mode & 0o777)
+        if (
+            sha256_file(staged_plugin) != supplied_identity["sha256"]
+            or staged_plugin.stat().st_size != supplied_identity["size_bytes"]
+        ):
+            raise ContractError("staged candidate plugin differs from the supplied plugin")
+        environment, cases, capture_sha, plugin_identity, warning_audit = _run_stata_capture(
+            stata, staged_plugin, projection_path, source_identity
+        )
+        if {
+            key: plugin_identity[key]
+            for key in ("filename", "sha256", "size_bytes", "loader_policy")
+        } != supplied_identity:
+            raise ContractError("captured candidate plugin identity changed after staging")
+        comparisons = compare_cases(cases, comparator_document["payload"]["cases"], projection)
+        supporting_gates = _run_supporting_gates(
+            stata, staged_plugin, plugin_identity, cargo
+        )
+        if (
+            sha256_file(supplied_plugin) != supplied_identity["sha256"]
+            or supplied_plugin.stat().st_size != supplied_identity["size_bytes"]
+            or sha256_file(staged_plugin) != supplied_identity["sha256"]
+            or staged_plugin.stat().st_size != supplied_identity["size_bytes"]
+        ):
+            raise ContractError("candidate plugin bytes changed during the gate transaction")
     if _candidate_source_identity(ROOT) != source_identity:
         raise ContractError("candidate tracked source state changed during capture")
     payload = {
@@ -992,9 +1111,13 @@ def capture_receipt(
     return document["seal"]["payload_sha256"]
 
 
-def verify_candidate_receipt(path: Path, projection_path: Path = DEFAULT_PROJECTION) -> dict[str, Any]:
+def verify_candidate_receipt(
+    path: Path,
+    projection_path: Path = DEFAULT_PROJECTION,
+    identity_path: Path = DEFAULT_CANDIDATE_RECEIPT_IDENTITY,
+) -> dict[str, Any]:
     projection = load_projection(projection_path)
-    _assert_committed_git_blob(path)
+    canonical_identity = _assert_canonical_candidate_receipt(path, identity_path)
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -1009,6 +1132,8 @@ def verify_candidate_receipt(path: Path, projection_path: Path = DEFAULT_PROJECT
         "payload_sha256": expected_seal,
     }:
         raise ContractError("candidate receipt seal is invalid")
+    if document["seal"]["payload_sha256"] != canonical_identity["payload_sha256"]:
+        raise ContractError("candidate receipt payload seal differs from its canonical identity")
     if not isinstance(payload, Mapping):
         raise ContractError("candidate receipt payload must be an object")
     _require_keys(
@@ -1052,7 +1177,6 @@ def verify_candidate_receipt(path: Path, projection_path: Path = DEFAULT_PROJECT
         }
         or payload.get("executed_cases") != list(EXECUTABLE_CASE_IDS)
         or payload.get("blockers") != [{"case_id": case, "reason": reason} for case, reason in BLOCKERS]
-        or payload.get("supporting_gates") != _supporting_gate_evidence()
     ):
         raise ContractError("candidate receipt identity/boundary is stale")
     candidate = payload["candidate"]
@@ -1078,6 +1202,8 @@ def verify_candidate_receipt(path: Path, projection_path: Path = DEFAULT_PROJECT
         raise ContractError("candidate plugin/source commit provenance is stale")
     warning_audit = payload.get("warning_audit")
     _validate_warning_audit(warning_audit)
+    if payload.get("supporting_gates") != _supporting_gate_evidence(plugin):
+        raise ContractError("candidate receipt supporting-gate binding is stale")
     environment = payload["environment"]
     if (
         not isinstance(environment, Mapping)

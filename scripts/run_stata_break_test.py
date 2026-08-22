@@ -8,11 +8,12 @@ import os
 import pty
 import select
 import subprocess
+import tempfile
 import termios
 import time
 from pathlib import Path
 
-from run_stata_tests import validate_fixture_log
+from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
 
 ARMED = "STFIXEST_BREAK_ARMED"
 
@@ -49,6 +50,8 @@ def read_until(master: int, process: subprocess.Popen[bytes], needle: str, timeo
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stata", default=os.environ.get("STATA_BIN"))
+    parser.add_argument("--plugin", type=Path, required=True)
+    parser.add_argument("--plugin-sha256", required=True)
     parser.add_argument("--timeout", type=float, default=30.0)
     args = parser.parse_args()
     if not args.stata:
@@ -56,6 +59,9 @@ def main() -> None:
 
     root = Path(__file__).resolve().parents[1]
     fixture = root / "tests/licensed_stata/estimate_ols_eclass_break.do"
+    bound_plugin = validate_candidate_plugin(args.plugin, args.plugin_sha256)
+    temporary = tempfile.TemporaryDirectory(prefix="stfixest-stata-break-")
+    run_dir = Path(temporary.name)
     master, slave = pty.openpty()
 
     def attach_controlling_terminal() -> None:
@@ -64,7 +70,7 @@ def main() -> None:
 
     process = subprocess.Popen(
         [args.stata],
-        cwd=root,
+        cwd=run_dir,
         stdin=slave,
         stdout=slave,
         stderr=slave,
@@ -75,15 +81,27 @@ def main() -> None:
     transcript = ""
     try:
         transcript += read_until(master, process, ". ", args.timeout)
-        commands = "\n".join(
+        isolated = run_dir / "sysdirs"
+        commands = ["version 18.0", "clear all", "set more off"]
+        for name in ("PERSONAL", "PLUS", "OLDPLACE", "SITE"):
+            target = isolated / name.lower()
+            target.mkdir(parents=True)
+            commands.append(f"sysdir set {name} {stata_quote(target)}")
+        commands.extend(
             [
                 f"adopath ++ {stata_quote(root / 'stata')}",
-                f"adopath ++ {stata_quote(root / 'dist')}",
+                f"adopath ++ {stata_quote(bound_plugin.parent)}",
+                "capture program __stfixest_break_provenance, plugin "
+                f"using({stata_quote(bound_plugin)})",
+                "local provenance_load_rc = _rc",
+                "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
+                "exit `provenance_load_rc'",
+                "plugin call __stfixest_break_provenance, version",
                 f"do {stata_quote(fixture)}",
                 "",
             ]
         )
-        os.write(master, commands.encode("utf-8"))
+        os.write(master, "\n".join(commands).encode("utf-8"))
         transcript += read_until(master, process, ARMED, args.timeout)
         os.write(master, b"\x03")
         expected = "END_FIXTURE|estimate_ols_eclass_break|rc=0"
@@ -91,6 +109,8 @@ def main() -> None:
         error = validate_fixture_log(fixture, transcript)
         if error:
             raise RuntimeError(f"Break fixture failed: {error}\n{transcript}")
+        if sha256_file(bound_plugin) != args.plugin_sha256:
+            raise RuntimeError("candidate plugin bytes changed during the Break fixture")
         print(f"PASS: {expected}")
     finally:
         os.close(master)
@@ -101,6 +121,7 @@ def main() -> None:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
+        temporary.cleanup()
 
 
 if __name__ == "__main__":

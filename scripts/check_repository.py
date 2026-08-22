@@ -6,6 +6,7 @@ import ast
 import hashlib
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -40,6 +41,7 @@ required_files = [
     "Cargo.lock",
     "references.lock.toml",
     "benchmarks/manifests/ols_v1.json",
+    "benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json",
     "benchmarks/stata/baseline_reghdfe.do",
     "scripts/ols_reference.py",
     "crates/stfixest-core/src/lib.rs",
@@ -181,6 +183,90 @@ except json.JSONDecodeError as error:
     ols_manifest = {}
 require(ols_manifest.get("manifest_id") == "ols_v1", "OLS v1 manifest identity missing")
 require(ols_manifest.get("frozen") is True, "OLS v1 manifest is not frozen")
+
+try:
+    candidate_receipt_identity = json.loads(
+        read("benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json")
+    )
+except json.JSONDecodeError as error:
+    ERRORS.append(f"hidden numeric candidate receipt identity is invalid JSON: {error}")
+    candidate_receipt_identity = {}
+require(
+    set(candidate_receipt_identity)
+    == {
+        "schema_version",
+        "identity",
+        "receipt_path",
+        "git_object_format",
+        "git_blob",
+        "git_mode",
+        "file_sha256",
+        "payload_sha256",
+    },
+    "hidden numeric candidate receipt identity schema is not closed",
+)
+candidate_receipt_relative = candidate_receipt_identity.get("receipt_path", "")
+candidate_receipt = ROOT / candidate_receipt_relative
+require(
+    candidate_receipt_identity.get("schema_version") == 1
+    and candidate_receipt_identity.get("identity")
+    == "stfixest-ols-hidden-numeric-v1-canonical-receipt",
+    "hidden numeric canonical receipt identity is stale",
+)
+require(
+    bool(candidate_receipt_relative)
+    and not Path(candidate_receipt_relative).is_absolute()
+    and ".." not in Path(candidate_receipt_relative).parts
+    and candidate_receipt.is_file(),
+    "hidden numeric canonical receipt path is invalid",
+)
+if candidate_receipt.is_file():
+    require(
+        candidate_receipt_identity.get("file_sha256") == sha256(candidate_receipt),
+        "hidden numeric canonical receipt file SHA is stale",
+    )
+    try:
+        candidate_document = json.loads(candidate_receipt.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        ERRORS.append(f"hidden numeric canonical receipt is invalid JSON: {error}")
+        candidate_document = {}
+    require(
+        candidate_document.get("seal", {}).get("payload_sha256")
+        == candidate_receipt_identity.get("payload_sha256"),
+        "hidden numeric canonical receipt payload seal is stale",
+    )
+    observed_blob = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--verify", f"HEAD:{candidate_receipt_relative}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).stdout.strip()
+    observed_tree = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-tree", "HEAD", "--", candidate_receipt_relative],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).stdout.split()
+    require(
+        candidate_receipt_identity.get("git_object_format")
+        == subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--show-object-format"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).stdout.strip(),
+        "hidden numeric canonical receipt Git object format is stale",
+    )
+    require(
+        observed_blob == candidate_receipt_identity.get("git_blob")
+        and len(observed_tree) >= 3
+        and observed_tree[0] == candidate_receipt_identity.get("git_mode") == "100644"
+        and observed_tree[1] == "blob",
+        "hidden numeric canonical receipt Git blob/mode is stale",
+    )
 capture = ols_manifest.get("capture", {})
 for name in ("script", "runner", "generator"):
     spec = capture.get(name, {})

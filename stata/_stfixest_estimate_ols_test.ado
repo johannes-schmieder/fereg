@@ -208,12 +208,15 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         local output_variables `output_variables' `residual_shadow'
     }
 
-    tempname b_shadow v_shadow status_shadow fit_shadow dof_shadow
+    tempname b_shadow v_shadow status_shadow marker_b_shadow marker_v_shadow
+    tempname fit_shadow dof_shadow
     tempname solver_shadow fe_shadow cluster_shadow subset_shadow
     tempname certificate_shadow receipt_shadow
     matrix `b_shadow' = J(1, `matrix_dimension', .)
     matrix `v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `status_shadow' = J(`matrix_dimension', 4, .)
+    matrix `marker_b_shadow' = J(1, `matrix_dimension', .)
+    matrix `marker_v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `fit_shadow' = J(12, 2, .)
     matrix `dof_shadow' = J(20, 2, .)
     matrix `solver_shadow' = J(2, 12, .)
@@ -238,7 +241,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     capture program __stfixest_estimate_plugin, plugin using(`"`plugin_file'"')
     local load_rc = _rc
     if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    local request_arguments `"ado=0.1.0-phase01;protocol_major=1;protocol_minor=1;stata=`c(stata_version)';confirm=developer-estimation-test;plugin=0.1.0;result_major=1;result_minor=0;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.1.0-phase01;protocol_major=1;protocol_minor=1;stata=`c(stata_version)';confirm=developer-estimation-test;plugin=0.1.0;result_major=1;result_minor=0;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_receipt_matrix=`receipt_shadow';"'
     local request_bundle
     local request_count 0
     while `"`request_arguments'"' != "" {
@@ -262,7 +265,8 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     if `"`inject'"' == "postplugin" exit 3498
 
     _stfixest_eols_validate `b_shadow' `v_shadow' ///
-        `status_shadow' `fit_shadow' `dof_shadow' `solver_shadow' ///
+        `status_shadow' `marker_b_shadow' `marker_v_shadow' ///
+        `fit_shadow' `dof_shadow' `solver_shadow' ///
         `fe_shadow' `cluster_shadow' `subset_shadow' ///
         `certificate_shadow' `receipt_shadow', ///
         coefficients(`coefficient_count') vcecode(`vce_code') ///
@@ -281,21 +285,12 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         matrix colnames `b_shadow' = `posted_names'
         matrix colnames `v_shadow' = `posted_names'
         matrix rownames `v_shadow' = `posted_names'
-        tempname marker_b marker_v posted_b posted_v
-        matrix `marker_b' = J(1, `coefficient_count', 0)
-        matrix `marker_v' = J(`coefficient_count', `coefficient_count', 0)
-        forvalues column = 1/`coefficient_count' {
-            local status = `status_shadow'[`column',2]
-            if inlist(`status', 1, 5) {
-                matrix `marker_b'[1,`column'] = 1
-                matrix `marker_v'[`column',`column'] = 1
-            }
-        }
-        matrix colnames `marker_b' = `posted_names'
-        matrix colnames `marker_v' = `posted_names'
-        matrix rownames `marker_v' = `posted_names'
-        _ms_findomitted `marker_b' `marker_v'
-        local marked_names : colfullnames `marker_b'
+        tempname posted_b posted_v
+        matrix colnames `marker_b_shadow' = `posted_names'
+        matrix colnames `marker_v_shadow' = `posted_names'
+        matrix rownames `marker_v_shadow' = `posted_names'
+        _ms_findomitted `marker_b_shadow' `marker_v_shadow'
+        local marked_names : colfullnames `marker_b_shadow'
         matrix colnames `b_shadow' = `marked_names'
         matrix colnames `v_shadow' = `marked_names'
         matrix rownames `v_shadow' = `marked_names'
@@ -456,27 +451,39 @@ end
 
 program define _stfixest_eols_validate
     version 18.0
-    syntax namelist(min=11 max=11), COEFFICIENTS(integer) VCECODE(integer) ABSORBROWS(integer) ///
+    syntax namelist(min=13 max=13), COEFFICIENTS(integer) VCECODE(integer) ABSORBROWS(integer) ///
         CLUSTERS(integer) SUBSETS(integer) RESIDUAL(integer)
     local b : word 1 of `namelist'
     local V : word 2 of `namelist'
     local status : word 3 of `namelist'
-    local fit : word 4 of `namelist'
-    local dof : word 5 of `namelist'
-    local solver : word 6 of `namelist'
-    local fe : word 7 of `namelist'
-    local clusters_table : word 8 of `namelist'
-    local subsets_table : word 9 of `namelist'
-    local certificates : word 10 of `namelist'
-    local receipt : word 11 of `namelist'
+    local marker_b : word 4 of `namelist'
+    local marker_V : word 5 of `namelist'
+    local fit : word 6 of `namelist'
+    local dof : word 7 of `namelist'
+    local solver : word 8 of `namelist'
+    local fe : word 9 of `namelist'
+    local clusters_table : word 10 of `namelist'
+    local subsets_table : word 11 of `namelist'
+    local certificates : word 12 of `namelist'
+    local receipt : word 13 of `namelist'
 
     local physical = max(`coefficients', 1)
     local expected_subsets = cond(`clusters' == 0, 0, `subsets')
-    foreach column in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 {
-        if missing(`receipt'[1,`column']) {
-            di as error "hidden OLS receipt contains missing data"
-            exit 459
-        }
+    if rowsof(`b') != 1 | colsof(`b') != `physical' | ///
+       rowsof(`V') != `physical' | colsof(`V') != `physical' | ///
+       rowsof(`status') != `physical' | colsof(`status') != 4 | ///
+       rowsof(`marker_b') != 1 | colsof(`marker_b') != `physical' | ///
+       rowsof(`marker_V') != `physical' | colsof(`marker_V') != `physical' | ///
+       rowsof(`fit') != 12 | colsof(`fit') != 2 | ///
+       rowsof(`dof') != 20 | colsof(`dof') != 2 | ///
+       rowsof(`solver') != 2 | colsof(`solver') != 12 | ///
+       rowsof(`fe') != `absorbrows' | colsof(`fe') != 8 | ///
+       rowsof(`clusters_table') != max(`clusters', 1) | colsof(`clusters_table') != 4 | ///
+       rowsof(`subsets_table') != `subsets' | colsof(`subsets_table') != 4 | ///
+       rowsof(`certificates') != 32 | colsof(`certificates') != 2 | ///
+       rowsof(`receipt') != 1 | colsof(`receipt') != 16 {
+        di as error "hidden OLS result layout failed exact structural validation"
+        exit 459
     }
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
        `receipt'[1,3] != 0 | `receipt'[1,4] != `vcecode' | ///
@@ -485,161 +492,11 @@ program define _stfixest_eols_validate
        `receipt'[1,11] != `absorbrows' | ///
        `receipt'[1,12] != `expected_subsets' | ///
        `receipt'[1,13] != 1 | `receipt'[1,14] != `residual' | ///
-       `receipt'[1,15] != 1 | `receipt'[1,16] != 1 {
-        di as error "hidden OLS receipt failed exact structural validation"
-        exit 459
-    }
-    if `receipt'[1,6] < 0 | `receipt'[1,6] > `coefficients' | ///
+       `receipt'[1,15] != 1 | `receipt'[1,16] != 1 | ///
+       `receipt'[1,6] < 0 | `receipt'[1,6] > `coefficients' | ///
        `receipt'[1,8] < 0 | `receipt'[1,8] > _N | ///
        `receipt'[1,9] < 0 | `receipt'[1,9] > `receipt'[1,8] {
-        di as error "hidden OLS receipt count is out of range"
+        di as error "hidden OLS receipt failed exact structural validation"
         exit 459
-    }
-
-    tempname coordinate_seen
-    matrix `coordinate_seen' = J(1, max(`receipt'[1,6], 1), 0)
-    local covariance_count = 0
-    forvalues row = 1/`physical' {
-        local slot = `status'[`row',1]
-        local code = `status'[`row',2]
-        local coordinate = `status'[`row',4]
-        if `coefficients' == 0 {
-            if `slot' != 0 | `code' != 0 | `status'[`row',3] != 0 | `coordinate' != 0 | ///
-               `b'[1,`row'] != 0 | `V'[`row',`row'] != 0 {
-                di as error "hidden OLS K0 sentinel is not zero"
-                exit 459
-            }
-        }
-        else {
-            if `slot' != `row' | !inlist(`code', 1, 2, 3, 4, 5) {
-                di as error "hidden OLS coefficient status is invalid"
-                exit 459
-            }
-            if missing(`status'[`row',3]) | `status'[`row',3] < 0 | ///
-               `status'[`row',3] != floor(`status'[`row',3]) {
-                di as error "hidden OLS generated-column status is invalid"
-                exit 459
-            }
-            if inlist(`code', 1, 5) {
-                local ++covariance_count
-                if `coordinate' <= 0 | `coordinate' > `receipt'[1,6] | missing(`b'[1,`row']) {
-                    di as error "hidden OLS kept coordinate is invalid"
-                    exit 459
-                }
-                if `coordinate_seen'[1,`coordinate'] != 0 {
-                    di as error "hidden OLS covariance coordinate is duplicated"
-                    exit 459
-                }
-                matrix `coordinate_seen'[1,`coordinate'] = 1
-            }
-            else {
-                if `coordinate' != 0 | `b'[1,`row'] != 0 {
-                    di as error "hidden OLS omitted coordinate was not scattered to zero"
-                    exit 459
-                }
-                forvalues column = 1/`physical' {
-                    if `V'[`row',`column'] != 0 | `V'[`column',`row'] != 0 {
-                        di as error "hidden OLS omitted covariance row was not scattered to zero"
-                        exit 459
-                    }
-                }
-            }
-        }
-    }
-    if `covariance_count' != `receipt'[1,6] {
-        di as error "hidden OLS covariance dimension disagrees with status table"
-        exit 459
-    }
-    if `coefficients' > 0 {
-        forvalues row = 1/`physical' {
-            forvalues column = 1/`physical' {
-                if missing(`V'[`row',`column']) | ///
-                   abs(`V'[`row',`column'] - `V'[`column',`row']) > 1e-10 {
-                    di as error "hidden OLS covariance is missing or asymmetric"
-                    exit 459
-                }
-            }
-            if `V'[`row',`row'] < 0 {
-                di as error "hidden OLS covariance has a negative diagonal"
-                exit 459
-            }
-        }
-    }
-    foreach table in `fit' `dof' `certificates' {
-        local rows = rowsof(`table')
-        forvalues row = 1/`rows' {
-            if !inlist(`table'[`row',1], 0, 1) | ///
-               (`table'[`row',1] == 0 & `table'[`row',2] != 0) | ///
-               missing(`table'[`row',2]) {
-                di as error "hidden OLS defined/value table is invalid"
-                exit 459
-            }
-        }
-    }
-    foreach row in 1 2 3 24 32 {
-        if `certificates'[`row',1] != 1 | `certificates'[`row',2] != 1 {
-            di as error "hidden OLS certificate did not pass"
-            exit 459
-        }
-    }
-    if `certificates'[31,1] != 1 | missing(`certificates'[31,2]) {
-        di as error "hidden OLS covariance determinant metadata is invalid"
-        exit 459
-    }
-    forvalues row = 1/2 {
-        forvalues column = 1/12 {
-            if missing(`solver'[`row',`column']) {
-                di as error "hidden OLS solver metadata is nonfinite"
-                exit 459
-            }
-        }
-        if !inlist(`solver'[`row',1], 1, 2, 3) | ///
-           !inlist(`solver'[`row',2], 1, 2, 3) | ///
-           `solver'[`row',3] < 0 | ///
-           !inlist(`solver'[`row',4], 1, 2, 3, 4, 5) | ///
-           !inlist(`solver'[`row',11], 0, 1) | `solver'[`row',12] < 0 {
-            di as error "hidden OLS solver metadata is invalid"
-            exit 459
-        }
-    }
-    if `dof'[1,1] != 1 | `dof'[7,1] != 1 | `dof'[8,1] != 1 | ///
-       `dof'[10,1] != 1 | `dof'[1,2] <= 0 | `dof'[10,2] <= 0 {
-        di as error "hidden OLS required DoF fields are invalid"
-        exit 459
-    }
-    forvalues row = 1/`absorbrows' {
-        if !inlist(`fe'[`row',1], 1, 2) | `fe'[`row',4] < 1 | ///
-           `fe'[`row',5] < 0 | `fe'[`row',6] < 0 | ///
-           !inlist(`fe'[`row',7], 0, 1) | !inlist(`fe'[`row',8], 0, 1) {
-            di as error "hidden OLS FE metadata identity is invalid"
-            exit 459
-        }
-    }
-    if `clusters' == 0 {
-        forvalues column = 1/4 {
-            if `clusters_table'[1,`column'] != 0 | `subsets_table'[1,`column'] != 0 {
-                di as error "hidden nonclustered OLS has nonempty cluster sentinels"
-                exit 459
-            }
-        }
-    }
-    else {
-        forvalues row = 1/`clusters' {
-            if `clusters_table'[`row',1] != `row' | `clusters_table'[`row',3] < 2 {
-                di as error "hidden OLS cluster metadata is invalid"
-                exit 459
-            }
-        }
-        forvalues row = 1/`subsets' {
-            if `subsets_table'[`row',1] < 1 | ///
-               `subsets_table'[`row',1] > 2^`clusters' - 1 | ///
-               `subsets_table'[`row',2] < 1 | ///
-               `subsets_table'[`row',2] > `clusters' | ///
-               !inlist(`subsets_table'[`row',3], -1, 1) | ///
-               `subsets_table'[`row',4] < 1 {
-                di as error "hidden OLS cluster subset metadata is invalid"
-                exit 459
-            }
-        }
     }
 end

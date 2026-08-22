@@ -16,15 +16,17 @@ static ST_int plugin_nvars = 6;
 static ST_int output_store_calls = 0;
 static ST_int fail_output_store_at = 0;
 static ST_int last_store_was_complete = 0;
-static const char *prepared_store_name_pointers[11];
-static const char *result_matrix_names[11] = {
-    "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RSOLVER",
+static const char *prepared_store_name_pointers[13];
+static const char *result_matrix_names[13] = {
+    "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RSOLVER",
     "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RREC"
 };
 
 static ST_double result_b[1][2];
 static ST_double result_v[2][2];
 static ST_double result_status[2][4];
+static ST_double result_marker_b[1][2];
+static ST_double result_marker_v[2][2];
 static ST_double result_fit[12][2];
 static ST_double result_dof[20][2];
 static ST_double result_solver[2][12];
@@ -37,7 +39,7 @@ static ST_double result_receipt[1][16];
 static ST_int result_matrix_name_index(const char *name)
 {
     ST_int index;
-    for (index = 0; index < 11; ++index) {
+    for (index = 0; index < 13; ++index) {
         if (strcmp(name, result_matrix_names[index]) == 0) return index;
     }
     return -1;
@@ -84,6 +86,12 @@ static ST_double *mock_result_matrix(char *name, ST_int *rows, ST_int *columns)
     }
     if (strcmp(name, "RSTATUS") == 0) {
         *rows = 2; *columns = 4; return &result_status[0][0];
+    }
+    if (strcmp(name, "RMARKB") == 0) {
+        *rows = 1; *columns = 2; return &result_marker_b[0][0];
+    }
+    if (strcmp(name, "RMARKV") == 0) {
+        *rows = 2; *columns = 2; return &result_marker_v[0][0];
     }
     if (strcmp(name, "RFIT") == 0) {
         *rows = 12; *columns = 2; return &result_fit[0][0];
@@ -940,6 +948,8 @@ static void reset_estimate_outputs(void)
     memset(result_b, 0, sizeof(result_b));
     memset(result_v, 0, sizeof(result_v));
     memset(result_status, 0, sizeof(result_status));
+    memset(result_marker_b, 0, sizeof(result_marker_b));
+    memset(result_marker_v, 0, sizeof(result_marker_v));
     memset(result_fit, 0, sizeof(result_fit));
     memset(result_dof, 0, sizeof(result_dof));
     memset(result_solver, 0, sizeof(result_solver));
@@ -1015,6 +1025,8 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "output_b_matrix=RB",
         "output_v_matrix=RV",
         "output_status_matrix=RSTATUS",
+        "output_marker_b_matrix=RMARKB",
+        "output_marker_v_matrix=RMARKV",
         "output_fit_matrix=RFIT",
         "output_dof_matrix=RDOF",
         "output_solver_matrix=RSOLVER",
@@ -1038,8 +1050,8 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 213) return 3;
-    for (name_index = 0; name_index < 11; ++name_index) {
+    if (output_store_calls != 219) return 3;
+    for (name_index = 0; name_index < 13; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
     if (!isfinite(result_b[0][0]) || !isfinite(result_b[0][1]) ||
@@ -1047,7 +1059,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 213; ++ordinal) {
+    for (ordinal = 1; ordinal <= 219; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();
