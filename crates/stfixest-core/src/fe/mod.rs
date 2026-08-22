@@ -17,6 +17,7 @@ mod report;
 mod singleton;
 mod topology_adapter;
 mod topology_finalize;
+mod topology_map;
 mod topology_registry;
 mod topology_source;
 
@@ -50,5 +51,6 @@ pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{
     finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
+pub use topology_map::absorb_finalized_categorical_topology_map_certified;
 pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_source::CategoricalTopologySource;
