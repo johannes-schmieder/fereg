@@ -51,13 +51,14 @@ pub use ols::{
     DofConfig, DofMethod, DofReport, FiniteSolver, FitStatistics, LoadedNumericColumn,
     LoadedOlsInput, OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult,
     PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsAbsorbedDofReport, PreparedOlsCategoricalComponent, PreparedOlsCoefficient,
-    PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData,
-    PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
-    PreparedOlsFeTopologySource, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient, PreparedOlsModel, PreparedOlsRankCertificate, PreparedOlsRhs,
-    PreparedOlsScoreCertificate, PreparedOlsSingletons, RankSolve, RegressorStatus, VceKind,
-    VceReport,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBread, PreparedOlsBreadCertificate,
+    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
+    PreparedOlsCategoricalComponent, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
+    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect,
+    PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology, PreparedOlsFeTopologySource,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsModel,
+    PreparedOlsRankCertificate, PreparedOlsRhs, PreparedOlsScoreCertificate, PreparedOlsSingletons,
+    RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

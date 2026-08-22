@@ -1,4 +1,4 @@
-use crate::data::{DenseMatrix, PreparedWeights};
+use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, MapConfig, SolveReport,
@@ -20,6 +20,8 @@ pub struct PreparedOlsFitConfig {
     pub fixed_effect_collinearity_tolerance: f64,
     /// Maximum recomputed normalized finite-score moment.
     pub score_tolerance: f64,
+    /// Maximum normalized inverse, symmetry, and reported-intercept error.
+    pub bread_tolerance: f64,
 }
 
 impl Default for PreparedOlsFitConfig {
@@ -34,19 +36,23 @@ impl Default for PreparedOlsFitConfig {
             rank_tolerance_multiplier: 128.0,
             fixed_effect_collinearity_tolerance: 1e-8,
             score_tolerance: 5e-10,
+            bread_tolerance: 5e-10,
         }
     }
 }
 
 /// Internal scientific status of one canonical prepared coefficient slot.
 ///
-/// An absorbed-model intercept is deliberately deferred: the within problem
-/// cannot identify the normalized intercept that the Stata reference reports.
+/// An absorbed-model intercept is transiently deferred by the within problem,
+/// then recovered from the reference normalization before a fit is returned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PreparedOlsFitStatus {
     Kept,
     SyntaxOmitted,
     AbsorbedInterceptDeferred,
+    /// Reference-normalized reported constant. This is a reported coordinate,
+    /// not an additional finite-regressor rank contribution.
+    NormalizedAbsorbedIntercept,
     CollinearWithFixedEffects,
     NumericallyRankDeficient,
 }
@@ -79,10 +85,91 @@ pub struct PreparedOlsRankCertificate {
     pub passed: bool,
 }
 
+/// Scientific role of one covariance-coordinate bread row and column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparedOlsBreadCoordinateKind {
+    FiniteRegressor,
+    NormalizedAbsorbedIntercept,
+}
+
+/// Canonical identity of one covariance-coordinate bread row and column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsBreadCoordinate {
+    pub coefficient_slot: CoefficientSlot,
+    pub generated_column_index: usize,
+    pub kind: PreparedOlsBreadCoordinateKind,
+}
+
+/// Exact relationship between the numerically safe solver weights and the
+/// reference command's cross-product weights.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsBreadWeightScale {
+    pub weight_kind: Option<WeightKind>,
+    /// Raw positive weights are divided by this value before MAP and QR.
+    pub solver_weight_divisor: f64,
+    /// Reference cross-product weights equal solver weights times this value.
+    pub reference_weight_multiplier: f64,
+    /// Sum of the reference cross-product weights: physical N for no/a/p
+    /// weights and the frequency sum for fweights.
+    pub reference_weight_sum: f64,
+}
+
+/// Recomputed numerical certificate for the covariance-coordinate bread and
+/// normalized reported intercept.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsBreadCertificate {
+    pub left_inverse_relative_infinity_norm: f64,
+    pub right_inverse_relative_infinity_norm: f64,
+    pub symmetry_relative_infinity_norm: f64,
+    pub minimum_diagonal: f64,
+    pub intercept_extension_relative_error: f64,
+    pub intercept_formula_relative_error: f64,
+    pub intercept_normalization_relative_error: f64,
+    pub passed: bool,
+}
+
+/// Inverse cross-product on reported covariance coordinates, in canonical
+/// generated-column order and on the pinned reference weight scale.
+#[derive(Debug, PartialEq)]
+pub struct PreparedOlsBread {
+    coordinates: Vec<PreparedOlsBreadCoordinate>,
+    values: Vec<f64>,
+    weight_scale: PreparedOlsBreadWeightScale,
+    certificate: PreparedOlsBreadCertificate,
+}
+
+impl PreparedOlsBread {
+    #[must_use]
+    pub fn coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        &self.coordinates
+    }
+
+    #[must_use]
+    pub fn values(&self) -> &[f64] {
+        &self.values
+    }
+
+    #[must_use]
+    pub fn dimension(&self) -> usize {
+        self.coordinates.len()
+    }
+
+    #[must_use]
+    pub const fn weight_scale(&self) -> PreparedOlsBreadWeightScale {
+        self.weight_scale
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsBreadCertificate {
+        self.certificate
+    }
+}
+
 /// Certified result of the core-only prepared OLS/WLS coefficient checkpoint.
 ///
-/// This is not a Stata result: it has no VCE, DoF, fit statistics, recovered
-/// fixed effects, or normalized absorbed intercept.
+/// This is not a Stata result: it has no VCE, DoF, fit statistics, or recovered
+/// fixed-effect coefficients. Its covariance-ready bread and reported
+/// absorbed-model constant are nevertheless fully normalized and certified.
 #[derive(Debug, PartialEq)]
 pub struct CertifiedPreparedOlsFit {
     coefficients: Vec<PreparedOlsFittedCoefficient>,
@@ -91,6 +178,7 @@ pub struct CertifiedPreparedOlsFit {
     finite_rank: usize,
     rank_certificate: PreparedOlsRankCertificate,
     score_certificate: PreparedOlsScoreCertificate,
+    bread: PreparedOlsBread,
     absorption_report: SolveReport,
     residual_absorption_report: SolveReport,
     residuals: DenseMatrix,
@@ -125,6 +213,11 @@ impl CertifiedPreparedOlsFit {
     #[must_use]
     pub const fn score_certificate(&self) -> PreparedOlsScoreCertificate {
         self.score_certificate
+    }
+
+    #[must_use]
+    pub const fn bread(&self) -> &PreparedOlsBread {
+        &self.bread
     }
 
     #[must_use]
@@ -172,14 +265,12 @@ impl FitReservation for SystemFitReservation {
 struct NormalizedWeights<'a> {
     values: Option<&'a [f64]>,
     raw_scale: f64,
+    kind: Option<WeightKind>,
 }
 
 impl<'a> NormalizedWeights<'a> {
     fn root(self, row: usize) -> Result<f64> {
-        let normalized = self
-            .values
-            .map_or(1.0, |values| values[row] / self.raw_scale);
-        let root = normalized.sqrt();
+        let root = self.value(row)?.sqrt();
         if root.is_finite() && root > 0.0 {
             Ok(root)
         } else {
@@ -195,6 +286,38 @@ impl<'a> NormalizedWeights<'a> {
             None => BorrowedMapWeights::Unit,
         }
     }
+
+    fn value(self, row: usize) -> Result<f64> {
+        let value = self
+            .values
+            .map_or(1.0, |values| values[row] / self.raw_scale);
+        if value.is_finite() && value > 0.0 {
+            Ok(value)
+        } else {
+            Err(invalid_data(
+                "prepared OLS normalized weight is not finite and positive",
+            ))
+        }
+    }
+}
+
+#[derive(Debug)]
+struct FiniteBreadDraft {
+    generated_columns: Vec<usize>,
+    values: Vec<f64>,
+    weight_scale: PreparedOlsBreadWeightScale,
+    left_inverse_relative_infinity_norm: f64,
+    right_inverse_relative_infinity_norm: f64,
+}
+
+struct FiniteBreadInputs<'a> {
+    qr: &'a DenseMatrix,
+    pivot_columns: &'a [usize],
+    canonical_candidates: &'a [usize],
+    standardized_gram: &'a [f64],
+    rank: usize,
+    reference_norms: &'a [f64],
+    weights: NormalizedWeights<'a>,
 }
 
 #[derive(Debug)]
@@ -205,6 +328,7 @@ struct QrFit {
     dropped: Vec<usize>,
     rank: usize,
     certificate: PreparedOlsRankCertificate,
+    bread: Option<FiniteBreadDraft>,
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
@@ -214,15 +338,25 @@ pub fn fit_prepared_ols_coefficients_map(
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut reservation = SystemFitReservation;
-    fit_with_controls(prepared, config, &mut reservation, false, false)
+    fit_with_controls_internal(
+        prepared,
+        config,
+        &mut reservation,
+        false,
+        false,
+        false,
+        false,
+    )
 }
 
-fn fit_with_controls<R: FitReservation>(
+fn fit_with_controls_internal<R: FitReservation>(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturb_first_coefficient: bool,
     perturb_final_residual_constant: bool,
+    perturb_bread: bool,
+    perturb_reported_intercept: bool,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let design = prepared.borrowed_intercept_fe_design()?;
@@ -266,6 +400,7 @@ fn fit_with_controls<R: FitReservation>(
         &reference_norms,
         config,
         reservation,
+        perturb_bread,
     )?;
     if perturb_first_coefficient {
         let coefficient = qr
@@ -298,6 +433,15 @@ fn fit_with_controls<R: FitReservation>(
         }
         *residual = value;
     }
+    let bread = finalize_reported_bread_and_intercept(
+        prepared,
+        &mut qr,
+        &mut raw_residuals,
+        weights,
+        config.bread_tolerance,
+        reservation,
+        perturb_reported_intercept,
+    )?;
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.sample.n_active(), 1, raw_residuals)?;
     let residual_absorbed = absorb_borrowed_intercept_map_certified(
@@ -342,10 +486,30 @@ fn fit_with_controls<R: FitReservation>(
         finite_rank: qr.rank,
         rank_certificate: qr.certificate,
         score_certificate,
+        bread,
         absorption_report,
         residual_absorption_report,
         residuals,
     })
+}
+
+#[cfg(test)]
+fn fit_with_controls<R: FitReservation>(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturb_first_coefficient: bool,
+    perturb_final_residual_constant: bool,
+) -> Result<CertifiedPreparedOlsFit> {
+    fit_with_controls_internal(
+        prepared,
+        config,
+        reservation,
+        perturb_first_coefficient,
+        perturb_final_residual_constant,
+        false,
+        false,
+    )
 }
 
 fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> Result<()> {
@@ -362,8 +526,10 @@ fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> 
         || config.rank_tolerance_multiplier <= 0.0
         || !valid_unit_tolerance(config.fixed_effect_collinearity_tolerance)
         || !valid_unit_tolerance(config.score_tolerance)
+        || !valid_unit_tolerance(config.bread_tolerance)
         || config.map.tolerance > config.fixed_effect_collinearity_tolerance
         || config.map.tolerance > config.score_tolerance
+        || config.map.tolerance > config.bread_tolerance
     {
         return Err(invalid_argument(
             "prepared OLS coefficient-fit numerical policy is invalid",
@@ -392,8 +558,9 @@ fn normalized_weights(prepared: &PreparedOlsData) -> Result<NormalizedWeights<'_
         PreparedWeights::None => Ok(NormalizedWeights {
             values: None,
             raw_scale: 1.0,
+            kind: None,
         }),
-        PreparedWeights::Provided { values, .. } => {
+        PreparedWeights::Provided { kind, values } => {
             if values.len() != prepared.sample.n_active()
                 || values
                     .iter()
@@ -415,6 +582,7 @@ fn normalized_weights(prepared: &PreparedOlsData) -> Result<NormalizedWeights<'_
             Ok(NormalizedWeights {
                 values: Some(values),
                 raw_scale,
+                kind: Some(*kind),
             })
         }
     }
@@ -427,6 +595,7 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
     reference_norms: &[f64],
     config: PreparedOlsFitConfig,
     reservation: &mut R,
+    perturb_bread: bool,
 ) -> Result<QrFit> {
     let nrows = within.nrows();
     let generated_columns = prepared.model.columns.len();
@@ -494,6 +663,18 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
     }
 
     let candidate_count = candidate_columns.len();
+    let mut canonical_candidates = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS canonical bread candidates",
+    )?;
+    for column in candidate_columns.iter().copied() {
+        push_reserved(
+            &mut canonical_candidates,
+            column,
+            "prepared OLS canonical bread-candidate capacity exhausted",
+        )?;
+    }
     let mut trailing_norms = reserved_filled(
         reservation,
         candidate_count,
@@ -534,6 +715,37 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
                 ));
             }
             within[(row, column + 1)] = scaled;
+        }
+    }
+
+    let standardized_gram_elements = checked_square(
+        candidate_count,
+        "prepared OLS standardized Gram dimensions overflow usize",
+    )?;
+    let mut standardized_gram = reserved_filled(
+        reservation,
+        standardized_gram_elements,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized Gram",
+    )?;
+    for left in 0..candidate_count {
+        for right in left..candidate_count {
+            let left_column = canonical_candidates[left] + 1;
+            let right_column = canonical_candidates[right] + 1;
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for row in 0..nrows {
+                let term = within[(row, left_column)] * within[(row, right_column)];
+                compensated_add(term, &mut sum, &mut correction)?;
+            }
+            let value = sum + correction;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS standardized Gram entry is not finite",
+                ));
+            }
+            standardized_gram[left * candidate_count + right] = value;
+            standardized_gram[right * candidate_count + left] = value;
         }
     }
 
@@ -692,6 +904,21 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
             "prepared OLS QR condition proxy is not finite",
         ));
     }
+    let bread = build_finite_bread_draft(
+        prepared,
+        FiniteBreadInputs {
+            qr: within,
+            pivot_columns: &candidate_columns,
+            canonical_candidates: &canonical_candidates,
+            standardized_gram: &standardized_gram,
+            rank,
+            reference_norms,
+            weights,
+        },
+        config.bread_tolerance,
+        reservation,
+        perturb_bread,
+    )?;
     Ok(QrFit {
         generated_coefficients,
         generated_statuses,
@@ -704,7 +931,793 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
             condition_proxy,
             passed: true,
         },
+        bread: Some(bread),
     })
+}
+
+fn build_finite_bread_draft<R: FitReservation>(
+    prepared: &PreparedOlsData,
+    inputs: FiniteBreadInputs<'_>,
+    tolerance: f64,
+    reservation: &mut R,
+    perturb_bread: bool,
+) -> Result<FiniteBreadDraft> {
+    let FiniteBreadInputs {
+        qr,
+        pivot_columns,
+        canonical_candidates,
+        standardized_gram,
+        rank,
+        reference_norms,
+        weights,
+    } = inputs;
+    let candidate_count = canonical_candidates.len();
+    let candidate_square = checked_square(
+        candidate_count,
+        "prepared OLS standardized Gram dimensions overflow usize",
+    )?;
+    if rank > candidate_count
+        || pivot_columns.len() != candidate_count
+        || standardized_gram.len() != candidate_square
+        || reference_norms.len() != prepared.model.columns.len()
+    {
+        return Err(invalid_argument(
+            "prepared OLS bread inputs have inconsistent dimensions",
+        ));
+    }
+    let rank_square = checked_square(rank, "prepared OLS bread dimensions overflow usize")?;
+    let mut inverse_r = reserved_filled(
+        reservation,
+        rank_square,
+        0.0_f64,
+        "unable to reserve prepared OLS inverse R",
+    )?;
+    for right_hand_side in 0..rank {
+        for row in (0..rank).rev() {
+            let generated = pivot_columns[row];
+            let matrix_column = generated
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared OLS bread column index overflows"))?;
+            let diagonal = qr[(row, matrix_column)];
+            if !diagonal.is_finite() || diagonal == 0.0 {
+                return Err(invalid_data(
+                    "prepared OLS bread triangular diagonal is invalid",
+                ));
+            }
+            let mut value = f64::from(row == right_hand_side);
+            let mut correction = 0.0_f64;
+            for inner in (row + 1)..rank {
+                let inner_column = pivot_columns[inner]
+                    .checked_add(1)
+                    .ok_or_else(|| allocation("prepared OLS bread column index overflows"))?;
+                let term = -qr[(row, inner_column)] * inverse_r[inner * rank + right_hand_side];
+                compensated_add(term, &mut value, &mut correction)?;
+            }
+            let solved = (value + correction) / diagonal;
+            if !solved.is_finite() {
+                return Err(invalid_data("prepared OLS inverse R is not finite"));
+            }
+            inverse_r[row * rank + right_hand_side] = solved;
+        }
+    }
+
+    let mut pivot_inverse = reserved_filled(
+        reservation,
+        rank_square,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized inverse",
+    )?;
+    for left in 0..rank {
+        for right in left..rank {
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for inner in 0..rank {
+                let term = inverse_r[left * rank + inner] * inverse_r[right * rank + inner];
+                compensated_add(term, &mut sum, &mut correction)?;
+            }
+            let value = sum + correction;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS standardized inverse is not finite",
+                ));
+            }
+            pivot_inverse[left * rank + right] = value;
+            pivot_inverse[right * rank + left] = value;
+        }
+    }
+
+    let mut generated_columns = reserved_empty(
+        reservation,
+        rank,
+        "unable to reserve prepared OLS bread coordinates",
+    )?;
+    for generated in canonical_candidates.iter().copied() {
+        if pivot_columns[..rank].contains(&generated) {
+            push_reserved(
+                &mut generated_columns,
+                generated,
+                "prepared OLS bread-coordinate capacity exhausted",
+            )?;
+        }
+    }
+    if generated_columns.len() != rank {
+        return Err(invalid_argument(
+            "prepared OLS bread rank and coordinate count disagree",
+        ));
+    }
+
+    let mut canonical_candidate_positions = reserved_empty(
+        reservation,
+        rank,
+        "unable to reserve prepared OLS bread candidate positions",
+    )?;
+    let mut canonical_pivot_positions = reserved_empty(
+        reservation,
+        rank,
+        "unable to reserve prepared OLS bread pivot positions",
+    )?;
+    for generated in generated_columns.iter().copied() {
+        let candidate = canonical_candidates
+            .iter()
+            .position(|column| *column == generated)
+            .ok_or_else(|| invalid_argument("prepared OLS bread candidate is missing"))?;
+        let pivot = pivot_columns[..rank]
+            .iter()
+            .position(|column| *column == generated)
+            .ok_or_else(|| invalid_argument("prepared OLS bread pivot is missing"))?;
+        push_reserved(
+            &mut canonical_candidate_positions,
+            candidate,
+            "prepared OLS bread candidate-position capacity exhausted",
+        )?;
+        push_reserved(
+            &mut canonical_pivot_positions,
+            pivot,
+            "prepared OLS bread pivot-position capacity exhausted",
+        )?;
+    }
+
+    let mut canonical_inverse = reserved_filled(
+        reservation,
+        rank_square,
+        0.0_f64,
+        "unable to reserve prepared OLS canonical standardized inverse",
+    )?;
+    for left in 0..rank {
+        for right in 0..rank {
+            canonical_inverse[left * rank + right] = pivot_inverse
+                [canonical_pivot_positions[left] * rank + canonical_pivot_positions[right]];
+        }
+    }
+    if perturb_bread && rank > 0 {
+        canonical_inverse[0] += 0.25;
+    }
+    let left_inverse_relative_infinity_norm = inverse_relative_infinity_norm(
+        standardized_gram,
+        candidate_count,
+        &canonical_candidate_positions,
+        &canonical_inverse,
+        rank,
+        false,
+    )?;
+    let right_inverse_relative_infinity_norm = inverse_relative_infinity_norm(
+        standardized_gram,
+        candidate_count,
+        &canonical_candidate_positions,
+        &canonical_inverse,
+        rank,
+        true,
+    )?;
+    if left_inverse_relative_infinity_norm > tolerance
+        || right_inverse_relative_infinity_norm > tolerance
+    {
+        return Err(invalid_data(
+            "prepared OLS bread inverse certificate did not pass",
+        ));
+    }
+
+    let weight_scale = prepared_bread_weight_scale(prepared, weights)?;
+    let mut values = reserved_filled(
+        reservation,
+        rank_square,
+        0.0_f64,
+        "unable to reserve prepared OLS finite bread",
+    )?;
+    for left in 0..rank {
+        let left_scale = reference_norms[generated_columns[left]];
+        if !left_scale.is_finite() || left_scale <= 0.0 {
+            return Err(invalid_data(
+                "prepared OLS kept bread scale is not finite and positive",
+            ));
+        }
+        for right in left..rank {
+            let right_scale = reference_norms[generated_columns[right]];
+            if !right_scale.is_finite() || right_scale <= 0.0 {
+                return Err(invalid_data(
+                    "prepared OLS kept bread scale is not finite and positive",
+                ));
+            }
+            let value = canonical_inverse[left * rank + right]
+                / left_scale
+                / right_scale
+                / weight_scale.reference_weight_multiplier;
+            if !value.is_finite() || (left == right && value <= 0.0) {
+                return Err(invalid_data(
+                    "prepared OLS reference-scale finite bread is invalid",
+                ));
+            }
+            values[left * rank + right] = value;
+            values[right * rank + left] = value;
+        }
+    }
+
+    Ok(FiniteBreadDraft {
+        generated_columns,
+        values,
+        weight_scale,
+        left_inverse_relative_infinity_norm,
+        right_inverse_relative_infinity_norm,
+    })
+}
+
+fn inverse_relative_infinity_norm(
+    gram: &[f64],
+    gram_dimension: usize,
+    gram_positions: &[usize],
+    inverse: &[f64],
+    rank: usize,
+    reverse: bool,
+) -> Result<f64> {
+    let gram_square = checked_square(
+        gram_dimension,
+        "prepared OLS bread Gram dimensions overflow usize",
+    )?;
+    let rank_square = checked_square(rank, "prepared OLS bread dimensions overflow usize")?;
+    if gram.len() != gram_square
+        || gram_positions.len() != rank
+        || inverse.len() != rank_square
+        || gram_positions
+            .iter()
+            .any(|position| *position >= gram_dimension)
+    {
+        return Err(invalid_argument(
+            "prepared OLS inverse-certificate dimensions are inconsistent",
+        ));
+    }
+    let mut maximum = 0.0_f64;
+    for row in 0..rank {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..rank {
+            let mut product = 0.0_f64;
+            let mut correction = 0.0_f64;
+            let mut absolute_products = 0.0_f64;
+            for inner in 0..rank {
+                let gram_value = gram[gram_positions[row] * gram_dimension + gram_positions[inner]];
+                let inverse_value = inverse[inner * rank + column];
+                let (left, right) = if reverse {
+                    (
+                        inverse[row * rank + inner],
+                        gram[gram_positions[inner] * gram_dimension + gram_positions[column]],
+                    )
+                } else {
+                    (gram_value, inverse_value)
+                };
+                let term = left * right;
+                compensated_add(term, &mut product, &mut correction)?;
+                absolute_products += term.abs();
+                if !absolute_products.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS inverse-certificate scale is not finite",
+                    ));
+                }
+            }
+            let delta = f64::from(row == column);
+            row_error += (product + correction - delta).abs();
+            row_scale += absolute_products;
+            if !row_error.is_finite() || !row_scale.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS inverse-certificate accumulation is not finite",
+                ));
+            }
+        }
+        maximum = maximum.max(row_error / row_scale);
+    }
+    if maximum.is_finite() {
+        Ok(maximum)
+    } else {
+        Err(invalid_data(
+            "prepared OLS inverse certificate is not finite",
+        ))
+    }
+}
+
+fn prepared_bread_weight_scale(
+    prepared: &PreparedOlsData,
+    weights: NormalizedWeights<'_>,
+) -> Result<PreparedOlsBreadWeightScale> {
+    let nrows = prepared.sample.n_active();
+    let nrows_f64 = exact_nonnegative_integer_as_f64(nrows as u128)?;
+    let mut solver_sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    for row in 0..nrows {
+        compensated_add(weights.value(row)?, &mut solver_sum, &mut correction)?;
+    }
+    solver_sum += correction;
+    if !solver_sum.is_finite() || solver_sum <= 0.0 {
+        return Err(invalid_data(
+            "prepared OLS solver weight sum is not finite and positive",
+        ));
+    }
+    let (reference_weight_multiplier, reference_weight_sum) = match weights.kind {
+        None => (1.0, nrows_f64),
+        Some(WeightKind::Frequency) => {
+            let PreparedWeights::Provided { values, .. } = &prepared.sample.weights else {
+                return Err(invalid_argument(
+                    "prepared OLS frequency-weight scale has no weight column",
+                ));
+            };
+            let mut exact_sum = 0_u128;
+            for value in values {
+                if value.fract() != 0.0 || *value <= 0.0 || *value > f64::from(u32::MAX) {
+                    return Err(invalid_data(
+                        "prepared OLS frequency weight is not a positive u32 integer",
+                    ));
+                }
+                exact_sum = exact_sum
+                    .checked_add(u128::from(*value as u32))
+                    .ok_or_else(|| allocation("prepared OLS frequency-weight sum overflows"))?;
+            }
+            (
+                weights.raw_scale,
+                exact_nonnegative_integer_as_f64(exact_sum)?,
+            )
+        }
+        Some(WeightKind::Analytic | WeightKind::Probability) => (nrows_f64 / solver_sum, nrows_f64),
+        Some(WeightKind::Importance) => {
+            return Err(invalid_argument(
+                "prepared OLS importance weights are unsupported",
+            ));
+        }
+    };
+    if !weights.raw_scale.is_finite()
+        || weights.raw_scale <= 0.0
+        || !reference_weight_multiplier.is_finite()
+        || reference_weight_multiplier <= 0.0
+        || !reference_weight_sum.is_finite()
+        || reference_weight_sum <= 0.0
+    {
+        return Err(invalid_data(
+            "prepared OLS bread weight scale is not finite and positive",
+        ));
+    }
+    Ok(PreparedOlsBreadWeightScale {
+        weight_kind: weights.kind,
+        solver_weight_divisor: weights.raw_scale,
+        reference_weight_multiplier,
+        reference_weight_sum,
+    })
+}
+
+fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
+    const MAX_EXACT_F64_INTEGER: u128 = 1_u128 << 53;
+    if value > MAX_EXACT_F64_INTEGER {
+        return Err(invalid_data(
+            "prepared OLS reference weight sum exceeds exact f64 integer range",
+        ));
+    }
+    Ok(value as f64)
+}
+
+fn finalize_reported_bread_and_intercept<R: FitReservation>(
+    prepared: &PreparedOlsData,
+    qr: &mut QrFit,
+    raw_residuals: &mut [f64],
+    weights: NormalizedWeights<'_>,
+    tolerance: f64,
+    reservation: &mut R,
+    perturb_reported_intercept: bool,
+) -> Result<PreparedOlsBread> {
+    if raw_residuals.len() != prepared.sample.n_active() {
+        return Err(invalid_argument(
+            "prepared OLS reported-intercept residual axis is inconsistent",
+        ));
+    }
+    let finite = qr
+        .bread
+        .take()
+        .ok_or_else(|| invalid_argument("prepared OLS finite bread was already consumed"))?;
+    if finite.generated_columns.len() != qr.rank {
+        return Err(invalid_argument(
+            "prepared OLS finite bread coordinate count disagrees with rank",
+        ));
+    }
+    let finite_square = checked_square(
+        finite.generated_columns.len(),
+        "prepared OLS finite bread dimensions overflow usize",
+    )?;
+    if finite.values.len() != finite_square {
+        return Err(invalid_argument(
+            "prepared OLS finite bread dimensions are inconsistent",
+        ));
+    }
+
+    let mut deferred_intercept = None;
+    for (generated, status) in qr.generated_statuses.iter().copied().enumerate() {
+        if status != PreparedOlsFitStatus::AbsorbedInterceptDeferred {
+            continue;
+        }
+        if deferred_intercept.replace(generated).is_some()
+            || prepared.fe_topology.effects().is_empty()
+            || !matches!(
+                prepared
+                    .model
+                    .columns
+                    .get(generated)
+                    .map(|column| &column.kind),
+                Some(PreparedOlsColumnKind::Intercept)
+            )
+            || finite.generated_columns.contains(&generated)
+        {
+            return Err(invalid_argument(
+                "prepared OLS deferred absorbed intercept is structurally inconsistent",
+            ));
+        }
+    }
+
+    let reported_dimension = finite
+        .generated_columns
+        .len()
+        .checked_add(usize::from(deferred_intercept.is_some()))
+        .ok_or_else(|| allocation("prepared OLS reported bread dimension overflows"))?;
+    let reported_square = checked_square(
+        reported_dimension,
+        "prepared OLS reported bread dimensions overflow usize",
+    )?;
+    let mut coordinates = reserved_empty(
+        reservation,
+        reported_dimension,
+        "unable to reserve prepared OLS reported bread coordinates",
+    )?;
+    for generated in finite.generated_columns.iter().copied() {
+        let column = prepared
+            .model
+            .columns
+            .get(generated)
+            .ok_or_else(|| invalid_argument("prepared OLS bread coordinate is out of range"))?;
+        push_reserved(
+            &mut coordinates,
+            PreparedOlsBreadCoordinate {
+                coefficient_slot: column.coefficient_slot,
+                generated_column_index: generated,
+                kind: PreparedOlsBreadCoordinateKind::FiniteRegressor,
+            },
+            "prepared OLS reported bread-coordinate capacity exhausted",
+        )?;
+    }
+
+    let mut values = if deferred_intercept.is_some() {
+        let mut values = reserved_filled(
+            reservation,
+            reported_square,
+            0.0_f64,
+            "unable to reserve prepared OLS reported bread",
+        )?;
+        let finite_dimension = finite.generated_columns.len();
+        for row in 0..finite_dimension {
+            for column in 0..finite_dimension {
+                values[row * reported_dimension + column] =
+                    finite.values[row * finite_dimension + column];
+            }
+        }
+        values
+    } else {
+        finite.values
+    };
+
+    let mut intercept_extension_relative_error = 0.0_f64;
+    let mut intercept_formula_relative_error = 0.0_f64;
+    let mut intercept_normalization_relative_error = 0.0_f64;
+    if let Some(intercept_generated) = deferred_intercept {
+        let finite_dimension = finite.generated_columns.len();
+        let mut means = reserved_filled(
+            reservation,
+            finite_dimension,
+            0.0_f64,
+            "unable to reserve prepared OLS reported-intercept means",
+        )?;
+        for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
+            means[position] = weighted_mean_by(prepared.sample.n_active(), weights, |row| {
+                prepared.column_value(generated, row)
+            })?;
+        }
+
+        let raw_residual_mean = weighted_mean_slice(raw_residuals, weights)?;
+        let mut reported_intercept = raw_residual_mean;
+        if perturb_reported_intercept {
+            reported_intercept += 0.25;
+        }
+        if !reported_intercept.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS normalized reported intercept is not finite",
+            ));
+        }
+        let outcome_mean = weighted_mean_slice(&prepared.sample.outcome, weights)?;
+        let mut finite_mean_fit = 0.0_f64;
+        let mut finite_mean_fit_correction = 0.0_f64;
+        for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
+            let coefficient = qr
+                .generated_coefficients
+                .get(generated)
+                .copied()
+                .flatten()
+                .ok_or_else(|| {
+                    invalid_argument("prepared OLS bread coordinate has no coefficient")
+                })?;
+            compensated_add(
+                means[position] * coefficient,
+                &mut finite_mean_fit,
+                &mut finite_mean_fit_correction,
+            )?;
+        }
+        let reference_formula = outcome_mean - (finite_mean_fit + finite_mean_fit_correction);
+        if !reference_formula.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS reported-intercept formula is not finite",
+            ));
+        }
+        intercept_formula_relative_error = relative_difference(
+            reported_intercept,
+            reference_formula,
+            outcome_mean.abs().max(reported_intercept.abs()).max(1.0),
+        )?;
+        intercept_normalization_relative_error = relative_difference(
+            reported_intercept,
+            raw_residual_mean,
+            raw_residual_mean
+                .abs()
+                .max(reported_intercept.abs())
+                .max(1.0),
+        )?;
+
+        qr.generated_coefficients[intercept_generated] = Some(reported_intercept);
+        qr.generated_statuses[intercept_generated] =
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept;
+        qr.dropped
+            .retain(|generated| *generated != intercept_generated);
+        for residual in raw_residuals.iter_mut() {
+            *residual -= reported_intercept;
+            if !residual.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS reported-intercept residual is not finite",
+                ));
+            }
+        }
+
+        let intercept_position = finite_dimension;
+        let intercept_column = prepared
+            .model
+            .columns
+            .get(intercept_generated)
+            .ok_or_else(|| invalid_argument("prepared OLS intercept column is out of range"))?;
+        push_reserved(
+            &mut coordinates,
+            PreparedOlsBreadCoordinate {
+                coefficient_slot: intercept_column.coefficient_slot,
+                generated_column_index: intercept_generated,
+                kind: PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept,
+            },
+            "prepared OLS reported bread-coordinate capacity exhausted",
+        )?;
+
+        let mut side = reserved_filled(
+            reservation,
+            finite_dimension,
+            0.0_f64,
+            "unable to reserve prepared OLS reported-intercept bread side",
+        )?;
+        for row in 0..finite_dimension {
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for column in 0..finite_dimension {
+                let term = values[row * reported_dimension + column] * means[column];
+                compensated_add(term, &mut sum, &mut correction)?;
+            }
+            side[row] = -(sum + correction);
+            if !side[row].is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS reported-intercept bread side is not finite",
+                ));
+            }
+            values[row * reported_dimension + intercept_position] = side[row];
+            values[intercept_position * reported_dimension + row] = side[row];
+        }
+        let mut quadratic = 0.0_f64;
+        let mut quadratic_correction = 0.0_f64;
+        for row in 0..finite_dimension {
+            compensated_add(
+                -means[row] * side[row],
+                &mut quadratic,
+                &mut quadratic_correction,
+            )?;
+        }
+        let corner =
+            finite.weight_scale.reference_weight_sum.recip() + quadratic + quadratic_correction;
+        if !corner.is_finite() || corner <= 0.0 {
+            return Err(invalid_data(
+                "prepared OLS reported-intercept bread corner is invalid",
+            ));
+        }
+        values[intercept_position * reported_dimension + intercept_position] = corner;
+
+        let mut maximum_extension_error = 0.0_f64;
+        for row in 0..finite_dimension {
+            let mut expected_side = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for column in 0..finite_dimension {
+                compensated_add(
+                    -values[row * reported_dimension + column] * means[column],
+                    &mut expected_side,
+                    &mut correction,
+                )?;
+            }
+            maximum_extension_error = maximum_extension_error.max(relative_difference(
+                values[row * reported_dimension + intercept_position],
+                expected_side + correction,
+                expected_side.abs().max(side[row].abs()).max(1.0),
+            )?);
+        }
+        let expected_corner =
+            finite.weight_scale.reference_weight_sum.recip() + quadratic + quadratic_correction;
+        maximum_extension_error = maximum_extension_error.max(relative_difference(
+            corner,
+            expected_corner,
+            corner.abs().max(expected_corner.abs()).max(1.0),
+        )?);
+        intercept_extension_relative_error = maximum_extension_error;
+    }
+
+    if coordinates.len() != reported_dimension || values.len() != reported_square {
+        return Err(invalid_argument(
+            "prepared OLS reported bread final dimensions are inconsistent",
+        ));
+    }
+    let symmetry_relative_infinity_norm =
+        symmetry_relative_infinity_norm(&values, reported_dimension)?;
+    let minimum_diagonal = if reported_dimension == 0 {
+        0.0
+    } else {
+        (0..reported_dimension)
+            .map(|index| values[index * reported_dimension + index])
+            .fold(f64::INFINITY, f64::min)
+    };
+    let passed = finite.left_inverse_relative_infinity_norm <= tolerance
+        && finite.right_inverse_relative_infinity_norm <= tolerance
+        && symmetry_relative_infinity_norm <= tolerance
+        && (reported_dimension == 0 || minimum_diagonal.is_finite() && minimum_diagonal > 0.0)
+        && intercept_extension_relative_error <= tolerance
+        && intercept_formula_relative_error <= tolerance
+        && intercept_normalization_relative_error <= tolerance
+        && values.iter().all(|value| value.is_finite());
+    if !passed {
+        return Err(invalid_data(
+            "prepared OLS reported bread or intercept certificate did not pass",
+        ));
+    }
+    Ok(PreparedOlsBread {
+        coordinates,
+        values,
+        weight_scale: finite.weight_scale,
+        certificate: PreparedOlsBreadCertificate {
+            left_inverse_relative_infinity_norm: finite.left_inverse_relative_infinity_norm,
+            right_inverse_relative_infinity_norm: finite.right_inverse_relative_infinity_norm,
+            symmetry_relative_infinity_norm,
+            minimum_diagonal,
+            intercept_extension_relative_error,
+            intercept_formula_relative_error,
+            intercept_normalization_relative_error,
+            passed,
+        },
+    })
+}
+
+fn weighted_mean_slice(values: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
+    weighted_mean_by(values.len(), weights, |row| {
+        values
+            .get(row)
+            .copied()
+            .ok_or_else(|| invalid_argument("prepared OLS weighted-mean row is out of range"))
+    })
+}
+
+fn weighted_mean_by<F>(nrows: usize, weights: NormalizedWeights<'_>, mut value: F) -> Result<f64>
+where
+    F: FnMut(usize) -> Result<f64>,
+{
+    if nrows == 0 {
+        return Err(invalid_argument(
+            "prepared OLS weighted mean requires a nonempty sample",
+        ));
+    }
+    let mut value_scale = 0.0_f64;
+    for row in 0..nrows {
+        let current = value(row)?;
+        if !current.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS weighted-mean value is not finite",
+            ));
+        }
+        value_scale = value_scale.max(current.abs());
+    }
+    if value_scale == 0.0 {
+        return Ok(0.0);
+    }
+    let mut numerator = 0.0_f64;
+    let mut numerator_correction = 0.0_f64;
+    let mut denominator = 0.0_f64;
+    let mut denominator_correction = 0.0_f64;
+    for row in 0..nrows {
+        let weight = weights.value(row)?;
+        compensated_add(
+            weight * (value(row)? / value_scale),
+            &mut numerator,
+            &mut numerator_correction,
+        )?;
+        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+    }
+    let denominator = denominator + denominator_correction;
+    let mean = value_scale * ((numerator + numerator_correction) / denominator);
+    if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
+        Ok(mean)
+    } else {
+        Err(invalid_data("prepared OLS weighted mean is not finite"))
+    }
+}
+
+fn relative_difference(actual: f64, expected: f64, scale: f64) -> Result<f64> {
+    if !actual.is_finite() || !expected.is_finite() || !scale.is_finite() || scale <= 0.0 {
+        return Err(invalid_data(
+            "prepared OLS relative certificate input is invalid",
+        ));
+    }
+    let relative = (actual - expected).abs() / scale;
+    if relative.is_finite() {
+        Ok(relative)
+    } else {
+        Err(invalid_data(
+            "prepared OLS relative certificate is not finite",
+        ))
+    }
+}
+
+fn symmetry_relative_infinity_norm(values: &[f64], dimension: usize) -> Result<f64> {
+    let square = checked_square(
+        dimension,
+        "prepared OLS symmetry-certificate dimensions overflow usize",
+    )?;
+    if values.len() != square {
+        return Err(invalid_argument(
+            "prepared OLS symmetry-certificate dimensions are inconsistent",
+        ));
+    }
+    let mut maximum = 0.0_f64;
+    for row in 0..dimension {
+        let mut error = 0.0_f64;
+        let mut scale = 1.0_f64;
+        for column in 0..dimension {
+            let value = values[row * dimension + column];
+            let transpose = values[column * dimension + row];
+            if !value.is_finite() || !transpose.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS bread symmetry input is not finite",
+                ));
+            }
+            error += (value - transpose).abs();
+            scale += value.abs().max(transpose.abs());
+        }
+        maximum = maximum.max(error / scale);
+    }
+    Ok(maximum)
 }
 
 fn fill_trailing_norms(
@@ -995,7 +2008,11 @@ fn build_coefficient_slots<R: FitReservation>(
                 let value = *qr.generated_coefficients.get(generated).ok_or_else(|| {
                     invalid_argument("prepared OLS fitted coefficient is out of range")
                 })?;
-                if (status == PreparedOlsFitStatus::Kept) != value.is_some() {
+                let has_reported_value = matches!(
+                    status,
+                    PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                );
+                if has_reported_value != value.is_some() {
                     return Err(invalid_argument(
                         "prepared OLS fitted coefficient status and value disagree",
                     ));
@@ -1049,6 +2066,10 @@ fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Resul
     }
     target.push(value);
     Ok(())
+}
+
+fn checked_square(value: usize, message: &'static str) -> Result<usize> {
+    value.checked_mul(value).ok_or_else(|| allocation(message))
 }
 
 fn allocation(message: &'static str) -> StFixestError {
@@ -1346,7 +2367,7 @@ mod tests {
     }
 
     #[test]
-    fn absorbed_intercept_is_deferred_and_fe_collinear_column_is_separate() {
+    fn absorbed_intercept_is_normalized_and_fe_collinear_column_is_separate() {
         let g = vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0];
         let x = vec![-1.0, 0.5, 2.0, -2.0, 1.0, 3.0, -0.5, 2.5, 4.0];
         let y = x
@@ -1376,9 +2397,23 @@ mod tests {
         );
         assert_eq!(
             fit.coefficients()[2].status,
-            PreparedOlsFitStatus::AbsorbedInterceptDeferred
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
         );
-        assert!(fit.coefficients()[2].value.is_none());
+        assert_close(
+            fit.coefficients()[2].value.expect("normalized intercept"),
+            11.0 / 6.0,
+            1e-9,
+        );
+        assert_eq!(fit.kept_generated_columns(), &[0]);
+        assert_eq!(fit.dropped_generated_columns(), &[1]);
+        assert_eq!(fit.bread().dimension(), 2);
+        assert_eq!(fit.bread().coordinates()[0].generated_column_index, 0);
+        assert_eq!(fit.bread().coordinates()[1].generated_column_index, 2);
+        assert_eq!(
+            fit.bread().coordinates()[1].kind,
+            PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+        );
+        assert!(fit.bread().certificate().passed);
         assert!(fit.residuals().iter().all(|value| value.abs() < 2e-9));
     }
 
@@ -1407,6 +2442,14 @@ mod tests {
         assert_eq!(fit.finite_rank(), 2);
         assert_eq!(fit.kept_generated_columns(), &[0, 2]);
         assert_eq!(fit.dropped_generated_columns(), &[1]);
+        assert_eq!(
+            fit.bread()
+                .coordinates()
+                .iter()
+                .map(|coordinate| coordinate.generated_column_index)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
         assert_close(
             fit.coefficients()[0].value.expect("first column"),
             4.0,
@@ -1592,6 +2635,206 @@ mod tests {
     }
 
     #[test]
+    fn no_fe_bread_is_the_exact_canonical_inverse_crossproduct() {
+        let x = vec![-1.0, 0.0, 1.0];
+        let y = x.iter().map(|value| 2.0 + 3.0 * value).collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("exact no-FE bread");
+        assert_eq!(fit.bread().dimension(), 2);
+        assert_eq!(
+            fit.bread().coordinates()[0].kind,
+            PreparedOlsBreadCoordinateKind::FiniteRegressor
+        );
+        assert_eq!(
+            fit.bread().coordinates()[1].kind,
+            PreparedOlsBreadCoordinateKind::FiniteRegressor
+        );
+        assert_close(fit.bread().values()[0], 0.5, 1e-12);
+        assert_close(fit.bread().values()[1], 0.0, 1e-12);
+        assert_close(fit.bread().values()[2], 0.0, 1e-12);
+        assert_close(fit.bread().values()[3], 1.0 / 3.0, 1e-12);
+        assert_eq!(fit.bread().weight_scale().weight_kind, None);
+        assert_close(fit.bread().weight_scale().reference_weight_sum, 3.0, 0.0);
+        assert!(fit.bread().certificate().passed);
+    }
+
+    #[test]
+    fn absorbed_intercept_and_bread_follow_reference_weight_normalization() {
+        let g = vec![1.0, 1.0, 2.0, 2.0];
+        let x = vec![-1.0, 1.0, -2.0, 2.0];
+        let y = x
+            .iter()
+            .zip(&g)
+            .map(|(value, group)| 2.0 * value + if *group == 1.0 { 5.0 } else { -1.0 })
+            .collect::<Vec<_>>();
+        let raw_weights = vec![1.0, 3.0, 2.0, 4.0];
+        let analytic = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Analytic(&raw_weights),
+        );
+        let analytic =
+            fit_prepared_ols_coefficients_map(&analytic, PreparedOlsFitConfig::default())
+                .expect("analytic normalized intercept and bread");
+        assert_eq!(analytic.finite_rank(), 1);
+        assert_close(analytic.coefficients()[0].value.expect("slope"), 2.0, 1e-11);
+        assert_eq!(
+            analytic.coefficients()[1].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_close(
+            analytic.coefficients()[1].value.expect("intercept"),
+            1.4,
+            1e-11,
+        );
+        assert_close(analytic.bread().values()[0], 15.0 / 146.0, 1e-11);
+        assert_close(analytic.bread().values()[1], -9.0 / 146.0, 1e-11);
+        assert_close(analytic.bread().values()[2], -9.0 / 146.0, 1e-11);
+        assert_close(analytic.bread().values()[3], 419.0 / 1460.0, 1e-11);
+        let analytic_scale = analytic.bread().weight_scale();
+        assert_eq!(analytic_scale.weight_kind, Some(WeightKind::Analytic));
+        assert_close(analytic_scale.solver_weight_divisor, 4.0, 0.0);
+        assert_close(analytic_scale.reference_weight_multiplier, 1.6, 1e-12);
+        assert_close(analytic_scale.reference_weight_sum, 4.0, 0.0);
+
+        let scaled_weights = raw_weights
+            .iter()
+            .map(|weight| weight * 1e200)
+            .collect::<Vec<_>>();
+        let scaled = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Analytic(&scaled_weights),
+        );
+        let scaled = fit_prepared_ols_coefficients_map(&scaled, PreparedOlsFitConfig::default())
+            .expect("rescaled analytic normalized intercept and bread");
+        for (left, right) in analytic
+            .bread()
+            .values()
+            .iter()
+            .zip(scaled.bread().values())
+        {
+            assert_close(*left, *right, 2e-11);
+        }
+
+        let probability = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Probability(&raw_weights),
+        );
+        let probability =
+            fit_prepared_ols_coefficients_map(&probability, PreparedOlsFitConfig::default())
+                .expect("probability normalized intercept and bread");
+        assert_eq!(
+            probability.bread().weight_scale().weight_kind,
+            Some(WeightKind::Probability)
+        );
+        for (analytic, probability) in analytic
+            .bread()
+            .values()
+            .iter()
+            .zip(probability.bread().values())
+        {
+            assert_close(*analytic, *probability, 2e-11);
+        }
+
+        let frequencies = vec![1.0, 3.0, 2.0, 4.0];
+        let frequency = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Frequency(&frequencies),
+        );
+        let frequency =
+            fit_prepared_ols_coefficients_map(&frequency, PreparedOlsFitConfig::default())
+                .expect("frequency normalized intercept and bread");
+        assert_close(frequency.bread().values()[0], 3.0 / 73.0, 1e-11);
+        assert_close(frequency.bread().values()[1], -9.0 / 365.0, 1e-11);
+        assert_close(frequency.bread().values()[3], 419.0 / 3650.0, 1e-11);
+        assert_close(
+            frequency.bread().weight_scale().reference_weight_sum,
+            10.0,
+            0.0,
+        );
+        let doubled = frequencies
+            .iter()
+            .map(|value| 2.0 * value)
+            .collect::<Vec<_>>();
+        let doubled = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Frequency(&doubled),
+        );
+        let doubled = fit_prepared_ols_coefficients_map(&doubled, PreparedOlsFitConfig::default())
+            .expect("doubled frequency bread");
+        for (baseline, doubled) in frequency
+            .bread()
+            .values()
+            .iter()
+            .zip(doubled.bread().values())
+        {
+            assert_close(*doubled, *baseline / 2.0, 2e-11);
+        }
+    }
+
+    #[test]
+    fn normalized_intercept_does_not_add_finite_or_absorbed_rank() {
+        let g = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0];
+        let y = vec![2.0, 4.0, -1.0, 1.0, 7.0, 9.0];
+        let prepared = prepared(&y, &[], &[], Some(&g), true, TestWeights::Unit);
+        let absorbed = super::super::compute_prepared_ols_absorbed_dof(
+            &prepared,
+            super::super::PreparedOlsAbsorbedDofPolicy::Pairwise,
+        )
+        .expect("absorbed rank");
+        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("FE-only fit");
+        assert_eq!(fit.finite_rank(), 0);
+        assert_eq!(absorbed.absorbed_rank, 3);
+        assert_eq!(fit.bread().dimension(), 1);
+        assert_close(fit.bread().values()[0], 1.0 / 6.0, 1e-12);
+        assert_eq!(
+            fit.coefficients()[0].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_close(
+            fit.coefficients()[0].value.expect("normalized intercept"),
+            3.0 + 2.0 / 3.0,
+            1e-12,
+        );
+        assert!(fit.kept_generated_columns().is_empty());
+        assert!(fit.dropped_generated_columns().is_empty());
+        assert_eq!(
+            fit.bread().coordinates()[0].generated_column_index,
+            fit.coefficients()[0]
+                .generated_column_index
+                .expect("reported intercept generated column")
+        );
+    }
+
+    #[test]
     fn rank_zero_without_finite_columns_is_certified() {
         let y = vec![1.0, -2.0, 3.0, 0.5];
         let prepared = prepared(&y, &[], &[], None, false, TestWeights::Unit);
@@ -1668,6 +2911,64 @@ mod tests {
                 false,
             )
             .expect_err("perturbed coefficient must fail score certificate")
+            .code,
+            ErrorCode::InvalidData
+        );
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls_internal(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                false,
+                true,
+                false,
+            )
+            .expect_err("perturbed bread must fail its inverse certificate")
+            .code,
+            ErrorCode::InvalidData
+        );
+        assert_eq!(
+            checked_square(
+                usize::MAX,
+                "injected prepared OLS square-dimension overflow"
+            )
+            .expect_err("square dimensions must use checked arithmetic")
+            .code,
+            ErrorCode::Allocation
+        );
+    }
+
+    #[test]
+    fn reported_intercept_certificate_fails_closed_before_fit_publication() {
+        let g = vec![1.0, 1.0, 2.0, 2.0];
+        let x = vec![-1.0, 1.0, -2.0, 2.0];
+        let y = x
+            .iter()
+            .zip(&g)
+            .map(|(value, group)| 2.0 * value + if *group == 1.0 { 5.0 } else { -1.0 })
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&g),
+            true,
+            TestWeights::Unit,
+        );
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls_internal(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                false,
+                false,
+                true,
+            )
+            .expect_err("perturbed reported intercept must not publish a partial fit")
             .code,
             ErrorCode::InvalidData
         );
@@ -1797,7 +3098,14 @@ mod tests {
         assert_eq!(control.score_certificate().moments, 1);
         assert_eq!(
             control.coefficients()[0].status,
-            PreparedOlsFitStatus::AbsorbedInterceptDeferred
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_close(
+            control.coefficients()[0]
+                .value
+                .expect("normalized intercept"),
+            weighted_mean_slice(&y, normalized_weights(&prepared).expect("weights")).expect("mean"),
+            1e-10,
         );
 
         let mut reservation = InjectedReservation::default();

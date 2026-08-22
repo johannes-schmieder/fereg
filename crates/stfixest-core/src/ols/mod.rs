@@ -23,9 +23,10 @@ pub use prepared_dof::{
     PreparedOlsAbsorbedDofReport,
 };
 pub use prepared_fit::{
-    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsFitConfig,
-    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsRankCertificate,
-    PreparedOlsScoreCertificate,
+    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsBread,
+    PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
+    PreparedOlsBreadWeightScale, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsFittedCoefficient, PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};

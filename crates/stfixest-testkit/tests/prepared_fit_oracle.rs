@@ -2,8 +2,8 @@ use stfixest_core::{
     fit_prepared_ols_coefficients_map, prepare_ols_data, AbsorbTermId, AbsorbedTerm,
     CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus, RawTermKind, SourceEntry,
-    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -144,6 +144,256 @@ fn observation_permutation_preserves_identified_fit() {
     assert_slice_close(&baseline.1, &restored, RESIDUAL_TOLERANCE);
 }
 
+#[test]
+fn sealed_stata18_reference_anchors_match_reported_intercept_and_bread() {
+    // Immutable reference receipt:
+    // benchmarks/reports/captured/darwin-arm64/stata18/ols/
+    // 20260821T030000Z-a5181f9
+    // payload sha256 6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002
+    // reghdfe commit 29b2b203f534413369d675d0c0f674d61291f536.
+    let core = include_str!("../../../tests/fixtures/ols/ols_core.csv");
+    let weights_fixture = include_str!("../../../tests/fixtures/ols/ols_weights.csv");
+
+    assert_sealed_reference_case(
+        &csv_numeric_column(core, "y"),
+        &[
+            csv_numeric_column(core, "x1"),
+            csv_numeric_column(core, "x2"),
+        ],
+        &[],
+        &[],
+        true,
+        CaseWeights::Unit,
+        SealedReferenceExpected {
+            coefficients: &[
+                "+1.6094dc78ce848X+000",
+                "-1.57252c6b41c29X-006",
+                "+1.84d9face23e96X+002",
+            ],
+            unadjusted_vce: Some((
+                "+1.5000000000000X+004",
+                "+1.2a14530d58416X+000",
+                &[
+                    "+1.1759580b65592X-009",
+                    "+1.ec3b5507a2059X-00d",
+                    "-1.3c2a429049131X-00b",
+                    "+1.ec3b5507a2059X-00d",
+                    "+1.83d2fd489555fX-00a",
+                    "+1.9837b6c9dcb53X-00f",
+                    "-1.3c2a429049131X-00b",
+                    "+1.9837b6c9dcb53X-00f",
+                    "+1.465e95b087a5cX-009",
+                ],
+            )),
+        },
+    );
+
+    let worker = csv_u32_column(core, "worker");
+    let firm = csv_u32_column(core, "firm");
+    assert_sealed_reference_case(
+        &csv_numeric_column(core, "y"),
+        &[],
+        &[worker, firm],
+        &[0, 1],
+        true,
+        CaseWeights::Unit,
+        SealedReferenceExpected {
+            coefficients: &["+1.9eaaaaa000000X+002"],
+            unadjusted_vce: Some((
+                "+1.8000000000000X+002",
+                "+1.46041bbe76f57X+000",
+                &["+1.21cac353f7f69X-007"],
+            )),
+        },
+    );
+
+    let outcome = csv_numeric_column(weights_fixture, "y");
+    let regressor = vec![csv_numeric_column(weights_fixture, "x")];
+    let group = vec![csv_u32_column(weights_fixture, "group")];
+    let analytic_weights = csv_numeric_column(weights_fixture, "w_valid");
+    assert_sealed_reference_case(
+        &outcome,
+        &regressor,
+        &group,
+        &[0],
+        true,
+        CaseWeights::Analytic(&analytic_weights),
+        SealedReferenceExpected {
+            coefficients: &["+1.ec1c26732c450X+000", "+1.025c8c5c40273X+002"],
+            unadjusted_vce: Some((
+                "+1.4000000000000X+002",
+                "+1.cf6b1cff85537X-005",
+                &[
+                    "+1.599e09a857cddX-005",
+                    "-1.47ef40b47d972X-005",
+                    "-1.47ef40b47d972X-005",
+                    "+1.3ee1529cf1611X-005",
+                ],
+            )),
+        },
+    );
+
+    let rescaled_weights = csv_numeric_column(weights_fixture, "w_scaled");
+    assert_sealed_reference_case(
+        &outcome,
+        &regressor,
+        &group,
+        &[0],
+        true,
+        CaseWeights::Analytic(&rescaled_weights),
+        SealedReferenceExpected {
+            coefficients: &["+1.ec1c26840b380X+000", "+1.025c8c582b537X+002"],
+            unadjusted_vce: Some((
+                "+1.4000000000000X+002",
+                "+1.cf6b1cc818f35X-005",
+                &[
+                    "+1.599e09858b2a4X-005",
+                    "-1.47ef40a07671cX-005",
+                    "-1.47ef40a07671cX-005",
+                    "+1.3ee1529557a10X-005",
+                ],
+            )),
+        },
+    );
+
+    let frequencies = csv_u32_column(weights_fixture, "fw_valid");
+    assert_sealed_reference_case(
+        &outcome,
+        &regressor,
+        &group,
+        &[0],
+        true,
+        CaseWeights::Frequency(&frequencies),
+        SealedReferenceExpected {
+            coefficients: &["+1.071c74a8cc936X+001", "+1.02bfab6db776aX+002"],
+            unadjusted_vce: Some((
+                "+1.3000000000000X+004",
+                "+1.6dcbce835d647X-004",
+                &[
+                    "+1.37267e35e5f40X-007",
+                    "-1.517a7c751b09aX-008",
+                    "-1.517a7c751b09aX-008",
+                    "+1.85bac823e9064X-009",
+                ],
+            )),
+        },
+    );
+
+    let probability_weights = csv_numeric_column(weights_fixture, "pw_valid");
+    assert_sealed_reference_case(
+        &outcome,
+        &regressor,
+        &group,
+        &[0],
+        true,
+        CaseWeights::Probability(&probability_weights),
+        SealedReferenceExpected {
+            coefficients: &["+1.0a633d2c1dd4cX+001", "+1.02c391a4fa903X+002"],
+            unadjusted_vce: None,
+        },
+    );
+}
+
+struct SealedReferenceExpected<'a> {
+    coefficients: &'a [&'a str],
+    unadjusted_vce: Option<(&'a str, &'a str, &'a [&'a str])>,
+}
+
+fn assert_sealed_reference_case(
+    outcome: &[f64],
+    regressors: &[Vec<f64>],
+    effects: &[Vec<u32>],
+    effect_order: &[usize],
+    include_intercept: bool,
+    weights: CaseWeights<'_>,
+    expected: SealedReferenceExpected<'_>,
+) {
+    let prepared = prepare_case(
+        outcome,
+        regressors,
+        effects,
+        effect_order,
+        include_intercept,
+        weights,
+    );
+    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+        .expect("sealed-reference prepared fit");
+    assert_eq!(fit.coefficients().len(), expected.coefficients.len());
+    for (actual, expected) in fit.coefficients().iter().zip(expected.coefficients) {
+        assert_close(
+            actual.value.expect("sealed-reference coefficient"),
+            stata_hex(expected),
+            3e-7,
+        );
+    }
+    if let Some((df_residual, rss, covariance)) = expected.unadjusted_vce {
+        assert_eq!(fit.bread().values().len(), covariance.len());
+        let multiplier = stata_hex(df_residual) / stata_hex(rss);
+        let expected = covariance
+            .iter()
+            .map(|value| stata_hex(value) * multiplier)
+            .collect::<Vec<_>>();
+        assert_slice_close(fit.bread().values(), &expected, 3e-6);
+    }
+}
+
+fn csv_numeric_column(csv: &str, name: &str) -> Vec<f64> {
+    let mut lines = csv.lines();
+    let headers = lines
+        .next()
+        .expect("fixture header")
+        .split(',')
+        .collect::<Vec<_>>();
+    let position = headers
+        .iter()
+        .position(|header| *header == name)
+        .expect("fixture column");
+    lines
+        .map(|line| {
+            line.split(',')
+                .nth(position)
+                .expect("fixture field")
+                .parse::<f64>()
+                .expect("numeric fixture field")
+        })
+        .collect()
+}
+
+fn csv_u32_column(csv: &str, name: &str) -> Vec<u32> {
+    csv_numeric_column(csv, name)
+        .into_iter()
+        .map(|value| value as u32)
+        .collect()
+}
+
+fn stata_hex(value: &str) -> f64 {
+    let (mantissa, exponent) = value.split_once('X').expect("Stata hex separator");
+    let negative = mantissa.starts_with('-');
+    let unsigned = mantissa.trim_start_matches(['+', '-']);
+    let (whole, fraction) = unsigned.split_once('.').expect("Stata hex mantissa");
+    let whole = u64::from_str_radix(whole, 16).expect("Stata hex whole") as f64;
+    let mut parsed = whole;
+    let mut scale = 1.0 / 16.0;
+    for digit in fraction.bytes() {
+        parsed += f64::from(char::from(digit).to_digit(16).expect("Stata hex digit")) * scale;
+        scale /= 16.0;
+    }
+    let exponent_negative = exponent.starts_with('-');
+    let exponent = i32::from_str_radix(exponent.trim_start_matches(['+', '-']), 16)
+        .expect("Stata hex exponent");
+    let exponent = if exponent_negative {
+        -exponent
+    } else {
+        exponent
+    };
+    let parsed = parsed * 2.0_f64.powi(exponent);
+    if negative {
+        -parsed
+    } else {
+        parsed
+    }
+}
+
 fn run_oracle_case(
     outcome: &[f64],
     regressors: &[Vec<f64>],
@@ -167,8 +417,9 @@ fn run_oracle_case(
     assert!(fit.rank_certificate().passed);
     assert!(fit.score_certificate().passed);
 
+    let absorbed_reported_intercept = include_intercept && !effect_order.is_empty();
     let mut oracle_regressors = regressors.to_vec();
-    if include_intercept {
+    if include_intercept && !absorbed_reported_intercept {
         oracle_regressors.push(vec![1.0; outcome.len()]);
     }
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
@@ -187,9 +438,11 @@ fn run_oracle_case(
     })
     .expect("explicit-dummy oracle");
 
-    assert_eq!(fit.coefficients().len(), oracle.coefficients.len());
-    for (index, (actual, expected)) in fit
-        .coefficients()
+    assert_eq!(
+        fit.coefficients().len(),
+        oracle.coefficients.len() + usize::from(absorbed_reported_intercept)
+    );
+    for (index, (actual, expected)) in fit.coefficients()[..oracle.coefficients.len()]
         .iter()
         .zip(&oracle.coefficients)
         .enumerate()
@@ -203,18 +456,109 @@ fn run_oracle_case(
                     COEFFICIENT_TOLERANCE,
                 );
             }
-            None if include_intercept && index + 1 == oracle.coefficients.len() => {
-                assert_eq!(
-                    actual.status,
-                    PreparedOlsFitStatus::AbsorbedInterceptDeferred
-                );
-                assert!(actual.value.is_none());
-            }
             None => assert_ne!(actual.status, PreparedOlsFitStatus::Kept),
         }
     }
+    if absorbed_reported_intercept {
+        let normalized = normalized_case_weights(weights, outcome.len());
+        let expected_intercept = weighted_mean(
+            &(0..outcome.len())
+                .map(|row| {
+                    oracle.coefficients.iter().enumerate().fold(
+                        outcome[row],
+                        |value, (column, coefficient)| {
+                            coefficient.map_or(value, |coefficient| {
+                                (-coefficient).mul_add(regressors[column][row], value)
+                            })
+                        },
+                    )
+                })
+                .collect::<Vec<_>>(),
+            &normalized,
+        );
+        let actual = fit.coefficients().last().expect("reported intercept slot");
+        assert_eq!(
+            actual.status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_close(
+            actual.value.expect("normalized reported intercept"),
+            expected_intercept,
+            COEFFICIENT_TOLERANCE,
+        );
+
+        let kept = &oracle.kept_regressors;
+        let finite_dimension = kept.len();
+        let dimension = finite_dimension + 1;
+        let reference_multiplier = match weights {
+            CaseWeights::Analytic(raw) | CaseWeights::Probability(raw) => {
+                raw.iter().sum::<f64>() / outcome.len() as f64
+            }
+            CaseWeights::Unit | CaseWeights::Frequency(_) => 1.0,
+        };
+        let mut expected_bread = vec![0.0_f64; dimension * dimension];
+        for row in 0..finite_dimension {
+            for column in 0..finite_dimension {
+                expected_bread[row * dimension + column] =
+                    oracle.bread[(row, column)] * reference_multiplier;
+            }
+        }
+        let means = kept
+            .iter()
+            .map(|column| weighted_mean(&regressors[*column], &normalized))
+            .collect::<Vec<_>>();
+        let reference_weight_sum = match weights {
+            CaseWeights::Frequency(values) => values.iter().map(|value| *value as f64).sum(),
+            CaseWeights::Unit | CaseWeights::Analytic(_) | CaseWeights::Probability(_) => {
+                outcome.len() as f64
+            }
+        };
+        let mut side = vec![0.0_f64; finite_dimension];
+        for row in 0..finite_dimension {
+            side[row] = -(0..finite_dimension)
+                .map(|column| expected_bread[row * dimension + column] * means[column])
+                .sum::<f64>();
+            expected_bread[row * dimension + finite_dimension] = side[row];
+            expected_bread[finite_dimension * dimension + row] = side[row];
+        }
+        expected_bread[finite_dimension * dimension + finite_dimension] = reference_weight_sum
+            .recip()
+            - means
+                .iter()
+                .zip(&side)
+                .map(|(mean, side)| mean * side)
+                .sum::<f64>();
+        assert_eq!(fit.bread().dimension(), dimension);
+        assert_eq!(fit.bread().coordinates().len(), dimension);
+        assert!(fit.bread().coordinates()[..finite_dimension]
+            .iter()
+            .all(|coordinate| coordinate.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor));
+        assert_eq!(
+            fit.bread().coordinates()[finite_dimension].kind,
+            PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+        );
+        assert_slice_close(fit.bread().values(), &expected_bread, 5e-8);
+        assert!(fit.bread().certificate().passed);
+    }
     assert_eq!(fit.finite_rank(), oracle.finite_regressor_rank);
     assert_slice_close(fit.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
+}
+
+fn normalized_case_weights(weights: CaseWeights<'_>, nobs: usize) -> Vec<f64> {
+    match weights {
+        CaseWeights::Unit => vec![1.0; nobs],
+        CaseWeights::Analytic(values) | CaseWeights::Probability(values) => values.to_vec(),
+        CaseWeights::Frequency(values) => values.iter().map(|value| *value as f64).collect(),
+    }
+}
+
+fn weighted_mean(values: &[f64], weights: &[f64]) -> f64 {
+    values
+        .iter()
+        .zip(weights)
+        .map(|(value, weight)| value * weight)
+        .sum::<f64>()
+        / weights.iter().sum::<f64>()
 }
 
 fn solve_case(
