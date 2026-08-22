@@ -63,7 +63,7 @@ coefficient or any other numerical result. Public estimators still do not
 invoke this path, and the older generic MAP/LSMR/OLS stack has not thereby
 become eligible for Stata result posting.
 
-## Certified prepared coefficient checkpoint
+## Certified prepared coefficient and bread checkpoint
 
 `fit_prepared_ols_coefficients_map` is a separate core-only checkpoint over
 `PreparedOlsData`. It deliberately uses only the prepared Y/X builder and the
@@ -80,13 +80,23 @@ fixed effects. Remaining columns are scaled by those reference norms and
 solved in place with deterministic column-pivoted Householder QR. Pivot norms
 are recomputed from the trailing matrix on every step, ties retain canonical
 generated-column order, all dimension arithmetic is checked, and nonfinite or
-uncertified rank decisions are fatal. Each canonical coefficient slot returns
-exactly one of `Kept`, `SyntaxOmitted`, `CollinearWithFixedEffects`,
-`NumericallyRankDeficient`, or `AbsorbedInterceptDeferred`. With no fixed
+uncertified rank decisions are fatal. Each returned canonical coefficient slot
+is `Kept`, `SyntaxOmitted`, `CollinearWithFixedEffects`,
+`NumericallyRankDeficient`, or `NormalizedAbsorbedIntercept`. With no fixed
 effects, the intercept is fitted normally. With any absorbed intercept, the
-within intercept is annihilated and the normalized reference `_cons` is
-explicitly deferred until fixed-effect recovery; it is never reported as zero
-or as an identified coefficient.
+within intercept is annihilated and is transiently deferred during QR. Atomic
+fit finalization then reports the pinned normalization
+`_cons = mean_w(y) - mean_w(X)b`. This does not recover individual fixed-effect
+coefficients and adds neither finite-regressor rank nor absorbed rank.
+
+The same finalization returns inverse cross-product bread on covariance
+coordinates in canonical kept-generated-column order, followed by the
+normalized absorbed intercept when present. If `B` is the finite within bread
+and `m=mean_w(X)`, the added side is `-Bm` and the corner is
+`1/N_ref + m'Bm`. Cross-product weights are unit when unweighted, raw for
+frequency weights, and normalized to physical N for analytic and probability
+weights. Thus common analytic/probability scaling leaves the bread invariant;
+common integer frequency scaling divides it by that integer.
 
 After solving, the checkpoint reconstructs one raw N-vector residual from the
 prepared recipes and kept coefficients, residualizes that vector again through
@@ -100,25 +110,38 @@ the all-column gate; only a truly zero raw column contributes a structural zero
 moment. Raw
 pre-absorption X or Y variation explained only by fixed effects therefore
 cannot dilute a finite-coefficient score failure. A failed initial MAP
-certificate, residual MAP certificate,
-dropped-rank certificate, or all-column score certificate returns an error and
-no result object. The returned object contains only canonical coefficient
-slots, kept/dropped generated-column identities, finite rank, both MAP reports,
-rank/score certificates, and final compact-axis residuals.
+certificate, residual MAP certificate, dropped-rank certificate, all-column
+score certificate, finite/full-reported left or right inverse certificate,
+bread-symmetry/positive-diagonal certificate, or intercept formula and
+normalization certificate returns an error and no result object. The full
+reported inverse check is independent: it retains the pre-QR finite
+cross-product by reusing a dead O(K^2) buffer and reconstructs
+`G=[D+N_ref mm', N_ref m; N_ref m', N_ref]`. The returned object contains
+canonical coefficient slots, kept/dropped generated-column identities, finite
+rank, both MAP reports, rank/score/bread certificates, covariance-coordinate
+bread, and final compact-axis residuals.
 
 Independent explicit-dummy tests cover no, one, two, and repeated fixed-effect
 dimensions; unit, analytic, frequency, and probability objectives; exact and
 clear near-collinearity; factor omissions and vanished levels; random
 well-conditioned designs; observation permutations; and common weight scaling
-from `1e-200` through `1e200`. Allocation/capacity injection and coefficient
-perturbation tests prove that workspace or final-score failures are fatal.
+from `1e-200` through `1e200`. Exact rational cases, literal frequency-row
+expansion, sealed Stata 18 no-FE/disconnected/aweight/rescaled/fweight/pweight
+anchors, allocation/capacity/checked-arithmetic injection, and coefficient,
+finite-bread, reported-intercept, and symmetric-extension perturbations prove
+that workspace or certificate failures are fatal. A 64-row FE allocation audit
+sweeps every reservation failure and bounds all new Gram/bread/intercept
+allocations by O(K^2)/O(K), proving that this checkpoint adds no N-scale
+covariance copy.
 Targeted counterexamples with `1e10` FE-only outcome variation and `1e7`
 FE-only regressor variation prove that neither raw scale can mask an injected
 coefficient error while the corresponding unperturbed fits remain accepted. A
 separate residual-constant injection proves that the zero-within-norm deferred
 intercept moment is checked rather than hard-coded to pass.
-This checkpoint has no plugin action, performs no SPI write, posts no VCE or
-DoF, and does not enable `stfeols`.
+Independent rereview approves the exact code series through `bb1e71f`. This
+checkpoint has no plugin action, performs no SPI write, computes no variance
+scale/meat, posts no VCE or DoF, recovers no individual FE coefficients, and
+does not enable `stfeols`.
 
 ## Prepared absorbed-DoF checkpoint
 

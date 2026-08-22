@@ -6,18 +6,48 @@ validation. `stfeols` and `stfepois` remain fail-closed and post no estimate.
 | Contract | Current evidence | Enablement gate |
 |---|---|---|
 | Candidate vs effective sample | Numeric availability/policy precedence and compact row map are unit-tested | Composed Stata/Rust final-sample identity including FE, cluster, singleton, and weight rules |
-| OLS weights | The licensed reference probes are sealed. Guarded preparation implements analytic, frequency, and probability input domains, and the core-only prepared coefficient checkpoint applies each as a positive least-squares objective, is invariant to common scaling, and matches independent WLS/row-expansion oracles. It does not define VCE, DoF, effective `e(N)`, or posted metadata. | Exact estimator-level sample, coefficient, VCE, DoF, and metadata parity for every enabled kind |
+| OLS weights | The licensed reference probes are sealed. Guarded preparation implements analytic, frequency, and probability input domains, and the core-only prepared coefficient checkpoint applies each as a positive least-squares objective, is invariant to common scaling, and matches independent WLS/row-expansion oracles. Its covariance-coordinate bread uses the pinned cross-product scale: unit weights for unweighted fits, raw frequency weights, and analytic/probability weights normalized to physical N. It does not define VCE, DoF, effective `e(N)`, or posted metadata. | Exact estimator-level sample, coefficient, VCE, DoF, and metadata parity for every enabled kind |
 | Singleton pruning | Developer one-call preparation matches the sealed two-way cascade (`N=4`, five reason-8 drops), `keepsingletons`, analytic-weight identities, and pinned frequency-multiplicity rule; aligned sources are compacted and re-factorized | Independent review plus eventual estimator-level final-sample parity before posting |
 | Fixed-effect absorption | Final post-singleton numeric FE codes produce a deduplicated structural topology and a fallible intercept-only borrowed view with no code or membership copy. The prepared-RHS bridge revalidates sample/model/recipe identities and constructs exact Y plus generated X order in one fallible checked allocation. An opt-in developer action runs the strict borrowed MAP check before its first diagnostic write, discards residuals, and leaves every diagnostic untouched on empty-input, allocation/capacity/overflow, corruption, interruption, nonconvergence, or certificate failure. It returns only a passing recomputed FE certificate and matches an independent explicit-dummy oracle for multiple RHSs and unweighted, analytic-, frequency-, and probability-weight objectives, including repeated sources, disconnected components, random designs, permutations, and weight scaling. | Independent review of the prepared-RHS/plugin integration plus estimator-level sealed parity before any numerical result posting |
-| OLS/WLS coefficients | The isolated prepared-data checkpoint uses strict borrowed MAP plus scaled deterministic pivoted Householder QR, preserves canonical kept/omitted/FE-collinear/rank-deficient slots, fits the no-FE intercept, explicitly defers the absorbed-model normalized intercept, and returns only after recomputed residual-MAP, dropped-rank, and all-generated-column score certificates pass. Score normalization uses saved post-initial-MAP within-X and within-Y norms, so large FE-only raw variation cannot mask a coefficient error; an exactly zero within-X norm falls back to its nonzero raw norm so deferred/redundant moments are still checked. Independent explicit-dummy tests cover supported recipes, unit/a/f/p objectives, no/one/two/repeated FEs, random designs, permutations, collinearity, weight scaling, large FE-only X/Y scale counterexamples, zero-within-norm moment injection, and injected fatal failures. It is not wired to the plugin or public command. | Sealed `reghdfe` coefficient/status/residual parity at fixed tolerances, absorbed-FE recovery/normalization including `_cons`, remaining model terms/FE forms, atomic result posting, and the later VCE/DoF gates |
+| OLS/WLS coefficients and bread | The isolated prepared-data checkpoint uses strict borrowed MAP plus scaled deterministic pivoted Householder QR, preserves canonical kept/omitted/FE-collinear/rank-deficient slots, and fits the no-FE intercept. For an absorbed model it now recovers the reference-normalized reported `_cons = mean_w(y) - mean_w(X)b` during atomic fit finalization; this reported coordinate is neither finite-regressor rank nor absorbed DoF and does not require recovery of individual FE coefficients. The checkpoint returns canonical covariance-coordinate inverse cross-product bread, extending the finite within block with `side = -B mean_w(X)` and `corner = 1/N_ref + mean_w(X)' B mean_w(X)`. It returns only after residual-MAP, dropped-rank, all-generated-column score, finite and full-reported left/right inverse, symmetry, positive-diagonal, intercept-formula, and intercept-normalization certificates pass. Independent explicit-dummy tests cover supported recipes, unit/a/f/p objectives, no/one/two/repeated FEs, random designs, permutations, collinearity, and scaling. Exact rational tests, corruption and fail-at-every-allocation injections, O(K^2)/O(K) allocation bounds with no added N-scale covariance copy, and sealed Stata 18 anchors cover no-FE, disconnected FE-only, analytic/rescaled-analytic, frequency, and probability-weight cases. The checkpoint is independently reviewed through `bb1e71f`; it is not VCE, FE recovery, plugin result posting, or a public command. | Prepared score-meat/VCE and residual-DoF composition, remaining model/FE forms, one-call atomic result posting, and complete estimator-level sealed parity |
 | Prepared absorbed DoF | A separate core-only report now consumes the final `PreparedOlsFeTopology` plus borrowed authoritative categorical codes and implements pinned `None`, `FirstPair`, and default `Pairwise` structural redundancy for the supported intercept-only FE surface. It preserves wire rows and repeated-source identity, marks first/second-pair exactness and later pairwise approximation explicitly, reports `nested=false`, uses fallible iterative union-find with checked arithmetic and no N-scale copy, and matches the sealed `df_a=8/19/21` anchors plus an independent graph-search oracle. It does not inspect outcomes, finite regressors, or weights and is not wired to the plugin. | Independent rereview, then composition with finite rank/intercept, effective frequency-weight N, cluster nesting, residual DoF, VCE/fit-statistic policy, atomic posting, and sealed estimator parity |
-| VCE, residual DoF, and fit statistics | Older native source/tests exist, and the sealed reference cases cover iid, robust, 1–3 way clustering, interactions, nesting, and `dof()` policies. Those older routines are not certified for the prepared estimator. | Prepared score/meat/bread and correction oracles, weight-kind semantics, nesting/cluster intersections, fit-statistic formulas, and posted `e(V)`/DoF parity |
+| VCE, residual DoF, and fit statistics | The prepared fit now supplies a certified covariance-coordinate inverse cross-product bread, but no variance scale, score meat, cluster aggregation, small-sample correction, residual DoF, or fit statistic. Older native source/tests exist, and the sealed reference cases cover iid, robust, 1–3 way clustering, interactions, nesting, and `dof()` policies; those older routines are not certified for the prepared estimator. | Prepared score meat and correction oracles, weight-kind semantics, nesting/cluster intersections, fit-statistic formulas, and posted `e(V)`/DoF parity |
 | OLS outputs | Reference cases request sample, residual, `xb`, `xbd`, absorbed sum, named FEs, `test`, and `estat summarize` | Observation-ID-aligned parity and atomic failure tests |
 | PPML | Outside Checkpoint 1A; public command disabled | Later IRLS, separation, VCE, and postestimation gates |
 
 A successful `stfixest, selftest` proves only its documented native smoke
 tests. A successful OLS reference capture proves only what the pinned reference
 did; it is not evidence that StFixest reproduced it.
+
+## Pinned absorbed-intercept and bread contract
+
+The normalized absorbed-model intercept is fixed by pinned `reghdfe` 6.14.1
+commit `29b2b203f534413369d675d0c0f674d61291f536`. That source saves the weighted
+means of Y and X, assigns finite rank before extending the reported constant,
+and implements:
+
+```text
+b_cons = mean_w(y) - mean_w(X) b
+side   = -mean_w(X) B
+corner = 1 / N_ref + mean_w(X) B mean_w(X)'
+```
+
+Here `B` is the inverse within-X cross-product on canonical kept finite
+coordinates. `N_ref` is physical N for unweighted, analytic-, and
+probability-weighted fits and the exact frequency sum for frequency weights.
+The reference cross-product weights are one when unweighted, raw frequency
+weights for frequency weighting, and raw analytic/probability weights rescaled
+to sum to physical N. Consequently common analytic/probability-weight scaling
+does not change the bread, while multiplying every frequency weight by an
+integer divides the bread by that integer, exactly as literal row replication
+does.
+
+The reported `_cons` is a normalization coordinate. Recovering it does not
+recover, save, or identify individual fixed-effect coefficients, and it adds
+neither finite rank nor absorbed rank. The current artifact is only inverse
+cross-product bread: it must not be called `e(V)` or combined with an older
+variance routine until the prepared meat, correction, residual-DoF, and atomic
+posting gates pass.
 
 ## Checkpoint 1A reference protocol
 

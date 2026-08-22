@@ -84,7 +84,13 @@ normalization fails closed. Frequency weights match literal row expansion for
 identified coefficients and residuals on physical rows. Independent tests
 cover all three supplied kinds, unit weights, common scaling from `1e-200`
 through `1e200`, and no/one/two/repeated intercept-only fixed effects. This
-checkpoint still does not decide effective `e(N)`, weight sums, VCE, DoF, fit
+checkpoint also returns inverse cross-product bread on the pinned reference
+scale: raw integer cross-product weights and exact summed `N_ref` for frequency
+weights; analytic/probability weights rescaled to sum to physical N; and unit
+weights otherwise. Common analytic/probability scaling therefore leaves bread
+unchanged, whereas multiplying frequency weights by an integer divides bread
+by that integer, matching literal row expansion. It still does not decide a
+variance scale or score meat, effective posted metadata, VCE, residual DoF, fit
 statistics, display metadata, or public probability-weight defaults, and it is
 not callable through the plugin or `stfeols`.
 
