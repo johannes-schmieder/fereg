@@ -7,8 +7,8 @@
 
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{
-    borrow_categorical_topology_design, BorrowedCategoricalTopologyDesign,
-    CategoricalCodeView, CategoricalTopologyRegistry,
+    borrow_categorical_topology_design, BorrowedInterceptFeDesign, CategoricalCodeView,
+    CategoricalTopologyRegistry,
 };
 
 use super::{PreparedCategoricalEffect, PreparedCategoricalEffectRequest};
@@ -61,12 +61,12 @@ impl PreparedCategoricalFeTopology {
     pub fn borrowed_design<'a>(
         &'a self,
         source_table: &'a [CategoricalCodeView<'a>],
-    ) -> Result<BorrowedCategoricalTopologyDesign<'a>> {
+    ) -> Result<BorrowedInterceptFeDesign<'a>> {
         borrow_categorical_topology_design(
+            self.nobs,
             &self.registry,
             source_table,
             &self.effect_to_topology,
-            self.nobs,
         )
     }
 
