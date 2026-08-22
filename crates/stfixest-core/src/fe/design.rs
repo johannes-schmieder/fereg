@@ -162,7 +162,18 @@ pub struct BorrowedInterceptEffect<'a> {
     level_index: &'a LevelIndex,
 }
 
-impl<'a> BorrowedInterceptEffect<'a> {
+/// A unique prepared FE source after one complete structural scan.
+///
+/// Construction is O(N) in the source observation count. Producing any number
+/// of wire-term views from this certificate is O(1) per term.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ValidatedBorrowedInterceptSource<'a> {
+    codes: &'a [u32],
+    n_levels: usize,
+    level_index: &'a LevelIndex,
+}
+
+impl<'a> ValidatedBorrowedInterceptSource<'a> {
     pub(crate) fn new(
         codes: &'a [u32],
         n_levels: usize,
@@ -222,6 +233,32 @@ impl<'a> BorrowedInterceptEffect<'a> {
         })
     }
 
+    #[must_use]
+    pub(crate) const fn effect(&self) -> BorrowedInterceptEffect<'a> {
+        BorrowedInterceptEffect {
+            codes: self.codes,
+            n_levels: self.n_levels,
+            level_index: self.level_index,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn codes(&self) -> &'a [u32] {
+        self.codes
+    }
+
+    #[must_use]
+    pub(crate) const fn n_levels(&self) -> usize {
+        self.n_levels
+    }
+
+    #[must_use]
+    pub(crate) const fn level_index(&self) -> &'a LevelIndex {
+        self.level_index
+    }
+}
+
+impl<'a> BorrowedInterceptEffect<'a> {
     #[must_use]
     pub const fn codes(&self) -> &'a [u32] {
         self.codes
@@ -539,7 +576,8 @@ mod tests {
     #[test]
     fn borrowed_intercept_design_preserves_empty_effects() {
         let index = LevelIndex::from_codes(&[], 0).expect("empty level index");
-        let effect = BorrowedInterceptEffect::new(&[], 0, &index).expect("empty effect");
+        let source = ValidatedBorrowedInterceptSource::new(&[], 0, &index).expect("empty source");
+        let effect = source.effect();
         let design = BorrowedInterceptFeDesign::new(0, vec![effect]).expect("empty design");
         assert_eq!(design.nobs(), 0);
         assert_eq!(design.effects().len(), 1);
@@ -549,7 +587,7 @@ mod tests {
     #[test]
     fn borrowed_intercept_effect_rejects_misaligned_membership() {
         let index = LevelIndex::from_codes(&[0, 0, 1, 1], 2).expect("level index");
-        let error = BorrowedInterceptEffect::new(&[0, 1, 0, 1], 2, &index)
+        let error = ValidatedBorrowedInterceptSource::new(&[0, 1, 0, 1], 2, &index)
             .expect_err("membership mismatch");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
     }

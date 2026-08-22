@@ -8,8 +8,8 @@ use crate::data::{
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
-    prune_singletons_with_multiplicity, BorrowedInterceptEffect, BorrowedInterceptFeDesign,
-    LevelIndex, SingletonMultiplicity, SingletonResult,
+    prune_singletons_with_multiplicity, BorrowedInterceptFeDesign, LevelIndex,
+    SingletonMultiplicity, SingletonResult, ValidatedBorrowedInterceptSource,
 };
 use crate::metadata::{
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState,
@@ -336,10 +336,53 @@ fn build_borrowed_intercept_fe_design_with_reservation<'a, R: FeTopologyReservat
     prepared: &'a PreparedOlsData,
     reservation: &mut R,
 ) -> Result<BorrowedInterceptFeDesign<'a>> {
+    let mut validation = SystemBorrowedInterceptSourceValidation;
+    build_borrowed_intercept_fe_design_with_controls(prepared, reservation, &mut validation)
+}
+
+fn build_borrowed_intercept_fe_design_with_controls<
+    'a,
+    R: FeTopologyReservation,
+    V: BorrowedInterceptSourceValidation,
+>(
+    prepared: &'a PreparedOlsData,
+    reservation: &mut R,
+    validation: &mut V,
+) -> Result<BorrowedInterceptFeDesign<'a>> {
     if prepared.fe_topology.nobs() != prepared.sample.n_active() {
         return Err(invalid(
             "borrowed FE design topology is not aligned with the final sample",
         ));
+    }
+
+    let mut validated_sources = Vec::new();
+    reservation.reserve_vec(
+        &mut validated_sources,
+        prepared.fe_topology.sources().len(),
+        "unable to reserve validated borrowed FE sources",
+    )?;
+    for topology_source in prepared.fe_topology.sources() {
+        let categorical = prepared
+            .categorical_sources
+            .get(topology_source.categorical_source_index())
+            .ok_or_else(|| invalid("borrowed FE source categorical index is out of range"))?;
+        if categorical.source != topology_source.source()
+            || categorical.encoded.n_levels() != topology_source.n_levels()
+        {
+            return Err(invalid(
+                "borrowed FE source identity or level count is inconsistent",
+            ));
+        }
+        let validated = validation.validate(
+            &categorical.encoded.codes,
+            topology_source.n_levels(),
+            topology_source.level_index(),
+        )?;
+        push_reserved(
+            &mut validated_sources,
+            validated,
+            "validated borrowed FE source capacity exhausted",
+        )?;
     }
 
     let mut effects = Vec::new();
@@ -358,23 +401,24 @@ fn build_borrowed_intercept_fe_design_with_reservation<'a, R: FeTopologyReservat
             .categorical_sources
             .get(effect.categorical_source_index)
             .ok_or_else(|| invalid("borrowed FE design categorical source is out of range"))?;
+        let validated = validated_sources
+            .get(effect.topology_source_index)
+            .ok_or_else(|| invalid("borrowed FE validated source is out of range"))?;
         if topology_source.categorical_source_index() != effect.categorical_source_index
             || topology_source.source() != effect.source
             || categorical.source != effect.source
             || categorical.encoded.n_levels() != topology_source.n_levels()
+            || validated.n_levels() != topology_source.n_levels()
+            || !std::ptr::eq(validated.codes(), categorical.encoded.codes.as_slice())
+            || !std::ptr::eq(validated.level_index(), topology_source.level_index())
         {
             return Err(invalid(
                 "borrowed FE design source identities are inconsistent",
             ));
         }
-        let borrowed = BorrowedInterceptEffect::new(
-            &categorical.encoded.codes,
-            topology_source.n_levels(),
-            topology_source.level_index(),
-        )?;
         push_reserved(
             &mut effects,
-            borrowed,
+            validated.effect(),
             "borrowed FE design effect capacity exhausted",
         )?;
     }
@@ -799,6 +843,28 @@ trait FeTopologyReservation {
         additional: usize,
         label: &'static str,
     ) -> Result<()>;
+}
+
+trait BorrowedInterceptSourceValidation {
+    fn validate<'a>(
+        &mut self,
+        codes: &'a [u32],
+        n_levels: usize,
+        level_index: &'a LevelIndex,
+    ) -> Result<ValidatedBorrowedInterceptSource<'a>>;
+}
+
+struct SystemBorrowedInterceptSourceValidation;
+
+impl BorrowedInterceptSourceValidation for SystemBorrowedInterceptSourceValidation {
+    fn validate<'a>(
+        &mut self,
+        codes: &'a [u32],
+        n_levels: usize,
+        level_index: &'a LevelIndex,
+    ) -> Result<ValidatedBorrowedInterceptSource<'a>> {
+        ValidatedBorrowedInterceptSource::new(codes, n_levels, level_index)
+    }
 }
 
 struct SystemFeTopologyReservation;
@@ -1476,6 +1542,28 @@ mod tests {
             target
                 .try_reserve_exact(additional)
                 .map_err(|_| allocation("test prepared FE topology reservation failed"))
+        }
+    }
+
+    #[derive(Default)]
+    struct CountingBorrowedSourceValidation {
+        calls: usize,
+        inspected_rows: usize,
+    }
+
+    impl BorrowedInterceptSourceValidation for CountingBorrowedSourceValidation {
+        fn validate<'a>(
+            &mut self,
+            codes: &'a [u32],
+            n_levels: usize,
+            level_index: &'a LevelIndex,
+        ) -> Result<ValidatedBorrowedInterceptSource<'a>> {
+            self.calls = self.calls.checked_add(1).expect("small validation count");
+            self.inspected_rows = self
+                .inspected_rows
+                .checked_add(codes.len())
+                .expect("small inspected-row count");
+            ValidatedBorrowedInterceptSource::new(codes, n_levels, level_index)
         }
     }
 
@@ -3026,23 +3114,83 @@ mod tests {
         let mut successful = InjectedFeTopologyReservation::default();
         build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut successful)
             .expect("record adapter reservations");
-        assert_eq!(successful.calls, 1);
+        assert_eq!(successful.calls, 2);
 
-        let mut failed = InjectedFeTopologyReservation {
-            fail_at: Some(0),
-            ..InjectedFeTopologyReservation::default()
-        };
-        let error = build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut failed)
-            .expect_err("adapter reservation must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
+        for fail_at in 0..successful.calls {
+            let mut failed = InjectedFeTopologyReservation {
+                fail_at: Some(fail_at),
+                ..InjectedFeTopologyReservation::default()
+            };
+            let error = build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut failed)
+                .expect_err("adapter reservation must fail");
+            assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
+        }
 
-        let mut undersized = InjectedFeTopologyReservation {
-            skip_label: Some("unable to reserve borrowed FE design effects"),
-            ..InjectedFeTopologyReservation::default()
+        for skipped in [
+            "unable to reserve validated borrowed FE sources",
+            "unable to reserve borrowed FE design effects",
+        ] {
+            let mut undersized = InjectedFeTopologyReservation {
+                skip_label: Some(skipped),
+                ..InjectedFeTopologyReservation::default()
+            };
+            let error =
+                build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut undersized)
+                    .expect_err("adapter capacity guard must fail");
+            assert_eq!(error.code, ErrorCode::Allocation, "{skipped}");
+        }
+    }
+
+    #[test]
+    fn repeated_fe_terms_validate_their_unique_source_once() {
+        const TERM_COUNT: usize = 128;
+        let source = SourceId::new(1).expect("source");
+        let mut request = request(1, false);
+        request.absorbed_terms = (1..=TERM_COUNT)
+            .map(|term| AbsorbedTerm {
+                id: AbsorbTermId::new(u32::try_from(term).expect("small term")).expect("term"),
+                intercept: true,
+                categorical_sources: vec![source],
+                slope_sources: Vec::new(),
+                label: format!("g_{term}"),
+                saved_name: String::new(),
+            })
+            .collect();
+        request.keep_singletons = true;
+        let loaded = LoadedOlsInput {
+            candidate: vec![true; 6],
+            outcome: column(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[false; 6]),
+            numeric_sources: vec![(source, column(&[1.0, 1.0, 2.0, 2.0, 3.0, 3.0], &[false; 6]))],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
         };
-        let error = build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut undersized)
-            .expect_err("adapter capacity guard must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
+        let prepared = prepare_ols_data(&request, &loaded).expect("repeated FE preparation");
+        assert_eq!(prepared.fe_topology.sources().len(), 1);
+        assert_eq!(prepared.fe_topology.effects().len(), TERM_COUNT);
+
+        let mut reservation = SystemFeTopologyReservation;
+        let mut validation = CountingBorrowedSourceValidation::default();
+        let design = build_borrowed_intercept_fe_design_with_controls(
+            &prepared,
+            &mut reservation,
+            &mut validation,
+        )
+        .expect("borrowed repeated FE design");
+        assert_eq!(validation.calls, 1);
+        assert_eq!(validation.inspected_rows, prepared.sample.n_active());
+        assert_eq!(design.effects().len(), TERM_COUNT);
+        assert_eq!(design.total_term_slots(), TERM_COUNT * 3);
+        for effect in design.effects() {
+            assert!(std::ptr::eq(
+                effect.codes(),
+                prepared.categorical_sources[0].encoded.codes.as_slice()
+            ));
+            assert!(std::ptr::eq(
+                effect.level_index(),
+                prepared.fe_topology.sources()[0].level_index()
+            ));
+        }
     }
 
     #[test]

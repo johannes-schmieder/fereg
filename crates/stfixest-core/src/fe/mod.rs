@@ -14,6 +14,7 @@ pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub use components::{connected_components, ComponentInfo};
+pub(crate) use design::ValidatedBorrowedInterceptSource;
 pub use design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
 };
