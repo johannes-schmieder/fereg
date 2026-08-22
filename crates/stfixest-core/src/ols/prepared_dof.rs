@@ -590,6 +590,9 @@ fn reserved_empty<T, R: PreparedDofReservation>(
     label: &'static str,
 ) -> Result<Vec<T>> {
     let mut output = Vec::new();
+    if elements == 0 {
+        return Ok(output);
+    }
     reservation.reserve_vec(&mut output, elements, label)?;
     if output.capacity() < elements {
         return Err(allocation(
@@ -653,6 +656,7 @@ mod tests {
         max_additional: usize,
         fail_at: Option<usize>,
         undersize_at: Option<usize>,
+        records: Vec<(usize, &'static str)>,
     }
 
     impl PreparedDofReservation for InjectedReservation {
@@ -660,9 +664,10 @@ mod tests {
             &mut self,
             target: &mut Vec<T>,
             additional: usize,
-            _label: &'static str,
+            label: &'static str,
         ) -> Result<()> {
             self.max_additional = self.max_additional.max(additional);
+            self.records.push((additional, label));
             self.reserve(target, additional)
         }
 
@@ -670,9 +675,10 @@ mod tests {
             &mut self,
             target: &mut String,
             additional: usize,
-            _label: &'static str,
+            label: &'static str,
         ) -> Result<()> {
             self.max_additional = self.max_additional.max(additional);
+            self.records.push((additional, label));
             let call = self.calls;
             self.calls += 1;
             if self.fail_at == Some(call) {
@@ -1112,6 +1118,65 @@ mod tests {
                     &mut injected,
                 )
                 .expect_err("undersized reservation")
+                .code,
+                ErrorCode::Allocation,
+                "reservation call {undersize_at}"
+            );
+        }
+    }
+
+    #[test]
+    fn implicit_no_absorb_row_and_label_reservations_fail_closed() {
+        let prepared = prepared_case_n(4, &[], TestWeights::Unit);
+        let expected = vec![
+            (1, "unable to reserve prepared absorbed-DoF effect rows"),
+            (5, "unable to reserve implicit no-absorb DoF label"),
+        ];
+        let mut successful = InjectedReservation::default();
+        let report = compute_with_reservation(
+            &prepared,
+            PreparedOlsAbsorbedDofPolicy::Pairwise,
+            &mut successful,
+        )
+        .expect("successful implicit no-absorb DoF reservation");
+        assert_eq!(successful.records, expected);
+        assert_eq!(successful.calls, expected.len());
+        assert_eq!(report.effects.len(), 1);
+        assert_eq!(
+            report.effects[0].identity,
+            PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+        );
+        assert_eq!(report.effects[0].label, "_cons");
+
+        for fail_at in 0..successful.calls {
+            let mut injected = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            assert_eq!(
+                compute_with_reservation(
+                    &prepared,
+                    PreparedOlsAbsorbedDofPolicy::Pairwise,
+                    &mut injected,
+                )
+                .expect_err("implicit no-absorb allocation failure")
+                .code,
+                ErrorCode::Allocation,
+                "reservation call {fail_at}"
+            );
+        }
+        for undersize_at in 0..successful.calls {
+            let mut injected = InjectedReservation {
+                undersize_at: Some(undersize_at),
+                ..InjectedReservation::default()
+            };
+            assert_eq!(
+                compute_with_reservation(
+                    &prepared,
+                    PreparedOlsAbsorbedDofPolicy::Pairwise,
+                    &mut injected,
+                )
+                .expect_err("undersized implicit no-absorb reservation")
                 .code,
                 ErrorCode::Allocation,
                 "reservation call {undersize_at}"
