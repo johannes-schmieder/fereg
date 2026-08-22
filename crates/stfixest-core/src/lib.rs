@@ -16,6 +16,8 @@ pub mod ppml;
 pub mod ppml_separation;
 pub mod protocol;
 pub mod selftest;
+#[path = "ols/topology_dof.rs"]
+pub mod topology_dof;
 
 pub use data::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, ColumnRecipe,
@@ -29,11 +31,17 @@ pub use factorize::{
     factorize_f64, factorize_i64, factorize_strings, interaction_codes, EncodedFactor,
 };
 pub use fe::{
-    absorb_borrowed_intercept_map_certified, absorb_fixed_effects, absorb_lsmr, absorb_map,
-    certify_residuals, connected_components, prune_singletons, prune_singletons_with_multiplicity,
-    AbsorbConfig, BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights,
-    CertifiedBorrowedMap, ComponentInfo, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
-    LsmrConfig, LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
+    absorb_borrowed_intercept_map_certified, absorb_finalized_categorical_topology_map_certified,
+    absorb_fixed_effects, absorb_lsmr, absorb_map, borrow_categorical_topology_design,
+    certify_residuals, connected_components, factorize_code_interaction,
+    finalize_categorical_topology, prune_categorical_partition_singletons, prune_singletons,
+    prune_singletons_with_multiplicity, validate_categorical_partition, AbsorbConfig,
+    BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights,
+    CategoricalCodeView, CategoricalPartition, CategoricalPartitionRegistry,
+    CategoricalPartitionSingletonResult, CategoricalTopologyRegistry, CategoricalTopologySource,
+    CertifiedBorrowedMap, CompactedCategoricalSource, ComponentInfo, EffectTerm, EncodedInteraction,
+    FeCertificate, FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig,
+    LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
     SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
@@ -88,3 +96,8 @@ pub use protocol::{
     OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
+pub use topology_dof::{
+    compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffect,
+    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofEffectSpec,
+    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
+};
