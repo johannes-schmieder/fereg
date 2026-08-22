@@ -136,8 +136,10 @@ pub struct PreparedCategoricalSource {
 
 /// One prepared single-source, intercept-only absorbed term.
 ///
-/// Codes remain owned by the deduplicated categorical-source table. This
-/// checkpoint does not construct a solver `FeDesign` or delete singletons.
+/// Codes remain owned by the deduplicated categorical-source table. The
+/// preparation boundary uses the initial codes for singleton pruning, then
+/// rebuilds this recipe against final codes after aligned compaction. This
+/// checkpoint does not construct a solver `FeDesign`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedOlsEffect {
     pub term_id: AbsorbTermId,

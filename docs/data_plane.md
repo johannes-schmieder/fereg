@@ -2,8 +2,11 @@
 
 `prepare_numeric_sample` is the first authoritative, Stata-independent numeric
 sample boundary. It accepts borrowed source views, an `if`/`in` candidate
-marker, and an explicit estimator/reference domain policy. It returns compact
-numeric columns and an original-length reason mask. It is not yet the complete
+marker, and an explicit estimator/reference domain policy. It returns the
+initial compact numeric columns and an original-length reason mask. The
+developer OLS boundary then performs supported FE singleton pruning, a second
+aligned compaction when rows are removed, and final categorical
+re-factorization. This is not yet the complete
 Phase 2 data plane: string factorization, cluster encoding, separation, and
 estimator SPI dispatch remain outside this slice. A bounded
 numeric fixed-effect source preparation path is included, but no `FeDesign` or
@@ -61,10 +64,11 @@ For numeric factor main effects, Stata remains authoritative for expanded
 levels, base selection, canonical coefficient names, and whole-column omission.
 Rust does not rediscover or change the base. Available candidate factor values
 must be nonnegative integers; masked or nonfinite values follow the ordinary
-missing-regressor precedence. Rust first compacts the numeric sample after
-availability checks and deterministically factorizes active values. If
-singletons are deleted, it performs one aligned final compaction and
-re-factorization. Signed zero is canonicalized only in factor codes;
+missing-regressor precedence. Rust first classifies and compacts the initial
+numeric sample after availability checks, then deterministically factorizes
+its active values for singleton pruning. If singleton rows are deleted, it
+performs a second aligned compaction and re-factorizes the surviving values.
+Signed zero is canonicalized only in factor codes;
 the retained raw numeric source remains bit-exact. Every Stata coefficient slot,
 including an omitted base, remains represented. A level removed by later
 outcome, source, or weight exclusions is retained as an all-zero recipe for
@@ -77,9 +81,10 @@ Categorical-by-continuous and continuous products, strings, fixed-effect
 interactions/slopes/saved outputs, cluster encoding, `FeDesign`, and model
 solving remain outside this checkpoint. A supported
 numeric fixed-effect source accepts any finite `f64`, including negative and
-fractional values, and is factorized only after the authoritative sample is
-compacted. Prepared absorbed-term recipes reference the shared encoded source;
-they contain no copied codes.
+fractional values. It is factorized after initial numeric compaction for
+pruning, then re-factorized after any singleton compaction. Prepared
+absorbed-term recipes reference the shared final encoded source; they contain
+no copied codes.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -124,8 +129,9 @@ the ordinary-source step, so its missing value is reason 3, never reason 5.
 An FE-only missing source is reason 5. This locks the externally documented
 reason ordering `1, 2, 3, 4, 5, 7` for the roles currently executable; cluster
 reason 6 will be inserted between FE and adjustment when cluster preparation
-is implemented. The sample is classified and compacted once; FE factorization
-does not trigger a second filter or compaction pass.
+is implemented. Initial numeric classification performs the first compaction.
+FE factorization itself does not filter rows, but singleton pruning may trigger
+one additional aligned compaction followed by final re-factorization.
 
 Candidate-excluded rows invoke no policy hooks. A policy error is fatal rather
 than converted into a drop. The policy has no default implementation: the
@@ -154,6 +160,14 @@ outer regressor table, each regressor column, and supplied weight or adjustment
 column. Reservation failures map to native `Allocation` and Stata return code
 909. Deterministic injection tests fail each reservation point, including
 zero-sized paths. No partially built sample escapes an error.
+
+Singleton pruning applies the same fail-closed rule to every observation- or
+level-scale workspace: the active mask, per-level weighted counts, flat
+membership offsets and observations, cursors, work queue, and dropped-row
+list. Each buffer is fallibly reserved before it is populated. Deterministic
+injection tests exercise every reservation point, including the
+`keepsingletons` active-mask copy; capacity overflow and allocation failure map
+to native `Allocation` and Stata return code 909.
 
 ## Model construction remains separate
 
