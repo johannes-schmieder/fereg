@@ -47,8 +47,9 @@ pub use ols::{
     DofMethod, DofReport, FiniteSolver, FitStatistics, LoadedNumericColumn, LoadedOlsInput,
     OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalSource,
     PreparedOlsCategoricalComponent, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
-    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect, PreparedOlsModel,
-    PreparedOlsSingletons, RankSolve, RegressorStatus, VceKind, VceReport,
+    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect,
+    PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology, PreparedOlsFeTopologySource,
+    PreparedOlsModel, PreparedOlsSingletons, RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

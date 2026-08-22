@@ -224,6 +224,31 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8"))
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 
+    def test_prepared_fe_topology_is_deduplicated_fallible_and_not_a_solver(self):
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        design = (ROOT / "crates/stfixest-core/src/fe/design.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("PreparedOlsFeTopology", core)
+        self.assertIn("topology_source_index", core)
+        self.assertIn("build_prepared_fe_topology", core)
+        self.assertIn("try_reserve_exact", core)
+        self.assertIn("LevelIndex::from_codes", core)
+        self.assertIn("from_codes_with_reservation", design)
+        self.assertIn("checked_members", design)
+        self.assertIn("stfixest.prepare_ols.n_fe_topology_sources", plugin)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assertNotIn("absorb_fixed_effects(", plugin)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

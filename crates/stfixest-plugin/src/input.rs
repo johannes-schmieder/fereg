@@ -63,6 +63,9 @@ pub fn prepare_ols_test(
             "stfixest.prepare_ols.n_categorical_sources={}\n",
             "stfixest.prepare_ols.n_absorb_terms={}\n",
             "stfixest.prepare_ols.n_fixed_effect_sources={}\n",
+            "stfixest.prepare_ols.n_fe_design_effects={}\n",
+            "stfixest.prepare_ols.n_fe_topology_sources={}\n",
+            "stfixest.prepare_ols.n_fe_levels={}\n",
             "stfixest.prepare_ols.n_singletons={}\n",
             "stfixest.prepare_ols.keep_singletons={}\n"
         ),
@@ -72,13 +75,11 @@ pub fn prepare_ols_test(
         prepared.model.columns.len(),
         prepared.model.coefficients.len(),
         prepared.categorical_sources.len(),
-        prepared.fixed_effects.len(),
-        prepared
-            .fixed_effects
-            .iter()
-            .map(|effect| effect.categorical_source_index)
-            .collect::<BTreeSet<_>>()
-            .len(),
+        prepared.fe_topology.effects().len(),
+        prepared.fe_topology.sources().len(),
+        prepared.fe_topology.effects().len(),
+        prepared.fe_topology.sources().len(),
+        prepared.fe_topology.total_levels(),
         prepared.singletons.num_singletons,
         usize::from(prepared.singletons.kept_by_request),
     ));
@@ -1468,6 +1469,9 @@ mod tests {
         let displayed = output.displayed();
         assert!(displayed.contains("stfixest.prepare_ols.n_absorb_terms=3"));
         assert!(displayed.contains("stfixest.prepare_ols.n_fixed_effect_sources=2"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_design_effects=3"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_topology_sources=2"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_levels=2"));
         assert!(displayed.contains("stfixest.prepare_ols.n_retained=1"));
     }
 
@@ -1486,6 +1490,9 @@ mod tests {
         }
         let displayed = output.displayed();
         assert!(displayed.contains("stfixest.prepare_ols.n_retained=4"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_design_effects=3"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_topology_sources=2"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_fe_levels=4"));
         assert!(displayed.contains("stfixest.prepare_ols.n_singletons=5"));
         assert!(displayed.contains("stfixest.prepare_ols.keep_singletons=0"));
 

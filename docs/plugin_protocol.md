@@ -78,7 +78,7 @@ values may be any finite `f64`, including negative and fractional values;
 ordinary factor-variable sources retain the finite nonnegative-integer rule.
 Categorical-by-continuous and continuous products, time-series terms, string
 sources, absorbed interactions, absorbed slopes, saved-FE outputs, clusters,
-`FeDesign`, and solving remain unsupported. The action does perform the
+solver `FeDesign`, and solving remain unsupported. The action does perform the
 reference-compatible singleton fixed point for its supported absorbed terms.
 The strict action-level `keep_singletons` flag defaults to false in the ado
 helper and is not model-wire metadata. Pruning runs only after reasons 1--5 and
@@ -98,8 +98,13 @@ recipes over those codes; no observation-scale interaction column or tuple
 table is allocated. A level or tuple that existed in the candidate expansion
 but disappears after native sample preparation becomes an explicit all-zero
 recipe, not an error. Prepared fixed-effect recipes retain only the term id,
-label, shared source id, and index into the deduplicated categorical-source
-table.
+label, shared source id, and indices into the deduplicated categorical-source
+and prepared-topology tables. The action builds one fallible compressed
+membership index per unique final FE source, validates exact code/membership
+alignment and the singleton policy, and emits only small topology counts. It
+does not copy observation-scale codes, construct a solver `FeDesign`, or run a
+numerical certificate. Empty final diagnostic samples retain zero-level FE
+topology sources and remain valid preparation results.
 
 Model-wire 2.1 adds `absorb_term_matrix`, `absorb_term_count`,
 `absorb_component_matrix`, `absorb_component_count`, `absorb_labels`, and

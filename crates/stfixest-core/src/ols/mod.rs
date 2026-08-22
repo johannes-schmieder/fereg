@@ -12,7 +12,8 @@ pub use prepared::{
     prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
     OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsEffect, PreparedOlsModel, PreparedOlsSingletons,
+    PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
+    PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
 pub use vce::{ClusterSubsetReport, VceKind, VceReport};

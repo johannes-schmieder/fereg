@@ -8,7 +8,7 @@ it proves pinned `reghdfe` behavior rather than StFixest parity.
 
 | Surface | OLS-v1 reference cases | StFixest state |
 |---|---|---|
-| No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Developer boundary prepares repeated single-source numeric FE recipes and their singleton fixed point; no `FeDesign`, solve, or public estimator |
+| No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Developer boundary prepares repeated single-source numeric FE recipes, their singleton fixed point, and a deduplicated structural topology; no solver `FeDesign`, solve, or public estimator |
 | FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | Disabled pending FE certificates |
 | Ordinary regressors | continuous, factors, factor interactions, lag/lead/difference operators across panel calendar gaps, no-regressor, FE-collinear column | Parser metadata only; estimator disabled |
 | Samples/singletons | missing outcome/regressor/FE/cluster, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | Native precedence is composed through reason 5, supported numeric FE cascades assign reason 8 and compact all aligned sources, and `keepsingletons` is wired; clusters and estimator-level insufficient-sample errors remain pending |

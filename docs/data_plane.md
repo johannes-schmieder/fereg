@@ -6,11 +6,12 @@ marker, and an explicit estimator/reference domain policy. It returns the
 initial compact numeric columns and an original-length reason mask. The
 developer OLS boundary then performs supported FE singleton pruning, a second
 aligned compaction when rows are removed, and final categorical
-re-factorization. This is not yet the complete
+re-factorization and constructs a preparation-only structural FE topology. This
+is not yet the complete
 Phase 2 data plane: string factorization, cluster encoding, separation, and
 estimator SPI dispatch remain outside this slice. A bounded
-numeric fixed-effect source preparation path is included, but no `FeDesign` or
-solver state is constructed.
+numeric fixed-effect source preparation path is included, but no solver
+`FeDesign` or solver state is constructed.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -78,13 +79,23 @@ compact source codes. They do not allocate an observation-scale interaction
 column or tuple table. If any requested component level vanishes, or if the
 requested tuple is absent, the interaction recipe is identically zero.
 Categorical-by-continuous and continuous products, strings, fixed-effect
-interactions/slopes/saved outputs, cluster encoding, `FeDesign`, and model
-solving remain outside this checkpoint. A supported
+interactions/slopes/saved outputs, cluster encoding, solver `FeDesign`, and
+model solving remain outside this checkpoint. A supported
 numeric fixed-effect source accepts any finite `f64`, including negative and
 fractional values. It is factorized after initial numeric compaction for
 pruning, then re-factorized after any singleton compaction. Prepared
 absorbed-term recipes reference the shared final encoded source; they contain
-no copied codes.
+no copied codes. After the final singleton compaction, Rust constructs a
+structural prepared FE topology in wire-term order. Repeated absorbed terms and
+ordinary-plus-absorbed uses of one source share a single topology-source index.
+Each unique FE source has one fallibly built compressed membership index over
+the final codes; the topology does not own another code or level vector. Its
+validator proves row alignment, contiguous observed final levels, exact
+membership, term/source identity, checked total-level counts, and either the
+post-pruning singleton fixed point or the explicit `keepsingletons` bypass.
+An empty final sample preserves its absorbed-term recipes with zero-level empty
+membership sources; a later estimator gate, not preparation, decides whether
+the sample is sufficient.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -169,10 +180,19 @@ injection tests exercise every reservation point, including the
 `keepsingletons` active-mask copy; capacity overflow and allocation failure map
 to native `Allocation` and Stata return code 909.
 
+Prepared FE membership construction also reserves its per-level counts,
+offsets, cursors, and observation permutation fallibly and checks every count,
+prefix sum, and cursor. The topology source/effect tables are reserved before
+population and have explicit capacity guards. Deterministic injection tests
+exercise every reservation and capacity boundary. Repeated FE terms share one
+membership index, so this checkpoint adds no observation-scale code copy.
+
 ## Model construction remains separate
 
 The developer boundary now binds numeric factor main-effect,
 all-categorical-interaction, and simple numeric fixed-effect recipes to compact
-shared source codes, but it does not invoke the estimator or the generic
-model-matrix builder. Mixed interactions, general FE/cluster construction, and
+shared source codes and validates their structural prepared topology, but it
+does not construct the solver `FeDesign`, invoke absorption, invoke the
+estimator, or use the generic model-matrix builder. Mixed interactions, general
+FE/cluster construction, solver allocation/certification hardening, and
 production one-call result posting require later independently tested work.

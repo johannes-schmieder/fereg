@@ -25,8 +25,11 @@ singleton compaction. Stata's
 Rust neither selects a base nor infers omission from spelling. After
 authoritative numeric sample preparation, Rust assigns deterministic compact
 codes to active categorical values. Ordinary categorical terms and supported
-absorbed terms reference that deduplicated code table. No observation-scale
-interaction column, `FeDesign`, solver state, or estimator dispatch is created.
+absorbed terms reference that deduplicated code table. A preparation-only FE
+topology adds one compressed membership index per unique absorbed source after
+final singleton compaction, without copying codes. No observation-scale
+interaction column, solver `FeDesign`, solver state, or estimator dispatch is
+created.
 For supported absorbed terms, the developer action runs native singleton
 deletion to a fixed point after the initial sample is prepared. It then
 compacts every aligned source and re-factorizes final categorical sources;
