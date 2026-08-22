@@ -16,6 +16,11 @@ static ST_int plugin_nvars = 6;
 static ST_int output_store_calls = 0;
 static ST_int fail_output_store_at = 0;
 static ST_int last_store_was_complete = 0;
+static const char *prepared_store_name_pointers[11];
+static const char *result_matrix_names[11] = {
+    "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RSOLVER",
+    "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RREC"
+};
 
 static ST_double result_b[1][2];
 static ST_double result_v[2][2];
@@ -28,6 +33,15 @@ static ST_double result_cluster[1][4];
 static ST_double result_subset[1][4];
 static ST_double result_certificate[32][2];
 static ST_double result_receipt[1][16];
+
+static ST_int result_matrix_name_index(const char *name)
+{
+    ST_int index;
+    for (index = 0; index < 11; ++index) {
+        if (strcmp(name, result_matrix_names[index]) == 0) return index;
+    }
+    return -1;
+}
 
 static ST_int mock_poll(void) { return 0; }
 static ST_int mock_nobs(void) { return 5; }
@@ -271,11 +285,18 @@ static ST_int mock_mat_store(
     ST_double value
 )
 {
+    ST_int name_index = result_matrix_name_index(name);
     ST_int rows = 0;
     ST_int columns = 0;
     ST_double *matrix = mock_result_matrix(name, &rows, &columns);
-    if (matrix == NULL || row < 1 || row > rows || column < 1 || column > columns) {
+    if (name_index < 0 || matrix == NULL || row < 1 || row > rows ||
+        column < 1 || column > columns) {
         return 111;
+    }
+    if (prepared_store_name_pointers[name_index] == NULL) {
+        prepared_store_name_pointers[name_index] = name;
+    } else if (prepared_store_name_pointers[name_index] != name) {
+        return 913;
     }
     output_store_calls += 1;
     last_store_was_complete = 0;
@@ -930,6 +951,7 @@ static void reset_estimate_outputs(void)
     output_store_calls = 0;
     fail_output_store_at = 0;
     last_store_was_complete = 0;
+    memset(prepared_store_name_pointers, 0, sizeof(prepared_store_name_pointers));
     plugin_nvars = 6;
     for (row = 0; row < 5; ++row) {
         plugin_data[0][row] = 1.0;
@@ -1008,6 +1030,7 @@ static ST_int call_estimate_ols_test(stata_call_function call)
 static int check_estimate_ols_atomic_store(stata_call_function call)
 {
     ST_int ordinal;
+    ST_int name_index;
     reset_estimate_outputs();
     clear_output();
     if (call_estimate_ols_test(call) != 0) return 1;
@@ -1016,6 +1039,9 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 2;
     }
     if (output_store_calls != 213) return 3;
+    for (name_index = 0; name_index < 11; ++name_index) {
+        if (prepared_store_name_pointers[name_index] == NULL) return 8;
+    }
     if (!isfinite(result_b[0][0]) || !isfinite(result_b[0][1]) ||
         !isfinite(result_v[0][0]) || !isfinite(result_v[1][1])) {
         return 4;

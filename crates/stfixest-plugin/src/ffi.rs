@@ -1,6 +1,6 @@
 use crate::dispatch::dispatch_args;
 use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS_TEST};
-use crate::input::{prepare_ols_test, SpiApi, ACTION_PREPARE_OLS_TEST};
+use crate::input::{prepare_ols_test, PreparedMatrixStoreName, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
 use std::any::Any;
 use std::ffi::{CStr, CString};
@@ -109,10 +109,19 @@ unsafe fn stfixest_spi_is_main_thread() -> c_int {
 
 struct SpiSink;
 
+const NUMERIC_STORE_ERROR: &str = "Stata SPI numeric store failed during atomic result commit";
+const MATRIX_STORE_ERROR: &str = "Stata SPI matrix store failed during atomic result commit";
+const NUMERIC_STORE_ERROR_REPORT: &CStr =
+    c"stfixest: internal: Stata SPI numeric store failed during atomic result commit\n";
+const MATRIX_STORE_ERROR_REPORT: &CStr =
+    c"stfixest: internal: Stata SPI matrix store failed during atomic result commit\n";
+
 /// A token proving that all SPI calls remain on Stata's bound calling thread.
 /// `Rc` makes the session neither `Send` nor `Sync` without any unsafe marker impl.
 struct SpiSession {
     _not_send_or_sync: PhantomData<Rc<()>>,
+    numeric_store_error: Option<StFixestError>,
+    matrix_store_error: Option<StFixestError>,
 }
 
 impl SpiSession {
@@ -126,6 +135,8 @@ impl SpiSession {
         }
         Ok(Self {
             _not_send_or_sync: PhantomData,
+            numeric_store_error: Some(StFixestError::new(ErrorCode::Internal, NUMERIC_STORE_ERROR)),
+            matrix_store_error: Some(StFixestError::new(ErrorCode::Internal, MATRIX_STORE_ERROR)),
         })
     }
 
@@ -160,6 +171,19 @@ impl SpiSession {
 
     fn matrix_name(name: &str) -> CString {
         sanitize_c_string(name)
+    }
+
+    fn store_rc(
+        rc: c_int,
+        prepared_error: &mut Option<StFixestError>,
+    ) -> Result<(), StFixestError> {
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(prepared_error
+                .take()
+                .expect("atomic store error was prepared before commit"))
+        }
     }
 }
 
@@ -263,29 +287,34 @@ impl SpiApi for SpiSession {
         observation: usize,
         value: f64,
     ) -> Result<(), StFixestError> {
-        let variable = Self::position(variable, "output variable position")?;
-        let observation = Self::observation(observation)?;
-        // SAFETY: indices are checked and the session remains on Stata's thread.
-        Self::spi_rc(
+        // The action preflight proved both coordinates representable before the
+        // first store. Keep the commit phase free of fallible conversions.
+        let variable = variable as c_int;
+        let observation = observation as c_int;
+        // SAFETY: indices were preflighted and the session remains on Stata's thread.
+        Self::store_rc(
             unsafe { stfixest_spi_vstore(variable, observation, value) },
-            "numeric store",
+            &mut self.numeric_store_error,
         )
     }
 
     fn store_matrix(
         &mut self,
-        name: &str,
+        name: &PreparedMatrixStoreName,
         row: usize,
         column: usize,
         value: f64,
     ) -> Result<(), StFixestError> {
-        let name = Self::matrix_name(name);
-        let row = Self::observation(row)?;
-        let column = Self::observation(column)?;
-        // SAFETY: name/coordinates are live and checked; the session is confined.
-        Self::spi_rc(
+        debug_assert!(row >= 1 && row <= name.rows());
+        debug_assert!(column >= 1 && column <= name.columns());
+        // The prepared handle proves matrix bounds and SPI representability.
+        let row = row as c_int;
+        let column = column as c_int;
+        let name = name.as_c_str();
+        // SAFETY: name/coordinates were preflighted; the session is confined.
+        Self::store_rc(
             unsafe { stfixest_spi_mat_store(name.as_ptr(), row, column, value) },
-            "matrix store",
+            &mut self.matrix_store_error,
         )
     }
 
@@ -415,8 +444,31 @@ unsafe fn read_arguments(
 }
 
 fn report_error(error: &StFixestError) {
+    if let Some(message) = prepared_store_error_report(error) {
+        // Store failures occur after logical commit has begun. Their complete
+        // C reports are prepared statically, so unwinding the failed commit
+        // does not allocate or attempt another logical output store.
+        // SAFETY: message is static, NUL-terminated, and the call is on Stata's
+        // bound thread at the ABI boundary.
+        unsafe {
+            let _ = stfixest_spi_error(message.as_ptr());
+        }
+        return;
+    }
     let sink = SpiSink;
     sink.error(&format!("stfixest: {error}\n"));
+}
+
+fn prepared_store_error_report(error: &StFixestError) -> Option<&'static CStr> {
+    if error.code == ErrorCode::Internal {
+        match error.message.as_str() {
+            NUMERIC_STORE_ERROR => Some(NUMERIC_STORE_ERROR_REPORT),
+            MATRIX_STORE_ERROR => Some(MATRIX_STORE_ERROR_REPORT),
+            _ => None,
+        }
+    } else {
+        None
+    }
 }
 
 fn sanitize_c_string(message: &str) -> CString {
@@ -460,5 +512,21 @@ mod tests {
         // SAFETY: deliberately invalid input is contained and validated by the ABI.
         let code = unsafe { stfixest_dispatch(1, std::ptr::null()) };
         assert_eq!(code, ErrorCode::Syntax.stata_return_code());
+    }
+
+    #[test]
+    fn atomic_store_errors_have_static_preformatted_reports() {
+        for (message, expected) in [
+            (NUMERIC_STORE_ERROR, NUMERIC_STORE_ERROR_REPORT),
+            (MATRIX_STORE_ERROR, MATRIX_STORE_ERROR_REPORT),
+        ] {
+            let error = StFixestError::new(ErrorCode::Internal, message);
+            assert_eq!(
+                prepared_store_error_report(&error).expect("prepared report"),
+                expected,
+            );
+        }
+        let unrelated = StFixestError::new(ErrorCode::Internal, "unrelated");
+        assert!(prepared_store_error_report(&unrelated).is_none());
     }
 }

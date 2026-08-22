@@ -1,4 +1,6 @@
 use std::collections::BTreeSet;
+use std::ffi::{CStr, CString};
+use std::os::raw::c_int;
 
 use crate::output::OutputSink;
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
@@ -23,6 +25,76 @@ const PREPARED_MAP_CHECK_CONFIG: MapConfig = MapConfig {
     symmetric: true,
 };
 
+/// A fallibly prepared, NUL-terminated matrix name and representable layout
+/// that can be borrowed by the allocation-free SPI output-store path.
+#[derive(Debug)]
+pub struct PreparedMatrixStoreName {
+    name: CString,
+    rows: usize,
+    columns: usize,
+}
+
+impl PreparedMatrixStoreName {
+    pub fn try_new(name: &str, rows: usize, columns: usize) -> Result<Self> {
+        if rows == 0 || columns == 0 {
+            return Err(invalid(
+                "prepared matrix-store dimensions must both be positive",
+            ));
+        }
+        let spi_max = usize::try_from(c_int::MAX)
+            .map_err(|_| invalid("Stata SPI integer range is not representable"))?;
+        if rows > spi_max || columns > spi_max {
+            return Err(invalid(
+                "prepared matrix-store dimensions exceed the Stata SPI integer range",
+            ));
+        }
+        rows.checked_mul(columns)
+            .ok_or_else(|| allocation("prepared matrix-store element count overflows"))?;
+        let required = name
+            .len()
+            .checked_add(1)
+            .ok_or_else(|| allocation("matrix-store name size overflows"))?;
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(required)
+            .map_err(|_| allocation("unable to reserve a matrix-store C name"))?;
+        if bytes.capacity() < required {
+            return Err(allocation("matrix-store C-name reservation was undersized"));
+        }
+        bytes.extend_from_slice(name.as_bytes());
+        bytes.push(0);
+        let name = CString::from_vec_with_nul(bytes)
+            .map_err(|_| invalid("matrix-store name contains an interior NUL byte"))?;
+        Ok(Self {
+            name,
+            rows,
+            columns,
+        })
+    }
+
+    #[must_use]
+    pub fn as_c_str(&self) -> &CStr {
+        self.name.as_c_str()
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self.name
+            .to_str()
+            .expect("prepared matrix name was constructed from UTF-8")
+    }
+
+    #[must_use]
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    #[must_use]
+    pub fn columns(&self) -> usize {
+        self.columns
+    }
+}
+
 /// Safe abstraction over a Stata-thread-confined SPI session.
 pub trait SpiApi {
     fn nobs(&mut self) -> Result<usize>;
@@ -32,7 +104,13 @@ pub trait SpiApi {
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;
-    fn store_matrix(&mut self, name: &str, row: usize, column: usize, value: f64) -> Result<()>;
+    fn store_matrix(
+        &mut self,
+        name: &PreparedMatrixStoreName,
+        row: usize,
+        column: usize,
+        value: f64,
+    ) -> Result<()>;
     fn check_interrupted(&mut self) -> Result<()>;
 }
 
@@ -835,6 +913,26 @@ mod tests {
     };
     use stfixest_core::protocol::{ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION};
 
+    #[test]
+    fn matrix_store_handle_validates_name_and_layout_before_commit() {
+        let prepared = PreparedMatrixStoreName::try_new("R_V", 3, 4).expect("valid handle");
+        assert_eq!(prepared.as_str(), "R_V");
+        assert_eq!(prepared.as_c_str().to_bytes_with_nul(), b"R_V\0");
+        assert_eq!((prepared.rows(), prepared.columns()), (3, 4));
+
+        let interior_nul = PreparedMatrixStoreName::try_new("R\0V", 1, 1)
+            .expect_err("interior NUL must be rejected");
+        assert_eq!(interior_nul.code, ErrorCode::InvalidArgument);
+        let zero_layout = PreparedMatrixStoreName::try_new("RV", 0, 1)
+            .expect_err("zero-size layout must be rejected");
+        assert_eq!(zero_layout.code, ErrorCode::InvalidArgument);
+        if let Some(too_large) = (c_int::MAX as usize).checked_add(1) {
+            let oversized = PreparedMatrixStoreName::try_new("RV", too_large, 1)
+                .expect_err("SPI-unrepresentable layout must be rejected");
+            assert_eq!(oversized.code, ErrorCode::InvalidArgument);
+        }
+    }
+
     #[derive(Debug)]
     struct FakeSpi {
         nobs: usize,
@@ -900,11 +998,12 @@ mod tests {
 
         fn store_matrix(
             &mut self,
-            name: &str,
+            name: &PreparedMatrixStoreName,
             row: usize,
             column: usize,
             value: f64,
         ) -> Result<()> {
+            let name = name.as_str();
             let matrix = self
                 .matrices
                 .get_mut(name)
