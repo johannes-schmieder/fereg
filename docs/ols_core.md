@@ -27,6 +27,28 @@ No unpivoted normal-equation inverse is used. The identified bread is recovered
 from the accepted Cholesky or QR factor and transformed back to the original
 column scale.
 
+## Strict borrowed-intercept MAP checkpoint
+
+The separately gated `absorb_borrowed_intercept_map_certified` path is the only
+current FE solver that accepts the prepared-data borrowed intercept view. It is
+deliberately narrower than the generic pipeline above: intercept-only effects,
+a nonempty dense RHS matrix, and unit or supplied finite positive objective
+weights. It never constructs the owned `FeDesign`, invokes `within`, or copies
+observation-scale codes and membership.
+
+The function consumes its matrix. It validates dimensions, values, weights,
+and configuration and fallibly reserves every O(K) projection/norm/certificate
+buffer before the first mutation. Weighted group means use scaled compensated
+accumulation. The final gate recomputes each normalized weighted FE projection
+against the maximum of the pre-absorption and residual RHS norms. No recurrence
+or change-in-iterate test can substitute for this certificate. An exhausted
+budget or failed/nonfinite certificate returns an error; every successful
+result has `SolveReport::certified() == true`.
+
+This path is core-only. The developer plugin preparation action and public
+estimators do not invoke it, and the older generic MAP/LSMR/OLS stack has not
+thereby become eligible for Stata result posting.
+
 ## Covariance estimators
 
 The current core supports:
@@ -52,7 +74,7 @@ the flag and must not silently present the approximation as exact parity.
 
 ## Current boundary
 
-This checkpoint is a scientific-core implementation, not a claim that
+These checkpoints are scientific-core implementations, not a claim that
 `stfeols` is production-ready. Remaining work includes FE coefficient recovery,
 prediction, Stata data ingestion and result posting, weight-type parity,
 reference DoF policy, licensed-Stata differential tests, and large-scale speed

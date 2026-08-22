@@ -32,4 +32,19 @@ borrow existing storage and do not allocate.
 This proves fallible allocation behavior for this bounded numeric output only.
 It does not certify the existing Phase 2 memory estimate, observed peak RSS,
 SPI-loading buffers, factor/interaction storage, FE or cluster encodings, or any
-solver/estimator workspace. Those remain later memory gates.
+general solver/estimator workspace. Those remain later memory gates.
+
+## Borrowed intercept MAP allocation discipline
+
+The core-only strict borrowed MAP path adds no observation-scale FE storage and
+does not allocate an unweighted pseudo-column. It consumes the caller's N x K
+RHS matrix and borrows prepared codes and level membership. Its six O(K)
+buffers hold reference norms, residual norms, RHS scales, value scales,
+compensated group sums, and corrections. Every buffer uses
+`try_reserve_exact`, checks capacity before resize, and is allocated before the
+first numerical mutation. Injected failures and undersized reservations cover
+all six points and map to `ErrorCode::Allocation`/Stata 909. Projection and
+final certification allocate nothing.
+
+This does not yet cover fallible construction of the estimation RHS matrix,
+general slope-capable solvers, OLS rank/VCE workspaces, or SPI result buffers.

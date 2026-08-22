@@ -25,3 +25,10 @@ exact commit in `references.lock.toml`. Numerical convergence is not accepted
 from the recurrence alone: `fe/certificate.rs` recomputes `D'Wr` in the native
 StFixest representation before an estimate can proceed. No upstream source is
 copied or modified.
+
+## Native borrowed-intercept MAP path
+
+`crates/stfixest-core/src/fe/borrowed_map.rs` is native StFixest code. It
+operates directly on the prepared-data borrowed intercept design and does not
+call or adapt `within`, PyFixest, `reghdfe`, or another numerical solver. The
+independent explicit-dummy test oracle is used only in `stfixest-testkit`.

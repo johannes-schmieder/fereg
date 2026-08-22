@@ -13,7 +13,8 @@ estimator SPI dispatch remain outside this slice. A bounded
 numeric fixed-effect source preparation path is included, but no solver
 `FeDesign` or solver state is constructed. A narrow borrowed intercept-only
 design view can now reference the final prepared codes and compressed
-membership without copying them, but no numerical solver consumes that view.
+membership without copying them. A separate core-only strict MAP path can
+consume this view, but the developer plugin action does not invoke it.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -109,8 +110,30 @@ pointer checks, so repeated absorbed terms share both pointers without
 repeating observation-scale validation. Its intercept-only type cannot
 represent slopes, its coefficient-slot total uses checked arithmetic, and it
 allocates no observation-scale storage.
-This adapter does not call MAP, LSMR, the generic OLS core, or any plugin
-estimator action.
+The adapter itself does not call MAP, LSMR, the generic OLS core, or any plugin
+estimator action. The separate `absorb_borrowed_intercept_map_certified` entry
+point consumes its dense RHS matrix and uses only the borrowed intercept view.
+It does not construct `EffectTerm`/`FeDesign`, call `within`, or copy FE codes
+or membership. Unit weights remain structural rather than an allocated vector
+of ones. Supplied weights are validated as finite and positive and normalized
+by a common maximum; a positive weight whose normalized representation
+underflows to zero fails closed.
+
+The strict MAP path rejects empty observation or RHS axes and nonfinite values
+before solving. All O(K) norm, scale, compensated-sum, and certificate buffers
+are fallibly reserved before the first projection; no allocation occurs during
+the iteration or final certificate. It consumes the RHS matrix, so a failure
+cannot expose partially residualized caller state. A successful return always
+has a passing fixed-effect projection certificate recomputed from the returned
+residuals using pre-absorption RHS norms. Exhausting the iteration budget or
+failing that certificate is fatal. Independent explicit-dummy tests cover
+multiple RHSs, repeated sources, disconnected components, unit/analytic/
+probability/frequency objectives, random designs, row permutations, and common
+weight scaling.
+
+This remains a core-only numerical checkpoint. The plugin does not construct
+an estimation RHS, invoke this path, write numerical results, or enable an
+estimator.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
