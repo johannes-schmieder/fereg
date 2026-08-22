@@ -323,6 +323,7 @@ static int check_prepare_ols_test(stata_call_function call)
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=4",
         "output_retained=5",
         "output_drop_reason=6"
@@ -398,6 +399,7 @@ static int check_prepare_ols_factor(stata_call_function call)
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=4",
         "output_retained=5",
         "output_drop_reason=6"
@@ -468,6 +470,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
         "binding_matrix=BI",
         "binding_count=4",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=5",
         "output_retained=6",
         "output_drop_reason=7"
@@ -566,6 +569,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
         "binding_matrix=BW",
         "binding_count=4",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=5",
         "output_retained=6",
         "output_drop_reason=7"
@@ -657,6 +661,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
         "binding_matrix=BF",
         "binding_count=4",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=5",
         "output_retained=6",
         "output_drop_reason=7"
@@ -743,6 +748,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
         "binding_matrix=BP",
         "binding_count=4",
         "include_intercept=1",
+        "keep_singletons=0",
         "output_original_observation=5",
         "output_retained=6",
         "output_drop_reason=7"

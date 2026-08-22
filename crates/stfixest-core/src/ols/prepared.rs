@@ -3,10 +3,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::data::{
     prepare_numeric_sample_with_source_uses, AdjustmentInput, DomainDecision, NumericColumnView,
     NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedNumericSample,
-    WeightInput, WeightKind,
+    PreparedWeights, WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
+use crate::fe::{prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult};
 use crate::metadata::{
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState,
     MetadataFlag, RawTermKind, SourceId, TimeSeriesState,
@@ -39,6 +40,7 @@ pub struct OlsRequestV1 {
     pub absorbed_terms: Vec<AbsorbedTerm>,
     pub bindings: Vec<OlsInputBinding>,
     pub include_intercept: bool,
+    pub keep_singletons: bool,
 }
 
 /// Raw numeric source read by the plugin, retaining Stata missing metadata.
@@ -144,12 +146,20 @@ pub struct PreparedOlsEffect {
     pub categorical_source_index: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsSingletons {
+    pub kept_by_request: bool,
+    pub num_singletons: usize,
+    pub cascade_events: usize,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct PreparedOlsData {
     pub model: PreparedOlsModel,
     pub sample: PreparedNumericSample,
     pub categorical_sources: Vec<PreparedCategoricalSource>,
     pub fixed_effects: Vec<PreparedOlsEffect>,
+    pub singletons: PreparedOlsSingletons,
 }
 
 impl PreparedOlsData {
@@ -414,6 +424,21 @@ pub fn prepare_ols_data(
     let source_uses = source_uses(request)?;
     let sample =
         prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?;
+    let pruning_categorical_sources = factorize_categorical_sources(request, &sample)?;
+    let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources)?;
+    let singleton_result = prune_prepared_singletons(
+        request,
+        &sample,
+        &pruning_categorical_sources,
+        &pruning_fixed_effects,
+    )?;
+    let num_singletons = singleton_result.dropped_observations.len();
+    let cascade_events = singleton_result.cascade_events;
+    let sample =
+        sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
+
+    // Re-factorize on the final compact sample. This removes empty levels left
+    // by singleton deletion and gives ordinary factor recipes their final codes.
     let categorical_sources = factorize_categorical_sources(request, &sample)?;
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
     let fixed_effects = prepare_fixed_effects(request, &categorical_sources)?;
@@ -422,7 +447,60 @@ pub fn prepare_ols_data(
         sample,
         categorical_sources,
         fixed_effects,
+        singletons: PreparedOlsSingletons {
+            kept_by_request: request.keep_singletons,
+            num_singletons,
+            cascade_events,
+        },
     })
+}
+
+fn prune_prepared_singletons(
+    request: &OlsRequestV1,
+    sample: &PreparedNumericSample,
+    categorical_sources: &[PreparedCategoricalSource],
+    fixed_effects: &[PreparedOlsEffect],
+) -> Result<SingletonResult> {
+    let mut codes_by_effect = Vec::new();
+    codes_by_effect
+        .try_reserve_exact(fixed_effects.len())
+        .map_err(|_| allocation("unable to reserve singleton fixed-effect code table"))?;
+    let mut level_counts = Vec::new();
+    level_counts
+        .try_reserve_exact(fixed_effects.len())
+        .map_err(|_| allocation("unable to reserve singleton level-count table"))?;
+    for effect in fixed_effects {
+        let source = categorical_sources
+            .get(effect.categorical_source_index)
+            .ok_or_else(|| invalid("singleton fixed-effect source index is out of range"))?;
+        if source.encoded.codes.len() != sample.n_active() {
+            return Err(invalid(
+                "singleton fixed-effect source is not aligned with the numeric sample",
+            ));
+        }
+        codes_by_effect.push(source.encoded.codes.as_slice());
+        level_counts.push(source.encoded.n_levels());
+    }
+
+    let mut initially_active = Vec::new();
+    initially_active
+        .try_reserve_exact(sample.n_active())
+        .map_err(|_| allocation("unable to reserve singleton active mask"))?;
+    initially_active.resize(sample.n_active(), true);
+    let multiplicity = match &sample.weights {
+        PreparedWeights::Provided {
+            kind: WeightKind::Frequency,
+            values,
+        } => SingletonMultiplicity::Frequency(values),
+        PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
+    };
+    prune_singletons_with_multiplicity(
+        &codes_by_effect,
+        &level_counts,
+        &initially_active,
+        multiplicity,
+        request.keep_singletons,
+    )
 }
 
 fn ordinary_categorical_sources(model: &CompiledTermGraph) -> BTreeSet<SourceId> {
@@ -961,6 +1039,7 @@ mod tests {
             absorbed_terms: Vec::new(),
             bindings,
             include_intercept,
+            keep_singletons: false,
         }
     }
 
@@ -1053,6 +1132,7 @@ mod tests {
                 },
             ],
             include_intercept: true,
+            keep_singletons: false,
         }
     }
 
@@ -1172,6 +1252,7 @@ mod tests {
             absorbed_terms: Vec::new(),
             bindings,
             include_intercept: true,
+            keep_singletons: false,
         }
     }
 
@@ -1959,6 +2040,7 @@ mod tests {
                 saved_name: String::new(),
             },
         ];
+        request.keep_singletons = true;
         let loaded = LoadedOlsInput {
             candidate: vec![false, true, true, true, true, true],
             outcome: column(&[0.0, f64::NAN, 2.0, 3.0, 4.0, 5.0], &[false; 6]),
@@ -1999,6 +2081,273 @@ mod tests {
             prepared.categorical_sources[1].encoded.levels,
             vec![-3.25, 2.5]
         );
+    }
+
+    fn two_way_singleton_request(keep_singletons: bool) -> OlsRequestV1 {
+        let mut request = request(3, true);
+        request.absorbed_terms = [(1, 2, "worker"), (2, 3, "firm")]
+            .into_iter()
+            .map(|(term, source, label)| AbsorbedTerm {
+                id: AbsorbTermId::new(term).expect("absorbed term"),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(source).expect("FE source")],
+                slope_sources: Vec::new(),
+                label: label.to_owned(),
+                saved_name: String::new(),
+            })
+            .collect();
+        request.keep_singletons = keep_singletons;
+        request
+    }
+
+    fn two_way_singleton_input() -> LoadedOlsInput {
+        LoadedOlsInput {
+            candidate: vec![true; 9],
+            outcome: column(&[1.2, 1.8, 2.4, 3.1, 3.7, 4.0, 4.5, 5.0, 5.6], &[false; 9]),
+            numeric_sources: vec![
+                (
+                    SourceId::new(1).expect("x"),
+                    column(
+                        &[-1.0, -0.5, 0.0, 0.5, 1.0, -0.8, -0.2, 0.3, 0.9],
+                        &[false; 9],
+                    ),
+                ),
+                (
+                    SourceId::new(2).expect("worker"),
+                    column(&[1.0, 1.0, 2.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0], &[false; 9]),
+                ),
+                (
+                    SourceId::new(3).expect("firm"),
+                    column(&[1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 5.0, 4.0, 5.0], &[false; 9]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        }
+    }
+
+    #[test]
+    fn two_way_singletons_match_the_sealed_reference_and_compact_every_source() {
+        let prepared = prepare_ols_data(
+            &two_way_singleton_request(false),
+            &two_way_singleton_input(),
+        )
+        .expect("singleton preparation");
+        assert_eq!(prepared.singletons.num_singletons, 5);
+        assert_eq!(prepared.singletons.cascade_events, 5);
+        assert!(!prepared.singletons.kept_by_request);
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            [
+                vec![crate::DropReason::Singleton; 5],
+                vec![crate::DropReason::Retained; 4],
+            ]
+            .concat()
+        );
+        assert_eq!(prepared.sample.retained_rows(), &[5, 6, 7, 8]);
+        assert_eq!(prepared.sample.outcome, vec![4.0, 4.5, 5.0, 5.6]);
+        assert_eq!(prepared.sample.regressors[0], vec![-0.8, -0.2, 0.3, 0.9]);
+        assert_eq!(prepared.sample.regressors[1], vec![4.0, 4.0, 5.0, 5.0]);
+        assert_eq!(prepared.sample.regressors[2], vec![4.0, 5.0, 4.0, 5.0]);
+        assert_eq!(prepared.categorical_sources.len(), 2);
+        assert_eq!(
+            prepared.categorical_sources[0].encoded.levels,
+            vec![4.0, 5.0]
+        );
+        assert_eq!(
+            prepared.categorical_sources[0].encoded.codes,
+            vec![0, 0, 1, 1]
+        );
+        assert_eq!(
+            prepared.categorical_sources[1].encoded.levels,
+            vec![4.0, 5.0]
+        );
+        assert_eq!(
+            prepared.categorical_sources[1].encoded.codes,
+            vec![0, 1, 0, 1]
+        );
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(0, row).expect("aligned x"))
+                .collect::<Vec<_>>(),
+            vec![-0.8, -0.2, 0.3, 0.9]
+        );
+    }
+
+    #[test]
+    fn keepsingletons_and_aweights_preserve_reference_identities() {
+        let kept = prepare_ols_data(&two_way_singleton_request(true), &two_way_singleton_input())
+            .expect("keep singletons");
+        assert_eq!(kept.sample.n_active(), 9);
+        assert_eq!(kept.singletons.num_singletons, 0);
+        assert!(kept.singletons.kept_by_request);
+        assert!(kept
+            .sample
+            .drop_reasons
+            .iter()
+            .all(|reason| *reason == crate::DropReason::Retained));
+
+        let mut request = two_way_singleton_request(false);
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 6,
+            role: OlsInputRole::AnalyticWeight,
+        });
+        let mut loaded = two_way_singleton_input();
+        loaded.analytic_weight = Some(column(
+            &[
+                2020.0, 2021.0, 2020.0, 2021.0, 2020.0, 2020.0, 2021.0, 2020.0, 2021.0,
+            ],
+            &[false; 9],
+        ));
+        let weighted = prepare_ols_data(&request, &loaded).expect("weighted singleton preparation");
+        assert_eq!(weighted.sample.retained_rows(), &[5, 6, 7, 8]);
+        assert_eq!(weighted.singletons.num_singletons, 5);
+        assert_eq!(
+            weighted.sample.weights,
+            PreparedWeights::Provided {
+                kind: WeightKind::Analytic,
+                values: vec![2020.0, 2021.0, 2020.0, 2021.0],
+            }
+        );
+    }
+
+    #[test]
+    fn frequency_multiplicity_and_prior_drop_reasons_are_preserved() {
+        let mut request = request(1, false);
+        request.absorbed_terms = vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).expect("term"),
+            intercept: true,
+            categorical_sources: vec![SourceId::new(1).expect("source")],
+            slope_sources: Vec::new(),
+            label: "group".to_owned(),
+            saved_name: String::new(),
+        }];
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: 4,
+            role: OlsInputRole::FrequencyWeight,
+        });
+        let loaded = LoadedOlsInput {
+            candidate: vec![true, true],
+            outcome: column(&[1.0, 2.0], &[false; 2]),
+            numeric_sources: vec![(
+                SourceId::new(1).expect("source"),
+                column(&[10.0, 20.0], &[false; 2]),
+            )],
+            analytic_weight: None,
+            frequency_weight: Some(column(&[2.0, 1.0], &[false; 2])),
+            probability_weight: None,
+        };
+        let weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
+        assert_eq!(weighted.sample.retained_rows(), &[0]);
+        assert_eq!(
+            weighted.sample.drop_reasons,
+            vec![crate::DropReason::Retained, crate::DropReason::Singleton]
+        );
+        assert_eq!(weighted.categorical_sources[0].encoded.levels, vec![10.0]);
+        assert_eq!(weighted.singletons.num_singletons, 1);
+
+        let mut precedence = loaded.clone();
+        precedence.outcome.values[1] = f64::NAN;
+        let prepared = prepare_ols_data(&request, &precedence).expect("reason precedence");
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![
+                crate::DropReason::Retained,
+                crate::DropReason::MissingOutcome
+            ]
+        );
+        assert_eq!(prepared.singletons.num_singletons, 0);
+    }
+
+    #[test]
+    fn singleton_compaction_rebuilds_shared_ordinary_factor_recipes() {
+        let mut request = mixed_numeric_factor_request();
+        request.absorbed_terms = vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).expect("term"),
+            intercept: true,
+            categorical_sources: vec![SourceId::new(1).expect("source")],
+            slope_sources: Vec::new(),
+            label: "g".to_owned(),
+            saved_name: String::new(),
+        }];
+        let loaded = LoadedOlsInput {
+            candidate: vec![true; 3],
+            outcome: column(&[1.0, 2.0, 3.0], &[false; 3]),
+            numeric_sources: vec![(
+                SourceId::new(1).expect("source"),
+                column(&[1.0, 2.0, 2.0], &[false; 3]),
+            )],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("shared factor and FE");
+
+        assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
+        assert_eq!(prepared.categorical_sources[0].encoded.levels, vec![2.0]);
+        assert_eq!(prepared.categorical_sources[0].encoded.codes, vec![0, 0]);
+        let PreparedOlsColumnKind::Categorical {
+            level_code: vanished,
+            ..
+        } = &prepared.model.columns[1].kind
+        else {
+            panic!("level-one recipe must remain categorical");
+        };
+        assert_eq!(*vanished, None);
+        let PreparedOlsColumnKind::Categorical {
+            level_code: retained,
+            ..
+        } = &prepared.model.columns[2].kind
+        else {
+            panic!("level-two recipe must remain categorical");
+        };
+        assert_eq!(*retained, Some(0));
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(1, row).expect("vanished recipe"))
+                .collect::<Vec<_>>(),
+            vec![0.0, 0.0]
+        );
+        assert_eq!(
+            (0..prepared.sample.n_active())
+                .map(|row| prepared.column_value(2, row).expect("retained recipe"))
+                .collect::<Vec<_>>(),
+            vec![1.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn all_singletons_remain_a_diagnostic_preparation_result() {
+        let mut request = request(1, false);
+        request.absorbed_terms = vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).expect("term"),
+            intercept: true,
+            categorical_sources: vec![SourceId::new(1).expect("source")],
+            slope_sources: Vec::new(),
+            label: "group".to_owned(),
+            saved_name: String::new(),
+        }];
+        let loaded = LoadedOlsInput {
+            candidate: vec![true, true],
+            outcome: column(&[1.0, 2.0], &[false; 2]),
+            numeric_sources: vec![(
+                SourceId::new(1).expect("source"),
+                column(&[10.0, 20.0], &[false; 2]),
+            )],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request, &loaded).expect("all singleton preparation");
+        assert_eq!(prepared.sample.n_active(), 0);
+        assert_eq!(prepared.singletons.num_singletons, 2);
+        assert_eq!(
+            prepared.sample.drop_reasons,
+            vec![crate::DropReason::Singleton; 2]
+        );
+        assert!(prepared.categorical_sources[0].encoded.levels.is_empty());
+        assert!(prepared.categorical_sources[0].encoded.codes.is_empty());
     }
 
     #[test]

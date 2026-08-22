@@ -31,34 +31,46 @@ pub fn factorize_i64(values: &[i64]) -> Result<EncodedFactor<i64>> {
 }
 
 pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
-    let normalized: Vec<f64> = values
-        .iter()
-        .map(|value| {
-            if !value.is_finite() {
-                Err(StFixestError::new(
-                    ErrorCode::InvalidData,
-                    "categorical numeric source contains a nonfinite value",
-                ))
-            } else if *value == 0.0 {
-                Ok(0.0)
-            } else {
-                Ok(*value)
-            }
-        })
-        .collect::<Result<_>>()?;
-    let mut levels = normalized.clone();
+    let allocation = || {
+        StFixestError::new(
+            ErrorCode::Allocation,
+            "unable to reserve numeric categorical factorization storage",
+        )
+    };
+    let mut normalized = Vec::new();
+    normalized
+        .try_reserve_exact(values.len())
+        .map_err(|_| allocation())?;
+    for value in values {
+        if !value.is_finite() {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidData,
+                "categorical numeric source contains a nonfinite value",
+            ));
+        }
+        normalized.push(if *value == 0.0 { 0.0 } else { *value });
+    }
+
+    let mut levels = Vec::new();
+    levels
+        .try_reserve_exact(normalized.len())
+        .map_err(|_| allocation())?;
+    levels.extend_from_slice(&normalized);
     levels.sort_by(f64::total_cmp);
     levels.dedup_by(|left, right| left.total_cmp(right).is_eq());
     ensure_u32_levels(levels.len())?;
-    let codes = normalized
-        .iter()
-        .map(|value| {
+    let mut codes = Vec::new();
+    codes
+        .try_reserve_exact(normalized.len())
+        .map_err(|_| allocation())?;
+    for value in &normalized {
+        codes.push(
             levels
                 .binary_search_by(|candidate| candidate.total_cmp(value))
                 .map(|position| position as u32)
-                .expect("level was constructed from values")
-        })
-        .collect();
+                .expect("level was constructed from values"),
+        );
+    }
     Ok(EncodedFactor { codes, levels })
 }
 

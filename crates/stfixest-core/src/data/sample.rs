@@ -199,6 +199,169 @@ impl PreparedNumericSample {
     pub fn retained_rows(&self) -> &[usize] {
         &self.original_row_by_active
     }
+
+    /// Consume this sample and retain the selected rows on its compact axis.
+    ///
+    /// Every aligned observation-scale vector is rebuilt before a replacement
+    /// sample is returned. Rows selected out of the compact axis receive
+    /// `dropped_reason` on the original observation axis. The original and
+    /// candidate counts are intentionally unchanged.
+    pub(crate) fn compact_active_rows(
+        self,
+        keep: &[bool],
+        dropped_reason: DropReason,
+    ) -> Result<Self> {
+        if dropped_reason == DropReason::Retained {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "active-row compaction requires a non-retained drop reason",
+            ));
+        }
+
+        let n_active = self.original_row_by_active.len();
+        if keep.len() != n_active {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                format!(
+                    "active-row mask has length {}, expected {n_active}",
+                    keep.len()
+                ),
+            ));
+        }
+        if self.outcome.len() != n_active
+            || self
+                .regressors
+                .iter()
+                .any(|column| column.len() != n_active)
+            || matches!(
+                &self.weights,
+                PreparedWeights::Provided { values, .. } if values.len() != n_active
+            )
+            || matches!(
+                &self.adjustment,
+                PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values)
+                    if values.len() != n_active
+            )
+            || self.drop_reasons.len() != self.n_original
+            || self
+                .original_row_by_active
+                .iter()
+                .enumerate()
+                .any(|(index, original_row)| {
+                    *original_row >= self.n_original
+                        || self.drop_reasons[*original_row] != DropReason::Retained
+                        || (index > 0 && self.original_row_by_active[index - 1] >= *original_row)
+                })
+        {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "prepared numeric sample is not aligned on one compact observation axis",
+            ));
+        }
+
+        let n_retained = keep.iter().filter(|retain| **retain).count();
+        if n_retained == n_active {
+            return Ok(self);
+        }
+
+        let mut reserve = SystemReserve;
+        let mut original_row_by_active = reserved_vec(
+            &mut reserve,
+            PreparationBuffer::OriginalRowByActive,
+            n_retained,
+            "compacted observation map",
+        )?;
+        let mut outcome = reserved_vec(
+            &mut reserve,
+            PreparationBuffer::Outcome,
+            n_retained,
+            "compacted outcome",
+        )?;
+        let mut regressors = reserved_vec(
+            &mut reserve,
+            PreparationBuffer::RegressorColumns,
+            self.regressors.len(),
+            "compacted regressor column table",
+        )?;
+        for index in 0..self.regressors.len() {
+            regressors.push(reserved_vec(
+                &mut reserve,
+                PreparationBuffer::RegressorColumn(index),
+                n_retained,
+                "compacted regressor column",
+            )?);
+        }
+        let mut weights = match &self.weights {
+            PreparedWeights::None => PreparedWeights::None,
+            PreparedWeights::Provided { kind, .. } => PreparedWeights::Provided {
+                kind: *kind,
+                values: reserved_vec(
+                    &mut reserve,
+                    PreparationBuffer::Weights,
+                    n_retained,
+                    "compacted weight column",
+                )?,
+            },
+        };
+        let mut adjustment = match &self.adjustment {
+            PreparedAdjustment::None => PreparedAdjustment::None,
+            PreparedAdjustment::Offset(_) => PreparedAdjustment::Offset(reserved_vec(
+                &mut reserve,
+                PreparationBuffer::Offset,
+                n_retained,
+                "compacted offset column",
+            )?),
+            PreparedAdjustment::Exposure(_) => PreparedAdjustment::Exposure(reserved_vec(
+                &mut reserve,
+                PreparationBuffer::Exposure,
+                n_retained,
+                "compacted exposure column",
+            )?),
+        };
+        let mut drop_reasons = self.drop_reasons;
+
+        for (active_row, retain) in keep.iter().copied().enumerate() {
+            let original_row = self.original_row_by_active[active_row];
+            if !retain {
+                drop_reasons[original_row] = dropped_reason;
+                continue;
+            }
+            original_row_by_active.push(original_row);
+            outcome.push(self.outcome[active_row]);
+            for (destination, source) in regressors.iter_mut().zip(&self.regressors) {
+                destination.push(source[active_row]);
+            }
+            if let (
+                PreparedWeights::Provided {
+                    values: destination,
+                    ..
+                },
+                PreparedWeights::Provided { values: source, .. },
+            ) = (&mut weights, &self.weights)
+            {
+                destination.push(source[active_row]);
+            }
+            match (&mut adjustment, &self.adjustment) {
+                (PreparedAdjustment::Offset(destination), PreparedAdjustment::Offset(source))
+                | (
+                    PreparedAdjustment::Exposure(destination),
+                    PreparedAdjustment::Exposure(source),
+                ) => destination.push(source[active_row]),
+                _ => {}
+            }
+        }
+
+        Ok(Self {
+            n_original: self.n_original,
+            n_candidate: self.n_candidate,
+            original_row_by_active,
+            outcome,
+            regressors,
+            weights,
+            adjustment,
+            drop_reasons,
+        })
+    }
 }
 
 /// Identifies every output reservation made by numeric preparation.
@@ -794,5 +957,53 @@ mod allocation_tests {
             assert_eq!(reserve.calls.last().unwrap().0, *expected_buffer);
             assert!(reserve.calls.iter().all(|(_, elements, _)| *elements <= 1));
         }
+    }
+
+    #[test]
+    fn active_row_compaction_preserves_every_aligned_column_and_reason_axis() {
+        let candidate = [true, true, true];
+        let y = [1.0, 2.0, 3.0];
+        let x = [10.0, 20.0, 30.0];
+        let weights = [1.5, 2.5, 3.5];
+        let exposure = [4.0, 5.0, 6.0];
+        let regressors = [NumericColumnView::new(&x)];
+        let input = NumericPreparationInput {
+            candidate: &candidate,
+            outcome: NumericColumnView::new(&y),
+            regressors: &regressors,
+            weights: WeightInput::Provided {
+                kind: WeightKind::Probability,
+                column: NumericColumnView::new(&weights),
+            },
+            adjustment: AdjustmentInput::Exposure(NumericColumnView::new(&exposure)),
+        };
+        let prepared = prepare_numeric_sample(&input, &Retain).expect("prepare");
+        let compacted = prepared
+            .compact_active_rows(&[true, false, true], DropReason::Singleton)
+            .expect("compact");
+        assert_eq!(compacted.n_original, 3);
+        assert_eq!(compacted.n_candidate, 3);
+        assert_eq!(compacted.original_row_by_active, vec![0, 2]);
+        assert_eq!(compacted.outcome, vec![1.0, 3.0]);
+        assert_eq!(compacted.regressors, vec![vec![10.0, 30.0]]);
+        assert_eq!(
+            compacted.weights,
+            PreparedWeights::Provided {
+                kind: WeightKind::Probability,
+                values: vec![1.5, 3.5],
+            }
+        );
+        assert_eq!(
+            compacted.adjustment,
+            PreparedAdjustment::Exposure(vec![4.0, 6.0])
+        );
+        assert_eq!(
+            compacted.drop_reasons,
+            vec![
+                DropReason::Retained,
+                DropReason::Singleton,
+                DropReason::Retained,
+            ]
+        );
     }
 }

@@ -6,8 +6,8 @@ validation. `stfeols` and `stfepois` remain fail-closed and post no estimate.
 | Contract | Current evidence | Enablement gate |
 |---|---|---|
 | Candidate vs effective sample | Numeric availability/policy precedence and compact row map are unit-tested | Composed Stata/Rust final-sample identity including FE, cluster, singleton, and weight rules |
-| OLS weights | Frozen probes and capture protocol exist; no licensed capture is sealed | Per-kind reference receipt, independent WLS oracle, and exact sample parity |
-| Singleton pruning | Native source/tests exist; reference cascade/`keepsingletons` cases are manifest-bound | Exact retained IDs and drop counts against the sealed reference |
+| OLS weights | The licensed reference probes are sealed; guarded preparation implements analytic, frequency, and probability input domains but no estimator semantics | Per-kind independent WLS oracle and exact estimator-level sample/result parity |
+| Singleton pruning | Developer one-call preparation matches the sealed two-way cascade (`N=4`, five reason-8 drops), `keepsingletons`, analytic-weight identities, and pinned frequency-multiplicity rule; aligned sources are compacted and re-factorized | Independent review plus eventual estimator-level final-sample parity before posting |
 | Fixed-effect absorption | Native solver source/tests exist | Explicit-dummy fitted/residual parity and strict FE certificate through the one-call path |
 | OLS/WLS coefficients | Native source/tests exist; public command disabled | Independent oracle plus sealed `reghdfe` parity at fixed tolerances |
 | VCE and DoF | Native source/tests exist; reference cases cover iid, robust, 1–3 way clustering, interactions, nesting, and `dof()` policies | Score/meat/correction oracle and posted `e(V)`/DoF parity |
@@ -50,8 +50,9 @@ The dependency closure is reghdfe 6.14.1 at `29b2b203...`, ftools 2.50.0 at
 `d6e24d66...`, and require 1.3.1 at `f4760b86...`. Each required tracked source
 file is separately SHA-256 locked and verified after `git archive` staging.
 `lftools.mlib` is not a source input: it is generated from the locked ftools
-sources inside the temporary capture directory. No licensed capture has yet
-been sealed, so reference readiness is not a parity claim.
+sources inside the temporary capture directory. The licensed reference receipt
+is sealed and validated, but it proves reference behavior only; it is not
+StFixest parity evidence.
 
 ## Deterministic capture fields
 

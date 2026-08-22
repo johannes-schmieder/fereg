@@ -18,14 +18,20 @@ numeric categorical main effects, numeric all-categorical interactions, and
 zero or more unnamed single-source intercept-only numeric absorbed terms.
 Source role 3 binds one numeric storage column, while ordinary and absorbed
 recipes determine how that source is used. A source shared across ordinary and
-absorbed terms is bound, read, compacted, and factorized once. Stata's
+absorbed terms is bound and read once and has one aligned compact column.
+Categorical codes are built for pruning and rebuilt from that same column after
+singleton compaction. Stata's
 `whole_column_omitted` flag remains authoritative for ordinary base slots.
 Rust neither selects a base nor infers omission from spelling. After
 authoritative numeric sample preparation, Rust assigns deterministic compact
 codes to active categorical values. Ordinary categorical terms and supported
 absorbed terms reference that deduplicated code table. No observation-scale
-interaction column, `FeDesign`, solver state, singleton deletion, or estimator
-dispatch is created. Mixed ordinary interactions, string sources, absorbed
+interaction column, `FeDesign`, solver state, or estimator dispatch is created.
+For supported absorbed terms, the developer action runs native singleton
+deletion to a fixed point after the initial sample is prepared. It then
+compacts every aligned source and re-factorizes final categorical sources;
+ordinary levels removed only by singleton pruning become explicit all-zero
+recipes. Mixed ordinary interactions, string sources, absorbed
 interactions, absorbed slopes, saved fixed effects, clusters, and public
 estimator dispatch remain unsupported by this developer action.
 

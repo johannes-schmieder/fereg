@@ -188,6 +188,42 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             ROOT / "crates/stfixest-plugin/src/dispatch.rs"
         ).read_text(encoding="utf-8"))
 
+    def test_singleton_preparation_is_fixed_point_aligned_and_not_an_estimator(self):
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        sample = (ROOT / "crates/stfixest-core/src/data/sample.rs").read_text(
+            encoding="utf-8"
+        )
+        singleton = (ROOT / "crates/stfixest-core/src/fe/singleton.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("KEEPsingletons", helper)
+        self.assertIn('"keep_singletons=`keep_singletons\'"', helper)
+        self.assertIn("DropReason::Singleton", core)
+        self.assertIn("compact_active_rows", core)
+        self.assertIn("compact_active_rows", sample)
+        self.assertIn("SingletonMultiplicity::Frequency", core)
+        self.assertIn("checked_add", singleton)
+        self.assertIn('"keep_singletons"', plugin)
+        self.assertIn("r(n_singletons) == 5", fixture)
+        self.assertIn("_st_singleton_reason == 8 in 1/5", fixture)
+        self.assertIn("fweight(fw)", fixture)
+        self.assertIn("_st_fw_singleton_reason[2] == 8", fixture)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', (
+            ROOT / "crates/stfixest-plugin/src/dispatch.rs"
+        ).read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -62,7 +62,9 @@ pub fn prepare_ols_test(
             "stfixest.prepare_ols.n_coefficient_slots={}\n",
             "stfixest.prepare_ols.n_categorical_sources={}\n",
             "stfixest.prepare_ols.n_absorb_terms={}\n",
-            "stfixest.prepare_ols.n_fixed_effect_sources={}\n"
+            "stfixest.prepare_ols.n_fixed_effect_sources={}\n",
+            "stfixest.prepare_ols.n_singletons={}\n",
+            "stfixest.prepare_ols.keep_singletons={}\n"
         ),
         prepared.sample.n_original,
         prepared.sample.n_candidate,
@@ -77,6 +79,8 @@ pub fn prepare_ols_test(
             .map(|effect| effect.categorical_source_index)
             .collect::<BTreeSet<_>>()
             .len(),
+        prepared.singletons.num_singletons,
+        usize::from(prepared.singletons.kept_by_request),
     ));
     Ok(())
 }
@@ -104,6 +108,7 @@ struct PrepareActionSpec {
     binding_matrix: String,
     binding_count: usize,
     include_intercept: bool,
+    keep_singletons: bool,
     diagnostics: DiagnosticBindings,
 }
 
@@ -152,6 +157,7 @@ impl PrepareActionSpec {
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
+            keep_singletons: parse_bool(&values, "keep_singletons")?,
             diagnostics: DiagnosticBindings {
                 original_observation: parse_positive_u32(&values, "output_original_observation")?,
                 retained: parse_positive_u32(&values, "output_retained")?,
@@ -166,7 +172,7 @@ impl PrepareActionSpec {
         &self,
         values: &std::collections::BTreeMap<String, String>,
     ) -> Result<()> {
-        const ALLOWED: [&str; 29] = [
+        const ALLOWED: [&str; 30] = [
             "ado",
             "protocol_major",
             "protocol_minor",
@@ -193,6 +199,7 @@ impl PrepareActionSpec {
             "binding_matrix",
             "binding_count",
             "include_intercept",
+            "keep_singletons",
             "output_original_observation",
             "output_retained",
             "output_drop_reason",
@@ -260,6 +267,7 @@ impl PrepareActionSpec {
             absorbed_terms: specification.absorbed_terms,
             bindings,
             include_intercept: self.include_intercept,
+            keep_singletons: self.keep_singletons,
         };
         request.validate_and_compile()?;
         validate_spi_layout(&request, self.diagnostics, spi)?;
@@ -901,6 +909,7 @@ mod tests {
             "binding_matrix=B".to_owned(),
             "binding_count=3".to_owned(),
             "include_intercept=1".to_owned(),
+            "keep_singletons=0".to_owned(),
             "output_original_observation=4".to_owned(),
             "output_retained=5".to_owned(),
             "output_drop_reason=6".to_owned(),
@@ -1214,11 +1223,129 @@ mod tests {
                     *value = "absorb_saved_names=0:|0:|0:".to_owned();
                 }
                 "binding_count=3" => *value = "binding_count=5".to_owned(),
+                "keep_singletons=0" => *value = "keep_singletons=1".to_owned(),
                 "output_original_observation=4" => {
                     *value = "output_original_observation=6".to_owned();
                 }
                 "output_retained=5" => *value = "output_retained=7".to_owned(),
                 "output_drop_reason=6" => *value = "output_drop_reason=8".to_owned(),
+                _ => {}
+            }
+        }
+        (args, spi)
+    }
+
+    fn two_way_singleton_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixed_effect_fixture();
+        spi.nobs = 9;
+        spi.data.clear();
+        for observation in 1..=9 {
+            spi.data.insert((1, observation), (1.0, false));
+        }
+        for (observation, y, x, worker, firm) in [
+            (1, 1.2, -1.0, 1.0, 1.0),
+            (2, 1.8, -0.5, 1.0, 2.0),
+            (3, 2.4, 0.0, 2.0, 2.0),
+            (4, 3.1, 0.5, 2.0, 3.0),
+            (5, 3.7, 1.0, 3.0, 3.0),
+            (6, 4.0, -0.8, 4.0, 4.0),
+            (7, 4.5, -0.2, 4.0, 5.0),
+            (8, 5.0, 0.3, 5.0, 4.0),
+            (9, 5.6, 0.9, 5.0, 5.0),
+        ] {
+            spi.data.insert((2, observation), (y, false));
+            spi.data.insert((3, observation), (x, false));
+            spi.data.insert((4, observation), (worker, false));
+            spi.data.insert((5, observation), (firm, false));
+        }
+        for value in &mut args {
+            if value == "keep_singletons=1" {
+                *value = "keep_singletons=0".to_owned();
+            }
+        }
+        (args, spi)
+    }
+
+    fn frequency_singleton_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixture();
+        let source = SourceId::new(1).expect("source");
+        let wire = ModelWireV2::from_specification(&CompiledModelSpecification {
+            model: CompiledTermGraph {
+                sources: vec![SourceEntry {
+                    id: source,
+                    canonical_name: "group".to_owned(),
+                }],
+                terms: vec![ExpandedTerm {
+                    id: TermId::new(1).expect("term"),
+                    order: TermOrder::new(1).expect("order"),
+                    coefficient_slot: CoefficientSlot::new(1).expect("slot"),
+                    raw_kind: RawTermKind::Variable,
+                    whole_column_omitted: false,
+                    canonical_token: "c.group".to_owned(),
+                    components: vec![TermComponent {
+                        order: ComponentOrder::new(1).expect("component"),
+                        source,
+                        kind: ComponentKind::Continuous,
+                        level_state: LevelState::Absent,
+                        level_value: 0.0,
+                        base: MetadataFlag::False,
+                        omitted: MetadataFlag::Unavailable,
+                        raw_operator: "c".to_owned(),
+                        time_series_state: TimeSeriesState::None,
+                        raw_time_series_operator: String::new(),
+                    }],
+                }],
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("absorbed term"),
+                intercept: true,
+                categorical_sources: vec![source],
+                slope_sources: Vec::new(),
+                label: "group".to_owned(),
+                saved_name: String::new(),
+            }],
+        })
+        .expect("frequency singleton wire");
+        spi.matrices.insert("S".to_owned(), wire.sources.rows);
+        spi.matrices.insert("T".to_owned(), wire.terms.rows);
+        spi.matrices.insert("C".to_owned(), wire.components.rows);
+        spi.matrices.insert("A".to_owned(), wire.absorb_terms.rows);
+        spi.matrices
+            .insert("AC".to_owned(), wire.absorb_components.rows);
+        spi.matrices
+            .get_mut("B")
+            .expect("bindings")
+            .push(vec![4.0, 5.0, 0.0]);
+        spi.nobs = 2;
+        spi.nvars = 7;
+        spi.data.clear();
+        for observation in 1..=2 {
+            spi.data.insert((1, observation), (1.0, false));
+        }
+        spi.data.insert((2, 1), (1.0, false));
+        spi.data.insert((2, 2), (2.0, false));
+        spi.data.insert((3, 1), (10.0, false));
+        spi.data.insert((3, 2), (20.0, false));
+        spi.data.insert((4, 1), (2.0, false));
+        spi.data.insert((4, 2), (1.0, false));
+        for value in &mut args {
+            match value.as_str() {
+                "source_names=1:x" => *value = "source_names=5:group".to_owned(),
+                "canonical_tokens=3:c.x" => {
+                    *value = "canonical_tokens=7:c.group".to_owned();
+                }
+                "absorb_term_count=0" => *value = "absorb_term_count=1".to_owned(),
+                "absorb_component_count=0" => {
+                    *value = "absorb_component_count=1".to_owned();
+                }
+                "absorb_labels=." => *value = "absorb_labels=5:group".to_owned(),
+                "absorb_saved_names=." => *value = "absorb_saved_names=0:".to_owned(),
+                "binding_count=3" => *value = "binding_count=4".to_owned(),
+                "output_original_observation=4" => {
+                    *value = "output_original_observation=5".to_owned();
+                }
+                "output_retained=5" => *value = "output_retained=6".to_owned(),
+                "output_drop_reason=6" => *value = "output_drop_reason=7".to_owned(),
                 _ => {}
             }
         }
@@ -1342,6 +1469,70 @@ mod tests {
         assert!(displayed.contains("stfixest.prepare_ols.n_absorb_terms=3"));
         assert!(displayed.contains("stfixest.prepare_ols.n_fixed_effect_sources=2"));
         assert!(displayed.contains("stfixest.prepare_ols.n_retained=1"));
+    }
+
+    #[test]
+    fn singleton_cascade_and_keepsingletons_write_exact_atomic_diagnostics() {
+        let (args, mut spi) = two_way_singleton_fixture();
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("singleton cascade");
+        for observation in 1..=5 {
+            assert!(spi.writes.contains(&(7, observation, 0.0)));
+            assert!(spi.writes.contains(&(8, observation, 8.0)));
+        }
+        for observation in 6..=9 {
+            assert!(spi.writes.contains(&(7, observation, 1.0)));
+            assert!(spi.writes.contains(&(8, observation, 0.0)));
+        }
+        let displayed = output.displayed();
+        assert!(displayed.contains("stfixest.prepare_ols.n_retained=4"));
+        assert!(displayed.contains("stfixest.prepare_ols.n_singletons=5"));
+        assert!(displayed.contains("stfixest.prepare_ols.keep_singletons=0"));
+
+        let (mut keep_args, mut keep_spi) = two_way_singleton_fixture();
+        for value in &mut keep_args {
+            if value == "keep_singletons=0" {
+                *value = "keep_singletons=1".to_owned();
+            }
+        }
+        let keep_output = BufferSink::default();
+        prepare_ols_test(&keep_args, &keep_output, &mut keep_spi).expect("keep singletons");
+        for observation in 1..=9 {
+            assert!(keep_spi.writes.contains(&(7, observation, 1.0)));
+            assert!(keep_spi.writes.contains(&(8, observation, 0.0)));
+        }
+        assert!(keep_output
+            .displayed()
+            .contains("stfixest.prepare_ols.n_singletons=0"));
+        assert!(keep_output
+            .displayed()
+            .contains("stfixest.prepare_ols.keep_singletons=1"));
+    }
+
+    #[test]
+    fn frequency_singletons_use_integer_multiplicity_and_bad_policy_fails_before_reads() {
+        let (args, mut spi) = frequency_singleton_fixture();
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("frequency singleton");
+        assert!(spi.writes.contains(&(6, 1, 1.0)));
+        assert!(spi.writes.contains(&(7, 1, 0.0)));
+        assert!(spi.writes.contains(&(6, 2, 0.0)));
+        assert!(spi.writes.contains(&(7, 2, 8.0)));
+        assert!(output
+            .displayed()
+            .contains("stfixest.prepare_ols.n_singletons=1"));
+
+        let (mut invalid_args, mut invalid_spi) = frequency_singleton_fixture();
+        for value in &mut invalid_args {
+            if value == "keep_singletons=0" {
+                *value = "keep_singletons=2".to_owned();
+            }
+        }
+        let error = prepare_ols_test(&invalid_args, &BufferSink::default(), &mut invalid_spi)
+            .expect_err("invalid singleton policy");
+        assert_eq!(error.code, ErrorCode::Syntax);
+        assert!(invalid_spi.reads.is_empty());
+        assert!(invalid_spi.writes.is_empty());
     }
 
     #[test]

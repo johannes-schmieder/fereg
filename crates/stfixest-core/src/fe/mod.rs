@@ -19,4 +19,6 @@ pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};
 pub use map::{absorb_map, MapConfig};
 pub use projection::{project_effect_in_place, ProjectionWorkspace};
 pub use report::{FeSolverKind, SolveReport, SolveStopReason};
-pub use singleton::{prune_singletons, SingletonResult};
+pub use singleton::{
+    prune_singletons, prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult,
+};

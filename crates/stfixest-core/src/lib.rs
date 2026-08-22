@@ -30,9 +30,9 @@ pub use factorize::{
 };
 pub use fe::{
     absorb_fixed_effects, absorb_lsmr, absorb_map, certify_residuals, connected_components,
-    prune_singletons, AbsorbConfig, ComponentInfo, EffectTerm, FeCertificate, FeDesign,
-    FeSolverKind, LsmrConfig, LsmrPreconditioner, MapConfig, SingletonResult, SolveReport,
-    SolveStopReason,
+    prune_singletons, prune_singletons_with_multiplicity, AbsorbConfig, ComponentInfo, EffectTerm,
+    FeCertificate, FeDesign, FeSolverKind, LsmrConfig, LsmrPreconditioner, MapConfig,
+    SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
@@ -48,7 +48,7 @@ pub use ols::{
     OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalSource,
     PreparedOlsCategoricalComponent, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
     PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect, PreparedOlsModel,
-    RankSolve, RegressorStatus, VceKind, VceReport,
+    PreparedOlsSingletons, RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;

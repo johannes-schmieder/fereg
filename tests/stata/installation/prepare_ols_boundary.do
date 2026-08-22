@@ -213,7 +213,7 @@ assert missing(_st_mixed_factor_reason)
 
 gen double fe_fractional = _n / 2 - 8
 replace fe_fractional = . in 12
-_stfixest_prepare_ols_test y, absorb(fe_fractional) noconstant ///
+_stfixest_prepare_ols_test y, absorb(fe_fractional) noconstant keepsingletons ///
     originalobs(_st_fe_original) retained(_st_fe_retained) ///
     dropreason(_st_fe_reason)
 assert r(n_original) == 28
@@ -223,7 +223,7 @@ assert _st_fe_reason[2] == 2
 assert _st_fe_reason[12] == 5
 assert _st_fe_retained == !inlist(_n, 2, 12)
 
-_stfixest_prepare_ols_test y ib2.g if _n >= 3, absorb(g h g) ///
+_stfixest_prepare_ols_test y ib2.g if _n >= 3, absorb(g h g) keepsingletons ///
     originalobs(_st_shared_fe_original) retained(_st_shared_fe_retained) ///
     dropreason(_st_shared_fe_reason)
 assert r(n_retained) == 24
@@ -240,6 +240,67 @@ assert r(n_retained) == 0
 assert _st_all_fe_reason[2] == 2
 assert _st_all_fe_reason == 5 if _n != 2
 assert _st_all_fe_retained == 0
+
+preserve
+clear
+input double(y x1 worker firm year)
+1.2 -1.0 1 1 2020
+1.8 -0.5 1 2 2021
+2.4  0.0 2 2 2020
+3.1  0.5 2 3 2021
+3.7  1.0 3 3 2020
+4.0 -0.8 4 4 2020
+4.5 -0.2 4 5 2021
+5.0  0.3 5 4 2020
+5.6  0.9 5 5 2021
+end
+
+_stfixest_prepare_ols_test y c.x1, absorb(worker firm) ///
+    originalobs(_st_singleton_original) retained(_st_singleton_retained) ///
+    dropreason(_st_singleton_reason)
+assert r(n_retained) == 4
+assert r(n_singletons) == 5
+assert r(keep_singletons) == 0
+assert _st_singleton_original == _n
+assert _st_singleton_retained == (_n >= 6)
+assert _st_singleton_reason == 8 in 1/5
+assert _st_singleton_reason == 0 in 6/9
+
+_stfixest_prepare_ols_test y c.x1, absorb(worker firm) keepsingletons ///
+    originalobs(_st_keep_singleton_original) retained(_st_keep_singleton_retained) ///
+    dropreason(_st_keep_singleton_reason)
+assert r(n_retained) == 9
+assert r(n_singletons) == 0
+assert r(keep_singletons) == 1
+assert _st_keep_singleton_original == _n
+assert _st_keep_singleton_retained == 1
+assert _st_keep_singleton_reason == 0
+
+_stfixest_prepare_ols_test y c.x1, absorb(worker firm) aweight(year) ///
+    originalobs(_st_aw_singleton_original) retained(_st_aw_singleton_retained) ///
+    dropreason(_st_aw_singleton_reason)
+assert r(n_retained) == 4
+assert r(n_singletons) == 5
+assert _st_aw_singleton_retained == _st_singleton_retained
+assert _st_aw_singleton_reason == _st_singleton_reason
+restore
+
+preserve
+clear
+input double(y group fw)
+1 10 2
+2 20 1
+end
+_stfixest_prepare_ols_test y, absorb(group) fweight(fw) noconstant ///
+    originalobs(_st_fw_singleton_original) retained(_st_fw_singleton_retained) ///
+    dropreason(_st_fw_singleton_reason)
+assert r(n_retained) == 1
+assert r(n_singletons) == 1
+assert _st_fw_singleton_retained[1] == 1
+assert _st_fw_singleton_reason[1] == 0
+assert _st_fw_singleton_retained[2] == 0
+assert _st_fw_singleton_reason[2] == 8
+restore
 
 capture noisily _stfixest_prepare_ols_test y, absorb(g#h) noconstant ///
     originalobs(_st_fe_interaction_original) retained(_st_fe_interaction_retained) ///

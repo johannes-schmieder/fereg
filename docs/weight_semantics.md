@@ -64,8 +64,15 @@ The guarded action maps invalid-data failures to `459`; matching the public
 reference command's `401` error remains a later Stata-facing gate. This
 establishes sample preparation only. It deliberately does not convert the
 retained physical-row count to effective `N = sum(fweight)`, expand rows,
-normalize objective weights, or compute VCE, DoF, singleton behavior, or
-posted results.
+normalize objective weights, or compute VCE, DoF, or posted results. It does
+implement the bounded preparation-time singleton identity rule: unweighted,
+analytic-, and probability-weighted models count physical rows, while
+frequency-weighted models use exact checked integer multiplicity per FE level.
+Singleton counts report physical rows removed, not summed frequency weight.
+The sealed `weighted_singletons` analytic-weight case fixes the retained and
+deleted identities; the pinned `reghdfe` source supplies the frequency-weight
+multiplicity rule. Solver, VCE, DoF, and posted-weight semantics remain later
+gates.
 
 ## Evidence and enablement gate
 

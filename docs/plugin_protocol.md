@@ -78,7 +78,18 @@ values may be any finite `f64`, including negative and fractional values;
 ordinary factor-variable sources retain the finite nonnegative-integer rule.
 Categorical-by-continuous and continuous products, time-series terms, string
 sources, absorbed interactions, absorbed slopes, saved-FE outputs, clusters,
-singleton deletion, `FeDesign`, and solving remain unsupported. The action
+`FeDesign`, and solving remain unsupported. The action does perform the
+reference-compatible singleton fixed point for its supported absorbed terms.
+The strict action-level `keep_singletons` flag defaults to false in the ado
+helper and is not model-wire metadata. Pruning runs only after reasons 1--5 and
+weight validation have selected the initial compact sample. Unweighted,
+analytic-weight, and probability-weight requests use physical row counts;
+frequency weights use checked positive-integer multiplicity, so a one-row
+level with frequency weight two is not a singleton. Deleted rows receive
+reason 8, and the row map, outcome, every source, and any weight are compacted
+together in original order. Categorical sources are then factorized again on
+the final sample so no empty level or stale code survives. `num_singletons`
+counts physical deleted rows; `keepsingletons` is an exact no-op. The action
 never posts `e()` results. Stata's model wire owns expanded ordinary levels,
 bases, omission, and coefficient slots. Rust retains omitted-base slots without
 generating numerical columns and factorizes each active categorical source

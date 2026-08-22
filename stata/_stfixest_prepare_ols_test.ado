@@ -4,7 +4,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     syntax varlist(fv numeric min=1) [if] [in], ///
         ORIGINALOBS(name) RETAINED(name) DROPREASON(name) ///
         [NOCONStant AWEIGHT(varname numeric) FWEIGHT(varname numeric) ///
-         PWEIGHT(varname numeric) ABSorb(string asis)]
+         PWEIGHT(varname numeric) ABSorb(string asis) KEEPsingletons]
 
     local requested_weights = (`"`aweight'"' != "") + ///
         (`"`fweight'"' != "") + (`"`pweight'"' != "")
@@ -137,6 +137,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     local output_retained = 4 + `n_sources' + `has_weight'
     local output_reason = 5 + `n_sources' + `has_weight'
     local include_intercept = (`"`noconstant'"' == "")
+    local keep_singletons = (`"`keepsingletons'"' != "")
     local weight_variable `"`aweight'`fweight'`pweight'"'
 
     _stfixest_load, action(loadonly)
@@ -173,6 +174,7 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
         `"binding_matrix=`input_bindings'"' ///
         `"binding_count=`n_bindings'"' ///
         `"include_intercept=`include_intercept'"' ///
+        `"keep_singletons=`keep_singletons'"' ///
         `"output_original_observation=`output_original'"' ///
         `"output_retained=`output_retained'"' ///
         `"output_drop_reason=`output_reason'"'
@@ -180,6 +182,9 @@ program define _stfixest_prepare_ols_test, rclass sortpreserve
     return scalar n_original = _N
     quietly count if `retained' == 1
     return scalar n_retained = r(N)
+    quietly count if `dropreason' == 8
+    return scalar n_singletons = r(N)
+    return scalar keep_singletons = `keep_singletons'
     return local original_observation "`originalobs'"
     return local retained "`retained'"
     return local drop_reason "`dropreason'"

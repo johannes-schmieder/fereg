@@ -4,8 +4,8 @@
 sample boundary. It accepts borrowed source views, an `if`/`in` candidate
 marker, and an explicit estimator/reference domain policy. It returns compact
 numeric columns and an original-length reason mask. It is not yet the complete
-Phase 2 data plane: string factorization, cluster encoding, singleton deletion,
-separation, and estimator SPI dispatch remain outside this slice. A bounded
+Phase 2 data plane: string factorization, cluster encoding, separation, and
+estimator SPI dispatch remain outside this slice. A bounded
 numeric fixed-effect source preparation path is included, but no `FeDesign` or
 solver state is constructed.
 
@@ -45,12 +45,26 @@ retained physical rows only; weight sums, frequency-weight effective
 observation counts, robust probability-weight VCE, and other inference are
 later estimation contracts.
 
+Supported numeric fixed effects are pruned to the reference singleton fixed
+point after initial reasons 1--5 have been assigned. Ordinary, analytic-, and
+probability-weighted requests count physical rows. Frequency weights use their
+validated integer multiplicities, matching the pinned rule that a level is a
+singleton only when its total frequency weight equals one. `keepsingletons`
+bypasses deletion. Each deleted physical row receives reason 8 on the original
+axis. A fallible consuming compaction rebuilds the row map, outcome, every
+source, weight, and adjustment column together; final categorical sources are
+re-factorized so codes are contiguous and vanished ordinary levels resolve to
+zero recipes. The internal boundary may return an empty diagnostic sample; a
+later estimator gate must reject insufficient samples before posting results.
+
 For numeric factor main effects, Stata remains authoritative for expanded
 levels, base selection, canonical coefficient names, and whole-column omission.
 Rust does not rediscover or change the base. Available candidate factor values
 must be nonnegative integers; masked or nonfinite values follow the ordinary
-missing-regressor precedence. Rust compacts the numeric sample once and deterministically
-factorizes active values. Signed zero is canonicalized only in factor codes;
+missing-regressor precedence. Rust first compacts the numeric sample after
+availability checks and deterministically factorizes active values. If
+singletons are deleted, it performs one aligned final compaction and
+re-factorization. Signed zero is canonicalized only in factor codes;
 the retained raw numeric source remains bit-exact. Every Stata coefficient slot,
 including an omitted base, remains represented. A level removed by later
 outcome, source, or weight exclusions is retained as an all-zero recipe for
@@ -60,8 +74,8 @@ compact source codes. They do not allocate an observation-scale interaction
 column or tuple table. If any requested component level vanishes, or if the
 requested tuple is absent, the interaction recipe is identically zero.
 Categorical-by-continuous and continuous products, strings, fixed-effect
-interactions/slopes/saved outputs, cluster encoding, singleton deletion,
-`FeDesign`, and model solving remain outside this checkpoint. A supported
+interactions/slopes/saved outputs, cluster encoding, `FeDesign`, and model
+solving remain outside this checkpoint. A supported
 numeric fixed-effect source accepts any finite `f64`, including negative and
 fractional values, and is factorized only after the authoritative sample is
 compacted. Prepared absorbed-term recipes reference the shared encoded source;
@@ -101,7 +115,9 @@ For each original row, the current numeric stage applies this exact order:
 7. first unavailable FE-only source: `MissingFixedEffect`;
 8. unavailable offset or exposure: `MissingOffsetOrExposure`;
 9. offset- or exposure-policy drop: `MissingOffsetOrExposure`;
-10. otherwise: `Retained`.
+10. singleton fixed-point deletion of a row retained by steps 1--9:
+    `Singleton`;
+11. otherwise: `Retained`.
 
 A source used by both an ordinary and a fixed-effect recipe is classified at
 the ordinary-source step, so its missing value is reason 3, never reason 5.
