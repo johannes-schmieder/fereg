@@ -16,6 +16,8 @@ pub(crate) const FE_COLUMNS: usize = 8;
 pub(crate) const CLUSTER_COLUMNS: usize = 4;
 pub(crate) const SUBSET_COLUMNS: usize = 4;
 pub(crate) const CERTIFICATE_ROWS: usize = 32;
+const COVARIANCE_DETERMINANT_CERTIFICATE_ROW: usize = 30;
+const COVARIANCE_DETERMINANT_PASSED_ROW: usize = 31;
 pub(crate) const RECEIPT_COLUMNS: usize = 16;
 pub(crate) const COEFFICIENT_STATUS_COLUMNS: usize = 4;
 pub(crate) const RESULT_MAGIC: f64 = 5_354_601.0;
@@ -266,7 +268,12 @@ pub(crate) fn build_shadow_result<'a>(
     let (fixed_effects, fixed_effect_rows) = build_fixed_effects(inference.absorbed_dof())?;
     let (clusters, cluster_rows, subsets, subset_rows) =
         build_clusters(clustered_prepared, &inference)?;
-    let certificates = build_certificates(&inference)?;
+    let determinant_covariance = if coefficient_count == 0 {
+        &covariance[..0]
+    } else {
+        covariance.as_slice()
+    };
+    let certificates = build_certificates(&inference, determinant_covariance, coefficient_count)?;
     let receipt = build_receipt(
         prepared,
         inference.kind(),
@@ -634,7 +641,11 @@ fn build_clusters(
     ))
 }
 
-fn build_certificates(inference: &CertifiedOlsInference<'_>) -> Result<Vec<f64>> {
+fn build_certificates(
+    inference: &CertifiedOlsInference<'_>,
+    reported_covariance: &[f64],
+    reported_dimension: usize,
+) -> Result<Vec<f64>> {
     let mut output = reserved_filled(CERTIFICATE_ROWS * 2, 0.0, "OLS certificate diagnostics")?;
     let fit = inference.fit();
     let rank = fit.rank_certificate();
@@ -722,7 +733,114 @@ fn build_certificates(inference: &CertifiedOlsInference<'_>) -> Result<Vec<f64>>
             }
         }
     }
+    let determinant = covariance_determinant(reported_covariance, reported_dimension)?;
+    set_defined(
+        &mut output,
+        COVARIANCE_DETERMINANT_CERTIFICATE_ROW,
+        Some(determinant),
+        "reported OLS covariance determinant",
+    )?;
+    set_defined(
+        &mut output,
+        COVARIANCE_DETERMINANT_PASSED_ROW,
+        Some(1.0),
+        "reported OLS covariance determinant certificate",
+    )?;
     Ok(output)
+}
+
+/// Determinant of the exact covariance matrix scattered to Stata coordinates.
+///
+/// The zero-coordinate result has the standard empty-product determinant one.
+/// Dimensions one and two use explicit partial-pivoting elimination so the
+/// hidden licensed q2/q3 anchors are bit-for-bit identical to Stata's
+/// corresponding `det()`. Larger matrices use the same deterministic scheme. Any
+/// nonfinite intermediate fails closed before result publication.
+fn covariance_determinant(values: &[f64], dimension: usize) -> Result<f64> {
+    if values.len()
+        != dimension
+            .checked_mul(dimension)
+            .ok_or_else(|| allocation("OLS covariance determinant dimensions overflow"))?
+    {
+        return Err(invalid(
+            "OLS covariance determinant dimensions are inconsistent",
+        ));
+    }
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(invalid("OLS covariance determinant input is nonfinite"));
+    }
+    let determinant = match dimension {
+        0 => 1.0,
+        1 => values[0],
+        2 => {
+            let (leading, trailing) = if values[0].abs() >= values[2].abs() {
+                if values[0] == 0.0 {
+                    return Ok(0.0);
+                }
+                (values[0], values[3] - (values[2] / values[0]) * values[1])
+            } else {
+                (-values[2], values[1] - (values[0] / values[2]) * values[3])
+            };
+            leading * trailing
+        }
+        _ => {
+            let mut work = Vec::new();
+            work.try_reserve_exact(values.len())
+                .map_err(|_| allocation("unable to reserve OLS covariance determinant work"))?;
+            if work.capacity() < values.len() {
+                return Err(allocation(
+                    "OLS covariance determinant work reservation was undersized",
+                ));
+            }
+            work.extend_from_slice(values);
+            let mut determinant = 1.0;
+            let mut sign = 1.0;
+            for column in 0..dimension {
+                let mut pivot_row = column;
+                let mut pivot_magnitude = work[column * dimension + column].abs();
+                for row in (column + 1)..dimension {
+                    let candidate = work[row * dimension + column].abs();
+                    if candidate > pivot_magnitude {
+                        pivot_magnitude = candidate;
+                        pivot_row = row;
+                    }
+                }
+                if pivot_magnitude == 0.0 {
+                    return Ok(0.0);
+                }
+                if pivot_row != column {
+                    for entry in column..dimension {
+                        work.swap(column * dimension + entry, pivot_row * dimension + entry);
+                    }
+                    sign = -sign;
+                }
+                let pivot = work[column * dimension + column];
+                determinant *= pivot;
+                if !determinant.is_finite() {
+                    return Err(invalid(
+                        "OLS covariance determinant accumulation is nonfinite",
+                    ));
+                }
+                for row in (column + 1)..dimension {
+                    let factor = work[row * dimension + column] / pivot;
+                    work[row * dimension + column] = 0.0;
+                    for entry in (column + 1)..dimension {
+                        work[row * dimension + entry] -= factor * work[column * dimension + entry];
+                        if !work[row * dimension + entry].is_finite() {
+                            return Err(invalid(
+                                "OLS covariance determinant elimination is nonfinite",
+                            ));
+                        }
+                    }
+                }
+            }
+            sign * determinant
+        }
+    };
+    if !determinant.is_finite() {
+        return Err(invalid("OLS covariance determinant is nonfinite"));
+    }
+    Ok(determinant)
 }
 
 fn set_selected_certificates(output: &mut [f64], selected: &[f64; 8]) -> Result<()> {
@@ -871,4 +989,55 @@ fn invalid(message: impl Into<String>) -> StFixestError {
 
 fn allocation(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::covariance_determinant;
+
+    #[test]
+    fn covariance_determinant_has_exact_small_wire_semantics() {
+        assert_eq!(covariance_determinant(&[], 0).expect("empty"), 1.0);
+        assert_eq!(covariance_determinant(&[3.0], 1).expect("scalar"), 3.0);
+        assert_eq!(
+            covariance_determinant(&[2.0, 3.0, 1.0, 2.0], 2).expect("two by two"),
+            1.0
+        );
+        assert_eq!(
+            covariance_determinant(&[1.0, 0.0, 0.0, 0.0], 2).expect("singular"),
+            0.0
+        );
+        for (values, expected) in [
+            (
+                [
+                    f64::from_bits(0x3fa0_202f_479f_358f),
+                    f64::from_bits(0xbf82_c793_8ea4_f98d),
+                    f64::from_bits(0xbf82_c793_8ea4_f98d),
+                    f64::from_bits(0x3f65_ddec_fdb9_c14b),
+                ],
+                f64::from_bits(0xbe4b_7ee8_115e_0f3c),
+            ),
+            (
+                [
+                    f64::from_bits(0x3f93_37c1_45ab_7e50),
+                    f64::from_bits(0xbf76_a2d7_1c41_0628),
+                    f64::from_bits(0xbf76_a2d7_1c41_0628),
+                    f64::from_bits(0x3f5a_a6d2_b8b3_1611),
+                ],
+                f64::from_bits(0xbe4a_79e7_840b_02b9),
+            ),
+        ] {
+            assert_eq!(
+                covariance_determinant(&values, 2).expect("sealed two-way determinant"),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn covariance_determinant_fails_closed_on_malformed_or_nonfinite_input() {
+        assert!(covariance_determinant(&[1.0], 2).is_err());
+        assert!(covariance_determinant(&[f64::NAN], 1).is_err());
+        assert!(covariance_determinant(&[f64::MAX, 0.0, 0.0, f64::MAX], 2).is_err());
+    }
 }

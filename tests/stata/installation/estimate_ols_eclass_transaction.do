@@ -109,6 +109,10 @@ assert e(stfixest_receipt)[1,16] == 1
 assert e(sample) == 1
 assert !missing(__stfx_committed_resid)
 assert det(e(V)) < 0
+assert e(stfixest_certificate)[31,1] == 1
+assert e(stfixest_certificate)[31,2] == det(e(V))
+assert e(stfixest_certificate)[32,1] == 1
+assert e(stfixest_certificate)[32,2] == 1
 
 * Intercept-only and K0 posting, plus the no-absorb virtual structural
 * constant under noconstant, use distinct exact e() layouts.
@@ -127,6 +131,19 @@ assert e(df_m) == 0 & e(df_a) == 18 & e(df_r) == 6
 assert e(sample) == 1
 assert e(stfixest_receipt)[1,5] == 0
 assert e(stfixest_receipt)[1,6] == 0
+assert e(stfixest_certificate)[31,1] == 1
+assert e(stfixest_certificate)[31,2] == 1
+assert e(stfixest_certificate)[32,2] == 1
+
+* The manifest adapter must not fail after the inner K0 transaction commits.
+_stfixest_ols_hidden_numeric_v1 y, absorb(worker firm) noconstant
+capture confirm matrix e(b)
+assert _rc == 111
+capture confirm matrix e(V)
+assert _rc == 111
+assert `"`e(cmd)'"' == "_stfixest_ols_hidden_numeric_v1"
+assert e(stfixest_v_determinant) == 1
+assert e(stfixest_receipt)[1,5] == 0
 
 _stfixest_estimate_ols_test y c.x1, noconstant
 assert colsof(e(b)) == 1 & colsof(e(V)) == 1

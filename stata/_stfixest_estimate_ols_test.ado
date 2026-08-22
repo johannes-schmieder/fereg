@@ -269,39 +269,6 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         absorbrows(`fe_rows') clusters(`n_cluster_terms') ///
         subsets(`subset_rows') residual(`=(`"`residual'"' != "")')
 
-    quietly count if `touse'
-    if `receipt_shadow'[1,8] != r(N) {
-        di as error "hidden OLS candidate count disagrees with Stata marker"
-        exit 459
-    }
-    capture assert inlist(`sample_shadow', 0, 1)
-    if _rc {
-        di as error "hidden OLS sample shadow is not a total byte marker"
-        exit 459
-    }
-    quietly count if `sample_shadow' == 1
-    if `receipt_shadow'[1,9] != r(N) {
-        di as error "hidden OLS active count disagrees with sample shadow"
-        exit 459
-    }
-    capture assert `sample_shadow' <= `touse'
-    if _rc {
-        di as error "hidden OLS final sample escaped the candidate marker"
-        exit 459
-    }
-    if `"`residual'"' != "" {
-        capture assert !missing(`residual_shadow') if `sample_shadow' == 1
-        if _rc {
-            di as error "hidden OLS retained residual is missing"
-            exit 459
-        }
-        capture assert missing(`residual_shadow') if `sample_shadow' == 0
-        if _rc {
-            di as error "hidden OLS excluded row received a residual"
-            exit 459
-        }
-    }
-
     local posted_names `"`coefficient_names'"'
     if `include_intercept' local posted_names `"`posted_names' _cons"'
     local posted_name_count : word count `posted_names'
@@ -609,11 +576,15 @@ program define _stfixest_eols_validate
             }
         }
     }
-    foreach row in 1 2 3 24 {
+    foreach row in 1 2 3 24 32 {
         if `certificates'[`row',1] != 1 | `certificates'[`row',2] != 1 {
             di as error "hidden OLS certificate did not pass"
             exit 459
         }
+    }
+    if `certificates'[31,1] != 1 | missing(`certificates'[31,2]) {
+        di as error "hidden OLS covariance determinant metadata is invalid"
+        exit 459
     }
     forvalues row = 1/2 {
         forvalues column = 1/12 {

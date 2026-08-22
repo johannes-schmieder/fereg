@@ -31,6 +31,9 @@ assert e(stfixest_receipt)[1,1] == 5354601
 assert e(stfixest_receipt)[1,4] == 1
 assert e(stfixest_receipt)[1,16] == 1
 assert e(stfixest_certificate)[24,2] == 1
+assert e(stfixest_certificate)[31,1] == 1
+assert e(stfixest_certificate)[31,2] == det(e(V))
+assert e(stfixest_certificate)[32,2] == 1
 assert e(sample) == 1
 assert !missing(__stfx_iid_resid)
 assert abs(e(b)[1,1] - +1.6094dc78ce848X+000) <= 3e-6
@@ -104,6 +107,7 @@ assert e(V)[1,2] == -1.2c7938ea4f98dX-007
 assert e(V)[2,1] == -1.2c7938ea4f98dX-007
 assert e(V)[2,2] == +1.5ddecfdb9c14bX-009
 assert det(e(V)) == -1.b7ee8115e0f3cX-01b
+assert e(stfixest_certificate)[31,2] == -1.b7ee8115e0f3cX-01b
 assert abs(e(V)[1,1] - +1.0202f4787935bX-005) <= 2e-6
 assert abs(e(V)[1,2] - -1.2c88da1cac911X-007) <= 2e-6
 assert abs(e(V)[2,2] - +1.5e0658149d738X-009) <= 2e-6
@@ -125,6 +129,7 @@ assert e(V)[1,2] == -1.6a2d71c410628X-008
 assert e(V)[2,1] == -1.6a2d71c410628X-008
 assert e(V)[2,2] == +1.aa6d2b8b31611X-00a
 assert det(e(V)) == -1.a79e7840b02b9X-01b
+assert e(stfixest_certificate)[31,2] == -1.a79e7840b02b9X-01b
 assert abs(e(V)[1,1] - +1.337c143e3831eX-006) <= 4e-6
 assert abs(e(V)[1,2] - -1.6a5e0063700aaX-008) <= 4e-6
 assert abs(e(V)[2,2] - +1.aae99ff9c51f2X-00a) <= 4e-6

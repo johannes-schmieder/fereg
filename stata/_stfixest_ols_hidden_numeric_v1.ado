@@ -55,14 +55,18 @@ program define _stfixest_ols_hidden_numeric_v1, eclass sortpreserve
         `absorb_option' `vce_option' `cluster_option' `dof_option' ///
         `singleton_option' `residual_option' `constant_option' `weight_option'
 
-    local posted_indepvars : colfullnames e(b)
+    local coefficient_count = e(stfixest_receipt)[1,5]
+    local posted_indepvars
+    if `coefficient_count' > 0 {
+        local posted_indepvars : colfullnames e(b)
+    }
     local intended_indepvars
     foreach name of local posted_indepvars {
         local name = subinstr(`"`name'"', "o.", "", 1)
         local intended_indepvars `"`intended_indepvars' `name'"'
     }
     local intended_indepvars = strtrim(`"`intended_indepvars'"')
-    ereturn scalar stfixest_v_determinant = det(e(V))
+    ereturn scalar stfixest_v_determinant = e(stfixest_certificate)[31,2]
     ereturn local indepvars `"`intended_indepvars'"'
     ereturn local cmd "_stfixest_ols_hidden_numeric_v1"
     ereturn local cmdline `"_stfixest_ols_hidden_numeric_v1 `0'"'
