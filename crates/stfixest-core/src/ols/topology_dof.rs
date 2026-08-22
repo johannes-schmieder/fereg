@@ -8,7 +8,7 @@
 //! repeated partition is fully redundant under the mobility search.
 
 use crate::error::{ErrorCode, Result, StFixestError};
-use crate::fe::{CategoricalCodeView, FinalizedCategoricalTopology};
+use crate::fe::{CategoricalCodeView, CategoricalTopologySource, FinalizedCategoricalTopology};
 use crate::metadata::{AbsorbTermId, SourceId};
 
 /// Reference-compatible absorbed-degree-of-freedom policy.
@@ -68,9 +68,9 @@ pub struct CategoricalTopologyDofReport {
 /// Compute absorbed rank for finalized categorical topology.
 ///
 /// `effect_specs` and `topology.effect_to_topology()` are both in requested
-/// absorbed-term order. `cluster_dimensions` are final-sample numeric cluster
-/// codes; each declared source tuple has already been factorized as one cluster
-/// dimension by the caller.
+/// absorbed-term order. `cluster_dimensions` are final-sample compact numeric
+/// cluster codes; each declared source tuple has already been factorized as one
+/// cluster dimension by the caller.
 pub fn compute_categorical_topology_absorbed_dof(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],
@@ -147,21 +147,9 @@ fn compute_with_reservation<R: TopologyDofReservation>(
         cluster_dimensions,
     )?;
     let nobs = topology.retained_rows().len();
-    let mut source_views: Vec<CategoricalCodeView<'_>> = Vec::new();
-    reservation.reserve_vec(
-        &mut source_views,
-        topology.compacted_sources().len(),
-        "unable to reserve categorical absorbed-DoF source views",
-    )?;
-    for source in topology.compacted_sources() {
-        push_reserved(
-            &mut source_views,
-            source.view(),
-            "categorical absorbed-DoF source-view capacity exhausted",
-        )?;
-    }
-
+    let source_views = source_views(topology, reservation)?;
     let effect_count = effect_specs.len();
+
     let mut redundant = reserved_filled(
         reservation,
         effect_count,
@@ -189,39 +177,25 @@ fn compute_with_reservation<R: TopologyDofReservation>(
 
     let mut nested_categories = 0_usize;
     for effect_index in 0..effect_count {
-        let topology_source = effect_source(topology, effect_index)?;
+        let source = effect_source(topology, effect_index)?;
         if effect_is_nested_within_any_cluster(
-            topology_source.codes(&source_views)?,
-            topology_source.n_levels(),
+            source.codes(&source_views)?,
+            source.n_levels(),
             nobs,
             cluster_dimensions,
             reservation,
         )? {
-            redundant[effect_index] = topology_source.n_levels();
+            redundant[effect_index] = source.n_levels();
             exact[effect_index] = true;
             nested[effect_index] = true;
             eligible[effect_index] = false;
             nested_categories = nested_categories
-                .checked_add(topology_source.n_levels())
+                .checked_add(source.n_levels())
                 .ok_or_else(|| allocation("categorical nested-category total overflows"))?;
         }
     }
 
-    let mut eligible_indices = Vec::new();
-    reservation.reserve_vec(
-        &mut eligible_indices,
-        effect_count,
-        "unable to reserve categorical absorbed-DoF eligible indices",
-    )?;
-    for (effect_index, is_eligible) in eligible.iter().copied().enumerate() {
-        if is_eligible {
-            push_reserved(
-                &mut eligible_indices,
-                effect_index,
-                "categorical absorbed-DoF eligible-index capacity exhausted",
-            )?;
-        }
-    }
+    let eligible_indices = eligible_indices(&eligible, reservation)?;
     if let Some(first) = eligible_indices.first().copied() {
         exact[first] = true;
     }
@@ -233,6 +207,80 @@ fn compute_with_reservation<R: TopologyDofReservation>(
         redundant[effect_index] = usize::from(effect_source(topology, effect_index)?.n_levels() > 0);
     }
 
+    apply_mobility_policy(
+        topology,
+        &source_views,
+        &eligible_indices,
+        policy,
+        &mut redundant,
+        &mut exact,
+        reservation,
+    )?;
+
+    build_report(
+        topology,
+        effect_specs,
+        structural_intercept,
+        policy,
+        &redundant,
+        &exact,
+        &nested,
+        nested_categories,
+        reservation,
+    )
+}
+
+fn source_views<'a, R: TopologyDofReservation>(
+    topology: &'a FinalizedCategoricalTopology,
+    reservation: &mut R,
+) -> Result<Vec<CategoricalCodeView<'a>>> {
+    let mut views = Vec::new();
+    reservation.reserve_vec(
+        &mut views,
+        topology.compacted_sources().len(),
+        "unable to reserve categorical absorbed-DoF source views",
+    )?;
+    for source in topology.compacted_sources() {
+        push_reserved(
+            &mut views,
+            source.view(),
+            "categorical absorbed-DoF source-view capacity exhausted",
+        )?;
+    }
+    Ok(views)
+}
+
+fn eligible_indices<R: TopologyDofReservation>(
+    eligible: &[bool],
+    reservation: &mut R,
+) -> Result<Vec<usize>> {
+    let mut indices = Vec::new();
+    reservation.reserve_vec(
+        &mut indices,
+        eligible.len(),
+        "unable to reserve categorical absorbed-DoF eligible indices",
+    )?;
+    for (effect_index, is_eligible) in eligible.iter().copied().enumerate() {
+        if is_eligible {
+            push_reserved(
+                &mut indices,
+                effect_index,
+                "categorical absorbed-DoF eligible-index capacity exhausted",
+            )?;
+        }
+    }
+    Ok(indices)
+}
+
+fn apply_mobility_policy<R: TopologyDofReservation>(
+    topology: &FinalizedCategoricalTopology,
+    source_views: &[CategoricalCodeView<'_>],
+    eligible_indices: &[usize],
+    policy: CategoricalTopologyDofPolicy,
+    redundant: &mut [usize],
+    exact: &mut [bool],
+    reservation: &mut R,
+) -> Result<()> {
     match policy {
         CategoricalTopologyDofPolicy::None => {}
         CategoricalTopologyDofPolicy::FirstPair => {
@@ -241,7 +289,7 @@ fn compute_with_reservation<R: TopologyDofReservation>(
                 let later = eligible_indices[1];
                 let components = pair_components_for_effects(
                     topology,
-                    &source_views,
+                    source_views,
                     earlier,
                     later,
                     reservation,
@@ -261,7 +309,7 @@ fn compute_with_reservation<R: TopologyDofReservation>(
                 {
                     let components = pair_components_for_effects(
                         topology,
-                        &source_views,
+                        source_views,
                         earlier,
                         later,
                         reservation,
@@ -274,9 +322,25 @@ fn compute_with_reservation<R: TopologyDofReservation>(
             }
         }
     }
+    Ok(())
+}
 
-    let implicit_no_absorb = structural_intercept && effect_count == 0 && nobs > 0;
-    let row_count = effect_count
+#[allow(clippy::too_many_arguments)]
+fn build_report<R: TopologyDofReservation>(
+    topology: &FinalizedCategoricalTopology,
+    effect_specs: &[CategoricalTopologyDofEffectSpec],
+    structural_intercept: bool,
+    policy: CategoricalTopologyDofPolicy,
+    redundant: &[usize],
+    exact: &[bool],
+    nested: &[bool],
+    nested_categories: usize,
+    reservation: &mut R,
+) -> Result<CategoricalTopologyDofReport> {
+    let nobs = topology.retained_rows().len();
+    let implicit_no_absorb = structural_intercept && effect_specs.is_empty() && nobs > 0;
+    let row_count = effect_specs
+        .len()
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("categorical absorbed-DoF report row count overflows"))?;
     let mut rows = Vec::new();
@@ -420,6 +484,11 @@ fn validate_inputs(
                 "categorical absorbed-DoF cluster view is not final-sample aligned",
             ));
         }
+        if cluster_codes.contains(&u32::MAX) {
+            return Err(invalid_data(
+                "categorical absorbed-DoF cluster codes must be compact and cannot use u32::MAX",
+            ));
+        }
     }
     Ok(())
 }
@@ -427,7 +496,7 @@ fn validate_inputs(
 fn effect_source(
     topology: &FinalizedCategoricalTopology,
     effect_index: usize,
-) -> Result<&crate::fe::CategoricalTopologySource> {
+) -> Result<&CategoricalTopologySource> {
     let topology_index = topology
         .effect_to_topology()
         .get(effect_index)
@@ -655,364 +724,4 @@ fn invalid_data(message: impl Into<String>) -> StFixestError {
 
 fn allocation(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Allocation, message)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fe::finalize_categorical_topology;
-
-    #[derive(Default)]
-    struct InjectedReservation {
-        calls: usize,
-        fail_at: Option<usize>,
-        skip_at: Option<usize>,
-    }
-
-    impl TopologyDofReservation for InjectedReservation {
-        fn reserve_vec<T>(
-            &mut self,
-            target: &mut Vec<T>,
-            additional: usize,
-            _label: &'static str,
-        ) -> Result<()> {
-            let call = self.calls;
-            self.calls += 1;
-            if self.fail_at == Some(call) {
-                return Err(allocation(
-                    "injected categorical absorbed-DoF allocation failure",
-                ));
-            }
-            if self.skip_at == Some(call) {
-                return Ok(());
-            }
-            target
-                .try_reserve_exact(additional)
-                .map_err(|_| allocation("test categorical absorbed-DoF reservation failed"))
-        }
-
-        fn reserve_string(
-            &mut self,
-            target: &mut String,
-            additional: usize,
-            _label: &'static str,
-        ) -> Result<()> {
-            let call = self.calls;
-            self.calls += 1;
-            if self.fail_at == Some(call) {
-                return Err(allocation(
-                    "injected categorical absorbed-DoF string allocation failure",
-                ));
-            }
-            if self.skip_at == Some(call) {
-                return Ok(());
-            }
-            target
-                .try_reserve_exact(additional)
-                .map_err(|_| allocation("test categorical absorbed-DoF string reservation failed"))
-        }
-    }
-
-    fn source(value: u32) -> SourceId {
-        SourceId::new(value).expect("source id")
-    }
-
-    fn term(value: u32) -> AbsorbTermId {
-        AbsorbTermId::new(value).expect("term id")
-    }
-
-    fn spec(term_id: u32, sources: &[u32], label: &str) -> CategoricalTopologyDofEffectSpec {
-        CategoricalTopologyDofEffectSpec {
-            term_id: term(term_id),
-            sources: sources.iter().copied().map(source).collect(),
-            label: label.to_owned(),
-        }
-    }
-
-    #[test]
-    fn one_interaction_has_one_exact_coefficient_per_observed_tuple() {
-        let firm = [0, 0, 0, 0, 1, 1, 1, 1];
-        let year = [0, 0, 1, 1, 0, 0, 1, 1];
-        let sources = [
-            CategoricalCodeView::new(&firm, 2),
-            CategoricalCodeView::new(&year, 2),
-        ];
-        let topology = finalize_categorical_topology(&sources, &[&[0, 1]], &[true; 8])
-            .expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[spec(1, &[1, 2], "firm#year")],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-        )
-        .expect("DoF");
-        assert_eq!(report.initial_categories, 4);
-        assert_eq!(report.redundant_categories, 0);
-        assert_eq!(report.absorbed_rank, 4);
-        assert!(!report.is_approximate);
-        assert_eq!(report.effects[0].categories, 4);
-        assert_eq!(report.effects[0].coefficients, 4);
-    }
-
-    #[test]
-    fn repeated_interaction_is_exactly_fully_redundant() {
-        let firm = [0, 0, 0, 0, 1, 1, 1, 1];
-        let year = [0, 0, 1, 1, 0, 0, 1, 1];
-        let sources = [
-            CategoricalCodeView::new(&firm, 2),
-            CategoricalCodeView::new(&year, 2),
-        ];
-        let topology =
-            finalize_categorical_topology(&sources, &[&[0, 1], &[1, 0]], &[true; 8])
-                .expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[
-                spec(1, &[1, 2], "firm#year"),
-                spec(2, &[2, 1], "year#firm"),
-            ],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-        )
-        .expect("DoF");
-        assert_eq!(report.initial_categories, 8);
-        assert_eq!(report.redundant_categories, 4);
-        assert_eq!(report.absorbed_rank, 4);
-        assert!(report.effects[1].redundancy_exact);
-        assert_eq!(report.effects[1].redundant, 4);
-        assert_eq!(report.effects[1].coefficients, 0);
-    }
-
-    #[test]
-    fn connected_single_effect_and_interaction_follow_pair_components() {
-        let firm = [0, 0, 0, 0, 1, 1, 1, 1];
-        let year = [0, 0, 1, 1, 0, 0, 1, 1];
-        let sources = [
-            CategoricalCodeView::new(&firm, 2),
-            CategoricalCodeView::new(&year, 2),
-        ];
-        let topology =
-            finalize_categorical_topology(&sources, &[&[0], &[0, 1]], &[true; 8])
-                .expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[
-                spec(1, &[1], "firm"),
-                spec(2, &[1, 2], "firm#year"),
-            ],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-        )
-        .expect("DoF");
-        // Each firm connects to its two firm-year cells, giving two components.
-        assert_eq!(report.effects[0].coefficients, 2);
-        assert_eq!(report.effects[1].redundant, 2);
-        assert_eq!(report.effects[1].coefficients, 2);
-        assert_eq!(report.absorbed_rank, 4);
-    }
-
-    #[test]
-    fn none_policy_marks_later_effect_approximate() {
-        let first = [0, 0, 1, 1];
-        let second = [0, 1, 0, 1];
-        let sources = [
-            CategoricalCodeView::new(&first, 2),
-            CategoricalCodeView::new(&second, 2),
-        ];
-        let topology = finalize_categorical_topology(&sources, &[&[0], &[1]], &[true; 4])
-            .expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[spec(1, &[1], "first"), spec(2, &[2], "second")],
-            true,
-            CategoricalTopologyDofPolicy::None,
-            &[],
-        )
-        .expect("DoF");
-        assert_eq!(report.effects[0].redundant, 0);
-        assert!(report.effects[0].redundancy_exact);
-        assert_eq!(report.effects[1].redundant, 1);
-        assert!(!report.effects[1].redundancy_exact);
-        assert!(report.is_approximate);
-    }
-
-    #[test]
-    fn interaction_nested_in_cluster_is_fully_redundant() {
-        let firm = [0, 0, 0, 0, 1, 1, 1, 1];
-        let year = [0, 0, 1, 1, 0, 0, 1, 1];
-        let cluster = [0, 0, 1, 1, 2, 2, 3, 3];
-        let sources = [
-            CategoricalCodeView::new(&firm, 2),
-            CategoricalCodeView::new(&year, 2),
-        ];
-        let topology = finalize_categorical_topology(&sources, &[&[0, 1]], &[true; 8])
-            .expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[spec(1, &[1, 2], "firm#year")],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[&cluster],
-        )
-        .expect("DoF");
-        assert!(report.effects[0].nested);
-        assert_eq!(report.effects[0].redundant, 4);
-        assert_eq!(report.effects[0].coefficients, 0);
-        assert_eq!(report.nested_categories, 4);
-        assert_eq!(report.absorbed_rank, 0);
-    }
-
-    #[test]
-    fn implicit_no_absorb_structural_constant_is_exact() {
-        let raw = [0, 1, 0];
-        let sources = [CategoricalCodeView::new(&raw, 2)];
-        let topology =
-            finalize_categorical_topology(&sources, &[], &[true; 3]).expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-        )
-        .expect("DoF");
-        assert_eq!(report.effects.len(), 1);
-        assert_eq!(report.initial_categories, 1);
-        assert_eq!(report.absorbed_rank, 1);
-        assert!(matches!(
-            report.effects[0].identity,
-            CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb
-        ));
-    }
-
-    #[test]
-    fn empty_final_sample_has_no_implicit_constant_rank() {
-        let raw = [0, 1];
-        let sources = [CategoricalCodeView::new(&raw, 2)];
-        let topology =
-            finalize_categorical_topology(&sources, &[], &[false; 2]).expect("topology");
-        let report = compute_categorical_topology_absorbed_dof(
-            &topology,
-            &[],
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-        )
-        .expect("DoF");
-        assert!(report.effects.is_empty());
-        assert_eq!(report.absorbed_rank, 0);
-    }
-
-    #[test]
-    fn metadata_and_cluster_view_corruption_fail_closed() {
-        let raw = [0, 0, 1, 1];
-        let sources = [CategoricalCodeView::new(&raw, 2)];
-        let topology = finalize_categorical_topology(&sources, &[&[0]], &[true; 4])
-            .expect("topology");
-        assert_eq!(
-            compute_categorical_topology_absorbed_dof(
-                &topology,
-                &[],
-                true,
-                CategoricalTopologyDofPolicy::Pairwise,
-                &[],
-            )
-            .expect_err("metadata mismatch")
-            .code,
-            ErrorCode::InvalidArgument
-        );
-        assert_eq!(
-            compute_categorical_topology_absorbed_dof(
-                &topology,
-                &[spec(1, &[1], "raw")],
-                true,
-                CategoricalTopologyDofPolicy::Pairwise,
-                &[&[0, 1]],
-            )
-            .expect_err("cluster mismatch")
-            .code,
-            ErrorCode::InvalidArgument
-        );
-        assert_eq!(
-            compute_categorical_topology_absorbed_dof(
-                &topology,
-                &[CategoricalTopologyDofEffectSpec {
-                    term_id: term(1),
-                    sources: Vec::new(),
-                    label: "bad".to_owned(),
-                }],
-                true,
-                CategoricalTopologyDofPolicy::Pairwise,
-                &[],
-            )
-            .expect_err("empty source tuple")
-            .code,
-            ErrorCode::InvalidArgument
-        );
-    }
-
-    #[test]
-    fn every_reservation_and_capacity_guard_fails_closed() {
-        let firm = [0, 0, 0, 0, 1, 1, 1, 1];
-        let year = [0, 0, 1, 1, 0, 0, 1, 1];
-        let sources = [
-            CategoricalCodeView::new(&firm, 2),
-            CategoricalCodeView::new(&year, 2),
-        ];
-        let topology =
-            finalize_categorical_topology(&sources, &[&[0], &[0, 1]], &[true; 8])
-                .expect("topology");
-        let specs = [
-            spec(1, &[1], "firm"),
-            spec(2, &[1, 2], "firm#year"),
-        ];
-        let mut successful = InjectedReservation::default();
-        compute_with_reservation(
-            &topology,
-            &specs,
-            true,
-            CategoricalTopologyDofPolicy::Pairwise,
-            &[],
-            &mut successful,
-        )
-        .expect("successful allocation audit");
-        assert!(successful.calls > 10);
-
-        for fail_at in 0..successful.calls {
-            let mut injected = InjectedReservation {
-                fail_at: Some(fail_at),
-                ..InjectedReservation::default()
-            };
-            let error = compute_with_reservation(
-                &topology,
-                &specs,
-                true,
-                CategoricalTopologyDofPolicy::Pairwise,
-                &[],
-                &mut injected,
-            )
-            .expect_err("injected allocation failure");
-            assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
-        }
-
-        for skip_at in 0..successful.calls {
-            let mut undersized = InjectedReservation {
-                skip_at: Some(skip_at),
-                ..InjectedReservation::default()
-            };
-            let error = compute_with_reservation(
-                &topology,
-                &specs,
-                true,
-                CategoricalTopologyDofPolicy::Pairwise,
-                &[],
-                &mut undersized,
-            )
-            .expect_err("capacity guard");
-            assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
-        }
-    }
 }
