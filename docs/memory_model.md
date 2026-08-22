@@ -66,13 +66,15 @@ The core-only prepared coefficient checkpoint consumes the same
 does not clone that batch, allocate a second model matrix, form a `K x K`
 normal equation, or construct an owned FE design. Additional fallible storage
 is O(K) for pre-absorption norms, canonical statuses and coefficients, pivot
-identities, trailing norms, triangular coefficients, and kept/dropped tables.
+identities, trailing norms, triangular coefficients, kept/dropped tables, and
+separate post-initial-MAP within-column norms used by the final score gate.
 After the solve it reserves one N-vector, reconstructs raw residuals directly
 from prepared recipes, and consumes that vector as an `N x 1` strict-MAP batch.
 
 Every production vector reservation uses `try_reserve_exact`; dimensions and
 counts use checked arithmetic; capacity is verified before resize or push.
-Injected failures cover every reservation and an undersized-reservation seam.
+Injected failures cover every reservation, including the within-score-norm
+table, and an undersized-reservation seam.
 No partially built `CertifiedPreparedOlsFit` is returned on allocation,
 nonfinite, rank, MAP, or score-certificate failure. Unit weights remain
 structural, and prepared weights are borrowed rather than copied.

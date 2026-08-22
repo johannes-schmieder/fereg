@@ -91,8 +91,16 @@ or as an identified coefficient.
 After solving, the checkpoint reconstructs one raw N-vector residual from the
 prepared recipes and kept coefficients, residualizes that vector again through
 strict MAP, and recomputes weighted score moments for every generated column.
-The scores use independent recipe evaluation and pre-absorption column and
-outcome scales. A failed initial MAP certificate, residual MAP certificate,
+The scores use independent recipe evaluation and weighted post-initial-MAP
+within-column and within-outcome norms saved before destructive QR. The final
+within-residual norm remains a roundoff-safe response fallback. If a generated
+column has exactly zero within norm but nonzero raw norm—such as a deferred
+intercept—the raw column norm is used so its redundant score moment remains in
+the all-column gate; only a truly zero raw column contributes a structural zero
+moment. Raw
+pre-absorption X or Y variation explained only by fixed effects therefore
+cannot dilute a finite-coefficient score failure. A failed initial MAP
+certificate, residual MAP certificate,
 dropped-rank certificate, or all-column score certificate returns an error and
 no result object. The returned object contains only canonical coefficient
 slots, kept/dropped generated-column identities, finite rank, both MAP reports,
@@ -104,6 +112,11 @@ clear near-collinearity; factor omissions and vanished levels; random
 well-conditioned designs; observation permutations; and common weight scaling
 from `1e-200` through `1e200`. Allocation/capacity injection and coefficient
 perturbation tests prove that workspace or final-score failures are fatal.
+Targeted counterexamples with `1e10` FE-only outcome variation and `1e7`
+FE-only regressor variation prove that neither raw scale can mask an injected
+coefficient error while the corresponding unperturbed fits remain accepted. A
+separate residual-constant injection proves that the zero-within-norm deferred
+intercept moment is checked rather than hard-coded to pass.
 This checkpoint has no plugin action, performs no SPI write, posts no VCE or
 DoF, and does not enable `stfeols`.
 

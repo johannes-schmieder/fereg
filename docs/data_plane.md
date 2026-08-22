@@ -172,7 +172,12 @@ nonempty `PreparedOlsData` value and the strict borrowed-intercept MAP design,
 then solves finite coefficients with scaled deterministic pivoted Householder
 QR. It uses the existing prepared recipes to reconstruct one raw residual
 vector, residualizes that vector again, and independently recomputes every
-generated-column score. Canonical coefficient slots distinguish syntax
+generated-column score. It saves weighted within-X and within-Y norms after
+the initial MAP and before destructive QR, so raw variation explained only by
+the fixed effects cannot weaken the finite-score gate. An exactly zero within
+norm uses the nonzero raw-column norm rather than skipping the redundant
+moment; only an identically zero raw recipe has no score information. Canonical coefficient
+slots distinguish syntax
 omission, fixed-effect collinearity, numerical rank deficiency, and an
 absorbed-model intercept whose normalized value remains deferred. The no-FE
 intercept is fitted normally. Any allocation, MAP, rank, finite-value, or score
