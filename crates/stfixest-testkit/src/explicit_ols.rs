@@ -103,7 +103,7 @@ pub struct ExplicitOlsProblem {
     pub regressors: Vec<Vec<f64>>,
     pub effects: Vec<DummyEffect>,
     pub weights: OracleWeights,
-    /// Zero, one, or two cluster dimensions.
+    /// Zero to ten declared cluster dimensions.
     pub clusters: Vec<Vec<u64>>,
 }
 
@@ -202,10 +202,13 @@ pub struct ExplicitOlsResult {
     /// explicit nuisance-dummy span contains a structural constant. The
     /// reported constant uses the pinned zero-weighted-mean FE normalization.
     pub normalized_reported_intercept_hc1_vce: Option<OracleMatrix>,
+    /// Multiway clustered covariance on `[identified finite regressors,
+    /// _cons]` under the same pinned normalization.
+    pub normalized_reported_intercept_clustered_vce: Option<OracleMatrix>,
     /// CR1 VCE for each individual cluster dimension.
     pub one_way_cluster_vces: Vec<OracleMatrix>,
-    /// For one cluster this equals its one-way VCE. For two clusters it is the
-    /// inclusion--exclusion CR1 VCE.
+    /// Generic inclusion--exclusion CR1 covariance using one common correction
+    /// after all uncorrected subset meats are combined.
     pub clustered_vce: Option<OracleMatrix>,
     pub cluster_counts: Vec<usize>,
     pub certificate: OracleCertificate,
@@ -397,42 +400,73 @@ pub fn fit_explicit_ols_with_config(
         } else {
             None
         };
+    let normalized_reported_intercept_clustered_vce =
+        if !problem.clusters.is_empty() && problem.effects.iter().any(DummyEffect::has_intercept) {
+            Some(reported_intercept_clustered(
+                problem,
+                &kept_regressors,
+                &residualized_regressors,
+                &residuals,
+                &validated,
+                &normalized_bread,
+                model_rank,
+            )?)
+        } else {
+            None
+        };
 
     let mut one_way_cluster_vces = Vec::with_capacity(problem.clusters.len());
     let mut cluster_counts = Vec::with_capacity(problem.clusters.len());
     for cluster in &problem.clusters {
-        let (vce, count) = clustered_component(
+        let (uncorrected, count) = clustered_component_uncorrected(
             &normalized_bread,
             &residualized_regressors,
             &residuals,
             &validated.objective_weights,
-            cluster.iter().copied().map(|value| (value, 0_u64)),
-            validated.effective_observations,
-            model_rank,
+            &[cluster.as_slice()],
         )?;
-        one_way_cluster_vces.push(vce);
+        let correction = cluster_correction(validated.effective_observations, model_rank, count)?;
+        one_way_cluster_vces.push(scale_matrix(&uncorrected, correction));
         cluster_counts.push(count);
     }
-    let clustered_vce = match problem.clusters.as_slice() {
-        [] => None,
-        [_] => Some(one_way_cluster_vces[0].clone()),
-        [first, second] => {
-            let (intersection, _) = clustered_component(
+    let clustered_vce = if problem.clusters.is_empty() {
+        None
+    } else {
+        let mut combined = OracleMatrix::zeros(finite_regressor_rank, finite_regressor_rank);
+        let subset_count = (1_usize << problem.clusters.len()) - 1;
+        for mask in 1..=subset_count {
+            let selected = problem
+                .clusters
+                .iter()
+                .enumerate()
+                .filter_map(|(dimension, cluster)| {
+                    (mask & (1_usize << dimension) != 0).then_some(cluster.as_slice())
+                })
+                .collect::<Vec<_>>();
+            let (component, _) = clustered_component_uncorrected(
                 &normalized_bread,
                 &residualized_regressors,
                 &residuals,
                 &validated.objective_weights,
-                first.iter().copied().zip(second.iter().copied()),
-                validated.effective_observations,
-                model_rank,
+                &selected,
             )?;
-            Some(add_subtract_matrices(
-                &one_way_cluster_vces[0],
-                &one_way_cluster_vces[1],
-                &intersection,
-            ))
+            let sign = if mask.count_ones() % 2 == 1 {
+                1.0
+            } else {
+                -1.0
+            };
+            for (target, value) in combined.data.iter_mut().zip(component.data) {
+                *target += sign * value;
+            }
         }
-        _ => unreachable!("validation limits cluster dimensions to two"),
+        let minimum_groups = *cluster_counts.iter().min().ok_or_else(|| {
+            OracleError::InvalidInput("cluster count table is unexpectedly empty".to_owned())
+        })?;
+        let correction =
+            cluster_correction(validated.effective_observations, model_rank, minimum_groups)?;
+        let mut covariance = scale_matrix(&combined, correction);
+        symmetrize(&mut covariance);
+        Some(covariance)
     };
 
     let certificate = certify_result(
@@ -458,6 +492,7 @@ pub fn fit_explicit_ols_with_config(
         &hc1_vce,
         &one_way_cluster_vces,
         clustered_vce.as_ref(),
+        normalized_reported_intercept_clustered_vce.as_ref(),
     )?;
 
     Ok(ExplicitOlsResult {
@@ -479,6 +514,7 @@ pub fn fit_explicit_ols_with_config(
         iid_vce,
         hc1_vce,
         normalized_reported_intercept_hc1_vce,
+        normalized_reported_intercept_clustered_vce,
         one_way_cluster_vces,
         clustered_vce,
         cluster_counts,
@@ -552,6 +588,74 @@ fn reported_intercept_hc1(
             "reported-intercept HC1 covariance is not finite".to_owned(),
         ))
     }
+}
+
+fn reported_intercept_clustered(
+    problem: &ExplicitOlsProblem,
+    kept_regressors: &[usize],
+    residualized_regressors: &[Vec<f64>],
+    residuals: &[f64],
+    validated: &ValidatedProblem,
+    finite_bread: &OracleMatrix,
+    model_rank: usize,
+) -> Result<OracleMatrix, OracleError> {
+    let nobs = problem.outcome.len();
+    let rank = kept_regressors.len();
+    let dimension = rank + 1;
+    let weight_sum = validated.objective_weights.iter().sum::<f64>();
+    if !weight_sum.is_finite() || weight_sum <= 0.0 {
+        return Err(OracleError::NumericalFailure(
+            "reported-intercept objective-weight sum is invalid".to_owned(),
+        ));
+    }
+    let means = kept_regressors
+        .iter()
+        .map(|&column| {
+            problem.regressors[column]
+                .iter()
+                .zip(&validated.objective_weights)
+                .map(|(value, weight)| value * weight)
+                .sum::<f64>()
+                / weight_sum
+        })
+        .collect::<Vec<_>>();
+    let mut bread = OracleMatrix::zeros(dimension, dimension);
+    for row in 0..rank {
+        for column in 0..rank {
+            bread.data[row * dimension + column] = finite_bread[(row, column)];
+        }
+    }
+    for row in 0..rank {
+        let cross = (0..rank)
+            .map(|column| -finite_bread[(row, column)] * means[column])
+            .sum::<f64>();
+        bread.data[row * dimension + rank] = cross;
+        bread.data[rank * dimension + row] = cross;
+    }
+    let mut corner = 1.0 / weight_sum;
+    for row in 0..rank {
+        for column in 0..rank {
+            corner += means[row] * finite_bread[(row, column)] * means[column];
+        }
+    }
+    bread.data[rank * dimension + rank] = corner;
+
+    let mut scores = vec![vec![0.0_f64; nobs]; dimension];
+    for column in 0..rank {
+        for row in 0..nobs {
+            scores[column][row] = residualized_regressors[column][row] + means[column];
+        }
+    }
+    scores[rank].fill(1.0);
+    generic_clustered_covariance(
+        &bread,
+        &scores,
+        residuals,
+        &validated.objective_weights,
+        &problem.clusters,
+        validated.effective_observations,
+        model_rank,
+    )
 }
 
 struct ValidatedProblem {
@@ -631,9 +735,9 @@ fn validate_problem(
             ));
         }
     }
-    if problem.clusters.len() > 2 {
+    if problem.clusters.len() > 10 {
         return Err(OracleError::InvalidInput(
-            "the small-model oracle supports at most two cluster dimensions".to_owned(),
+            "the small-model oracle supports at most ten cluster dimensions".to_owned(),
         ));
     }
     if problem.clusters.iter().any(|cluster| cluster.len() != nobs) {
@@ -1127,26 +1231,6 @@ fn scale_matrix(matrix: &OracleMatrix, scale: f64) -> OracleMatrix {
     }
 }
 
-fn add_subtract_matrices(
-    first: &OracleMatrix,
-    second: &OracleMatrix,
-    subtract: &OracleMatrix,
-) -> OracleMatrix {
-    let mut result = OracleMatrix {
-        nrows: first.nrows,
-        ncols: first.ncols,
-        data: first
-            .data
-            .iter()
-            .zip(&second.data)
-            .zip(&subtract.data)
-            .map(|((left, right), minus)| left + right - minus)
-            .collect(),
-    };
-    symmetrize(&mut result);
-    result
-}
-
 fn symmetrize(matrix: &mut OracleMatrix) {
     for row in 0..matrix.nrows {
         for column in 0..row {
@@ -1157,17 +1241,28 @@ fn symmetrize(matrix: &mut OracleMatrix) {
     }
 }
 
-fn clustered_component(
+fn clustered_component_uncorrected(
     bread: &OracleMatrix,
     columns: &[Vec<f64>],
     residuals: &[f64],
     objective_weights: &[f64],
-    keys: impl Iterator<Item = (u64, u64)>,
-    effective_observations: usize,
-    model_rank: usize,
+    clusters: &[&[u64]],
 ) -> Result<(OracleMatrix, usize), OracleError> {
-    let mut group_scores: BTreeMap<(u64, u64), Vec<f64>> = BTreeMap::new();
-    for (observation, key) in keys.enumerate() {
+    if clusters.is_empty()
+        || clusters
+            .iter()
+            .any(|cluster| cluster.len() != residuals.len())
+    {
+        return Err(OracleError::InvalidInput(
+            "cluster subset is empty or not observation-aligned".to_owned(),
+        ));
+    }
+    let mut group_scores: BTreeMap<Vec<u64>, Vec<f64>> = BTreeMap::new();
+    for observation in 0..residuals.len() {
+        let key = clusters
+            .iter()
+            .map(|cluster| cluster[observation])
+            .collect::<Vec<_>>();
         let scores = group_scores
             .entry(key)
             .or_insert_with(|| vec![0.0; columns.len()]);
@@ -1195,13 +1290,88 @@ fn clustered_component(
             }
         }
     }
-    let correction = group_count as f64 / (group_count - 1) as f64
-        * (effective_observations - 1) as f64
-        / (effective_observations - model_rank) as f64;
-    Ok((
-        scale_matrix(&sandwich(bread, &meat), correction),
-        group_count,
-    ))
+    Ok((sandwich(bread, &meat), group_count))
+}
+
+fn generic_clustered_covariance(
+    bread: &OracleMatrix,
+    columns: &[Vec<f64>],
+    residuals: &[f64],
+    objective_weights: &[f64],
+    clusters: &[Vec<u64>],
+    effective_observations: usize,
+    model_rank: usize,
+) -> Result<OracleMatrix, OracleError> {
+    if clusters.is_empty() || clusters.len() > 10 {
+        return Err(OracleError::InvalidInput(
+            "generic clustered covariance requires one to ten dimensions".to_owned(),
+        ));
+    }
+    let counts = clusters
+        .iter()
+        .map(|cluster| {
+            cluster
+                .iter()
+                .copied()
+                .map(|value| (value, ()))
+                .collect::<BTreeMap<_, _>>()
+                .len()
+        })
+        .collect::<Vec<_>>();
+    let minimum_groups = *counts.iter().min().ok_or_else(|| {
+        OracleError::InvalidInput("cluster count table is unexpectedly empty".to_owned())
+    })?;
+    if minimum_groups < 2 {
+        return Err(OracleError::InsufficientDegreesOfFreedom(
+            "clustered VCE requires at least two groups per declared dimension".to_owned(),
+        ));
+    }
+    let mut combined = OracleMatrix::zeros(columns.len(), columns.len());
+    let subset_count = (1_usize << clusters.len()) - 1;
+    for mask in 1..=subset_count {
+        let selected = clusters
+            .iter()
+            .enumerate()
+            .filter_map(|(dimension, cluster)| {
+                (mask & (1_usize << dimension) != 0).then_some(cluster.as_slice())
+            })
+            .collect::<Vec<_>>();
+        let (component, _) = clustered_component_uncorrected(
+            bread,
+            columns,
+            residuals,
+            objective_weights,
+            &selected,
+        )?;
+        let sign = if mask.count_ones() % 2 == 1 {
+            1.0
+        } else {
+            -1.0
+        };
+        for (target, value) in combined.data.iter_mut().zip(component.data) {
+            *target += sign * value;
+        }
+    }
+    let correction = cluster_correction(effective_observations, model_rank, minimum_groups)?;
+    let mut covariance = scale_matrix(&combined, correction);
+    symmetrize(&mut covariance);
+    Ok(covariance)
+}
+
+fn cluster_correction(
+    effective_observations: usize,
+    model_rank: usize,
+    minimum_groups: usize,
+) -> Result<f64, OracleError> {
+    if minimum_groups <= 1 || effective_observations <= model_rank {
+        return Err(OracleError::InsufficientDegreesOfFreedom(
+            "clustered CR1 correction has no positive denominator".to_owned(),
+        ));
+    }
+    Ok(
+        minimum_groups as f64 / (minimum_groups - 1) as f64 * (effective_observations - 1) as f64
+            / (effective_observations - model_rank) as f64,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1339,6 +1509,7 @@ fn validate_finite_outputs(
     hc1_vce: &OracleMatrix,
     one_way_cluster_vces: &[OracleMatrix],
     clustered_vce: Option<&OracleMatrix>,
+    reported_clustered_vce: Option<&OracleMatrix>,
 ) -> Result<(), OracleError> {
     let finite = coefficients.iter().flatten().all(|value| value.is_finite())
         && weighted_rss.is_finite()
@@ -1354,6 +1525,10 @@ fn validate_finite_outputs(
             .flat_map(OracleMatrix::as_slice)
             .all(|value| value.is_finite())
         && clustered_vce
+            .into_iter()
+            .flat_map(OracleMatrix::as_slice)
+            .all(|value| value.is_finite())
+        && reported_clustered_vce
             .into_iter()
             .flat_map(OracleMatrix::as_slice)
             .all(|value| value.is_finite());

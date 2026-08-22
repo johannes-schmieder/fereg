@@ -437,14 +437,21 @@ impl OlsRequestV1 {
     /// interaction recipes. This performs no observation reads; categorical
     /// level codes are resolved later.
     pub fn validate_and_compile(&self) -> Result<PreparedOlsModel> {
+        self.validate_and_compile_with_cluster_sources(&[])
+    }
+
+    pub(super) fn validate_and_compile_with_cluster_sources(
+        &self,
+        cluster_sources: &[SourceId],
+    ) -> Result<PreparedOlsModel> {
         self.model.validate_executable_metadata()?;
         validate_absorbed_preparation(self)?;
-        validate_bindings(self)?;
+        validate_bindings(self, cluster_sources)?;
         let structural_intercept =
             self.absorbed_terms.is_empty() || self.absorbed_terms.iter().any(|term| term.intercept);
         let report_intercept = self.include_intercept && structural_intercept;
 
-        let categorical_source_indices = categorical_source_indices(self)?;
+        let categorical_source_indices = categorical_source_indices(self, cluster_sources)?;
         let mut columns = Vec::new();
         let mut coefficients = Vec::new();
         columns
@@ -589,9 +596,17 @@ pub fn prepare_ols_data(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
 ) -> Result<PreparedOlsData> {
-    let mut model = request.validate_and_compile()?;
+    prepare_ols_data_with_cluster_sources(request, loaded, &[])
+}
+
+pub(super) fn prepare_ols_data_with_cluster_sources(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<PreparedOlsData> {
+    let mut model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, loaded)?;
-    validate_candidate_categorical_domain(request, loaded)?;
+    validate_candidate_categorical_domain(request, loaded, cluster_sources)?;
 
     let regressor_views = loaded
         .numeric_sources
@@ -630,11 +645,14 @@ pub fn prepare_ols_data(
         weights,
         adjustment: AdjustmentInput::None,
     };
-    let source_uses = source_uses(request)?;
+    let source_uses = source_uses(request, cluster_sources)?;
     let sample =
         prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?;
-    let pruning_categorical_sources = factorize_categorical_sources(request, &sample)?;
-    let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources)?;
+    // Cluster-only sources are deliberately absent from this pre-singleton
+    // factorization. They affect availability (reason 6), never FE pruning;
+    // cluster coding is created only on the final singleton fixed point below.
+    let pruning_categorical_sources = factorize_categorical_sources(request, &sample, &[])?;
+    let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
     let singleton_result = prune_prepared_singletons(
         request,
         &sample,
@@ -648,9 +666,9 @@ pub fn prepare_ols_data(
 
     // Re-factorize on the final compact sample. This removes empty levels left
     // by singleton deletion and gives ordinary factor recipes their final codes.
-    let categorical_sources = factorize_categorical_sources(request, &sample)?;
+    let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
-    let fixed_effects = prepare_fixed_effects(request, &categorical_sources)?;
+    let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
     let fe_topology =
         build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects)?;
     Ok(PreparedOlsData {
@@ -729,14 +747,17 @@ fn ordinary_categorical_sources(model: &CompiledTermGraph) -> BTreeSet<SourceId>
         .collect()
 }
 
-fn categorical_source_indices(request: &OlsRequestV1) -> Result<BTreeMap<SourceId, usize>> {
+fn categorical_source_indices(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+) -> Result<BTreeMap<SourceId, usize>> {
     let mut categorical = ordinary_categorical_sources(&request.model);
     for term in &request.absorbed_terms {
         categorical.extend(term.categorical_sources.iter().copied());
     }
     let mut indices = BTreeMap::new();
     for source in &request.model.sources {
-        if categorical.contains(&source.id) {
+        if categorical.contains(&source.id) || cluster_sources.contains(&source.id) {
             indices.insert(source.id, indices.len());
         }
     }
@@ -756,7 +777,12 @@ fn categorical_source_index(
 fn validate_candidate_categorical_domain(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
+    _cluster_sources: &[SourceId],
 ) -> Result<()> {
+    // Ordinary factor-variable metadata requires canonical nonnegative integer
+    // levels. FE and cluster factorization, like the pinned Factor behavior,
+    // accepts every finite numeric category (including negative/fractional
+    // values) and therefore must not inherit this ordinary-factor restriction.
     let categorical = ordinary_categorical_sources(&request.model);
     for (source, column) in &loaded.numeric_sources {
         if !categorical.contains(source) {
@@ -799,8 +825,9 @@ fn canonical_factor_value(value: f64) -> f64 {
 fn factorize_categorical_sources(
     request: &OlsRequestV1,
     sample: &PreparedNumericSample,
+    cluster_sources: &[SourceId],
 ) -> Result<Vec<PreparedCategoricalSource>> {
-    let categorical = categorical_source_indices(request)?;
+    let categorical = categorical_source_indices(request, cluster_sources)?;
     let mut output = Vec::new();
     output
         .try_reserve_exact(categorical.len())
@@ -826,8 +853,9 @@ fn factorize_categorical_sources(
 fn prepare_fixed_effects(
     request: &OlsRequestV1,
     categorical_sources: &[PreparedCategoricalSource],
+    cluster_sources: &[SourceId],
 ) -> Result<Vec<PreparedOlsEffectRecipe>> {
-    let indices = categorical_source_indices(request)?;
+    let indices = categorical_source_indices(request, cluster_sources)?;
     let mut fixed_effects = Vec::new();
     fixed_effects
         .try_reserve_exact(request.absorbed_terms.len())
@@ -1254,7 +1282,10 @@ fn validate_absorbed_preparation(request: &OlsRequestV1) -> Result<()> {
     Ok(())
 }
 
-fn source_uses(request: &OlsRequestV1) -> Result<Vec<NumericSourceUse>> {
+fn source_uses(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+) -> Result<Vec<NumericSourceUse>> {
     let ordinary = request
         .model
         .terms
@@ -1274,10 +1305,11 @@ fn source_uses(request: &OlsRequestV1) -> Result<Vec<NumericSourceUse>> {
         let usage = NumericSourceUse {
             ordinary: ordinary.contains(&source.id),
             fixed_effect: fixed_effect.contains(&source.id),
+            cluster: cluster_sources.contains(&source.id),
         };
-        if !usage.ordinary && !usage.fixed_effect {
+        if !usage.ordinary && !usage.fixed_effect && !usage.cluster {
             return Err(invalid(format!(
-                "source {} is not used by an ordinary or fixed-effect term",
+                "source {} is not used by an ordinary, fixed-effect, or cluster term",
                 source.id.get()
             )));
         }
@@ -1286,7 +1318,7 @@ fn source_uses(request: &OlsRequestV1) -> Result<Vec<NumericSourceUse>> {
     Ok(uses)
 }
 
-fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
+fn validate_bindings(request: &OlsRequestV1, cluster_sources: &[SourceId]) -> Result<()> {
     let mut positions = BTreeSet::new();
     let mut candidate_count = 0_usize;
     let mut outcome_count = 0_usize;
@@ -1332,7 +1364,7 @@ fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
             "OLS request must bind every model source exactly once",
         ));
     }
-    source_uses(request)?;
+    source_uses(request, cluster_sources)?;
     Ok(())
 }
 
@@ -3280,7 +3312,7 @@ mod tests {
         } = prepared;
 
         let mut successful = InjectedFeTopologyReservation::default();
-        let recipes = prepare_fixed_effects(&request, &categorical_sources).expect("recipes");
+        let recipes = prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
         build_prepared_fe_topology_with_reservation(
             &request,
             &sample,
@@ -3292,7 +3324,8 @@ mod tests {
         assert_eq!(successful.calls, 2);
 
         for fail_at in 0..successful.calls {
-            let recipes = prepare_fixed_effects(&request, &categorical_sources).expect("recipes");
+            let recipes =
+                prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
             let mut injected = InjectedFeTopologyReservation {
                 fail_at: Some(fail_at),
                 ..InjectedFeTopologyReservation::default()
@@ -3312,7 +3345,8 @@ mod tests {
             "unable to reserve prepared FE topology sources",
             "unable to reserve prepared FE topology effects",
         ] {
-            let recipes = prepare_fixed_effects(&request, &categorical_sources).expect("recipes");
+            let recipes =
+                prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
             let mut undersized = InjectedFeTopologyReservation {
                 skip_label: Some(skipped),
                 ..InjectedFeTopologyReservation::default()

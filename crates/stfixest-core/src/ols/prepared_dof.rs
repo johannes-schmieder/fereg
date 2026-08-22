@@ -56,6 +56,9 @@ pub struct PreparedOlsAbsorbedDofReport {
     pub initial_categories: usize,
     pub redundant_categories: usize,
     pub absorbed_rank: usize,
+    /// Categories made redundant because an explicit absorbed intercept is
+    /// equal to or nested within at least one declared cluster dimension.
+    pub nested_categories: usize,
     pub is_approximate: bool,
 }
 
@@ -116,12 +119,31 @@ pub fn compute_prepared_ols_absorbed_dof(
     compute_with_reservation(prepared, policy, &mut reservation)
 }
 
+pub(super) fn compute_prepared_ols_absorbed_dof_with_nesting(
+    prepared: &PreparedOlsData,
+    policy: PreparedOlsAbsorbedDofPolicy,
+    cluster_dimensions: &[&[u32]],
+) -> Result<PreparedOlsAbsorbedDofReport> {
+    let mut reservation = SystemPreparedDofReservation;
+    compute_with_nesting_reservation(prepared, policy, cluster_dimensions, &mut reservation)
+}
+
 fn compute_with_reservation<R: PreparedDofReservation>(
     prepared: &PreparedOlsData,
     policy: PreparedOlsAbsorbedDofPolicy,
     reservation: &mut R,
 ) -> Result<PreparedOlsAbsorbedDofReport> {
+    compute_with_nesting_reservation(prepared, policy, &[], reservation)
+}
+
+fn compute_with_nesting_reservation<R: PreparedDofReservation>(
+    prepared: &PreparedOlsData,
+    policy: PreparedOlsAbsorbedDofPolicy,
+    cluster_dimensions: &[&[u32]],
+    reservation: &mut R,
+) -> Result<PreparedOlsAbsorbedDofReport> {
     validate_prepared_topology(prepared)?;
+    validate_cluster_nesting_view(prepared, cluster_dimensions)?;
     let effects = prepared.fe_topology.effects();
 
     let mut redundant = reserved_filled(
@@ -136,30 +158,87 @@ fn compute_with_reservation<R: PreparedDofReservation>(
         false,
         "unable to reserve prepared absorbed-DoF exactness flags",
     )?;
-    if !effects.is_empty() {
-        exact[0] = true;
-    }
-    for (effect_index, effect_redundant) in redundant.iter_mut().enumerate().skip(1) {
+    let mut nested = reserved_filled(
+        reservation,
+        effects.len(),
+        false,
+        "unable to reserve prepared absorbed-DoF nesting flags",
+    )?;
+    let mut eligible = reserved_filled(
+        reservation,
+        effects.len(),
+        true,
+        "unable to reserve prepared absorbed-DoF mobility eligibility",
+    )?;
+    let mut nested_categories = 0_usize;
+    for effect_index in 0..effects.len() {
         let levels = effect_level_count(prepared, effect_index)?;
-        *effect_redundant = usize::from(levels > 0);
+        if effect_is_nested_within_any_cluster(
+            prepared,
+            effect_index,
+            cluster_dimensions,
+            reservation,
+        )? {
+            redundant[effect_index] = levels;
+            exact[effect_index] = true;
+            nested[effect_index] = true;
+            eligible[effect_index] = false;
+            nested_categories = nested_categories
+                .checked_add(levels)
+                .ok_or_else(|| allocation("prepared absorbed nested category total overflows"))?;
+        }
+    }
+
+    let mut eligible_indices = reserved_empty(
+        reservation,
+        effects.len(),
+        "unable to reserve prepared absorbed-DoF eligible effect indices",
+    )?;
+    for (index, is_eligible) in eligible.iter().copied().enumerate() {
+        if is_eligible {
+            push_reserved(
+                &mut eligible_indices,
+                index,
+                "prepared absorbed-DoF eligible-index capacity exhausted",
+            )?;
+        }
+    }
+    if let Some(first) = eligible_indices.first().copied() {
+        exact[first] = true;
+    }
+    let skip_first = nested_categories == 0;
+    for (position, effect_index) in eligible_indices.iter().copied().enumerate() {
+        if skip_first && position == 0 {
+            continue;
+        }
+        redundant[effect_index] = usize::from(effect_level_count(prepared, effect_index)? > 0);
     }
 
     match policy {
         PreparedOlsAbsorbedDofPolicy::None => {}
         PreparedOlsAbsorbedDofPolicy::FirstPair => {
-            if effects.len() >= 2 {
-                let components = pair_components_for_effects(prepared, 0, 1, reservation)?;
-                redundant[1] = redundant[1].max(components);
-                exact[1] = true;
+            if eligible_indices.len() >= 2 {
+                let earlier = eligible_indices[0];
+                let later = eligible_indices[1];
+                let components =
+                    pair_components_for_effects(prepared, earlier, later, reservation)?;
+                redundant[later] = redundant[later].max(components);
+                exact[later] = true;
             }
         }
         PreparedOlsAbsorbedDofPolicy::Pairwise => {
-            for later in 1..effects.len() {
-                for earlier in 0..later {
+            for later_position in 1..eligible_indices.len() {
+                let later = eligible_indices[later_position];
+                for (earlier_position, earlier) in eligible_indices
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .take(later_position)
+                {
                     let components =
                         pair_components_for_effects(prepared, earlier, later, reservation)?;
                     redundant[later] = redundant[later].max(components);
-                    if earlier == 0 && later == 1 {
+                    if earlier_position == 0 && later_position == 1 {
                         exact[later] = true;
                     }
                 }
@@ -242,7 +321,7 @@ fn compute_with_reservation<R: PreparedDofReservation>(
                 redundant: effect_redundant,
                 coefficients,
                 redundancy_exact: exact[effect_index],
-                nested: false,
+                nested: nested[effect_index],
             },
             "prepared absorbed-DoF effect-row capacity exhausted",
         )?;
@@ -262,8 +341,80 @@ fn compute_with_reservation<R: PreparedDofReservation>(
         initial_categories,
         redundant_categories,
         absorbed_rank,
+        nested_categories,
         is_approximate,
     })
+}
+
+fn validate_cluster_nesting_view(
+    prepared: &PreparedOlsData,
+    cluster_dimensions: &[&[u32]],
+) -> Result<()> {
+    let nobs = prepared.sample.n_active();
+    if cluster_dimensions.len() > 10 {
+        return Err(invalid_argument(
+            "prepared absorbed-DoF nesting view exceeds ten cluster dimensions",
+        ));
+    }
+    for codes in cluster_dimensions {
+        if codes.len() != nobs {
+            return Err(invalid_argument(
+                "prepared absorbed-DoF cluster nesting view is not sample-aligned",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn effect_is_nested_within_any_cluster<R: PreparedDofReservation>(
+    prepared: &PreparedOlsData,
+    effect_index: usize,
+    cluster_dimensions: &[&[u32]],
+    reservation: &mut R,
+) -> Result<bool> {
+    if cluster_dimensions.is_empty() {
+        return Ok(false);
+    }
+    let effect = prepared
+        .fe_topology
+        .effects()
+        .get(effect_index)
+        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested effect is out of range"))?;
+    let topology_source = prepared
+        .fe_topology
+        .sources()
+        .get(effect.topology_source_index)
+        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested source is out of range"))?;
+    let fe_codes = &prepared
+        .categorical_sources
+        .get(topology_source.categorical_source_index())
+        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested codes are out of range"))?
+        .encoded
+        .codes;
+    for cluster_codes in cluster_dimensions {
+        let mut cluster_by_level = reserved_filled(
+            reservation,
+            topology_source.n_levels(),
+            u32::MAX,
+            "unable to reserve prepared absorbed-DoF nesting map",
+        )?;
+        let mut is_nested = true;
+        for (&fe, &cluster) in fe_codes.iter().zip(*cluster_codes) {
+            let mapped = cluster_by_level
+                .get_mut(fe as usize)
+                .ok_or_else(|| invalid_data("prepared absorbed-DoF nested FE code is invalid"))?;
+            if *mapped == u32::MAX {
+                *mapped = cluster;
+            } else if *mapped != cluster {
+                is_nested = false;
+                break;
+            }
+        }
+        if is_nested {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn validate_prepared_topology(prepared: &PreparedOlsData) -> Result<()> {

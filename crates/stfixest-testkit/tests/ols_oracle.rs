@@ -60,7 +60,7 @@ fn hand_computed_one_and_two_way_cluster_vces_use_cr1_inclusion_exclusion() {
     assert_matrix_close(&result.one_way_cluster_vces[1], &[[2.25]], TIGHT);
     assert_matrix_close(
         result.clustered_vce.as_ref().expect("two-way VCE"),
-        &[[25.0 / 12.0]],
+        &[[1.5]],
         TIGHT,
     );
 }

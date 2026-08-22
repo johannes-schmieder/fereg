@@ -1,0 +1,2611 @@
+use std::cmp::Ordering;
+
+use crate::error::{ErrorCode, Result, StFixestError};
+
+use super::prepared_dof::compute_prepared_ols_absorbed_dof_with_nesting;
+use super::prepared_scores::{
+    build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
+    PreparedInferenceReservation, SystemPreparedInferenceReservation,
+};
+use super::prepared_unadjusted::{
+    build_reference_weight_report, build_residual_dof, build_statistics, checked_square,
+    compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
+    weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
+};
+use super::{
+    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
+    PreparedOlsClusteredData, PreparedOlsColumnKind, PreparedOlsFitConfig,
+    PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
+    PreparedOlsResidualDofReport,
+};
+
+/// Numerical and structural policy for the core-only clustered prepared OLS
+/// checkpoint. Cluster nesting is independent of the mobility policy so
+/// `dof(none)` can be represented without silently disabling nesting.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsClusteredConfig {
+    pub fit: PreparedOlsFitConfig,
+    pub absorbed_dof: PreparedOlsAbsorbedDofPolicy,
+    pub account_cluster_nesting: bool,
+    pub certificate_tolerance: f64,
+}
+
+impl Default for PreparedOlsClusteredConfig {
+    fn default() -> Self {
+        Self {
+            fit: PreparedOlsFitConfig::default(),
+            absorbed_dof: PreparedOlsAbsorbedDofPolicy::default(),
+            account_cluster_nesting: true,
+            certificate_tolerance: 5e-8,
+        }
+    }
+}
+
+/// The three deliberately distinct residual-DoF quantities required by the
+/// pinned clustered reference contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsClusteredDofReport {
+    pub finite_rank: usize,
+    pub finite_model_dof: usize,
+    pub absorbed_rank: usize,
+    pub nested_absorbed_categories: usize,
+    pub unclustered_residual_dof: usize,
+    pub reported_residual_dof: usize,
+    pub fit_residual_dof: usize,
+    pub correction_denominator_dof: usize,
+    pub minimum_cluster_count: usize,
+    pub has_structural_intercept: bool,
+    pub has_normalized_absorbed_intercept: bool,
+    pub absorbed_rank_is_approximate: bool,
+}
+
+/// One nonempty inclusion--exclusion subset in deterministic order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsClusterSubsetCertificate {
+    pub mask: u16,
+    pub dimensions: usize,
+    pub sign: i8,
+    pub groups: usize,
+}
+
+/// Cameron--Gelbach--Miller repair diagnostics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparedOlsClusteredPsdState {
+    /// Q=1: no CGM transform is permitted and final PSD is strict.
+    OneWayStrict,
+    /// Q>1 raw full covariance was already PSD; no transform was applied.
+    MultiwayRawPsd,
+    /// Q>1 full covariance was clipped and remains the final covariance.
+    MultiwayFullClipped,
+    /// Q>1 full covariance was clipped, then the independently repaired
+    /// original raw slope block was restored around a reported constant.
+    MultiwayFullClippedSlopeRestored,
+}
+
+/// Cameron--Gelbach--Miller repair diagnostics.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsClusteredPsdReport {
+    pub state: PreparedOlsClusteredPsdState,
+    pub full_adjusted: bool,
+    pub slope_block_restored: bool,
+    pub slope_block_adjusted: bool,
+    pub full_clipped_eigenvalues: usize,
+    pub slope_clipped_eigenvalues: usize,
+    pub minimum_raw_full_eigenvalue: f64,
+    pub minimum_pre_restore_full_eigenvalue: f64,
+    pub minimum_raw_slope_eigenvalue: Option<f64>,
+    pub minimum_restored_slope_eigenvalue: Option<f64>,
+    /// Diagnostic-only in the exact `MultiwayFullClippedSlopeRestored` state.
+    pub minimum_final_full_eigenvalue: f64,
+    pub pre_restore_full_rank: usize,
+    pub restored_slope_rank: Option<usize>,
+    pub strict_final_full_psd: bool,
+    pub transform_reconstruction_relative_error: f64,
+    pub eigensystem_relative_error: f64,
+    pub orthogonality_relative_error: f64,
+}
+
+/// Cluster covariance on the canonical reported bread coordinate.
+#[derive(Debug, PartialEq)]
+pub struct PreparedOlsClusteredCovariance {
+    correction: f64,
+    raw_values: Vec<f64>,
+    values: Vec<f64>,
+    standard_errors: Vec<f64>,
+    psd: PreparedOlsClusteredPsdReport,
+}
+
+impl PreparedOlsClusteredCovariance {
+    #[must_use]
+    pub const fn correction(&self) -> f64 {
+        self.correction
+    }
+
+    /// Corrected inclusion--exclusion sandwich before any multiway CGM repair.
+    #[must_use]
+    pub fn raw_values(&self) -> &[f64] {
+        &self.raw_values
+    }
+
+    #[must_use]
+    pub fn values(&self) -> &[f64] {
+        &self.values
+    }
+
+    #[must_use]
+    pub fn standard_errors(&self) -> &[f64] {
+        &self.standard_errors
+    }
+
+    #[must_use]
+    pub fn dimension(&self) -> usize {
+        self.standard_errors.len()
+    }
+
+    #[must_use]
+    pub const fn psd(&self) -> PreparedOlsClusteredPsdReport {
+        self.psd
+    }
+}
+
+/// Independent composition and numerical certificate.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsClusteredCertificate {
+    pub reference_weight_sum_relative_error: f64,
+    pub score_design_left_inverse_relative_infinity_norm: f64,
+    pub score_design_right_inverse_relative_infinity_norm: f64,
+    pub intercept_coordinate_relative_infinity_norm: f64,
+    pub correction_relative_error: f64,
+    pub independent_influence_relative_infinity_norm: f64,
+    pub corrected_covariance_relative_infinity_norm: f64,
+    pub covariance_symmetry_relative_infinity_norm: f64,
+    pub standard_error_relative_infinity_norm: f64,
+    pub pre_restore_full_psd_relative_error: f64,
+    pub restored_slope_psd_relative_error: f64,
+    pub final_structure_relative_error: f64,
+    pub wald_solve_relative_infinity_norm: f64,
+    pub statistic_formula_relative_infinity_norm: f64,
+    pub passed: bool,
+}
+
+/// Same-call fit, cluster-aware absorbed DoF, multiway covariance, statistics,
+/// and independent certificates. No observation-scale inference matrix or
+/// subset ordering survives in this returned value.
+#[derive(Debug, PartialEq)]
+pub struct CertifiedPreparedOlsClustered {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: PreparedOlsAbsorbedDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsClusteredDofReport,
+    cluster_counts: Vec<usize>,
+    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsClusteredCovariance,
+    certificate: PreparedOlsClusteredCertificate,
+}
+
+impl CertifiedPreparedOlsClustered {
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &PreparedOlsAbsorbedDofReport {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub fn cluster_counts(&self) -> &[usize] {
+        &self.cluster_counts
+    }
+
+    #[must_use]
+    pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
+        &self.subsets
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
+        self.certificate
+    }
+}
+
+#[derive(Debug)]
+struct RawClusterCovariance {
+    uncorrected: Vec<f64>,
+    corrected: Vec<f64>,
+    correction: f64,
+    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+}
+
+#[derive(Debug)]
+struct SymmetricEigensystem {
+    values: Vec<f64>,
+    vectors: Vec<f64>,
+    reconstruction_error: f64,
+    orthogonality_error: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WaldCalculation {
+    statistic: Option<f64>,
+    solve_relative_infinity_norm: f64,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct ClusteredPerturbations {
+    score_design: bool,
+    residual_dof: bool,
+    subset_sign: bool,
+    subset_groups: bool,
+    uncorrected_covariance: bool,
+    corrected_covariance: bool,
+    correction: bool,
+    final_covariance: bool,
+    covariance_symmetry: bool,
+    standard_error: bool,
+    psd_state: bool,
+    rss: bool,
+    f_statistic: bool,
+}
+
+/// Fit and certify one-/multiway clustered covariance through the prepared
+/// strict-MAP path. This entry point owns the complete scientific composition.
+pub fn fit_prepared_ols_clustered_map(
+    prepared: &PreparedOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+) -> Result<CertifiedPreparedOlsClustered> {
+    let mut reservation = SystemPreparedInferenceReservation;
+    fit_with_reservation(prepared, config, &mut reservation)
+}
+
+fn fit_with_reservation<R: PreparedInferenceReservation>(
+    prepared: &PreparedOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+    reservation: &mut R,
+) -> Result<CertifiedPreparedOlsClustered> {
+    validate_config(prepared, config)?;
+    let fit = fit_prepared_ols_coefficients_map(prepared.ols(), config.fit)?;
+    compose(
+        prepared,
+        fit,
+        config,
+        reservation,
+        ClusteredPerturbations::default(),
+    )
+}
+
+fn compose<R: PreparedInferenceReservation>(
+    prepared: &PreparedOlsClusteredData,
+    fit: CertifiedPreparedOlsFit,
+    config: PreparedOlsClusteredConfig,
+    reservation: &mut R,
+    perturbations: ClusteredPerturbations,
+) -> Result<CertifiedPreparedOlsClustered> {
+    let dimensions = borrow_cluster_dimensions(prepared, reservation)?;
+    let nesting_dimensions = if config.account_cluster_nesting {
+        dimensions.as_slice()
+    } else {
+        &[]
+    };
+    let absorbed_dof = compute_prepared_ols_absorbed_dof_with_nesting(
+        prepared.ols(),
+        config.absorbed_dof,
+        nesting_dimensions,
+    )?;
+    validate_cluster_aware_absorbed_dof(prepared, &absorbed_dof, config)?;
+
+    let (weights, weight_view, weight_error) =
+        build_reference_weight_report(prepared.ols(), &fit, config.certificate_tolerance, true)?;
+    let base_dof = build_residual_dof(prepared.ols(), &fit, &absorbed_dof, weights)?;
+    let expected_dof = build_clustered_dof(prepared, weights, base_dof, &absorbed_dof)?;
+    let mut dof = expected_dof;
+    if perturbations.residual_dof {
+        dof.reported_residual_dof = dof
+            .reported_residual_dof
+            .checked_add(1)
+            .ok_or_else(|| allocation("injected prepared clustered residual DoF overflows"))?;
+    }
+    if dof != expected_dof {
+        return Err(invalid_data(
+            "prepared clustered residual-DoF identity did not pass",
+        ));
+    }
+
+    let outcome_mean = weighted_mean(&prepared.ols().sample.outcome, weight_view)?;
+    let center = if dof.has_structural_intercept {
+        outcome_mean
+    } else {
+        0.0
+    };
+    let tss = weighted_sum_of_squares(&prepared.ols().sample.outcome, weight_view, center)?;
+    let within_tss = if prepared.ols().fe_topology.effects().is_empty() {
+        tss
+    } else {
+        fit.initial_absorbed_outcome_sum_of_squares()
+    };
+    let rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
+    validate_sum_of_squares(rss, tss, within_tss)?;
+    let fit_statistics_dof = PreparedOlsResidualDofReport {
+        finite_rank: dof.finite_rank,
+        finite_model_dof: dof.finite_model_dof,
+        absorbed_rank: dof.absorbed_rank,
+        model_rank: dof
+            .finite_rank
+            .checked_add(dof.absorbed_rank)
+            .ok_or_else(|| allocation("prepared clustered fit model rank overflows"))?,
+        residual_dof: dof.fit_residual_dof,
+        has_structural_intercept: dof.has_structural_intercept,
+        has_normalized_absorbed_intercept: dof.has_normalized_absorbed_intercept,
+        absorbed_rank_is_approximate: dof.absorbed_rank_is_approximate,
+    };
+    let mut statistics = build_statistics(rss, tss, within_tss, weights, fit_statistics_dof)?;
+    if perturbations.rss {
+        statistics.rss += 0.25;
+    }
+
+    let mut scores = build_prepared_ols_score_design(
+        prepared.ols(),
+        &fit,
+        weight_view,
+        config.fit.map,
+        config.certificate_tolerance,
+        reservation,
+    )?;
+    if perturbations.score_design {
+        scores.certificate.passed = false;
+    }
+    let mut raw = build_raw_covariance(
+        &fit,
+        &scores,
+        weight_view,
+        &dimensions,
+        dof,
+        weights,
+        reservation,
+    )?;
+    if perturbations.subset_sign && !raw.subsets.is_empty() {
+        raw.subsets[0].sign = -raw.subsets[0].sign;
+    }
+    if perturbations.subset_groups && !raw.subsets.is_empty() {
+        raw.subsets[0].groups = raw.subsets[0]
+            .groups
+            .checked_add(1)
+            .ok_or_else(|| allocation("injected prepared clustered group count overflows"))?;
+    }
+    if perturbations.uncorrected_covariance && !raw.uncorrected.is_empty() {
+        raw.uncorrected[0] += 0.25;
+    }
+    if perturbations.corrected_covariance && !raw.corrected.is_empty() {
+        raw.corrected[0] += 0.25;
+    }
+    if perturbations.correction {
+        raw.correction += 0.25;
+    }
+    let independent_error = certify_with_group_influences(
+        &fit,
+        &scores,
+        weight_view,
+        &dimensions,
+        &raw.uncorrected,
+        &raw.subsets,
+        reservation,
+    )?;
+    let corrected_covariance_error = certify_corrected_covariance(&raw)?;
+    let (values, psd) = apply_psd_policy(
+        prepared,
+        &fit,
+        &raw.corrected,
+        config.certificate_tolerance,
+        reservation,
+    )?;
+    let standard_errors = build_standard_errors(&values, fit.bread().dimension(), reservation)?;
+    let mut covariance = PreparedOlsClusteredCovariance {
+        correction: raw.correction,
+        raw_values: raw.corrected,
+        values,
+        standard_errors,
+        psd,
+    };
+    if perturbations.final_covariance && !covariance.values.is_empty() {
+        covariance.values[0] += 0.25;
+    }
+    if perturbations.covariance_symmetry && covariance.dimension() >= 2 {
+        covariance.values[1] += 0.25;
+    }
+    if perturbations.standard_error && !covariance.standard_errors.is_empty() {
+        covariance.standard_errors[0] += 0.25;
+    }
+    if perturbations.psd_state {
+        covariance.psd.state = match covariance.psd.state {
+            PreparedOlsClusteredPsdState::OneWayStrict => {
+                PreparedOlsClusteredPsdState::MultiwayRawPsd
+            }
+            _ => PreparedOlsClusteredPsdState::OneWayStrict,
+        };
+    }
+    let wald = build_wald(
+        prepared.ols(),
+        &fit,
+        &covariance,
+        dof.finite_model_dof,
+        config.certificate_tolerance,
+        reservation,
+    )?;
+    statistics.f_statistic = wald.statistic;
+    if perturbations.f_statistic {
+        statistics.f_statistic = Some(statistics.f_statistic.unwrap_or(0.0) + 0.25);
+    }
+
+    let expected_correction = cluster_correction(weights, dof)?;
+    let correction_error = relative_difference(
+        covariance.correction,
+        expected_correction,
+        expected_correction.abs().max(1.0),
+    )?;
+    let symmetry_error = symmetry_error(covariance.values(), covariance.dimension())?;
+    let standard_error_error = standard_error_error(&covariance)?;
+    let (pre_restore_full_psd_error, restored_slope_psd_error, final_structure_error) =
+        certify_psd_state(
+            prepared,
+            &fit,
+            &covariance,
+            config.certificate_tolerance,
+            reservation,
+        )?;
+    let statistic_error = certify_statistics(
+        statistics,
+        rss,
+        tss,
+        within_tss,
+        weights,
+        fit_statistics_dof,
+        wald,
+    )?;
+    let score_certificate = scores.certificate();
+    let passed = weight_error <= config.certificate_tolerance
+        && score_certificate.passed
+        && correction_error <= config.certificate_tolerance
+        && independent_error <= config.certificate_tolerance
+        && corrected_covariance_error <= config.certificate_tolerance
+        && symmetry_error <= config.certificate_tolerance
+        && standard_error_error <= config.certificate_tolerance
+        && pre_restore_full_psd_error <= config.certificate_tolerance
+        && restored_slope_psd_error <= config.certificate_tolerance
+        && final_structure_error <= config.certificate_tolerance
+        && covariance.psd.transform_reconstruction_relative_error <= config.certificate_tolerance
+        && covariance.psd.eigensystem_relative_error <= config.certificate_tolerance
+        && covariance.psd.orthogonality_relative_error <= config.certificate_tolerance
+        && wald.solve_relative_infinity_norm <= config.certificate_tolerance
+        && statistic_error <= config.certificate_tolerance;
+    let certificate = PreparedOlsClusteredCertificate {
+        reference_weight_sum_relative_error: weight_error,
+        score_design_left_inverse_relative_infinity_norm: score_certificate
+            .left_inverse_relative_infinity_norm,
+        score_design_right_inverse_relative_infinity_norm: score_certificate
+            .right_inverse_relative_infinity_norm,
+        intercept_coordinate_relative_infinity_norm: score_certificate
+            .intercept_coordinate_relative_infinity_norm,
+        correction_relative_error: correction_error,
+        independent_influence_relative_infinity_norm: independent_error,
+        corrected_covariance_relative_infinity_norm: corrected_covariance_error,
+        covariance_symmetry_relative_infinity_norm: symmetry_error,
+        standard_error_relative_infinity_norm: standard_error_error,
+        pre_restore_full_psd_relative_error: pre_restore_full_psd_error,
+        restored_slope_psd_relative_error: restored_slope_psd_error,
+        final_structure_relative_error: final_structure_error,
+        wald_solve_relative_infinity_norm: wald.solve_relative_infinity_norm,
+        statistic_formula_relative_infinity_norm: statistic_error,
+        passed,
+    };
+    if !certificate.passed {
+        return Err(invalid_data(format!(
+            "prepared clustered covariance or statistic certificate did not pass: {certificate:?}",
+        )));
+    }
+
+    let mut cluster_counts = reserved_empty(
+        reservation,
+        prepared.clusters().len(),
+        "unable to reserve prepared clustered group counts",
+    )?;
+    for dimension in prepared.clusters().dimensions() {
+        push_reserved(
+            &mut cluster_counts,
+            dimension.groups(),
+            "prepared clustered group-count capacity exhausted",
+        )?;
+    }
+    Ok(CertifiedPreparedOlsClustered {
+        fit,
+        absorbed_dof,
+        weights,
+        dof,
+        cluster_counts,
+        subsets: raw.subsets,
+        statistics,
+        covariance,
+        certificate,
+    })
+}
+
+fn validate_config(
+    prepared: &PreparedOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+) -> Result<()> {
+    if !(1..=10).contains(&prepared.clusters().len()) {
+        return Err(invalid_argument(
+            "prepared clustered OLS requires one to ten cluster dimensions",
+        ));
+    }
+    if !config.certificate_tolerance.is_finite()
+        || config.certificate_tolerance <= 0.0
+        || config.certificate_tolerance >= 1.0
+    {
+        return Err(invalid_argument(
+            "prepared clustered certificate tolerance must be finite and in (0,1)",
+        ));
+    }
+    Ok(())
+}
+
+fn borrow_cluster_dimensions<'a, R: PreparedInferenceReservation>(
+    prepared: &'a PreparedOlsClusteredData,
+    reservation: &mut R,
+) -> Result<Vec<&'a [u32]>> {
+    let mut dimensions = reserved_empty(
+        reservation,
+        prepared.clusters().len(),
+        "unable to reserve prepared clustered code views",
+    )?;
+    for index in 0..prepared.clusters().len() {
+        push_reserved(
+            &mut dimensions,
+            prepared.cluster_codes(index)?,
+            "prepared clustered code-view capacity exhausted",
+        )?;
+    }
+    Ok(dimensions)
+}
+
+fn validate_cluster_aware_absorbed_dof(
+    prepared: &PreparedOlsClusteredData,
+    absorbed: &PreparedOlsAbsorbedDofReport,
+    config: PreparedOlsClusteredConfig,
+) -> Result<()> {
+    let nested_sum = absorbed
+        .effects
+        .iter()
+        .filter(|effect| effect.nested)
+        .try_fold(0_usize, |sum, effect| {
+            if effect.redundant != effect.categories
+                || effect.coefficients != 0
+                || !effect.redundancy_exact
+            {
+                return Err(invalid_data(
+                    "prepared clustered nested absorbed effect is not fully redundant",
+                ));
+            }
+            sum.checked_add(effect.categories)
+                .ok_or_else(|| allocation("prepared clustered nested category sum overflows"))
+        })?;
+    if nested_sum != absorbed.nested_categories
+        || (!config.account_cluster_nesting && nested_sum != 0)
+        || absorbed.effects.len()
+            != prepared
+                .ols()
+                .fe_topology
+                .effects()
+                .len()
+                .checked_add(usize::from(
+                    prepared.ols().fe_topology.effects().is_empty()
+                        && prepared.ols().structural_intercept
+                        && prepared.ols().sample.n_active() > 0,
+                ))
+                .ok_or_else(|| allocation("prepared clustered absorbed row count overflows"))?
+    {
+        return Err(invalid_data(
+            "prepared clustered absorbed-DoF nesting certificate did not pass",
+        ));
+    }
+    Ok(())
+}
+
+fn build_clustered_dof(
+    prepared: &PreparedOlsClusteredData,
+    weights: PreparedOlsReferenceWeightReport,
+    base: PreparedOlsResidualDofReport,
+    absorbed: &PreparedOlsAbsorbedDofReport,
+) -> Result<PreparedOlsClusteredDofReport> {
+    let minimum_cluster_count = prepared
+        .clusters()
+        .dimensions()
+        .iter()
+        .map(|dimension| dimension.groups())
+        .min()
+        .ok_or_else(|| invalid_argument("prepared clustered design contains no dimensions"))?;
+    if minimum_cluster_count < 2 {
+        return Err(invalid_data(
+            "prepared clustered inference requires at least two groups per dimension",
+        ));
+    }
+    let unclustered_residual_dof = weights
+        .effective_observations
+        .checked_sub(absorbed.absorbed_rank)
+        .and_then(|value| value.checked_sub(base.finite_model_dof))
+        .filter(|value| *value > 0)
+        .ok_or_else(|| {
+            invalid_data("prepared clustered unclustered residual DoF is not positive")
+        })?;
+    if unclustered_residual_dof != base.residual_dof {
+        return Err(invalid_data(
+            "prepared clustered base residual-DoF identity did not pass",
+        ));
+    }
+    let fit_residual_dof = unclustered_residual_dof
+        .checked_sub(absorbed.nested_categories)
+        .filter(|value| *value > 0)
+        .ok_or_else(|| invalid_data("prepared clustered fit-statistic DoF is not positive"))?;
+    let reported_residual_dof = unclustered_residual_dof.min(minimum_cluster_count - 1);
+    let nested_adjustment = usize::from(absorbed.nested_categories > 0);
+    let correction_denominator_dof = weights
+        .effective_observations
+        .checked_sub(nested_adjustment)
+        .and_then(|value| value.checked_sub(base.finite_model_dof))
+        .and_then(|value| value.checked_sub(absorbed.absorbed_rank))
+        .filter(|value| *value > 0)
+        .ok_or_else(|| {
+            invalid_data("prepared clustered small-sample correction denominator is not positive")
+        })?;
+    Ok(PreparedOlsClusteredDofReport {
+        finite_rank: base.finite_rank,
+        finite_model_dof: base.finite_model_dof,
+        absorbed_rank: absorbed.absorbed_rank,
+        nested_absorbed_categories: absorbed.nested_categories,
+        unclustered_residual_dof,
+        reported_residual_dof,
+        fit_residual_dof,
+        correction_denominator_dof,
+        minimum_cluster_count,
+        has_structural_intercept: base.has_structural_intercept,
+        has_normalized_absorbed_intercept: base.has_normalized_absorbed_intercept,
+        absorbed_rank_is_approximate: base.absorbed_rank_is_approximate,
+    })
+}
+
+fn cluster_correction(
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsClusteredDofReport,
+) -> Result<f64> {
+    let n = exact_integer_as_f64(weights.effective_observations as u128)?;
+    let denominator = exact_integer_as_f64(dof.correction_denominator_dof as u128)?;
+    let groups = exact_integer_as_f64(dof.minimum_cluster_count as u128)?;
+    let correction = ((n - 1.0) / denominator) * (groups / (groups - 1.0));
+    if correction.is_finite() && correction > 0.0 {
+        Ok(correction)
+    } else {
+        Err(invalid_data(
+            "prepared clustered small-sample correction is invalid",
+        ))
+    }
+}
+
+fn build_raw_covariance<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    dof: PreparedOlsClusteredDofReport,
+    weight_report: PreparedOlsReferenceWeightReport,
+    reservation: &mut R,
+) -> Result<RawClusterCovariance> {
+    let p = fit.bread().dimension();
+    let square = checked_square(p, "prepared clustered meat dimensions overflow usize")?;
+    let subset_count =
+        1_usize
+            .checked_shl(u32::try_from(dimensions.len()).map_err(|_| {
+                allocation("prepared clustered dimension count exceeds shift width")
+            })?)
+            .and_then(|value| value.checked_sub(1))
+            .ok_or_else(|| allocation("prepared clustered subset count overflows"))?;
+    let mut combined_meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered inclusion-exclusion meat",
+    )?;
+    let mut combined_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered inclusion-exclusion corrections",
+    )?;
+    let mut subsets = reserved_empty(
+        reservation,
+        subset_count,
+        "unable to reserve prepared clustered subset certificates",
+    )?;
+    for cardinality in 1..=dimensions.len() {
+        for mask in 1_usize..=subset_count {
+            if mask.count_ones() as usize != cardinality {
+                continue;
+            }
+            let sign = if cardinality % 2 == 1 { 1_i8 } else { -1_i8 };
+            let (meat, groups) =
+                subset_score_meat(fit, scores, weights, dimensions, mask, reservation)?;
+            for position in 0..square {
+                compensated_add(
+                    f64::from(sign) * meat[position],
+                    &mut combined_meat[position],
+                    &mut combined_corrections[position],
+                )?;
+            }
+            push_reserved(
+                &mut subsets,
+                PreparedOlsClusterSubsetCertificate {
+                    mask: u16::try_from(mask)
+                        .map_err(|_| allocation("prepared clustered subset mask exceeds u16"))?,
+                    dimensions: cardinality,
+                    sign,
+                    groups,
+                },
+                "prepared clustered subset-certificate capacity exhausted",
+            )?;
+        }
+    }
+    for (value, correction) in combined_meat.iter_mut().zip(combined_corrections) {
+        *value += correction;
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered inclusion-exclusion meat is not finite",
+            ));
+        }
+    }
+    let uncorrected = sandwich(fit.bread().values(), &combined_meat, p, reservation)?;
+    let correction = cluster_correction(weight_report, dof)?;
+    let mut corrected = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered corrected covariance",
+    )?;
+    for (target, source) in corrected.iter_mut().zip(&uncorrected) {
+        *target = correction * *source;
+        if !target.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered corrected covariance is not finite",
+            ));
+        }
+    }
+    symmetrize(&mut corrected, p)?;
+    Ok(RawClusterCovariance {
+        uncorrected,
+        corrected,
+        correction,
+        subsets,
+    })
+}
+
+fn subset_score_meat<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    mask: usize,
+    reservation: &mut R,
+) -> Result<(Vec<f64>, usize)> {
+    aggregate_subset(fit, scores, weights, dimensions, mask, false, reservation)
+}
+
+/// Aggregate either raw group scores or bread-transformed group influences.
+/// Only one row ordering and one P-vector are live for the current subset;
+/// no G-by-P table is materialized.
+fn aggregate_subset<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    mask: usize,
+    transform_by_bread: bool,
+    reservation: &mut R,
+) -> Result<(Vec<f64>, usize)> {
+    let nobs = scores.nrows();
+    let p = fit.bread().dimension();
+    if fit.residuals().len() != nobs || dimensions.iter().any(|codes| codes.len() != nobs) {
+        return Err(invalid_argument(
+            "prepared clustered score and cluster dimensions are not aligned",
+        ));
+    }
+    let square = checked_square(
+        p,
+        "prepared clustered subset meat dimensions overflow usize",
+    )?;
+    let mut order = reserved_empty(
+        reservation,
+        nobs,
+        "unable to reserve prepared clustered subset ordering",
+    )?;
+    for row in 0..nobs {
+        push_reserved(
+            &mut order,
+            row,
+            "prepared clustered subset ordering capacity exhausted",
+        )?;
+    }
+    order.sort_unstable_by(|left, right| {
+        compare_cluster_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
+    });
+    let mut group_score = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered group score",
+    )?;
+    let mut group_score_correction = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered group score corrections",
+    )?;
+    let mut transformed = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered group influence",
+    )?;
+    let mut meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered subset meat",
+    )?;
+    let mut meat_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered subset meat corrections",
+    )?;
+    let mut groups = 0_usize;
+    let mut previous = None;
+    for row in order {
+        if previous.is_some_and(|prior| {
+            compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
+        }) {
+            finish_group(
+                fit,
+                &group_score,
+                &group_score_correction,
+                transform_by_bread,
+                &mut transformed,
+                &mut meat,
+                &mut meat_corrections,
+            )?;
+            group_score.fill(0.0);
+            group_score_correction.fill(0.0);
+            groups = groups
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared clustered subset group count overflows"))?;
+        }
+        let scale = weights.value(row)? * fit.residuals()[row];
+        if !scale.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered observation score scale is not finite",
+            ));
+        }
+        for coordinate in 0..p {
+            compensated_add(
+                scale * scores.reported_value(row, coordinate)?,
+                &mut group_score[coordinate],
+                &mut group_score_correction[coordinate],
+            )?;
+        }
+        previous = Some(row);
+    }
+    if previous.is_some() {
+        finish_group(
+            fit,
+            &group_score,
+            &group_score_correction,
+            transform_by_bread,
+            &mut transformed,
+            &mut meat,
+            &mut meat_corrections,
+        )?;
+        groups = groups
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared clustered subset group count overflows"))?;
+    }
+    for left in 0..p {
+        for right in left..p {
+            let position = left * p + right;
+            meat[position] += meat_corrections[position];
+            meat[right * p + left] = meat[position];
+        }
+    }
+    Ok((meat, groups))
+}
+
+fn finish_group(
+    fit: &CertifiedPreparedOlsFit,
+    score: &[f64],
+    score_corrections: &[f64],
+    transform_by_bread: bool,
+    transformed: &mut [f64],
+    meat: &mut [f64],
+    meat_corrections: &mut [f64],
+) -> Result<()> {
+    let p = score.len();
+    if score_corrections.len() != p
+        || transformed.len() != p
+        || meat.len() != p * p
+        || meat_corrections.len() != p * p
+    {
+        return Err(invalid_argument(
+            "prepared clustered group aggregation dimensions are inconsistent",
+        ));
+    }
+    if transform_by_bread {
+        for (row, target) in transformed.iter_mut().enumerate().take(p) {
+            let mut value = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for column in 0..p {
+                compensated_add(
+                    fit.bread().values()[row * p + column]
+                        * (score[column] + score_corrections[column]),
+                    &mut value,
+                    &mut correction,
+                )?;
+            }
+            *target = value + correction;
+        }
+    } else {
+        for index in 0..p {
+            transformed[index] = score[index] + score_corrections[index];
+        }
+    }
+    for left in 0..p {
+        for right in left..p {
+            let position = left * p + right;
+            compensated_add(
+                transformed[left] * transformed[right],
+                &mut meat[position],
+                &mut meat_corrections[position],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn compare_cluster_rows(dimensions: &[&[u32]], mask: usize, left: usize, right: usize) -> Ordering {
+    for (dimension, codes) in dimensions.iter().enumerate() {
+        if mask & (1_usize << dimension) == 0 {
+            continue;
+        }
+        let ordering = codes[left].cmp(&codes[right]);
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+    Ordering::Equal
+}
+
+fn sandwich<R: PreparedInferenceReservation>(
+    bread: &[f64],
+    meat: &[f64],
+    p: usize,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = checked_square(p, "prepared clustered sandwich dimensions overflow usize")?;
+    if bread.len() != square || meat.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered sandwich dimensions are inconsistent",
+        ));
+    }
+    let mut left = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered bread-meat product",
+    )?;
+    for row in 0..p {
+        for column in 0..p {
+            let mut value = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for inner in 0..p {
+                compensated_add(
+                    bread[row * p + inner] * meat[inner * p + column],
+                    &mut value,
+                    &mut correction,
+                )?;
+            }
+            left[row * p + column] = value + correction;
+        }
+    }
+    let mut output = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered uncorrected covariance",
+    )?;
+    for row in 0..p {
+        for column in 0..p {
+            let mut value = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for inner in 0..p {
+                compensated_add(
+                    left[row * p + inner] * bread[column * p + inner],
+                    &mut value,
+                    &mut correction,
+                )?;
+            }
+            output[row * p + column] = value + correction;
+        }
+    }
+    symmetrize(&mut output, p)?;
+    Ok(output)
+}
+
+fn certify_with_group_influences<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    production: &[f64],
+    reports: &[PreparedOlsClusterSubsetCertificate],
+    reservation: &mut R,
+) -> Result<f64> {
+    let p = fit.bread().dimension();
+    let square = checked_square(
+        p,
+        "prepared clustered independent certificate dimensions overflow usize",
+    )?;
+    let subset_count = (1_usize << dimensions.len()) - 1;
+    if production.len() != square || reports.len() != subset_count {
+        return Err(invalid_argument(
+            "prepared clustered independent certificate dimensions are inconsistent",
+        ));
+    }
+    let mut independent = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered independent covariance",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered independent corrections",
+    )?;
+    let mut report_position = 0_usize;
+    let mut report_error = 0.0_f64;
+    for cardinality in 1..=dimensions.len() {
+        for mask in 1..=subset_count {
+            if mask.count_ones() as usize != cardinality {
+                continue;
+            }
+            let sign = if cardinality % 2 == 1 { 1.0 } else { -1.0 };
+            let (component, groups) =
+                aggregate_subset(fit, scores, weights, dimensions, mask, true, reservation)?;
+            let expected_sign = if cardinality % 2 == 1 { 1_i8 } else { -1_i8 };
+            let report = reports.get(report_position).ok_or_else(|| {
+                invalid_argument("prepared clustered subset report position is out of range")
+            })?;
+            if report.mask
+                != u16::try_from(mask).map_err(|_| {
+                    allocation("prepared clustered subset certificate mask overflows u16")
+                })?
+                || report.dimensions != cardinality
+                || report.sign != expected_sign
+                || report.groups != groups
+            {
+                report_error = 1.0;
+            }
+            report_position = report_position
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared clustered subset report index overflows"))?;
+            for position in 0..square {
+                compensated_add(
+                    sign * component[position],
+                    &mut independent[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    let mut error = 0.0_f64;
+    for row in 0..p {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..p {
+            let position = row * p + column;
+            let expected = independent[position] + corrections[position];
+            row_error += (production[position] - expected).abs();
+            row_scale += production[position].abs().max(expected.abs());
+        }
+        error = error.max(row_error / row_scale);
+    }
+    error = error.max(report_error);
+    if error.is_finite() {
+        Ok(error)
+    } else {
+        Err(invalid_data(
+            "prepared clustered independent certificate norm is not finite",
+        ))
+    }
+}
+
+fn certify_corrected_covariance(raw: &RawClusterCovariance) -> Result<f64> {
+    if raw.uncorrected.len() != raw.corrected.len()
+        || !raw.correction.is_finite()
+        || raw.correction <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared clustered corrected covariance dimensions are inconsistent",
+        ));
+    }
+    let mut error = 0.0_f64;
+    let mut scale = 1.0_f64;
+    for (uncorrected, corrected) in raw.uncorrected.iter().zip(&raw.corrected) {
+        let expected = uncorrected * raw.correction;
+        if !expected.is_finite() || !corrected.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered corrected covariance is not finite",
+            ));
+        }
+        error += (corrected - expected).abs();
+        scale += corrected.abs().max(expected.abs());
+    }
+    Ok(error / scale)
+}
+
+fn apply_psd_policy<R: PreparedInferenceReservation>(
+    prepared: &PreparedOlsClusteredData,
+    fit: &CertifiedPreparedOlsFit,
+    raw: &[f64],
+    tolerance: f64,
+    reservation: &mut R,
+) -> Result<(Vec<f64>, PreparedOlsClusteredPsdReport)> {
+    let p = fit.bread().dimension();
+    let square = checked_square(p, "prepared clustered PSD dimensions overflow usize")?;
+    if raw.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered PSD dimensions are inconsistent",
+        ));
+    }
+    if p == 0 {
+        let state = if prepared.clusters().len() == 1 {
+            PreparedOlsClusteredPsdState::OneWayStrict
+        } else {
+            PreparedOlsClusteredPsdState::MultiwayRawPsd
+        };
+        return Ok((
+            Vec::new(),
+            PreparedOlsClusteredPsdReport {
+                state,
+                full_adjusted: false,
+                slope_block_restored: false,
+                slope_block_adjusted: false,
+                full_clipped_eigenvalues: 0,
+                slope_clipped_eigenvalues: 0,
+                minimum_raw_full_eigenvalue: 0.0,
+                minimum_pre_restore_full_eigenvalue: 0.0,
+                minimum_raw_slope_eigenvalue: None,
+                minimum_restored_slope_eigenvalue: None,
+                minimum_final_full_eigenvalue: 0.0,
+                pre_restore_full_rank: 0,
+                restored_slope_rank: None,
+                strict_final_full_psd: true,
+                transform_reconstruction_relative_error: 0.0,
+                eigensystem_relative_error: 0.0,
+                orthogonality_relative_error: 0.0,
+            },
+        ));
+    }
+    let mut symmetric = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered symmetric covariance",
+    )?;
+    symmetric.copy_from_slice(raw);
+    symmetrize(&mut symmetric, p)?;
+    let raw_eigen = symmetric_eigensystem(&symmetric, p, reservation)?;
+    let minimum_raw = raw_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let scale = covariance_scale(&symmetric, p)?;
+    if prepared.clusters().len() == 1 && minimum_raw < -tolerance * scale {
+        return Err(invalid_data(
+            "one-way prepared clustered covariance is materially indefinite",
+        ));
+    }
+
+    let cluster_dimensions = prepared.clusters().len();
+    let mut output = symmetric;
+    let mut full_adjusted = false;
+    let mut full_clipped = 0_usize;
+    let mut slope_block_restored = false;
+    let mut slope_block_adjusted = false;
+    let mut slope_clipped = 0_usize;
+    let mut minimum_raw_slope = None;
+    let mut minimum_restored_slope = None;
+    let mut restored_slope_rank = None;
+    let mut transform_error = 0.0_f64;
+    let mut eig_error = raw_eigen.reconstruction_error;
+    let mut orthogonality_error = raw_eigen.orthogonality_error;
+    if cluster_dimensions > 1 && minimum_raw < 0.0 {
+        let (repaired, clipped_count) = reconstruct_clipped(&raw_eigen, p, reservation)?;
+        transform_error =
+            transform_error.max(certify_clipped_reconstruction(&raw_eigen, &repaired, p)?);
+        output = repaired;
+        full_clipped = clipped_count;
+        full_adjusted = clipped_count > 0;
+
+        let intercept = reported_intercept_position(prepared.ols(), fit)?;
+        if let Some(intercept) = intercept {
+            let slope_dimension = p.checked_sub(1).ok_or_else(|| {
+                invalid_argument("prepared clustered slope dimension underflowed")
+            })?;
+            if slope_dimension > 0 {
+                let slope_square = checked_square(
+                    slope_dimension,
+                    "prepared clustered slope-block dimensions overflow usize",
+                )?;
+                let mut positions = reserved_empty(
+                    reservation,
+                    slope_dimension,
+                    "unable to reserve prepared clustered slope-block positions",
+                )?;
+                for position in 0..p {
+                    if position != intercept {
+                        push_reserved(
+                            &mut positions,
+                            position,
+                            "prepared clustered slope-position capacity exhausted",
+                        )?;
+                    }
+                }
+                let mut slope = reserved_filled(
+                    reservation,
+                    slope_square,
+                    0.0_f64,
+                    "unable to reserve prepared clustered raw slope block",
+                )?;
+                for row in 0..slope_dimension {
+                    for column in 0..slope_dimension {
+                        slope[row * slope_dimension + column] =
+                            raw_eigen_input(raw, p, positions[row], positions[column])?;
+                    }
+                }
+                symmetrize(&mut slope, slope_dimension)?;
+                let slope_eigen = symmetric_eigensystem(&slope, slope_dimension, reservation)?;
+                minimum_raw_slope = Some(
+                    slope_eigen
+                        .values
+                        .iter()
+                        .copied()
+                        .fold(f64::INFINITY, f64::min),
+                );
+                eig_error = eig_error.max(slope_eigen.reconstruction_error);
+                orthogonality_error = orthogonality_error.max(slope_eigen.orthogonality_error);
+                let (fixed_slope, clipped_count) =
+                    reconstruct_clipped(&slope_eigen, slope_dimension, reservation)?;
+                transform_error = transform_error.max(certify_clipped_reconstruction(
+                    &slope_eigen,
+                    &fixed_slope,
+                    slope_dimension,
+                )?);
+                slope_clipped = clipped_count;
+                slope_block_adjusted = clipped_count > 0;
+                let fixed_slope_eigen =
+                    symmetric_eigensystem(&fixed_slope, slope_dimension, reservation)?;
+                minimum_restored_slope = Some(
+                    fixed_slope_eigen
+                        .values
+                        .iter()
+                        .copied()
+                        .fold(f64::INFINITY, f64::min),
+                );
+                let slope_scale = covariance_scale(&fixed_slope, slope_dimension)?;
+                if minimum_restored_slope.unwrap_or(0.0) < -tolerance * slope_scale {
+                    return Err(invalid_data(
+                        "prepared clustered restored slope block is materially indefinite",
+                    ));
+                }
+                restored_slope_rank = Some(
+                    fixed_slope_eigen
+                        .values
+                        .iter()
+                        .filter(|value| **value > tolerance * slope_scale)
+                        .count(),
+                );
+                eig_error = eig_error.max(fixed_slope_eigen.reconstruction_error);
+                orthogonality_error =
+                    orthogonality_error.max(fixed_slope_eigen.orthogonality_error);
+                for row in 0..slope_dimension {
+                    for column in 0..slope_dimension {
+                        output[positions[row] * p + positions[column]] =
+                            fixed_slope[row * slope_dimension + column];
+                    }
+                }
+                slope_block_restored = true;
+            }
+        }
+    }
+    let (pre_restore_eigen, pre_restore_scale) = if full_adjusted {
+        let mut pre_restore = reconstruct_clipped(&raw_eigen, p, reservation)?.0;
+        symmetrize(&mut pre_restore, p)?;
+        let eigen = symmetric_eigensystem(&pre_restore, p, reservation)?;
+        let pre_restore_minimum = eigen.values.iter().copied().fold(f64::INFINITY, f64::min);
+        let pre_restore_scale = covariance_scale(&pre_restore, p)?;
+        if pre_restore_minimum < -tolerance * pre_restore_scale {
+            return Err(invalid_data(
+                "prepared clustered clipped full covariance is materially indefinite",
+            ));
+        }
+        (eigen, pre_restore_scale)
+    } else {
+        (
+            symmetric_eigensystem(&output, p, reservation)?,
+            covariance_scale(&output, p)?,
+        )
+    };
+    eig_error = eig_error.max(pre_restore_eigen.reconstruction_error);
+    orthogonality_error = orthogonality_error.max(pre_restore_eigen.orthogonality_error);
+    let minimum_pre_restore = pre_restore_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    if minimum_pre_restore < -tolerance * pre_restore_scale {
+        return Err(invalid_data(
+            "prepared clustered pre-restore full covariance is materially indefinite",
+        ));
+    }
+    let pre_restore_full_rank = pre_restore_eigen
+        .values
+        .iter()
+        .filter(|value| **value > tolerance * pre_restore_scale)
+        .count();
+    symmetrize(&mut output, p)?;
+    let final_eigen = symmetric_eigensystem(&output, p, reservation)?;
+    eig_error = eig_error.max(final_eigen.reconstruction_error);
+    orthogonality_error = orthogonality_error.max(final_eigen.orthogonality_error);
+    let minimum_final = final_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let final_scale = covariance_scale(&output, p)?;
+    let strict_final_full_psd = !(cluster_dimensions > 1
+        && full_adjusted
+        && reported_intercept_position(prepared.ols(), fit)?.is_some()
+        && p > 1
+        && slope_block_restored);
+    if strict_final_full_psd && minimum_final < -tolerance * final_scale {
+        return Err(invalid_data(format!(
+            "prepared clustered final covariance is materially indefinite: min={minimum_final:.17e}, scale={final_scale:.17e}, adjusted={full_adjusted}, slope_restored={slope_block_restored}",
+        )));
+    }
+    let state = if cluster_dimensions == 1 {
+        PreparedOlsClusteredPsdState::OneWayStrict
+    } else if !full_adjusted {
+        PreparedOlsClusteredPsdState::MultiwayRawPsd
+    } else if slope_block_restored {
+        PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored
+    } else {
+        PreparedOlsClusteredPsdState::MultiwayFullClipped
+    };
+    Ok((
+        output,
+        PreparedOlsClusteredPsdReport {
+            state,
+            full_adjusted,
+            slope_block_restored,
+            slope_block_adjusted,
+            full_clipped_eigenvalues: full_clipped,
+            slope_clipped_eigenvalues: slope_clipped,
+            minimum_raw_full_eigenvalue: minimum_raw,
+            minimum_pre_restore_full_eigenvalue: minimum_pre_restore,
+            minimum_raw_slope_eigenvalue: minimum_raw_slope,
+            minimum_restored_slope_eigenvalue: minimum_restored_slope,
+            minimum_final_full_eigenvalue: minimum_final,
+            pre_restore_full_rank,
+            restored_slope_rank,
+            strict_final_full_psd,
+            transform_reconstruction_relative_error: transform_error,
+            eigensystem_relative_error: eig_error,
+            orthogonality_relative_error: orthogonality_error,
+        },
+    ))
+}
+
+fn raw_eigen_input(raw: &[f64], p: usize, row: usize, column: usize) -> Result<f64> {
+    let value = 0.5 * (raw[row * p + column] + raw[column * p + row]);
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(invalid_data(
+            "prepared clustered raw slope-block value is not finite",
+        ))
+    }
+}
+
+fn reported_intercept_position(
+    prepared: &super::PreparedOlsData,
+    fit: &CertifiedPreparedOlsFit,
+) -> Result<Option<usize>> {
+    let mut intercept = None;
+    for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
+        let is_intercept = coordinate.kind
+            == PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+            || matches!(
+                prepared
+                    .model
+                    .columns
+                    .get(coordinate.generated_column_index)
+                    .map(|column| &column.kind),
+                Some(PreparedOlsColumnKind::Intercept)
+            );
+        if is_intercept && intercept.replace(position).is_some() {
+            return Err(invalid_argument(
+                "prepared clustered covariance has multiple reported intercepts",
+            ));
+        }
+    }
+    Ok(intercept)
+}
+
+fn symmetric_eigensystem<R: PreparedInferenceReservation>(
+    matrix: &[f64],
+    dimension: usize,
+    reservation: &mut R,
+) -> Result<SymmetricEigensystem> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered eigensystem dimensions overflow usize",
+    )?;
+    if matrix.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered eigensystem dimensions are inconsistent",
+        ));
+    }
+    let mut work = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered eigensystem work matrix",
+    )?;
+    work.copy_from_slice(matrix);
+    symmetrize(&mut work, dimension)?;
+    let mut vectors = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered eigenvectors",
+    )?;
+    for index in 0..dimension {
+        vectors[index * dimension + index] = 1.0;
+    }
+    if dimension > 1 {
+        let scale = covariance_scale(&work, dimension)?;
+        let threshold = 128.0 * f64::EPSILON * scale;
+        let maximum_iterations = dimension
+            .checked_mul(dimension)
+            .and_then(|value| value.checked_mul(128))
+            .ok_or_else(|| allocation("prepared clustered Jacobi iteration limit overflows"))?;
+        let mut converged = false;
+        for _ in 0..maximum_iterations {
+            let mut pivot_row = 0_usize;
+            let mut pivot_column = 1_usize;
+            let mut maximum = 0.0_f64;
+            for row in 0..dimension {
+                for column in (row + 1)..dimension {
+                    let value = work[row * dimension + column].abs();
+                    if value > maximum {
+                        maximum = value;
+                        pivot_row = row;
+                        pivot_column = column;
+                    }
+                }
+            }
+            if maximum <= threshold {
+                converged = true;
+                break;
+            }
+            jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
+        }
+        if !converged {
+            return Err(invalid_data(
+                "prepared clustered symmetric eigensystem did not converge",
+            ));
+        }
+    }
+    let mut values = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve prepared clustered eigenvalues",
+    )?;
+    for index in 0..dimension {
+        values[index] = work[index * dimension + index];
+        if !values[index].is_finite() {
+            return Err(invalid_data("prepared clustered eigenvalue is not finite"));
+        }
+    }
+    let (reconstruction_error, orthogonality_error) =
+        certify_eigensystem(matrix, &values, &vectors, dimension)?;
+    Ok(SymmetricEigensystem {
+        values,
+        vectors,
+        reconstruction_error,
+        orthogonality_error,
+    })
+}
+
+fn jacobi_rotate(
+    matrix: &mut [f64],
+    vectors: &mut [f64],
+    dimension: usize,
+    p: usize,
+    q: usize,
+) -> Result<()> {
+    let app = matrix[p * dimension + p];
+    let aqq = matrix[q * dimension + q];
+    let apq = matrix[p * dimension + q];
+    if apq == 0.0 {
+        return Ok(());
+    }
+    let tau = (aqq - app) / (2.0 * apq);
+    let t = if tau >= 0.0 {
+        1.0 / (tau + (1.0 + tau * tau).sqrt())
+    } else {
+        -1.0 / (-tau + (1.0 + tau * tau).sqrt())
+    };
+    let cosine = 1.0 / (1.0 + t * t).sqrt();
+    let sine = t * cosine;
+    if !cosine.is_finite() || !sine.is_finite() {
+        return Err(invalid_data(
+            "prepared clustered Jacobi rotation is not finite",
+        ));
+    }
+    for index in 0..dimension {
+        if index == p || index == q {
+            continue;
+        }
+        let aip = matrix[index * dimension + p];
+        let aiq = matrix[index * dimension + q];
+        let new_p = cosine * aip - sine * aiq;
+        let new_q = sine * aip + cosine * aiq;
+        matrix[index * dimension + p] = new_p;
+        matrix[p * dimension + index] = new_p;
+        matrix[index * dimension + q] = new_q;
+        matrix[q * dimension + index] = new_q;
+    }
+    matrix[p * dimension + p] = app - t * apq;
+    matrix[q * dimension + q] = aqq + t * apq;
+    matrix[p * dimension + q] = 0.0;
+    matrix[q * dimension + p] = 0.0;
+    for row in 0..dimension {
+        let vip = vectors[row * dimension + p];
+        let viq = vectors[row * dimension + q];
+        vectors[row * dimension + p] = cosine * vip - sine * viq;
+        vectors[row * dimension + q] = sine * vip + cosine * viq;
+    }
+    Ok(())
+}
+
+fn certify_eigensystem(
+    matrix: &[f64],
+    values: &[f64],
+    vectors: &[f64],
+    dimension: usize,
+) -> Result<(f64, f64)> {
+    let mut reconstruction_error = 0.0_f64;
+    let mut orthogonality_error = 0.0_f64;
+    for row in 0..dimension {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        let mut orthogonal_row_error = 0.0_f64;
+        for column in 0..dimension {
+            let mut reconstructed = 0.0_f64;
+            let mut reconstructed_correction = 0.0_f64;
+            let mut inner_product = 0.0_f64;
+            let mut inner_correction = 0.0_f64;
+            for eigen in 0..dimension {
+                compensated_add(
+                    vectors[row * dimension + eigen]
+                        * values[eigen]
+                        * vectors[column * dimension + eigen],
+                    &mut reconstructed,
+                    &mut reconstructed_correction,
+                )?;
+                compensated_add(
+                    vectors[row * dimension + eigen] * vectors[column * dimension + eigen],
+                    &mut inner_product,
+                    &mut inner_correction,
+                )?;
+            }
+            reconstructed += reconstructed_correction;
+            inner_product += inner_correction;
+            row_error += (matrix[row * dimension + column] - reconstructed).abs();
+            row_scale += matrix[row * dimension + column]
+                .abs()
+                .max(reconstructed.abs());
+            orthogonal_row_error += (inner_product - f64::from(u8::from(row == column))).abs();
+        }
+        reconstruction_error = reconstruction_error.max(row_error / row_scale);
+        orthogonality_error = orthogonality_error.max(orthogonal_row_error);
+    }
+    Ok((reconstruction_error, orthogonality_error))
+}
+
+fn reconstruct_clipped<R: PreparedInferenceReservation>(
+    eigen: &SymmetricEigensystem,
+    dimension: usize,
+    reservation: &mut R,
+) -> Result<(Vec<f64>, usize)> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered clipped reconstruction dimensions overflow usize",
+    )?;
+    let mut output = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered clipped reconstruction",
+    )?;
+    let clipped = eigen.values.iter().filter(|value| **value < 0.0).count();
+    for row in 0..dimension {
+        for column in row..dimension {
+            let mut value = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for index in 0..dimension {
+                compensated_add(
+                    eigen.vectors[row * dimension + index]
+                        * eigen.values[index].max(0.0)
+                        * eigen.vectors[column * dimension + index],
+                    &mut value,
+                    &mut correction,
+                )?;
+            }
+            output[row * dimension + column] = value + correction;
+            output[column * dimension + row] = value + correction;
+        }
+    }
+    Ok((output, clipped))
+}
+
+fn certify_clipped_reconstruction(
+    eigen: &SymmetricEigensystem,
+    actual: &[f64],
+    dimension: usize,
+) -> Result<f64> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered clipped-certificate dimensions overflow usize",
+    )?;
+    if actual.len() != square || eigen.values.len() != dimension || eigen.vectors.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered clipped-certificate dimensions are inconsistent",
+        ));
+    }
+    let mut error = 0.0_f64;
+    for row in 0..dimension {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..dimension {
+            let mut expected = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for index in 0..dimension {
+                compensated_add(
+                    eigen.vectors[row * dimension + index]
+                        * eigen.values[index].max(0.0)
+                        * eigen.vectors[column * dimension + index],
+                    &mut expected,
+                    &mut correction,
+                )?;
+            }
+            expected += correction;
+            let observed = actual[row * dimension + column];
+            if !observed.is_finite() || !expected.is_finite() {
+                return Err(invalid_data(
+                    "prepared clustered clipped reconstruction is not finite",
+                ));
+            }
+            row_error += (observed - expected).abs();
+            row_scale += observed.abs().max(expected.abs());
+        }
+        error = error.max(row_error / row_scale);
+    }
+    Ok(error)
+}
+
+fn certify_psd_state<R: PreparedInferenceReservation>(
+    prepared: &PreparedOlsClusteredData,
+    fit: &CertifiedPreparedOlsFit,
+    covariance: &PreparedOlsClusteredCovariance,
+    tolerance: f64,
+    reservation: &mut R,
+) -> Result<(f64, f64, f64)> {
+    let p = covariance.dimension();
+    let square = checked_square(
+        p,
+        "prepared clustered independent PSD dimensions overflow usize",
+    )?;
+    if covariance.raw_values.len() != square || covariance.values.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered independent PSD dimensions are inconsistent",
+        ));
+    }
+    let q = prepared.clusters().len();
+    let intercept = reported_intercept_position(prepared.ols(), fit)?;
+    if p == 0 {
+        let expected_state = if q == 1 {
+            PreparedOlsClusteredPsdState::OneWayStrict
+        } else {
+            PreparedOlsClusteredPsdState::MultiwayRawPsd
+        };
+        let state_error = f64::from(u8::from(
+            covariance.psd.state != expected_state
+                || covariance.psd.full_adjusted
+                || covariance.psd.slope_block_restored
+                || !covariance.psd.strict_final_full_psd,
+        ));
+        return Ok((0.0, 0.0, state_error));
+    }
+
+    let mut raw = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered independent raw PSD matrix",
+    )?;
+    raw.copy_from_slice(&covariance.raw_values);
+    symmetrize(&mut raw, p)?;
+    let raw_eigen = symmetric_eigensystem(&raw, p, reservation)?;
+    let raw_minimum = raw_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let expected_full_adjustment = q > 1 && raw_minimum < 0.0;
+    let (mut expected, expected_full_clipped) = if expected_full_adjustment {
+        reconstruct_clipped(&raw_eigen, p, reservation)?
+    } else {
+        (raw, 0)
+    };
+    let pre_restore_eigen = symmetric_eigensystem(&expected, p, reservation)?;
+    let pre_restore_minimum = pre_restore_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let pre_restore_scale = covariance_scale(&expected, p)?;
+    let pre_restore_error = (-pre_restore_minimum).max(0.0) / pre_restore_scale;
+    let expected_pre_restore_rank = pre_restore_eigen
+        .values
+        .iter()
+        .filter(|value| **value > tolerance * pre_restore_scale)
+        .count();
+
+    let expected_slope_restore = expected_full_adjustment && intercept.is_some() && p > 1;
+    let mut raw_slope_minimum = None;
+    let mut restored_slope_minimum = None;
+    let mut expected_slope_rank = None;
+    let mut expected_slope_clipped = 0_usize;
+    let mut restored_slope_error = 0.0_f64;
+    if expected_slope_restore {
+        let intercept = intercept.ok_or_else(|| {
+            invalid_argument("prepared clustered independent intercept state is inconsistent")
+        })?;
+        let slopes = p - 1;
+        let slope_square = checked_square(
+            slopes,
+            "prepared clustered independent slope dimensions overflow usize",
+        )?;
+        let mut positions = reserved_empty(
+            reservation,
+            slopes,
+            "unable to reserve prepared clustered independent slope positions",
+        )?;
+        for position in 0..p {
+            if position != intercept {
+                push_reserved(
+                    &mut positions,
+                    position,
+                    "prepared clustered independent slope-position capacity exhausted",
+                )?;
+            }
+        }
+        let mut slope = reserved_filled(
+            reservation,
+            slope_square,
+            0.0_f64,
+            "unable to reserve prepared clustered independent raw slope block",
+        )?;
+        for row in 0..slopes {
+            for column in 0..slopes {
+                slope[row * slopes + column] =
+                    raw_eigen_input(&covariance.raw_values, p, positions[row], positions[column])?;
+            }
+        }
+        symmetrize(&mut slope, slopes)?;
+        let slope_eigen = symmetric_eigensystem(&slope, slopes, reservation)?;
+        raw_slope_minimum = Some(
+            slope_eigen
+                .values
+                .iter()
+                .copied()
+                .fold(f64::INFINITY, f64::min),
+        );
+        let (restored, clipped) = reconstruct_clipped(&slope_eigen, slopes, reservation)?;
+        expected_slope_clipped = clipped;
+        let restored_eigen = symmetric_eigensystem(&restored, slopes, reservation)?;
+        let restored_minimum = restored_eigen
+            .values
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
+        let slope_scale = covariance_scale(&restored, slopes)?;
+        restored_slope_error = (-restored_minimum).max(0.0) / slope_scale;
+        restored_slope_minimum = Some(restored_minimum);
+        expected_slope_rank = Some(
+            restored_eigen
+                .values
+                .iter()
+                .filter(|value| **value > tolerance * slope_scale)
+                .count(),
+        );
+        for row in 0..slopes {
+            for column in 0..slopes {
+                expected[positions[row] * p + positions[column]] = restored[row * slopes + column];
+            }
+        }
+    }
+    symmetrize(&mut expected, p)?;
+    let transform_error = matrix_relative_infinity_norm(&expected, covariance.values(), p)?;
+    let final_eigen = symmetric_eigensystem(covariance.values(), p, reservation)?;
+    let final_minimum = final_eigen
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let final_scale = covariance_scale(covariance.values(), p)?;
+    let expected_strict = !expected_slope_restore;
+    let expected_state = if q == 1 {
+        PreparedOlsClusteredPsdState::OneWayStrict
+    } else if !expected_full_adjustment {
+        PreparedOlsClusteredPsdState::MultiwayRawPsd
+    } else if expected_slope_restore {
+        PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored
+    } else {
+        PreparedOlsClusteredPsdState::MultiwayFullClipped
+    };
+    let diagnostics_error = [
+        relative_difference(
+            covariance.psd.minimum_raw_full_eigenvalue,
+            raw_minimum,
+            raw_minimum.abs().max(1.0),
+        )?,
+        relative_difference(
+            covariance.psd.minimum_pre_restore_full_eigenvalue,
+            pre_restore_minimum,
+            pre_restore_minimum.abs().max(1.0),
+        )?,
+        relative_difference(
+            covariance.psd.minimum_final_full_eigenvalue,
+            final_minimum,
+            final_minimum.abs().max(1.0),
+        )?,
+        optional_error(
+            covariance.psd.minimum_raw_slope_eigenvalue,
+            raw_slope_minimum,
+        )?,
+        optional_error(
+            covariance.psd.minimum_restored_slope_eigenvalue,
+            restored_slope_minimum,
+        )?,
+    ]
+    .into_iter()
+    .fold(0.0_f64, f64::max);
+    let state_error = f64::from(u8::from(
+        covariance.psd.state != expected_state
+            || covariance.psd.full_adjusted != expected_full_adjustment
+            || covariance.psd.full_clipped_eigenvalues != expected_full_clipped
+            || covariance.psd.slope_block_restored != expected_slope_restore
+            || covariance.psd.slope_block_adjusted != (expected_slope_clipped > 0)
+            || covariance.psd.slope_clipped_eigenvalues != expected_slope_clipped
+            || covariance.psd.pre_restore_full_rank != expected_pre_restore_rank
+            || covariance.psd.restored_slope_rank != expected_slope_rank
+            || covariance.psd.strict_final_full_psd != expected_strict,
+    ));
+    let mut finite_diagonal_error = 0.0_f64;
+    for index in 0..p {
+        let diagonal = covariance.values[index * p + index];
+        if !diagonal.is_finite()
+            || !covariance.standard_errors[index].is_finite()
+            || diagonal < 0.0
+            || covariance.standard_errors[index] < 0.0
+        {
+            finite_diagonal_error = 1.0;
+        }
+    }
+    if covariance.values().iter().any(|value| !value.is_finite()) {
+        finite_diagonal_error = 1.0;
+    }
+    let strict_psd_error = if expected_strict {
+        (-final_minimum).max(0.0) / final_scale
+    } else {
+        0.0
+    };
+    let final_structure_error = transform_error
+        .max(diagnostics_error)
+        .max(state_error)
+        .max(finite_diagonal_error)
+        .max(symmetry_error(covariance.values(), p)?)
+        .max(standard_error_error(covariance)?)
+        .max(strict_psd_error);
+    Ok((
+        pre_restore_error,
+        restored_slope_error,
+        final_structure_error,
+    ))
+}
+
+fn matrix_relative_infinity_norm(left: &[f64], right: &[f64], dimension: usize) -> Result<f64> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered matrix-certificate dimensions overflow usize",
+    )?;
+    if left.len() != square || right.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered matrix-certificate dimensions are inconsistent",
+        ));
+    }
+    let mut error = 0.0_f64;
+    for row in 0..dimension {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..dimension {
+            let left_value = left[row * dimension + column];
+            let right_value = right[row * dimension + column];
+            if !left_value.is_finite() || !right_value.is_finite() {
+                return Err(invalid_data(
+                    "prepared clustered matrix certificate is not finite",
+                ));
+            }
+            row_error += (left_value - right_value).abs();
+            row_scale += left_value.abs().max(right_value.abs());
+        }
+        error = error.max(row_error / row_scale);
+    }
+    Ok(error)
+}
+
+fn build_standard_errors<R: PreparedInferenceReservation>(
+    covariance: &[f64],
+    dimension: usize,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered standard-error dimensions overflow usize",
+    )?;
+    if covariance.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered standard-error dimensions are inconsistent",
+        ));
+    }
+    let mut standard_errors = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve prepared clustered standard errors",
+    )?;
+    for index in 0..dimension {
+        let diagonal = covariance[index * dimension + index];
+        if !diagonal.is_finite() || diagonal < 0.0 {
+            return Err(invalid_data(
+                "prepared clustered covariance diagonal is invalid",
+            ));
+        }
+        standard_errors[index] = diagonal.sqrt();
+    }
+    Ok(standard_errors)
+}
+
+fn build_wald<R: PreparedInferenceReservation>(
+    prepared: &super::PreparedOlsData,
+    fit: &CertifiedPreparedOlsFit,
+    covariance: &PreparedOlsClusteredCovariance,
+    slope_dimension: usize,
+    tolerance: f64,
+    reservation: &mut R,
+) -> Result<WaldCalculation> {
+    if slope_dimension == 0 {
+        return Ok(WaldCalculation {
+            statistic: None,
+            solve_relative_infinity_norm: 0.0,
+        });
+    }
+    let dimension = covariance.dimension();
+    let mut positions = reserved_empty(
+        reservation,
+        slope_dimension,
+        "unable to reserve prepared clustered Wald slope coordinates",
+    )?;
+    for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
+        if coordinate.kind == PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept {
+            continue;
+        }
+        let column = prepared
+            .model
+            .columns
+            .get(coordinate.generated_column_index)
+            .ok_or_else(|| {
+                invalid_argument("prepared clustered Wald coordinate is out of range")
+            })?;
+        if matches!(column.kind, PreparedOlsColumnKind::Intercept) {
+            continue;
+        }
+        push_reserved(
+            &mut positions,
+            position,
+            "prepared clustered Wald slope-coordinate capacity exhausted",
+        )?;
+    }
+    if positions.len() != slope_dimension {
+        return Err(invalid_argument(
+            "prepared clustered Wald slope count differs from finite model DoF",
+        ));
+    }
+    let square = checked_square(
+        slope_dimension,
+        "prepared clustered Wald dimensions overflow usize",
+    )?;
+    let mut factor = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered Wald factor",
+    )?;
+    let scale = positions
+        .iter()
+        .map(|position| covariance.values[*position * dimension + *position].abs())
+        .fold(0.0_f64, f64::max)
+        .max(f64::MIN_POSITIVE);
+    let threshold = tolerance * scale;
+    for row in 0..slope_dimension {
+        for column in 0..=row {
+            let mut value = covariance.values[positions[row] * dimension + positions[column]];
+            for inner in 0..column {
+                value -= factor[row * slope_dimension + inner]
+                    * factor[column * slope_dimension + inner];
+            }
+            if row == column {
+                if value < -threshold {
+                    return Err(invalid_data(
+                        "prepared clustered Wald slope covariance is indefinite",
+                    ));
+                }
+                if value <= threshold {
+                    return Ok(WaldCalculation {
+                        statistic: None,
+                        solve_relative_infinity_norm: 0.0,
+                    });
+                }
+                factor[row * slope_dimension + column] = value.sqrt();
+            } else {
+                factor[row * slope_dimension + column] =
+                    value / factor[column * slope_dimension + column];
+            }
+        }
+    }
+    let mut solution = reserved_filled(
+        reservation,
+        slope_dimension,
+        0.0_f64,
+        "unable to reserve prepared clustered Wald solution",
+    )?;
+    for (slope, position) in positions.iter().copied().enumerate() {
+        solution[slope] = fitted_coordinate_value(fit, position)?;
+    }
+    for row in 0..slope_dimension {
+        let mut value = solution[row];
+        for column in 0..row {
+            value -= factor[row * slope_dimension + column] * solution[column];
+        }
+        solution[row] = value / factor[row * slope_dimension + row];
+    }
+    for row in (0..slope_dimension).rev() {
+        let mut value = solution[row];
+        for column in (row + 1)..slope_dimension {
+            value -= factor[column * slope_dimension + row] * solution[column];
+        }
+        solution[row] = value / factor[row * slope_dimension + row];
+    }
+    let mut quadratic = 0.0_f64;
+    let mut quadratic_correction = 0.0_f64;
+    let mut solve_error = 0.0_f64;
+    for row in 0..slope_dimension {
+        let coefficient = fitted_coordinate_value(fit, positions[row])?;
+        compensated_add(
+            coefficient * solution[row],
+            &mut quadratic,
+            &mut quadratic_correction,
+        )?;
+        let mut reconstructed = 0.0_f64;
+        let mut correction = 0.0_f64;
+        let mut row_scale = coefficient.abs().max(1.0);
+        for column in 0..slope_dimension {
+            let product = covariance.values[positions[row] * dimension + positions[column]]
+                * solution[column];
+            compensated_add(product, &mut reconstructed, &mut correction)?;
+            row_scale += product.abs();
+        }
+        solve_error = solve_error.max((reconstructed + correction - coefficient).abs() / row_scale);
+    }
+    quadratic += quadratic_correction;
+    if !quadratic.is_finite() || quadratic < 0.0 || !solve_error.is_finite() {
+        return Err(invalid_data(
+            "prepared clustered Wald quadratic or solve certificate is invalid",
+        ));
+    }
+    let statistic = quadratic / exact_integer_as_f64(slope_dimension as u128)?;
+    if !statistic.is_finite() {
+        return Err(invalid_data(
+            "prepared clustered Wald statistic is not finite",
+        ));
+    }
+    Ok(WaldCalculation {
+        statistic: Some(statistic),
+        solve_relative_infinity_norm: solve_error,
+    })
+}
+
+fn fitted_coordinate_value(fit: &CertifiedPreparedOlsFit, position: usize) -> Result<f64> {
+    let coordinate =
+        fit.bread().coordinates().get(position).ok_or_else(|| {
+            invalid_argument("prepared clustered fitted coordinate is out of range")
+        })?;
+    let fitted = fit
+        .coefficients()
+        .iter()
+        .find(|coefficient| {
+            coefficient.generated_column_index == Some(coordinate.generated_column_index)
+        })
+        .ok_or_else(|| {
+            invalid_argument("prepared clustered fitted coordinate has no coefficient")
+        })?;
+    if fitted.status != PreparedOlsFitStatus::Kept {
+        return Err(invalid_argument(
+            "prepared clustered Wald coordinate is not a kept finite coefficient",
+        ));
+    }
+    fitted
+        .value
+        .filter(|value| value.is_finite())
+        .ok_or_else(|| invalid_data("prepared clustered Wald coefficient is not finite"))
+}
+
+fn certify_statistics(
+    actual: PreparedOlsFitStatistics,
+    rss: f64,
+    tss: f64,
+    within_tss: f64,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    wald: WaldCalculation,
+) -> Result<f64> {
+    let mut expected = build_statistics(rss, tss, within_tss, weights, dof)?;
+    expected.f_statistic = wald.statistic;
+    let mut error = 0.0_f64;
+    for (left, right) in [
+        (actual.rss, expected.rss),
+        (actual.tss, expected.tss),
+        (actual.within_tss, expected.within_tss),
+        (
+            actual.root_mean_squared_error,
+            expected.root_mean_squared_error,
+        ),
+    ] {
+        error = error.max(relative_difference(
+            left,
+            right,
+            left.abs().max(right.abs()).max(1.0),
+        )?);
+    }
+    for (left, right) in [
+        (actual.r_squared, expected.r_squared),
+        (actual.adjusted_r_squared, expected.adjusted_r_squared),
+        (actual.within_r_squared, expected.within_r_squared),
+        (
+            actual.adjusted_within_r_squared,
+            expected.adjusted_within_r_squared,
+        ),
+        (actual.f_statistic, expected.f_statistic),
+        (
+            actual.gaussian_log_likelihood,
+            expected.gaussian_log_likelihood,
+        ),
+        (
+            actual.gaussian_null_log_likelihood,
+            expected.gaussian_null_log_likelihood,
+        ),
+    ] {
+        error = error.max(optional_error(left, right)?);
+    }
+    Ok(error.max(wald.solve_relative_infinity_norm))
+}
+
+fn optional_error(actual: Option<f64>, expected: Option<f64>) -> Result<f64> {
+    match (actual, expected) {
+        (Some(actual), Some(expected)) if actual.is_finite() && expected.is_finite() => {
+            relative_difference(actual, expected, actual.abs().max(expected.abs()).max(1.0))
+        }
+        (None, None) => Ok(0.0),
+        _ => Ok(1.0),
+    }
+}
+
+fn symmetrize(matrix: &mut [f64], dimension: usize) -> Result<()> {
+    if matrix.len() != dimension * dimension {
+        return Err(invalid_argument(
+            "prepared clustered symmetry dimensions are inconsistent",
+        ));
+    }
+    for row in 0..dimension {
+        for column in (row + 1)..dimension {
+            let value = 0.5 * (matrix[row * dimension + column] + matrix[column * dimension + row]);
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared clustered symmetrized value is not finite",
+                ));
+            }
+            matrix[row * dimension + column] = value;
+            matrix[column * dimension + row] = value;
+        }
+    }
+    Ok(())
+}
+
+fn symmetry_error(matrix: &[f64], dimension: usize) -> Result<f64> {
+    if matrix.len() != dimension * dimension {
+        return Err(invalid_argument(
+            "prepared clustered symmetry certificate dimensions are inconsistent",
+        ));
+    }
+    let mut error = 0.0_f64;
+    for row in 0..dimension {
+        let mut row_error = 0.0_f64;
+        let mut row_scale = 1.0_f64;
+        for column in 0..dimension {
+            let left = matrix[row * dimension + column];
+            let right = matrix[column * dimension + row];
+            row_error += (left - right).abs();
+            row_scale += left.abs().max(right.abs());
+        }
+        error = error.max(row_error / row_scale);
+    }
+    Ok(error)
+}
+
+fn standard_error_error(covariance: &PreparedOlsClusteredCovariance) -> Result<f64> {
+    let dimension = covariance.dimension();
+    let mut error = 0.0_f64;
+    for index in 0..dimension {
+        let expected = covariance.values[index * dimension + index].max(0.0).sqrt();
+        error = error.max(relative_difference(
+            covariance.standard_errors[index],
+            expected,
+            covariance.standard_errors[index]
+                .abs()
+                .max(expected.abs())
+                .max(1.0),
+        )?);
+    }
+    Ok(error)
+}
+
+fn covariance_scale(matrix: &[f64], dimension: usize) -> Result<f64> {
+    if matrix.len() != dimension * dimension {
+        return Err(invalid_argument(
+            "prepared clustered covariance scale dimensions are inconsistent",
+        ));
+    }
+    let scale = matrix
+        .iter()
+        .copied()
+        .map(f64::abs)
+        .fold(0.0_f64, f64::max)
+        .max(f64::MIN_POSITIVE);
+    if scale.is_finite() {
+        Ok(scale)
+    } else {
+        Err(invalid_data(
+            "prepared clustered covariance scale is not finite",
+        ))
+    }
+}
+
+fn reserved_empty<T, R: PreparedInferenceReservation>(
+    reservation: &mut R,
+    elements: usize,
+    label: &'static str,
+) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    reservation.reserve(&mut output, elements, label)?;
+    if output.capacity() < elements {
+        return Err(allocation(
+            "prepared clustered reservation returned insufficient capacity",
+        ));
+    }
+    Ok(output)
+}
+
+fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
+    if target.len() == target.capacity() {
+        return Err(allocation(label));
+    }
+    target.push(value);
+    Ok(())
+}
+
+fn invalid_argument(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn invalid_data(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidData, message)
+}
+
+fn allocation(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ols::prepare_ols_clustered_data;
+
+    struct CountingReservation {
+        calls: usize,
+        fail_at: Option<usize>,
+        undersize: bool,
+    }
+
+    impl CountingReservation {
+        const fn succeeds() -> Self {
+            Self {
+                calls: 0,
+                fail_at: None,
+                undersize: false,
+            }
+        }
+
+        const fn fails_at(call: usize) -> Self {
+            Self {
+                calls: 0,
+                fail_at: Some(call),
+                undersize: false,
+            }
+        }
+
+        const fn undersized() -> Self {
+            Self {
+                calls: 0,
+                fail_at: None,
+                undersize: true,
+            }
+        }
+    }
+
+    impl PreparedInferenceReservation for CountingReservation {
+        fn reserve<T>(
+            &mut self,
+            target: &mut Vec<T>,
+            elements: usize,
+            _label: &'static str,
+        ) -> Result<()> {
+            let call = self.calls;
+            self.calls += 1;
+            if self.fail_at == Some(call) {
+                return Err(allocation(
+                    "injected prepared clustered inference reservation failure",
+                ));
+            }
+            let requested = if self.undersize && elements > 0 {
+                elements - 1
+            } else {
+                elements
+            };
+            target
+                .try_reserve_exact(requested)
+                .map_err(|_| allocation("test prepared clustered reservation failed"))
+        }
+    }
+
+    #[test]
+    fn every_clustered_inference_reservation_failure_and_undersize_fails_closed() {
+        let (request, loaded) = super::super::prepared_clusters::tests::fixture();
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+        let mut count = CountingReservation::succeeds();
+        fit_with_reservation(&prepared, PreparedOlsClusteredConfig::default(), &mut count)
+            .expect("count clustered inference reservations");
+        assert!(count.calls >= 20);
+        for fail_at in 0..count.calls {
+            let mut reservation = CountingReservation::fails_at(fail_at);
+            let error = fit_with_reservation(
+                &prepared,
+                PreparedOlsClusteredConfig::default(),
+                &mut reservation,
+            )
+            .expect_err("injected clustered inference allocation must fail");
+            assert_eq!(error.code, ErrorCode::Allocation, "fail_at={fail_at}");
+        }
+        let error = fit_with_reservation(
+            &prepared,
+            PreparedOlsClusteredConfig::default(),
+            &mut CountingReservation::undersized(),
+        )
+        .expect_err("undersized clustered inference allocation must fail");
+        assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn every_clustered_scientific_mutation_fails_closed() {
+        let (mut request, loaded) = super::super::prepared_clusters::tests::fixture();
+        request.ols.include_intercept = true;
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+        for perturbation in [
+            ClusteredPerturbations {
+                score_design: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                residual_dof: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                subset_sign: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                subset_groups: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                uncorrected_covariance: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                corrected_covariance: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                correction: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                final_covariance: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                covariance_symmetry: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                standard_error: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                psd_state: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                rss: true,
+                ..ClusteredPerturbations::default()
+            },
+            ClusteredPerturbations {
+                f_statistic: true,
+                ..ClusteredPerturbations::default()
+            },
+        ] {
+            let mut reservation = SystemPreparedInferenceReservation;
+            let error = compose_for_test(&prepared, &mut reservation, perturbation)
+                .expect_err("injected clustered scientific corruption must fail");
+            assert_eq!(error.code, ErrorCode::InvalidData, "{perturbation:?}");
+        }
+    }
+
+    fn compose_for_test<R: PreparedInferenceReservation>(
+        prepared: &PreparedOlsClusteredData,
+        reservation: &mut R,
+        perturbations: ClusteredPerturbations,
+    ) -> Result<CertifiedPreparedOlsClustered> {
+        let config = PreparedOlsClusteredConfig::default();
+        let fit = fit_prepared_ols_coefficients_map(prepared.ols(), config.fit)?;
+        compose(prepared, fit, config, reservation, perturbations)
+    }
+
+    #[test]
+    fn singular_wald_slope_block_is_explicitly_undefined() {
+        let (request, loaded) = super::super::prepared_clusters::tests::fixture();
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+        let result =
+            fit_prepared_ols_clustered_map(&prepared, PreparedOlsClusteredConfig::default())
+                .expect("clustered fixture fit");
+        let dimension = result.covariance.dimension();
+        let zero = PreparedOlsClusteredCovariance {
+            correction: result.covariance.correction,
+            raw_values: vec![0.0; dimension * dimension],
+            values: vec![0.0; dimension * dimension],
+            standard_errors: vec![0.0; dimension],
+            psd: PreparedOlsClusteredPsdReport {
+                state: PreparedOlsClusteredPsdState::OneWayStrict,
+                full_adjusted: false,
+                slope_block_restored: false,
+                slope_block_adjusted: false,
+                full_clipped_eigenvalues: 0,
+                slope_clipped_eigenvalues: 0,
+                minimum_raw_full_eigenvalue: 0.0,
+                minimum_pre_restore_full_eigenvalue: 0.0,
+                minimum_raw_slope_eigenvalue: None,
+                minimum_restored_slope_eigenvalue: None,
+                minimum_final_full_eigenvalue: 0.0,
+                pre_restore_full_rank: 0,
+                restored_slope_rank: None,
+                strict_final_full_psd: true,
+                transform_reconstruction_relative_error: 0.0,
+                eigensystem_relative_error: 0.0,
+                orthogonality_relative_error: 0.0,
+            },
+        };
+        let mut reservation = SystemPreparedInferenceReservation;
+        let wald = build_wald(
+            prepared.ols(),
+            result.fit(),
+            &zero,
+            result.dof().finite_model_dof,
+            PreparedOlsClusteredConfig::default().certificate_tolerance,
+            &mut reservation,
+        )
+        .expect("singular Wald policy");
+        assert_eq!(wald.statistic, None);
+        assert_eq!(wald.solve_relative_infinity_norm, 0.0);
+    }
+}

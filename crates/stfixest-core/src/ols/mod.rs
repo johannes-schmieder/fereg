@@ -3,6 +3,8 @@
 mod dof;
 mod fit;
 mod prepared;
+mod prepared_clustered;
+mod prepared_clusters;
 mod prepared_dof;
 mod prepared_fit;
 mod prepared_rhs;
@@ -20,6 +22,16 @@ pub use prepared::{
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
+};
+pub use prepared_clustered::{
+    fit_prepared_ols_clustered_map, CertifiedPreparedOlsClustered,
+    PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
+    PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
+};
+pub use prepared_clusters::{
+    prepare_ols_clustered_data, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
+    PreparedOlsClusterDimension, PreparedOlsClusteredData,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,

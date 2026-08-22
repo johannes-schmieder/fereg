@@ -99,6 +99,10 @@ pub struct NumericPreparationInput<'a> {
 pub struct NumericSourceUse {
     pub ordinary: bool,
     pub fixed_effect: bool,
+    /// Declared cluster source. Cluster availability is checked after fixed
+    /// effects and before offset/exposure availability. The role does not
+    /// participate in singleton pruning.
+    pub cluster: bool,
 }
 
 impl NumericSourceUse {
@@ -107,6 +111,7 @@ impl NumericSourceUse {
         Self {
             ordinary: true,
             fixed_effect: false,
+            cluster: false,
         }
     }
 
@@ -115,6 +120,7 @@ impl NumericSourceUse {
         Self {
             ordinary: false,
             fixed_effect: true,
+            cluster: false,
         }
     }
 
@@ -123,6 +129,7 @@ impl NumericSourceUse {
         Self {
             ordinary: true,
             fixed_effect: true,
+            cluster: false,
         }
     }
 }
@@ -595,6 +602,12 @@ fn classify_row<P: NumericDomainPolicy>(
         return Ok(DropReason::MissingFixedEffect);
     }
 
+    if input.regressors.iter().enumerate().any(|(index, column)| {
+        source_is_cluster(source_uses, index) && column.is_unavailable(original_row)
+    }) {
+        return Ok(DropReason::MissingCluster);
+    }
+
     match input.adjustment {
         AdjustmentInput::None => {}
         AdjustmentInput::Offset(column) => {
@@ -626,6 +639,10 @@ fn source_is_fixed_effect(source_uses: Option<&[NumericSourceUse]>, index: usize
     source_uses.is_some_and(|uses| uses[index].fixed_effect)
 }
 
+fn source_is_cluster(source_uses: Option<&[NumericSourceUse]>, index: usize) -> bool {
+    source_uses.is_some_and(|uses| uses[index].cluster)
+}
+
 fn validate_source_uses(
     input: &NumericPreparationInput<'_>,
     source_uses: Option<&[NumericSourceUse]>,
@@ -645,11 +662,11 @@ fn validate_source_uses(
     }
     if source_uses
         .iter()
-        .any(|usage| !usage.ordinary && !usage.fixed_effect)
+        .any(|usage| !usage.ordinary && !usage.fixed_effect && !usage.cluster)
     {
         return Err(StFixestError::new(
             ErrorCode::InvalidArgument,
-            "numeric source-use entries must select an ordinary or fixed-effect role",
+            "numeric source-use entries must select an ordinary, fixed-effect, or cluster role",
         ));
     }
     Ok(())

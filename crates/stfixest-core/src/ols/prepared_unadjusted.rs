@@ -630,6 +630,7 @@ pub(super) fn validate_fit_and_absorbed_dof(
     if initial != absorbed.initial_categories
         || redundant != absorbed.redundant_categories
         || rank != absorbed.absorbed_rank
+        || absorbed.nested_categories != 0
         || approximate != absorbed.is_approximate
     {
         return Err(invalid_argument(
