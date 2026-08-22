@@ -11,7 +11,9 @@ is not yet the complete
 Phase 2 data plane: string factorization, cluster encoding, separation, and
 estimator SPI dispatch remain outside this slice. A bounded
 numeric fixed-effect source preparation path is included, but no solver
-`FeDesign` or solver state is constructed.
+`FeDesign` or solver state is constructed. A narrow borrowed intercept-only
+design view can now reference the final prepared codes and compressed
+membership without copying them, but no numerical solver consumes that view.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -96,6 +98,15 @@ post-pruning singleton fixed point or the explicit `keepsingletons` bypass.
 An empty final sample preserves its absorbed-term recipes with zero-level empty
 membership sources; a later estimator gate, not preparation, decides whether
 the sample is sufficient.
+The structural adapter preserves that empty representation. It owns only a
+fallibly reserved, wire-ordered effect table; every effect borrows its code
+slice from the final categorical-source table and its membership index from the
+prepared topology. Repeated absorbed terms therefore share both pointers. Its
+intercept-only type cannot represent slopes, its coefficient-slot total uses
+checked arithmetic, and construction revalidates source identities, dimensions,
+levels, codes, and membership without allocating observation-scale storage.
+This adapter does not call MAP, LSMR, the generic OLS core, or any plugin
+estimator action.
 After native sample preparation and a final interruption check succeed, the
 plugin writes only three developer diagnostics: original observation number,
 retained status, and the authoritative drop-reason code.
@@ -186,6 +197,11 @@ prefix sum, and cursor. The topology source/effect tables are reserved before
 population and have explicit capacity guards. Deterministic injection tests
 exercise every reservation and capacity boundary. Repeated FE terms share one
 membership index, so this checkpoint adds no observation-scale code copy.
+The borrowed FE adapter separately reserves its O(G) effect table with
+`try_reserve_exact`, guards every push against unplanned growth, and maps both
+reservation and checked term-slot overflow to native `Allocation`. Deterministic
+tests exercise its reservation and capacity failures. Codes, level metadata,
+and membership arrays are never cloned into the adapter.
 
 ## Model construction remains separate
 
@@ -193,6 +209,8 @@ The developer boundary now binds numeric factor main-effect,
 all-categorical-interaction, and simple numeric fixed-effect recipes to compact
 shared source codes and validates their structural prepared topology, but it
 does not construct the solver `FeDesign`, invoke absorption, invoke the
-estimator, or use the generic model-matrix builder. Mixed interactions, general
-FE/cluster construction, solver allocation/certification hardening, and
-production one-call result posting require later independently tested work.
+estimator, or use the generic model-matrix builder. It can construct only the
+non-solving borrowed intercept-only design view described above. Mixed
+interactions, general FE/cluster construction, solver
+allocation/certification hardening, and production one-call result posting
+require later independently tested work.
