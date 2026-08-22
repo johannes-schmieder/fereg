@@ -7,6 +7,8 @@
 //! repeated/reordered interaction terms reuse one topology source, and an exact
 //! repeated partition is fully redundant under the mobility search.
 
+use std::cmp::Ordering;
+
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{CategoricalCodeView, CategoricalTopologySource, FinalizedCategoricalTopology};
 use crate::metadata::{AbsorbTermId, SourceId};
@@ -204,7 +206,8 @@ fn compute_with_reservation<R: TopologyDofReservation>(
         if skip_first && position == 0 {
             continue;
         }
-        redundant[effect_index] = usize::from(effect_source(topology, effect_index)?.n_levels() > 0);
+        redundant[effect_index] =
+            usize::from(effect_source(topology, effect_index)?.n_levels() > 0);
     }
 
     apply_mobility_policy(
@@ -644,15 +647,15 @@ fn union(parent: &mut [usize], rank: &mut [u8], left: usize, right: usize) -> Re
     let right_rank = *rank
         .get(right_root)
         .ok_or_else(|| invalid_data("categorical absorbed-DoF union rank is invalid"))?;
-    if left_rank < right_rank {
-        parent[left_root] = right_root;
-    } else if left_rank > right_rank {
-        parent[right_root] = left_root;
-    } else {
-        parent[right_root] = left_root;
-        rank[left_root] = left_rank
-            .checked_add(1)
-            .ok_or_else(|| allocation("categorical absorbed-DoF union rank overflows"))?;
+    match left_rank.cmp(&right_rank) {
+        Ordering::Less => parent[left_root] = right_root,
+        Ordering::Greater => parent[right_root] = left_root,
+        Ordering::Equal => {
+            parent[right_root] = left_root;
+            rank[left_root] = left_rank
+                .checked_add(1)
+                .ok_or_else(|| allocation("categorical absorbed-DoF union rank overflows"))?;
+        }
     }
     Ok(())
 }
