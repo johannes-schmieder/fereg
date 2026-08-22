@@ -214,7 +214,7 @@ pub fn fit_prepared_ols_coefficients_map(
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut reservation = SystemFitReservation;
-    fit_with_controls(prepared, config, &mut reservation, false)
+    fit_with_controls(prepared, config, &mut reservation, false, false)
 }
 
 fn fit_with_controls<R: FitReservation>(
@@ -222,6 +222,7 @@ fn fit_with_controls<R: FitReservation>(
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturb_first_coefficient: bool,
+    perturb_final_residual_constant: bool,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let design = prepared.borrowed_intercept_fe_design()?;
@@ -310,11 +311,17 @@ fn fit_with_controls<R: FitReservation>(
             "prepared OLS residual absorption returned an uncertified result",
         ));
     }
-    let (residuals, residual_absorption_report) = residual_absorbed.into_parts();
+    let (mut residuals, residual_absorption_report) = residual_absorbed.into_parts();
+    if perturb_final_residual_constant {
+        for row in 0..residuals.nrows() {
+            residuals[(row, 0)] += 0.25;
+        }
+    }
     let score_certificate = certify_scores(
         prepared,
         residuals.as_slice(),
         weights,
+        &reference_norms,
         &score_norms,
         within_outcome_norm,
         config.score_tolerance,
@@ -850,11 +857,13 @@ fn certify_scores(
     prepared: &PreparedOlsData,
     residuals: &[f64],
     weights: NormalizedWeights<'_>,
+    reference_norms: &[f64],
     score_norms: &[f64],
     within_outcome_norm: f64,
     tolerance: f64,
 ) -> Result<PreparedOlsScoreCertificate> {
     if residuals.len() != prepared.sample.n_active()
+        || reference_norms.len() != prepared.model.columns.len()
         || score_norms.len() != prepared.model.columns.len()
         || !within_outcome_norm.is_finite()
         || within_outcome_norm < 0.0
@@ -870,13 +879,27 @@ fn certify_scores(
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
     let mut moments = 0_usize;
-    for (column, score_norm) in score_norms.iter().copied().enumerate() {
-        if !score_norm.is_finite() || score_norm < 0.0 {
+    for (column, (reference_norm, score_norm)) in reference_norms
+        .iter()
+        .copied()
+        .zip(score_norms.iter().copied())
+        .enumerate()
+    {
+        if !reference_norm.is_finite()
+            || reference_norm < 0.0
+            || !score_norm.is_finite()
+            || score_norm < 0.0
+        {
             return Err(invalid_data(
                 "prepared OLS within regressor score norm is invalid",
             ));
         }
-        let relative = if score_norm == 0.0 {
+        let denominator = if score_norm > 0.0 {
+            score_norm
+        } else {
+            reference_norm
+        };
+        let relative = if denominator == 0.0 {
             0.0
         } else {
             let mut sum = 0.0_f64;
@@ -884,7 +907,7 @@ fn certify_scores(
             for (row, residual) in residuals.iter().copied().enumerate() {
                 let root_weight = weights.root(row)?;
                 let regressor = prepared.column_value(column, row)?;
-                let left = (root_weight * regressor) / score_norm;
+                let left = (root_weight * regressor) / denominator;
                 let right = (root_weight * residual) / response_scale;
                 let term = left * right;
                 compensated_add(term, &mut sum, &mut correction)?;
@@ -1600,6 +1623,7 @@ mod tests {
             PreparedOlsFitConfig::default(),
             &mut successful,
             false,
+            false,
         )
         .expect("control fit");
         assert!(successful.calls >= 9);
@@ -1612,6 +1636,7 @@ mod tests {
                 &prepared,
                 PreparedOlsFitConfig::default(),
                 &mut injected,
+                false,
                 false,
             )
             .expect_err("injected allocation failure");
@@ -1627,6 +1652,7 @@ mod tests {
                 PreparedOlsFitConfig::default(),
                 &mut undersized,
                 false,
+                false,
             )
             .expect_err("undersized reservation")
             .code,
@@ -1639,6 +1665,7 @@ mod tests {
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
                 true,
+                false,
             )
             .expect_err("perturbed coefficient must fail score certificate")
             .code,
@@ -1672,6 +1699,7 @@ mod tests {
             PreparedOlsFitConfig::default(),
             &mut control_reservation,
             false,
+            false,
         )
         .expect("unperturbed large-FE-outcome fit");
         assert_close(
@@ -1686,6 +1714,7 @@ mod tests {
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
                 true,
+                false,
             )
             .expect_err("FE-only outcome scale must not hide a perturbed coefficient")
             .code,
@@ -1723,6 +1752,7 @@ mod tests {
             PreparedOlsFitConfig::default(),
             &mut control_reservation,
             false,
+            false,
         )
         .expect("unperturbed large-FE-regressor fit");
         assert_close(
@@ -1737,8 +1767,49 @@ mod tests {
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
                 true,
+                false,
             )
             .expect_err("FE-only regressor scale must not hide a perturbed coefficient")
+            .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    fn zero_within_norm_column_still_checks_its_raw_score_moment() {
+        let g = vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0];
+        let within_y = [-1.0, 0.0, 1.0, -2.0, 0.5, 1.5];
+        let y = within_y
+            .iter()
+            .zip(&g)
+            .map(|(within, group)| 10.0 * group + within)
+            .collect::<Vec<_>>();
+        let prepared = prepared(&y, &[], &[], Some(&g), true, TestWeights::Unit);
+        let mut control_reservation = InjectedReservation::default();
+        let control = fit_with_controls(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut control_reservation,
+            false,
+            false,
+        )
+        .expect("unperturbed deferred-intercept fit");
+        assert_eq!(control.score_certificate().moments, 1);
+        assert_eq!(
+            control.coefficients()[0].status,
+            PreparedOlsFitStatus::AbsorbedInterceptDeferred
+        );
+
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                true,
+            )
+            .expect_err("a deferred intercept must retain its raw score moment")
             .code,
             ErrorCode::InvalidData
         );
