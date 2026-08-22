@@ -9,6 +9,7 @@ mod interaction;
 mod lsmr;
 mod map;
 mod partition;
+mod partition_validation;
 mod projection;
 mod report;
 mod singleton;
@@ -25,12 +26,11 @@ pub(crate) use design::ValidatedBorrowedInterceptSource;
 pub use design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
 };
-pub use interaction::{
-    factorize_code_interaction, CategoricalCodeView, EncodedInteraction,
-};
+pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
 pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};
 pub use map::{absorb_map, MapConfig};
 pub use partition::CategoricalPartition;
+pub use partition_validation::validate_categorical_partition;
 pub use projection::{project_effect_in_place, ProjectionWorkspace};
 pub use report::{FeSolverKind, SolveReport, SolveStopReason};
 pub use singleton::{
