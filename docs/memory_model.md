@@ -58,3 +58,27 @@ This is a fast-style developer-only materialization checkpoint, not a complete
 estimator memory model. It does not yet cover blockwise/low-memory RHS
 generation, general slope-capable solvers, OLS rank/VCE workspaces, SPI result
 buffers, or measured peak RSS.
+
+## Prepared coefficient-fit allocation discipline
+
+The core-only prepared coefficient checkpoint consumes the same
+`N x (1 + K)` MAP batch in place for scaled column-pivoted Householder QR. It
+does not clone that batch, allocate a second model matrix, form a `K x K`
+normal equation, or construct an owned FE design. Additional fallible storage
+is O(K) for pre-absorption norms, canonical statuses and coefficients, pivot
+identities, trailing norms, triangular coefficients, and kept/dropped tables.
+After the solve it reserves one N-vector, reconstructs raw residuals directly
+from prepared recipes, and consumes that vector as an `N x 1` strict-MAP batch.
+
+Every production vector reservation uses `try_reserve_exact`; dimensions and
+counts use checked arithmetic; capacity is verified before resize or push.
+Injected failures cover every reservation and an undersized-reservation seam.
+No partially built `CertifiedPreparedOlsFit` is returned on allocation,
+nonfinite, rank, MAP, or score-certificate failure. Unit weights remain
+structural, and prepared weights are borrowed rather than copied.
+
+This is not the low-memory estimator gate. The deterministic QR currently
+recomputes exact trailing norms, so its work is O(NK^2), and the initial
+prepared RHS remains resident. Blocked RHS generation, large-K performance,
+VCE/bread, result-container storage, and observed RSS still require their own
+preflight and benchmark evidence before public enablement.

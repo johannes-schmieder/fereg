@@ -74,6 +74,20 @@ deleted identities; the pinned `reghdfe` source supplies the frequency-weight
 multiplicity rule. Solver, VCE, DoF, and posted-weight semantics remain later
 gates.
 
+The separate core-only prepared coefficient checkpoint now supplies a bounded
+objective-semantic test without changing those Stata-facing limits. For
+analytic, frequency, and probability inputs it minimizes the positive weighted
+sum of squared residuals; a common internal maximum-weight normalization is
+used only to make the computation scale-safe and leaves coefficients and
+scores invariant. A positive weight that underflows to zero under that
+normalization fails closed. Frequency weights match literal row expansion for
+identified coefficients and residuals on physical rows. Independent tests
+cover all three supplied kinds, unit weights, common scaling from `1e-200`
+through `1e200`, and no/one/two/repeated intercept-only fixed effects. This
+checkpoint still does not decide effective `e(N)`, weight sums, VCE, DoF, fit
+statistics, display metadata, or public probability-weight defaults, and it is
+not callable through the plugin or `stfeols`.
+
 ## Evidence and enablement gate
 
 The capture runner uses only clean, exact-commit `reghdfe`, `ftools`, and

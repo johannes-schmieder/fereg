@@ -63,6 +63,50 @@ coefficient or any other numerical result. Public estimators still do not
 invoke this path, and the older generic MAP/LSMR/OLS stack has not thereby
 become eligible for Stata result posting.
 
+## Certified prepared coefficient checkpoint
+
+`fit_prepared_ols_coefficients_map` is a separate core-only checkpoint over
+`PreparedOlsData`. It deliberately uses only the prepared Y/X builder and the
+strict borrowed-intercept MAP path; it does not call the older generic OLS,
+rank, VCE, DoF, or owned-`FeDesign` implementations. Its currently admissible
+model surface is therefore exactly the prepared boundary: continuous columns,
+numeric factor-main-effect and all-categorical-interaction recipes, zero or
+more single-source intercept-only numeric fixed effects, and structural unit
+or prepared analytic, frequency, or probability objective weights.
+
+The fit first records stable weighted pre-absorption norms, residualizes Y and
+all generated X columns together, and classifies columns annihilated by the
+fixed effects. Remaining columns are scaled by those reference norms and
+solved in place with deterministic column-pivoted Householder QR. Pivot norms
+are recomputed from the trailing matrix on every step, ties retain canonical
+generated-column order, all dimension arithmetic is checked, and nonfinite or
+uncertified rank decisions are fatal. Each canonical coefficient slot returns
+exactly one of `Kept`, `SyntaxOmitted`, `CollinearWithFixedEffects`,
+`NumericallyRankDeficient`, or `AbsorbedInterceptDeferred`. With no fixed
+effects, the intercept is fitted normally. With any absorbed intercept, the
+within intercept is annihilated and the normalized reference `_cons` is
+explicitly deferred until fixed-effect recovery; it is never reported as zero
+or as an identified coefficient.
+
+After solving, the checkpoint reconstructs one raw N-vector residual from the
+prepared recipes and kept coefficients, residualizes that vector again through
+strict MAP, and recomputes weighted score moments for every generated column.
+The scores use independent recipe evaluation and pre-absorption column and
+outcome scales. A failed initial MAP certificate, residual MAP certificate,
+dropped-rank certificate, or all-column score certificate returns an error and
+no result object. The returned object contains only canonical coefficient
+slots, kept/dropped generated-column identities, finite rank, both MAP reports,
+rank/score certificates, and final compact-axis residuals.
+
+Independent explicit-dummy tests cover no, one, two, and repeated fixed-effect
+dimensions; unit, analytic, frequency, and probability objectives; exact and
+clear near-collinearity; factor omissions and vanished levels; random
+well-conditioned designs; observation permutations; and common weight scaling
+from `1e-200` through `1e200`. Allocation/capacity injection and coefficient
+perturbation tests prove that workspace or final-score failures are fatal.
+This checkpoint has no plugin action, performs no SPI write, posts no VCE or
+DoF, and does not enable `stfeols`.
+
 ## Covariance estimators
 
 The current core supports:

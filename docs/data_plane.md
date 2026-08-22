@@ -166,6 +166,19 @@ retained status, and authoritative drop reason), and displays only small MAP
 summary metadata. It does not write numerical estimation results, post `e()`,
 or enable `estimate-ols`, `stfeols`, or `stfepois`.
 
+The core also has an isolated prepared coefficient-fit consumer that is not
+reachable from this developer action or any plugin dispatch. It accepts only a
+nonempty `PreparedOlsData` value and the strict borrowed-intercept MAP design,
+then solves finite coefficients with scaled deterministic pivoted Householder
+QR. It uses the existing prepared recipes to reconstruct one raw residual
+vector, residualizes that vector again, and independently recomputes every
+generated-column score. Canonical coefficient slots distinguish syntax
+omission, fixed-effect collinearity, numerical rank deficiency, and an
+absorbed-model intercept whose normalized value remains deferred. The no-FE
+intercept is fitted normally. Any allocation, MAP, rank, finite-value, or score
+failure returns no fit object. This adds no SPI read, write, diagnostic, result
+container, or public estimator path.
+
 ## Numeric source representation
 
 Each numeric source contains its raw `f64` values and may contain a separate
