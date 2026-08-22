@@ -3,6 +3,7 @@
 mod dof;
 mod fit;
 mod prepared;
+mod prepared_dof;
 mod prepared_fit;
 mod prepared_rhs;
 mod rank;
@@ -16,6 +17,10 @@ pub use prepared::{
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
+};
+pub use prepared_dof::{
+    compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport,
 };
 pub use prepared_fit::{
     fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsFitConfig,

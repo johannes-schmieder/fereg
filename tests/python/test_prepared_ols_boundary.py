@@ -345,6 +345,47 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 
+    def test_prepared_absorbed_dof_is_structural_fallible_and_not_public(self):
+        dof = (ROOT / "crates/stfixest-core/src/ols/prepared_dof.rs").read_text(
+            encoding="utf-8"
+        )
+        production = dof.split("#[cfg(test)]", maxsplit=1)[0]
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("PreparedOlsAbsorbedDofReport", production)
+        self.assertIn("PreparedOlsAbsorbedDofPolicy", production)
+        self.assertIn("PreparedOlsAbsorbedDofPolicy::None", production)
+        self.assertIn("PreparedOlsAbsorbedDofPolicy::FirstPair", production)
+        self.assertIn("PreparedOlsAbsorbedDofPolicy::Pairwise", production)
+        self.assertIn("prepared.fe_topology", production)
+        self.assertIn(".categorical_sources", production)
+        self.assertIn("try_reserve_exact", production)
+        self.assertIn("checked_add", production)
+        self.assertIn("fn find_root", production)
+        for forbidden in (
+            "prepared.model",
+            "prepared.sample.outcome",
+            "prepared.sample.regressors",
+            "prepared.sample.weights",
+            "PreparedOlsRhs",
+            "fit_ols(",
+            "compute_dof(",
+            "FeDesign",
+            "vec![",
+            ".collect",
+            ".to_vec",
+            "with_capacity",
+        ):
+            self.assertNotIn(forbidden, production)
+        self.assertIn("ols/20260821T030000Z-a5181f9", dof)
+        self.assertNotIn("compute_prepared_ols_absorbed_dof", plugin)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
