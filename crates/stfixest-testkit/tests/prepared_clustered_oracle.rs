@@ -40,8 +40,8 @@ fn one_way_noconstant_matches_independent_explicit_dummy_cr1() {
     let production = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
-            &[effect.clone()],
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             false,
             CaseWeights::Unit,
@@ -122,7 +122,7 @@ fn one_two_and_three_way_full_covariances_match_generic_explicit_oracle() {
                 &prepare_case(
                     &outcome,
                     &[x1.clone(), x2.clone()],
-                    &[effect.clone()],
+                    std::slice::from_ref(&effect),
                     &clusters,
                     include_intercept,
                     CaseWeights::Unit,
@@ -178,8 +178,8 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
     let analytic = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
-            &[effect.clone()],
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             true,
             CaseWeights::Analytic(&weights),
@@ -190,8 +190,8 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
     let probability = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
-            &[effect.clone()],
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             true,
             CaseWeights::Probability(&weights),
@@ -202,8 +202,8 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
     let probability_scaled = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
-            &[effect.clone()],
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             true,
             CaseWeights::Probability(&scaled),
@@ -223,8 +223,8 @@ fn analytic_probability_scaling_and_frequency_expansion_follow_cluster_score_rul
     let compact = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
-            &[effect.clone()],
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             false,
             CaseWeights::Frequency(&frequencies),
@@ -329,7 +329,7 @@ fn declared_interaction_is_one_dimension_and_matches_precombined_cluster_codes()
     let interaction = fit_prepared_ols_clustered_map(
         &prepare_case(
             &outcome,
-            &[x.clone()],
+            std::slice::from_ref(&x),
             &[],
             &[vec![first, second]],
             false,
@@ -406,7 +406,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
         &prepare_case(
             &outcome,
             &[],
-            &[effect.clone()],
+            std::slice::from_ref(&effect),
             &[vec![cluster.clone()]],
             false,
             CaseWeights::Unit,

@@ -1,4 +1,5 @@
 use crate::dispatch::dispatch_args;
+use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS_TEST};
 use crate::input::{prepare_ols_test, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
 use std::any::Any;
@@ -29,6 +30,7 @@ extern "C" {
         column: c_int,
         value: *mut f64,
     ) -> c_int;
+    fn stfixest_spi_mat_store(name: *const c_char, row: c_int, column: c_int, value: f64) -> c_int;
     fn stfixest_spi_is_main_thread() -> c_int;
 }
 
@@ -88,6 +90,15 @@ unsafe fn stfixest_spi_mat_el(
     _row: c_int,
     _column: c_int,
     _value: *mut f64,
+) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn stfixest_spi_mat_store(
+    _name: *const c_char,
+    _row: c_int,
+    _column: c_int,
+    _value: f64,
 ) -> c_int {
     498
 }
@@ -261,6 +272,23 @@ impl SpiApi for SpiSession {
         )
     }
 
+    fn store_matrix(
+        &mut self,
+        name: &str,
+        row: usize,
+        column: usize,
+        value: f64,
+    ) -> Result<(), StFixestError> {
+        let name = Self::matrix_name(name);
+        let row = Self::observation(row)?;
+        let column = Self::observation(column)?;
+        // SAFETY: name/coordinates are live and checked; the session is confined.
+        Self::spi_rc(
+            unsafe { stfixest_spi_mat_store(name.as_ptr(), row, column, value) },
+            "matrix store",
+        )
+    }
+
     fn check_interrupted(&mut self) -> Result<(), StFixestError> {
         // SAFETY: polling and stop inspection occur on the bound Stata thread.
         let poll = unsafe { stfixest_spi_poll() };
@@ -317,6 +345,12 @@ pub unsafe extern "C" fn stfixest_dispatch(argc: c_int, argv: *const *const c_ch
         {
             let mut session = SpiSession::new()?;
             prepare_ols_test(&args[1..], &sink, &mut session)
+        } else if args
+            .first()
+            .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS_TEST))
+        {
+            let mut session = SpiSession::new()?;
+            estimate_ols_test(&args[1..], &mut session)
         } else {
             dispatch_args(&args, &sink)
         }

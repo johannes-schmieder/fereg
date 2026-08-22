@@ -768,7 +768,7 @@ fn validate_problem(
                     .iter()
                     .map(|weight| weight * weight)
                     .collect::<Vec<_>>();
-                if squared.iter().any(|multiplier| *multiplier == 0.0) {
+                if squared.contains(&0.0) {
                     return Err(OracleError::NumericalFailure(
                         "relative WLS weights are too extreme for a robust-score calculation"
                             .to_owned(),

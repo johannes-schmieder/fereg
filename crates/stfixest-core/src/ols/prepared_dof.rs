@@ -8,17 +8,12 @@ use super::PreparedOlsData;
 ///
 /// `None` is deliberately named after reghdfe's `dof(none)`: it disables
 /// mobility searches, but it does not make absorbed fixed effects free.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PreparedOlsAbsorbedDofPolicy {
     None,
     FirstPair,
+    #[default]
     Pairwise,
-}
-
-impl Default for PreparedOlsAbsorbedDofPolicy {
-    fn default() -> Self {
-        Self::Pairwise
-    }
 }
 
 /// One wire-ordered row of the prepared absorbed-DoF table.

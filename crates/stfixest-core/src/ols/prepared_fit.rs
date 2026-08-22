@@ -3247,10 +3247,7 @@ mod tests {
                 1,
             ),
         ] {
-            assert!(successful
-                .records
-                .iter()
-                .any(|record| *record == (elements, label)));
+            assert!(successful.records.contains(&(elements, label)));
         }
         for fail_at in 1..=successful.calls {
             let mut injected = InjectedReservation {

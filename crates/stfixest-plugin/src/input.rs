@@ -32,6 +32,7 @@ pub trait SpiApi {
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;
+    fn store_matrix(&mut self, name: &str, row: usize, column: usize, value: f64) -> Result<()>;
     fn check_interrupted(&mut self) -> Result<()>;
 }
 
@@ -894,6 +895,25 @@ mod tests {
 
         fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()> {
             self.writes.push((variable, observation, value));
+            Ok(())
+        }
+
+        fn store_matrix(
+            &mut self,
+            name: &str,
+            row: usize,
+            column: usize,
+            value: f64,
+        ) -> Result<()> {
+            let matrix = self
+                .matrices
+                .get_mut(name)
+                .ok_or_else(|| invalid(format!("matrix {name:?} was not found")))?;
+            let destination = matrix
+                .get_mut(row.saturating_sub(1))
+                .and_then(|values| values.get_mut(column.saturating_sub(1)))
+                .ok_or_else(|| invalid("matrix store coordinate is out of range"))?;
+            *destination = value;
             Ok(())
         }
 

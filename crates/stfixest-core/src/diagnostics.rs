@@ -1,7 +1,7 @@
 use crate::options::ThreadConfig;
 use crate::protocol::{
-    ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION, PLUGIN_VERSION,
-    SPI_MAJOR, SPI_MINOR,
+    ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, SPI_MAJOR, SPI_MINOR,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,6 +12,8 @@ pub struct BuildInfo {
     pub action_protocol_minor: u16,
     pub model_wire_major: u16,
     pub model_wire_minor: u16,
+    pub ols_result_wire_major: u16,
+    pub ols_result_wire_minor: u16,
     pub git_commit: &'static str,
     pub build_date: &'static str,
     pub operating_system: &'static str,
@@ -32,6 +34,8 @@ impl BuildInfo {
             action_protocol_minor: ACTION_PROTOCOL_VERSION.minor,
             model_wire_major: MODEL_WIRE_VERSION.major,
             model_wire_minor: MODEL_WIRE_VERSION.minor,
+            ols_result_wire_major: OLS_RESULT_WIRE_VERSION.major,
+            ols_result_wire_minor: OLS_RESULT_WIRE_VERSION.minor,
             git_commit: env!("STFIXEST_GIT_COMMIT"),
             build_date: env!("STFIXEST_BUILD_DATE"),
             operating_system: std::env::consts::OS,
@@ -75,6 +79,10 @@ impl DoctorReport {
             format!(
                 "stfixest.model_wire={}.{}",
                 build.model_wire_major, build.model_wire_minor
+            ),
+            format!(
+                "stfixest.ols_result_wire={}.{}",
+                build.ols_result_wire_major, build.ols_result_wire_minor
             ),
             format!("stfixest.git_commit={}", build.git_commit),
             format!("stfixest.build_date={}", build.build_date),
@@ -160,8 +168,9 @@ mod tests {
             },
         }
         .render();
-        assert!(report.contains("stfixest.action_protocol=1.0"));
+        assert!(report.contains("stfixest.action_protocol=1.1"));
         assert!(report.contains("stfixest.model_wire=2.1"));
+        assert!(report.contains("stfixest.ols_result_wire=1.0"));
         assert!(!report.contains("stfixest.model_protocol="));
         assert!(report.contains("stfixest.native_selftest=pass"));
     }

@@ -4,7 +4,7 @@ use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::options::ThreadConfig;
 use stfixest_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    PLUGIN_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 use stfixest_core::selftest::run_native_selftest;
 
@@ -28,6 +28,10 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
         crate::input::ACTION_PREPARE_OLS_TEST => Err(StFixestError::new(
             ErrorCode::Unsupported,
             "prepare-ols-test is developer-only and requires a live Stata SPI session",
+        )),
+        crate::estimate::ACTION_ESTIMATE_OLS_TEST => Err(StFixestError::new(
+            ErrorCode::Unsupported,
+            "estimate-ols-test is developer-only and requires a live Stata SPI session",
         )),
         "estimate-ols" | "estimate-ppml" => Err(StFixestError::new(
             ErrorCode::Unsupported,
@@ -54,6 +58,7 @@ fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
             "stfixest.ado_contract={}\n",
             "stfixest.action_protocol={}.{}\n",
             "stfixest.model_wire={}.{}\n",
+            "stfixest.ols_result_wire={}.{}\n",
             "stfixest.plugin_abi={}.{}\n",
             "stfixest.git_commit={}\n",
             "stfixest.build_date={}\n"
@@ -64,6 +69,8 @@ fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
         ACTION_PROTOCOL_VERSION.minor,
         MODEL_WIRE_VERSION.major,
         MODEL_WIRE_VERSION.minor,
+        OLS_RESULT_WIRE_VERSION.major,
+        OLS_RESULT_WIRE_VERSION.minor,
         build.plugin_abi_major,
         build.plugin_abi_minor,
         build.git_commit,
@@ -150,8 +157,9 @@ mod tests {
     fn version_is_machine_readable() {
         let sink = BufferSink::default();
         dispatch_args(&["version".to_owned()], &sink).expect("version");
-        assert!(sink.displayed().contains("stfixest.action_protocol=1.0"));
+        assert!(sink.displayed().contains("stfixest.action_protocol=1.1"));
         assert!(sink.displayed().contains("stfixest.model_wire=2.1"));
+        assert!(sink.displayed().contains("stfixest.ols_result_wire=1.0"));
         assert!(!sink.displayed().contains("stfixest.model_protocol="));
     }
 

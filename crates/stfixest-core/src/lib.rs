@@ -85,6 +85,6 @@ pub use ppml_separation::{
 };
 pub use protocol::{
     Handshake, ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    PLUGIN_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};

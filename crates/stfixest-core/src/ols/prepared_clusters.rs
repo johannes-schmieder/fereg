@@ -22,6 +22,16 @@ pub struct OlsClusteredRequestV1 {
     pub clusters: Vec<OlsClusterTermV1>,
 }
 
+impl OlsClusteredRequestV1 {
+    /// Validate the complete OLS-plus-cluster source graph before observation
+    /// loading and return its executable finite-dimensional model.
+    pub fn validate_and_compile(&self) -> Result<super::PreparedOlsModel> {
+        let cluster_sources = validate_request(self)?;
+        self.ols
+            .validate_and_compile_with_cluster_sources(&cluster_sources)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum PreparedOlsClusterCodes {
     /// Reuse the authoritative final categorical codes owned by OLS.

@@ -1,0 +1,874 @@
+use stfixest_core::error::{ErrorCode, Result, StFixestError};
+use stfixest_core::fe::{FeSolverKind, SolveReport, SolveStopReason};
+use stfixest_core::ols::{
+    CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
+    CertifiedPreparedOlsUnadjusted, PreparedOlsAbsorbedDofEffectIdentity,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsClusteredData,
+    PreparedOlsClusteredPsdState, PreparedOlsData, PreparedOlsFitStatistics, PreparedOlsFitStatus,
+    PreparedOlsReferenceWeightReport,
+};
+
+pub(crate) const FIT_ROWS: usize = 12;
+pub(crate) const DOF_ROWS: usize = 20;
+pub(crate) const SOLVER_ROWS: usize = 2;
+pub(crate) const SOLVER_COLUMNS: usize = 12;
+pub(crate) const FE_COLUMNS: usize = 8;
+pub(crate) const CLUSTER_COLUMNS: usize = 4;
+pub(crate) const SUBSET_COLUMNS: usize = 4;
+pub(crate) const CERTIFICATE_ROWS: usize = 32;
+pub(crate) const RECEIPT_COLUMNS: usize = 16;
+pub(crate) const COEFFICIENT_STATUS_COLUMNS: usize = 4;
+pub(crate) const RESULT_MAGIC: f64 = 5_354_601.0;
+pub(crate) const RECEIPT_COMPLETE_COLUMN: usize = RECEIPT_COLUMNS;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OlsVceKind {
+    Iid,
+    Robust,
+    Clustered,
+}
+
+impl OlsVceKind {
+    pub(crate) const fn code(self) -> f64 {
+        match self {
+            Self::Iid => 1.0,
+            Self::Robust => 2.0,
+            Self::Clustered => 3.0,
+        }
+    }
+}
+
+pub(crate) enum CertifiedOlsInference<'a> {
+    Iid(&'a CertifiedPreparedOlsUnadjusted),
+    Robust(&'a CertifiedPreparedOlsRobust),
+    Clustered(&'a CertifiedPreparedOlsClustered),
+}
+
+impl<'a> CertifiedOlsInference<'a> {
+    pub(crate) const fn kind(&self) -> OlsVceKind {
+        match self {
+            Self::Iid(_) => OlsVceKind::Iid,
+            Self::Robust(_) => OlsVceKind::Robust,
+            Self::Clustered(_) => OlsVceKind::Clustered,
+        }
+    }
+
+    pub(crate) const fn fit(&self) -> &'a CertifiedPreparedOlsFit {
+        match self {
+            Self::Iid(value) => value.fit(),
+            Self::Robust(value) => value.fit(),
+            Self::Clustered(value) => value.fit(),
+        }
+    }
+
+    const fn absorbed_dof(&self) -> &'a PreparedOlsAbsorbedDofReport {
+        match self {
+            Self::Iid(value) => value.absorbed_dof(),
+            Self::Robust(value) => value.absorbed_dof(),
+            Self::Clustered(value) => value.absorbed_dof(),
+        }
+    }
+
+    const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        match self {
+            Self::Iid(value) => value.weights(),
+            Self::Robust(value) => value.weights(),
+            Self::Clustered(value) => value.weights(),
+        }
+    }
+
+    const fn statistics(&self) -> PreparedOlsFitStatistics {
+        match self {
+            Self::Iid(value) => value.statistics(),
+            Self::Robust(value) => value.statistics(),
+            Self::Clustered(value) => value.statistics(),
+        }
+    }
+
+    fn covariance_coordinates(&self) -> &'a [PreparedOlsBreadCoordinate] {
+        match self {
+            Self::Iid(value) => value.covariance_coordinates(),
+            Self::Robust(value) => value.covariance_coordinates(),
+            Self::Clustered(value) => value.covariance_coordinates(),
+        }
+    }
+
+    fn covariance_values(&self) -> &'a [f64] {
+        match self {
+            Self::Iid(value) => value.covariance().values(),
+            Self::Robust(value) => value.covariance().values(),
+            Self::Clustered(value) => value.covariance().values(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct OlsShadowResult<'a> {
+    pub(crate) b: Vec<f64>,
+    pub(crate) covariance: Vec<f64>,
+    pub(crate) coefficient_status: Vec<f64>,
+    pub(crate) fit: Vec<f64>,
+    pub(crate) dof: Vec<f64>,
+    pub(crate) solver: Vec<f64>,
+    pub(crate) fixed_effects: Vec<f64>,
+    pub(crate) clusters: Vec<f64>,
+    pub(crate) subsets: Vec<f64>,
+    pub(crate) certificates: Vec<f64>,
+    pub(crate) receipt: Vec<f64>,
+    pub(crate) coefficient_count: usize,
+    pub(crate) covariance_dimension: usize,
+    pub(crate) fixed_effect_rows: usize,
+    pub(crate) cluster_rows: usize,
+    pub(crate) subset_rows: usize,
+    pub(crate) drop_reasons: &'a [stfixest_core::DropReason],
+    pub(crate) retained_rows: &'a [usize],
+    pub(crate) residuals: &'a [f64],
+}
+
+pub(crate) fn build_shadow_result<'a>(
+    prepared: &'a PreparedOlsData,
+    clustered_prepared: Option<&'a PreparedOlsClusteredData>,
+    inference: CertifiedOlsInference<'a>,
+    residual_requested: bool,
+) -> Result<OlsShadowResult<'a>> {
+    validate_alignment(prepared, clustered_prepared, &inference)?;
+    let fit = inference.fit();
+    let coefficient_count = prepared.model.coefficients.len();
+    let covariance_dimension = inference.covariance_coordinates().len();
+    let matrix_dimension = coefficient_count.max(1);
+    let mut b = reserved_filled(matrix_dimension, 0.0, "OLS shadow coefficient vector")?;
+    let mut covariance = reserved_filled(
+        checked_product(matrix_dimension, matrix_dimension, "OLS shadow covariance")?,
+        0.0,
+        "OLS shadow covariance",
+    )?;
+    let mut coefficient_status = reserved_filled(
+        checked_product(
+            matrix_dimension,
+            COEFFICIENT_STATUS_COLUMNS,
+            "OLS coefficient-status table",
+        )?,
+        0.0,
+        "OLS coefficient-status table",
+    )?;
+
+    if fit.coefficients().len() != coefficient_count {
+        return Err(invalid(
+            "prepared OLS fit coefficient count is inconsistent",
+        ));
+    }
+    let mut slot_seen = reserved_filled(coefficient_count, false, "OLS coefficient slots")?;
+    for coefficient in fit.coefficients() {
+        let slot = one_based_index(
+            coefficient.coefficient_slot.get(),
+            coefficient_count,
+            "prepared OLS coefficient slot",
+        )?;
+        if slot_seen[slot] {
+            return Err(invalid("prepared OLS coefficient slot is duplicated"));
+        }
+        slot_seen[slot] = true;
+        let (status, value) = match coefficient.status {
+            PreparedOlsFitStatus::Kept => {
+                (1.0, required_finite(coefficient.value, "kept coefficient")?)
+            }
+            PreparedOlsFitStatus::SyntaxOmitted => {
+                require_absent(coefficient.value, "syntax-omitted coefficient")?;
+                (2.0, 0.0)
+            }
+            PreparedOlsFitStatus::CollinearWithFixedEffects => {
+                require_absent(coefficient.value, "FE-collinear coefficient")?;
+                (3.0, 0.0)
+            }
+            PreparedOlsFitStatus::NumericallyRankDeficient => {
+                require_absent(coefficient.value, "rank-deficient coefficient")?;
+                (4.0, 0.0)
+            }
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept => (
+                5.0,
+                required_finite(coefficient.value, "normalized absorbed intercept")?,
+            ),
+            PreparedOlsFitStatus::AbsorbedInterceptDeferred => {
+                return Err(invalid(
+                    "deferred absorbed intercept survived the certified prepared OLS fit",
+                ));
+            }
+        };
+        b[slot] = value;
+        let offset = slot * COEFFICIENT_STATUS_COLUMNS;
+        coefficient_status[offset] = f64::from(coefficient.coefficient_slot.get());
+        coefficient_status[offset + 1] = status;
+        coefficient_status[offset + 2] = coefficient
+            .generated_column_index
+            .map_or(0.0, |index| (index + 1) as f64);
+    }
+    if slot_seen.iter().any(|seen| !seen) {
+        return Err(invalid("prepared OLS coefficient slots are not contiguous"));
+    }
+
+    let coordinates = inference.covariance_coordinates();
+    let values = inference.covariance_values();
+    if values.len()
+        != checked_product(
+            covariance_dimension,
+            covariance_dimension,
+            "compact OLS covariance",
+        )?
+    {
+        return Err(invalid(
+            "prepared OLS compact covariance has the wrong size",
+        ));
+    }
+    let mut covariance_slots =
+        reserved_filled(coefficient_count, None, "OLS covariance-coordinate slots")?;
+    for (coordinate_index, coordinate) in coordinates.iter().enumerate() {
+        let slot = one_based_index(
+            coordinate.coefficient_slot.get(),
+            coefficient_count,
+            "prepared OLS covariance slot",
+        )?;
+        if covariance_slots[slot].replace(coordinate_index).is_some() {
+            return Err(invalid("prepared OLS covariance slot is duplicated"));
+        }
+        let status_offset = slot * COEFFICIENT_STATUS_COLUMNS;
+        if !matches!(coefficient_status[status_offset + 1], 1.0 | 5.0) {
+            return Err(invalid(
+                "prepared OLS covariance coordinate refers to an unreported coefficient",
+            ));
+        }
+        coefficient_status[status_offset + 3] = (coordinate_index + 1) as f64;
+    }
+    for row in 0..covariance_dimension {
+        let target_row = one_based_index(
+            coordinates[row].coefficient_slot.get(),
+            coefficient_count,
+            "prepared OLS covariance row slot",
+        )?;
+        for column in 0..covariance_dimension {
+            let target_column = one_based_index(
+                coordinates[column].coefficient_slot.get(),
+                coefficient_count,
+                "prepared OLS covariance column slot",
+            )?;
+            let value = values[row * covariance_dimension + column];
+            if !value.is_finite() {
+                return Err(invalid(
+                    "prepared OLS covariance contains a nonfinite value",
+                ));
+            }
+            covariance[target_row * matrix_dimension + target_column] = value;
+        }
+    }
+
+    let fit_values = build_fit_statistics(inference.statistics())?;
+    let dof = build_dof(prepared, &inference)?;
+    let solver = build_solver(fit)?;
+    let (fixed_effects, fixed_effect_rows) = build_fixed_effects(inference.absorbed_dof())?;
+    let (clusters, cluster_rows, subsets, subset_rows) =
+        build_clusters(clustered_prepared, &inference)?;
+    let certificates = build_certificates(&inference)?;
+    let receipt = build_receipt(
+        prepared,
+        inference.kind(),
+        coefficient_count,
+        covariance_dimension,
+        fixed_effect_rows,
+        cluster_rows,
+        subset_rows,
+        residual_requested,
+    )?;
+    if fit.residuals().len() != prepared.sample.n_active()
+        || prepared.sample.drop_reasons.len() != prepared.sample.n_original
+    {
+        return Err(invalid("prepared OLS observation outputs are misaligned"));
+    }
+
+    Ok(OlsShadowResult {
+        b,
+        covariance,
+        coefficient_status,
+        fit: fit_values,
+        dof,
+        solver,
+        fixed_effects,
+        clusters,
+        subsets,
+        certificates,
+        receipt,
+        coefficient_count,
+        covariance_dimension,
+        fixed_effect_rows,
+        cluster_rows,
+        subset_rows,
+        drop_reasons: &prepared.sample.drop_reasons,
+        retained_rows: prepared.sample.retained_rows(),
+        residuals: fit.residuals(),
+    })
+}
+
+fn validate_alignment(
+    prepared: &PreparedOlsData,
+    clustered: Option<&PreparedOlsClusteredData>,
+    inference: &CertifiedOlsInference<'_>,
+) -> Result<()> {
+    match (inference, clustered) {
+        (CertifiedOlsInference::Clustered(_), Some(value))
+            if std::ptr::eq(prepared, value.ols()) => {}
+        (CertifiedOlsInference::Clustered(_), _) => {
+            return Err(invalid(
+                "clustered inference is not sample-bound to its preparation",
+            ));
+        }
+        (CertifiedOlsInference::Iid(_) | CertifiedOlsInference::Robust(_), None) => {}
+        _ => {
+            return Err(invalid(
+                "nonclustered inference unexpectedly has cluster preparation",
+            ))
+        }
+    }
+    if !inference.fit().rank_certificate().passed
+        || !inference.fit().score_certificate().passed
+        || !inference.fit().bread().certificate().passed
+    {
+        return Err(invalid("prepared OLS fit certificate is not complete"));
+    }
+    let vce_passed = match inference {
+        CertifiedOlsInference::Iid(value) => value.certificate().passed,
+        CertifiedOlsInference::Robust(value) => value.certificate().passed,
+        CertifiedOlsInference::Clustered(value) => value.certificate().passed,
+    };
+    if !vce_passed {
+        return Err(invalid(
+            "prepared OLS inference certificate is not complete",
+        ));
+    }
+    Ok(())
+}
+
+fn build_fit_statistics(statistics: PreparedOlsFitStatistics) -> Result<Vec<f64>> {
+    let mut output = reserved_filled(FIT_ROWS * 2, 0.0, "OLS fit-statistics table")?;
+    set_defined(&mut output, 0, Some(statistics.rss), "RSS")?;
+    set_defined(&mut output, 1, Some(statistics.tss), "TSS")?;
+    set_defined(&mut output, 2, Some(statistics.within_tss), "within TSS")?;
+    set_defined(
+        &mut output,
+        3,
+        Some(statistics.tss - statistics.rss),
+        "model sum of squares",
+    )?;
+    set_defined(&mut output, 4, statistics.r_squared, "R-squared")?;
+    set_defined(
+        &mut output,
+        5,
+        statistics.adjusted_r_squared,
+        "adjusted R-squared",
+    )?;
+    set_defined(
+        &mut output,
+        6,
+        statistics.within_r_squared,
+        "within R-squared",
+    )?;
+    set_defined(
+        &mut output,
+        7,
+        statistics.adjusted_within_r_squared,
+        "adjusted within R-squared",
+    )?;
+    set_defined(
+        &mut output,
+        8,
+        Some(statistics.root_mean_squared_error),
+        "root mean squared error",
+    )?;
+    set_defined(&mut output, 9, statistics.f_statistic, "F statistic")?;
+    set_defined(
+        &mut output,
+        10,
+        statistics.gaussian_log_likelihood,
+        "Gaussian log likelihood",
+    )?;
+    set_defined(
+        &mut output,
+        11,
+        statistics.gaussian_null_log_likelihood,
+        "Gaussian null log likelihood",
+    )?;
+    Ok(output)
+}
+
+fn build_dof(
+    prepared: &PreparedOlsData,
+    inference: &CertifiedOlsInference<'_>,
+) -> Result<Vec<f64>> {
+    let mut output = reserved_filled(DOF_ROWS * 2, 0.0, "OLS DoF table")?;
+    let weights = inference.weights();
+    let absorbed = inference.absorbed_dof();
+    let (
+        finite_rank,
+        finite_model_dof,
+        absorbed_rank,
+        model_rank,
+        reported,
+        fit,
+        correction,
+        nested,
+        structural,
+        normalized,
+        approximate,
+    ) = match inference {
+        CertifiedOlsInference::Iid(value) => {
+            let dof = value.dof();
+            (
+                dof.finite_rank,
+                dof.finite_model_dof,
+                dof.absorbed_rank,
+                dof.model_rank,
+                dof.residual_dof,
+                dof.residual_dof,
+                dof.residual_dof,
+                absorbed.nested_categories,
+                dof.has_structural_intercept,
+                dof.has_normalized_absorbed_intercept,
+                dof.absorbed_rank_is_approximate,
+            )
+        }
+        CertifiedOlsInference::Robust(value) => {
+            let dof = value.dof();
+            (
+                dof.finite_rank,
+                dof.finite_model_dof,
+                dof.absorbed_rank,
+                dof.model_rank,
+                dof.residual_dof,
+                dof.residual_dof,
+                dof.residual_dof,
+                absorbed.nested_categories,
+                dof.has_structural_intercept,
+                dof.has_normalized_absorbed_intercept,
+                dof.absorbed_rank_is_approximate,
+            )
+        }
+        CertifiedOlsInference::Clustered(value) => {
+            let dof = value.dof();
+            let model_rank = dof
+                .finite_rank
+                .checked_add(dof.absorbed_rank)
+                .ok_or_else(|| allocation("clustered OLS model rank overflows"))?;
+            (
+                dof.finite_rank,
+                dof.finite_model_dof,
+                dof.absorbed_rank,
+                model_rank,
+                dof.reported_residual_dof,
+                dof.fit_residual_dof,
+                dof.correction_denominator_dof,
+                dof.nested_absorbed_categories,
+                dof.has_structural_intercept,
+                dof.has_normalized_absorbed_intercept,
+                dof.absorbed_rank_is_approximate,
+            )
+        }
+    };
+    let fields = [
+        Some(weights.effective_observations as f64),
+        Some(weights.physical_observations as f64),
+        Some(prepared.sample.n_candidate as f64),
+        Some(prepared.sample.n_active() as f64),
+        weights.raw_weight_sum,
+        Some(finite_rank as f64),
+        Some(finite_model_dof as f64),
+        Some(absorbed_rank as f64),
+        Some(model_rank as f64),
+        Some(reported as f64),
+        Some(fit as f64),
+        Some(correction as f64),
+        Some(nested as f64),
+        Some(absorbed.initial_categories as f64),
+        Some(absorbed.redundant_categories as f64),
+        Some(prepared.singletons.num_singletons as f64),
+        Some(prepared.singletons.cascade_events as f64),
+        Some(f64::from(structural)),
+        Some(f64::from(normalized)),
+        Some(f64::from(approximate)),
+    ];
+    for (row, value) in fields.into_iter().enumerate() {
+        set_defined(&mut output, row, value, "OLS DoF field")?;
+    }
+    Ok(output)
+}
+
+fn build_solver(fit: &CertifiedPreparedOlsFit) -> Result<Vec<f64>> {
+    let mut output = reserved_filled(SOLVER_ROWS * SOLVER_COLUMNS, 0.0, "OLS solver diagnostics")?;
+    for (row, report) in [fit.absorption_report(), fit.residual_absorption_report()]
+        .into_iter()
+        .enumerate()
+    {
+        write_solver_row(&mut output, row, report)?;
+    }
+    Ok(output)
+}
+
+fn write_solver_row(output: &mut [f64], row: usize, report: &SolveReport) -> Result<()> {
+    if !report.certified() {
+        return Err(invalid("prepared OLS solver report is not certified"));
+    }
+    let values = [
+        solver_code(report.requested_solver),
+        solver_code(report.used_solver),
+        report.iterations as f64,
+        stop_code(report.stop_reason),
+        report.certificate.absolute_infinity_norm,
+        report.certificate.relative_infinity_norm,
+        report.certificate.relative_two_norm,
+        report.normal_equation_residual,
+        report.setup_seconds,
+        report.solve_seconds,
+        f64::from(report.fallback_used),
+        report.warnings.len() as f64,
+    ];
+    let start = row * SOLVER_COLUMNS;
+    for (index, value) in values.into_iter().enumerate() {
+        if !value.is_finite() {
+            return Err(invalid("prepared OLS solver diagnostic is nonfinite"));
+        }
+        output[start + index] = value;
+    }
+    Ok(())
+}
+
+fn build_fixed_effects(report: &PreparedOlsAbsorbedDofReport) -> Result<(Vec<f64>, usize)> {
+    let rows = report.effects.len().max(1);
+    let mut output = reserved_filled(
+        checked_product(rows, FE_COLUMNS, "OLS FE metadata")?,
+        0.0,
+        "OLS FE metadata",
+    )?;
+    for (row, effect) in report.effects.iter().enumerate() {
+        let (identity, term, source) = match effect.identity {
+            PreparedOlsAbsorbedDofEffectIdentity::Explicit { term_id, source } => {
+                (1.0, f64::from(term_id.get()), f64::from(source.get()))
+            }
+            PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb => (2.0, 0.0, 0.0),
+        };
+        let values = [
+            identity,
+            term,
+            source,
+            effect.categories as f64,
+            effect.redundant as f64,
+            effect.coefficients as f64,
+            f64::from(effect.redundancy_exact),
+            f64::from(effect.nested),
+        ];
+        output[row * FE_COLUMNS..(row + 1) * FE_COLUMNS].copy_from_slice(&values);
+    }
+    Ok((output, rows))
+}
+
+fn build_clusters(
+    prepared: Option<&PreparedOlsClusteredData>,
+    inference: &CertifiedOlsInference<'_>,
+) -> Result<(Vec<f64>, usize, Vec<f64>, usize)> {
+    let (cluster_rows, subset_rows) = match inference {
+        CertifiedOlsInference::Clustered(value) => {
+            (value.cluster_counts().len(), value.subsets().len())
+        }
+        _ => (0, 0),
+    };
+    let physical_cluster_rows = cluster_rows.max(1);
+    let physical_subset_rows = subset_rows.max(1);
+    let mut clusters = reserved_filled(
+        checked_product(
+            physical_cluster_rows,
+            CLUSTER_COLUMNS,
+            "OLS cluster metadata",
+        )?,
+        0.0,
+        "OLS cluster metadata",
+    )?;
+    let mut subsets = reserved_filled(
+        checked_product(physical_subset_rows, SUBSET_COLUMNS, "OLS subset metadata")?,
+        0.0,
+        "OLS subset metadata",
+    )?;
+    if let (Some(prepared), CertifiedOlsInference::Clustered(value)) = (prepared, inference) {
+        if prepared.clusters().dimensions().len() != value.cluster_counts().len() {
+            return Err(invalid("prepared OLS cluster counts are inconsistent"));
+        }
+        for (row, (dimension, count)) in prepared
+            .clusters()
+            .dimensions()
+            .iter()
+            .zip(value.cluster_counts())
+            .enumerate()
+        {
+            if dimension.groups() != *count {
+                return Err(invalid(
+                    "prepared OLS cluster group count changed after fit",
+                ));
+            }
+            let values = [
+                (row + 1) as f64,
+                dimension.sources().len() as f64,
+                *count as f64,
+                f64::from(dimension.is_interaction()),
+            ];
+            clusters[row * CLUSTER_COLUMNS..(row + 1) * CLUSTER_COLUMNS].copy_from_slice(&values);
+        }
+        for (row, subset) in value.subsets().iter().enumerate() {
+            let values = [
+                f64::from(subset.mask),
+                subset.dimensions as f64,
+                f64::from(subset.sign),
+                subset.groups as f64,
+            ];
+            subsets[row * SUBSET_COLUMNS..(row + 1) * SUBSET_COLUMNS].copy_from_slice(&values);
+        }
+    }
+    Ok((
+        clusters,
+        physical_cluster_rows,
+        subsets,
+        physical_subset_rows,
+    ))
+}
+
+fn build_certificates(inference: &CertifiedOlsInference<'_>) -> Result<Vec<f64>> {
+    let mut output = reserved_filled(CERTIFICATE_ROWS * 2, 0.0, "OLS certificate diagnostics")?;
+    let fit = inference.fit();
+    let rank = fit.rank_certificate();
+    let score = fit.score_certificate();
+    let bread = fit.bread().certificate();
+    let common = [
+        Some(f64::from(rank.passed)),
+        Some(f64::from(score.passed)),
+        Some(f64::from(bread.passed)),
+        Some(rank.relative_threshold),
+        Some(rank.maximum_dropped_trailing_norm),
+        Some(rank.condition_proxy),
+        Some(score.relative_infinity_norm),
+        Some(score.relative_two_norm),
+        Some(bread.left_inverse_relative_infinity_norm),
+        Some(bread.right_inverse_relative_infinity_norm),
+        Some(bread.reported_left_inverse_relative_infinity_norm),
+        Some(bread.reported_right_inverse_relative_infinity_norm),
+        Some(bread.symmetry_relative_infinity_norm),
+        Some(bread.minimum_diagonal),
+        Some(bread.intercept_formula_relative_error),
+        Some(bread.intercept_normalization_relative_error),
+    ];
+    for (row, value) in common.into_iter().enumerate() {
+        set_defined(&mut output, row, value, "OLS fit certificate")?;
+    }
+    match inference {
+        CertifiedOlsInference::Iid(value) => {
+            let certificate = value.certificate();
+            let selected = [
+                certificate.reference_weight_sum_relative_error,
+                certificate.covariance_scale_relative_infinity_norm,
+                certificate.covariance_symmetry_relative_infinity_norm,
+                0.0,
+                certificate.minimum_covariance_diagonal,
+                0.0,
+                certificate.statistic_formula_relative_infinity_norm,
+                f64::from(certificate.passed),
+            ];
+            set_selected_certificates(&mut output, &selected)?;
+        }
+        CertifiedOlsInference::Robust(value) => {
+            let certificate = value.certificate();
+            let selected = [
+                certificate.reference_weight_sum_relative_error,
+                certificate.sandwich_formula_relative_infinity_norm,
+                certificate.covariance_symmetry_relative_infinity_norm,
+                certificate.standard_error_relative_infinity_norm,
+                certificate.minimum_normalized_psd_pivot,
+                certificate.wald_solve_relative_infinity_norm,
+                certificate.statistic_formula_relative_infinity_norm,
+                f64::from(certificate.passed),
+            ];
+            set_selected_certificates(&mut output, &selected)?;
+        }
+        CertifiedOlsInference::Clustered(value) => {
+            let certificate = value.certificate();
+            let selected = [
+                certificate.reference_weight_sum_relative_error,
+                certificate.corrected_covariance_relative_infinity_norm,
+                certificate.covariance_symmetry_relative_infinity_norm,
+                certificate.standard_error_relative_infinity_norm,
+                certificate.pre_restore_full_psd_relative_error,
+                certificate.wald_solve_relative_infinity_norm,
+                certificate.statistic_formula_relative_infinity_norm,
+                f64::from(certificate.passed),
+            ];
+            set_selected_certificates(&mut output, &selected)?;
+            let psd = value.covariance().psd();
+            let extras = [
+                psd_state_code(psd.state),
+                f64::from(psd.full_adjusted),
+                f64::from(psd.slope_block_restored),
+                psd.minimum_final_full_eigenvalue,
+                f64::from(psd.strict_final_full_psd),
+                value.covariance().correction(),
+            ];
+            for (offset, entry) in extras.into_iter().enumerate() {
+                set_defined(
+                    &mut output,
+                    24 + offset,
+                    Some(entry),
+                    "clustered OLS PSD diagnostic",
+                )?;
+            }
+        }
+    }
+    Ok(output)
+}
+
+fn set_selected_certificates(output: &mut [f64], selected: &[f64; 8]) -> Result<()> {
+    for (offset, value) in selected.iter().copied().enumerate() {
+        set_defined(
+            output,
+            16 + offset,
+            Some(value),
+            "selected OLS inference certificate",
+        )?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_receipt(
+    prepared: &PreparedOlsData,
+    kind: OlsVceKind,
+    coefficient_count: usize,
+    covariance_dimension: usize,
+    fixed_effect_rows: usize,
+    cluster_rows: usize,
+    subset_rows: usize,
+    residual_requested: bool,
+) -> Result<Vec<f64>> {
+    let mut output = reserved_filled(RECEIPT_COLUMNS, 0.0, "OLS result receipt")?;
+    let logical_cluster_rows = usize::from(kind == OlsVceKind::Clustered) * cluster_rows;
+    let logical_subset_rows = usize::from(kind == OlsVceKind::Clustered) * subset_rows;
+    let values = [
+        RESULT_MAGIC,
+        1.0,
+        0.0,
+        kind.code(),
+        coefficient_count as f64,
+        covariance_dimension as f64,
+        prepared.sample.n_original as f64,
+        prepared.sample.n_candidate as f64,
+        prepared.sample.n_active() as f64,
+        logical_cluster_rows as f64,
+        fixed_effect_rows as f64,
+        logical_subset_rows as f64,
+        1.0,
+        f64::from(residual_requested),
+        1.0,
+        0.0,
+    ];
+    for (index, value) in values.into_iter().enumerate() {
+        if !value.is_finite() || value.abs() > 9_007_199_254_740_992.0 {
+            return Err(invalid(
+                "OLS result receipt field is not exactly representable",
+            ));
+        }
+        output[index] = value;
+    }
+    Ok(output)
+}
+
+fn set_defined(output: &mut [f64], row: usize, value: Option<f64>, label: &str) -> Result<()> {
+    let offset = row
+        .checked_mul(2)
+        .ok_or_else(|| allocation("OLS result row offset overflows"))?;
+    let Some(value) = value else {
+        return Ok(());
+    };
+    if !value.is_finite() {
+        return Err(invalid(format!("{label} is nonfinite")));
+    }
+    output[offset] = 1.0;
+    output[offset + 1] = value;
+    Ok(())
+}
+
+fn one_based_index(value: u32, len: usize, label: &str) -> Result<usize> {
+    let index = usize::try_from(value)
+        .ok()
+        .and_then(|value| value.checked_sub(1))
+        .ok_or_else(|| invalid(format!("{label} is not positive")))?;
+    if index >= len {
+        return Err(invalid(format!("{label} is out of range")));
+    }
+    Ok(index)
+}
+
+fn required_finite(value: Option<f64>, label: &str) -> Result<f64> {
+    let value = value.ok_or_else(|| invalid(format!("{label} has no value")))?;
+    if !value.is_finite() {
+        return Err(invalid(format!("{label} is nonfinite")));
+    }
+    Ok(value)
+}
+
+fn require_absent(value: Option<f64>, label: &str) -> Result<()> {
+    if value.is_some() {
+        Err(invalid(format!("{label} unexpectedly has a value")))
+    } else {
+        Ok(())
+    }
+}
+
+fn solver_code(value: FeSolverKind) -> f64 {
+    match value {
+        FeSolverKind::Auto => 1.0,
+        FeSolverKind::Map => 2.0,
+        FeSolverKind::Lsmr => 3.0,
+    }
+}
+
+fn stop_code(value: SolveStopReason) -> f64 {
+    match value {
+        SolveStopReason::NoFixedEffects => 1.0,
+        SolveStopReason::Certified => 2.0,
+        SolveStopReason::MaximumIterations => 3.0,
+        SolveStopReason::Uncertified => 4.0,
+    }
+}
+
+fn psd_state_code(value: PreparedOlsClusteredPsdState) -> f64 {
+    match value {
+        PreparedOlsClusteredPsdState::OneWayStrict => 1.0,
+        PreparedOlsClusteredPsdState::MultiwayRawPsd => 2.0,
+        PreparedOlsClusteredPsdState::MultiwayFullClipped => 3.0,
+        PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored => 4.0,
+    }
+}
+
+fn checked_product(left: usize, right: usize, label: &'static str) -> Result<usize> {
+    left.checked_mul(right)
+        .ok_or_else(|| allocation(format!("{label} size overflows")))
+}
+
+fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(elements)
+        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
+    if output.capacity() < elements {
+        return Err(allocation(format!("{label} reservation was undersized")));
+    }
+    output.resize(elements, value);
+    Ok(output)
+}
+
+fn invalid(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn allocation(message: impl Into<String>) -> StFixestError {
+    StFixestError::new(ErrorCode::Allocation, message)
+}

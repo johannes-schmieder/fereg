@@ -134,9 +134,7 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
         match coordinate.kind {
             PreparedOlsBreadCoordinateKind::FiniteRegressor => {
                 if finite >= rank
-                    || generated_columns[..finite]
-                        .iter()
-                        .any(|column| *column == coordinate.generated_column_index)
+                    || generated_columns[..finite].contains(&coordinate.generated_column_index)
                 {
                     return Err(invalid_argument(
                         "prepared robust finite score coordinate is duplicated or excessive",

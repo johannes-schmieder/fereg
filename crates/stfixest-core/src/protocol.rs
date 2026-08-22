@@ -21,9 +21,14 @@ impl ProtocolVersion {
 }
 
 /// Version of the small action/diagnostics handshake accepted by the plugin.
-pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
+///
+/// Minor 1 adds the guarded prepared-OLS estimation/result transport. Older
+/// minor-0 diagnostic callers remain valid under the usual minor-version rule.
+pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
+/// Version of the guarded prepared-OLS shadow-result layout.
+pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Handshake {
@@ -167,7 +172,7 @@ mod tests {
 
     #[test]
     fn action_handshake_and_model_wire_are_distinct_versions() {
-        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 0));
+        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 1));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }
