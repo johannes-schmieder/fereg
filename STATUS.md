@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-21
-**Branch / baseline:** `main` through `b1a8b85` plus the sealed reference receipt below
+**Branch / baseline:** `main` through `f211acb` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -34,10 +34,10 @@ scientific gates are met.
 |---|---|---|
 | Native/plugin foundation | Complete | Universal macOS plugin has `arm64` and `x86_64` slices; bridge, protocol rejection, diagnostics, and panic containment passed locally. |
 | macOS loader and safety smoke | Complete | Native arm64 Stata 18 and Rosetta loader/reload fixtures passed; the Rosetta run is not native Intel certification. Sanitized receipts are under `build_evidence/local/`. |
-| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, full workspace tests, and FFI tests pass through `b1a8b85`. Re-run required after later estimator changes. |
+| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, full workspace tests, and FFI tests pass through `f211acb`. Re-run required after later estimator changes. |
 | Model wire 2.1 | Complete | Versioned ordinary and absorbed-term model specification is merged. Wire 2.0 remains readable only with empty absorbed tables and registries. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
-| Developer OLS request-to-prepared-data boundary | Implemented through plain continuous, numeric factor-main-effect, numeric all-categorical-interaction, and unnamed single-source intercept-only numeric FE inputs with one optional analytic, frequency, or probability weight; latest slice awaits independent re-review | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7a` added a mutually exclusive frequency-weight binding; `2b5b57c` tightened its missing/nonfinite boundary after independent review; `8d17c7c` added conservative probability-weight preparation; `c6e1888` added numeric ordinary-factor main-effect preparation; `6b9e3f6` added arbitrary-arity numeric all-categorical interaction recipes; `8761050` added model-wire 2.1 plus bounded numeric FE-source preparation; `f59ac84` added the supported numeric-FE singleton fixed point; and `b1a8b85` repaired its allocation boundary after review. Binding role 3 remains generic numeric storage, so ordinary and repeated FE recipes share one SPI read and compact column. After reasons 1--5, the internal boundary iteratively deletes supported FE singletons, assigns reason 8 without overwriting earlier reasons, fallibly compacts every aligned source, and re-factorizes final categorical codes and ordinary recipes. Its observation- and level-scale singleton workspaces are fallibly reserved, capacity-guarded, and deterministically allocation-failure tested. Unweighted, analytic-, and probability-weighted requests count physical rows; frequency-weighted requests use exact positive-integer multiplicities. `keepsingletons` is an exact no-delete path. Unsupported string FEs, FE interactions, slopes, and saved-FE requests fail before observation reads or diagnostic writes. The slice creates only small prepared FE recipes; it does not create `FeDesign`, solve, post results, or enable an estimator. The 116-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite, audited universal macOS build and actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
+| Developer OLS request-to-prepared-data boundary | Implemented through plain continuous, numeric factor-main-effect, numeric all-categorical-interaction, and unnamed single-source intercept-only numeric FE inputs with one optional analytic, frequency, or probability weight; singleton work is independently reviewed through `7a60f93`, while the prepared-topology slice awaits independent re-review | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7a` added a mutually exclusive frequency-weight binding; `2b5b57c` tightened its missing/nonfinite boundary after independent review; `8d17c7c` added conservative probability-weight preparation; `c6e1888` added numeric ordinary-factor main-effect preparation; `6b9e3f6` added arbitrary-arity numeric all-categorical interaction recipes; `8761050` added model-wire 2.1 plus bounded numeric FE-source preparation; `f59ac84` added the supported numeric-FE singleton fixed point; `b1a8b85` repaired its allocation boundary after review; and `f211acb` added a structural prepared FE topology on the final compact codes. Binding role 3 remains generic numeric storage, so ordinary and repeated FE recipes share one SPI read and compact column. After reasons 1--5, the internal boundary iteratively deletes supported FE singletons, assigns reason 8 without overwriting earlier reasons, fallibly compacts every aligned source, and re-factorizes final categorical codes and ordinary recipes. The topology preserves absorbed-term order and labels, deduplicates repeated FE sources, owns one fallibly constructed compressed membership index per unique final source, validates exact membership and the requested singleton policy, and preserves zero-level sources on an empty final sample. Its observation- and level-scale workspaces and topology tables are fallibly reserved, capacity-guarded where populated, and deterministically allocation-failure tested. Unweighted, analytic-, and probability-weighted requests count physical rows; frequency-weighted requests use exact positive-integer multiplicities. `keepsingletons` is an exact no-delete path. Unsupported string FEs, FE interactions, slopes, and saved-FE requests fail before observation reads or diagnostic writes. This is preparation structure only: it does not construct the existing solver `FeDesign`, solve, post results, or enable an estimator. The 117-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite including 108 core and 27 plugin tests, audited universal macOS build and actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
@@ -49,7 +49,7 @@ scientific gates are met.
    fit-statistic, and
    postestimation contracts.
 2. Expand the audited request-to-prepared-data boundary
-   to the remaining source, FE-design, and cluster roles without weakening its
+   to the remaining source, solver-adapter, and cluster roles without weakening its
    one-call, thread-confinement, validation-before-read, or deferred-write
    guarantees.
 3. Complete FE, OLS/VCE/DoF, result-posting, and Stata one-call integration
@@ -65,10 +65,12 @@ scientific gates are met.
 - The developer preparation action covers plain continuous, numeric factor
   main-effect, numeric all-categorical-interaction, and simple numeric FE-source
   inputs with at most one supported weight, including the bounded numeric-FE
-  singleton fixed point. Mixed interactions, string factorization, general FE
-  construction, FE interactions/slopes/saved outputs, cluster sources,
-  estimator execution, and result posting are not connected to this request
-  boundary yet.
+  singleton fixed point and a deduplicated structural topology over final FE
+  codes. That topology is not the existing solver `FeDesign`: no no-copy
+  adapter, absorption call, solver allocation audit, or numerical certificate
+  is connected yet. Mixed interactions, string factorization, FE interactions,
+  slopes, saved outputs, cluster sources, estimator execution, and result
+  posting are also outside this request boundary.
 - No candidate `stfeols` parity, benchmark timing/RSS comparison, or
   constrained-memory receipt exists yet. The newly sealed receipt is
   reference-only and correctly reports the performance gate as blocked because
@@ -80,14 +82,21 @@ scientific gates are met.
 
 ## Next evidence to record
 
-- Independent re-review through repair commit `b1a8b85`, especially every
-  fallible singleton reservation and capacity guard, iterative reason-8
-  identities, fweight multiplicities, `keepsingletons`, aligned compaction,
-  final categorical re-factorization, and validation-before-read/write
-  behavior. Only after that review should a separately gated `FeDesign` or
-  cluster-preparation checkpoint begin. No review may enable the public
-  estimator or bypass the FE, solver-certificate, VCE, DoF, posting, and parity
-  gates.
+- Independently re-review prepared-topology commit `f211acb`: final-axis code
+  alignment, repeated-source deduplication without another code vector,
+  fallible membership/table allocation and checked counts, exact membership,
+  weight-specific singleton-policy validation, and the zero-row/zero-level
+  contract. The singleton fixed-point and its allocation repair have already
+  passed review through `7a60f93`; they are not the pending review target.
+- After that review, prepare a separately gated no-code-copy adapter to the
+  existing FE solver only after auditing solver-side allocation and empty-input
+  behavior. Require explicit-dummy fitted/residual parity and a strict
+  fixed-effect certificate before any solve is connected to the guarded
+  one-call path.
+- Continue the independently gated preparation roadmap for mixed ordinary
+  interactions, string/interaction/slope/saved fixed effects, and clusters.
+  None of these checkpoints may enable the public estimator or bypass the FE,
+  solver-certificate, VCE, DoF, atomic-posting, and sealed parity gates.
 
 ## Historical qualification
 
