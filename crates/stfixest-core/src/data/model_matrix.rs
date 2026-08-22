@@ -9,6 +9,19 @@ pub struct DenseMatrix {
 }
 
 impl DenseMatrix {
+    pub(crate) fn from_row_major(nrows: usize, ncols: usize, data: Vec<f64>) -> Result<Self> {
+        let expected = nrows.checked_mul(ncols).ok_or_else(|| {
+            StFixestError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")
+        })?;
+        if data.len() != expected {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "row-major dense matrix storage has the wrong length",
+            ));
+        }
+        Ok(Self { nrows, ncols, data })
+    }
+
     pub fn zeros(nrows: usize, ncols: usize) -> Result<Self> {
         let length = nrows.checked_mul(ncols).ok_or_else(|| {
             StFixestError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")

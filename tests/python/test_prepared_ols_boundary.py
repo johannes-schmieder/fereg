@@ -277,6 +277,41 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 
+    def test_prepared_rhs_map_check_is_opt_in_fallible_and_not_an_estimator(self):
+        rhs = (ROOT / "crates/stfixest-core/src/ols/prepared_rhs.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+            encoding="utf-8"
+        )
+        fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
+            encoding="utf-8"
+        )
+        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("build_prepared_ols_rhs", rhs)
+        self.assertIn("absorb_prepared_ols_rhs_map", rhs)
+        self.assertIn("try_reserve_exact", rhs)
+        self.assertIn("checked_mul", rhs)
+        self.assertIn("SyntaxOmitted", rhs)
+        self.assertIn("BorrowedMapWeights::Unit", rhs)
+        self.assertIn("run_borrowed_map", plugin)
+        self.assertIn("write_diagnostics", plugin)
+        self.assertLess(
+            plugin.index("run_borrowed_map_check(&prepared"),
+            plugin.index("write_diagnostics(&action.diagnostics"),
+        )
+        self.assertIn("MAPCHECK", helper)
+        self.assertIn('"run_borrowed_map=`run_borrowed_map\'"', helper)
+        self.assertIn("if 0, mapcheck", fixture)
+        self.assertIn("_rc == 459", fixture)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

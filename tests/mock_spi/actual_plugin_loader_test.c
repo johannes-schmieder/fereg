@@ -324,6 +324,7 @@ static int check_prepare_ols_test(stata_call_function call)
         "binding_count=3",
         "include_intercept=1",
         "keep_singletons=0",
+        "run_borrowed_map=1",
         "output_original_observation=4",
         "output_retained=5",
         "output_drop_reason=6"
@@ -350,6 +351,8 @@ static int check_prepare_ols_test(stata_call_function call)
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "stfixest.prepare_ols_test=pass") == NULL ||
         strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.map_checked=1") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.map_stop=no_fixed_effects") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }

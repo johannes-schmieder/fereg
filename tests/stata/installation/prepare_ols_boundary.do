@@ -23,6 +23,14 @@ assert _st_reason[6] == 3
 assert _st_reason[7] == 3
 assert _st_reason == 0 if !inlist(_n, 2, 5, 6, 7)
 
+_stfixest_prepare_ols_test y c.x c.z, mapcheck ///
+    originalobs(_st_map_original) retained(_st_map_retained) ///
+    dropreason(_st_map_reason)
+assert r(map_checked) == 1
+assert r(n_retained) == 24
+assert _st_map_retained == _st_retained
+assert _st_map_reason == _st_reason
+
 _stfixest_prepare_ols_test y, ///
     originalobs(_st_empty_original) retained(_st_empty_retained) ///
     dropreason(_st_empty_reason) noconstant
@@ -35,6 +43,14 @@ _stfixest_prepare_ols_test y if 0, ///
 assert r(n_retained) == 0
 assert _st_none_retained == 0
 assert _st_none_reason == 1
+
+capture noisily _stfixest_prepare_ols_test y if 0, mapcheck ///
+    originalobs(_st_none_map_original) retained(_st_none_map_retained) ///
+    dropreason(_st_none_map_reason) noconstant
+assert _rc == 459
+assert missing(_st_none_map_original)
+assert missing(_st_none_map_retained)
+assert missing(_st_none_map_reason)
 
 gen double aw = 1 + _n / 10
 replace aw = -1 in 1
@@ -265,6 +281,14 @@ assert _st_singleton_original == _n
 assert _st_singleton_retained == (_n >= 6)
 assert _st_singleton_reason == 8 in 1/5
 assert _st_singleton_reason == 0 in 6/9
+
+_stfixest_prepare_ols_test y c.x1, absorb(worker firm) mapcheck ///
+    originalobs(_st_fe_map_original) retained(_st_fe_map_retained) ///
+    dropreason(_st_fe_map_reason)
+assert r(map_checked) == 1
+assert r(n_retained) == 4
+assert _st_fe_map_retained == _st_singleton_retained
+assert _st_fe_map_reason == _st_singleton_reason
 
 _stfixest_prepare_ols_test y c.x1, absorb(worker firm) keepsingletons ///
     originalobs(_st_keep_singleton_original) retained(_st_keep_singleton_retained) ///

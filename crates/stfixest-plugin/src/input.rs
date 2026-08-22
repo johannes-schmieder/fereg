@@ -7,14 +7,21 @@ use stfixest_core::metadata::{
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 use stfixest_core::ols::{
-    prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsData,
+    absorb_prepared_ols_rhs_map, prepare_ols_data, LoadedNumericColumn, LoadedOlsInput,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData,
 };
 use stfixest_core::protocol::{parse_key_values, Handshake};
+use stfixest_core::{MapConfig, SolveStopReason};
 
 pub const ACTION_PREPARE_OLS_TEST: &str = "prepare-ols-test";
 const CONFIRMATION: &str = "developer-preparation-test";
 const BINDING_ROW_WIDTH: usize = 3;
+const PREPARED_MAP_CHECK_CONFIG: MapConfig = MapConfig {
+    tolerance: 1e-10,
+    max_iterations: 20_000,
+    check_every: 1,
+    symmetric: true,
+};
 
 /// Safe abstraction over a Stata-thread-confined SPI session.
 pub trait SpiApi {
@@ -39,6 +46,15 @@ struct DiagnosticBindings {
 struct PrepareAction {
     request: OlsRequestV1,
     diagnostics: DiagnosticBindings,
+    run_borrowed_map: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MapCheckSummary {
+    rows: usize,
+    columns: usize,
+    iterations: usize,
+    stop_reason: SolveStopReason,
 }
 
 /// Execute the developer-only numeric-main-effect/all-categorical-interaction/
@@ -48,9 +64,43 @@ pub fn prepare_ols_test(
     output: &dyn OutputSink,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
+    prepare_ols_test_with_map_config(args, output, spi, PREPARED_MAP_CHECK_CONFIG)
+}
+
+fn prepare_ols_test_with_map_config(
+    args: &[String],
+    output: &dyn OutputSink,
+    spi: &mut dyn SpiApi,
+    map_config: MapConfig,
+) -> Result<()> {
     let specification = PrepareActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let prepared = load_and_prepare(&action, spi)?;
+    let map_summary = if action.run_borrowed_map {
+        spi.check_interrupted()?;
+        Some(run_borrowed_map_check(&prepared, map_config)?)
+    } else {
+        None
+    };
+    let map_display = map_summary.map_or_else(
+        || "stfixest.prepare_ols.map_checked=0\n".to_owned(),
+        |summary| {
+            format!(
+                concat!(
+                    "stfixest.prepare_ols.map_checked=1\n",
+                    "stfixest.prepare_ols.rhs_rows={}\n",
+                    "stfixest.prepare_ols.rhs_columns={}\n",
+                    "stfixest.prepare_ols.map_iterations={}\n",
+                    "stfixest.prepare_ols.map_stop={}\n",
+                    "stfixest.prepare_ols.map_certified=1\n"
+                ),
+                summary.rows,
+                summary.columns,
+                summary.iterations,
+                stop_reason_label(summary.stop_reason),
+            )
+        },
+    );
     write_diagnostics(&action.diagnostics, &prepared, spi)?;
     output.display(&format!(
         concat!(
@@ -67,7 +117,8 @@ pub fn prepare_ols_test(
             "stfixest.prepare_ols.n_fe_topology_sources={}\n",
             "stfixest.prepare_ols.n_fe_levels={}\n",
             "stfixest.prepare_ols.n_singletons={}\n",
-            "stfixest.prepare_ols.keep_singletons={}\n"
+            "stfixest.prepare_ols.keep_singletons={}\n",
+            "{}"
         ),
         prepared.sample.n_original,
         prepared.sample.n_candidate,
@@ -82,8 +133,36 @@ pub fn prepare_ols_test(
         prepared.fe_topology.total_levels(),
         prepared.singletons.num_singletons,
         usize::from(prepared.singletons.kept_by_request),
+        map_display,
     ));
     Ok(())
+}
+
+fn run_borrowed_map_check(
+    prepared: &PreparedOlsData,
+    map_config: MapConfig,
+) -> Result<MapCheckSummary> {
+    let result = absorb_prepared_ols_rhs_map(prepared, map_config)?;
+    if !result.report().certified() {
+        return Err(invalid_data(
+            "developer borrowed MAP check returned an uncertified result",
+        ));
+    }
+    Ok(MapCheckSummary {
+        rows: result.residualized().nrows(),
+        columns: result.residualized().ncols(),
+        iterations: result.report().iterations,
+        stop_reason: result.report().stop_reason,
+    })
+}
+
+const fn stop_reason_label(reason: SolveStopReason) -> &'static str {
+    match reason {
+        SolveStopReason::NoFixedEffects => "no_fixed_effects",
+        SolveStopReason::Certified => "certified",
+        SolveStopReason::MaximumIterations => "maximum_iterations",
+        SolveStopReason::Uncertified => "uncertified",
+    }
 }
 
 #[derive(Debug)]
@@ -110,6 +189,7 @@ struct PrepareActionSpec {
     binding_count: usize,
     include_intercept: bool,
     keep_singletons: bool,
+    run_borrowed_map: bool,
     diagnostics: DiagnosticBindings,
 }
 
@@ -159,6 +239,7 @@ impl PrepareActionSpec {
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
             keep_singletons: parse_bool(&values, "keep_singletons")?,
+            run_borrowed_map: parse_optional_bool(&values, "run_borrowed_map", false)?,
             diagnostics: DiagnosticBindings {
                 original_observation: parse_positive_u32(&values, "output_original_observation")?,
                 retained: parse_positive_u32(&values, "output_retained")?,
@@ -173,7 +254,7 @@ impl PrepareActionSpec {
         &self,
         values: &std::collections::BTreeMap<String, String>,
     ) -> Result<()> {
-        const ALLOWED: [&str; 30] = [
+        const ALLOWED: [&str; 31] = [
             "ado",
             "protocol_major",
             "protocol_minor",
@@ -201,6 +282,7 @@ impl PrepareActionSpec {
             "binding_count",
             "include_intercept",
             "keep_singletons",
+            "run_borrowed_map",
             "output_original_observation",
             "output_retained",
             "output_drop_reason",
@@ -275,6 +357,7 @@ impl PrepareActionSpec {
         Ok(PrepareAction {
             request,
             diagnostics: self.diagnostics,
+            run_borrowed_map: self.run_borrowed_map,
         })
     }
 }
@@ -684,6 +767,19 @@ fn parse_bool(values: &std::collections::BTreeMap<String, String>, key: &str) ->
         "0" => Ok(false),
         "1" => Ok(true),
         _ => Err(syntax(format!("field {key} must be exactly zero or one"))),
+    }
+}
+
+fn parse_optional_bool(
+    values: &std::collections::BTreeMap<String, String>,
+    key: &str,
+    default: bool,
+) -> Result<bool> {
+    match values.get(key).map(String::as_str) {
+        None => Ok(default),
+        Some("0") => Ok(false),
+        Some("1") => Ok(true),
+        Some(_) => Err(syntax(format!("field {key} must be exactly zero or one",))),
     }
 }
 
@@ -1390,6 +1486,104 @@ mod tests {
         assert!(output
             .displayed()
             .contains("stfixest.prepare_ols.n_columns=2"));
+        assert!(output
+            .displayed()
+            .contains("stfixest.prepare_ols.map_checked=0"));
+    }
+
+    #[test]
+    fn opt_in_map_check_runs_before_writes_and_preserves_default_empty_behavior() {
+        let (mut args, mut spi) = fixture();
+        args.push("run_borrowed_map=1".to_owned());
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("no-FE MAP check");
+        let displayed = output.displayed();
+        assert!(displayed.contains("stfixest.prepare_ols.map_checked=1"));
+        assert!(displayed.contains("stfixest.prepare_ols.rhs_rows=2"));
+        assert!(displayed.contains("stfixest.prepare_ols.rhs_columns=3"));
+        assert!(displayed.contains("stfixest.prepare_ols.map_stop=no_fixed_effects"));
+        assert!(displayed.contains("stfixest.prepare_ols.map_certified=1"));
+        assert_eq!(spi.writes.len(), 15);
+
+        let (args, mut empty_spi) = fixture();
+        for observation in 1..=empty_spi.nobs {
+            empty_spi.data.insert((1, observation), (0.0, false));
+        }
+        let default_output = BufferSink::default();
+        prepare_ols_test(&args, &default_output, &mut empty_spi)
+            .expect("default empty preparation");
+        assert!(default_output
+            .displayed()
+            .contains("stfixest.prepare_ols.map_checked=0"));
+        assert_eq!(empty_spi.writes.len(), 15);
+
+        let (mut args, mut checked_empty_spi) = fixture();
+        args.push("run_borrowed_map=1".to_owned());
+        for observation in 1..=checked_empty_spi.nobs {
+            checked_empty_spi
+                .data
+                .insert((1, observation), (0.0, false));
+        }
+        let checked_output = BufferSink::default();
+        let error = prepare_ols_test(&args, &checked_output, &mut checked_empty_spi)
+            .expect_err("empty MAP check");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(checked_empty_spi.writes.is_empty());
+        assert!(checked_output.displayed().is_empty());
+    }
+
+    #[test]
+    fn opt_in_fe_map_certifies_and_nonconvergence_is_atomic() {
+        let (mut args, mut spi) = fixed_effect_fixture();
+        args.push("run_borrowed_map=1".to_owned());
+        let output = BufferSink::default();
+        prepare_ols_test(&args, &output, &mut spi).expect("FE MAP check");
+        let displayed = output.displayed();
+        assert!(displayed.contains("stfixest.prepare_ols.map_stop=certified"));
+        assert!(displayed.contains("stfixest.prepare_ols.map_certified=1"));
+        assert_eq!(spi.writes.len(), 15);
+
+        let (mut args, mut failing_spi) = two_way_singleton_fixture();
+        for value in &mut args {
+            if value == "keep_singletons=0" {
+                *value = "keep_singletons=1".to_owned();
+            }
+        }
+        args.push("run_borrowed_map=1".to_owned());
+        let failing_output = BufferSink::default();
+        let error = prepare_ols_test_with_map_config(
+            &args,
+            &failing_output,
+            &mut failing_spi,
+            MapConfig {
+                tolerance: 1e-30,
+                max_iterations: 1,
+                check_every: 1,
+                symmetric: false,
+            },
+        )
+        .expect_err("uncertified solve must fail before writes");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(failing_spi.writes.is_empty());
+        assert!(failing_output.displayed().is_empty());
+
+        let (mut args, mut successful_spi) = fixed_effect_fixture();
+        args.push("run_borrowed_map=1".to_owned());
+        prepare_ols_test(&args, &BufferSink::default(), &mut successful_spi)
+            .expect("count interruption checks");
+        let checks = successful_spi.interruption_checks;
+        assert!(checks >= 2);
+        for interrupt_at in [checks - 1, checks] {
+            let (mut args, mut interrupted_spi) = fixed_effect_fixture();
+            args.push("run_borrowed_map=1".to_owned());
+            interrupted_spi.interrupt_at_check = Some(interrupt_at);
+            let interrupted_output = BufferSink::default();
+            let error = prepare_ols_test(&args, &interrupted_output, &mut interrupted_spi)
+                .expect_err("pre- or post-MAP interruption must be atomic");
+            assert_eq!(error.code, ErrorCode::Interrupted);
+            assert!(interrupted_spi.writes.is_empty());
+            assert!(interrupted_output.displayed().is_empty());
+        }
     }
 
     #[test]
@@ -2107,6 +2301,17 @@ mod tests {
                 .expect_err("confirmation")
                 .code,
             ErrorCode::Unsupported
+        );
+        assert!(spi.reads.is_empty());
+        assert!(spi.writes.is_empty());
+
+        let (mut args, mut spi) = fixture();
+        args.push("run_borrowed_map=2".to_owned());
+        assert_eq!(
+            prepare_ols_test(&args, &BufferSink::default(), &mut spi)
+                .expect_err("invalid MAP guard")
+                .code,
+            ErrorCode::Syntax
         );
         assert!(spi.reads.is_empty());
         assert!(spi.writes.is_empty());

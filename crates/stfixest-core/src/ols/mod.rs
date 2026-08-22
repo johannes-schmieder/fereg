@@ -3,6 +3,7 @@
 mod dof;
 mod fit;
 mod prepared;
+mod prepared_rhs;
 mod rank;
 mod vce;
 
@@ -15,6 +16,7 @@ pub use prepared::{
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
 };
+pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
 pub use vce::{ClusterSubsetReport, VceKind, VceReport};
 

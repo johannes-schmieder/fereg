@@ -1,10 +1,10 @@
 use stfixest_core::{
-    absorb_borrowed_intercept_map_certified, prepare_ols_data, AbsorbTermId, AbsorbedTerm,
-    BorrowedMapWeights, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
-    DenseMatrix, EffectTerm, ExpandedTerm, FeDesign, LevelState, LoadedNumericColumn,
-    LoadedOlsInput, MapConfig, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsData, PreparedWeights, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    absorb_borrowed_intercept_map_certified, absorb_prepared_ols_rhs_map, build_prepared_ols_rhs,
+    prepare_ols_data, AbsorbTermId, AbsorbedTerm, BorrowedMapWeights, CoefficientSlot,
+    CompiledTermGraph, ComponentKind, ComponentOrder, DenseMatrix, EffectTerm, ExpandedTerm,
+    FeDesign, LevelState, LoadedNumericColumn, LoadedOlsInput, MapConfig, MetadataFlag,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData, PreparedWeights, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_dummy::fe_projection_certificate_with_reference;
 use stfixest_testkit::explicit_ols::{
@@ -59,6 +59,61 @@ fn prepared_borrowed_map_matches_explicit_dummies_for_multiple_rhs_and_weights()
         CaseWeights::Frequency(&frequencies),
     ] {
         run_case(&codes, &effects, &columns, case);
+    }
+}
+
+#[test]
+fn prepared_yx_builder_and_integrated_map_match_explicit_dummies_for_all_weight_kinds() {
+    let codes = vec![
+        vec![0, 0, 0, 1, 1, 1, 2, 2, 2],
+        vec![0, 1, 2, 0, 1, 2, 0, 1, 2],
+    ];
+    let effects = [0, 1, 0];
+    let outcome = vec![1.0, 7.0, -2.0, 5.0, 3.0, 8.0, 4.0, -1.0, 6.0];
+    let weights = [0.5, 2.0, 3.0, 1.0, 4.0, 1.5, 2.5, 0.75, 5.0];
+    let frequencies = [1_u32, 2, 3, 1, 4, 2, 1, 3, 2];
+
+    for case in [
+        CaseWeights::Unit,
+        CaseWeights::Analytic(&weights),
+        CaseWeights::Probability(&weights),
+        CaseWeights::Frequency(&frequencies),
+    ] {
+        let prepared = prepare_case(&codes, &effects, outcome.clone(), case);
+        let raw = build_prepared_ols_rhs(&prepared).expect("prepared Y/X");
+        assert_eq!((raw.values().nrows(), raw.values().ncols()), (9, 3));
+        assert_close(&raw.values().column(0).expect("outcome RHS"), &outcome, 0.0);
+        for (rhs, expected) in codes.iter().enumerate() {
+            let expected = expected
+                .iter()
+                .map(|code| f64::from(*code))
+                .collect::<Vec<_>>();
+            assert_close(
+                &raw.values().column(rhs + 1).expect("model RHS"),
+                &expected,
+                0.0,
+            );
+        }
+
+        let result = absorb_prepared_ols_rhs_map(&prepared, map_config()).expect("integrated MAP");
+        assert!(result.report().certified());
+        let dummy_effects = dummy_effects(&codes, &effects);
+        for rhs in 0..raw.values().ncols() {
+            let raw_column = raw.values().column(rhs).expect("raw column");
+            let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+                outcome: raw_column,
+                regressors: Vec::new(),
+                effects: dummy_effects.clone(),
+                weights: oracle_weights(case),
+                clusters: Vec::new(),
+            })
+            .expect("explicit dummy projection");
+            assert_close(
+                &result.residualized().column(rhs).expect("residualized RHS"),
+                &oracle.residuals,
+                TOLERANCE,
+            );
+        }
     }
 }
 

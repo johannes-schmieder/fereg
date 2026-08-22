@@ -1,0 +1,869 @@
+use crate::data::{DenseMatrix, PreparedAdjustment, PreparedWeights, WeightKind};
+use crate::error::{ErrorCode, Result, StFixestError};
+use crate::fe::{
+    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap, MapConfig,
+};
+use crate::metadata::SourceId;
+
+use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
+
+/// One directly materialized, observation-major OLS absorption batch.
+///
+/// Column zero is the prepared outcome. Column `j + 1` is exactly generated
+/// model column `j`; syntax-omitted coefficient slots have no RHS column.
+#[derive(Debug, PartialEq)]
+pub struct PreparedOlsRhs {
+    values: DenseMatrix,
+}
+
+impl PreparedOlsRhs {
+    #[must_use]
+    pub const fn values(&self) -> &DenseMatrix {
+        &self.values
+    }
+
+    #[must_use]
+    pub fn into_values(self) -> DenseMatrix {
+        self.values
+    }
+
+    #[must_use]
+    pub const fn outcome_column() -> usize {
+        0
+    }
+
+    pub fn model_column(generated_column_index: usize) -> Result<usize> {
+        generated_column_index
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared OLS RHS column index overflows"))
+    }
+}
+
+trait RhsReservation {
+    fn reserve_f64(&mut self, target: &mut Vec<f64>, elements: usize) -> Result<()>;
+}
+
+struct SystemRhsReservation;
+
+impl RhsReservation for SystemRhsReservation {
+    fn reserve_f64(&mut self, target: &mut Vec<f64>, elements: usize) -> Result<()> {
+        target
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation("unable to reserve prepared OLS Y/X RHS"))
+    }
+}
+
+/// Build the complete prepared Y/X batch without intermediate observation-
+/// scale columns. The sole new observation-scale allocation is the returned
+/// dense matrix.
+pub fn build_prepared_ols_rhs(prepared: &PreparedOlsData) -> Result<PreparedOlsRhs> {
+    build_prepared_ols_rhs_with_reservation(prepared, &mut SystemRhsReservation)
+}
+
+/// Build and consume the prepared Y/X batch through the strict borrowed MAP
+/// path. No residualized caller-owned state is observable on failure.
+pub fn absorb_prepared_ols_rhs_map(
+    prepared: &PreparedOlsData,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    // Validate and reserve the small borrowed design before allocating N x K.
+    let design = prepared.borrowed_intercept_fe_design()?;
+    let rhs = build_prepared_ols_rhs(prepared)?.into_values();
+    let weights = match &prepared.sample.weights {
+        PreparedWeights::None => BorrowedMapWeights::Unit,
+        PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
+    };
+    absorb_borrowed_intercept_map_certified(&design, weights, rhs, config)
+}
+
+fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
+    prepared: &PreparedOlsData,
+    reservation: &mut R,
+) -> Result<PreparedOlsRhs> {
+    validate_prepared_rhs_inputs(prepared)?;
+    let (nrows, ncols, elements) =
+        rhs_dimensions(prepared.sample.n_active(), prepared.model.columns.len())?;
+    let mut data = Vec::new();
+    reservation.reserve_f64(&mut data, elements)?;
+    if data.capacity() < elements {
+        return Err(allocation(
+            "prepared OLS RHS reservation returned insufficient capacity",
+        ));
+    }
+    data.resize(elements, 0.0);
+
+    for (row, destination) in data.chunks_exact_mut(ncols).enumerate() {
+        destination[0] = prepared.sample.outcome[row];
+        for generated_column in 0..prepared.model.columns.len() {
+            let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
+            destination[rhs_column] = prepared.column_value(generated_column, row)?;
+        }
+    }
+    if data.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data(
+            "prepared OLS RHS construction produced a nonfinite value",
+        ));
+    }
+    Ok(PreparedOlsRhs {
+        values: DenseMatrix::from_row_major(nrows, ncols, data)?,
+    })
+}
+
+fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {
+    let ncols = model_columns
+        .checked_add(1)
+        .ok_or_else(|| allocation("prepared OLS RHS column count overflows"))?;
+    let elements = nrows
+        .checked_mul(ncols)
+        .ok_or_else(|| allocation("prepared OLS RHS dimensions overflow usize"))?;
+    Ok((nrows, ncols, elements))
+}
+
+fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData) -> Result<()> {
+    let sample = &prepared.sample;
+    let nrows = sample.n_active();
+    if sample.n_candidate > sample.n_original
+        || sample.drop_reasons.len() != sample.n_original
+        || sample.outcome.len() != nrows
+        || sample.regressors.iter().any(|source| source.len() != nrows)
+        || !matches!(sample.adjustment, PreparedAdjustment::None)
+    {
+        return Err(invalid_argument(
+            "prepared OLS numeric sample is not aligned on one observation axis",
+        ));
+    }
+    if sample.outcome.iter().any(|value| !value.is_finite())
+        || sample
+            .regressors
+            .iter()
+            .flatten()
+            .any(|value| !value.is_finite())
+    {
+        return Err(invalid_data(
+            "prepared OLS outcome and numeric sources must be finite",
+        ));
+    }
+    validate_row_map(prepared)?;
+    validate_weights(prepared)?;
+    validate_categorical_sources(prepared)?;
+    validate_coefficient_axis(prepared)?;
+    for column in &prepared.model.columns {
+        match &column.kind {
+            PreparedOlsColumnKind::Intercept => {}
+            PreparedOlsColumnKind::Continuous {
+                source,
+                prepared_source_index,
+            } => validate_continuous_recipe(prepared, *source, *prepared_source_index)?,
+            PreparedOlsColumnKind::Categorical {
+                source,
+                prepared_source_index,
+                categorical_source_index,
+                level_bits,
+                level_code,
+            } => validate_categorical_recipe(
+                prepared,
+                *source,
+                *prepared_source_index,
+                *categorical_source_index,
+                *level_bits,
+                *level_code,
+            )?,
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                if components.len() < 2 {
+                    return Err(invalid_argument(
+                        "prepared categorical interaction has fewer than two components",
+                    ));
+                }
+                for component in components {
+                    let categorical = prepared
+                        .categorical_sources
+                        .get(component.categorical_source_index)
+                        .ok_or_else(|| {
+                            invalid_argument(
+                                "prepared categorical interaction source is out of range",
+                            )
+                        })?;
+                    validate_categorical_recipe(
+                        prepared,
+                        component.source,
+                        categorical.prepared_source_index,
+                        component.categorical_source_index,
+                        component.level_bits,
+                        component.level_code,
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_row_map(prepared: &PreparedOlsData) -> Result<()> {
+    let sample = &prepared.sample;
+    let mut previous = None;
+    for original_row in sample.retained_rows().iter().copied() {
+        if original_row >= sample.n_original
+            || sample.drop_reasons[original_row] != crate::data::DropReason::Retained
+            || previous.is_some_and(|prior| prior >= original_row)
+        {
+            return Err(invalid_argument(
+                "prepared OLS retained-row map is inconsistent",
+            ));
+        }
+        previous = Some(original_row);
+    }
+    if sample
+        .drop_reasons
+        .iter()
+        .filter(|reason| **reason == crate::data::DropReason::Retained)
+        .count()
+        != sample.n_active()
+    {
+        return Err(invalid_argument(
+            "prepared OLS retained-row count is inconsistent",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_weights(prepared: &PreparedOlsData) -> Result<()> {
+    let nrows = prepared.sample.n_active();
+    let PreparedWeights::Provided { kind, values } = &prepared.sample.weights else {
+        return Ok(());
+    };
+    if *kind == WeightKind::Importance {
+        return Err(invalid_argument(
+            "prepared OLS importance weights are unsupported",
+        ));
+    }
+    if values.len() != nrows {
+        return Err(invalid_argument(
+            "prepared OLS weights are not aligned with the observation axis",
+        ));
+    }
+    for value in values {
+        if !value.is_finite() || *value <= 0.0 {
+            return Err(invalid_data(
+                "prepared OLS weights must be finite and positive",
+            ));
+        }
+        if *kind == WeightKind::Frequency && (value.fract() != 0.0 || *value > f64::from(u32::MAX))
+        {
+            return Err(invalid_data(
+                "prepared OLS frequency weights must be positive u32 integers",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
+    let nrows = prepared.sample.n_active();
+    for categorical in &prepared.categorical_sources {
+        if categorical.prepared_source_index != source_index(categorical.source)? {
+            return Err(invalid_argument(
+                "prepared categorical source identity is inconsistent",
+            ));
+        }
+        let raw = prepared
+            .sample
+            .regressors
+            .get(categorical.prepared_source_index)
+            .ok_or_else(|| invalid_argument("prepared categorical source is out of range"))?;
+        if raw.len() != nrows || categorical.encoded.codes.len() != nrows {
+            return Err(invalid_argument(
+                "prepared categorical source is not aligned with the observation axis",
+            ));
+        }
+        if categorical.encoded.levels.len() > u32::MAX as usize {
+            return Err(invalid_argument(
+                "prepared categorical level count exceeds u32",
+            ));
+        }
+        if categorical.encoded.levels.iter().any(|level| {
+            !level.is_finite() || (*level == 0.0 && level.to_bits() != 0.0_f64.to_bits())
+        }) || categorical
+            .encoded
+            .levels
+            .windows(2)
+            .any(|levels| levels[0].total_cmp(&levels[1]).is_ge())
+        {
+            return Err(invalid_argument(
+                "prepared categorical levels are not finite, canonical, and strictly ordered",
+            ));
+        }
+        for (row, code) in categorical.encoded.codes.iter().copied().enumerate() {
+            let level = categorical
+                .encoded
+                .levels
+                .get(code as usize)
+                .ok_or_else(|| invalid_argument("prepared categorical code is out of range"))?;
+            if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
+                return Err(invalid_argument(
+                    "prepared categorical codes do not represent their numeric source",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_coefficient_axis(prepared: &PreparedOlsData) -> Result<()> {
+    let mut next_generated = 0_usize;
+    let mut previous_slot = None;
+    for coefficient in &prepared.model.coefficients {
+        if previous_slot.is_some_and(|slot| slot >= coefficient.coefficient_slot.get()) {
+            return Err(invalid_argument(
+                "prepared OLS coefficient slots are not strictly ordered",
+            ));
+        }
+        previous_slot = Some(coefficient.coefficient_slot.get());
+        match coefficient.status {
+            PreparedOlsCoefficientStatus::Active => {
+                if coefficient.generated_column_index != Some(next_generated)
+                    || prepared
+                        .model
+                        .columns
+                        .get(next_generated)
+                        .is_none_or(|column| {
+                            column.coefficient_slot != coefficient.coefficient_slot
+                        })
+                {
+                    return Err(invalid_argument(
+                        "prepared OLS active coefficient mapping is inconsistent",
+                    ));
+                }
+                next_generated = next_generated
+                    .checked_add(1)
+                    .ok_or_else(|| allocation("prepared OLS generated-column count overflows"))?;
+            }
+            PreparedOlsCoefficientStatus::SyntaxOmitted => {
+                if coefficient.generated_column_index.is_some() {
+                    return Err(invalid_argument(
+                        "syntax-omitted coefficient unexpectedly has a generated column",
+                    ));
+                }
+            }
+        }
+    }
+    if next_generated != prepared.model.columns.len() {
+        return Err(invalid_argument(
+            "prepared OLS generated columns are not covered exactly once",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_continuous_recipe(
+    prepared: &PreparedOlsData,
+    source: SourceId,
+    prepared_source_index: usize,
+) -> Result<()> {
+    if prepared_source_index != source_index(source)?
+        || prepared
+            .sample
+            .regressors
+            .get(prepared_source_index)
+            .is_none()
+    {
+        return Err(invalid_argument(
+            "prepared continuous source identity is inconsistent",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_categorical_recipe(
+    prepared: &PreparedOlsData,
+    source: SourceId,
+    prepared_source_index: usize,
+    categorical_source_index: usize,
+    level_bits: u64,
+    level_code: Option<u32>,
+) -> Result<()> {
+    validate_continuous_recipe(prepared, source, prepared_source_index)?;
+    let categorical = prepared
+        .categorical_sources
+        .get(categorical_source_index)
+        .ok_or_else(|| invalid_argument("prepared categorical recipe source is out of range"))?;
+    if categorical.source != source || categorical.prepared_source_index != prepared_source_index {
+        return Err(invalid_argument(
+            "prepared categorical recipe source identity is inconsistent",
+        ));
+    }
+    let requested = canonical_factor_value(f64::from_bits(level_bits));
+    if !requested.is_finite() || requested < 0.0 || requested.fract() != 0.0 {
+        return Err(invalid_argument(
+            "prepared categorical recipe level is invalid",
+        ));
+    }
+    let resolved = categorical
+        .encoded
+        .levels
+        .binary_search_by(|candidate| candidate.total_cmp(&requested))
+        .ok()
+        .and_then(|index| u32::try_from(index).ok());
+    if resolved != level_code {
+        return Err(invalid_argument(
+            "prepared categorical recipe level code is inconsistent",
+        ));
+    }
+    Ok(())
+}
+
+fn source_index(source: SourceId) -> Result<usize> {
+    usize::try_from(source.get() - 1)
+        .map_err(|_| invalid_argument("prepared source id does not fit usize"))
+}
+
+fn canonical_factor_value(value: f64) -> f64 {
+    if value == 0.0 {
+        0.0
+    } else {
+        value
+    }
+}
+
+fn allocation(message: &'static str) -> StFixestError {
+    StFixestError::new(ErrorCode::Allocation, message)
+}
+
+fn invalid_argument(message: &'static str) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn invalid_data(message: &'static str) -> StFixestError {
+    StFixestError::new(ErrorCode::InvalidData, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::metadata::{
+        AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
+        ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, RawTermKind, SourceEntry,
+        TermComponent, TermId, TermOrder, TimeSeriesState,
+    };
+    use crate::ols::{
+        prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
+        OlsRequestV1,
+    };
+
+    #[derive(Default)]
+    struct InjectedReservation {
+        fail: bool,
+        skip: bool,
+        calls: usize,
+    }
+
+    impl RhsReservation for InjectedReservation {
+        fn reserve_f64(&mut self, target: &mut Vec<f64>, elements: usize) -> Result<()> {
+            self.calls += 1;
+            if self.fail {
+                return Err(allocation("injected prepared RHS reservation failure"));
+            }
+            if !self.skip {
+                target
+                    .try_reserve_exact(elements)
+                    .map_err(|_| allocation("test prepared RHS reservation failure"))?;
+            }
+            Ok(())
+        }
+    }
+
+    fn loaded(values: Vec<f64>) -> LoadedNumericColumn {
+        LoadedNumericColumn {
+            missing: vec![false; values.len()],
+            values,
+        }
+    }
+
+    fn source(id: u32, name: &str) -> SourceEntry {
+        SourceEntry {
+            id: SourceId::new(id).expect("source"),
+            canonical_name: name.to_owned(),
+        }
+    }
+
+    fn continuous_term(id: u32, source: SourceId) -> ExpandedTerm {
+        ExpandedTerm {
+            id: TermId::new(id).expect("term"),
+            order: TermOrder::new(id).expect("order"),
+            coefficient_slot: CoefficientSlot::new(id).expect("slot"),
+            raw_kind: RawTermKind::Variable,
+            whole_column_omitted: false,
+            canonical_token: format!("c.x{id}"),
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).expect("component"),
+                source,
+                kind: ComponentKind::Continuous,
+                level_state: LevelState::Absent,
+                level_value: 0.0,
+                base: MetadataFlag::False,
+                omitted: MetadataFlag::Unavailable,
+                raw_operator: "c".to_owned(),
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        }
+    }
+
+    fn categorical_term(id: u32, source: SourceId, level: f64, omitted: bool) -> ExpandedTerm {
+        ExpandedTerm {
+            id: TermId::new(id).expect("term"),
+            order: TermOrder::new(id).expect("order"),
+            coefficient_slot: CoefficientSlot::new(id).expect("slot"),
+            raw_kind: RawTermKind::Factor,
+            whole_column_omitted: omitted,
+            canonical_token: format!("{level}.g"),
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).expect("component"),
+                source,
+                kind: ComponentKind::Categorical,
+                level_state: LevelState::Present,
+                level_value: level,
+                base: if omitted {
+                    MetadataFlag::True
+                } else {
+                    MetadataFlag::False
+                },
+                omitted: if omitted {
+                    MetadataFlag::True
+                } else {
+                    MetadataFlag::False
+                },
+                raw_operator: level.to_string(),
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        }
+    }
+
+    fn categorical_interaction_term(
+        id: u32,
+        first: (SourceId, f64),
+        second: (SourceId, f64),
+    ) -> ExpandedTerm {
+        ExpandedTerm {
+            id: TermId::new(id).expect("term"),
+            order: TermOrder::new(id).expect("order"),
+            coefficient_slot: CoefficientSlot::new(id).expect("slot"),
+            raw_kind: RawTermKind::Interaction,
+            whole_column_omitted: false,
+            canonical_token: format!("{}.g#{}.h", first.1, second.1),
+            components: [first, second]
+                .into_iter()
+                .enumerate()
+                .map(|(index, (source, level))| TermComponent {
+                    order: ComponentOrder::new(u32::try_from(index + 1).expect("small order"))
+                        .expect("component"),
+                    source,
+                    kind: ComponentKind::Categorical,
+                    level_state: LevelState::Present,
+                    level_value: level,
+                    base: MetadataFlag::False,
+                    omitted: MetadataFlag::False,
+                    raw_operator: level.to_string(),
+                    time_series_state: TimeSeriesState::None,
+                    raw_time_series_operator: String::new(),
+                })
+                .collect(),
+        }
+    }
+
+    fn request(with_fe: bool, include_intercept: bool) -> OlsRequestV1 {
+        let x = source(1, "x");
+        let g = source(2, "g");
+        let mut bindings = vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+            OlsInputBinding {
+                stata_var_position: 3,
+                role: OlsInputRole::NumericSource(x.id),
+            },
+        ];
+        let mut sources = vec![x.clone()];
+        if with_fe {
+            sources.push(g.clone());
+            bindings.push(OlsInputBinding {
+                stata_var_position: 4,
+                role: OlsInputRole::NumericSource(g.id),
+            });
+        }
+        OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources,
+                terms: vec![continuous_term(1, x.id)],
+            },
+            absorbed_terms: if with_fe {
+                vec![AbsorbedTerm {
+                    id: AbsorbTermId::new(1).expect("effect"),
+                    intercept: true,
+                    categorical_sources: vec![g.id],
+                    slope_sources: Vec::new(),
+                    label: "g".to_owned(),
+                    saved_name: String::new(),
+                }]
+            } else {
+                Vec::new()
+            },
+            bindings,
+            include_intercept,
+            keep_singletons: true,
+        }
+    }
+
+    fn prepared(with_fe: bool, include_intercept: bool) -> PreparedOlsData {
+        let request = request(with_fe, include_intercept);
+        prepare_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; 4],
+                outcome: loaded(vec![1.0, 3.0, 4.0, 8.0]),
+                numeric_sources: if with_fe {
+                    vec![
+                        (
+                            SourceId::new(1).expect("x"),
+                            loaded(vec![-0.0, 2.0, 4.0, 6.0]),
+                        ),
+                        (
+                            SourceId::new(2).expect("g"),
+                            loaded(vec![1.0, 1.0, 2.0, 2.0]),
+                        ),
+                    ]
+                } else {
+                    vec![(
+                        SourceId::new(1).expect("x"),
+                        loaded(vec![-0.0, 2.0, 4.0, 6.0]),
+                    )]
+                },
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("prepared")
+    }
+
+    #[test]
+    fn direct_rhs_preserves_y_generated_column_order_and_bits() {
+        let prepared = prepared(false, true);
+        let rhs = build_prepared_ols_rhs(&prepared).expect("RHS");
+        assert_eq!(rhs.values().nrows(), 4);
+        assert_eq!(rhs.values().ncols(), 3);
+        assert_eq!(rhs.values().as_slice()[0..3], [1.0, -0.0, 1.0]);
+        assert_eq!(rhs.values().as_slice()[1].to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(rhs.values().as_slice()[9..12], [8.0, 6.0, 1.0]);
+    }
+
+    #[test]
+    fn factor_omission_interaction_and_vanished_level_have_exact_rhs_semantics() {
+        let g = source(1, "g");
+        let h = source(2, "h");
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![g.clone(), h.clone()],
+                terms: vec![
+                    categorical_term(1, g.id, 1.0, true),
+                    categorical_term(2, g.id, 2.0, false),
+                    categorical_interaction_term(3, (g.id, 2.0), (h.id, 1.0)),
+                    categorical_term(4, g.id, 3.0, false),
+                ],
+            },
+            absorbed_terms: Vec::new(),
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(g.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(h.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: false,
+        };
+        let mut prepared = prepare_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; 4],
+                outcome: loaded(vec![10.0, 11.0, 12.0, 13.0]),
+                numeric_sources: vec![
+                    (g.id, loaded(vec![1.0, 2.0, 2.0, 1.0])),
+                    (h.id, loaded(vec![1.0, 1.0, 2.0, 2.0])),
+                ],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("factor preparation");
+        assert_eq!(prepared.model.coefficients.len(), 5);
+        assert_eq!(prepared.model.columns.len(), 4);
+        let rhs = build_prepared_ols_rhs(&prepared).expect("factor RHS");
+        assert_eq!((rhs.values().nrows(), rhs.values().ncols()), (4, 5));
+        assert_eq!(
+            rhs.values().as_slice(),
+            &[
+                10.0, 0.0, 0.0, 0.0, 1.0, 11.0, 1.0, 1.0, 0.0, 1.0, 12.0, 1.0, 0.0, 0.0, 1.0, 13.0,
+                0.0, 0.0, 0.0, 1.0,
+            ]
+        );
+
+        let PreparedOlsColumnKind::Categorical { level_code, .. } =
+            &mut prepared.model.columns[0].kind
+        else {
+            panic!("categorical recipe")
+        };
+        let valid_level_code = *level_code;
+        *level_code = Some(u32::MAX);
+        assert_eq!(
+            build_prepared_ols_rhs(&prepared)
+                .expect_err("corrupt recipe code")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        let PreparedOlsColumnKind::Categorical { level_code, .. } =
+            &mut prepared.model.columns[0].kind
+        else {
+            panic!("categorical recipe")
+        };
+        *level_code = valid_level_code;
+        prepared.categorical_sources[0].encoded.codes[0] = u32::MAX;
+        assert_eq!(
+            build_prepared_ols_rhs(&prepared)
+                .expect_err("corrupt categorical source code")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+    }
+
+    #[test]
+    fn empty_rhs_is_valid_but_map_requires_nonempty_rows() {
+        let request = request(false, false);
+        let prepared = prepare_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: Vec::new(),
+                outcome: loaded(Vec::new()),
+                numeric_sources: vec![(SourceId::new(1).expect("x"), loaded(Vec::new()))],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("empty prepared");
+        let rhs = build_prepared_ols_rhs(&prepared).expect("empty RHS");
+        assert_eq!((rhs.values().nrows(), rhs.values().ncols()), (0, 2));
+        assert_eq!(
+            absorb_prepared_ols_rhs_map(&prepared, MapConfig::default())
+                .expect_err("empty MAP")
+                .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    fn no_fe_is_identity_and_fe_path_returns_only_certified_values() {
+        let no_fe = prepared(false, true);
+        let raw = build_prepared_ols_rhs(&no_fe).expect("raw");
+        let result = absorb_prepared_ols_rhs_map(&no_fe, MapConfig::default()).expect("identity");
+        assert_eq!(result.residualized(), raw.values());
+        assert_eq!(
+            result.report().stop_reason,
+            crate::fe::SolveStopReason::NoFixedEffects
+        );
+
+        let with_fe = prepared(true, true);
+        let result = absorb_prepared_ols_rhs_map(&with_fe, MapConfig::default()).expect("FE MAP");
+        assert!(result.report().certified());
+        assert!(result
+            .residualized()
+            .as_slice()
+            .chunks_exact(3)
+            .all(|row| row[2].abs() < 1e-12));
+    }
+
+    #[test]
+    fn rhs_allocation_and_dimension_failures_are_fatal() {
+        let prepared = prepared(false, true);
+        for (fail, skip) in [(true, false), (false, true)] {
+            let mut reservation = InjectedReservation {
+                fail,
+                skip,
+                ..InjectedReservation::default()
+            };
+            let error = build_prepared_ols_rhs_with_reservation(&prepared, &mut reservation)
+                .expect_err("reservation failure");
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(reservation.calls, 1);
+        }
+        assert_eq!(
+            rhs_dimensions(1, usize::MAX)
+                .expect_err("column overflow")
+                .code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(
+            rhs_dimensions(usize::MAX, 1)
+                .expect_err("product overflow")
+                .code,
+            ErrorCode::Allocation
+        );
+    }
+
+    #[test]
+    fn corrupted_recipe_axis_and_weights_fail_before_a_rhs_is_returned() {
+        let mut bad_mapping = prepared(false, true);
+        bad_mapping.model.coefficients[0].generated_column_index = Some(1);
+        assert_eq!(
+            build_prepared_ols_rhs(&bad_mapping)
+                .expect_err("bad mapping")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut bad_source = prepared(false, true);
+        let PreparedOlsColumnKind::Continuous {
+            prepared_source_index,
+            ..
+        } = &mut bad_source.model.columns[0].kind
+        else {
+            panic!("continuous recipe")
+        };
+        *prepared_source_index = 99;
+        assert_eq!(
+            build_prepared_ols_rhs(&bad_source)
+                .expect_err("bad source")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut bad_weight = prepared(false, true);
+        bad_weight.sample.weights = PreparedWeights::Provided {
+            kind: WeightKind::Importance,
+            values: vec![1.0; 4],
+        };
+        assert_eq!(
+            build_prepared_ols_rhs(&bad_weight)
+                .expect_err("importance weight")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+    }
+}
