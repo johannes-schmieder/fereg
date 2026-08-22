@@ -8,9 +8,7 @@
 
 use crate::error::{ErrorCode, Result, StFixestError};
 
-use super::{
-    validate_categorical_partition, CategoricalCodeView, CategoricalPartition,
-};
+use super::{validate_categorical_partition, CategoricalCodeView, CategoricalPartition};
 
 /// Unique candidate-sample categorical partitions in insertion order.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -32,11 +30,7 @@ impl CategoricalPartitionRegistry {
         source_table: &[CategoricalCodeView<'_>],
     ) -> Result<usize> {
         let mut reservation = SystemPartitionRegistryReservation;
-        self.intern_with_reservation(
-            categorical_source_indices,
-            source_table,
-            &mut reservation,
-        )
+        self.intern_with_reservation(categorical_source_indices, source_table, &mut reservation)
     }
 
     #[must_use]
@@ -210,7 +204,10 @@ mod tests {
         ];
         let mut registry = CategoricalPartitionRegistry::new();
         let first = registry.intern(&[0, 1], &sources).expect("first");
-        assert_eq!(registry.intern(&[1, 0], &sources).expect("reverse"), first);
+        assert_eq!(
+            registry.intern(&[1, 0], &sources).expect("reverse"),
+            first
+        );
         assert_eq!(
             registry
                 .intern(&[0, 1, 0, 1], &sources)
