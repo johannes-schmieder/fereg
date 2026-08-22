@@ -221,21 +221,26 @@ For each original row, the current numeric stage applies this exact order:
 4. first unavailable ordinary source: `MissingRegressor`;
 5. unavailable weight: `InvalidOrMissingWeight`;
 6. weight-policy drop: `InvalidOrMissingWeight`;
-7. first unavailable FE-only source: `MissingFixedEffect`;
-8. unavailable offset or exposure: `MissingOffsetOrExposure`;
-9. offset- or exposure-policy drop: `MissingOffsetOrExposure`;
-10. singleton fixed-point deletion of a row retained by steps 1--9:
+7. first unavailable source used by an FE: `MissingFixedEffect`;
+8. first unavailable source used by a cluster and not already classified:
+   `MissingCluster`;
+9. unavailable offset or exposure: `MissingOffsetOrExposure`;
+10. offset- or exposure-policy drop: `MissingOffsetOrExposure`;
+11. singleton fixed-point deletion of a row retained by steps 1--10:
     `Singleton`;
-11. otherwise: `Retained`.
+12. otherwise: `Retained`.
 
 A source used by both an ordinary and a fixed-effect recipe is classified at
 the ordinary-source step, so its missing value is reason 3, never reason 5.
-An FE-only missing source is reason 5. This locks the externally documented
-reason ordering `1, 2, 3, 4, 5, 7` for the roles currently executable; cluster
-reason 6 will be inserted between FE and adjustment when cluster preparation
-is implemented. Initial numeric classification performs the first compaction.
-FE factorization itself does not filter rows, but singleton pruning may trigger
-one additional aligned compaction followed by final re-factorization.
+An unavailable source shared by FE and cluster recipes is reason 5 because FE
+availability precedes cluster availability; a cluster-only missing source is
+reason 6. This locks the externally documented reason ordering
+`1, 2, 3, 4, 5, 6, 7` for the current numeric prepared surface. Initial numeric
+classification performs the first compaction. Cluster-only sources are excluded
+from the pre-singleton FE factorization, so cluster group sizes cannot delete a
+row. Singleton pruning may trigger one additional aligned compaction, after
+which FE and cluster sources are re-factorized on the authoritative final
+sample.
 
 Candidate-excluded rows invoke no policy hooks. A policy error is fatal rather
 than converted into a drop. The policy has no default implementation: the
@@ -248,9 +253,12 @@ Policy hooks receive an immutable policy reference: domain decisions must not
 drift with row history or traversal order. Tests may record calls through
 interior mutability, but that instrumentation cannot define the decision rule.
 
-Cluster availability is intentionally not part of this precedence yet. It will
-extend the authoritative reason mask without changing the locked ordering
-above.
+The sample-bound clustered request requires one through ten declared numeric
+cluster dimensions. Each dimension contains one or more source identities; a
+multi-source term is one interaction cluster. Simple dimensions borrow final
+categorical codes. Interaction codes are collision-safe, contiguous, and
+row-order invariant, and are built only after singleton deletion. No public
+plugin request currently exposes this cluster preparation.
 
 ## Row map and allocation boundary
 
@@ -291,12 +299,14 @@ never cloned into the adapter.
 
 ## Model construction remains separate
 
-The developer boundary now binds numeric factor main-effect,
+The developer plugin boundary now binds numeric factor main-effect,
 all-categorical-interaction, and simple numeric fixed-effect recipes to compact
 shared source codes and validates their structural prepared topology, but it
 does not construct the solver `FeDesign`, invoke absorption, invoke the
 estimator, or use the generic model-matrix builder. It can construct only the
-non-solving borrowed intercept-only design view described above. Mixed
-interactions, general FE/cluster construction, solver
-allocation/certification hardening, and production one-call result posting
-require later independently tested work.
+non-solving borrowed intercept-only design view described above. A separate
+safe-core sample-bound cluster preparation and certified clustered composite
+now cover numeric cluster sources and declared interactions, but remain
+unreachable from the plugin. Mixed interactions, general FE construction,
+and production one-call atomic result posting require later independently
+tested work.

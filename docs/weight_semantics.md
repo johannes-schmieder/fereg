@@ -71,8 +71,8 @@ frequency-weighted models use exact checked integer multiplicity per FE level.
 Singleton counts report physical rows removed, not summed frequency weight.
 The sealed `weighted_singletons` analytic-weight case fixes the retained and
 deleted identities; the pinned `reghdfe` source supplies the frequency-weight
-multiplicity rule. Prepared iid and HC1 robust inference are now defined below;
-clustered VCE and all posted-weight semantics remain later gates.
+multiplicity rule. Prepared iid, HC1 robust, and clustered inference are now
+defined below; all posted-weight semantics remain later gates.
 
 The separate core-only prepared coefficient checkpoint now supplies a bounded
 objective-semantic test without changing those Stata-facing limits. For
@@ -135,10 +135,40 @@ core boundary without changing any public or posted weight behavior.
 Independent explicit-dummy WLS and literal-expansion oracles cover these
 formulas; the sealed receipt anchors the full probability-weight covariance.
 
-This remains core-only. It does not define cluster score aggregation or
-corrections, posted `e(N)`/`e(sumweights)`, display metadata, or public
-probability-weight defaults, and it is not callable through the plugin or
-`stfeols`.
+The separate same-call `CertifiedPreparedOlsClustered` checkpoint uses the
+reference objective weight itself in the observation score:
+
+```text
+score_i = omega_i * e_i * z_i
+```
+
+Its count and scaling policies are:
+
+| Kind | `omega_i` | `N_effective` | Cluster scaling result |
+|---|---|---|---|
+| none | `1` | physical retained rows | ordinary unweighted group scores |
+| analytic | `raw_i * physical_N / sum(raw)` | physical retained rows | invariant to a common positive scale |
+| frequency | raw positive integer multiplicity | exact checked frequency sum | identical to literal row expansion |
+| probability | `raw_i * physical_N / sum(raw)` | physical retained rows | invariant to a common positive scale |
+
+For every nonempty declared-cluster subset, the uncorrected meat is the sum of
+outer products of aggregated group scores. Inclusion--exclusion combines those
+meats before applying the one common correction
+
+```text
+((N_effective - 1) / correction_denominator_dof)
+    * G_min / (G_min - 1).
+```
+
+The correction denominator, fit-statistic DoF, and reported
+`min(N_effective-df_a-df_m, G_min-1)` are intentionally distinct when cluster
+nesting applies; here `df_a` is the post-nesting absorbed rank. Independent
+aweight/pweight scale-invariance and frequency-expansion oracles cover the full
+covariance, statistics, and certificates.
+
+All three inference checkpoints remain core-only. They do not post `e(N)` or
+`e(sumweights)`, define display metadata or public probability-weight defaults,
+or become callable through the plugin or `stfeols`.
 
 ## Evidence and enablement gate
 

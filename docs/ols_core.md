@@ -347,9 +347,107 @@ covariance. Independent review approves implementation commits `a7a01a4` and
 `32008af` with no P0/P1 findings.
 
 The checkpoint remains core-only and limited to the current prepared
-intercept-only numeric-FE surface. It implements neither clustered covariance,
-cluster intersections/nesting and finite-sample corrections, result posting,
-nor estimator-level parity.
+intercept-only numeric-FE surface. It implements neither result posting nor
+estimator-level parity.
+
+## Certified prepared clustered-inference checkpoint
+
+`prepare_ols_clustered_data` binds the OLS request and its clusters to one
+authoritative sample. The current core surface accepts one through ten declared
+numeric cluster dimensions. A dimension containing multiple sources is one
+declared interaction cluster, not multiple-way clustering. Missing cluster
+sources receive reason 6 after FE availability and before singleton deletion;
+cluster group sizes never participate in singleton deletion. Simple dimensions
+borrow final categorical-source codes. Interaction dimensions are factorized
+after the singleton fixed point from collision-free tuples in lexicographic
+order, with one owned code per retained observation and no concatenated keys or
+retained observation-by-arity tuple table. Every final declared dimension must
+contain at least two groups.
+
+`fit_prepared_ols_clustered_map` is the same-call certified composition for this
+sample-bound object. It constructs the prepared fit, cluster-aware absorbed
+DoF, reference weights, distinct residual-DoF views, fit statistics, score
+design, covariance, CGM diagnostics, slope-only Wald result, and independent
+certificates internally. It does not use the older generic VCE, DoF, or
+interaction routines and does not accept a caller-supplied intermediate fit
+that could have come from a different cluster sample.
+
+For reported score coordinate `z_i`, reference objective weight `omega_i`, and
+compact residual `e_i`, a group score is
+
+```text
+s_g(S) = sum_{i in g(S)} omega_i e_i z_i
+M_S    = sum_g s_g(S) s_g(S)'
+M_CGM  = sum_{nonempty S} (-1)^(|S|+1) M_S
+```
+
+where `S` ranges over every nonempty subset of the declared dimensions and
+`g(S)` is the collision-safe interaction for that subset. Each uncorrected
+subset meat is formed first. The common pinned correction is applied only
+after inclusion--exclusion:
+
+```text
+q_CGM = ((N_effective - 1) / correction_denominator_dof)
+        * (G_min / (G_min - 1))
+V_raw = q_CGM * bread * M_CGM * bread
+```
+
+`omega_i` is one for unweighted models, raw multiplicity for frequency
+weights, and `N * raw_i / sum(raw)` for analytic and probability weights.
+Consequently analytic/probability inference is invariant to a common positive
+scale and compact frequency inference matches literal expansion. The reported
+residual DoF is
+`min(N_effective - df_a - df_m, G_min - 1)`, where `df_a` is the post-nesting
+absorbed rank. The fit-statistic residual DoF is the unclustered residual DoF
+minus the separately retained nested category count. The correction denominator
+is `N_effective - I(any nested categories) - df_m - df_a`. Cluster nesting is
+evaluated before mobility redundancy, and the virtual no-absorb constant is
+never nested. These quantities are returned separately rather than silently
+substituting reported `df_r` into every formula.
+
+The covariance repair follows pinned `reghdfe` 6.14.1 exactly. One-way output
+permits no repair and must be positive semidefinite. For Q greater than one, a
+raw full covariance with a negative minimum eigenvalue is clipped on its full
+eigensystem. When the report axis includes `_cons` and at least one slope, the
+*original raw* slope block is separately eigen-clipped and restored into the
+clipped full matrix. The final full matrix is never clipped again. Therefore,
+only the exact `MultiwayFullClippedSlopeRestored` state may have a diagnostic
+negative final full eigenvalue. The pre-restore full matrix and restored slope
+block must independently be PSD, and final symmetry, finiteness, nonnegative
+diagonal, and standard errors remain mandatory. Every other state requires
+strict final full PSD. Wald inference uses the slope block only; a singular
+slope block makes the statistic undefined rather than weakening the solve.
+
+Production subset meat is checked by an independent bread-transformed group-
+influence reconstruction. Separate certificates cover subset masks, signs and
+group counts; reference weights; score-design inverse and intercept identities;
+the common correction; corrected covariance; the two-stage eigentransform;
+symmetry and standard errors; Wald; and every statistic formula. Internal
+explicit-dummy, raw-meat, transform, and certificate comparisons use at most
+`2e-10`. This must not be confused with the immutable DEFAULT-`reghdfe`
+receipt's case-specific absolute behavior caps: `1e-7` for one-way, `2e-6` for
+two-way, `4e-6` for three-way, and `1e-7` for one declared interaction. Those
+caps apply only after exact sample, cluster-count, subset, correction, DoF,
+coordinate, PSD-state, determinant, and receipt-identity assertions. They
+characterize the pinned upstream default MAP stopping path amplified by the CGM
+projection; they are not production or scientific tolerances.
+
+All allocations and dimensions are checked. The `N x q` score design is
+ephemeral, and subset aggregation holds only one N-row ordering, one P-vector,
+and P-by-P accumulation storage at a time; it never creates a G-by-P table or
+retains a final observation-scale inference matrix. Explicit-dummy and sealed
+tests cover one-, two-, and three-way clustering, a declared interaction,
+nesting, all four weight rules, default/`noconstant`, the virtual constant,
+disconnected and repeated FE spans, paired dimensions, rank-zero and
+intercept-only models, mutations, and every allocation/undersize boundary.
+Independent review approves `b226d62` plus repair `89132055` with no remaining
+P0/P1 issue.
+
+This checkpoint is core-only and non-public. It does not write through SPI,
+post `e(V)` or `e(df_r)`, recover fixed effects, enable `estimate-ols`, or make
+`stfeols` executable. The next gate is versioned atomic Stata result posting and
+one-substantive-call integration over the already certified prepared
+coefficient/iid/HC1/clustered composites.
 
 ## Legacy covariance source
 
@@ -367,15 +465,15 @@ Any required cluster subset with fewer than two groups fails closed.
 
 Those covariance routines and the older generic DoF routine are not certified
 for the prepared estimator and must not be used for Stata result posting.
-Prepared iid and robust covariance, residual DoF, and fit statistics now have
-the separate certified checkpoints above. Prepared clustered score
-aggregation, intersection coding, nesting, and cluster finite-sample
-corrections remain later checkpoints.
+Prepared iid, HC1 robust, and clustered covariance, residual DoF, and fit
+statistics now have the separate certified checkpoints above. Only those
+same-call prepared compositions are eligible for the future atomic result-
+posting gate.
 
 ## Current boundary
 
 These checkpoints are scientific-core implementations, not a claim that
 `stfeols` is production-ready. Remaining work includes FE coefficient recovery,
-prediction, Stata data ingestion and result posting, weight-type parity,
-remaining reference DoF/VCE policy, licensed-Stata differential tests, and
+prediction, remaining Stata data ingestion, atomic result posting and one-call
+integration, remaining model/FE forms, licensed-Stata differential tests, and
 large-scale speed and memory gates.

@@ -82,8 +82,8 @@ structural, and prepared weights are borrowed rather than copied.
 This is not the low-memory estimator gate. The deterministic QR currently
 recomputes exact trailing norms, so its work is O(NK^2), and the initial
 prepared RHS remains resident. Blocked RHS generation, large-K performance,
-clustered VCE, result-container storage, and observed RSS still require their
-own preflight and benchmark evidence before public enablement.
+result-container storage, and observed RSS still require their own preflight
+and benchmark evidence before public enablement.
 
 ## Prepared HC1 robust-inference allocation discipline
 
@@ -110,6 +110,43 @@ Fail-at-every-reservation and undersize-at-every-reservation tests include the
 direct coordinate map and every other robust workspace. Allocation, capacity,
 checked-arithmetic, nonfinite, and certificate failures return no partial
 `CertifiedPreparedOlsRobust`. This is still not the end-to-end low-memory gate:
-the prepared fit retains its compact residuals and bread, cluster aggregation
-has not been implemented on this path, and observed estimator RSS has not been
+the prepared fit retains its compact residuals and bread, and observed
+estimator RSS has not been measured.
+
+## Prepared clustered-inference allocation discipline
+
+Sample-bound cluster preparation borrows the final categorical codes for a
+single-source dimension. A declared interaction owns exactly one `u32` code per
+retained observation. Collision-safe factorization uses one temporary N-entry
+row ordering and compares compact source-code tuples in place; it retains
+neither concatenated keys nor an N-by-arity tuple table. Labels, source recipes,
+dimension metadata, interaction codes, group-presence certificates, and every
+temporary vector or string use checked sizes, `try_reserve_exact`, and explicit
+capacity guards. Failure and undersize injection cover every reservation.
+
+The clustered same-call composite uses the shared prepared-score discipline:
+an ephemeral `N x q` score design that is destroyed before return, with no
+N-row constant, raw X materialization, residual copy, or weight copy. For Q
+declared dimensions it records at most `2^Q-1` small subset certificates, with
+Q bounded to 1--10.
+Each subset is processed completely before the next: one N-entry row ordering,
+one P-entry group score and correction, one P-entry transformed influence, and
+P-by-P meat/correction storage are live for the current subset. Group scores
+are streamed in sorted order, so no G-by-P table is ever allocated. The
+independent certificate repeats the aggregation as bread-transformed group
+influences under the same one-subset-at-a-time bound rather than retaining all
+subset meats.
+
+Remaining workspaces are fallibly allocated checked `O(P^2)` covariance,
+compensation, sandwich, eigensystem, PSD-transform, standard-error, and Wald
+buffers, plus O(Q) borrowed code views and O(2^Q) subset reports. The reported-
+constant CGM branch separately holds the original raw slope block and its
+eigensystem but never an observation-scale copy. Fail-at-every-reservation,
+undersize-at-every-reservation, overflow, mutation, nonfinite, and certificate
+tests prove that no partial `CertifiedPreparedOlsClustered` escapes failure.
+
+This is a certified core allocation bound, not the end-to-end low-memory or
+observed-RSS gate. The prepared fit and final covariance remain in the returned
+artifact, the initial prepared RHS still follows the fast-style checkpoint,
+and versioned SPI result-container storage has not yet been designed or
 measured.
