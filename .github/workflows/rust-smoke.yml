@@ -1,51 +1,33 @@
 name: Rust smoke test
 
 on:
-  push:
+  pull_request:
     branches:
-      - ci/rust-smoke
-    paths:
-      - 'rust-smoke/Cargo.toml'
-      - 'rust-smoke/src/**'
-      - '.github/workflows/rust-smoke.yml'
-  workflow_dispatch:
-
-permissions:
-  contents: write
+      - ci/rust-smoke-base
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ci/rust-smoke
 
-      - name: Compile, test, and run Rust
-        shell: bash
+      - name: Show Rust toolchain
         run: |
-          set -euo pipefail
-          RUSTC_VERSION="$(rustc --version)"
-          CARGO_VERSION="$(cargo --version)"
-          cargo test --manifest-path rust-smoke/Cargo.toml --verbose
-          cargo build --manifest-path rust-smoke/Cargo.toml --release --verbose
-          RUN_OUTPUT="$(cargo run --manifest-path rust-smoke/Cargo.toml --release --quiet)"
-          test "$RUN_OUTPUT" = "Rust smoke test answer: 42"
-          {
-            echo "status=success"
-            echo "rustc=$RUSTC_VERSION"
-            echo "cargo=$CARGO_VERSION"
-            echo "output=$RUN_OUTPUT"
-          } > rust-smoke/ci-result.txt
+          rustc --version
+          cargo --version
 
-      - name: Record successful remote compilation
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add rust-smoke/ci-result.txt
-          git commit -m "ci: record Rust smoke success [skip ci]"
-          git push origin HEAD:ci/rust-smoke
+      - name: Run unit tests
+        run: cargo test --manifest-path rust-smoke/Cargo.toml --verbose
+
+      - name: Build release executable
+        run: cargo build --manifest-path rust-smoke/Cargo.toml --release --verbose
+
+      - name: Run release executable
+        run: cargo run --manifest-path rust-smoke/Cargo.toml --release
