@@ -125,7 +125,10 @@ unsupported.
 The developer check uses fixed private settings (`tolerance=1e-10`,
 `max_iterations=20000`, `check_every=1`, symmetric sweeps). These are not
 public estimator defaults or user-configurable estimator options. With no
-fixed effects, a nonempty batch returns the certified identity result. An empty
+explicit fixed effects, a nonempty batch performs the virtual one-level
+structural-constant projection and reports `map_iterations=1`,
+`map_stop=certified`. This behavior is locked by both Rust and actual-plugin C
+loader tests. An empty
 prepared sample remains a successful result when the flag is absent, but
 `run_borrowed_map=1` rejects it with invalid-data code 459. Allocation,
 capacity, arithmetic-overflow, data/recipe validation, interruption, solver

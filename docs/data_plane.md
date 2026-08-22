@@ -113,10 +113,13 @@ repeating observation-scale validation. Its intercept-only type cannot
 represent slopes, its coefficient-slot total uses checked arithmetic, and it
 allocates no observation-scale storage.
 The adapter itself does not call MAP, LSMR, the generic OLS core, or any plugin
-estimator action. The separate `absorb_borrowed_intercept_map_certified` entry
-point consumes its dense RHS matrix and uses only the borrowed intercept view.
+estimator action. The generic `absorb_borrowed_intercept_map_certified` entry
+point preserves its empty-design identity contract. Prepared OLS instead uses
+an internal structural-constant wrapper: an empty explicit topology is a
+virtual one-level intercept and is projected by weighted global demeaning.
+The wrapper consumes its dense RHS matrix and uses only the borrowed intercept view.
 It does not construct `EffectTerm`/`FeDesign`, call `within`, or copy FE codes
-or membership. Unit weights remain structural rather than an allocated vector
+or membership, and it does not allocate N-row constant codes. Unit weights remain structural rather than an allocated vector
 of ones. Supplied weights are validated as finite and positive and normalized
 by a common maximum; a positive weight whose normalized representation
 underflows to zero fails closed.
@@ -138,7 +141,8 @@ No intermediate observation-scale model columns are allocated.
 borrows prepared weights when present, and consumes the single batch through
 the strict MAP entry point. Thus a construction, solver, or certificate error
 cannot expose a partially residualized prepared object. Nonempty no-FE input
-returns the certified identity result.
+returns a certified one-pass virtual-constant projection under both default
+reporting and `noconstant`.
 
 The strict MAP path rejects empty observation or RHS axes and nonfinite values
 before solving. All O(K) norm, scale, compensated-sum, and certificate buffers
@@ -150,7 +154,9 @@ residuals using pre-absorption RHS norms. Exhausting the iteration budget or
 failing that certificate is fatal. Independent explicit-dummy tests cover
 multiple RHSs, repeated sources, disconnected components, unit/analytic/
 probability/frequency objectives, random designs, row permutations, and common
-weight scaling.
+weight scaling. The empty-topology structural branch has fail-at-every and
+undersize-at-every coverage for all six O(K) workspaces, with exact reservation
+labels and sizes proving that no N-scale membership or code buffer is created.
 
 The hidden developer option `mapcheck` maps to action key
 `run_borrowed_map=1`; the key defaults to false. When enabled, the plugin checks
@@ -180,7 +186,10 @@ moment; only an identically zero raw recipe has no score information. Canonical 
 slots distinguish syntax
 omission, fixed-effect collinearity, numerical rank deficiency, and an
 absorbed-model intercept whose normalized value remains deferred. The no-FE
-intercept is fitted normally. Any allocation, MAP, rank, finite-value, or score
+case uses the same virtual structural intercept: a requested `_cons` is
+reported only after QR as `NormalizedAbsorbedIntercept`, while `noconstant`
+omits only that coordinate. Constant regressors are FE-collinear and full
+factor-indicator spans have one fewer finite direction. Any allocation, MAP, rank, finite-value, or score
 failure returns no fit object. This adds no SPI read, write, diagnostic, result
 container, or public estimator path.
 

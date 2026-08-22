@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-22
-**Branch / baseline:** `main` implementation through `7aa015c` plus the sealed reference receipt below
+**Branch / baseline:** `main` implementation and independent review through `adbc345` plus the sealed reference receipt below
 **Active milestone:** working and scientifically tested `stfeols` 1.0 on native Apple Silicon macOS
 **Release state:** development only — not a production or cross-platform release
 
@@ -34,13 +34,13 @@ scientific gates are met.
 |---|---|---|
 | Native/plugin foundation | Complete | Universal macOS plugin has `arm64` and `x86_64` slices; bridge, protocol rejection, diagnostics, and panic containment passed locally. |
 | macOS loader and safety smoke | Complete | Native arm64 Stata 18 and Rosetta loader/reload fixtures passed; the Rosetta run is not native Intel certification. Sanitized receipts are under `build_evidence/local/`. |
-| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, repository/portable checks, 122 Python tests, 161 core tests, the full workspace, and FFI tests pass through `7aa015c`. Re-run required after later estimator changes. |
+| Rust source baseline | Complete | Formatting, warnings-as-errors Clippy, repository/portable checks, 122 Python tests, 170 core tests, the full workspace, and FFI tests pass through `adbc345`. The universal macOS x86_64+arm64 build, binary audit, and actual-plugin loader also pass. Re-run required after later estimator changes. |
 | Model wire 2.1 | Complete | Versioned ordinary and absorbed-term model specification is merged. Wire 2.0 remains readable only with empty absorbed tables and registries. |
 | Numeric sample preparation | Complete | Rust-native numeric loading/preparation is merged. |
-| Developer OLS request-to-prepared-data boundary | Implemented through plain continuous, numeric factor-main-effect, numeric all-categorical-interaction, and unnamed single-source intercept-only numeric FE inputs with one optional analytic, frequency, or probability weight; singleton, prepared-topology, borrowed-adapter, strict borrowed MAP, and prepared Y/X plus opt-in plugin integration are independently reviewed through `1fd8e7b` | Commit `93193b7` added the guarded continuous, unweighted, no-FE `prepare-ols-test` path; `0fa48ca` added analytic weights; `c726c7c` added a mutually exclusive frequency-weight binding; `2b5b57c` tightened its missing/nonfinite boundary after independent review; `8d17c7c` added conservative probability-weight preparation; `c6e1888` added numeric ordinary-factor main-effect preparation; `6b9e3f6` added arbitrary-arity numeric all-categorical interaction recipes; `8761050` added model-wire 2.1 plus bounded numeric FE-source preparation; `f59ac84` added the supported numeric-FE singleton fixed point; `b1a8b85` repaired its allocation boundary after review; `f211acb` added a structural prepared FE topology on the final compact codes; `2047c34` added a strictly intercept-only borrowed design view; `86ef394` repaired the independent-review finding that repeated wire terms re-ran observation-scale validation; `6b84e21` added a separate core-only strict borrowed-intercept MAP path; and `2616598` added the exact prepared Y/X bridge plus guarded plugin check. Binding role 3 remains generic numeric storage, so ordinary and repeated FE recipes share one SPI read and compact column. After reasons 1--5, the internal boundary iteratively deletes supported FE singletons, assigns reason 8 without overwriting earlier reasons, fallibly compacts every aligned source, and re-factorizes final categorical codes and ordinary recipes. The topology preserves absorbed-term order and labels, deduplicates repeated FE sources, owns one fallibly constructed compressed membership index per unique final source, validates exact membership and the requested singleton policy, and preserves zero-level sources on an empty final sample. The repaired adapter preserves wire order, borrows the final categorical code slices and existing membership indices, reuses both pointers for repeated sources, validates each unique source exactly once, and constructs each wire effect with constant-time identity, dimension, and pointer checks. It checks its term-slot total and performs no observation-scale code or level copy. Its O(U) source-certificate table and O(G) effect table are fallibly reserved and capacity-guarded with deterministic failure tests; instrumented scale coverage proves one N-row validation call for 128 terms sharing one source. The strict MAP path consumes a nonempty dense RHS, uses structural unit weights or borrowed supplied weights, fallibly reserves all six O(K) workspaces before mutation, allocates nothing during projection/certification, rejects nonfinite or nonrepresentable inputs, and returns only a passing recomputed FE certificate; max-iteration and failed-certificate paths are fatal. The new bridge revalidates the sample axis, retained-row map, weights, categorical encodings, coefficient/generated-column mapping, and every supported recipe/source identity. It checks dimensions and builds exact Y plus generated-X order—including absent syntax omissions, vanished-level zero columns, and the last-position intercept—in one fallibly reserved row-major allocation without intermediate observation-scale columns. The hidden `mapcheck` option defaults false; when selected, it borrows existing weights/codes/membership, runs before the first diagnostic store, discards residuals, and posts no numerical result. Empty input, injected allocation/capacity failure, corruption, interruption, nonconvergence, and certificate failure leave SPI diagnostics and display untouched; default empty preparation remains unchanged and nonempty no-FE input returns the certified identity. Independent explicit-dummy tests cover the integrated layout and MAP result for multiple RHSs and unweighted, analytic-, frequency-, and probability-weight objectives, plus repeated sources, disconnected components, random designs, permutations, and weight scaling. Unweighted, analytic-, and probability-weighted requests count physical rows; frequency-weighted requests use exact positive-integer multiplicities. `keepsingletons` is an exact no-delete path. Unsupported string FEs, FE interactions, slopes, and saved-FE requests fail before observation reads or diagnostic writes. The 120-test Python suite, portable/C checks, warnings-as-errors Clippy, complete Rust/FFI suite including 139 core, 27 plugin non-FFI, and 29 plugin FFI tests, audited universal macOS build and actual-plugin loader, and all 11 licensed Stata fixtures pass. Public estimators remain disabled. |
-| Core-only prepared OLS/WLS coefficient fit and covariance-coordinate bread | Implemented, certified, and independently reviewed for the current prepared intercept-only-FE surface; not plugin-enabled | Commits through `04d99d7` provide strict borrowed MAP, deterministic scaled pivoted Householder QR, canonical coefficient/status handling, reconstructed residual MAP, and rank/all-column score certificates. Commit `1dff454` adds reference-scale inverse cross-product bread on canonical kept generated columns and atomically finalizes absorbed-model `_cons = mean_w(y) - mean_w(X)b` as a distinct `NormalizedAbsorbedIntercept` coordinate. It extends the finite bread with `side=-B mean_w(X)` and `corner=1/N_ref+mean_w(X)'B mean_w(X)`, without adding finite or absorbed rank and without recovering individual FE coefficients. Unit/no-weight bread uses unit cross-product weights; frequency bread uses raw integer weights and exact summed `N_ref`; analytic/probability bread normalizes raw weights to physical N and is invariant to common scaling. Commit `bb1e71f` repairs independent-review findings by retaining an independently rescaled pre-QR finite cross-product in a reused O(K^2) buffer, certifying both full reported `G*B` and `B*G`, rejecting symmetric extension corruption, sweeping every FE-path reservation failure, and proving all new covariance/intercept allocations are O(K^2)/O(K), not N-scale. Exact rational, rank/deferred-slot, DoF noninteraction, allocation/capacity/overflow, corruption, randomized explicit-dummy, literal frequency-expansion, extreme weight-scale, and sealed Stata 18 no-FE/disconnected/aweight/rescaled/fweight/pweight anchors pass. No variance scale/meat, VCE, residual DoF, FE recovery, SPI result write, or public estimator action was added. Independent rereview approves the exact series through `bb1e71f`. |
-| Core-only prepared absorbed DoF | Implemented and independently reviewed for the current single-source intercept-only prepared FE surface; consumed by the core iid composite but not the plugin | Commit `02b3a99` adds `PreparedOlsAbsorbedDofReport` over final topology order/levels/membership plus borrowed authoritative categorical codes. `None`, `FirstPair`, and default `Pairwise` follow the pinned reference redundancy rules; per-effect rows preserve term/source/label identity, mark the first and evaluated first pair exact, mark later bounds approximate, and report `nested=false`. Iterative union-find is fallibly allocated at level scale, uses checked arithmetic, and creates no N-row copy. Tests lock repeated sources, empty/no-FE cases, row/weight invariance, independence from outcome/unrelated columns, corrupt-state and every-reservation failure, a randomized independent graph-search oracle, and the sealed reference `df_a=8/19/21` anchors. Independent review approved `02b3a99` and `1c2928c` without P0/P1 findings. The report alone does not compute finite rank, intercept normalization, effective frequency-weight N, residual DoF, nesting, VCE, or fit statistics; no plugin/SPI/public estimator path changed. |
-| Core-only prepared unadjusted OLS/WLS inference | Implemented and fully locally validated for the current prepared intercept-only-FE surface; independent review pending; not plugin-enabled | Commit `7aa015c` adds the same-call `CertifiedPreparedOlsUnadjusted` composition. It runs the certified prepared fit and structural absorbed-DoF calculation internally, retains the initial post-MAP outcome sum of squares, centralizes finite/absorbed/normalized-intercept rank and positive residual DoF, and returns reference-scaled RSS/TSS/within TSS, overall/within adjusted and unadjusted R-squared, RMSE, conditional F, Gaussian likelihoods, and iid covariance `RSS/df_r * bread` only after independent composition certificates pass. Unweighted and analytic models use physical N; analytic objective weights are normalized to physical N; frequency models use exact summed multiplicity as effective N and raw integer weights; raw supplied sums remain distinct metadata. Positive pweights fail closed because the pinned reference requires robust inference. Tests cover independent explicit dummies, no/one/two/repeated and disconnected FEs, random/permuted designs, literal frequency expansion, extreme analytic scaling, all DoF policies, rank-zero/FE-only/intercept-only/zero-DoF and degenerate-statistic edges, every inference allocation/capacity failure, artifact corruption, all certificate perturbations, and the sealed Stata 18 scalar/full-iid-covariance anchors. No robust/cluster meat, nesting, plugin/SPI write, result posting, or public estimator action was added. |
+| Developer OLS request-to-prepared-data boundary | Implemented and reviewed for the current continuous/numeric-factor, intercept-only numeric-FE, and unit/a/f/p-weight preparation surface; public estimators remain disabled | The guarded action validates before reads, constructs the compact sample/singleton fixed point and deduplicated borrowed FE topology, then optionally builds exact prepared Y/X and runs certified MAP before any diagnostic write. Empty explicit FE topology now invokes the pinned virtual one-level structural constant: the existing RHS is globally weighted-demeaned in one certified iteration with six fallible O(K) workspaces and no N-row constant codes or membership. The actual plugin reports `map_iterations=1` and `map_stop=certified`; Rust and C loader tests lock that contract. Failure remains atomic and the residualized batch is discarded. Unsupported strings, mixed/continuous interactions, FE interactions/slopes/saved outputs, clusters, numerical result posting, and estimator actions remain outside this boundary. Full repository tests and the universal x86_64+arm64 build/audit/loader pass through `adbc345`. |
+| Core-only prepared OLS/WLS coefficient fit and covariance-coordinate bread | Implemented, certified, and independently reviewed for the current prepared intercept-only-FE surface; not plugin-enabled | Strict MAP plus deterministic scaled pivoted QR returns canonical statuses, compact residuals, and reference-scale inverse cross-product bread. Empty explicit FE topology uses the same virtual structural constant for default and `noconstant`; `_cons` is never a finite QR coordinate and is appended only when requested as `NormalizedAbsorbedIntercept = mean_w(y)-mean_w(X)b`. That reported coordinate adds no additional rank, while the virtual effect contributes `df_a=1`. Literal constants are FE-collinear and full factor-indicator spans retain L-1 finite directions. The reported bread uses `side=-B mean_w(X)` and `corner=1/N_ref+mean_w(X)'B mean_w(X)`. MAP, rank, score, full inverse, symmetry, formula, normalization, allocation, mutation, explicit-dummy, paired reporting, and sealed Stata tests pass. No variance scale/meat, FE recovery, SPI result write, or public estimator action was added. Final review approves the repaired series through `adbc345`. |
+| Core-only prepared absorbed DoF | Implemented and independently reviewed for the current single-source intercept-only prepared FE surface; consumed by the core iid composite but not the plugin | Explicit FE rows preserve term/source/label identity and implement pinned `None`, `FirstPair`, and default `Pairwise` redundancy with exactness metadata and fallible level-scale union-find. A nonempty no-absorb model instead prepends a distinctly tagged `ImplicitNoAbsorb` row labeled `_cons`: one category, zero redundant, one exact coefficient, `nested=false`, and `df_a=1` under both default and `noconstant`, without invented `AbsorbTermId`/`SourceId` or N-row storage. Branch-specific exact-label/size assertions plus fail-at-every and undersize-at-every tests cover its row and `_cons` string reservations. Repeated-source, invariance, corruption, independent graph-search, and sealed `df_a=8/19/21` tests pass. The report alone does not compute finite rank, effective N, residual DoF, nesting, VCE, or fit statistics; no plugin/SPI/public estimator path changed. Final review approves the repaired series through `adbc345`. |
+| Core-only prepared unadjusted OLS/WLS inference | Implemented, fully validated, and independently reviewed for the current prepared intercept-only-FE surface through `adbc345`; not plugin-enabled | The same-call `CertifiedPreparedOlsUnadjusted` composition now implements the pinned virtual one-level structural constant for empty explicit FE topology under both default and `noconstant`. Weighted global demeaning uses the existing RHS and six fallible O(K) buffers without N-row codes; `_cons` is a report-only normalized coordinate, and a tagged `ImplicitNoAbsorb` DoF row contributes `df_a=1` without invented wire/source IDs. Literal constants are FE-collinear and full `ibn.` spans have L-1 finite rank. Reference-scaled RSS/TSS/within TSS, both R-squared families, RMSE, Gaussian likelihoods, iid `RSS/df_r * bread`, and Wald `b' inv(V_slopes)b/df_m` are published only after independent primitive, DoF, covariance/SE, solve, and formula certificates pass; mutation coverage spans every statistic family. Unweighted/analytic effective N is physical N, frequency effective N is exact multiplicity, and positive pweight iid inference fails closed. Paired default/`noconstant`, explicit-dummy, random/permutation, extreme scaling, frequency expansion, weak-signal Wald, every-allocation/capacity, corruption, and sealed Stata 18 tests pass. The universal macOS build/audit/actual-loader contract also passes. No robust/cluster meat, nesting, plugin/SPI result write, result posting, or public estimator action was added. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
@@ -48,11 +48,10 @@ scientific gates are met.
 
 ## Active checkpoint — make `stfeols` executable
 
-1. Independently review the same-call prepared iid composition, then use the
-   sealed pinned `reghdfe` captures to implement prepared robust/cluster score
+1. Use the sealed pinned `reghdfe` captures to implement prepared robust/cluster score
    meat, finite-sample corrections, cluster intersections/nesting, and
    postestimation contracts. Core-only unadjusted covariance, residual DoF, and
-   fit statistics are now composed and certified.
+   fit statistics are now composed, certified, and independently reviewed.
 2. Expand the audited request-to-prepared-data boundary
    to the remaining source, solver-adapter, and cluster roles without weakening its
    one-call, thread-confinement, validation-before-read, or deferred-write
@@ -74,16 +73,20 @@ scientific gates are met.
   codes. A structural intercept-only adapter now borrows those final codes and
   membership indices without copying them. The hidden, default-off `mapcheck`
   path now constructs exact prepared Y/X in one fallible allocation and runs
-  the strict borrowed MAP solver before the first diagnostic store. It discards
+  the strict borrowed MAP solver before the first diagnostic store. With empty
+  explicit topology it performs the virtual structural-constant projection in
+  one certified iteration and the actual loader requires that metadata. It discards
   the residualized batch and writes only the existing three preparation
   diagnostics plus small display metadata; that plugin path performs no
   coefficient/rank solve, VCE, DoF, fit-statistic calculation, result-matrix
   write, `e()` mutation, or public estimator execution. The separate core-only
   prepared fit now certifies finite coefficients, the reference-normalized
-  absorbed-model `_cons`, compact residuals, and covariance-coordinate inverse
+  reported `_cons`, compact residuals, and covariance-coordinate inverse
   cross-product bread. The `_cons` normalization is available from weighted
   Y/X means and finite coefficients; it does not require recovery of individual
-  FE coefficients and contributes neither finite nor absorbed rank. The
+  FE coefficients. Its reported coordinate adds no additional rank; the
+  virtual no-absorb structural effect is a separate tagged DoF row contributing
+  `df_a=1` under default and `noconstant`. The
   separate core-only absorbed-DoF report computes supported structural FE
   redundancy without consulting weights or finite regressors. The new
   same-call core-only iid composite internally combines both artifacts with
@@ -99,11 +102,9 @@ scientific gates are met.
   reference-only and correctly reports the performance gate as blocked because
   `stfeols` remains disabled.
 - Existing FE/OLS/PPML Rust source has unit coverage but has not been certified
-  as a Stata-facing estimator. The prepared-RHS/plugin checkpoint is reviewed
-  through `1fd8e7b`, the isolated certified coefficient/bread checkpoint is
-  independently reviewed through `bb1e71f`, and prepared structural absorbed
-  DoF is implemented through `02b3a99`, and prepared iid composition through
-  `7aa015c`; independent rereview, robust/cluster VCE, plugin integration,
+  as a Stata-facing estimator. The repaired prepared fit, implicit structural
+  constant, absorbed DoF, and same-call iid inference series is independently
+  reviewed through `adbc345`; robust/cluster VCE, plugin estimator integration,
   result posting, and estimator-level sealed parity remain gated.
 - No real Linux/Windows validation or native Intel-host macOS validation exists.
 
@@ -118,18 +119,27 @@ scientific gates are met.
   the borrowed-only API boundary, validation before mutation, all six fallible
   workspace allocations, absence of iteration/certificate allocation, checked
   dimensions and products, empty/nonfinite/weight-underflow rejection, final
-  certificate scale, fatal nonconvergence, and explicit-dummy parity.
-- The prepared-RHS/plugin review is complete through `1fd8e7b`: it confirms
+  certificate scale, fatal nonconvergence, and explicit-dummy parity. The
+  prepared-only empty-topology structural wrapper and its exact O(K)
+  allocation sweep are subsequently reviewed through `adbc345`; the generic
+  empty-design entry point retains its original identity contract.
+- The historical prepared-RHS/plugin review through `1fd8e7b` confirms
   exact Y/X ordering and omission semantics, recipe/source validation, checked
-  and fallible allocation, borrowed weight/design identity, empty/no-FE
-  behavior, zero-write interruption/solver/certificate failure atomicity, and
+  and fallible allocation, borrowed weight/design identity, zero-write
+  interruption/solver/certificate failure atomicity, and
   that no numerical result or public estimator path was enabled.
+  Its old empty-design identity behavior is superseded for prepared OLS by
+  `6c52e9e`: no-absorb mapcheck now reports one certified virtual-constant
+  iteration, as locked by the actual-plugin loader repair `adbc345` and the
+  final independent review.
 - The core-only prepared coefficient/bread checkpoint is independently reviewed
-  through `bb1e71f`. It uses no legacy fit/rank/VCE/DoF or owned-FE path, runs
+  through the structural-constant/inference repair `6c52e9e` and loader contract
+  `adbc345`. It uses no legacy fit/rank/VCE/DoF or owned-FE path, runs
   scaled deterministic pivoted Householder QR after strict MAP, reconstructs
   and re-absorbs residuals, recomputes all generated-column scores, and
   preserves exact canonical slots including reordered QR ties. It atomically
-  changes the transient absorbed intercept to `NormalizedAbsorbedIntercept`,
+  keeps every structural constant out of finite QR and changes a requested
+  report coordinate to `NormalizedAbsorbedIntercept`,
   evaluates the pinned weighted-mean formula without individual FE recovery,
   and returns canonical reference-scale inverse cross-product bread only after
   independent finite and full-reported left/right inverse, symmetry,
@@ -140,8 +150,9 @@ scientific gates are met.
   sealed Stata 18 anchors pass. It exposes no plugin result or VCE. The new iid
   composite is its only eligible variance-scale consumer; robust/cluster meat
   and complete estimator parity remain gated before integration.
-- The core-only prepared absorbed-DoF checkpoint is implemented through
-  `02b3a99`: it uses final `PreparedOlsFeTopology` order, identities, levels,
+- The core-only prepared absorbed-DoF checkpoint is reviewed through
+  the synthetic-row allocation repair `e53e9ea` and final loader contract
+  `adbc345`: it uses final `PreparedOlsFeTopology` order, identities, levels,
   and memberships plus borrowed single-owned categorical codes; it does not
   use the legacy DoF/VCE/fit path, any RHS, model column, outcome, or weight.
   Its fallible iterative pairwise union-find performs no observation-scale
@@ -149,18 +160,24 @@ scientific gates are met.
   sealed one-FE, `dof(none)`, and `dof(firstpair)` anchors (8, 19, and 21),
   independent randomized graph-search comparisons, repeated-source/order,
   policy/exactness, invariance, corruption, overflow, and allocation/capacity
-  tests pass. Independent rereview found no remaining P0/P1 issue. Its supported
+  tests pass. Empty explicit topology adds the tagged one-category
+  `ImplicitNoAbsorb` row and `df_a=1`, with complete row/label reservation
+  failure coverage. Independent rereview found no remaining P0/P1 issue. Its supported
   rank is now composed with finite rank/intercept and effective frequency N by
   the iid checkpoint; nesting, robust/cluster VCE, atomic posting, and
   estimator-level parity remain later gates.
-- The core-only prepared iid checkpoint is implemented through `7aa015c` and
-  awaits independent rereview. It makes fit plus absorbed-DoF artifacts in one
-  call, rejects pweight iid inference, retains the initial certified MAP
-  outcome norm for within statistics, and allocates only the K-by-K covariance
-  plus K standard errors. Independent explicit-dummy, randomized, permutation,
-  frequency-expansion, extreme-scale, edge/failure-injection, and sealed Stata
-  scalar/full-covariance tests pass. It does not call legacy fit/VCE/DoF code,
-  recover FEs, write SPI results, or enable either public estimator.
+- The core-only prepared iid checkpoint and structural-constant repair are
+  independently reviewed through `adbc345`. It makes fit plus absorbed-DoF
+  artifacts in one call, rejects pweight iid inference, retains the initial
+  certified MAP outcome norm, and computes F from the certified slope Wald
+  quadratic. For reported dimension P and slope dimension q, inference reserves
+  P² covariance plus P standard errors, q slope positions, q² Cholesky, and q
+  solve storage: P²+q² square and P+2q vector entries, never N-scale storage.
+  Independent certificate mutations, paired default/`noconstant`, explicit-
+  dummy, randomized, permutation, frequency-expansion, extreme-scale,
+  weak-signal Wald, edge/failure-injection, and sealed Stata tests pass. It does
+  not call legacy fit/VCE/DoF code, recover FEs, write SPI results, or enable
+  either public estimator.
 - Continue the independently gated preparation roadmap for mixed ordinary
   interactions, string/interaction/slope/saved fixed effects, and clusters.
   None of these checkpoints may enable the public estimator or bypass the FE,

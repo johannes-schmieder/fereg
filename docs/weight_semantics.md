@@ -104,8 +104,15 @@ covariance. Its reference objective and count policies are:
 
 For supported kinds, residual DoF is effective N minus finite kept rank and
 absorbed rank; the normalized absorbed `_cons` is not an additional rank.
+With no explicit absorb terms, the pinned reference is represented by a
+virtual one-level structural constant for both default and `noconstant` fits.
+It contributes `df_a=1`, centers Y and X using the reference weights, and is
+reported as a normalized `_cons` coordinate only when requested. Thus paired
+default/`noconstant` fits have identical finite coefficients, residuals,
+statistics, DoF, and finite covariance blocks.
 `RSS`, `TSS`, within TSS, RMSE, R-squared statistics, conditional F, likelihoods,
-and iid covariance all use that reference scale. The analytic and rescaled-
+and iid covariance all use that reference scale. Conditional F is the Wald
+quadratic over kept nonconstant coordinates, not an SSR subtraction. The analytic and rescaled-
 analytic sealed cases therefore have the same RSS and covariance within
 tolerance while retaining distinct raw `sumweights`; frequency inference is
 identical to literal row expansion. Independent tests also cover common

@@ -29,8 +29,10 @@ column scale.
 
 ## Strict borrowed-intercept MAP checkpoint
 
-The separately gated `absorb_borrowed_intercept_map_certified` path is the only
-current FE solver that accepts the prepared-data borrowed intercept view. It is
+The separately gated borrowed-intercept MAP implementation accepts the
+prepared-data borrowed intercept view. Its public generic entry point preserves
+the empty-design identity contract; prepared OLS calls an internal wrapper that
+treats empty explicit topology as a virtual structural constant. It is
 deliberately narrower than the generic pipeline above: intercept-only effects,
 a nonempty dense RHS matrix, and unit or supplied finite positive objective
 weights. It never constructs the owned `FeDesign`, invokes `within`, or copies
@@ -82,12 +84,16 @@ are recomputed from the trailing matrix on every step, ties retain canonical
 generated-column order, all dimension arithmetic is checked, and nonfinite or
 uncertified rank decisions are fatal. Each returned canonical coefficient slot
 is `Kept`, `SyntaxOmitted`, `CollinearWithFixedEffects`,
-`NumericallyRankDeficient`, or `NormalizedAbsorbedIntercept`. With no fixed
-effects, the intercept is fitted normally. With any absorbed intercept, the
-within intercept is annihilated and is transiently deferred during QR. Atomic
-fit finalization then reports the pinned normalization
+`NumericallyRankDeficient`, or `NormalizedAbsorbedIntercept`. An empty explicit
+FE topology still has the pinned reference's virtual one-level structural
+constant, under both default reporting and `noconstant`. It is projected by a
+weighted global demeaning pass over the existing RHS with six fallible O(K)
+workspaces; no N-row constant codes or membership are materialized. A reported
+`_cons` is therefore always outside finite QR, while `noconstant` suppresses
+only that reported coordinate. Atomic fit finalization reports the pinned normalization
 `_cons = mean_w(y) - mean_w(X)b`. This does not recover individual fixed-effect
-coefficients and adds neither finite-regressor rank nor absorbed rank.
+coefficients. The reported coordinate adds no additional rank; for empty
+explicit topology the virtual structural effect itself contributes `df_a=1`.
 
 The same finalization returns inverse cross-product bread on covariance
 coordinates in canonical kept-generated-column order, followed by the
@@ -138,7 +144,12 @@ FE-only regressor variation prove that neither raw scale can mask an injected
 coefficient error while the corresponding unperturbed fits remain accepted. A
 separate residual-constant injection proves that the zero-within-norm deferred
 intercept moment is checked rather than hard-coded to pass.
-Independent rereview approves the exact code series through `bb1e71f`. This
+Pinned default/`noconstant` pairs prove identical finite coefficients,
+statuses, residuals, DoF, statistics, and finite bread for no-absorb and
+explicit-FE models; only the normalized `_cons` coordinate differs. Literal
+`c.one` is FE-collinear before QR, and full `ibn.g` retains L-1 finite
+contrasts. Corrupt structural-intercept metadata is rejected before MAP or DoF.
+Independent rereview approves the repaired series through `adbc345`. This
 checkpoint has no plugin action, performs no SPI write, computes no variance
 scale/meat, posts no VCE or DoF, recovers no individual FE coefficients, and
 does not enable `stfeols`.
@@ -172,6 +183,14 @@ exact when its first-pair mobility calculation runs; later pairwise bounds are
 explicitly approximate. Repeated wire terms keep separate rows but reuse their
 single topology source.
 
+For a nonempty no-absorb model, the explicit topology remains empty but the
+report prepends a distinct `ImplicitNoAbsorb` row labeled `_cons`, with one
+category, zero redundancy, one exact coefficient, and `nested=false`. This
+synthetic row contributes `df_a=1` under both default reporting and
+`noconstant`; it never invents an `AbsorbTermId` or `SourceId`. Its row and
+label reservations have branch-specific fail-at-every and undersize-at-every
+coverage.
+
 Pair mobility uses iterative, path-compressing union-find with union by rank.
 All production vectors and strings are fallibly reserved and capacity-guarded;
 all totals and node offsets use checked arithmetic. Corrupt identity,
@@ -197,9 +216,10 @@ fit, VCE, fit-statistic, or DoF routines.
 
 The fit retains one scalar that would otherwise be destroyed by QR: the
 reference-weight sum of squares of Y immediately after the initial certified
-MAP. With fixed effects this is within TSS. With no fixed effects the composite
-instead uses overall TSS, centered when the model has a structural intercept
-and uncentered otherwise. The returned rank report centralizes:
+MAP. This is within TSS. For empty explicit topology, virtual global demeaning
+makes it the centered overall TSS under both default and `noconstant`; future
+structural-constant-free model surfaces would instead use uncentered TSS. The
+returned rank report centralizes:
 
 ```text
 q          = kept finite rank
@@ -208,8 +228,9 @@ model_rank = q + absorbed_rank
 df_r       = N_effective - model_rank > 0
 ```
 
-The normalized absorbed `_cons` covariance coordinate contributes neither
-finite nor absorbed rank. Unweighted and analytic models use physical row count
+For the current supported surface, `df_m=q`: the structural constant is owned
+by absorbed rank even when `_cons` is reported. The normalized reported
+`_cons` covariance coordinate contributes no additional rank. Unweighted and analytic models use physical row count
 as effective N; analytic reference weights are raw weights rescaled to sum to
 physical N. Frequency models use raw positive integer weights and their exact
 checked sum as effective N. The raw supplied weight sum is reported separately.
@@ -227,20 +248,28 @@ R2_within    = 1 - RSS / within_TSS
 R2_adjusted  = 1 - (RSS / df_r) / (TSS / (N_effective - has_intercept))
 R2a_within   = 1 - (RSS / df_r) / (within_TSS / (df_r + df_m))
 RMSE         = sqrt(RSS / df_r)
-F            = ((within_TSS - RSS) / df_m) / (RSS / df_r)
+F            = b_s' inv(V_s) b_s / df_m
 ```
 
 Ratios, F, and Gaussian likelihoods that have no finite mathematical value are
-`None`, never NaN sentinels. F is returned only when `df_m>0`, `RSS>0`, and the
-explained within sum is nonnegative. The null Gaussian likelihood uses the
+`None`, never NaN sentinels. Here `b_s` and `V_s` contain only kept finite
+nonconstant coordinates. F is returned only when `df_m>0` and the iid variance
+scale is positive; a certified solve residual and the stable within-SSR identity
+are independent cross-checks, not the construction. The null Gaussian likelihood uses the
 fixed-effect-only within objective.
 
 Before publication, the composite independently checks the reference-weight
 sum, RSS/TSS/within primitives and ordering, residual-DoF identity, covariance
-scale, symmetry, diagonals and standard errors, and every reported formula.
-Only the checked K-by-K covariance and K standard-error vectors are newly
-allocated, through fallible capacity-guarded reservations; no observation-scale
-copy is introduced. Allocation sweeps, undersized reservations, corrupt
+scale, symmetry, diagonals and standard errors, the Wald solve, and every
+reported formula without calling the statistic builder again. Mutation tests
+independently perturb RSS, TSS, within TSS, residual DoF, variance scale,
+covariance, standard errors, both R-squared families, RMSE, F, and both
+likelihoods and require every corruption to fail.
+For reported covariance dimension P and finite slope dimension q, the
+inference layer fallibly reserves P² covariance, P standard errors, q slope
+positions, q² Cholesky storage, and q solve storage: P²+q² square elements and
+P+2q vector elements in total, with no observation-scale copy. Allocation
+sweeps, undersized reservations, corrupt
 absorbed-DoF artifacts, and injected RSS/DoF/covariance/within/statistic errors
 all fail closed.
 
@@ -251,7 +280,8 @@ Stata 18 receipt anchors no-FE scalar statistics and full iid covariance,
 disconnected FE-only covariance, analytic and rescaled-analytic weights,
 frequency weights, one-FE within statistics, and `None`/`FirstPair`/`Pairwise`
 DoF policies. The checkpoint has no plugin action or SPI write, performs no FE
-recovery, and does not enable `stfeols`.
+recovery, and does not enable `stfeols`. Independent final review approves the
+complete repair series through `adbc345`.
 
 ## Legacy covariance source
 
