@@ -352,7 +352,8 @@ static int check_prepare_ols_test(stata_call_function call)
     if (strstr(display_buffer, "stfixest.prepare_ols_test=pass") == NULL ||
         strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
         strstr(display_buffer, "stfixest.prepare_ols.map_checked=1") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.map_stop=no_fixed_effects") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.map_iterations=1") == NULL ||
+        strstr(display_buffer, "stfixest.prepare_ols.map_stop=certified") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
