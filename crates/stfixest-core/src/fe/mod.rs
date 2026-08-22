@@ -15,6 +15,7 @@ mod partition_validation;
 mod projection;
 mod report;
 mod singleton;
+mod topology_finalize;
 mod topology_registry;
 mod topology_source;
 
@@ -43,6 +44,9 @@ pub use projection::{project_effect_in_place, ProjectionWorkspace};
 pub use report::{FeSolverKind, SolveReport, SolveStopReason};
 pub use singleton::{
     prune_singletons, prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult,
+};
+pub use topology_finalize::{
+    finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
 pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_source::CategoricalTopologySource;
