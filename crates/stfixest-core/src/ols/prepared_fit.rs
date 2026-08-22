@@ -538,7 +538,11 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
         let mut pivot_norm = trailing_norms[rank];
         for (position, candidate_norm) in trailing_norms.iter().copied().enumerate().skip(rank + 1)
         {
-            if candidate_norm > pivot_norm {
+            let tie_scale = candidate_norm.abs().max(pivot_norm.abs());
+            let tied = (candidate_norm - pivot_norm).abs() <= 64.0 * f64::EPSILON * tie_scale;
+            if candidate_norm > pivot_norm && !tied
+                || tied && candidate_columns[position] < candidate_columns[pivot_position]
+            {
                 pivot_position = position;
                 pivot_norm = candidate_norm;
             }
@@ -1337,21 +1341,28 @@ mod tests {
 
     #[test]
     fn exact_scaled_duplicate_keeps_earlier_generated_column() {
-        let x = vec![-2.0, -1.0, 0.5, 1.5, 3.0, 4.0];
+        let g = vec![1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0];
+        let x = vec![100.0, 101.0, 99.0, 100.5, -100.0, -99.0, -101.0, -100.5];
         let duplicate = x.iter().map(|value| 7.0 * value).collect::<Vec<_>>();
-        let y = x.iter().map(|value| 4.0 * value).collect::<Vec<_>>();
+        let distractor = vec![-2.0, 1.0, 2.0, -1.0, 1.0, -2.0, -1.0, 2.0];
+        let y = x
+            .iter()
+            .zip(&distractor)
+            .zip(&g)
+            .map(|((x, z), group)| 4.0 * x + 2.0 * z + 3.0 * group)
+            .collect::<Vec<_>>();
         let prepared = prepared(
             &y,
-            &[x, duplicate],
-            &[false, false],
-            None,
+            &[x, duplicate, distractor],
+            &[false, false, false],
+            Some(&g),
             false,
             TestWeights::Unit,
         );
         let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
             .expect("rank-deficient fit");
-        assert_eq!(fit.finite_rank(), 1);
-        assert_eq!(fit.kept_generated_columns(), &[0]);
+        assert_eq!(fit.finite_rank(), 2);
+        assert_eq!(fit.kept_generated_columns(), &[0, 2]);
         assert_eq!(fit.dropped_generated_columns(), &[1]);
         assert_close(
             fit.coefficients()[0].value.expect("first column"),
