@@ -31,11 +31,7 @@ impl CategoricalTopologyRegistry {
         source_table: &[CategoricalCodeView<'_>],
     ) -> Result<usize> {
         let mut reservation = SystemTopologyRegistryReservation;
-        self.intern_with_reservation(
-            categorical_source_indices,
-            source_table,
-            &mut reservation,
-        )
+        self.intern_with_reservation(categorical_source_indices, source_table, &mut reservation)
     }
 
     #[must_use]
@@ -209,9 +205,7 @@ mod tests {
         let mut registry = CategoricalTopologyRegistry::new();
         let first = registry.intern(&[0, 1], &sources).expect("first");
         let reversed = registry.intern(&[1, 0], &sources).expect("reversed");
-        let repeated = registry
-            .intern(&[0, 1, 0, 1], &sources)
-            .expect("repeated");
+        let repeated = registry.intern(&[0, 1, 0, 1], &sources).expect("repeated");
         assert_eq!(first, reversed);
         assert_eq!(first, repeated);
         assert_eq!(registry.sources().len(), 1);
