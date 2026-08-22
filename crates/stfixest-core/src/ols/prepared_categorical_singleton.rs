@@ -7,7 +7,7 @@ use crate::fe::{
 };
 
 use super::prepared_categorical_topology::{
-    allocation, push_reserved, validate_source_table, PreparedTopologyReservation,
+    push_reserved, validate_source_table, PreparedTopologyReservation,
     SystemPreparedTopologyReservation,
 };
 use super::PreparedCategoricalEffectRequest;
@@ -82,9 +82,4 @@ pub(crate) fn prune_with_test_reservation<R: PreparedTopologyReservation>(
         keep_singletons,
         reservation,
     )
-}
-
-#[allow(dead_code)]
-fn allocation_guard(message: &'static str) -> crate::error::StFixestError {
-    allocation(message)
 }
