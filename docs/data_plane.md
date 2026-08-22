@@ -9,12 +9,14 @@ aligned compaction when rows are removed, and final categorical
 re-factorization and constructs a preparation-only structural FE topology. This
 is not yet the complete
 Phase 2 data plane: string factorization, cluster encoding, separation, and
-estimator SPI dispatch remain outside this slice. A bounded
-numeric fixed-effect source preparation path is included, but no solver
-`FeDesign` or solver state is constructed. A narrow borrowed intercept-only
-design view can now reference the final prepared codes and compressed
-membership without copying them. A separate core-only strict MAP path can
-consume this view, but the developer plugin action does not invoke it.
+estimator SPI dispatch remain outside this slice. A bounded numeric
+fixed-effect source preparation path is included, but no owned solver
+`FeDesign` or persistent solver state is constructed. A narrow borrowed
+intercept-only design view references the final prepared codes and compressed
+membership without copying them. An opt-in developer check now constructs the
+exact prepared Y/X absorption batch and consumes it through the separate strict
+MAP path before any diagnostic store. It discards the numerical output and
+does not execute or enable an estimator.
 
 Estimator actions remain disabled. Passing these tests does not make OLS/WLS
 or PPML available.
@@ -82,8 +84,8 @@ compact source codes. They do not allocate an observation-scale interaction
 column or tuple table. If any requested component level vanishes, or if the
 requested tuple is absent, the interaction recipe is identically zero.
 Categorical-by-continuous and continuous products, strings, fixed-effect
-interactions/slopes/saved outputs, cluster encoding, solver `FeDesign`, and
-model solving remain outside this checkpoint. A supported
+interactions/slopes/saved outputs, cluster encoding, an owned solver
+`FeDesign`, and full estimator solving remain outside this checkpoint. A supported
 numeric fixed-effect source accepts any finite `f64`, including negative and
 fractional values. It is factorized after initial numeric compaction for
 pruning, then re-factorized after any singleton compaction. Prepared
@@ -119,6 +121,25 @@ of ones. Supplied weights are validated as finite and positive and normalized
 by a common maximum; a positive weight whose normalized representation
 underflows to zero fails closed.
 
+`build_prepared_ols_rhs` first revalidates the prepared sample axis, retained
+row map, weights, categorical source encodings, coefficient-to-generated-column
+mapping, and every supported continuous, categorical, interaction, omission,
+and intercept recipe. It checks `1 + K` and `N * (1 + K)` before allocation,
+fallibly reserves one row-major buffer, checks the returned capacity, and fills
+it directly. Column zero is Y. Later columns are exactly the generated
+`PreparedOlsModel.columns` in order; syntax-omitted coefficient slots are not
+materialized and the intercept stays in its existing last position. A vanished
+categorical level or tuple remains its validated all-zero column. The builder
+accepts the valid zero-row preparation representation, including the zero-FE
+case; the solver remains responsible for rejecting an empty numerical batch.
+No intermediate observation-scale model columns are allocated.
+
+`absorb_prepared_ols_rhs_map` builds the borrowed design before the dense RHS,
+borrows prepared weights when present, and consumes the single batch through
+the strict MAP entry point. Thus a construction, solver, or certificate error
+cannot expose a partially residualized prepared object. Nonempty no-FE input
+returns the certified identity result.
+
 The strict MAP path rejects empty observation or RHS axes and nonfinite values
 before solving. All O(K) norm, scale, compensated-sum, and certificate buffers
 are fallibly reserved before the first projection; no allocation occurs during
@@ -131,12 +152,19 @@ multiple RHSs, repeated sources, disconnected components, unit/analytic/
 probability/frequency objectives, random designs, row permutations, and common
 weight scaling.
 
-This remains a core-only numerical checkpoint. The plugin does not construct
-an estimation RHS, invoke this path, write numerical results, or enable an
-estimator.
-After native sample preparation and a final interruption check succeed, the
-plugin writes only three developer diagnostics: original observation number,
-retained status, and the authoritative drop-reason code.
+The hidden developer option `mapcheck` maps to action key
+`run_borrowed_map=1`; the key defaults to false. When enabled, the plugin checks
+for interruption, constructs and certifies the prepared Y/X batch with fixed
+private MAP settings, and checks for interruption again before the first
+diagnostic store. Empty input, allocation/capacity/overflow failure, prepared
+identity corruption, nonfinite input, weight failure, interruption,
+nonconvergence, or failed certification returns before any SPI write or
+display. When the option is absent, the existing empty diagnostic preparation
+remains successful. On checked success, the plugin discards residuals, writes
+only the same three developer diagnostics (original observation number,
+retained status, and authoritative drop reason), and displays only small MAP
+summary metadata. It does not write numerical estimation results, post `e()`,
+or enable `estimate-ols`, `stfeols`, or `stfepois`.
 
 ## Numeric source representation
 

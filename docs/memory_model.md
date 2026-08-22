@@ -34,17 +34,27 @@ It does not certify the existing Phase 2 memory estimate, observed peak RSS,
 SPI-loading buffers, factor/interaction storage, FE or cluster encodings, or any
 general solver/estimator workspace. Those remain later memory gates.
 
-## Borrowed intercept MAP allocation discipline
+## Prepared RHS and borrowed intercept MAP allocation discipline
 
-The core-only strict borrowed MAP path adds no observation-scale FE storage and
-does not allocate an unweighted pseudo-column. It consumes the caller's N x K
-RHS matrix and borrows prepared codes and level membership. Its six O(K)
-buffers hold reference norms, residual norms, RHS scales, value scales,
+The guarded prepared-RHS builder checks `1 + K` and `N * (1 + K)`, fallibly
+reserves one row-major Y/X buffer, verifies its capacity, and fills it directly
+from the prepared outcome and compact model recipes. It creates no intermediate
+observation-scale continuous, categorical, interaction, omitted, or intercept
+columns. An injected reservation failure and an undersized-reservation control
+cover the sole allocation. Empty inputs take the same fallible path and remain
+valid builder output.
+
+The strict borrowed MAP path adds no observation-scale FE storage, weight copy,
+or unweighted pseudo-column. It consumes that single `N x (1 + K)` matrix and
+borrows prepared codes, level membership, and any supplied weights. Its six
+O(K) buffers hold reference norms, residual norms, RHS scales, value scales,
 compensated group sums, and corrections. Every buffer uses
 `try_reserve_exact`, checks capacity before resize, and is allocated before the
 first numerical mutation. Injected failures and undersized reservations cover
 all six points and map to `ErrorCode::Allocation`/Stata 909. Projection and
 final certification allocate nothing.
 
-This does not yet cover fallible construction of the estimation RHS matrix,
-general slope-capable solvers, OLS rank/VCE workspaces, or SPI result buffers.
+This is a fast-style developer-only materialization checkpoint, not a complete
+estimator memory model. It does not yet cover blockwise/low-memory RHS
+generation, general slope-capable solvers, OLS rank/VCE workspaces, SPI result
+buffers, or measured peak RSS.

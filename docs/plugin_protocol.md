@@ -78,8 +78,9 @@ values may be any finite `f64`, including negative and fractional values;
 ordinary factor-variable sources retain the finite nonnegative-integer rule.
 Categorical-by-continuous and continuous products, time-series terms, string
 sources, absorbed interactions, absorbed slopes, saved-FE outputs, clusters,
-solver `FeDesign`, and solving remain unsupported. The action does perform the
-reference-compatible singleton fixed point for its supported absorbed terms.
+an owned solver `FeDesign`, and estimator execution remain unsupported. The
+action does perform the reference-compatible singleton fixed point for its
+supported absorbed terms.
 The strict action-level `keep_singletons` flag defaults to false in the ado
 helper and is not model-wire metadata. Pruning runs only after reasons 1--5 and
 weight validation have selected the initial compact sample. Unweighted,
@@ -102,9 +103,38 @@ label, shared source id, and indices into the deduplicated categorical-source
 and prepared-topology tables. The action builds one fallible compressed
 membership index per unique final FE source, validates exact code/membership
 alignment and the singleton policy, and emits only small topology counts. It
-does not copy observation-scale codes, construct a solver `FeDesign`, or run a
-numerical certificate. Empty final diagnostic samples retain zero-level FE
-topology sources and remain valid preparation results.
+does not copy observation-scale codes or construct an owned solver `FeDesign`.
+Empty final diagnostic samples retain zero-level FE topology sources and remain
+valid preparation results when the numerical check below is not requested.
+
+The optional action key `run_borrowed_map=1`, exposed only as the hidden ado
+option `mapcheck`, adds a developer-only pre-write numerical check. It defaults
+to false. The check validates the entire prepared object and constructs one
+fallibly reserved, checked row-major `N x (1 + K)` absorption batch directly:
+column zero is the prepared outcome and each later column is one generated
+model column in exact prepared-model order. Syntax-omitted coefficient slots
+are absent; the generated intercept remains last. No intermediate
+observation-scale model columns, FE-code copies, membership copies, weight
+copies, or unweighted vector of ones are created. The check verifies the
+coefficient-to-generated-column mapping and continuous, categorical, and
+all-categorical-interaction recipe/source identities before calling the strict
+borrowed-intercept MAP solver. It uses the already prepared analytic,
+frequency, or probability weights as the objective; importance weights remain
+unsupported.
+
+The developer check uses fixed private settings (`tolerance=1e-10`,
+`max_iterations=20000`, `check_every=1`, symmetric sweeps). These are not
+public estimator defaults or user-configurable estimator options. With no
+fixed effects, a nonempty batch returns the certified identity result. An empty
+prepared sample remains a successful result when the flag is absent, but
+`run_borrowed_map=1` rejects it with invalid-data code 459. Allocation,
+capacity, arithmetic-overflow, data/recipe validation, interruption, solver
+nonconvergence, and certificate failures all occur before the first diagnostic
+store and before any display. The last interruption check is also before that
+first store. Success discards the residualized batch and displays only small
+row/column/iteration/certificate metadata in addition to the existing three
+diagnostics; it writes no coefficient, covariance, FE, or other numerical
+estimation result and posts no `e()` state.
 
 Model-wire 2.1 adds `absorb_term_matrix`, `absorb_term_count`,
 `absorb_component_matrix`, `absorb_component_count`, `absorb_labels`, and

@@ -45,9 +45,23 @@ or change-in-iterate test can substitute for this certificate. An exhausted
 budget or failed/nonfinite certificate returns an error; every successful
 result has `SolveReport::certified() == true`.
 
-This path is core-only. The developer plugin preparation action and public
-estimators do not invoke it, and the older generic MAP/LSMR/OLS stack has not
-thereby become eligible for Stata result posting.
+`build_prepared_ols_rhs` is the bounded bridge from prepared OLS data to this
+solver. It revalidates the prepared sample/model identities and directly
+constructs one fallibly reserved row-major batch with Y first, followed by the
+generated model columns in their existing order. Syntax-omitted coefficient
+slots are absent and the intercept remains last. The integrated wrapper builds
+the borrowed FE view first, then the batch, borrows any prepared weights, and
+consumes the batch through the strict solver.
+
+The developer plugin preparation action invokes that wrapper only when its
+hidden `mapcheck` option is present. The option defaults off, runs before the
+first diagnostic write, discards the residualized batch, and exposes only a
+small success summary. Empty input, interruption, allocation/overflow,
+prepared-data corruption, solver nonconvergence, or failed certification is
+fatal before any SPI output mutation or display. This check does not post a
+coefficient or any other numerical result. Public estimators still do not
+invoke this path, and the older generic MAP/LSMR/OLS stack has not thereby
+become eligible for Stata result posting.
 
 ## Covariance estimators
 
