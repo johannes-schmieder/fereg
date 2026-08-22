@@ -8,6 +8,7 @@ mod design;
 mod interaction;
 mod lsmr;
 mod map;
+mod partition;
 mod projection;
 mod report;
 mod singleton;
@@ -29,6 +30,7 @@ pub use interaction::{
 };
 pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};
 pub use map::{absorb_map, MapConfig};
+pub use partition::CategoricalPartition;
 pub use projection::{project_effect_in_place, ProjectionWorkspace};
 pub use report::{FeSolverKind, SolveReport, SolveStopReason};
 pub use singleton::{
