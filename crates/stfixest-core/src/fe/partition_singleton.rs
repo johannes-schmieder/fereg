@@ -39,13 +39,7 @@ impl CategoricalPartitionSingletonResult {
     }
 
     #[must_use]
-    pub fn into_parts(
-        self,
-    ) -> (
-        SingletonResult,
-        CategoricalPartitionRegistry,
-        Vec<usize>,
-    ) {
+    pub fn into_parts(self) -> (SingletonResult, CategoricalPartitionRegistry, Vec<usize>) {
         (self.singleton, self.registry, self.effect_to_partition)
     }
 }
@@ -99,9 +93,7 @@ impl PartitionSingletonReservation for SystemPartitionSingletonReservation {
     }
 }
 
-fn prune_categorical_partition_singletons_with_reservation<
-    R: PartitionSingletonReservation,
->(
+fn prune_categorical_partition_singletons_with_reservation<R: PartitionSingletonReservation>(
     source_table: &[CategoricalCodeView<'_>],
     effect_recipes: &[&[usize]],
     initially_active: &[bool],
