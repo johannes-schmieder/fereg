@@ -10,4 +10,9 @@ mod tests {
     fn adds_correctly() {
         assert_eq!(add(2, 3), 5);
     }
+
+    #[test]
+    fn remote_compiler_smoke() {
+        assert_eq!(add(40, 2), 42);
+    }
 }
