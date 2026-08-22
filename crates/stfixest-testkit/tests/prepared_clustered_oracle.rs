@@ -2,15 +2,15 @@ use stfixest_core::{
     fit_prepared_ols_clustered_map, prepare_ols_clustered_data, AbsorbTermId, AbsorbedTerm,
     CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsClusteredConfig,
-    PreparedOlsClusteredData, PreparedOlsClusteredPsdState, RawTermKind, SourceEntry, SourceId,
-    TermComponent, TermId, TermOrder, TimeSeriesState,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsBreadCoordinateKind,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredData, PreparedOlsClusteredPsdState,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
 };
 
-const TOLERANCE: f64 = 2e-6;
+const INTERNAL_TOLERANCE: f64 = 2e-10;
 
 #[derive(Clone, Copy)]
 enum CaseWeights<'a> {
@@ -456,6 +456,8 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
     // 20260821T030000Z-a5181f9
     // payload sha256 6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002
     // reghdfe commit 29b2b203f534413369d675d0c0f674d61291f536.
+    // Interaction receipt command:
+    // reghdfe y x1, absorb(worker firm) vce(cluster cluster_a#cluster_b)
     let csv = include_str!("../../../tests/fixtures/ols/ols_core.csv");
     let outcome = csv_numeric_column(csv, "y");
     let x = csv_numeric_column(csv, "x1");
@@ -579,17 +581,6 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
                 .collect::<Vec<_>>();
             assert_close_slice_with_tolerance(result.covariance().raw_values(), &rescaled, 2e-10);
         }
-        if case_index == 2 {
-            // The sealed receipt used reghdfe's default MAP stopping path.
-            // Its 5.9e-8 raw-slope perturbation is amplified by the nearly
-            // singular CGM projection. Production raw V agrees with the
-            // explicit-dummy oracle above to <=2e-10; this receipt-only
-            // allowance must not relax fit/covariance certificates, imitate
-            // upstream early stopping, or reclip the restored final matrix.
-            assert_close_slice_with_tolerance(result.covariance().values(), &expected, 4e-6);
-        } else {
-            assert_close_slice(result.covariance().values(), &expected);
-        }
         let psd = result.covariance().psd();
         let effective = result.weights().effective_observations as f64;
         let minimum_groups = result.dof().minimum_cluster_count as f64;
@@ -623,20 +614,20 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
             assert!(psd.minimum_final_full_eigenvalue >= -1e-16);
             assert!(determinant >= -1e-16);
         }
-        assert!(psd.transform_reconstruction_relative_error <= 1e-9);
+        assert!(psd.transform_reconstruction_relative_error <= INTERNAL_TOLERANCE);
         assert!(
             result
                 .certificate()
                 .independent_influence_relative_infinity_norm
-                <= 1e-9
+                <= INTERNAL_TOLERANCE
         );
         assert!(
             result
                 .certificate()
                 .corrected_covariance_relative_infinity_norm
-                <= 1e-9
+                <= INTERNAL_TOLERANCE
         );
-        assert!(result.certificate().final_structure_relative_error <= 1e-9);
+        assert!(result.certificate().final_structure_relative_error <= INTERNAL_TOLERANCE);
         match case_index {
             0 => {
                 assert_eq!(result.dof().nested_absorbed_categories, 8);
@@ -708,12 +699,48 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
                 );
             }
             3 => {
+                assert_eq!(result.weights().physical_observations, 24);
+                assert_eq!(result.weights().effective_observations, 24);
+                assert_eq!(clusters.len(), 1);
+                assert_eq!(clusters[0].len(), 2);
+                assert_eq!(result.cluster_counts(), &[16]);
+                assert_eq!(result.dof().absorbed_rank, 18);
+                assert_eq!(result.dof().nested_absorbed_categories, 0);
+                assert_eq!(result.dof().unclustered_residual_dof, 5);
+                assert_eq!(result.dof().reported_residual_dof, 5);
+                assert_eq!(result.dof().fit_residual_dof, 5);
+                assert_eq!(result.dof().correction_denominator_dof, 5);
                 assert_eq!(result.subsets().len(), 1);
                 assert_eq!(result.subsets()[0].sign, 1);
                 assert_eq!(result.subsets()[0].mask, 1);
+                assert_eq!(result.covariance().dimension(), 2);
+                assert_eq!(
+                    result
+                        .covariance_coordinates()
+                        .iter()
+                        .map(|coordinate| coordinate.kind)
+                        .collect::<Vec<_>>(),
+                    vec![
+                        PreparedOlsBreadCoordinateKind::FiniteRegressor,
+                        PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept,
+                    ]
+                );
             }
             _ => unreachable!("sealed case index"),
         }
+        // These absolute caps describe only the immutable receipt's DEFAULT
+        // reghdfe MAP stopping artifact. They are applied after exact sample,
+        // cluster, subset, DoF, coordinate, and PSD-state assertions. They
+        // never relax StFixest's <=2e-10 internal oracle/transform/certificate
+        // checks, imitate the upstream early stop, or reclip restored CGM V.
+        let receipt_cap = match case_index {
+            0 => 1e-7,
+            1 => 2e-6,
+            2 => 4e-6,
+            3 => 1e-7,
+            _ => unreachable!("sealed receipt cap index"),
+        };
+        assert_absolute_close_slice(result.covariance().values(), &expected, receipt_cap);
         assert!(result.certificate().passed);
     }
 }
@@ -1242,7 +1269,7 @@ fn expand<T: Copy>(values: &[T], frequencies: &[u32]) -> Vec<T> {
 }
 
 fn assert_close_slice(actual: &[f64], expected: &[f64]) {
-    assert_close_slice_with_tolerance(actual, expected, TOLERANCE);
+    assert_close_slice_with_tolerance(actual, expected, INTERNAL_TOLERANCE);
 }
 
 fn assert_close_slice_with_tolerance(actual: &[f64], expected: &[f64], tolerance: f64) {
@@ -1252,6 +1279,16 @@ fn assert_close_slice_with_tolerance(actual: &[f64], expected: &[f64], tolerance
         assert!(
             (actual - expected).abs() <= tolerance * scale,
             "actual={actual:.17e}, expected={expected:.17e}"
+        );
+    }
+}
+
+fn assert_absolute_close_slice(actual: &[f64], expected: &[f64], cap: f64) {
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(expected) {
+        assert!(
+            (actual - expected).abs() <= cap,
+            "actual={actual:.17e}, expected={expected:.17e}, absolute cap={cap:.3e}"
         );
     }
 }
