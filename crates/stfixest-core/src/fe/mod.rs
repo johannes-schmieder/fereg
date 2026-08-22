@@ -1,6 +1,7 @@
 //! Fixed-effect preprocessing, projection, and certification.
 
 mod auto;
+mod borrowed_map;
 mod certificate;
 mod components;
 mod design;
@@ -11,6 +12,9 @@ mod report;
 mod singleton;
 
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
+pub use borrowed_map::{
+    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+};
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub use components::{connected_components, ComponentInfo};

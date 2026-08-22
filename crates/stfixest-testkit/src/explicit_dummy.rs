@@ -17,22 +17,42 @@ pub fn fe_projection_certificate(
     weights: &[f64],
     residuals: &DenseMatrix,
 ) -> std::result::Result<ExplicitDummyCertificate, String> {
+    fe_projection_certificate_with_reference(design, weights, residuals, residuals)
+}
+
+/// Compute explicit-dummy certificate ratios using pre-projection right-hand
+/// sides as the reference scale. This matches the scientific solver gate while
+/// remaining independent of the production certificate implementation.
+pub fn fe_projection_certificate_with_reference(
+    design: &FeDesign,
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    reference: &DenseMatrix,
+) -> std::result::Result<ExplicitDummyCertificate, String> {
     if design.nobs() != residuals.nrows() || weights.len() != residuals.nrows() {
         return Err("oracle inputs have inconsistent observation counts".to_owned());
+    }
+    if reference.nrows() != residuals.nrows() || reference.ncols() != residuals.ncols() {
+        return Err("oracle reference dimensions differ from the residuals".to_owned());
     }
     if weights
         .iter()
         .any(|weight| !weight.is_finite() || *weight <= 0.0)
         || residuals.as_slice().iter().any(|value| !value.is_finite())
+        || reference.as_slice().iter().any(|value| !value.is_finite())
     {
         return Err("oracle inputs must be finite with positive weights".to_owned());
     }
 
     let rhs_norms = (0..residuals.ncols())
         .map(|rhs| {
-            stable_norm(
+            let residual_norm = stable_norm(
                 (0..residuals.nrows()).map(|row| weights[row].sqrt() * residuals[(row, rhs)]),
-            )
+            );
+            let reference_norm = stable_norm(
+                (0..reference.nrows()).map(|row| weights[row].sqrt() * reference[(row, rhs)]),
+            );
+            residual_norm.max(reference_norm)
         })
         .collect::<Vec<_>>();
     if rhs_norms.iter().any(|norm| !norm.is_finite()) {

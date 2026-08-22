@@ -29,9 +29,10 @@ pub use factorize::{
     factorize_f64, factorize_i64, factorize_strings, interaction_codes, EncodedFactor,
 };
 pub use fe::{
-    absorb_fixed_effects, absorb_lsmr, absorb_map, certify_residuals, connected_components,
-    prune_singletons, prune_singletons_with_multiplicity, AbsorbConfig, BorrowedInterceptEffect,
-    BorrowedInterceptFeDesign, ComponentInfo, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
+    absorb_borrowed_intercept_map_certified, absorb_fixed_effects, absorb_lsmr, absorb_map,
+    certify_residuals, connected_components, prune_singletons, prune_singletons_with_multiplicity,
+    AbsorbConfig, BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights,
+    CertifiedBorrowedMap, ComponentInfo, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
     LsmrConfig, LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
     SolveStopReason,
 };
