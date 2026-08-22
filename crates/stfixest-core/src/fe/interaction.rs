@@ -162,9 +162,9 @@ fn factorize_code_interaction_with_reservation<R: InteractionReservation>(
 }
 
 fn validate_components(components: &[CategoricalCodeView<'_>]) -> Result<usize> {
-    let first = components.first().ok_or_else(|| {
-        invalid("categorical interaction requires at least one component source")
-    })?;
+    let first = components
+        .first()
+        .ok_or_else(|| invalid("categorical interaction requires at least one component source"))?;
     let nobs = first.codes.len();
     for (component_index, component) in components.iter().copied().enumerate() {
         if component.codes.len() != nobs {
@@ -210,11 +210,7 @@ fn validate_components(components: &[CategoricalCodeView<'_>]) -> Result<usize> 
     Ok(nobs)
 }
 
-fn compare_rows(
-    components: &[CategoricalCodeView<'_>],
-    left: usize,
-    right: usize,
-) -> Ordering {
+fn compare_rows(components: &[CategoricalCodeView<'_>], left: usize, right: usize) -> Ordering {
     for component in components {
         match component.codes[left].cmp(&component.codes[right]) {
             Ordering::Equal => {}
@@ -227,11 +223,7 @@ fn compare_rows(
     left.cmp(&right)
 }
 
-fn rows_equal(
-    components: &[CategoricalCodeView<'_>],
-    left: usize,
-    right: usize,
-) -> bool {
+fn rows_equal(components: &[CategoricalCodeView<'_>], left: usize, right: usize) -> bool {
     components
         .iter()
         .all(|component| component.codes[left] == component.codes[right])
