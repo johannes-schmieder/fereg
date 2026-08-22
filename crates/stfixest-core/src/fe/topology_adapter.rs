@@ -59,10 +59,7 @@ impl TopologyAdapterReservation for SystemTopologyAdapterReservation {
     }
 }
 
-fn borrow_categorical_topology_design_with_reservation<
-    'a,
-    R: TopologyAdapterReservation,
->(
+fn borrow_categorical_topology_design_with_reservation<'a, R: TopologyAdapterReservation>(
     nobs: usize,
     registry: &'a CategoricalTopologyRegistry,
     source_table: &'a [CategoricalCodeView<'a>],
@@ -95,9 +92,9 @@ fn borrow_categorical_topology_design_with_reservation<
         "unable to reserve categorical topology term views",
     )?;
     for topology_index in effect_to_topology.iter().copied() {
-        let source = validated_sources.get(topology_index).ok_or_else(|| {
-            invalid("categorical effect-to-topology index is out of range")
-        })?;
+        let source = validated_sources
+            .get(topology_index)
+            .ok_or_else(|| invalid("categorical effect-to-topology index is out of range"))?;
         push_reserved(
             &mut effects,
             source.effect(),
