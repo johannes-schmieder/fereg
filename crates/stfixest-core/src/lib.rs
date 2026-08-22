@@ -16,6 +16,12 @@ pub mod ppml;
 pub mod ppml_separation;
 pub mod protocol;
 pub mod selftest;
+#[path = "ols/prepared_categorical_effect.rs"]
+mod prepared_categorical_effect;
+#[path = "ols/prepared_categorical_singleton.rs"]
+mod prepared_categorical_singleton;
+#[path = "ols/prepared_categorical_topology.rs"]
+mod prepared_categorical_topology;
 #[path = "ols/topology_dof.rs"]
 pub mod topology_dof;
 
@@ -36,13 +42,12 @@ pub use fe::{
     certify_residuals, connected_components, factorize_code_interaction,
     finalize_categorical_topology, prune_categorical_partition_singletons, prune_singletons,
     prune_singletons_with_multiplicity, validate_categorical_partition, AbsorbConfig,
-    BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights,
-    CategoricalCodeView, CategoricalPartition, CategoricalPartitionRegistry,
-    CategoricalPartitionSingletonResult, CategoricalTopologyRegistry, CategoricalTopologySource,
-    CertifiedBorrowedMap, CompactedCategoricalSource, ComponentInfo, EffectTerm, EncodedInteraction,
-    FeCertificate, FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig,
-    LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
-    SolveStopReason,
+    BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights, CategoricalCodeView,
+    CategoricalPartition, CategoricalPartitionRegistry, CategoricalPartitionSingletonResult,
+    CategoricalTopologyRegistry, CategoricalTopologySource, CertifiedBorrowedMap,
+    CompactedCategoricalSource, ComponentInfo, EffectTerm, EncodedInteraction, FeCertificate,
+    FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
+    MapConfig, SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
@@ -91,6 +96,11 @@ pub use ppml_separation::{
     SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
     SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
 };
+pub use prepared_categorical_effect::{
+    PreparedCategoricalEffect, PreparedCategoricalEffectRequest,
+};
+pub use prepared_categorical_singleton::prune_prepared_categorical_singletons;
+pub use prepared_categorical_topology::PreparedCategoricalFeTopology;
 pub use protocol::{
     Handshake, ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
     OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
