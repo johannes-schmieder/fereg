@@ -150,6 +150,147 @@ impl LevelIndex {
     }
 }
 
+/// One intercept-only fixed-effect term borrowed from validated prepared data.
+///
+/// This view never owns or copies observation-scale codes or level membership.
+/// Its deliberately narrow type prevents the current preparation boundary from
+/// silently representing slope-bearing effects as intercept-only effects.
+#[derive(Debug, PartialEq, Eq)]
+pub struct BorrowedInterceptEffect<'a> {
+    codes: &'a [u32],
+    n_levels: usize,
+    level_index: &'a LevelIndex,
+}
+
+impl<'a> BorrowedInterceptEffect<'a> {
+    pub(crate) fn new(
+        codes: &'a [u32],
+        n_levels: usize,
+        level_index: &'a LevelIndex,
+    ) -> Result<Self> {
+        if codes.len() != level_index.nobs() || n_levels != level_index.n_levels() {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "borrowed fixed-effect codes and membership dimensions differ",
+            ));
+        }
+        if codes.is_empty() != (n_levels == 0) {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "borrowed fixed-effect empty observation and level counts disagree",
+            ));
+        }
+        if codes.iter().any(|code| *code as usize >= n_levels) {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidData,
+                "borrowed fixed-effect code exceeds its declared level count",
+            ));
+        }
+
+        let mut membership_count = 0_usize;
+        for level in 0..n_levels {
+            let members = level_index.checked_members(level)?;
+            if members.is_empty() {
+                return Err(StFixestError::new(
+                    ErrorCode::InvalidArgument,
+                    "borrowed fixed-effect membership contains an empty final level",
+                ));
+            }
+            membership_count = membership_count
+                .checked_add(members.len())
+                .ok_or_else(|| allocation("borrowed fixed-effect membership count overflows"))?;
+            for observation in members {
+                if *observation >= codes.len() || codes[*observation] as usize != level {
+                    return Err(StFixestError::new(
+                        ErrorCode::InvalidArgument,
+                        "borrowed fixed-effect membership does not match its codes",
+                    ));
+                }
+            }
+        }
+        if membership_count != codes.len() {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "borrowed fixed-effect membership does not cover its observation axis",
+            ));
+        }
+
+        Ok(Self {
+            codes,
+            n_levels,
+            level_index,
+        })
+    }
+
+    #[must_use]
+    pub const fn codes(&self) -> &'a [u32] {
+        self.codes
+    }
+
+    #[must_use]
+    pub const fn n_levels(&self) -> usize {
+        self.n_levels
+    }
+
+    #[must_use]
+    pub const fn level_index(&self) -> &'a LevelIndex {
+        self.level_index
+    }
+}
+
+/// Validated intercept-only FE design borrowing all observation-scale state.
+///
+/// The effect table is small, wire ordered, and owned by the view. Codes and
+/// compressed membership remain owned by the prepared-data object.
+#[derive(Debug, PartialEq, Eq)]
+pub struct BorrowedInterceptFeDesign<'a> {
+    nobs: usize,
+    effects: Vec<BorrowedInterceptEffect<'a>>,
+    total_term_slots: usize,
+}
+
+impl<'a> BorrowedInterceptFeDesign<'a> {
+    pub(crate) fn new(nobs: usize, effects: Vec<BorrowedInterceptEffect<'a>>) -> Result<Self> {
+        if effects.iter().any(|effect| effect.codes().len() != nobs) {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "borrowed fixed-effect terms do not share the declared observation count",
+            ));
+        }
+        let total_term_slots =
+            checked_intercept_term_slots(effects.iter().map(BorrowedInterceptEffect::n_levels))?;
+        Ok(Self {
+            nobs,
+            effects,
+            total_term_slots,
+        })
+    }
+
+    #[must_use]
+    pub const fn nobs(&self) -> usize {
+        self.nobs
+    }
+
+    #[must_use]
+    pub fn effects(&self) -> &[BorrowedInterceptEffect<'a>] {
+        &self.effects
+    }
+
+    /// Total intercept coefficient slots before identification normalization.
+    #[must_use]
+    pub const fn total_term_slots(&self) -> usize {
+        self.total_term_slots
+    }
+}
+
+fn checked_intercept_term_slots(level_counts: impl IntoIterator<Item = usize>) -> Result<usize> {
+    level_counts.into_iter().try_fold(0_usize, |total, levels| {
+        total
+            .checked_add(levels)
+            .ok_or_else(|| allocation("borrowed fixed-effect term-slot count overflows"))
+    })
+}
+
 fn reserved_filled<T: Clone, R: LevelIndexReservation>(
     reservation: &mut R,
     elements: usize,
@@ -393,5 +534,30 @@ mod tests {
                 .code,
             ErrorCode::Allocation
         );
+    }
+
+    #[test]
+    fn borrowed_intercept_design_preserves_empty_effects() {
+        let index = LevelIndex::from_codes(&[], 0).expect("empty level index");
+        let effect = BorrowedInterceptEffect::new(&[], 0, &index).expect("empty effect");
+        let design = BorrowedInterceptFeDesign::new(0, vec![effect]).expect("empty design");
+        assert_eq!(design.nobs(), 0);
+        assert_eq!(design.effects().len(), 1);
+        assert_eq!(design.total_term_slots(), 0);
+    }
+
+    #[test]
+    fn borrowed_intercept_effect_rejects_misaligned_membership() {
+        let index = LevelIndex::from_codes(&[0, 0, 1, 1], 2).expect("level index");
+        let error = BorrowedInterceptEffect::new(&[0, 1, 0, 1], 2, &index)
+            .expect_err("membership mismatch");
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+    }
+
+    #[test]
+    fn borrowed_intercept_slot_overflow_fails_closed() {
+        let error = checked_intercept_term_slots([usize::MAX, 1])
+            .expect_err("term-slot overflow must fail");
+        assert_eq!(error.code, ErrorCode::Allocation);
     }
 }

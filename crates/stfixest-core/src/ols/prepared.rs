@@ -8,7 +8,8 @@ use crate::data::{
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
-    prune_singletons_with_multiplicity, LevelIndex, SingletonMultiplicity, SingletonResult,
+    prune_singletons_with_multiplicity, BorrowedInterceptEffect, BorrowedInterceptFeDesign,
+    LevelIndex, SingletonMultiplicity, SingletonResult,
 };
 use crate::metadata::{
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState,
@@ -190,6 +191,11 @@ impl PreparedOlsFeTopologySource {
     pub fn members(&self, level: usize) -> Result<&[usize]> {
         self.level_index.checked_members(level)
     }
+
+    #[must_use]
+    pub(crate) const fn level_index(&self) -> &LevelIndex {
+        &self.level_index
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -257,6 +263,13 @@ pub struct PreparedOlsData {
 }
 
 impl PreparedOlsData {
+    /// Borrow the current intercept-only FE design without copying codes or
+    /// level membership. This structural adapter invokes no numerical solver.
+    pub fn borrowed_intercept_fe_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
+        let mut reservation = SystemFeTopologyReservation;
+        build_borrowed_intercept_fe_design_with_reservation(self, &mut reservation)
+    }
+
     /// Evaluate one prepared finite-dimensional recipe at one active row.
     /// This is a testable preparation primitive, not an estimator dispatch.
     pub fn column_value(&self, column: usize, active_row: usize) -> Result<f64> {
@@ -317,6 +330,55 @@ impl PreparedOlsData {
             }
         }
     }
+}
+
+fn build_borrowed_intercept_fe_design_with_reservation<'a, R: FeTopologyReservation>(
+    prepared: &'a PreparedOlsData,
+    reservation: &mut R,
+) -> Result<BorrowedInterceptFeDesign<'a>> {
+    if prepared.fe_topology.nobs() != prepared.sample.n_active() {
+        return Err(invalid(
+            "borrowed FE design topology is not aligned with the final sample",
+        ));
+    }
+
+    let mut effects = Vec::new();
+    reservation.reserve_vec(
+        &mut effects,
+        prepared.fe_topology.effects().len(),
+        "unable to reserve borrowed FE design effects",
+    )?;
+    for effect in prepared.fe_topology.effects() {
+        let topology_source = prepared
+            .fe_topology
+            .sources()
+            .get(effect.topology_source_index)
+            .ok_or_else(|| invalid("borrowed FE design topology source is out of range"))?;
+        let categorical = prepared
+            .categorical_sources
+            .get(effect.categorical_source_index)
+            .ok_or_else(|| invalid("borrowed FE design categorical source is out of range"))?;
+        if topology_source.categorical_source_index() != effect.categorical_source_index
+            || topology_source.source() != effect.source
+            || categorical.source != effect.source
+            || categorical.encoded.n_levels() != topology_source.n_levels()
+        {
+            return Err(invalid(
+                "borrowed FE design source identities are inconsistent",
+            ));
+        }
+        let borrowed = BorrowedInterceptEffect::new(
+            &categorical.encoded.codes,
+            topology_source.n_levels(),
+            topology_source.level_index(),
+        )?;
+        push_reserved(
+            &mut effects,
+            borrowed,
+            "borrowed FE design effect capacity exhausted",
+        )?;
+    }
+    BorrowedInterceptFeDesign::new(prepared.sample.n_active(), effects)
 }
 
 impl OlsRequestV1 {
@@ -2010,6 +2072,21 @@ mod tests {
 
     #[test]
     fn empty_and_all_dropped_samples_are_valid_preparation_results() {
+        let no_fe = LoadedOlsInput {
+            candidate: vec![true, true],
+            outcome: column(&[1.0, 2.0], &[false; 2]),
+            numeric_sources: Vec::new(),
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = prepare_ols_data(&request(0, false), &no_fe).expect("nonempty no-FE data");
+        let design = prepared
+            .borrowed_intercept_fe_design()
+            .expect("nonempty no-FE design");
+        assert_eq!(design.nobs(), 2);
+        assert!(design.effects().is_empty());
+
         let empty = LoadedOlsInput {
             candidate: Vec::new(),
             outcome: column(&[], &[]),
@@ -2039,6 +2116,12 @@ mod tests {
         assert!(prepared.fe_topology.sources.is_empty());
         assert!(prepared.fe_topology.effects.is_empty());
         assert_eq!(prepared.fe_topology.total_levels, 0);
+        let design = prepared
+            .borrowed_intercept_fe_design()
+            .expect("empty no-FE design");
+        assert_eq!(design.nobs(), 0);
+        assert!(design.effects().is_empty());
+        assert_eq!(design.total_term_slots(), 0);
     }
 
     #[test]
@@ -2531,6 +2614,24 @@ mod tests {
             .fe_topology
             .validate(&request, &prepared.sample, &prepared.categorical_sources)
             .expect("structural certificate");
+        let design = prepared
+            .borrowed_intercept_fe_design()
+            .expect("borrowed FE design");
+        assert_eq!(design.nobs(), 2);
+        assert_eq!(design.effects().len(), 3);
+        assert_eq!(design.total_term_slots(), 6);
+        assert!(std::ptr::eq(
+            design.effects()[0].codes(),
+            prepared.categorical_sources[0].encoded.codes.as_slice()
+        ));
+        assert!(std::ptr::eq(
+            design.effects()[0].codes(),
+            design.effects()[2].codes()
+        ));
+        assert!(std::ptr::eq(
+            design.effects()[0].level_index(),
+            design.effects()[2].level_index()
+        ));
         assert_eq!(
             prepared.categorical_sources[1].encoded.levels,
             vec![-3.25, 2.5]
@@ -2870,6 +2971,139 @@ mod tests {
         assert_eq!(prepared.fe_topology.sources[0].n_levels, 0);
         assert_eq!(prepared.fe_topology.sources[0].nobs(), 0);
         assert_eq!(prepared.fe_topology.total_levels, 0);
+        let design = prepared
+            .borrowed_intercept_fe_design()
+            .expect("empty borrowed FE design");
+        assert_eq!(design.nobs(), 0);
+        assert_eq!(design.effects().len(), 1);
+        assert_eq!(design.effects()[0].n_levels(), 0);
+        assert_eq!(design.total_term_slots(), 0);
+    }
+
+    #[test]
+    fn borrowed_fe_design_uses_final_singleton_axis_and_existing_membership() {
+        let request = two_way_singleton_request(false);
+        let prepared =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        let design = prepared
+            .borrowed_intercept_fe_design()
+            .expect("borrowed FE design");
+        assert_eq!(design.nobs(), 4);
+        assert_eq!(design.effects().len(), 2);
+        assert_eq!(design.total_term_slots(), 4);
+        for (effect, prepared_effect) in design.effects().iter().zip(&prepared.fe_topology.effects)
+        {
+            let topology_source =
+                &prepared.fe_topology.sources[prepared_effect.topology_source_index];
+            let categorical =
+                &prepared.categorical_sources[prepared_effect.categorical_source_index];
+            assert!(std::ptr::eq(
+                effect.codes(),
+                categorical.encoded.codes.as_slice()
+            ));
+            assert!(std::ptr::eq(
+                effect.level_index(),
+                topology_source.level_index()
+            ));
+            for level in 0..effect.n_levels() {
+                assert_eq!(
+                    effect
+                        .level_index()
+                        .checked_members(level)
+                        .expect("borrowed members"),
+                    topology_source.members(level).expect("prepared members")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn borrowed_fe_design_reservation_and_capacity_guard_fail_closed() {
+        let request = two_way_singleton_request(true);
+        let prepared =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+
+        let mut successful = InjectedFeTopologyReservation::default();
+        build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut successful)
+            .expect("record adapter reservations");
+        assert_eq!(successful.calls, 1);
+
+        let mut failed = InjectedFeTopologyReservation {
+            fail_at: Some(0),
+            ..InjectedFeTopologyReservation::default()
+        };
+        let error = build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut failed)
+            .expect_err("adapter reservation must fail");
+        assert_eq!(error.code, ErrorCode::Allocation);
+
+        let mut undersized = InjectedFeTopologyReservation {
+            skip_label: Some("unable to reserve borrowed FE design effects"),
+            ..InjectedFeTopologyReservation::default()
+        };
+        let error = build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut undersized)
+            .expect_err("adapter capacity guard must fail");
+        assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn borrowed_fe_design_rejects_corrupt_prepared_links_without_panicking() {
+        let request = two_way_singleton_request(false);
+
+        let mut bad_effect =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        bad_effect.fe_topology.effects[0].topology_source_index = usize::MAX;
+        assert_eq!(
+            bad_effect
+                .borrowed_intercept_fe_design()
+                .expect_err("bad topology source")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut short_codes =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        short_codes.categorical_sources[0].encoded.codes.pop();
+        assert_eq!(
+            short_codes
+                .borrowed_intercept_fe_design()
+                .expect_err("short categorical codes")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut bad_categorical_index =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        bad_categorical_index.fe_topology.effects[0].categorical_source_index = usize::MAX;
+        assert_eq!(
+            bad_categorical_index
+                .borrowed_intercept_fe_design()
+                .expect_err("bad categorical source")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut bad_levels =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        bad_levels.categorical_sources[0].encoded.levels.push(99.0);
+        assert_eq!(
+            bad_levels
+                .borrowed_intercept_fe_design()
+                .expect_err("level mismatch")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+
+        let mut bad_membership =
+            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        bad_membership.fe_topology.sources[0].level_index =
+            LevelIndex::from_codes(&[0, 1, 0, 1], 2).expect("wrong membership");
+        assert_eq!(
+            bad_membership
+                .borrowed_intercept_fe_design()
+                .expect_err("membership mismatch")
+                .code,
+            ErrorCode::InvalidArgument
+        );
     }
 
     #[test]

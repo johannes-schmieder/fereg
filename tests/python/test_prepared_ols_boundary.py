@@ -249,6 +249,29 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertNotIn("absorb_fixed_effects(", plugin)
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 
+    def test_borrowed_fe_adapter_is_intercept_only_and_does_not_invoke_a_solver(self):
+        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+            encoding="utf-8"
+        )
+        design = (ROOT / "crates/stfixest-core/src/fe/design.rs").read_text(
+            encoding="utf-8"
+        )
+        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+            encoding="utf-8"
+        )
+        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("BorrowedInterceptEffect", design)
+        self.assertIn("BorrowedInterceptFeDesign", design)
+        self.assertIn("borrowed_intercept_fe_design", core)
+        self.assertIn("unable to reserve borrowed FE design effects", core)
+        self.assertIn("checked_intercept_term_slots", design)
+        self.assertNotIn("BorrowedInterceptFeDesign", plugin)
+        self.assertNotIn("absorb_fixed_effects(", plugin)
+        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,9 +30,10 @@ pub use factorize::{
 };
 pub use fe::{
     absorb_fixed_effects, absorb_lsmr, absorb_map, certify_residuals, connected_components,
-    prune_singletons, prune_singletons_with_multiplicity, AbsorbConfig, ComponentInfo, EffectTerm,
-    FeCertificate, FeDesign, FeSolverKind, LsmrConfig, LsmrPreconditioner, MapConfig,
-    SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
+    prune_singletons, prune_singletons_with_multiplicity, AbsorbConfig, BorrowedInterceptEffect,
+    BorrowedInterceptFeDesign, ComponentInfo, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
+    LsmrConfig, LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
+    SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
