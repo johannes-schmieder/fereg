@@ -45,14 +45,17 @@ pub use metadata::{
     ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 pub use ols::{
-    absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, compute_dof, fit_ols, prepare_ols_data,
-    solve_rank_revealing, ClusterSubsetReport, DofConfig, DofMethod, DofReport, FiniteSolver,
+    absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, compute_dof, fit_ols,
+    fit_prepared_ols_coefficients_map, prepare_ols_data, solve_rank_revealing,
+    CertifiedPreparedOlsFit, ClusterSubsetReport, DofConfig, DofMethod, DofReport, FiniteSolver,
     FitStatistics, LoadedNumericColumn, LoadedOlsInput, OlsConfig, OlsInputBinding, OlsInputRole,
     OlsRequestV1, OlsResult, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
-    PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsRhs, PreparedOlsSingletons,
-    RankSolve, RegressorStatus, VceKind, VceReport,
+    PreparedOlsFeTopologySource, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsFittedCoefficient, PreparedOlsModel, PreparedOlsRankCertificate, PreparedOlsRhs,
+    PreparedOlsScoreCertificate, PreparedOlsSingletons, RankSolve, RegressorStatus, VceKind,
+    VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
