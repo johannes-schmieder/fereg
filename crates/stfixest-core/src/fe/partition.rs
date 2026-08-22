@@ -50,11 +50,7 @@ impl CategoricalPartition {
         sources: &[CategoricalCodeView<'_>],
     ) -> Result<Self> {
         let mut reservation = SystemPartitionReservation;
-        Self::interaction_with_reservation(
-            categorical_source_indices,
-            sources,
-            &mut reservation,
-        )
+        Self::interaction_with_reservation(categorical_source_indices, sources, &mut reservation)
     }
 
     #[must_use]
@@ -84,10 +80,7 @@ impl CategoricalPartition {
     /// Borrow the authoritative code slice and revalidate all source-table
     /// identities and dimensions. Single-source output aliases the raw source;
     /// interaction output aliases this partition's sole owned N-vector.
-    pub fn codes<'a>(
-        &'a self,
-        sources: &'a [CategoricalCodeView<'a>],
-    ) -> Result<&'a [u32]> {
+    pub fn codes<'a>(&'a self, sources: &'a [CategoricalCodeView<'a>]) -> Result<&'a [u32]> {
         match &self.key {
             CategoricalPartitionKey::Single(index) => {
                 let source = checked_source(sources, *index, "single categorical partition")?;
@@ -146,7 +139,11 @@ impl CategoricalPartition {
             let index = canonical_indices[0];
             return Self::single(
                 index,
-                checked_source(sources, index, "collapsed categorical interaction partition")?,
+                checked_source(
+                    sources,
+                    index,
+                    "collapsed categorical interaction partition",
+                )?,
             );
         }
 
@@ -368,8 +365,8 @@ mod tests {
     fn duplicate_only_interaction_collapses_to_zero_copy_single_source() {
         let raw = [0, 1, 0, 2];
         let sources = [CategoricalCodeView::new(&raw, 3)];
-        let partition = CategoricalPartition::interaction(&[0, 0, 0], &sources)
-            .expect("collapsed partition");
+        let partition =
+            CategoricalPartition::interaction(&[0, 0, 0], &sources).expect("collapsed partition");
         assert!(!partition.is_interaction());
         assert_eq!(partition.categorical_source_indices(), &[0]);
         assert!(std::ptr::eq(
@@ -386,10 +383,9 @@ mod tests {
             CategoricalCodeView::new(&left, 2),
             CategoricalCodeView::new(&right, 2),
         ];
-        let plain =
-            CategoricalPartition::interaction(&[0, 1], &sources).expect("plain partition");
-        let repeated = CategoricalPartition::interaction(&[1, 0, 1, 0], &sources)
-            .expect("repeated partition");
+        let plain = CategoricalPartition::interaction(&[0, 1], &sources).expect("plain partition");
+        let repeated =
+            CategoricalPartition::interaction(&[1, 0, 1, 0], &sources).expect("repeated partition");
         assert_eq!(plain, repeated);
     }
 
