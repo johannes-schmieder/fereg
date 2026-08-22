@@ -98,13 +98,17 @@ post-pruning singleton fixed point or the explicit `keepsingletons` bypass.
 An empty final sample preserves its absorbed-term recipes with zero-level empty
 membership sources; a later estimator gate, not preparation, decides whether
 the sample is sufficient.
-The structural adapter preserves that empty representation. It owns only a
-fallibly reserved, wire-ordered effect table; every effect borrows its code
+The structural adapter preserves that empty representation. Construction uses
+a fallibly reserved validated-source table and the returned view owns only a
+fallibly reserved, wire-ordered effect table. Every effect borrows its code
 slice from the final categorical-source table and its membership index from the
-prepared topology. Repeated absorbed terms therefore share both pointers. Its
-intercept-only type cannot represent slopes, its coefficient-slot total uses
-checked arithmetic, and construction revalidates source identities, dimensions,
-levels, codes, and membership without allocating observation-scale storage.
+prepared topology. Each unique topology source receives one complete
+structural validation of dimensions, levels, codes, and membership. Effect
+construction then performs only constant-time source-identity, dimension, and
+pointer checks, so repeated absorbed terms share both pointers without
+repeating observation-scale validation. Its intercept-only type cannot
+represent slopes, its coefficient-slot total uses checked arithmetic, and it
+allocates no observation-scale storage.
 This adapter does not call MAP, LSMR, the generic OLS core, or any plugin
 estimator action.
 After native sample preparation and a final interruption check succeed, the
@@ -197,11 +201,15 @@ prefix sum, and cursor. The topology source/effect tables are reserved before
 population and have explicit capacity guards. Deterministic injection tests
 exercise every reservation and capacity boundary. Repeated FE terms share one
 membership index, so this checkpoint adds no observation-scale code copy.
-The borrowed FE adapter separately reserves its O(G) effect table with
-`try_reserve_exact`, guards every push against unplanned growth, and maps both
-reservation and checked term-slot overflow to native `Allocation`. Deterministic
-tests exercise its reservation and capacity failures. Codes, level metadata,
-and membership arrays are never cloned into the adapter.
+The borrowed FE adapter separately reserves an O(U) validated-source table and
+an O(G) effect table with `try_reserve_exact`, where U is the number of unique
+topology sources and G is the number of wire terms. It guards every push against
+unplanned growth and maps both reservation and checked term-slot overflow to
+native `Allocation`. Deterministic tests exercise both tables' reservation and
+capacity failures. A repeated-source scale test instruments source validation
+and proves one validation call covering N rows for 128 wire terms, rather than
+128 observation-scale scans. Codes, level metadata, and membership arrays are
+never cloned into the adapter.
 
 ## Model construction remains separate
 
