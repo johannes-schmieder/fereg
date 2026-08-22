@@ -273,11 +273,7 @@ fn fallible_string_copy<R: PreparedTopologyReservation>(
     Ok(output)
 }
 
-pub(crate) fn push_reserved<T>(
-    target: &mut Vec<T>,
-    value: T,
-    label: &'static str,
-) -> Result<()> {
+pub(crate) fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
     if target.len() == target.capacity() {
         return Err(allocation(label));
     }
