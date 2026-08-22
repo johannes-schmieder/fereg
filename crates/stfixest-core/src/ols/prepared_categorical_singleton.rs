@@ -64,22 +64,3 @@ fn prune_with_reservation<R: PreparedTopologyReservation>(
         keep_singletons,
     )
 }
-
-#[cfg(test)]
-pub(crate) fn prune_with_test_reservation<R: PreparedTopologyReservation>(
-    source_table: &[CategoricalCodeView<'_>],
-    requests: &[PreparedCategoricalEffectRequest],
-    initially_active: &[bool],
-    multiplicity: SingletonMultiplicity<'_>,
-    keep_singletons: bool,
-    reservation: &mut R,
-) -> Result<CategoricalPartitionSingletonResult> {
-    prune_with_reservation(
-        source_table,
-        requests,
-        initially_active,
-        multiplicity,
-        keep_singletons,
-        reservation,
-    )
-}
