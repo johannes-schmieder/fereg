@@ -12,6 +12,7 @@ mod report;
 mod singleton;
 
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
+pub(crate) use borrowed_map::absorb_borrowed_intercept_map_with_structural_constant_certified;
 pub use borrowed_map::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
 };

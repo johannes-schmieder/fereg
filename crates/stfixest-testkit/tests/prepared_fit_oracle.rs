@@ -62,6 +62,31 @@ fn prepared_coefficients_and_residuals_match_explicit_dummies_for_all_weights() 
 }
 
 #[test]
+fn no_absorb_default_and_noconstant_match_an_explicit_one_level_dummy() {
+    let regressors = vec![
+        vec![-2.0, -0.5, 1.0, 3.0, -1.0, 0.25, 2.0, 4.0],
+        vec![1.0, -2.0, 0.5, 4.0, 2.0, -1.0, 3.5, 0.0],
+    ];
+    let outcome = (0..regressors[0].len())
+        .map(|row| {
+            4.0 + 1.7 * regressors[0][row] - 0.6 * regressors[1][row] + 0.2 * (row as f64).sin()
+        })
+        .collect::<Vec<_>>();
+    let analytic = [0.5, 2.0, 1.25, 3.0, 0.75, 4.0, 1.5, 2.5];
+    let frequencies = [1_u32, 2, 3, 1, 4, 2, 1, 3];
+    for include_intercept in [true, false] {
+        for weights in [
+            CaseWeights::Unit,
+            CaseWeights::Analytic(&analytic),
+            CaseWeights::Probability(&analytic),
+            CaseWeights::Frequency(&frequencies),
+        ] {
+            run_oracle_case(&outcome, &regressors, &[], &[], include_intercept, weights);
+        }
+    }
+}
+
+#[test]
 fn randomized_well_conditioned_prepared_fits_match_independent_oracle() {
     let mut generator = Generator(0x8a13_72ce_4d9b_f061);
     for replication in 0..20 {
@@ -230,6 +255,71 @@ fn analytic_inference_is_invariant_to_extreme_common_weight_scales() {
             2e-8,
         );
     }
+}
+
+#[test]
+fn virtual_constant_is_invariant_to_extreme_aweight_scaling_and_row_permutation() {
+    let x = vec![
+        -2.0, -0.5, 1.0, -1.0, 2.0, 4.0, -3.0, 1.5, 5.0, 0.2, 2.8, 6.0,
+    ];
+    let y = (0..x.len())
+        .map(|row| 3.5 + 1.8 * x[row] + 0.08 * (row as f64).cos())
+        .collect::<Vec<_>>();
+    let base = [0.25, 2.0, 1.5, 3.0, 0.75, 4.0, 1.2, 2.7, 5.0, 0.6, 3.3, 1.1];
+    let tiny = base.map(|weight| weight * 1e-150);
+    let huge = base.map(|weight| weight * 1e150);
+    let solve = |outcome: &[f64], regressor: &[f64], weights: &[f64]| {
+        fit_prepared_ols_unadjusted_map(
+            &prepare_case(
+                outcome,
+                &[regressor.to_vec()],
+                &[],
+                &[],
+                false,
+                CaseWeights::Analytic(weights),
+            ),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("virtual-constant analytic inference")
+    };
+    let baseline = solve(&y, &x, &base);
+    for scaled in [solve(&y, &x, &tiny), solve(&y, &x, &huge)] {
+        assert_eq!(baseline.dof(), scaled.dof());
+        assert_slice_close(baseline.fit().residuals(), scaled.fit().residuals(), 2e-8);
+        assert_slice_close(
+            baseline.covariance().values(),
+            scaled.covariance().values(),
+            2e-8,
+        );
+        assert_close(baseline.statistics().rss, scaled.statistics().rss, 2e-8);
+        assert_close(baseline.statistics().tss, scaled.statistics().tss, 2e-8);
+    }
+
+    let permutation = [11_usize, 2, 7, 0, 9, 4, 6, 1, 10, 5, 8, 3];
+    let permuted_y = permute(&y, &permutation);
+    let permuted_x = permute(&x, &permutation);
+    let permuted_weights = permute(&base, &permutation);
+    let permuted = solve(&permuted_y, &permuted_x, &permuted_weights);
+    assert_eq!(baseline.dof(), permuted.dof());
+    assert_close(
+        baseline.fit().coefficients()[0]
+            .value
+            .expect("baseline slope"),
+        permuted.fit().coefficients()[0]
+            .value
+            .expect("permuted slope"),
+        COEFFICIENT_TOLERANCE,
+    );
+    let mut restored = vec![0.0; y.len()];
+    for (new_row, old_row) in permutation.iter().copied().enumerate() {
+        restored[old_row] = permuted.fit().residuals()[new_row];
+    }
+    assert_slice_close(baseline.fit().residuals(), &restored, RESIDUAL_TOLERANCE);
+    assert_slice_close(
+        baseline.covariance().values(),
+        permuted.covariance().values(),
+        2e-8,
+    );
 }
 
 #[test]
@@ -464,9 +554,9 @@ fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
     .expect("sealed no-FE iid inference");
     assert_eq!(no_fe.weights().physical_observations, 24);
     assert_eq!(no_fe.weights().effective_observations, 24);
-    assert_eq!(no_fe.dof().finite_rank, 3);
+    assert_eq!(no_fe.dof().finite_rank, 2);
     assert_eq!(no_fe.dof().finite_model_dof, 2);
-    assert_eq!(no_fe.dof().absorbed_rank, 0);
+    assert_eq!(no_fe.dof().absorbed_rank, 1);
     assert_eq!(no_fe.dof().residual_dof, 21);
     assert!(no_fe.dof().has_structural_intercept);
     assert_close(
@@ -697,6 +787,24 @@ fn assert_sealed_reference_case(
             3e-7,
         );
     }
+    if include_intercept {
+        assert_eq!(
+            fit.coefficients()
+                .last()
+                .expect("sealed reported intercept")
+                .status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_eq!(fit.bread().dimension(), fit.finite_rank() + 1);
+        assert_eq!(
+            fit.bread()
+                .coordinates()
+                .last()
+                .expect("sealed intercept coordinate")
+                .kind,
+            PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+        );
+    }
     if let Some((df_residual, rss, covariance)) = expected.unadjusted_vce {
         assert_eq!(fit.bread().values().len(), covariance.len());
         let multiplier = stata_hex(df_residual) / stata_hex(rss);
@@ -808,22 +916,29 @@ fn run_oracle_case(
     assert!(fit.rank_certificate().passed);
     assert!(fit.score_certificate().passed);
 
-    let absorbed_reported_intercept = include_intercept && !effect_order.is_empty();
-    let mut oracle_regressors = regressors.to_vec();
-    if include_intercept && !absorbed_reported_intercept {
-        oracle_regressors.push(vec![1.0; outcome.len()]);
-    }
+    let absorbed_reported_intercept = include_intercept;
+    let oracle_regressors = regressors.to_vec();
+    let explicit_effects = || {
+        if effect_order.is_empty() {
+            vec![
+                DummyEffect::new(vec![0; outcome.len()], 1, true, Vec::new())
+                    .expect("implicit one-level dummy effect"),
+            ]
+        } else {
+            effect_order
+                .iter()
+                .map(|source| {
+                    let codes = effect_sources[*source].clone();
+                    DummyEffect::new(codes.clone(), level_count(&codes), true, Vec::new())
+                        .expect("dummy effect")
+                })
+                .collect()
+        }
+    };
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: outcome.to_vec(),
         regressors: oracle_regressors,
-        effects: effect_order
-            .iter()
-            .map(|source| {
-                let codes = effect_sources[*source].clone();
-                DummyEffect::new(codes.clone(), level_count(&codes), true, Vec::new())
-                    .expect("dummy effect")
-            })
-            .collect(),
+        effects: explicit_effects(),
         weights: oracle_weights(weights),
         clusters: Vec::new(),
     })
@@ -857,42 +972,27 @@ fn run_oracle_case(
             .map(|(residual, weight)| residual * residual * weight)
             .sum::<f64>();
         assert_close(inference.statistics().rss, reference_rss, 5e-8);
-        let overall_center = if include_intercept || !effect_order.is_empty() {
-            weighted_mean(outcome, &reference_weights)
-        } else {
-            0.0
-        };
+        let overall_center = weighted_mean(outcome, &reference_weights);
         let reference_tss = outcome
             .iter()
             .zip(&reference_weights)
             .map(|(value, weight)| weight * (value - overall_center).powi(2))
             .sum::<f64>();
         assert_close(inference.statistics().tss, reference_tss, 5e-8);
-        let reference_within_tss = if effect_order.is_empty() {
-            reference_tss
-        } else {
-            let within_oracle = fit_explicit_ols(&ExplicitOlsProblem {
-                outcome: outcome.to_vec(),
-                regressors: Vec::new(),
-                effects: effect_order
-                    .iter()
-                    .map(|source| {
-                        let codes = effect_sources[*source].clone();
-                        DummyEffect::new(codes.clone(), level_count(&codes), true, Vec::new())
-                            .expect("within dummy effect")
-                    })
-                    .collect(),
-                weights: oracle_weights(weights),
-                clusters: Vec::new(),
-            })
-            .expect("explicit-dummy within projection");
-            within_oracle
-                .residuals
-                .iter()
-                .zip(&reference_weights)
-                .map(|(value, weight)| weight * value.powi(2))
-                .sum::<f64>()
-        };
+        let within_oracle = fit_explicit_ols(&ExplicitOlsProblem {
+            outcome: outcome.to_vec(),
+            regressors: Vec::new(),
+            effects: explicit_effects(),
+            weights: oracle_weights(weights),
+            clusters: Vec::new(),
+        })
+        .expect("explicit-dummy within projection");
+        let reference_within_tss = within_oracle
+            .residuals
+            .iter()
+            .zip(&reference_weights)
+            .map(|(value, weight)| weight * value.powi(2))
+            .sum::<f64>();
         assert_close(
             inference.statistics().within_tss,
             reference_within_tss,

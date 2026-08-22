@@ -325,7 +325,11 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         )
         self.assertIn("fit_prepared_ols_coefficients_map", production)
         self.assertIn("build_prepared_ols_rhs", production)
-        self.assertIn("absorb_borrowed_intercept_map_certified", production)
+        self.assertIn(
+            "absorb_borrowed_intercept_map_with_structural_constant_certified",
+            production,
+        )
+        self.assertNotIn("absorb_borrowed_intercept_map_certified(", production)
         self.assertIn("AbsorbedInterceptDeferred", production)
         self.assertIn("fit_scaled_pivoted_qr", production)
         self.assertIn("certify_scores", production)

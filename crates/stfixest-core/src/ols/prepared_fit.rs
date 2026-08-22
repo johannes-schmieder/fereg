@@ -1,7 +1,8 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{
-    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, MapConfig, SolveReport,
+    absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
+    MapConfig, SolveReport,
 };
 use crate::metadata::CoefficientSlot;
 
@@ -394,8 +395,12 @@ fn fit_with_controls_internal<R: FitReservation>(
         *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
     }
 
-    let absorbed =
-        absorb_borrowed_intercept_map_certified(&design, weights.borrowed(), raw, config.map)?;
+    let absorbed = absorb_borrowed_intercept_map_with_structural_constant_certified(
+        &design,
+        weights.borrowed(),
+        raw,
+        config.map,
+    )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -474,7 +479,7 @@ fn fit_with_controls_internal<R: FitReservation>(
     }
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.sample.n_active(), 1, raw_residuals)?;
-    let residual_absorbed = absorb_borrowed_intercept_map_certified(
+    let residual_absorbed = absorb_borrowed_intercept_map_with_structural_constant_certified(
         &design,
         weights.borrowed(),
         residual_matrix,
@@ -548,6 +553,19 @@ fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> 
     if prepared.sample.n_active() == 0 {
         return Err(invalid_data(
             "prepared OLS coefficient fitting requires a nonempty final sample",
+        ));
+    }
+    let reported_intercepts = prepared
+        .model
+        .columns
+        .iter()
+        .filter(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
+        .count();
+    if !prepared.structural_intercept
+        || reported_intercepts != usize::from(prepared.report_intercept)
+    {
+        return Err(invalid_argument(
+            "prepared OLS report and structural intercept metadata are inconsistent",
         ));
     }
     if !config.map.tolerance.is_finite()
@@ -657,7 +675,7 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS QR candidate columns",
     )?;
-    let has_absorbed_intercept = !prepared.fe_topology.effects().is_empty();
+    let has_absorbed_intercept = prepared.structural_intercept;
     for column in 0..generated_columns {
         let is_intercept = matches!(
             prepared.model.columns[column].kind,
@@ -1406,7 +1424,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
             continue;
         }
         if deferred_intercept.replace(generated).is_some()
-            || prepared.fe_topology.effects().is_empty()
+            || !prepared.structural_intercept
             || !matches!(
                 prepared
                     .model
@@ -2509,7 +2527,7 @@ mod tests {
         );
         let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
             .expect("certified fit");
-        assert_eq!(fit.finite_rank(), 2);
+        assert_eq!(fit.finite_rank(), 1);
         assert_eq!(fit.coefficients().len(), 3);
         assert_eq!(fit.coefficients()[0].status, PreparedOlsFitStatus::Kept);
         assert_close(fit.coefficients()[0].value.expect("slope"), 2.5, 1e-11);
@@ -2518,7 +2536,10 @@ mod tests {
             PreparedOlsFitStatus::SyntaxOmitted
         );
         assert_eq!(fit.coefficients()[1].generated_column_index, None);
-        assert_eq!(fit.coefficients()[2].status, PreparedOlsFitStatus::Kept);
+        assert_eq!(
+            fit.coefficients()[2].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
         assert_close(fit.coefficients()[2].value.expect("intercept"), 3.0, 1e-11);
         assert!(fit.residuals().iter().all(|value| value.abs() < 1e-11));
         assert!(fit.absorption_report().certified());
@@ -2624,6 +2645,72 @@ mod tests {
     }
 
     #[test]
+    fn pinned_full_ibn_span_keeps_cons_and_earlier_indicator() {
+        // Pinned Stata 18/reghdfe contract for `ibn.foreign` with the default
+        // `_cons`: retain the structural intercept and one indicator, rather
+        // than allowing the preceding full indicator span to evict `_cons`.
+        let foreign = source(1, "foreign");
+        let foreign_values = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+        let outcome = vec![10.0, 10.0, 10.0, 13.0, 13.0, 13.0];
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![foreign.clone()],
+                terms: vec![
+                    categorical_term(1, foreign.id, 0.0, false),
+                    categorical_term(2, foreign.id, 1.0, false),
+                ],
+            },
+            absorbed_terms: Vec::new(),
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(foreign.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let prepared = prepare_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; outcome.len()],
+                outcome: loaded(&outcome),
+                numeric_sources: vec![(foreign.id, loaded(&foreign_values))],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("full ibn preparation");
+        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("full ibn fit");
+        assert_eq!(fit.finite_rank(), 1);
+        assert_eq!(fit.kept_generated_columns(), &[0]);
+        assert_eq!(fit.dropped_generated_columns(), &[1]);
+        assert_eq!(fit.coefficients()[0].status, PreparedOlsFitStatus::Kept);
+        assert_eq!(
+            fit.coefficients()[1].status,
+            PreparedOlsFitStatus::NumericallyRankDeficient
+        );
+        assert_eq!(
+            fit.coefficients()[2].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_close(fit.coefficients()[0].value.expect("foreign=0"), -3.0, 1e-11);
+        assert_close(fit.coefficients()[2].value.expect("intercept"), 13.0, 1e-11);
+        assert!(fit.rank_certificate().passed);
+        assert!(fit.score_certificate().passed);
+    }
+
+    #[test]
     fn factor_interaction_omission_and_vanished_level_keep_exact_slot_semantics() {
         let g = source(1, "g");
         let h = source(2, "h");
@@ -2693,7 +2780,7 @@ mod tests {
             PreparedOlsFitStatus::NumericallyRankDeficient
         );
         assert_close(fit.coefficients()[4].value.expect("intercept"), 1.0, 1e-10);
-        assert_eq!(fit.finite_rank(), 3);
+        assert_eq!(fit.finite_rank(), 2);
     }
 
     #[test]
@@ -2816,7 +2903,7 @@ mod tests {
         );
         assert_eq!(
             fit.bread().coordinates()[1].kind,
-            PreparedOlsBreadCoordinateKind::FiniteRegressor
+            PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
         );
         assert_close(fit.bread().values()[0], 0.5, 1e-12);
         assert_close(fit.bread().values()[1], 0.0, 1e-12);
@@ -3005,7 +3092,11 @@ mod tests {
         assert!(fit.coefficients().is_empty());
         assert!(fit.kept_generated_columns().is_empty());
         assert!(fit.dropped_generated_columns().is_empty());
-        assert_eq!(fit.residuals(), y);
+        let mean = y.iter().sum::<f64>() / y.len() as f64;
+        assert_eq!(
+            fit.residuals(),
+            y.iter().map(|value| value - mean).collect::<Vec<_>>()
+        );
         assert_eq!(fit.score_certificate().moments, 0);
     }
 
@@ -3386,6 +3477,51 @@ mod tests {
             fit_prepared_ols_coefficients_map(&prepared, invalid)
                 .expect_err("invalid policy")
                 .code,
+            ErrorCode::InvalidArgument
+        );
+    }
+
+    #[test]
+    fn corrupted_structural_intercept_metadata_fails_before_map_and_dof() {
+        let x = vec![0.0, 1.0, 2.0];
+        let y = vec![1.0, 2.0, 3.0];
+        let mut corrupted = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        assert!(corrupted.structural_intercept);
+        assert!(!corrupted.report_intercept);
+        corrupted.structural_intercept = false;
+
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            fit_with_controls(
+                &corrupted,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                false,
+            )
+            .expect_err("corrupted structural-intercept metadata must fail")
+            .code,
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(
+            reservation.calls, 0,
+            "structural-intercept corruption must fail before MAP or fit allocation"
+        );
+
+        assert_eq!(
+            super::super::compute_prepared_ols_absorbed_dof(
+                &corrupted,
+                super::super::PreparedOlsAbsorbedDofPolicy::Pairwise,
+            )
+            .expect_err("corrupted structural-intercept metadata must fail DoF")
+            .code,
             ErrorCode::InvalidArgument
         );
     }

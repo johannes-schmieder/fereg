@@ -1,7 +1,8 @@
 use crate::data::{DenseMatrix, PreparedAdjustment, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::{
-    absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap, MapConfig,
+    absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
+    CertifiedBorrowedMap, MapConfig,
 };
 use crate::metadata::SourceId;
 
@@ -73,7 +74,7 @@ pub fn absorb_prepared_ols_rhs_map(
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     };
-    absorb_borrowed_intercept_map_certified(&design, weights, rhs, config)
+    absorb_borrowed_intercept_map_with_structural_constant_certified(&design, weights, rhs, config)
 }
 
 fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
@@ -779,14 +780,19 @@ mod tests {
     }
 
     #[test]
-    fn no_fe_is_identity_and_fe_path_returns_only_certified_values() {
+    fn no_absorb_projects_virtual_constant_and_fe_path_returns_only_certified_values() {
         let no_fe = prepared(false, true);
-        let raw = build_prepared_ols_rhs(&no_fe).expect("raw");
-        let result = absorb_prepared_ols_rhs_map(&no_fe, MapConfig::default()).expect("identity");
-        assert_eq!(result.residualized(), raw.values());
+        let result =
+            absorb_prepared_ols_rhs_map(&no_fe, MapConfig::default()).expect("virtual constant");
+        for column in 0..result.residualized().ncols() {
+            let sum = (0..result.residualized().nrows())
+                .map(|row| result.residualized()[(row, column)])
+                .sum::<f64>();
+            assert!(sum.abs() < 1e-12);
+        }
         assert_eq!(
             result.report().stop_reason,
-            crate::fe::SolveStopReason::NoFixedEffects
+            crate::fe::SolveStopReason::Certified
         );
 
         let with_fe = prepared(true, true);

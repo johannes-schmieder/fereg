@@ -139,7 +139,20 @@ pub fn absorb_borrowed_intercept_map_certified(
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
-    absorb_with_reservation(design, weights, values, config, &mut reservation)
+    absorb_with_reservation(design, weights, values, config, false, &mut reservation)
+}
+
+/// Prepared OLS compatibility path: an empty explicit FE design still owns a
+/// structural one-level constant. The global projection uses only the existing
+/// dense RHS plus O(K) workspace; it never materializes N constant codes.
+pub(crate) fn absorb_borrowed_intercept_map_with_structural_constant_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_with_reservation(design, weights, values, config, true, &mut reservation)
 }
 
 fn absorb_with_reservation<R: WorkspaceReservation>(
@@ -147,6 +160,7 @@ fn absorb_with_reservation<R: WorkspaceReservation>(
     weights: BorrowedMapWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
+    empty_design_is_structural_constant: bool,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(config)?;
@@ -177,7 +191,7 @@ fn absorb_with_reservation<R: WorkspaceReservation>(
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
 
-    if design.effects().is_empty() {
+    if design.effects().is_empty() && !empty_design_is_structural_constant {
         return certified_result(
             values,
             SolveStopReason::NoFixedEffects,
@@ -188,13 +202,36 @@ fn absorb_with_reservation<R: WorkspaceReservation>(
         );
     }
 
-    let initial_certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+    let initial_certificate = if design.effects().is_empty() {
+        certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?
+    } else {
+        certify(design, weights, &values, config.tolerance, &mut workspace)?
+    };
     if initial_certificate.passed {
         return certified_result(
             values,
             SolveStopReason::Certified,
             0,
             initial_certificate,
+            setup_seconds,
+            solve_started.elapsed().as_secs_f64(),
+        );
+    }
+
+    if design.effects().is_empty() {
+        project_structural_constant(weights, &mut values, &mut workspace)?;
+        let certificate =
+            certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?;
+        if !certificate.passed {
+            return Err(invalid_data(
+                "borrowed MAP structural-constant projection failed certification",
+            ));
+        }
+        return certified_result(
+            values,
+            SolveStopReason::Certified,
+            1,
+            certificate,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         );
@@ -275,6 +312,155 @@ fn validate_weights(weights: BorrowedMapWeights<'_>, nrows: usize) -> Result<Val
             })
         }
     }
+}
+
+fn project_structural_constant(
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<()> {
+    structural_constant_means(weights, values, workspace)?;
+    for observation in 0..values.nrows() {
+        for rhs in 0..values.ncols() {
+            let residual = values[(observation, rhs)] - workspace.group_sums[rhs];
+            if !residual.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP structural-constant projection produced a nonfinite residual",
+                ));
+            }
+            values[(observation, rhs)] = residual;
+        }
+    }
+    Ok(())
+}
+
+fn structural_constant_means(
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<f64> {
+    workspace.value_scales.fill(0.0);
+    workspace.group_sums.fill(0.0);
+    workspace.group_corrections.fill(0.0);
+    let mut weight_sum = 0.0_f64;
+    let mut weight_correction = 0.0_f64;
+    for observation in 0..values.nrows() {
+        compensated_add(
+            weights.normalized(observation),
+            &mut weight_sum,
+            &mut weight_correction,
+        )?;
+        for rhs in 0..values.ncols() {
+            workspace.value_scales[rhs] =
+                workspace.value_scales[rhs].max(values[(observation, rhs)].abs());
+        }
+    }
+    let total_weight = weight_sum + weight_correction;
+    if !total_weight.is_finite() || total_weight <= 0.0 {
+        return Err(invalid_data(
+            "borrowed MAP structural-constant weight sum is invalid",
+        ));
+    }
+    for observation in 0..values.nrows() {
+        let weight = weights.normalized(observation);
+        for rhs in 0..values.ncols() {
+            let scale = workspace.value_scales[rhs];
+            if scale != 0.0 {
+                compensated_add(
+                    weight * (values[(observation, rhs)] / scale),
+                    &mut workspace.group_sums[rhs],
+                    &mut workspace.group_corrections[rhs],
+                )?;
+            }
+        }
+    }
+    for rhs in 0..values.ncols() {
+        let scale = workspace.value_scales[rhs];
+        let mean = if scale == 0.0 {
+            0.0
+        } else {
+            scale * ((workspace.group_sums[rhs] + workspace.group_corrections[rhs]) / total_weight)
+        };
+        if !mean.is_finite() {
+            return Err(invalid_data(
+                "borrowed MAP structural-constant mean is not finite",
+            ));
+        }
+        workspace.group_sums[rhs] = mean;
+    }
+    Ok(total_weight)
+}
+
+fn certify_structural_constant(
+    weights: ValidatedWeights<'_>,
+    residuals: &DenseMatrix,
+    tolerance: f64,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<FeCertificate> {
+    weighted_column_norms(
+        residuals,
+        weights,
+        &mut workspace.residual_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+    )?;
+    for rhs in 0..residuals.ncols() {
+        let scale = workspace.reference_norms[rhs].max(workspace.residual_norms[rhs]);
+        if !scale.is_finite() || scale < 0.0 {
+            return Err(invalid_data(
+                "borrowed MAP structural-constant RHS scale is invalid",
+            ));
+        }
+        workspace.rhs_scales[rhs] = scale;
+    }
+    let group_weight = structural_constant_means(weights, residuals, workspace)?;
+    let root_group_weight = group_weight.sqrt();
+    let mut absolute_infinity_norm = 0.0_f64;
+    let mut relative_infinity_norm = 0.0_f64;
+    let mut relative_square_sum = 0.0_f64;
+    for rhs in 0..residuals.ncols() {
+        let mean = workspace.group_sums[rhs];
+        let denominator = workspace.rhs_scales[rhs];
+        let relative = if denominator == 0.0 {
+            if mean == 0.0 {
+                0.0
+            } else {
+                return Err(invalid_data(
+                    "borrowed MAP structural-constant zero-scale certificate failed",
+                ));
+            }
+        } else {
+            (mean.abs() / denominator) * root_group_weight
+        };
+        if !relative.is_finite() {
+            return Err(invalid_data(
+                "borrowed MAP structural-constant certificate ratio is not finite",
+            ));
+        }
+        relative_infinity_norm = relative_infinity_norm.max(relative);
+        relative_square_sum = relative.mul_add(relative, relative_square_sum);
+        let normalized_moment = mean.abs() * group_weight;
+        let raw_moment = normalized_moment * weights.raw_scale;
+        absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
+            raw_moment
+        } else if normalized_moment == 0.0 {
+            0.0
+        } else {
+            f64::INFINITY
+        });
+    }
+    let relative_two_norm = (relative_square_sum / residuals.ncols() as f64).sqrt();
+    if !relative_two_norm.is_finite() {
+        return Err(invalid_data(
+            "borrowed MAP structural-constant certificate norm is not finite",
+        ));
+    }
+    Ok(FeCertificate {
+        absolute_infinity_norm,
+        relative_infinity_norm,
+        relative_two_norm,
+        passed: relative_infinity_norm <= tolerance,
+    })
 }
 
 fn project_effect(
@@ -641,6 +827,7 @@ mod tests {
         fail_at: Option<usize>,
         skip_at: Option<usize>,
         calls: usize,
+        records: Vec<(usize, &'static str)>,
     }
 
     impl WorkspaceReservation for InjectedReservation {
@@ -648,10 +835,11 @@ mod tests {
             &mut self,
             target: &mut Vec<f64>,
             additional: usize,
-            _label: &'static str,
+            label: &'static str,
         ) -> Result<()> {
             let call = self.calls;
             self.calls = self.calls.checked_add(1).expect("small reservation count");
+            self.records.push((additional, label));
             if self.fail_at == Some(call) {
                 return Err(allocation("injected borrowed MAP allocation failure"));
             }
@@ -687,6 +875,7 @@ mod tests {
             BorrowedMapWeights::Unit,
             DenseMatrix::from_columns(&columns).expect("matrix"),
             config(),
+            false,
             &mut successful,
         )
         .expect("successful run");
@@ -702,6 +891,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 DenseMatrix::from_columns(&columns).expect("matrix"),
                 config(),
+                false,
                 &mut injected,
             )
             .expect_err("injected allocation must fail");
@@ -718,9 +908,91 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 DenseMatrix::from_columns(&columns).expect("matrix"),
                 config(),
+                false,
                 &mut injected,
             )
             .expect_err("undersized allocation must fail");
+            assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
+        }
+    }
+
+    #[test]
+    fn structural_constant_empty_design_allocations_are_fallible_and_only_rhs_scale() {
+        let observations = 4096;
+        let rhs_count = 3;
+        let design =
+            BorrowedInterceptFeDesign::new(observations, Vec::new()).expect("empty design");
+        let columns = (0..rhs_count)
+            .map(|column| {
+                (0..observations)
+                    .map(|row| (row as f64).sin() + column as f64)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let labels = [
+            "unable to reserve borrowed MAP reference norms",
+            "unable to reserve borrowed MAP residual norms",
+            "unable to reserve borrowed MAP RHS scales",
+            "unable to reserve borrowed MAP value scales",
+            "unable to reserve borrowed MAP group sums",
+            "unable to reserve borrowed MAP group corrections",
+        ];
+
+        let mut successful = InjectedReservation::default();
+        let result = absorb_with_reservation(
+            &design,
+            BorrowedMapWeights::Unit,
+            DenseMatrix::from_columns(&columns).expect("structural RHS"),
+            config(),
+            true,
+            &mut successful,
+        )
+        .expect("structural constant projection");
+        assert!(result.report().certified());
+        assert_eq!(result.report().iterations, 1);
+        assert_eq!(successful.calls, labels.len());
+        assert_eq!(
+            successful.records,
+            labels
+                .into_iter()
+                .map(|label| (rhs_count, label))
+                .collect::<Vec<_>>()
+        );
+        assert!(successful
+            .records
+            .iter()
+            .all(|(additional, _)| *additional < observations));
+
+        for fail_at in 0..successful.calls {
+            let mut injected = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            let error = absorb_with_reservation(
+                &design,
+                BorrowedMapWeights::Unit,
+                DenseMatrix::from_columns(&columns).expect("structural RHS"),
+                config(),
+                true,
+                &mut injected,
+            )
+            .expect_err("structural constant allocation must fail closed");
+            assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
+        }
+        for skip_at in 0..successful.calls {
+            let mut injected = InjectedReservation {
+                skip_at: Some(skip_at),
+                ..InjectedReservation::default()
+            };
+            let error = absorb_with_reservation(
+                &design,
+                BorrowedMapWeights::Unit,
+                DenseMatrix::from_columns(&columns).expect("structural RHS"),
+                config(),
+                true,
+                &mut injected,
+            )
+            .expect_err("undersized structural workspace must fail closed");
             assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
         }
     }
@@ -772,6 +1044,7 @@ mod tests {
             BorrowedMapWeights::Unit,
             DenseMatrix::zeros(0, 1).expect("matrix"),
             config(),
+            false,
             &mut reservation,
         )
         .expect_err("empty rows");

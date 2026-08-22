@@ -1492,7 +1492,7 @@ mod tests {
     }
 
     #[test]
-    fn opt_in_map_check_runs_before_writes_and_preserves_default_empty_behavior() {
+    fn opt_in_map_check_runs_structural_constant_before_writes() {
         let (mut args, mut spi) = fixture();
         args.push("run_borrowed_map=1".to_owned());
         let output = BufferSink::default();
@@ -1501,7 +1501,8 @@ mod tests {
         assert!(displayed.contains("stfixest.prepare_ols.map_checked=1"));
         assert!(displayed.contains("stfixest.prepare_ols.rhs_rows=2"));
         assert!(displayed.contains("stfixest.prepare_ols.rhs_columns=3"));
-        assert!(displayed.contains("stfixest.prepare_ols.map_stop=no_fixed_effects"));
+        assert!(displayed.contains("stfixest.prepare_ols.map_iterations=1"));
+        assert!(displayed.contains("stfixest.prepare_ols.map_stop=certified"));
         assert!(displayed.contains("stfixest.prepare_ols.map_certified=1"));
         assert_eq!(spi.writes.len(), 15);
 

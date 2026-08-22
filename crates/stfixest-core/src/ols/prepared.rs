@@ -259,6 +259,12 @@ pub struct PreparedOlsData {
     pub sample: PreparedNumericSample,
     pub categorical_sources: Vec<PreparedCategoricalSource>,
     pub fe_topology: PreparedOlsFeTopology,
+    /// Whether the model contains a structural constant direction. With no
+    /// explicit absorb terms, the pinned reference synthesizes a virtual
+    /// one-level absorbed constant even under `noconstant`.
+    pub structural_intercept: bool,
+    /// Whether the structural constant is exposed as the `_cons` coefficient.
+    pub report_intercept: bool,
     pub singletons: PreparedOlsSingletons,
 }
 
@@ -434,6 +440,9 @@ impl OlsRequestV1 {
         self.model.validate_executable_metadata()?;
         validate_absorbed_preparation(self)?;
         validate_bindings(self)?;
+        let structural_intercept =
+            self.absorbed_terms.is_empty() || self.absorbed_terms.iter().any(|term| term.intercept);
+        let report_intercept = self.include_intercept && structural_intercept;
 
         let categorical_source_indices = categorical_source_indices(self)?;
         let mut columns = Vec::new();
@@ -443,7 +452,7 @@ impl OlsRequestV1 {
                 self.model
                     .terms
                     .len()
-                    .checked_add(usize::from(self.include_intercept))
+                    .checked_add(usize::from(report_intercept))
                     .ok_or_else(|| allocation("prepared OLS column count overflows"))?,
             )
             .map_err(|_| allocation("unable to reserve prepared OLS columns"))?;
@@ -452,7 +461,7 @@ impl OlsRequestV1 {
                 self.model
                     .terms
                     .len()
-                    .checked_add(usize::from(self.include_intercept))
+                    .checked_add(usize::from(report_intercept))
                     .ok_or_else(|| allocation("prepared OLS coefficient count overflows"))?,
             )
             .map_err(|_| allocation("unable to reserve prepared OLS coefficients"))?;
@@ -550,7 +559,7 @@ impl OlsRequestV1 {
             }
         }
 
-        if self.include_intercept {
+        if report_intercept {
             let next = self
                 .model
                 .terms
@@ -649,6 +658,11 @@ pub fn prepare_ols_data(
         sample,
         categorical_sources,
         fe_topology,
+        structural_intercept: request.absorbed_terms.is_empty()
+            || request.absorbed_terms.iter().any(|term| term.intercept),
+        report_intercept: request.include_intercept
+            && (request.absorbed_terms.is_empty()
+                || request.absorbed_terms.iter().any(|term| term.intercept)),
         singletons: PreparedOlsSingletons {
             kept_by_request: request.keep_singletons,
             num_singletons,
@@ -3405,15 +3419,18 @@ mod tests {
                 saved_name: "saved".to_owned(),
             },
         ] {
-            let mut request = mixed_numeric_factor_request();
-            request.absorbed_terms = vec![term];
-            assert_eq!(
-                request
-                    .validate_and_compile()
-                    .expect_err("unsupported FE shape")
-                    .code,
-                ErrorCode::Unsupported
-            );
+            for include_intercept in [true, false] {
+                let mut request = mixed_numeric_factor_request();
+                request.include_intercept = include_intercept;
+                request.absorbed_terms = vec![term.clone()];
+                assert_eq!(
+                    request
+                        .validate_and_compile()
+                        .expect_err("unsupported FE shape before loading")
+                        .code,
+                    ErrorCode::Unsupported
+                );
+            }
         }
     }
 }

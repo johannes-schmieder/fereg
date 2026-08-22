@@ -22,11 +22,21 @@ impl Default for PreparedOlsAbsorbedDofPolicy {
 }
 
 /// One wire-ordered row of the prepared absorbed-DoF table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparedOlsAbsorbedDofEffectIdentity {
+    Explicit {
+        term_id: AbsorbTermId,
+        source: SourceId,
+    },
+    /// Virtual one-level HDFE synthesized by the pinned no-absorb contract.
+    ImplicitNoAbsorb,
+}
+
+/// One wire-ordered row of the prepared absorbed-DoF table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedOlsAbsorbedDofEffect {
-    pub term_id: AbsorbTermId,
+    pub identity: PreparedOlsAbsorbedDofEffectIdentity,
     pub label: String,
-    pub source: SourceId,
     pub categories: usize,
     pub redundant: usize,
     pub coefficients: usize,
@@ -158,15 +168,42 @@ fn compute_with_reservation<R: PreparedDofReservation>(
     }
 
     let mut rows = Vec::new();
+    let implicit_no_absorb =
+        prepared.structural_intercept && effects.is_empty() && prepared.sample.n_active() > 0;
     reservation.reserve_vec(
         &mut rows,
-        effects.len(),
+        effects
+            .len()
+            .checked_add(usize::from(implicit_no_absorb))
+            .ok_or_else(|| allocation("prepared absorbed-DoF row count overflows"))?,
         "unable to reserve prepared absorbed-DoF effect rows",
     )?;
     let mut initial_categories = 0_usize;
     let mut redundant_categories = 0_usize;
     let mut absorbed_rank = 0_usize;
     let mut is_approximate = false;
+    if implicit_no_absorb {
+        let label = fallible_string_copy(
+            "_cons",
+            reservation,
+            "unable to reserve implicit no-absorb DoF label",
+        )?;
+        push_reserved(
+            &mut rows,
+            PreparedOlsAbsorbedDofEffect {
+                identity: PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb,
+                label,
+                categories: 1,
+                redundant: 0,
+                coefficients: 1,
+                redundancy_exact: true,
+                nested: false,
+            },
+            "prepared absorbed-DoF implicit-row capacity exhausted",
+        )?;
+        initial_categories = 1;
+        absorbed_rank = 1;
+    }
     for (effect_index, effect) in effects.iter().enumerate() {
         let categories = effect_level_count(prepared, effect_index)?;
         let effect_redundant = redundant[effect_index];
@@ -196,9 +233,11 @@ fn compute_with_reservation<R: PreparedDofReservation>(
         push_reserved(
             &mut rows,
             PreparedOlsAbsorbedDofEffect {
-                term_id: effect.term_id,
+                identity: PreparedOlsAbsorbedDofEffectIdentity::Explicit {
+                    term_id: effect.term_id,
+                    source: effect.source,
+                },
                 label,
-                source: effect.source,
                 categories,
                 redundant: effect_redundant,
                 coefficients,
@@ -230,6 +269,11 @@ fn compute_with_reservation<R: PreparedDofReservation>(
 fn validate_prepared_topology(prepared: &PreparedOlsData) -> Result<()> {
     let topology = &prepared.fe_topology;
     let nobs = prepared.sample.n_active();
+    if !prepared.structural_intercept {
+        return Err(invalid_argument(
+            "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface",
+        ));
+    }
     if topology.nobs() != nobs {
         return Err(invalid_argument(
             "prepared absorbed-DoF topology is not aligned with the final sample",
@@ -788,7 +832,12 @@ mod tests {
             pairwise
                 .effects
                 .iter()
-                .map(|effect| effect.term_id.get())
+                .map(|effect| match effect.identity {
+                    PreparedOlsAbsorbedDofEffectIdentity::Explicit { term_id, .. } => term_id.get(),
+                    PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb => {
+                        panic!("unexpected implicit row")
+                    }
+                })
                 .collect::<Vec<_>>(),
             [1, 2, 3]
         );
@@ -877,13 +926,19 @@ mod tests {
     }
 
     #[test]
-    fn no_effect_and_empty_structural_topologies_are_zero_rank() {
+    fn no_absorb_has_one_implicit_rank_while_empty_explicit_topology_is_zero_rank() {
         let no_effects = prepared_case_n(4, &[], TestWeights::Unit);
         let report =
             compute_prepared_ols_absorbed_dof(&no_effects, PreparedOlsAbsorbedDofPolicy::Pairwise)
                 .expect("no-effect DoF");
-        assert_eq!(report.absorbed_rank, 0);
-        assert!(report.effects.is_empty());
+        assert_eq!(report.absorbed_rank, 1);
+        assert_eq!(report.initial_categories, 1);
+        assert_eq!(report.effects.len(), 1);
+        assert_eq!(
+            report.effects[0].identity,
+            PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+        );
+        assert_eq!(report.effects[0].label, "_cons");
         assert!(!report.is_approximate);
 
         let empty: [u32; 0] = [];

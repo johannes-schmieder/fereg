@@ -3,9 +3,9 @@ use crate::error::{ErrorCode, Result, StFixestError};
 
 use super::{
     compute_prepared_ols_absorbed_dof, fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate,
-    PreparedOlsBreadCoordinateKind, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig,
-    PreparedOlsFitStatus,
+    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
+    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
 };
 
 /// Numerical and structural policy for the prepared iid OLS/WLS checkpoint.
@@ -200,10 +200,20 @@ impl InferenceReservation for SystemInferenceReservation {
 #[derive(Debug, Clone, Copy, Default)]
 struct InferencePerturbations {
     rss: bool,
+    tss: bool,
     residual_dof: bool,
+    variance_scale: bool,
     covariance: bool,
+    standard_error: bool,
     within_tss: bool,
-    statistic: bool,
+    r_squared: bool,
+    adjusted_r_squared: bool,
+    within_r_squared: bool,
+    adjusted_within_r_squared: bool,
+    root_mean_squared_error: bool,
+    f_statistic: bool,
+    gaussian_log_likelihood: bool,
+    gaussian_null_log_likelihood: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -219,8 +229,15 @@ struct InferenceCertificateInputs {
     rss: f64,
     tss: f64,
     within_tss: f64,
+    wald_solve_relative_infinity_norm: f64,
     reference_weight_sum_relative_error: f64,
     tolerance: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WaldFCalculation {
+    statistic: Option<f64>,
+    solve_relative_infinity_norm: f64,
 }
 
 impl ReferenceWeightView<'_> {
@@ -316,6 +333,10 @@ fn compose_internal<R: InferenceReservation>(
         fit.initial_absorbed_outcome_sum_of_squares()
     };
     let certified_rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
+    let mut tss = certified_tss;
+    if perturbations.tss {
+        tss *= 1.25;
+    }
     let mut within_tss = certified_within_tss;
     if perturbations.within_tss {
         within_tss *= 1.25;
@@ -324,17 +345,47 @@ fn compose_internal<R: InferenceReservation>(
     if perturbations.rss {
         rss *= 1.25;
     }
-    validate_sum_of_squares(rss, certified_tss, within_tss)?;
+    validate_sum_of_squares(rss, tss, within_tss)?;
 
-    let mut statistics = build_statistics(rss, certified_tss, within_tss, weights, dof)?;
-    if perturbations.statistic {
+    let mut statistics = build_statistics(rss, tss, within_tss, weights, dof)?;
+    if perturbations.r_squared {
+        perturb_optional_statistic(&mut statistics.r_squared)?;
+    }
+    if perturbations.adjusted_r_squared {
+        perturb_optional_statistic(&mut statistics.adjusted_r_squared)?;
+    }
+    if perturbations.within_r_squared {
+        perturb_optional_statistic(&mut statistics.within_r_squared)?;
+    }
+    if perturbations.adjusted_within_r_squared {
+        perturb_optional_statistic(&mut statistics.adjusted_within_r_squared)?;
+    }
+    if perturbations.root_mean_squared_error {
         statistics.root_mean_squared_error += 0.25;
     }
+    if perturbations.gaussian_log_likelihood {
+        perturb_optional_statistic(&mut statistics.gaussian_log_likelihood)?;
+    }
+    if perturbations.gaussian_null_log_likelihood {
+        perturb_optional_statistic(&mut statistics.gaussian_null_log_likelihood)?;
+    }
     let mut covariance = build_covariance(&fit, rss, dof.residual_dof, reservation)?;
+    let wald = build_wald_f(prepared, &fit, &covariance, dof, reservation)?;
+    statistics.f_statistic = wald.statistic;
+    if perturbations.f_statistic {
+        perturb_optional_statistic(&mut statistics.f_statistic)?;
+    }
+    if perturbations.variance_scale {
+        covariance.variance_scale += 0.25;
+    }
     if perturbations.covariance && !covariance.values.is_empty() {
         covariance.values[0] += 0.25;
     }
+    if perturbations.standard_error && !covariance.standard_errors.is_empty() {
+        covariance.standard_errors[0] += 0.25;
+    }
     let certificate = certify_inference(
+        prepared,
         &fit,
         weights,
         dof,
@@ -344,6 +395,7 @@ fn compose_internal<R: InferenceReservation>(
             rss: certified_rss,
             tss: certified_tss,
             within_tss: certified_within_tss,
+            wald_solve_relative_infinity_norm: wald.solve_relative_infinity_norm,
             reference_weight_sum_relative_error: weight_sum_relative_error,
             tolerance,
         },
@@ -376,13 +428,29 @@ fn validate_config(config: PreparedOlsUnadjustedConfig) -> Result<()> {
     Ok(())
 }
 
+fn perturb_optional_statistic(value: &mut Option<f64>) -> Result<()> {
+    let value = value.as_mut().ok_or_else(|| {
+        invalid_argument("injected prepared iid perturbation requires a defined statistic")
+    })?;
+    *value += 0.25;
+    Ok(())
+}
+
 fn validate_fit_and_absorbed_dof(
     prepared: &PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     absorbed: &PreparedOlsAbsorbedDofReport,
 ) -> Result<()> {
     let nobs = prepared.sample.n_active();
+    let reported_intercepts = prepared
+        .model
+        .columns
+        .iter()
+        .filter(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
+        .count();
     if nobs == 0
+        || reported_intercepts != usize::from(prepared.report_intercept)
+        || prepared.report_intercept && !prepared.structural_intercept
         || fit.residuals().len() != nobs
         || fit.coefficients().len() != prepared.model.coefficients.len()
         || !fit.rank_certificate().passed
@@ -480,14 +548,24 @@ fn validate_fit_and_absorbed_dof(
     }
     if finite_coordinates != fit.finite_rank()
         || normalized_coordinates > 1
-        || (normalized_coordinates == 1 && prepared.fe_topology.effects().is_empty())
+        || (normalized_coordinates == 1
+            && (!prepared.structural_intercept || !prepared.report_intercept))
     {
         return Err(invalid_argument(
             "prepared iid covariance-coordinate rank is inconsistent",
         ));
     }
 
-    if absorbed.effects.len() != prepared.fe_topology.effects().len() {
+    let implicit_no_absorb = prepared.structural_intercept
+        && prepared.fe_topology.effects().is_empty()
+        && prepared.sample.n_active() > 0;
+    let expected_effect_rows = prepared
+        .fe_topology
+        .effects()
+        .len()
+        .checked_add(usize::from(implicit_no_absorb))
+        .ok_or_else(|| allocation("prepared iid absorbed row count overflows"))?;
+    if absorbed.effects.len() != expected_effect_rows {
         return Err(invalid_argument(
             "prepared iid absorbed-DoF report dimensions are inconsistent",
         ));
@@ -496,15 +574,39 @@ fn validate_fit_and_absorbed_dof(
     let mut redundant = 0_usize;
     let mut rank = 0_usize;
     let mut approximate = false;
-    for (effect, row) in prepared.fe_topology.effects().iter().zip(&absorbed.effects) {
+    let mut explicit_rows = absorbed.effects.as_slice();
+    if implicit_no_absorb {
+        let (implicit, remaining) = explicit_rows
+            .split_first()
+            .ok_or_else(|| invalid_argument("prepared iid implicit DoF row is absent"))?;
+        if implicit.identity != PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+            || implicit.label != "_cons"
+            || implicit.categories != 1
+            || implicit.redundant != 0
+            || implicit.coefficients != 1
+            || !implicit.redundancy_exact
+            || implicit.nested
+        {
+            return Err(invalid_argument(
+                "prepared iid implicit no-absorb DoF row is inconsistent",
+            ));
+        }
+        initial = 1;
+        rank = 1;
+        explicit_rows = remaining;
+    }
+    for (effect, row) in prepared.fe_topology.effects().iter().zip(explicit_rows) {
         let source = prepared
             .fe_topology
             .sources()
             .get(effect.topology_source_index)
             .ok_or_else(|| invalid_argument("prepared iid FE source is out of range"))?;
-        if row.term_id != effect.term_id
+        if row.identity
+            != (PreparedOlsAbsorbedDofEffectIdentity::Explicit {
+                term_id: effect.term_id,
+                source: effect.source,
+            })
             || row.label != effect.label
-            || row.source != effect.source
             || row.categories != source.n_levels()
             || row.redundant > row.categories
             || row.coefficients != row.categories - row.redundant
@@ -719,9 +821,18 @@ fn build_residual_dof(
             "prepared iid model contains multiple reported intercept coordinates",
         ));
     }
+    let ordinary_intercept_requested = prepared.report_intercept;
+    let has_absorbed_intercept = prepared.structural_intercept;
+    // The structural constant direction is a property of the requested model
+    // span, not of whichever duplicate coordinate won a numerical pivot tie.
+    // Absorbed intercepts own that direction; otherwise a requested `_cons`
+    // consumes one finite-rank direction even if another constant column spans
+    // the same space.
+    let finite_intercept_rank =
+        usize::from(ordinary_intercept_requested && !has_absorbed_intercept);
     let finite_model_dof = fit
         .finite_rank()
-        .checked_sub(finite_intercepts)
+        .checked_sub(finite_intercept_rank)
         .ok_or_else(|| invalid_argument("prepared iid finite model DoF underflowed"))?;
     let model_rank = fit
         .finite_rank()
@@ -734,9 +845,7 @@ fn build_residual_dof(
         .ok_or_else(|| {
             invalid_data("prepared iid model has no positive residual degrees of freedom")
         })?;
-    let has_structural_intercept = finite_intercepts == 1
-        || normalized_intercepts == 1
-        || !prepared.fe_topology.effects().is_empty();
+    let has_structural_intercept = prepared.structural_intercept;
     Ok(PreparedOlsResidualDofReport {
         finite_rank: fit.finite_rank(),
         finite_model_dof,
@@ -758,7 +867,6 @@ fn build_statistics(
 ) -> Result<PreparedOlsFitStatistics> {
     let n = exact_integer_as_f64(weights.effective_observations as u128)?;
     let df_r = exact_integer_as_f64(dof.residual_dof as u128)?;
-    let df_m = exact_integer_as_f64(dof.finite_model_dof as u128)?;
     let centered_dof = weights
         .effective_observations
         .checked_sub(usize::from(dof.has_structural_intercept));
@@ -780,12 +888,6 @@ fn build_statistics(
         None
     };
     let root_mean_squared_error = (rss / df_r).sqrt();
-    let explained_within = within_tss - rss;
-    let f_statistic = if dof.finite_model_dof > 0 && rss > 0.0 && explained_within >= 0.0 {
-        Some((explained_within / df_m) / (rss / df_r))
-    } else {
-        None
-    };
     let gaussian_log_likelihood = gaussian_log_likelihood_from_ss(rss, n)?;
     let gaussian_null_log_likelihood = gaussian_log_likelihood_from_ss(within_tss, n)?;
     for value in [
@@ -793,7 +895,6 @@ fn build_statistics(
         adjusted_r_squared,
         within_r_squared,
         adjusted_within_r_squared,
-        f_statistic,
         gaussian_log_likelihood,
         gaussian_null_log_likelihood,
     ]
@@ -818,7 +919,7 @@ fn build_statistics(
         within_r_squared,
         adjusted_within_r_squared,
         root_mean_squared_error,
-        f_statistic,
+        f_statistic: None,
         gaussian_log_likelihood,
         gaussian_null_log_likelihood,
     })
@@ -880,7 +981,199 @@ fn build_covariance<R: InferenceReservation>(
     })
 }
 
+fn build_wald_f<R: InferenceReservation>(
+    prepared: &PreparedOlsData,
+    fit: &CertifiedPreparedOlsFit,
+    covariance: &PreparedOlsUnadjustedCovariance,
+    dof: PreparedOlsResidualDofReport,
+    reservation: &mut R,
+) -> Result<WaldFCalculation> {
+    let dimension = covariance.dimension();
+    if dimension != fit.bread().coordinates().len() {
+        return Err(invalid_argument(
+            "prepared iid Wald covariance coordinates are inconsistent",
+        ));
+    }
+    if dof.finite_model_dof == 0 || covariance.variance_scale == 0.0 {
+        return Ok(WaldFCalculation {
+            statistic: None,
+            solve_relative_infinity_norm: 0.0,
+        });
+    }
+
+    let slope_dimension = dof.finite_model_dof;
+    let mut slope_positions = reserved_filled(
+        reservation,
+        slope_dimension,
+        0_usize,
+        "unable to reserve prepared iid Wald slope coordinates",
+    )?;
+    let mut slope_count = 0_usize;
+    for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
+        let column = prepared
+            .model
+            .columns
+            .get(coordinate.generated_column_index)
+            .ok_or_else(|| invalid_argument("prepared iid Wald coordinate is out of range"))?;
+        if matches!(column.kind, PreparedOlsColumnKind::Intercept) {
+            continue;
+        }
+        let target = slope_positions.get_mut(slope_count).ok_or_else(|| {
+            invalid_argument("prepared iid Wald slope count exceeds finite model DoF")
+        })?;
+        *target = position;
+        slope_count = slope_count
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared iid Wald slope count overflows"))?;
+    }
+    if slope_count != slope_dimension {
+        return Err(invalid_argument(
+            "prepared iid Wald slope count differs from finite model DoF",
+        ));
+    }
+
+    let square = checked_square(
+        slope_dimension,
+        "prepared iid Wald dimensions overflow usize",
+    )?;
+    let mut factor = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared iid Wald factor",
+    )?;
+    for row in 0..slope_dimension {
+        for column in 0..=row {
+            let covariance_row = slope_positions[row];
+            let covariance_column = slope_positions[column];
+            let mut value = covariance.values[covariance_row * dimension + covariance_column];
+            for inner in 0..column {
+                value -= factor[row * slope_dimension + inner]
+                    * factor[column * slope_dimension + inner];
+            }
+            if row == column {
+                if !value.is_finite() || value <= 0.0 {
+                    return Err(invalid_data(
+                        "prepared iid Wald covariance is not positive definite",
+                    ));
+                }
+                factor[row * slope_dimension + column] = value.sqrt();
+            } else {
+                let diagonal = factor[column * slope_dimension + column];
+                let entry = value / diagonal;
+                if !entry.is_finite() {
+                    return Err(invalid_data(
+                        "prepared iid Wald Cholesky factor is not finite",
+                    ));
+                }
+                factor[row * slope_dimension + column] = entry;
+            }
+        }
+    }
+
+    let mut solution = reserved_filled(
+        reservation,
+        slope_dimension,
+        0.0_f64,
+        "unable to reserve prepared iid Wald solution",
+    )?;
+    for (slope, position) in slope_positions.iter().copied().enumerate() {
+        solution[slope] = fitted_coordinate_value(fit, position)?;
+    }
+    for row in 0..slope_dimension {
+        let mut value = solution[row];
+        for column in 0..row {
+            value -= factor[row * slope_dimension + column] * solution[column];
+        }
+        solution[row] = value / factor[row * slope_dimension + row];
+        if !solution[row].is_finite() {
+            return Err(invalid_data(
+                "prepared iid Wald forward solve is not finite",
+            ));
+        }
+    }
+    for row in (0..slope_dimension).rev() {
+        let mut value = solution[row];
+        for column in (row + 1)..slope_dimension {
+            value -= factor[column * slope_dimension + row] * solution[column];
+        }
+        solution[row] = value / factor[row * slope_dimension + row];
+        if !solution[row].is_finite() {
+            return Err(invalid_data(
+                "prepared iid Wald backward solve is not finite",
+            ));
+        }
+    }
+
+    let mut quadratic = 0.0_f64;
+    let mut quadratic_correction = 0.0_f64;
+    let mut solve_relative_infinity_norm = 0.0_f64;
+    for row in 0..slope_dimension {
+        let coefficient = fitted_coordinate_value(fit, slope_positions[row])?;
+        compensated_add(
+            coefficient * solution[row],
+            &mut quadratic,
+            &mut quadratic_correction,
+        )?;
+        let mut fitted = 0.0_f64;
+        let mut fitted_correction = 0.0_f64;
+        let mut row_scale = coefficient.abs();
+        for column in 0..slope_dimension {
+            let value = covariance.values
+                [slope_positions[row] * dimension + slope_positions[column]]
+                * solution[column];
+            compensated_add(value, &mut fitted, &mut fitted_correction)?;
+            row_scale += value.abs();
+            if !row_scale.is_finite() {
+                return Err(invalid_data("prepared iid Wald solve scale is not finite"));
+            }
+        }
+        let residual = (fitted + fitted_correction - coefficient).abs();
+        solve_relative_infinity_norm =
+            solve_relative_infinity_norm.max(residual / row_scale.max(f64::MIN_POSITIVE));
+    }
+    quadratic += quadratic_correction;
+    if !quadratic.is_finite() || quadratic < 0.0 || !solve_relative_infinity_norm.is_finite() {
+        return Err(invalid_data(
+            "prepared iid Wald quadratic or solve certificate is invalid",
+        ));
+    }
+    let statistic = quadratic / exact_integer_as_f64(slope_dimension as u128)?;
+    if !statistic.is_finite() {
+        return Err(invalid_data("prepared iid Wald F statistic is not finite"));
+    }
+    Ok(WaldFCalculation {
+        statistic: Some(statistic),
+        solve_relative_infinity_norm,
+    })
+}
+
+fn fitted_coordinate_value(fit: &CertifiedPreparedOlsFit, position: usize) -> Result<f64> {
+    let coordinate = fit
+        .bread()
+        .coordinates()
+        .get(position)
+        .ok_or_else(|| invalid_argument("prepared iid fitted coordinate is out of range"))?;
+    let fitted = fit
+        .coefficients()
+        .iter()
+        .find(|coefficient| {
+            coefficient.generated_column_index == Some(coordinate.generated_column_index)
+        })
+        .ok_or_else(|| invalid_argument("prepared iid fitted coordinate has no coefficient"))?;
+    if fitted.status != PreparedOlsFitStatus::Kept {
+        return Err(invalid_argument(
+            "prepared iid Wald slope coordinate is not a kept finite coefficient",
+        ));
+    }
+    fitted
+        .value
+        .filter(|value| value.is_finite())
+        .ok_or_else(|| invalid_data("prepared iid Wald coefficient is not finite"))
+}
+
 fn certify_inference(
+    prepared: &PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
@@ -888,6 +1181,14 @@ fn certify_inference(
     covariance: &PreparedOlsUnadjustedCovariance,
     inputs: InferenceCertificateInputs,
 ) -> Result<PreparedOlsUnadjustedCertificate> {
+    let ordinary_intercept_requested = prepared.report_intercept;
+    let has_absorbed_intercept = prepared.structural_intercept;
+    let expected_finite_intercept_rank =
+        usize::from(ordinary_intercept_requested && !has_absorbed_intercept);
+    let expected_finite_model_dof = fit
+        .finite_rank()
+        .checked_sub(expected_finite_intercept_rank)
+        .ok_or_else(|| invalid_data("prepared iid certificate finite model DoF underflowed"))?;
     let expected_model_rank = dof
         .finite_rank
         .checked_add(dof.absorbed_rank)
@@ -896,7 +1197,10 @@ fn certify_inference(
         .effective_observations
         .checked_sub(expected_model_rank)
         .ok_or_else(|| invalid_data("prepared iid certificate residual DoF underflowed"))?;
-    if dof.model_rank != expected_model_rank
+    if dof.finite_rank != fit.finite_rank()
+        || dof.finite_model_dof != expected_finite_model_dof
+        || dof.has_structural_intercept != prepared.structural_intercept
+        || dof.model_rank != expected_model_rank
         || dof.residual_dof != expected_residual
         || dof.residual_dof == 0
     {
@@ -932,7 +1236,7 @@ fn certify_inference(
             "prepared iid certificate covariance dimensions are inconsistent",
         ));
     }
-    let expected_scale = statistics.rss / exact_integer_as_f64(dof.residual_dof as u128)?;
+    let expected_scale = inputs.rss / exact_integer_as_f64(dof.residual_dof as u128)?;
     let mut covariance_scale_relative_infinity_norm = relative_difference(
         covariance.variance_scale,
         expected_scale,
@@ -979,45 +1283,8 @@ fn certify_inference(
             )?);
     }
 
-    let expected_statistics = build_statistics(
-        statistics.rss,
-        statistics.tss,
-        statistics.within_tss,
-        weights,
-        dof,
-    )?;
-    let mut statistic_formula_relative_infinity_norm = relative_difference(
-        statistics.root_mean_squared_error,
-        expected_statistics.root_mean_squared_error,
-        expected_statistics.root_mean_squared_error.abs().max(1.0),
-    )?;
-    for (actual, expected) in [
-        (statistics.r_squared, expected_statistics.r_squared),
-        (
-            statistics.adjusted_r_squared,
-            expected_statistics.adjusted_r_squared,
-        ),
-        (
-            statistics.within_r_squared,
-            expected_statistics.within_r_squared,
-        ),
-        (
-            statistics.adjusted_within_r_squared,
-            expected_statistics.adjusted_within_r_squared,
-        ),
-        (statistics.f_statistic, expected_statistics.f_statistic),
-        (
-            statistics.gaussian_log_likelihood,
-            expected_statistics.gaussian_log_likelihood,
-        ),
-        (
-            statistics.gaussian_null_log_likelihood,
-            expected_statistics.gaussian_null_log_likelihood,
-        ),
-    ] {
-        statistic_formula_relative_infinity_norm = statistic_formula_relative_infinity_norm
-            .max(optional_relative_difference(actual, expected)?);
-    }
+    let statistic_formula_relative_infinity_norm =
+        certify_statistic_identities(statistics, weights, dof, inputs)?;
     let passed = inputs.reference_weight_sum_relative_error <= inputs.tolerance
         && sum_of_squares_order_relative_error <= inputs.tolerance
         && covariance_scale_relative_infinity_norm <= inputs.tolerance
@@ -1039,6 +1306,140 @@ fn certify_inference(
         minimum_covariance_diagonal,
         passed,
     })
+}
+
+fn certify_statistic_identities(
+    statistics: PreparedOlsFitStatistics,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    inputs: InferenceCertificateInputs,
+) -> Result<f64> {
+    let n = exact_integer_as_f64(weights.effective_observations as u128)?;
+    let df_r = exact_integer_as_f64(dof.residual_dof as u128)?;
+    let df_m = exact_integer_as_f64(dof.finite_model_dof as u128)?;
+    let centered_dof = weights
+        .effective_observations
+        .checked_sub(usize::from(dof.has_structural_intercept));
+    let within_baseline_dof = dof
+        .residual_dof
+        .checked_add(dof.finite_model_dof)
+        .ok_or_else(|| allocation("prepared iid certificate within baseline DoF overflows"))?;
+    let sum_scale = inputs.rss.max(inputs.tss).max(inputs.within_tss).max(1.0);
+    let mut norm = inputs.wald_solve_relative_infinity_norm;
+
+    norm = norm.max(optional_identity_error(
+        statistics.r_squared,
+        inputs.tss > 0.0,
+        |value| relative_difference((1.0 - value) * inputs.tss, inputs.rss, sum_scale),
+    )?);
+    let adjusted_defined = inputs.tss > 0.0 && centered_dof.is_some_and(|value| value > 0);
+    norm = norm.max(optional_identity_error(
+        statistics.adjusted_r_squared,
+        adjusted_defined,
+        |value| {
+            let baseline_dof = exact_integer_as_f64(
+                centered_dof.ok_or_else(|| invalid_data("prepared iid centered DoF is absent"))?
+                    as u128,
+            )?;
+            relative_difference(
+                (1.0 - value) * (df_r / baseline_dof),
+                inputs.rss / inputs.tss,
+                1.0,
+            )
+        },
+    )?);
+    norm = norm.max(optional_identity_error(
+        statistics.within_r_squared,
+        inputs.within_tss > 0.0,
+        |value| relative_difference((1.0 - value) * inputs.within_tss, inputs.rss, sum_scale),
+    )?);
+    norm = norm.max(optional_identity_error(
+        statistics.adjusted_within_r_squared,
+        inputs.within_tss > 0.0 && within_baseline_dof > 0,
+        |value| {
+            let baseline_dof = exact_integer_as_f64(within_baseline_dof as u128)?;
+            relative_difference(
+                (1.0 - value) * (df_r / baseline_dof),
+                inputs.rss / inputs.within_tss,
+                1.0,
+            )
+        },
+    )?);
+
+    if !statistics.root_mean_squared_error.is_finite() || statistics.root_mean_squared_error < 0.0 {
+        return Err(invalid_data(
+            "prepared iid certificate RMSE is not finite and nonnegative",
+        ));
+    }
+    norm = norm.max(relative_difference(
+        statistics
+            .root_mean_squared_error
+            .mul_add(statistics.root_mean_squared_error, 0.0),
+        inputs.rss / df_r,
+        (inputs.rss / df_r).max(1.0),
+    )?);
+
+    let f_defined = dof.finite_model_dof > 0 && inputs.rss > 0.0;
+    norm = norm.max(optional_identity_error(
+        statistics.f_statistic,
+        f_defined,
+        |value| {
+            if value < 0.0 || inputs.within_tss <= 0.0 {
+                return Ok(1.0);
+            }
+            // This is a total-within-scale cross-check, not the construction
+            // of F.  Its absolute normalization remains stable when the model
+            // signal is tiny relative to orthogonal residual noise.
+            let reported_explained_fraction =
+                value * ((df_m / df_r) * (inputs.rss / inputs.within_tss));
+            let certified_explained_fraction = (inputs.within_tss - inputs.rss) / inputs.within_tss;
+            relative_difference(
+                reported_explained_fraction,
+                certified_explained_fraction,
+                1.0,
+            )
+        },
+    )?);
+
+    norm = norm.max(optional_identity_error(
+        statistics.gaussian_log_likelihood,
+        inputs.rss > 0.0,
+        |value| gaussian_log_likelihood_identity_error(value, inputs.rss, n),
+    )?);
+    norm = norm.max(optional_identity_error(
+        statistics.gaussian_null_log_likelihood,
+        inputs.within_tss > 0.0,
+        |value| gaussian_log_likelihood_identity_error(value, inputs.within_tss, n),
+    )?);
+    if norm.is_finite() {
+        Ok(norm)
+    } else {
+        Err(invalid_data(
+            "prepared iid statistic certificate norm is not finite",
+        ))
+    }
+}
+
+fn optional_identity_error<F>(actual: Option<f64>, defined: bool, identity: F) -> Result<f64>
+where
+    F: FnOnce(f64) -> Result<f64>,
+{
+    match (actual, defined) {
+        (Some(value), true) if value.is_finite() => identity(value),
+        (None, false) => Ok(0.0),
+        _ => Ok(1.0),
+    }
+}
+
+fn gaussian_log_likelihood_identity_error(
+    likelihood: f64,
+    sum_of_squares: f64,
+    observations: f64,
+) -> Result<f64> {
+    let per_observation = likelihood / observations;
+    let actual = -per_observation - per_observation - 1.0 - (2.0 * std::f64::consts::PI).ln();
+    let expected = (sum_of_squares / observations).ln();
+    relative_difference(actual, expected, actual.abs().max(expected.abs()).max(1.0))
 }
 
 fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Result<()> {
@@ -1200,16 +1601,6 @@ fn gaussian_log_likelihood_from_ss(sum_of_squares: f64, observations: f64) -> Re
     }
 }
 
-fn optional_relative_difference(actual: Option<f64>, expected: Option<f64>) -> Result<f64> {
-    match (actual, expected) {
-        (None, None) => Ok(0.0),
-        (Some(actual), Some(expected)) => {
-            relative_difference(actual, expected, actual.abs().max(expected.abs()).max(1.0))
-        }
-        _ => Ok(1.0),
-    }
-}
-
 fn relative_difference(actual: f64, expected: f64, scale: f64) -> Result<f64> {
     if !actual.is_finite() || !expected.is_finite() || !scale.is_finite() || scale <= 0.0 {
         return Err(invalid_data(
@@ -1356,7 +1747,7 @@ mod tests {
         let result = compose_for_test(&prepared, &mut baseline, InferencePerturbations::default())
             .expect("baseline prepared iid composition");
         assert!(result.certificate().passed);
-        assert_eq!(baseline.calls, 2);
+        assert_eq!(baseline.calls, 5);
 
         for fail_at in 1..=baseline.calls {
             let mut reservation = CountingReservation {
@@ -1399,7 +1790,15 @@ mod tests {
                 ..InferencePerturbations::default()
             },
             InferencePerturbations {
+                tss: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
                 residual_dof: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                variance_scale: true,
                 ..InferencePerturbations::default()
             },
             InferencePerturbations {
@@ -1407,11 +1806,43 @@ mod tests {
                 ..InferencePerturbations::default()
             },
             InferencePerturbations {
+                standard_error: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
                 within_tss: true,
                 ..InferencePerturbations::default()
             },
             InferencePerturbations {
-                statistic: true,
+                r_squared: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                adjusted_r_squared: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                within_r_squared: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                adjusted_within_r_squared: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                root_mean_squared_error: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                f_statistic: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                gaussian_log_likelihood: true,
+                ..InferencePerturbations::default()
+            },
+            InferencePerturbations {
+                gaussian_null_log_likelihood: true,
                 ..InferencePerturbations::default()
             },
         ] {
@@ -1423,20 +1854,26 @@ mod tests {
     }
 
     #[test]
-    fn rank_zero_intercept_only_and_fe_only_edges_are_explicit() {
+    fn hidden_constant_reported_constant_and_fe_only_edges_are_explicit() {
         let y = [2.0, 3.5, 1.0, 4.0, 5.0, 2.5];
         let no_intercept = fit_prepared_ols_unadjusted_map(
             &prepared(&y, &[], None, false, TestWeights::Unit),
             PreparedOlsUnadjustedConfig::default(),
         )
-        .expect("rank-zero no-intercept inference");
-        assert_eq!(no_intercept.dof().model_rank, 0);
-        assert_eq!(no_intercept.dof().residual_dof, y.len());
-        assert!(!no_intercept.dof().has_structural_intercept);
+        .expect("hidden structural-constant inference");
+        assert_eq!(no_intercept.dof().absorbed_rank, 1);
+        assert_eq!(no_intercept.dof().model_rank, 1);
+        assert_eq!(no_intercept.dof().residual_dof, y.len() - 1);
+        assert!(no_intercept.dof().has_structural_intercept);
+        assert_eq!(
+            no_intercept.absorbed_dof().effects[0].identity,
+            PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+        );
         assert_eq!(no_intercept.covariance().dimension(), 0);
+        let mean = y.iter().sum::<f64>() / y.len() as f64;
         assert_close(
             no_intercept.statistics().tss,
-            y.iter().map(|value| value * value).sum(),
+            y.iter().map(|value| (value - mean) * (value - mean)).sum(),
             1e-12,
         );
         assert!(no_intercept.statistics().f_statistic.is_none());
@@ -1447,8 +1884,9 @@ mod tests {
             PreparedOlsUnadjustedConfig::default(),
         )
         .expect("intercept-only exact inference");
-        assert_eq!(intercept_only.dof().finite_rank, 1);
+        assert_eq!(intercept_only.dof().finite_rank, 0);
         assert_eq!(intercept_only.dof().finite_model_dof, 0);
+        assert_eq!(intercept_only.dof().absorbed_rank, 1);
         assert_eq!(intercept_only.dof().model_rank, 1);
         assert_eq!(intercept_only.statistics().tss, 0.0);
         assert_eq!(intercept_only.statistics().rss, 0.0);
@@ -1475,6 +1913,389 @@ mod tests {
         assert_eq!(fe_only.statistics().rss, 0.0);
         assert_eq!(fe_only.statistics().within_tss, 0.0);
         assert!(fe_only.statistics().f_statistic.is_none());
+    }
+
+    #[test]
+    fn pinned_constant_regressor_is_structurally_absorbed_and_cons_is_normalized() {
+        // Pinned Stata 18/reghdfe contract: `c.one` followed by the default
+        // `_cons` reports the normalized structural constant, while `one` is
+        // classified as collinear with the virtual one-level absorbed effect.
+        let y = [2.0, 5.0, 4.0, 8.0, 7.0, 11.0];
+        let one = vec![1.0; y.len()];
+        let result = fit_prepared_ols_unadjusted_map(
+            &prepared(&y, &[one], None, true, TestWeights::Unit),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("constant plus requested intercept inference");
+        assert_eq!(
+            result.fit().coefficients()[0].status,
+            PreparedOlsFitStatus::CollinearWithFixedEffects
+        );
+        assert_eq!(
+            result.fit().coefficients()[1].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert!(result.fit().kept_generated_columns().is_empty());
+        assert_eq!(result.fit().dropped_generated_columns(), &[0]);
+        assert_eq!(result.dof().finite_rank, 0);
+        assert_eq!(result.dof().finite_model_dof, 0);
+        assert_eq!(result.dof().absorbed_rank, 1);
+        assert!(result.dof().has_structural_intercept);
+        assert!(result.statistics().f_statistic.is_none());
+        let mean = y.iter().sum::<f64>() / y.len() as f64;
+        let centered_tss = y
+            .iter()
+            .map(|value| (value - mean) * (value - mean))
+            .sum::<f64>();
+        assert_close(result.statistics().rss, centered_tss, 1e-12);
+        assert_close(result.statistics().tss, centered_tss, 1e-12);
+        assert_close(
+            result
+                .statistics()
+                .gaussian_log_likelihood
+                .expect("model ll"),
+            result
+                .statistics()
+                .gaussian_null_log_likelihood
+                .expect("null ll"),
+            1e-12,
+        );
+
+        let hidden = fit_prepared_ols_unadjusted_map(
+            &prepared(&y, &[vec![1.0; y.len()]], None, false, TestWeights::Unit),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("hidden constant-regressor inference");
+        assert_eq!(
+            hidden.fit().coefficients()[0].status,
+            PreparedOlsFitStatus::CollinearWithFixedEffects
+        );
+        assert_eq!(hidden.dof().finite_rank, 0);
+        assert_eq!(hidden.dof().finite_model_dof, 0);
+        assert_eq!(hidden.dof().absorbed_rank, 1);
+        assert!(!hidden.dof().has_normalized_absorbed_intercept);
+        assert_eq!(hidden.covariance().dimension(), 0);
+        assert_slice_close(result.fit().residuals(), hidden.fit().residuals(), 1e-12);
+        for (reported, unreported) in [
+            (result.statistics().rss, hidden.statistics().rss),
+            (result.statistics().tss, hidden.statistics().tss),
+            (
+                result.statistics().within_tss,
+                hidden.statistics().within_tss,
+            ),
+            (
+                result.statistics().root_mean_squared_error,
+                hidden.statistics().root_mean_squared_error,
+            ),
+        ] {
+            assert_close(reported, unreported, 1e-12);
+        }
+    }
+
+    #[test]
+    fn paired_no_x_default_and_noconstant_share_weighted_structural_residuals() {
+        let y = [2.0, 7.0, 3.5, 11.0, 5.0, 13.0];
+        let analytic = [0.5, 2.0, 1.5, 3.0, 0.75, 4.0];
+        let groups = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0];
+        for fixed_effect in [None, Some(groups.as_slice())] {
+            let reported = fit_prepared_ols_unadjusted_map(
+                &prepared(
+                    &y,
+                    &[],
+                    fixed_effect,
+                    true,
+                    TestWeights::Analytic(&analytic),
+                ),
+                PreparedOlsUnadjustedConfig::default(),
+            )
+            .expect("reported no-X inference");
+            let hidden = fit_prepared_ols_unadjusted_map(
+                &prepared(
+                    &y,
+                    &[],
+                    fixed_effect,
+                    false,
+                    TestWeights::Analytic(&analytic),
+                ),
+                PreparedOlsUnadjustedConfig::default(),
+            )
+            .expect("hidden no-X inference");
+            let weighted_mean = y
+                .iter()
+                .zip(analytic)
+                .map(|(value, weight)| value * weight)
+                .sum::<f64>()
+                / analytic.iter().sum::<f64>();
+            assert_close(
+                reported.fit().coefficients()[0]
+                    .value
+                    .expect("normalized reported mean"),
+                weighted_mean,
+                1e-12,
+            );
+            assert_eq!(
+                reported.fit().coefficients()[0].status,
+                PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+            );
+            assert!(hidden.fit().coefficients().is_empty());
+            assert_eq!(reported.dof().finite_rank, 0);
+            assert_eq!(hidden.dof().finite_rank, 0);
+            assert_eq!(reported.dof().finite_model_dof, 0);
+            assert_eq!(hidden.dof().finite_model_dof, 0);
+            assert_eq!(reported.dof().model_rank, hidden.dof().model_rank);
+            assert_eq!(reported.dof().residual_dof, hidden.dof().residual_dof);
+            assert_eq!(reported.covariance().dimension(), 1);
+            assert_eq!(hidden.covariance().dimension(), 0);
+            assert_slice_close(reported.fit().residuals(), hidden.fit().residuals(), 1e-12);
+            for (left, right) in [
+                (reported.statistics().rss, hidden.statistics().rss),
+                (reported.statistics().tss, hidden.statistics().tss),
+                (
+                    reported.statistics().within_tss,
+                    hidden.statistics().within_tss,
+                ),
+                (
+                    reported.statistics().root_mean_squared_error,
+                    hidden.statistics().root_mean_squared_error,
+                ),
+                (
+                    reported
+                        .statistics()
+                        .gaussian_log_likelihood
+                        .expect("reported likelihood"),
+                    hidden
+                        .statistics()
+                        .gaussian_log_likelihood
+                        .expect("hidden likelihood"),
+                ),
+            ] {
+                assert_close(left, right, 1e-12);
+            }
+            assert!(reported.statistics().f_statistic.is_none());
+            assert!(hidden.statistics().f_statistic.is_none());
+        }
+    }
+
+    #[test]
+    fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
+        let foreign = SourceEntry {
+            id: SourceId::new(1).expect("foreign source"),
+            canonical_name: "foreign".to_owned(),
+        };
+        let factor_term = |id: u32, level: f64| ExpandedTerm {
+            id: TermId::new(id).expect("factor term"),
+            order: TermOrder::new(id).expect("factor order"),
+            coefficient_slot: CoefficientSlot::new(id).expect("factor slot"),
+            raw_kind: RawTermKind::Factor,
+            whole_column_omitted: false,
+            canonical_token: format!("{level}.foreign"),
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).expect("factor component"),
+                source: foreign.id,
+                kind: ComponentKind::Categorical,
+                level_state: LevelState::Present,
+                level_value: level,
+                base: MetadataFlag::False,
+                omitted: MetadataFlag::False,
+                raw_operator: level.to_string(),
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        };
+        let foreign_values = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+        let y = [9.5, 10.0, 10.5, 12.5, 13.0, 13.5];
+        let fit = |include_intercept| {
+            let prepared = prepare_ols_data(
+                &OlsRequestV1 {
+                    model: CompiledTermGraph {
+                        sources: vec![foreign.clone()],
+                        terms: vec![factor_term(1, 0.0), factor_term(2, 1.0)],
+                    },
+                    absorbed_terms: Vec::new(),
+                    bindings: vec![
+                        OlsInputBinding {
+                            stata_var_position: 1,
+                            role: OlsInputRole::Candidate,
+                        },
+                        OlsInputBinding {
+                            stata_var_position: 2,
+                            role: OlsInputRole::Outcome,
+                        },
+                        OlsInputBinding {
+                            stata_var_position: 3,
+                            role: OlsInputRole::NumericSource(foreign.id),
+                        },
+                    ],
+                    include_intercept,
+                    keep_singletons: true,
+                },
+                &LoadedOlsInput {
+                    candidate: vec![true; y.len()],
+                    outcome: loaded(&y),
+                    numeric_sources: vec![(foreign.id, loaded(&foreign_values))],
+                    analytic_weight: None,
+                    frequency_weight: None,
+                    probability_weight: None,
+                },
+            )
+            .expect("full ibn preparation");
+            fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
+                .expect("full ibn inference")
+        };
+        let reported = fit(true);
+        let hidden = fit(false);
+        for result in [&reported, &hidden] {
+            assert_eq!(result.dof().finite_rank, 1);
+            assert_eq!(result.dof().finite_model_dof, 1);
+            assert_eq!(result.dof().absorbed_rank, 1);
+            assert_eq!(result.dof().model_rank, 2);
+            assert_eq!(result.fit().kept_generated_columns(), &[0]);
+            assert_eq!(result.fit().dropped_generated_columns(), &[1]);
+            assert!(result.statistics().f_statistic.is_some());
+        }
+        assert_eq!(
+            reported.fit().coefficients()[2].status,
+            PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        );
+        assert_eq!(reported.covariance().dimension(), 2);
+        assert_eq!(hidden.fit().coefficients().len(), 2);
+        assert_eq!(hidden.covariance().dimension(), 1);
+    }
+
+    #[test]
+    fn pinned_default_and_noconstant_pairs_share_the_structural_fit_for_unit_a_and_f_weights() {
+        let groups = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+        let x = vec![-2.0, -0.5, 1.0, 3.0, -3.0, -1.0, 2.0, 4.0];
+        let noise = [0.2, -0.1, 0.3, -0.2, -0.3, 0.1, -0.2, 0.2];
+        let y = x
+            .iter()
+            .enumerate()
+            .map(|(row, x)| 4.0 + 1.8 * x + 2.5 * groups[row] + noise[row])
+            .collect::<Vec<_>>();
+        let analytic = [0.5, 1.5, 2.0, 0.8, 1.2, 2.5, 0.7, 1.8];
+        let frequency = [1_u32, 2, 3, 1, 2, 4, 1, 2];
+
+        for weights in [
+            TestWeights::Unit,
+            TestWeights::Analytic(&analytic),
+            TestWeights::Frequency(&frequency),
+        ] {
+            for fixed_effect in [None, Some(groups.as_slice())] {
+                let reported = fit_prepared_ols_unadjusted_map(
+                    &prepared(&y, std::slice::from_ref(&x), fixed_effect, true, weights),
+                    PreparedOlsUnadjustedConfig::default(),
+                )
+                .expect("reported structural-constant inference");
+                let hidden = fit_prepared_ols_unadjusted_map(
+                    &prepared(&y, std::slice::from_ref(&x), fixed_effect, false, weights),
+                    PreparedOlsUnadjustedConfig::default(),
+                )
+                .expect("hidden structural-constant inference");
+
+                assert_eq!(reported.dof().finite_rank, hidden.dof().finite_rank);
+                assert_eq!(
+                    reported.dof().finite_model_dof,
+                    hidden.dof().finite_model_dof
+                );
+                assert_eq!(reported.dof().absorbed_rank, hidden.dof().absorbed_rank);
+                assert_eq!(reported.dof().model_rank, hidden.dof().model_rank);
+                assert_eq!(reported.dof().residual_dof, hidden.dof().residual_dof);
+                assert!(reported.dof().has_normalized_absorbed_intercept);
+                assert!(!hidden.dof().has_normalized_absorbed_intercept);
+                assert_eq!(reported.absorbed_dof(), hidden.absorbed_dof());
+                assert!(reported.dof().has_structural_intercept);
+                assert_eq!(reported.dof().finite_model_dof, 1);
+                assert_eq!(reported.fit().coefficients().len(), 2);
+                assert_eq!(hidden.fit().coefficients().len(), 1);
+                assert_eq!(
+                    reported.fit().coefficients()[1].status,
+                    PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                );
+                assert_close(
+                    reported.fit().coefficients()[0]
+                        .value
+                        .expect("reported slope"),
+                    hidden.fit().coefficients()[0].value.expect("hidden slope"),
+                    1e-11,
+                );
+                assert_eq!(
+                    reported.fit().residuals().len(),
+                    hidden.fit().residuals().len()
+                );
+                for (left, right) in reported
+                    .fit()
+                    .residuals()
+                    .iter()
+                    .zip(hidden.fit().residuals())
+                {
+                    assert_close(*left, *right, 1e-11);
+                }
+                for (left, right) in [
+                    (reported.statistics().rss, hidden.statistics().rss),
+                    (reported.statistics().tss, hidden.statistics().tss),
+                    (
+                        reported.statistics().within_tss,
+                        hidden.statistics().within_tss,
+                    ),
+                    (
+                        reported.statistics().root_mean_squared_error,
+                        hidden.statistics().root_mean_squared_error,
+                    ),
+                    (
+                        reported.statistics().f_statistic.expect("reported F"),
+                        hidden.statistics().f_statistic.expect("hidden F"),
+                    ),
+                ] {
+                    assert_close(left, right, 1e-10);
+                }
+                assert_eq!(reported.covariance().dimension(), 2);
+                assert_eq!(hidden.covariance().dimension(), 1);
+                assert_close(
+                    reported.covariance().values()[0],
+                    hidden.covariance().values()[0],
+                    1e-10,
+                );
+                if fixed_effect.is_none() {
+                    assert_eq!(
+                        reported.absorbed_dof().effects[0].identity,
+                        PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+                    );
+                } else {
+                    assert!(matches!(
+                        reported.absorbed_dof().effects[0].identity,
+                        PreparedOlsAbsorbedDofEffectIdentity::Explicit { .. }
+                    ));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn wald_f_survives_weak_signal_under_large_orthogonal_noise() {
+        let x = vec![-3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5];
+        let orthogonal_noise = [1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0];
+        let y = x
+            .iter()
+            .zip(orthogonal_noise)
+            .map(|(x, noise)| 1.0e12 * noise + 10.0 * x)
+            .collect::<Vec<_>>();
+        let result = fit_prepared_ols_unadjusted_map(
+            &prepared(&y, &[x], None, true, TestWeights::Unit),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("weak-signal Wald inference");
+        let f_statistic = result
+            .statistics()
+            .f_statistic
+            .expect("positive-variance slope test");
+        assert!(f_statistic > 0.0 && f_statistic < 1.0e-18);
+        assert!(result.certificate().passed);
+        assert!(
+            result
+                .certificate()
+                .statistic_formula_relative_infinity_norm
+                < 5.0e-10
+        );
     }
 
     #[test]
@@ -1526,24 +2347,24 @@ mod tests {
     #[test]
     fn corrupted_absorbed_dof_artifact_cannot_be_composed() {
         let groups = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0];
-        let prepared = prepared(
+        let with_fe = prepared(
             &[1.0, 1.2, 2.5, 2.8, 4.1, 4.4],
             &[vec![-2.0, 0.5, -1.0, 2.0, 1.5, 4.0]],
             Some(&groups),
             true,
             TestWeights::Unit,
         );
-        let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+        let fit = fit_prepared_ols_coefficients_map(&with_fe, PreparedOlsFitConfig::default())
             .expect("certified fit");
         let mut absorbed =
-            compute_prepared_ols_absorbed_dof(&prepared, PreparedOlsAbsorbedDofPolicy::Pairwise)
+            compute_prepared_ols_absorbed_dof(&with_fe, PreparedOlsAbsorbedDofPolicy::Pairwise)
                 .expect("certified absorbed DoF");
         absorbed.effects[0].categories += 1;
         absorbed.initial_categories += 1;
         absorbed.absorbed_rank += 1;
         let mut reservation = CountingReservation::default();
         let error = compose_internal(
-            &prepared,
+            &with_fe,
             fit,
             absorbed,
             PreparedOlsUnadjustedConfig::default().certificate_tolerance,
@@ -1551,6 +2372,35 @@ mod tests {
             InferencePerturbations::default(),
         )
         .expect_err("corrupted absorbed-DoF report must fail");
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert_eq!(reservation.calls, 0);
+
+        let no_absorb = prepared(
+            &[1.0, 2.0, 4.0, 7.0],
+            &[vec![-1.0, 0.0, 1.0, 3.0]],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let fit = fit_prepared_ols_coefficients_map(&no_absorb, PreparedOlsFitConfig::default())
+            .expect("no-absorb fit");
+        let mut absorbed =
+            compute_prepared_ols_absorbed_dof(&no_absorb, PreparedOlsAbsorbedDofPolicy::Pairwise)
+                .expect("implicit no-absorb DoF");
+        absorbed.effects[0].identity = PreparedOlsAbsorbedDofEffectIdentity::Explicit {
+            term_id: AbsorbTermId::new(1).expect("fake term"),
+            source: SourceId::new(1).expect("fake source"),
+        };
+        let mut reservation = CountingReservation::default();
+        let error = compose_internal(
+            &no_absorb,
+            fit,
+            absorbed,
+            PreparedOlsUnadjustedConfig::default().certificate_tolerance,
+            &mut reservation,
+            InferencePerturbations::default(),
+        )
+        .expect_err("implicit DoF identity corruption must fail");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert_eq!(reservation.calls, 0);
     }
@@ -1740,5 +2590,12 @@ mod tests {
             (actual - expected).abs() <= tolerance * scale,
             "actual={actual:.17e}, expected={expected:.17e}, tolerance={tolerance:.3e}"
         );
+    }
+
+    fn assert_slice_close(actual: &[f64], expected: &[f64], tolerance: f64) {
+        assert_eq!(actual.len(), expected.len());
+        for (actual, expected) in actual.iter().zip(expected) {
+            assert_close(*actual, *expected, tolerance);
+        }
     }
 }

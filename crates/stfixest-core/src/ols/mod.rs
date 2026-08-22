@@ -20,7 +20,8 @@ pub use prepared::{
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
 };
 pub use prepared_dof::{
-    compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect, PreparedOlsAbsorbedDofPolicy,
+    compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
+    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
     PreparedOlsAbsorbedDofReport,
 };
 pub use prepared_fit::{
