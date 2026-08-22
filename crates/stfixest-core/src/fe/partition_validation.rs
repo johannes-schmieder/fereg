@@ -152,8 +152,7 @@ mod tests {
             CategoricalCodeView::new(&firm, 3),
             CategoricalCodeView::new(&year, 3),
         ];
-        let partition =
-            CategoricalPartition::interaction(&[1, 0], &sources).expect("partition");
+        let partition = CategoricalPartition::interaction(&[1, 0], &sources).expect("partition");
         validate_categorical_partition(&partition, &sources).expect("exact validation");
     }
 
@@ -165,8 +164,7 @@ mod tests {
             CategoricalCodeView::new(&firm, 3),
             CategoricalCodeView::new(&year, 2),
         ];
-        let partition =
-            CategoricalPartition::interaction(&[0, 1], &original).expect("partition");
+        let partition = CategoricalPartition::interaction(&[0, 1], &original).expect("partition");
 
         let changed_year = [1, 0, 0, 1, 0, 1];
         let changed = [
@@ -206,8 +204,7 @@ mod tests {
             CategoricalCodeView::new(&left, 2),
             CategoricalCodeView::new(&right, 2),
         ];
-        let partition =
-            CategoricalPartition::interaction(&[0, 1], &sources).expect("partition");
+        let partition = CategoricalPartition::interaction(&[0, 1], &sources).expect("partition");
 
         let mut success = InjectedReservation::default();
         validate_categorical_partition_with_reservation(&partition, &sources, &mut success)
