@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-22
-**Branch / baseline:** `main` implementation and independent review through `d731b327`, with the active candidate receipt sealed by `9e2f23e`
+**Branch / baseline:** `main` through `2e32dc1`; the active candidate remains the `d731b327` implementation with its receipt sealed by `9e2f23e`
 **Active milestone:** complete the ten blocked OLS semantic cases, beginning with native numeric categorical FE interactions
 **Release state:** development only — not a production or cross-platform release
 
@@ -60,10 +60,26 @@ candidate-bound capture, mutation/allocation tests, and sealed licensed parity
 without materializing the interaction in Stata or weakening the one-call
 transaction. Public dispatch stays disabled throughout this gate.
 
+The separately reviewed implementation design for this bounded `firm#year`
+gate is frozen. A project-owned draft Stata benchmark probe now exists at
+`benchmarks/stata/probe_reghdfe_fe_interaction.do`, but it is deliberately
+unsealed and is not evidence. It still needs a versioned harness and manifest,
+a clean capture against the exact pinned reference closure, receipt
+verification and mutation coverage, and independent review before any result
+from it can support an implementation or parity claim.
+
 After that repair, rerun the same candidate-bound 40-case projection and replace
 the active receipt only when the external identity manifest binds a new reviewed
 commit, plugin, immutable receipt, and exact case inventory. Performance/RSS is
 a later gate; the current candidate makes no performance claim.
+
+## Current handoff / resume point
+
+Resume at the reference-probe evidence gate for `firm#year`. First bind the
+draft probe to the reviewed harness and manifest, capture it from a clean exact
+pinned reference installation, add verifier and mutation tests, and obtain
+independent review. Only then begin the frozen native implementation plan; do
+not cite the draft probe or any local output from it as evidence.
 
 ## Current blockers — exact frozen manifest inventory
 
@@ -233,11 +249,13 @@ macOS validation exists.
   exactly. Seven deterministic rollback stages plus an actual Control-C after
   the one plugin call restore named and null prior estimates and leave no
   requested residual; all licensed hidden parity/transaction fixtures pass.
-- Next implement and seal native numeric categorical FE interactions, starting
-  with `firm#year`, then continue independently gated string, absorbed-slope,
-  broader ordinary-factor/time-series, saved-output, and postestimation work.
-  No checkpoint may enable the public estimator or bypass the FE,
-  solver-certificate, VCE, DoF, transaction, and sealed-parity gates.
+- Next complete and seal the required reference-probe evidence for native
+  numeric categorical FE interactions, then implement the frozen design
+  starting with `firm#year`. Continue afterward with independently gated
+  string, absorbed-slope, broader ordinary-factor/time-series, saved-output,
+  and postestimation work. No checkpoint may enable the public estimator or
+  bypass the FE, solver-certificate, VCE, DoF, transaction, and sealed-parity
+  gates.
 
 ## Historical qualification
 
