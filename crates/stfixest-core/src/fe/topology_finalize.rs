@@ -9,9 +9,7 @@
 
 use crate::error::{ErrorCode, Result, StFixestError};
 
-use super::{
-    CategoricalCodeView, CategoricalTopologyRegistry, CategoricalTopologySource,
-};
+use super::{CategoricalCodeView, CategoricalTopologyRegistry};
 
 /// One retained raw categorical source on the final observation axis.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -548,12 +546,9 @@ mod tests {
             CategoricalCodeView::new(&used, 5),
             CategoricalCodeView::new(&unused, 5),
         ];
-        let result = finalize_categorical_topology(
-            &sources,
-            &[&[0]],
-            &[true, false, true, true, false],
-        )
-        .expect("finalization");
+        let result =
+            finalize_categorical_topology(&sources, &[&[0]], &[true, false, true, true, false])
+                .expect("finalization");
         assert_eq!(result.retained_rows(), &[0, 2, 3]);
         assert_eq!(result.compacted_sources().len(), 1);
         let compacted = result.source_for_candidate(0).expect("used source");
@@ -606,12 +601,9 @@ mod tests {
             CategoricalCodeView::new(&firm, 2),
             CategoricalCodeView::new(&year, 2),
         ];
-        let result = finalize_categorical_topology(
-            &sources,
-            &[&[0, 1], &[1, 0], &[0, 1, 0]],
-            &[true; 4],
-        )
-        .expect("deduplicated finalization");
+        let result =
+            finalize_categorical_topology(&sources, &[&[0, 1], &[1, 0], &[0, 1, 0]], &[true; 4])
+                .expect("deduplicated finalization");
         assert_eq!(result.compacted_sources().len(), 2);
         assert_eq!(result.registry().sources().len(), 1);
         assert_eq!(result.effect_to_topology(), &[0, 0, 0]);
@@ -638,12 +630,8 @@ mod tests {
             CategoricalCodeView::new(&firm, 2),
             CategoricalCodeView::new(&year, 2),
         ];
-        let result = finalize_categorical_topology(
-            &sources,
-            &[&[0, 1]],
-            &[false, false],
-        )
-        .expect("empty final sample");
+        let result = finalize_categorical_topology(&sources, &[&[0, 1]], &[false, false])
+            .expect("empty final sample");
         assert!(result.retained_rows().is_empty());
         assert_eq!(result.compacted_sources().len(), 2);
         assert!(result.compacted_sources()[0].codes().is_empty());
