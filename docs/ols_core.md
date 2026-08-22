@@ -443,11 +443,34 @@ intercept-only models, mutations, and every allocation/undersize boundary.
 Independent review approves `b226d62` plus repair `89132055` with no remaining
 P0/P1 issue.
 
-This checkpoint is core-only and non-public. It does not write through SPI,
-post `e(V)` or `e(df_r)`, recover fixed effects, enable `estimate-ols`, or make
-`stfeols` executable. The next gate is versioned atomic Stata result posting and
-one-substantive-call integration over the already certified prepared
-coefficient/iid/HC1/clustered composites.
+The clustered scientific checkpoint itself remains core-only and non-public.
+It does not write through SPI, post `e(V)` or `e(df_r)`, recover fixed effects,
+enable `estimate-ols`, or make `stfeols` executable.
+
+## Hidden native result transport
+
+The separately reviewed `estimate-ols-test` action now selects one certified
+prepared iid, HC1, or clustered composition after a single native source-loading
+phase. It fallibly scatters canonical coefficient/status/covariance coordinates
+and adapts fit, distinct DoF, solver, FE, cluster, subset, certificate, sample,
+residual, and reason outputs into precreated private shadows. It neither calls
+the legacy covariance source below nor recomposes a bare fit with an unrelated
+VCE.
+
+Before observation loading, exact action 1.1/result wire 1.0/plugin identity and
+developer confirmation must pass and all input/output layouts must be valid.
+Before commit, all 11 matrix names and dimensions are prepared as stable
+borrowed C handles and all store-failure messages are allocated. SPI has no
+physical rollback: partial shadow cells may change on failure, but the receipt
+remains incomplete and makes the whole result logically invalid. `COMPLETE=1`
+is the final operation with no later work. Exhaustive failure injection covers
+216 Fake stores and 213 actual-loader stores, including stable name-pointer
+reuse and static post-failure C reporting, through `0623241`.
+
+This is not `ereturn post` and has no public ado entrypoint. The next gate is a
+licensed-Stata hidden eclass transaction using `_estimates hold`, exact shadow
+receipt revalidation, prior-estimate restoration on failure, and sealed
+iid/HC1/clustered parity. Public actions remain `r(498)` until that gate passes.
 
 ## Legacy covariance source
 
@@ -466,14 +489,14 @@ Any required cluster subset with fewer than two groups fails closed.
 Those covariance routines and the older generic DoF routine are not certified
 for the prepared estimator and must not be used for Stata result posting.
 Prepared iid, HC1 robust, and clustered covariance, residual DoF, and fit
-statistics now have the separate certified checkpoints above. Only those
-same-call prepared compositions are eligible for the future atomic result-
-posting gate.
+statistics have the separate certified checkpoints above. Only those same-call
+prepared compositions are eligible for the hidden transport and later licensed
+eclass transaction.
 
 ## Current boundary
 
-These checkpoints are scientific-core implementations, not a claim that
-`stfeols` is production-ready. Remaining work includes FE coefficient recovery,
-prediction, remaining Stata data ingestion, atomic result posting and one-call
-integration, remaining model/FE forms, licensed-Stata differential tests, and
-large-scale speed and memory gates.
+These checkpoints plus the hidden native transport are not a claim that
+`stfeols` is production-ready. Remaining work includes the licensed-Stata
+eclass transaction and sealed parity, FE coefficient recovery, prediction,
+remaining Stata data ingestion/model/FE forms, and large-scale speed and memory
+gates.

@@ -7,19 +7,21 @@ initial compact numeric columns and an original-length reason mask. The
 developer OLS boundary then performs supported FE singleton pruning, a second
 aligned compaction when rows are removed, and final categorical
 re-factorization and constructs a preparation-only structural FE topology. This
-is not yet the complete
-Phase 2 data plane: string factorization, cluster encoding, separation, and
-estimator SPI dispatch remain outside this slice. A bounded numeric
+is not yet the complete Phase 2 data plane: string factorization, separation,
+and public estimator dispatch remain outside this slice. A bounded numeric
 fixed-effect source preparation path is included, but no owned solver
 `FeDesign` or persistent solver state is constructed. A narrow borrowed
 intercept-only design view references the final prepared codes and compressed
 membership without copying them. An opt-in developer check now constructs the
 exact prepared Y/X absorption batch and consumes it through the separate strict
 MAP path before any diagnostic store. It discards the numerical output and
-does not execute or enable an estimator.
+does not execute or enable a public estimator. A separate hidden
+`estimate-ols-test` action now exercises numeric cluster preparation, the
+certified prepared iid/HC1/clustered compositions, and shadow-result transport;
+it is test-only and posts no `e()` state.
 
-Estimator actions remain disabled. Passing these tests does not make OLS/WLS
-or PPML available.
+Public estimator actions remain disabled. Passing these tests does not make
+OLS/WLS or PPML available.
 
 ## Developer OLS preparation boundary
 
@@ -173,7 +175,9 @@ summary metadata. It does not write numerical estimation results, post `e()`,
 or enable `estimate-ols`, `stfeols`, or `stfepois`.
 
 The core also has an isolated prepared coefficient-fit consumer that is not
-reachable from this developer action or any plugin dispatch. It accepts only a
+reachable from the preparation action or any public plugin dispatch. The hidden
+transport action consumes it only through the certified iid, HC1, or clustered
+same-call wrapper. The fit accepts only a
 nonempty `PreparedOlsData` value and the strict borrowed-intercept MAP design,
 then solves finite coefficients with scaled deterministic pivoted Householder
 QR. It uses the existing prepared recipes to reconstruct one raw residual
@@ -190,8 +194,46 @@ case uses the same virtual structural intercept: a requested `_cons` is
 reported only after QR as `NormalizedAbsorbedIntercept`, while `noconstant`
 omits only that coordinate. Constant regressors are FE-collinear and full
 factor-indicator spans have one fewer finite direction. Any allocation, MAP, rank, finite-value, or score
-failure returns no fit object. This adds no SPI read, write, diagnostic, result
-container, or public estimator path.
+failure returns no fit object. The bare fit itself adds no SPI read, write,
+diagnostic, result container, or public estimator path.
+
+## Hidden prepared-OLS shadow transport
+
+The guarded `estimate-ols-test` action requires exact action protocol 1.1,
+result wire 1.0, loaded-plugin identity, and the explicit developer confirmation
+before observation loading. It preflights all input matrices, the complete
+plugin varlist, three observation-output positions, 11 nonaliasing result
+matrices, and an initially incomplete receipt. Numeric variables are then read
+in one native loading phase: the candidate marker once for every original row
+and each bound source at most once for each candidate row. The action prepares
+one authoritative sample and calls exactly one certified same-call iid, HC1, or
+clustered composition.
+
+Only after inference and every independent certificate pass does Rust build the
+complete fallible shadow adaptation. Coefficients and covariance are scattered
+to canonical coefficient slots; status, fit, distinct DoF, solver, FE, cluster,
+subset, certificate, count, sample, residual, and drop-reason metadata remain in
+private precreated destinations. Before the first store, every matrix name and
+dimension is converted to one prepared borrowed C handle and the numeric/matrix
+store failures are allocated. The ABI has static preformatted reports for those
+errors. No result-cell store allocates or sanitizes a name.
+
+SPI cannot roll back physical writes. The native guarantee is therefore logical
+atomicity over shadow state: a caller must ignore every shadow cell unless the
+`1 x 16` receipt's final `COMPLETE` cell is exactly one. Receipt metadata is
+written after all other matrices and observation outputs; `COMPLETE=1` is the
+last operation and has no later allocation, poll, display, computation, or
+store. An injected failure can dirty private shadows but leaves `COMPLETE=0`.
+The preallocated Fake SPI checks all 216 store ordinals; the actual C loader
+checks all 213 live ordinals and stable borrowed name pointers for all 11
+matrices. The universal x86_64+arm64 loader gate passes through `0623241`.
+
+This action is not an eclass transaction and has no ado entrypoint. It does not
+call `ereturn post`, protect or restore a prior estimate, expose shadow outputs,
+or enable `estimate-ols`/`stfeols`. The next gate must run under licensed Stata,
+use `_estimates hold` around private temporaries and the one plugin call, restore
+the held estimate on every failure, and seal iid/HC1/clustered result parity
+before any public activation.
 
 ## Numeric source representation
 
@@ -299,14 +341,14 @@ never cloned into the adapter.
 
 ## Model construction remains separate
 
-The developer plugin boundary now binds numeric factor main-effect,
+The developer preparation boundary binds numeric factor main-effect,
 all-categorical-interaction, and simple numeric fixed-effect recipes to compact
 shared source codes and validates their structural prepared topology, but it
 does not construct the solver `FeDesign`, invoke absorption, invoke the
 estimator, or use the generic model-matrix builder. It can construct only the
-non-solving borrowed intercept-only design view described above. A separate
-safe-core sample-bound cluster preparation and certified clustered composite
-now cover numeric cluster sources and declared interactions, but remain
-unreachable from the plugin. Mixed interactions, general FE construction,
-and production one-call atomic result posting require later independently
+non-solving borrowed intercept-only design view described above. The hidden
+transport reaches the same supported prepared topology plus numeric cluster
+sources and declared interactions and can carry a certified shadow result in
+one plugin call. Mixed interactions, general FE construction, licensed-Stata
+eclass posting, and public one-call activation require later independently
 tested work.

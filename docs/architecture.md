@@ -9,9 +9,11 @@ weight/data validation, data ingestion, factorization,
 interaction coding, memory preflight, threading, future fixed-effect transforms,
 and all future numerical estimation.
 
-The Phase 0–1 build implements only diagnostics and preprocessing primitives.
-No Stata estimator is allowed to post `e()` results until a later native action
-returns a complete, certified result.
+The development build includes diagnostics, native preparation, certified
+prepared OLS inference, and a hidden shadow-result transport. It still contains
+no Stata-facing estimator transaction. No public command may post `e()` results
+until licensed-Stata transaction and sealed-parity gates accept the complete
+native result.
 
 ## Call graph
 
@@ -24,13 +26,34 @@ stfixest.ado
        catch_unwind
        UTF-8/argument validation
        safe action dispatcher
-       stfixest-core protocol/self-test/threading primitives
+       diagnostics, or hidden estimate-ols-test
+         -> one native source load
+         -> one certified prepared iid/HC1/clustered composition
+         -> private shadow outputs with receipt COMPLETE last
   -> C display/error wrapper on Stata's calling thread
 ```
 
-Future estimation commands retain the same outer graph but make exactly one
-substantive plugin call. Stata-side parsing and output posting do not count as
-substantive numerical calls.
+The hidden transport already proves one substantive plugin call for its bounded
+numeric surface. Future public estimation retains the same outer graph.
+Stata-side parsing, private output allocation, and final `ereturn` posting do not
+count as substantive numerical calls.
+
+## Atomicity boundary
+
+Rust completes and certifies the selected estimator in owned memory before any
+output store, then fallibly adapts the full result. All 11 result-matrix names
+and layouts are converted to stable borrowed C handles before commit. The final
+receipt cell is written only after sample/residual/reason shadows and all result
+metadata; no work follows a successful `COMPLETE=1` store. Store errors and
+their C reports are prepared before commit.
+
+This is logical atomicity, not physical SPI rollback. SPI can leave private
+shadow cells changed if a later store fails, but `COMPLETE` remains zero and the
+entire shadow must be discarded. No current ado consumes the receipt or mutates
+`e()`. The next licensed-Stata gate must wrap private temporaries and the one
+plugin call in `_estimates hold`, restore the held estimate on every failure,
+and post only a revalidated complete result. Public `stfeols` remains `r(498)`
+until that transaction and sealed parity pass.
 
 ## Safety boundary
 

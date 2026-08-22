@@ -3,10 +3,13 @@
 The C ABI exports only Stata's required `pginit` and `stata_call` symbols.
 `stata_call` forwards `argc/argv` to Rust's `stfixest_dispatch`.
 
-The action/diagnostics handshake remains version `1.0`. The expanded-model
-metadata wire is independently versioned at `2.1`; neither version number is
-an alias for the other. An action handshake never performs a lossy model-wire
-conversion.
+The plugin's current action handshake is version `1.1`. Minor 1 adds only the
+guarded prepared-OLS shadow-result transport. Existing diagnostic callers at
+version `1.0` remain compatible under the minor-version rule, while the hidden
+transport requires exact `1.1`. The expanded-model metadata wire is
+independently versioned at `2.1`, and the prepared-OLS result wire is separately
+versioned at `1.0`; none of these numbers is an alias for another. An action
+handshake never performs a lossy model- or result-wire conversion.
 
 ## Actions
 
@@ -34,9 +37,13 @@ model wire. Machine-readable `version` and `doctor` output uses the unambiguous
 labels:
 
 ```text
-stfixest.action_protocol=1.0
+stfixest.action_protocol=1.1
 stfixest.model_wire=2.1
+stfixest.ols_result_wire=1.0
 ```
+
+The Phase 0 ado diagnostic caller may continue to send protocol 1.0 until a
+later public protocol promotion.
 
 The action validates compatibility, resolves the local thread count, runs the
 native self-test, and prints OS/architecture/CPU/thread/dependency metadata.
@@ -164,6 +171,81 @@ All binding, matrix, type, and output validation precedes
 observation reads, and diagnostic writes begin only after native preparation
 succeeds. Both `estimate-ols` and `estimate-ppml` remain unconditionally
 unsupported.
+
+## Hidden atomic prepared-OLS transport
+
+`estimate-ols-test` is a native integration action, not a public estimator or
+an ado command. It is reachable only through the Rust and actual-plugin test
+harnesses and requires, before any observation read:
+
+- exact action protocol `1.1`;
+- compatible OLS result wire `1.0`;
+- the exact loaded plugin version;
+- `confirm=developer-estimation-test`;
+- model wire 2.1, numeric bindings, cluster metadata when requested, and exact
+  nonaliasing input/output layouts;
+- an initially incomplete result receipt.
+
+The action supports the current prepared continuous/numeric-factor,
+intercept-only numeric-FE, unit/a/f/p-weight surface and selects exactly one of
+iid, HC1 robust, or one-/multiway clustered inference. It performs one native
+source-loading phase, prepares the authoritative sample once, and calls the
+selected certified same-call core composition. It never calls the legacy VCE,
+DoF, fit, or posting paths and never returns residualized N-by-K data to Stata.
+
+After every core certificate passes, the plugin fallibly builds a complete
+Rust-owned shadow result. Stata or the test harness must have precreated these
+11 private result matrices:
+
+| Protocol key | Logical contents | Required layout |
+|---|---|---|
+| `output_b_matrix` | Coefficients scattered to canonical slots | `1 x P` |
+| `output_v_matrix` | Full scattered covariance | `P x P` |
+| `output_status_matrix` | Slot/status/generated-column metadata | `P x 4` |
+| `output_fit_matrix` | Fit statistics and defined flags | `12 x 2` |
+| `output_dof_matrix` | Distinct DoF values and defined flags | `20 x 2` |
+| `output_solver_matrix` | Solver and certificate summaries | `2 x 12` |
+| `output_fe_matrix` | Absorbed-effect metadata | `max(F,1) x 8` |
+| `output_cluster_matrix` | Cluster-dimension metadata | `max(Q,1) x 4` |
+| `output_subset_matrix` | Cluster-subset metadata | `max(2^Q-1,1) x 4` |
+| `output_certificate_matrix` | Independent certificate diagnostics | `32 x 2` |
+| `output_receipt_matrix` | Wire identity, counts, flags, completion | `1 x 16` |
+
+Here `P=max(coefficient slots,1)`, `F` is the prepared absorbed-effect row
+count, and `Q` is the declared cluster-dimension count. The action also requires
+a private full-length sample variable and permits private residual and
+drop-reason variables. All 11 matrix names, dimensions, aliases, numeric output
+positions, and the receipt's initial `COMPLETE=0` state are preflighted before
+observation loading. Each result name is then fallibly converted once to a
+NUL-terminated borrowed C handle whose matrix dimensions fit the SPI integer
+range. The cell-store loop performs no name allocation, sanitization, or
+fallible coordinate conversion.
+
+Commit is **logically atomic over private shadow destinations**, not a claim of
+physical SPI rollback. SPI offers no transaction that can undo an earlier
+successful matrix or variable store. Therefore a failed store may leave some
+private shadow cells changed, but the result is invalid and unobservable as an
+estimate because the receipt's `COMPLETE` cell remains zero. The plugin stores
+sample/residual/reason shadows and the ten nonreceipt result matrices, writes
+receipt metadata, and writes `COMPLETE=1` as the final operation. No allocation,
+poll, display, computation, or store follows a successful completion write.
+
+The SPI session prepares fixed numeric-store and matrix-store errors before
+commit. The ABI boundary uses static preformatted C reports for those exact
+errors, so even reporting an injected partial-store failure performs no Rust
+allocation or second logical output store. The Fake SPI fixture preallocates
+its event log and error and injects failure at all 216 store ordinals. The
+actual C loader injects all 213 live-store failures, verifies one stable borrowed
+name pointer for every result matrix, and observes `COMPLETE=0` in every failure
+case. The successful universal macOS x86_64+arm64 build, binary audit, and live
+loader harness pass through `0623241`.
+
+No code consumes a complete receipt into `ereturn post` yet. Public
+`estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain fail-closed at
+`r(498)`. The next gate is a licensed-Stata hidden eclass transaction that uses
+`_estimates hold` to preserve/restore prior estimates, accepts only a complete
+and revalidated shadow receipt, posts all `e()` state atomically, and passes
+sealed iid/HC1/clustered parity and failure injection before public activation.
 
 ## Return-code map
 
