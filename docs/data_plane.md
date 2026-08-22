@@ -228,12 +228,14 @@ The preallocated Fake SPI checks all 216 store ordinals; the actual C loader
 checks all 213 live ordinals and stable borrowed name pointers for all 11
 matrices. The universal x86_64+arm64 loader gate passes through `0623241`.
 
-This action is not an eclass transaction and has no ado entrypoint. It does not
-call `ereturn post`, protect or restore a prior estimate, expose shadow outputs,
-or enable `estimate-ols`/`stfeols`. The next gate must run under licensed Stata,
-use `_estimates hold` around private temporaries and the one plugin call, restore
-the held estimate on every failure, and seal iid/HC1/clustered result parity
-before any public activation.
+The action itself is not an eclass transaction and does not call `ereturn post`.
+The developer-only `_stfixest_estimate_ols_test` helper now supplies that outer
+licensed-Stata transaction: a canonical length-framed request bundle, private
+shadows under `_estimates hold ..., restore nullok varname()`, one plugin call,
+exact receipt/table/sample validation, whole-Mata b/V posting, and a final
+`nobreak` commit. Deterministic failures and actual Control-C restore prior
+named/null estimates exactly. This hidden gate does not enable
+`estimate-ols`/`stfeols`; broader sealed parity and activation review remain.
 
 ## Numeric source representation
 

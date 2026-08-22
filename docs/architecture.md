@@ -10,10 +10,10 @@ interaction coding, memory preflight, threading, future fixed-effect transforms,
 and all future numerical estimation.
 
 The development build includes diagnostics, native preparation, certified
-prepared OLS inference, and a hidden shadow-result transport. It still contains
-no Stata-facing estimator transaction. No public command may post `e()` results
-until licensed-Stata transaction and sealed-parity gates accept the complete
-native result.
+prepared OLS inference, a hidden shadow-result transport, and a developer-only
+licensed-Stata eclass transaction. The transaction is not public activation.
+No public command may post `e()` results until broader sealed parity and an
+independently reviewed activation gate accept the complete supported surface.
 
 ## Call graph
 
@@ -31,6 +31,13 @@ stfixest.ado
          -> one certified prepared iid/HC1/clustered composition
          -> private shadow outputs with receipt COMPLETE last
   -> C display/error wrapper on Stata's calling thread
+
+_stfixest_estimate_ols_test.ado (developer-only)
+  -> private result/output shadows plus held prior estimates
+  -> one canonical length-framed bundle
+  -> one estimate-ols-test plugin call through the graph above
+  -> complete receipt/table/sample validation
+  -> whole-Mata b/V copies, eclass posting, final nobreak commit
 ```
 
 The hidden transport already proves one substantive plugin call for its bounded
@@ -49,11 +56,15 @@ their C reports are prepared before commit.
 
 This is logical atomicity, not physical SPI rollback. SPI can leave private
 shadow cells changed if a later store fails, but `COMPLETE` remains zero and the
-entire shadow must be discarded. No current ado consumes the receipt or mutates
-`e()`. The next licensed-Stata gate must wrap private temporaries and the one
-plugin call in `_estimates hold`, restore the held estimate on every failure,
-and post only a revalidated complete result. Public `stfeols` remains `r(498)`
-until that transaction and sealed parity pass.
+entire shadow must be discarded. The hidden eclass helper consumes only a
+complete revalidated receipt under `_estimates hold ..., restore nullok
+varname()`. It uses protected `_ms_findomitted` markers and whole-matrix Mata
+copies so Stata neither warns about nor alters the pinned multiway CGM restored
+covariance, including the allowed final negative determinant. Seven injected
+failure stages, real scientific failure, and an actual Control-C after the sole
+plugin call restore prior named/null estimates and `e(sample)` exactly. Only a
+final `nobreak` residual rename plus unhold commits success. Public `stfeols`
+remains `r(498)` pending broader sealed parity and activation review.
 
 ## Safety boundary
 

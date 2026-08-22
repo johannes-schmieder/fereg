@@ -174,9 +174,10 @@ unsupported.
 
 ## Hidden atomic prepared-OLS transport
 
-`estimate-ols-test` is a native integration action, not a public estimator or
-an ado command. It is reachable only through the Rust and actual-plugin test
-harnesses and requires, before any observation read:
+`estimate-ols-test` is a native integration action, not a public estimator. It
+is reachable through the Rust/actual-plugin harnesses and the developer-only
+`_stfixest_estimate_ols_test` ado helper, and requires before any observation
+read:
 
 - exact action protocol `1.1`;
 - compatible OLS result wire `1.0`;
@@ -240,12 +241,47 @@ name pointer for every result matrix, and observes `COMPLETE=0` in every failure
 case. The successful universal macOS x86_64+arm64 build, binary audit, and live
 loader harness pass through `0623241`.
 
-No code consumes a complete receipt into `ereturn post` yet. Public
-`estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain fail-closed at
-`r(498)`. The next gate is a licensed-Stata hidden eclass transaction that uses
-`_estimates hold` to preserve/restore prior estimates, accepts only a complete
-and revalidated shadow receipt, posts all `e()` state atomically, and passes
-sealed iid/HC1/clustered parity and failure injection before public activation.
+Stata 18 rejects the full guarded key/value list as too many plugin options.
+The hidden helper therefore sends exactly one canonical bundle argument:
+`count:` followed by `byte_length:payload` for every key/value field. The native
+decoder accepts either this one bundle or the existing ordinary argv form,
+never a mixture. It rejects zero/oversized counts, noncanonical decimals,
+empty, truncated, trailing, duplicate, unknown, and UTF-8-splitting fields
+before handshake validation or any SPI read/store.
+
+## Hidden licensed eclass transaction
+
+`_stfixest_estimate_ols_test` is the only ado consumer of a complete receipt.
+It remains explicitly developer-only. It creates all private shadows, then uses
+`_estimates hold ..., restore nullok varname()` before the sole substantive
+plugin call. It accepts only exact receipt/table/count identities, a total
+sample marker contained in the candidate marker, correctly scoped optional
+residuals, unique canonical covariance coordinates, finite/symmetric covariance
+with nonnegative diagonal, valid solver/FE/cluster metadata, and mandatory
+independent certificates.
+
+Omission stripes come from protected marker matrices passed to
+`_ms_findomitted`; the plugin's numerical b/V shadows are not exposed to that
+command. For a nonempty coefficient axis, Stata's cell-built matrix posting can
+warn and alter the adjudicated multiway CGM restored state. The helper instead
+copies each complete b/V shadow as a whole matrix through Mata, applies the
+validated stripes to those copies, and posts them without changing the exact
+two-/three-way negative-determinant covariance. The K=0 branch posts no b/V.
+Only after the selected fit, DoF, solver, FE, cluster, certificate, weight,
+sample, and command metadata have been posted does a `nobreak` block rename a
+requested residual and run `_estimates unhold ..., not`.
+
+Seven deterministic failure stages, real scientific failure, named and null
+prior-estimate cases, and an interactive PTY Control-C after the sole plugin
+call restore prior `e()` state and `e(sample)` exactly and leave no requested
+residual. Licensed iid/HC1/one-/multiway cluster, unit/a/f/p, default/
+`noconstant`, omitted-coordinate, K=0, sample/residual, and frozen q2/q3
+covariance fixtures pass through `3473f49`; the Stata runner rejects the
+nonsymmetric/highly-singular warning on any successful fixture.
+
+Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain
+fail-closed at `r(498)`. The next gate is broader sealed estimator-level parity
+and reviewed activation wiring across the complete supported public surface.
 
 ## Return-code map
 

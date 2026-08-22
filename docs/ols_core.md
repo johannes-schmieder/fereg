@@ -467,10 +467,15 @@ is the final operation with no later work. Exhaustive failure injection covers
 216 Fake stores and 213 actual-loader stores, including stable name-pointer
 reuse and static post-failure C reporting, through `0623241`.
 
-This is not `ereturn post` and has no public ado entrypoint. The next gate is a
-licensed-Stata hidden eclass transaction using `_estimates hold`, exact shadow
-receipt revalidation, prior-estimate restoration on failure, and sealed
-iid/HC1/clustered parity. Public actions remain `r(498)` until that gate passes.
+The native action itself is not `ereturn post` and has no public ado entrypoint.
+The developer-only `_stfixest_estimate_ols_test` helper now wraps it in the
+approved licensed-Stata transaction: canonical length-framed bundle, private
+shadows, `_estimates hold ..., restore nullok varname()`, one plugin call, exact
+receipt/table/sample validation, protected omission marking, whole-Mata b/V
+posting, and a final `nobreak` commit. This preserves exact q2/q3 CGM
+restored-state covariance without Stata warning or alteration. Seven injected
+stages and actual Control-C restore prior estimates and expose no residual.
+Public actions remain `r(498)` pending broader sealed parity and activation.
 
 ## Legacy covariance source
 
@@ -495,8 +500,8 @@ eclass transaction.
 
 ## Current boundary
 
-These checkpoints plus the hidden native transport are not a claim that
-`stfeols` is production-ready. Remaining work includes the licensed-Stata
-eclass transaction and sealed parity, FE coefficient recovery, prediction,
-remaining Stata data ingestion/model/FE forms, and large-scale speed and memory
+These checkpoints plus the hidden native transport/eclass transaction are not a
+claim that `stfeols` is production-ready. Remaining work includes broader sealed
+estimator parity and activation review, FE coefficient recovery, prediction,
+remaining Stata data-ingestion/model/FE forms, and large-scale speed and memory
 gates.
