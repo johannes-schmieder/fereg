@@ -198,6 +198,10 @@ pub struct ExplicitOlsResult {
     pub bread: OracleMatrix,
     pub iid_vce: OracleMatrix,
     pub hc1_vce: OracleMatrix,
+    /// HC1 covariance on `[identified finite regressors, _cons]` when the
+    /// explicit nuisance-dummy span contains a structural constant. The
+    /// reported constant uses the pinned zero-weighted-mean FE normalization.
+    pub normalized_reported_intercept_hc1_vce: Option<OracleMatrix>,
     /// CR1 VCE for each individual cluster dimension.
     pub one_way_cluster_vces: Vec<OracleMatrix>,
     /// For one cluster this equals its one-way VCE. For two clusters it is the
@@ -379,6 +383,20 @@ pub fn fit_explicit_ols_with_config(
     );
     let hc1_scale = validated.effective_observations as f64 / residual_degrees_of_freedom as f64;
     let hc1_vce = scale_matrix(&sandwich(&normalized_bread, &hc0_meat), hc1_scale);
+    let normalized_reported_intercept_hc1_vce =
+        if problem.effects.iter().any(DummyEffect::has_intercept) {
+            Some(reported_intercept_hc1(
+                problem,
+                &kept_regressors,
+                &residualized_regressors,
+                &residuals,
+                &validated,
+                &normalized_bread,
+                hc1_scale,
+            )?)
+        } else {
+            None
+        };
 
     let mut one_way_cluster_vces = Vec::with_capacity(problem.clusters.len());
     let mut cluster_counts = Vec::with_capacity(problem.clusters.len());
@@ -460,11 +478,80 @@ pub fn fit_explicit_ols_with_config(
         bread,
         iid_vce,
         hc1_vce,
+        normalized_reported_intercept_hc1_vce,
         one_way_cluster_vces,
         clustered_vce,
         cluster_counts,
         certificate,
     })
+}
+
+fn reported_intercept_hc1(
+    problem: &ExplicitOlsProblem,
+    kept_regressors: &[usize],
+    residualized_regressors: &[Vec<f64>],
+    residuals: &[f64],
+    validated: &ValidatedProblem,
+    finite_bread: &OracleMatrix,
+    hc1_scale: f64,
+) -> Result<OracleMatrix, OracleError> {
+    let nobs = problem.outcome.len();
+    let rank = kept_regressors.len();
+    let dimension = rank + 1;
+    let weight_sum = validated.objective_weights.iter().sum::<f64>();
+    if !weight_sum.is_finite() || weight_sum <= 0.0 {
+        return Err(OracleError::NumericalFailure(
+            "reported-intercept objective-weight sum is invalid".to_owned(),
+        ));
+    }
+    let means = kept_regressors
+        .iter()
+        .map(|&column| {
+            problem.regressors[column]
+                .iter()
+                .zip(&validated.objective_weights)
+                .map(|(value, weight)| value * weight)
+                .sum::<f64>()
+                / weight_sum
+        })
+        .collect::<Vec<_>>();
+    let mut bread = OracleMatrix::zeros(dimension, dimension);
+    for row in 0..rank {
+        for column in 0..rank {
+            bread.data[row * dimension + column] = finite_bread[(row, column)];
+        }
+    }
+    for row in 0..rank {
+        let cross = (0..rank)
+            .map(|column| -finite_bread[(row, column)] * means[column])
+            .sum::<f64>();
+        bread.data[row * dimension + rank] = cross;
+        bread.data[rank * dimension + row] = cross;
+    }
+    let mut corner = 1.0 / weight_sum;
+    for row in 0..rank {
+        for column in 0..rank {
+            corner += means[row] * finite_bread[(row, column)] * means[column];
+        }
+    }
+    bread.data[rank * dimension + rank] = corner;
+
+    let mut scores = vec![vec![0.0_f64; nobs]; dimension];
+    for column in 0..rank {
+        for row in 0..nobs {
+            scores[column][row] = residualized_regressors[column][row] + means[column];
+        }
+    }
+    scores[rank].fill(1.0);
+    let meat = observation_meat(&scores, residuals, &validated.hc0_multipliers);
+    let covariance = scale_matrix(&sandwich(&bread, &meat), hc1_scale);
+    if covariance.as_slice().iter().all(|value| value.is_finite()) {
+        Ok(covariance)
+    } else {
+        Err(OracleError::NumericalFailure(
+            "reported-intercept HC1 covariance is not finite".to_owned(),
+        ))
+    }
 }
 
 struct ValidatedProblem {

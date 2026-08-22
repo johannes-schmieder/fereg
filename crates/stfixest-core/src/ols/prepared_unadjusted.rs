@@ -217,7 +217,7 @@ struct InferencePerturbations {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ReferenceWeightView<'a> {
+pub(super) struct ReferenceWeightView<'a> {
     values: Option<&'a [f64]>,
     kind: Option<WeightKind>,
     divisor: f64,
@@ -241,7 +241,7 @@ struct WaldFCalculation {
 }
 
 impl ReferenceWeightView<'_> {
-    fn value(self, row: usize) -> Result<f64> {
+    pub(super) fn value(self, row: usize) -> Result<f64> {
         let value = match (self.kind, self.values) {
             (None, None) => 1.0,
             (Some(WeightKind::Frequency), Some(values)) => *values
@@ -311,7 +311,7 @@ fn compose_internal<R: InferenceReservation>(
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_fit_and_absorbed_dof(prepared, &fit, &absorbed_dof)?;
     let (weights, weight_view, weight_sum_relative_error) =
-        build_reference_weight_report(prepared, &fit, tolerance)?;
+        build_reference_weight_report(prepared, &fit, tolerance, false)?;
     let mut dof = build_residual_dof(prepared, &fit, &absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
@@ -436,7 +436,7 @@ fn perturb_optional_statistic(value: &mut Option<f64>) -> Result<()> {
     Ok(())
 }
 
-fn validate_fit_and_absorbed_dof(
+pub(super) fn validate_fit_and_absorbed_dof(
     prepared: &PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     absorbed: &PreparedOlsAbsorbedDofReport,
@@ -639,10 +639,11 @@ fn validate_fit_and_absorbed_dof(
     Ok(())
 }
 
-fn build_reference_weight_report<'a>(
+pub(super) fn build_reference_weight_report<'a>(
     prepared: &'a PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     tolerance: f64,
+    allow_probability: bool,
 ) -> Result<(
     PreparedOlsReferenceWeightReport,
     ReferenceWeightView<'a>,
@@ -699,6 +700,18 @@ fn build_reference_weight_report<'a>(
                         )
                     }
                     WeightKind::Analytic => {
+                        let solver_sum = raw_sum / divisor;
+                        let multiplier = nobs_f64 / solver_sum;
+                        (
+                            Some(*kind),
+                            Some(values.as_slice()),
+                            nobs,
+                            Some(raw_sum),
+                            divisor,
+                            multiplier,
+                        )
+                    }
+                    WeightKind::Probability if allow_probability => {
                         let solver_sum = raw_sum / divisor;
                         let multiplier = nobs_f64 / solver_sum;
                         (
@@ -785,7 +798,7 @@ fn build_reference_weight_report<'a>(
     ))
 }
 
-fn build_residual_dof(
+pub(super) fn build_residual_dof(
     prepared: &PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     absorbed: &PreparedOlsAbsorbedDofReport,
@@ -858,7 +871,7 @@ fn build_residual_dof(
     })
 }
 
-fn build_statistics(
+pub(super) fn build_statistics(
     rss: f64,
     tss: f64,
     within_tss: f64,
@@ -1442,7 +1455,7 @@ fn gaussian_log_likelihood_identity_error(
     relative_difference(actual, expected, actual.abs().max(expected.abs()).max(1.0))
 }
 
-fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Result<()> {
+pub(super) fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Result<()> {
     if [rss, tss, within_tss]
         .iter()
         .any(|value| !value.is_finite() || *value < 0.0)
@@ -1454,7 +1467,7 @@ fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Result<()> {
     Ok(())
 }
 
-fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
+pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
     if values.is_empty() {
         return Err(invalid_argument(
             "prepared iid weighted mean requires a nonempty sample",
@@ -1494,7 +1507,7 @@ fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64
     }
 }
 
-fn weighted_sum_of_squares(
+pub(super) fn weighted_sum_of_squares(
     values: &[f64],
     weights: ReferenceWeightView<'_>,
     center: f64,
@@ -1601,7 +1614,7 @@ fn gaussian_log_likelihood_from_ss(sum_of_squares: f64, observations: f64) -> Re
     }
 }
 
-fn relative_difference(actual: f64, expected: f64, scale: f64) -> Result<f64> {
+pub(super) fn relative_difference(actual: f64, expected: f64, scale: f64) -> Result<f64> {
     if !actual.is_finite() || !expected.is_finite() || !scale.is_finite() || scale <= 0.0 {
         return Err(invalid_data(
             "prepared iid relative-certificate input is invalid",
@@ -1617,7 +1630,7 @@ fn relative_difference(actual: f64, expected: f64, scale: f64) -> Result<f64> {
     }
 }
 
-fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
     if !value.is_finite() {
         return Err(invalid_data("prepared iid compensated term is not finite"));
     }
@@ -1638,7 +1651,7 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     }
 }
 
-fn exact_integer_as_f64(value: u128) -> Result<f64> {
+pub(super) fn exact_integer_as_f64(value: u128) -> Result<f64> {
     const MAX_EXACT_F64_INTEGER: u128 = 1_u128 << 53;
     if value > MAX_EXACT_F64_INTEGER {
         return Err(invalid_data(
@@ -1648,7 +1661,7 @@ fn exact_integer_as_f64(value: u128) -> Result<f64> {
     Ok(value as f64)
 }
 
-fn checked_square(value: usize, message: &'static str) -> Result<usize> {
+pub(super) fn checked_square(value: usize, message: &'static str) -> Result<usize> {
     value.checked_mul(value).ok_or_else(|| allocation(message))
 }
 
