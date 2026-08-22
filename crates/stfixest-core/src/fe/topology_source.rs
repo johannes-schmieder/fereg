@@ -133,11 +133,13 @@ mod tests {
             CategoricalCodeView::new(&firm, 3),
             CategoricalCodeView::new(&year, 3),
         ];
-        let topology =
-            CategoricalTopologySource::interaction(&[1, 0], &sources).expect("topology");
+        let topology = CategoricalTopologySource::interaction(&[1, 0], &sources).expect("topology");
         assert!(topology.partition().is_interaction());
         assert_eq!(topology.partition().categorical_source_indices(), &[0, 1]);
-        assert_eq!(topology.codes(&sources).expect("codes"), &[3, 0, 3, 1, 0, 2, 1]);
+        assert_eq!(
+            topology.codes(&sources).expect("codes"),
+            &[3, 0, 3, 1, 0, 2, 1]
+        );
         assert_eq!(topology.members(0).expect("level 0"), &[1, 4]);
         assert_eq!(topology.members(1).expect("level 1"), &[3, 6]);
         assert_eq!(topology.members(2).expect("level 2"), &[5]);
@@ -205,8 +207,8 @@ mod tests {
     fn duplicate_only_interaction_remains_zero_copy() {
         let raw = [0, 1, 0, 2];
         let sources = [CategoricalCodeView::new(&raw, 3)];
-        let topology = CategoricalTopologySource::interaction(&[0, 0], &sources)
-            .expect("collapsed topology");
+        let topology =
+            CategoricalTopologySource::interaction(&[0, 0], &sources).expect("collapsed topology");
         assert!(!topology.partition().is_interaction());
         assert!(std::ptr::eq(
             topology.codes(&sources).expect("codes").as_ptr(),
