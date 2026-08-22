@@ -1,8 +1,9 @@
 use stfixest_core::{
-    fit_prepared_ols_coefficients_map, prepare_ols_data, AbsorbTermId, AbsorbedTerm,
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    fit_prepared_ols_coefficients_map, fit_prepared_ols_unadjusted_map, prepare_ols_data,
+    AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
+    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind,
+    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig,
     RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
@@ -130,7 +131,7 @@ fn observation_permutation_preserves_identified_fit() {
     let permuted_weights = permute(&weights, &permutation);
     let permuted = solve_case(
         &permuted_outcome,
-        &[permuted_x],
+        std::slice::from_ref(&permuted_x),
         &permuted_effects,
         &[0, 1],
         false,
@@ -142,6 +143,148 @@ fn observation_permutation_preserves_identified_fit() {
         restored[old_row] = permuted.1[new_row];
     }
     assert_slice_close(&baseline.1, &restored, RESIDUAL_TOLERANCE);
+
+    let baseline_inference = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &outcome,
+            std::slice::from_ref(&x),
+            &effects,
+            &[0, 1],
+            false,
+            CaseWeights::Analytic(&weights),
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("baseline permutation inference");
+    let permuted_inference = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &permuted_outcome,
+            std::slice::from_ref(&permuted_x),
+            &permuted_effects,
+            &[0, 1],
+            false,
+            CaseWeights::Analytic(&permuted_weights),
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("permuted inference");
+    assert_eq!(baseline_inference.dof(), permuted_inference.dof());
+    assert_slice_close(
+        baseline_inference.covariance().values(),
+        permuted_inference.covariance().values(),
+        5e-8,
+    );
+    assert_close(
+        baseline_inference.statistics().rss,
+        permuted_inference.statistics().rss,
+        5e-8,
+    );
+    assert_close(
+        baseline_inference.statistics().within_tss,
+        permuted_inference.statistics().within_tss,
+        5e-8,
+    );
+}
+
+#[test]
+fn analytic_inference_is_invariant_to_extreme_common_weight_scales() {
+    let groups = vec![0_u32, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
+    let x = vec![
+        -2.0, -0.5, 1.0, -1.0, 2.0, 4.0, -3.0, 1.5, 5.0, 0.2, 2.8, 6.0,
+    ];
+    let y = (0..x.len())
+        .map(|row| {
+            1.8 * x[row] + [0.5, -1.0, 1.4, 0.2][groups[row] as usize] + 0.08 * (row as f64).cos()
+        })
+        .collect::<Vec<_>>();
+    let base = [0.25, 2.0, 1.5, 3.0, 0.75, 4.0, 1.2, 2.7, 5.0, 0.6, 3.3, 1.1];
+    let tiny = base.map(|weight| weight * 1e-150);
+    let huge = base.map(|weight| weight * 1e150);
+    let effects = vec![groups];
+    let solve = |weights: &[f64]| {
+        fit_prepared_ols_unadjusted_map(
+            &prepare_case(
+                &y,
+                std::slice::from_ref(&x),
+                &effects,
+                &[0],
+                true,
+                CaseWeights::Analytic(weights),
+            ),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("extreme-scale analytic inference")
+    };
+    let baseline = solve(&base);
+    for scaled in [solve(&tiny), solve(&huge)] {
+        assert_eq!(baseline.dof(), scaled.dof());
+        assert_slice_close(
+            baseline.covariance().values(),
+            scaled.covariance().values(),
+            2e-8,
+        );
+        assert_close(baseline.statistics().rss, scaled.statistics().rss, 2e-8);
+        assert_close(
+            baseline.statistics().within_tss,
+            scaled.statistics().within_tss,
+            2e-8,
+        );
+    }
+}
+
+#[test]
+fn frequency_inference_matches_literal_row_expansion() {
+    let groups = vec![0_u32, 0, 1, 1, 2, 2];
+    let x = vec![-2.0, 0.5, -1.0, 2.0, 1.5, 4.0];
+    let y = vec![0.4, 5.1, -2.2, 3.7, 4.0, 8.3];
+    let frequencies = [1_u32, 3, 2, 4, 1, 2];
+    let weighted = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &y,
+            std::slice::from_ref(&x),
+            std::slice::from_ref(&groups),
+            &[0],
+            true,
+            CaseWeights::Frequency(&frequencies),
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("frequency inference");
+    let mut expanded_y = Vec::new();
+    let mut expanded_x = Vec::new();
+    let mut expanded_groups = Vec::new();
+    for row in 0..y.len() {
+        for _ in 0..frequencies[row] {
+            expanded_y.push(y[row]);
+            expanded_x.push(x[row]);
+            expanded_groups.push(groups[row]);
+        }
+    }
+    let expanded = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &expanded_y,
+            &[expanded_x],
+            &[expanded_groups],
+            &[0],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("literal frequency expansion inference");
+    assert_eq!(weighted.weights().effective_observations, expanded_y.len());
+    assert_eq!(weighted.dof(), expanded.dof());
+    assert_slice_close(
+        weighted.covariance().values(),
+        expanded.covariance().values(),
+        5e-8,
+    );
+    assert_close(weighted.statistics().rss, expanded.statistics().rss, 5e-8);
+    assert_close(
+        weighted.statistics().within_tss,
+        expanded.statistics().within_tss,
+        5e-8,
+    );
 }
 
 #[test]
@@ -294,6 +437,234 @@ fn sealed_stata18_reference_anchors_match_reported_intercept_and_bread() {
     );
 }
 
+#[test]
+fn sealed_stata18_inference_statistics_weights_and_dof_policies_match() {
+    // Same immutable Stata 18/reghdfe receipt and payload digest documented by
+    // `sealed_stata18_reference_anchors_match_reported_intercept_and_bread`.
+    let core = include_str!("../../../tests/fixtures/ols/ols_core.csv");
+    let weights_fixture = include_str!("../../../tests/fixtures/ols/ols_weights.csv");
+    let outcome = csv_numeric_column(core, "y");
+    let x1 = csv_numeric_column(core, "x1");
+    let x2 = csv_numeric_column(core, "x2");
+    let worker = csv_u32_column(core, "worker");
+    let firm = csv_u32_column(core, "firm");
+    let year = csv_u32_column(core, "year");
+
+    let no_fe = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &outcome,
+            &[x1.clone(), x2],
+            &[],
+            &[],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("sealed no-FE iid inference");
+    assert_eq!(no_fe.weights().physical_observations, 24);
+    assert_eq!(no_fe.weights().effective_observations, 24);
+    assert_eq!(no_fe.dof().finite_rank, 3);
+    assert_eq!(no_fe.dof().finite_model_dof, 2);
+    assert_eq!(no_fe.dof().absorbed_rank, 0);
+    assert_eq!(no_fe.dof().residual_dof, 21);
+    assert!(no_fe.dof().has_structural_intercept);
+    assert_close(
+        no_fe.statistics().rss,
+        stata_hex("+1.2a14530d58416X+000"),
+        3e-6,
+    );
+    assert_close(
+        no_fe.statistics().tss,
+        stata_hex("+1.9d325a41a745bX+005"),
+        3e-6,
+    );
+    assert_close(
+        no_fe.statistics().within_tss,
+        stata_hex("+1.9d325a41a745bX+005"),
+        3e-6,
+    );
+    assert_close(
+        no_fe.statistics().r_squared.expect("sealed R2"),
+        stata_hex("+1.f475270c974d5X-001"),
+        3e-6,
+    );
+    assert_close(
+        no_fe
+            .statistics()
+            .adjusted_r_squared
+            .expect("sealed adjusted R2"),
+        stata_hex("+1.f35bbd0dca488X-001"),
+        3e-6,
+    );
+    assert_close(
+        no_fe.statistics().root_mean_squared_error,
+        stata_hex("+1.e23e4fe17df11X-003"),
+        3e-6,
+    );
+    assert_close(
+        no_fe.statistics().f_statistic.expect("sealed F"),
+        stata_hex("+1.c74319df063baX+008"),
+        3e-6,
+    );
+
+    let disconnected = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &outcome,
+            &[],
+            &[worker.clone(), firm.clone()],
+            &[0, 1],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("sealed disconnected FE-only iid inference");
+    assert_eq!(disconnected.dof().finite_rank, 0);
+    assert_eq!(disconnected.dof().finite_model_dof, 0);
+    assert_eq!(disconnected.dof().absorbed_rank, 18);
+    assert_eq!(disconnected.dof().residual_dof, 6);
+    assert!(disconnected.dof().has_normalized_absorbed_intercept);
+    assert_eq!(disconnected.covariance().dimension(), 1);
+    assert_close(
+        disconnected.statistics().rss,
+        stata_hex("+1.46041bbe76f57X+000"),
+        3e-6,
+    );
+    assert_close(
+        disconnected.statistics().tss,
+        stata_hex("+1.9d325a41a745bX+005"),
+        3e-6,
+    );
+    assert!(disconnected.statistics().f_statistic.is_none());
+
+    let one_fe_factor = fit_prepared_ols_unadjusted_map(
+        &prepare_one_fe_factor_case(core),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("sealed one-FE factor iid statistics");
+    assert_eq!(one_fe_factor.dof().absorbed_rank, 8);
+    assert_eq!(one_fe_factor.dof().finite_model_dof, 3);
+    assert_eq!(one_fe_factor.dof().residual_dof, 13);
+    assert_close(
+        one_fe_factor
+            .statistics()
+            .within_r_squared
+            .expect("sealed within R2"),
+        stata_hex("+1.fe76cdff850d0X-001"),
+        3e-6,
+    );
+    assert_close(
+        one_fe_factor
+            .statistics()
+            .adjusted_within_r_squared
+            .expect("sealed adjusted within R2"),
+        stata_hex("+1.fe1c113a7c5edX-001"),
+        3e-6,
+    );
+
+    let weighted_outcome = csv_numeric_column(weights_fixture, "y");
+    let weighted_x = vec![csv_numeric_column(weights_fixture, "x")];
+    let weighted_group = vec![csv_u32_column(weights_fixture, "group")];
+    for (column, expected_sum) in [
+        ("w_valid", "+1.9cccccd000000X+004"),
+        ("w_scaled", "+1.0200000000000X+008"),
+    ] {
+        let raw = csv_numeric_column(weights_fixture, column);
+        let inference = fit_prepared_ols_unadjusted_map(
+            &prepare_case(
+                &weighted_outcome,
+                &weighted_x,
+                &weighted_group,
+                &[0],
+                true,
+                CaseWeights::Analytic(&raw),
+            ),
+            PreparedOlsUnadjustedConfig::default(),
+        )
+        .expect("sealed analytic-weight iid inference");
+        assert_eq!(inference.weights().effective_observations, 12);
+        assert_eq!(inference.dof().residual_dof, 5);
+        assert_close(
+            inference
+                .weights()
+                .raw_weight_sum
+                .expect("analytic raw sum"),
+            stata_hex(expected_sum),
+            3e-7,
+        );
+    }
+    let frequencies = csv_u32_column(weights_fixture, "fw_valid");
+    let frequency = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &weighted_outcome,
+            &weighted_x,
+            &weighted_group,
+            &[0],
+            true,
+            CaseWeights::Frequency(&frequencies),
+        ),
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("sealed frequency-weight iid inference");
+    assert_eq!(frequency.weights().effective_observations, 26);
+    assert_eq!(frequency.dof().residual_dof, 19);
+    assert_eq!(frequency.weights().raw_weight_sum, Some(26.0));
+
+    let none = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &outcome,
+            std::slice::from_ref(&x1),
+            &[worker.clone(), firm.clone()],
+            &[0, 1],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsUnadjustedConfig {
+            absorbed_dof: PreparedOlsAbsorbedDofPolicy::None,
+            ..PreparedOlsUnadjustedConfig::default()
+        },
+    )
+    .expect("sealed dof(none) iid inference");
+    assert_eq!(none.dof().absorbed_rank, 19);
+    assert_eq!(none.dof().residual_dof, 4);
+    assert_slice_close(
+        none.covariance().values(),
+        &[
+            stata_hex("+1.f80df410ae9caX-006"),
+            stata_hex("-1.260823b465db6X-007"),
+            stata_hex("-1.260823b465db6X-007"),
+            stata_hex("+1.a4d459ecc8bf9X-009"),
+        ],
+        3e-6,
+    );
+
+    let first_pair = fit_prepared_ols_unadjusted_map(
+        &prepare_case(
+            &outcome,
+            &[],
+            &[worker, firm, year],
+            &[0, 1, 2],
+            true,
+            CaseWeights::Unit,
+        ),
+        PreparedOlsUnadjustedConfig {
+            absorbed_dof: PreparedOlsAbsorbedDofPolicy::FirstPair,
+            ..PreparedOlsUnadjustedConfig::default()
+        },
+    )
+    .expect("sealed dof(firstpair) iid inference");
+    assert_eq!(first_pair.dof().absorbed_rank, 21);
+    assert_eq!(first_pair.dof().finite_rank, 0);
+    assert_eq!(first_pair.dof().residual_dof, 3);
+    assert_eq!(first_pair.covariance().dimension(), 1);
+    assert_close(
+        first_pair.covariance().values()[0],
+        stata_hex("+1.78d531440dbd9X-00b"),
+        3e-6,
+    );
+}
+
 struct SealedReferenceExpected<'a> {
     coefficients: &'a [&'a str],
     unadjusted_vce: Option<(&'a str, &'a str, &'a [&'a str])>,
@@ -334,6 +705,26 @@ fn assert_sealed_reference_case(
             .map(|value| stata_hex(value) * multiplier)
             .collect::<Vec<_>>();
         assert_slice_close(fit.bread().values(), &expected, 3e-6);
+
+        let inference =
+            fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
+                .expect("sealed-reference prepared iid inference");
+        assert_eq!(
+            inference.dof().residual_dof,
+            stata_hex(df_residual) as usize
+        );
+        assert_close(inference.statistics().rss, stata_hex(rss), 3e-6);
+        let expected_covariance = covariance
+            .iter()
+            .map(|value| stata_hex(value))
+            .collect::<Vec<_>>();
+        assert_slice_close(inference.covariance().values(), &expected_covariance, 3e-6);
+        assert!(inference.certificate().passed);
+    } else {
+        let error =
+            fit_prepared_ols_unadjusted_map(&prepared, PreparedOlsUnadjustedConfig::default())
+                .expect_err("probability-weight iid inference must fail closed");
+        assert_eq!(error.code, stfixest_core::ErrorCode::Unsupported);
     }
 }
 
@@ -437,6 +828,93 @@ fn run_oracle_case(
         clusters: Vec::new(),
     })
     .expect("explicit-dummy oracle");
+
+    if !matches!(weights, CaseWeights::Probability(_)) {
+        let inference = fit_prepared_ols_unadjusted_map(
+            &prepared,
+            PreparedOlsUnadjustedConfig {
+                absorbed_dof: PreparedOlsAbsorbedDofPolicy::Pairwise,
+                ..PreparedOlsUnadjustedConfig::default()
+            },
+        )
+        .expect("certified prepared iid inference");
+        assert!(inference.certificate().passed);
+        assert_eq!(
+            inference.weights().effective_observations,
+            oracle.effective_observations
+        );
+        assert_eq!(inference.dof().model_rank, oracle.model_rank);
+        assert_eq!(
+            inference.dof().residual_dof,
+            oracle.residual_degrees_of_freedom
+        );
+
+        let reference_weights = reference_case_weights(weights, outcome.len());
+        let reference_rss = oracle
+            .residuals
+            .iter()
+            .zip(&reference_weights)
+            .map(|(residual, weight)| residual * residual * weight)
+            .sum::<f64>();
+        assert_close(inference.statistics().rss, reference_rss, 5e-8);
+        let overall_center = if include_intercept || !effect_order.is_empty() {
+            weighted_mean(outcome, &reference_weights)
+        } else {
+            0.0
+        };
+        let reference_tss = outcome
+            .iter()
+            .zip(&reference_weights)
+            .map(|(value, weight)| weight * (value - overall_center).powi(2))
+            .sum::<f64>();
+        assert_close(inference.statistics().tss, reference_tss, 5e-8);
+        let reference_within_tss = if effect_order.is_empty() {
+            reference_tss
+        } else {
+            let within_oracle = fit_explicit_ols(&ExplicitOlsProblem {
+                outcome: outcome.to_vec(),
+                regressors: Vec::new(),
+                effects: effect_order
+                    .iter()
+                    .map(|source| {
+                        let codes = effect_sources[*source].clone();
+                        DummyEffect::new(codes.clone(), level_count(&codes), true, Vec::new())
+                            .expect("within dummy effect")
+                    })
+                    .collect(),
+                weights: oracle_weights(weights),
+                clusters: Vec::new(),
+            })
+            .expect("explicit-dummy within projection");
+            within_oracle
+                .residuals
+                .iter()
+                .zip(&reference_weights)
+                .map(|(value, weight)| weight * value.powi(2))
+                .sum::<f64>()
+        };
+        assert_close(
+            inference.statistics().within_tss,
+            reference_within_tss,
+            5e-8,
+        );
+
+        let coordinates = inference.covariance_coordinates();
+        let finite_dimension = oracle.kept_regressors.len();
+        for row in 0..finite_dimension {
+            for column in 0..finite_dimension {
+                assert_eq!(
+                    coordinates[row].kind,
+                    PreparedOlsBreadCoordinateKind::FiniteRegressor
+                );
+                assert_close(
+                    inference.covariance().values()[row * coordinates.len() + column],
+                    oracle.iid_vce[(row, column)],
+                    8e-8,
+                );
+            }
+        }
+    }
 
     assert_eq!(
         fit.coefficients().len(),
@@ -549,6 +1027,17 @@ fn normalized_case_weights(weights: CaseWeights<'_>, nobs: usize) -> Vec<f64> {
         CaseWeights::Unit => vec![1.0; nobs],
         CaseWeights::Analytic(values) | CaseWeights::Probability(values) => values.to_vec(),
         CaseWeights::Frequency(values) => values.iter().map(|value| *value as f64).collect(),
+    }
+}
+
+fn reference_case_weights(weights: CaseWeights<'_>, nobs: usize) -> Vec<f64> {
+    match weights {
+        CaseWeights::Unit => vec![1.0; nobs],
+        CaseWeights::Analytic(values) | CaseWeights::Probability(values) => {
+            let multiplier = nobs as f64 / values.iter().sum::<f64>();
+            values.iter().map(|value| value * multiplier).collect()
+        }
+        CaseWeights::Frequency(values) => values.iter().map(|value| f64::from(*value)).collect(),
     }
 }
 
@@ -669,6 +1158,121 @@ fn prepare_case(
         keep_singletons: true,
     };
     prepare_ols_data(&request, &loaded).expect("prepared oracle case")
+}
+
+fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
+    let outcome = csv_numeric_column(core, "y");
+    let x1 = csv_numeric_column(core, "x1");
+    let industry = csv_numeric_column(core, "industry");
+    let firm = csv_numeric_column(core, "firm");
+    let x_source = source_id(0);
+    let industry_source = source_id(1);
+    let firm_source = source_id(2);
+    let mut terms = vec![continuous_term(0, x_source)];
+    for (index, level, base) in [(2_u32, 1.0, true), (3, 2.0, false), (4, 3.0, false)] {
+        terms.push(ExpandedTerm {
+            id: TermId::new(index).expect("factor term"),
+            order: TermOrder::new(index).expect("factor order"),
+            coefficient_slot: CoefficientSlot::new(index).expect("factor slot"),
+            raw_kind: RawTermKind::Factor,
+            whole_column_omitted: base,
+            canonical_token: if base {
+                "1b.industry".to_owned()
+            } else {
+                format!("{level}.industry")
+            },
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).expect("factor component"),
+                source: industry_source,
+                kind: ComponentKind::Categorical,
+                level_state: LevelState::Present,
+                level_value: level,
+                base: if base {
+                    MetadataFlag::True
+                } else {
+                    MetadataFlag::False
+                },
+                omitted: if base {
+                    MetadataFlag::True
+                } else {
+                    MetadataFlag::False
+                },
+                raw_operator: if base {
+                    "1b".to_owned()
+                } else {
+                    level.to_string()
+                },
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        });
+    }
+    prepare_ols_data(
+        &OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![
+                    SourceEntry {
+                        id: x_source,
+                        canonical_name: "x1".to_owned(),
+                    },
+                    SourceEntry {
+                        id: industry_source,
+                        canonical_name: "industry".to_owned(),
+                    },
+                    SourceEntry {
+                        id: firm_source,
+                        canonical_name: "firm".to_owned(),
+                    },
+                ],
+                terms,
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("firm absorb term"),
+                intercept: true,
+                categorical_sources: vec![firm_source],
+                slope_sources: Vec::new(),
+                label: "firm".to_owned(),
+                saved_name: String::new(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x_source),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(industry_source),
+                },
+                OlsInputBinding {
+                    stata_var_position: 5,
+                    role: OlsInputRole::NumericSource(firm_source),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        },
+        &LoadedOlsInput {
+            candidate: vec![true; outcome.len()],
+            outcome: loaded_column(outcome),
+            numeric_sources: vec![
+                (x_source, loaded_column(x1)),
+                (industry_source, loaded_column(industry)),
+                (firm_source, loaded_column(firm)),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        },
+    )
+    .expect("prepared one-FE factor case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {

@@ -185,6 +185,13 @@ pub struct CertifiedPreparedOlsFit {
     bread: PreparedOlsBread,
     absorption_report: SolveReport,
     residual_absorption_report: SolveReport,
+    /// Reference-weight sum of squares of the outcome immediately after the
+    /// initial certified FE absorption and before finite-regressor QR.
+    ///
+    /// With at least one prepared intercept FE this is the reference command's
+    /// within TSS.  A no-FE model may still need ordinary-intercept centering,
+    /// so the prepared inference layer deliberately handles that case itself.
+    initial_absorbed_outcome_sum_of_squares: f64,
     residuals: DenseMatrix,
 }
 
@@ -232,6 +239,11 @@ impl CertifiedPreparedOlsFit {
     #[must_use]
     pub const fn residual_absorption_report(&self) -> &SolveReport {
         &self.residual_absorption_report
+    }
+
+    #[must_use]
+    pub const fn initial_absorbed_outcome_sum_of_squares(&self) -> f64 {
+        self.initial_absorbed_outcome_sum_of_squares
     }
 
     /// Final FE-orthogonal regression residuals on the compact prepared axis.
@@ -450,6 +462,16 @@ fn fit_with_controls_internal<R: FitReservation>(
         reservation,
         perturbations,
     )?;
+    let initial_absorbed_outcome_sum_of_squares = within_outcome_norm
+        .mul_add(within_outcome_norm, 0.0)
+        * bread.weight_scale().reference_weight_multiplier;
+    if !initial_absorbed_outcome_sum_of_squares.is_finite()
+        || initial_absorbed_outcome_sum_of_squares < 0.0
+    {
+        return Err(invalid_data(
+            "prepared OLS initial absorbed outcome sum of squares is invalid",
+        ));
+    }
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.sample.n_active(), 1, raw_residuals)?;
     let residual_absorbed = absorb_borrowed_intercept_map_certified(
@@ -497,6 +519,7 @@ fn fit_with_controls_internal<R: FitReservation>(
         bread,
         absorption_report,
         residual_absorption_report,
+        initial_absorbed_outcome_sum_of_squares,
         residuals,
     })
 }
