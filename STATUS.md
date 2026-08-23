@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-23
-**Branch / baseline:** consolidated `main`; latest accepted exact-green source `e81b942c0dc0b122258489a60c956cdbe0121512`, recorded by receipt commit `19e815dafcb2171ffd65fe7be2bae4924d604911`
+**Branch / baseline:** consolidated `main`; latest accepted exact-green source `3063e32b80bf1725df72cd390afef3f36eae32f9`, recorded by receipt commit `92982e2b7677cc9047314ace985931717dbfd0e6`
 **Active milestone:** complete the hidden StFixest versus pinned `reghdfe` FE-interaction differential and reseal the frozen OLS projection
 **Release state:** development only — public estimators remain fail-closed; no production or cross-platform release claim
 
@@ -14,9 +14,9 @@ Contracts and reference documentation record requirements, not live progress.
 - Only `main` is used for StFixest development. The former categorical and OSX
   continuation lines were consolidated by `4bb5f1a38fca46b86cc7d52be9d8e013b173a0a4`;
   obsolete StFixest branches were then deleted.
-- Exact-SHA quick CI for source `e81b942c0dc0b122258489a60c956cdbe0121512`
+- Exact-SHA quick CI for source `3063e32b80bf1725df72cd390afef3f36eae32f9`
   is green: overall, licensed-Stata, and Rust statuses are `success`, Stata
-  returned zero, and all 12 quick fixtures passed.
+  returned zero, and all 13 quick fixtures passed.
 - Current main contains substantial hidden categorical-interaction support:
   collision-free compact tuple factorization; canonical partition reuse;
   final-sample topology; iterative singleton and frequency-weight behavior;
@@ -24,16 +24,22 @@ Contracts and reference documentation record requirements, not live progress.
   hidden/native result transport; Stata-side hidden transport; independent
   explicit-dummy oracles; and a licensed-Stata categorical quick fixture.
 - The exact pinned offline reference environment and licensed-Stata probe are
-  now source-bound and successful for source
+  source-bound and successful for source
   `e81b942c0dc0b122258489a60c956cdbe0121512`. Reference receipt:
   `.ci/reference-probes/fe-interaction/e81b942c0dc0b122258489a60c956cdbe0121512.json`
-  (receipt commit `0e3960a8d60442fe4b8569e1db5d2c91fc487e75`). This closes
-  the reference-environment/probe gate only; it does **not** close
-  `multi_fe_interactions` or establish hidden-estimator parity.
+  (receipt commit `0e3960a8d60442fe4b8569e1db5d2c91fc487e75`).
+- The first receipt-bound hidden-estimator differential case,
+  `target_default_firm_year`, is accepted at exact-green source
+  `3063e32b80bf1725df72cd390afef3f36eae32f9`. It checks the final sample,
+  coefficient/status layout, iid covariance, absorbed and residual DoF,
+  categorical interaction identity, and observation residuals against the
+  sealed pinned-`reghdfe` payload. This is one executable case only; it does
+  **not** close `multi_fe_interactions` or establish full estimator parity.
 - Digest-bound full-history Git bundles for the pinned `reghdfe`, `ftools`,
   and `stata-require` commits are committed and were materialized offline by
-  the successful source-bound probe. The remaining evidence gate is the
-  hidden StFixest versus pinned-`reghdfe` estimator differential.
+  the successful source-bound probe. The remaining evidence gate is to extend
+  the hidden StFixest versus pinned-`reghdfe` differential across the remaining
+  accepted receipt cases and reseal the frozen projection.
 - Final-sample categorical rebasing remains staged rather than live. Its module,
   source transform, validation workflow, and prior validation receipts are
   preserved, but activation must be reconciled with `main` and rerun after the
@@ -91,12 +97,14 @@ consolidated state above and active checkpoint below control current work.
 
 The exact pinned offline reference environment and licensed-Stata probe are
 source-bound and successful for `e81b942c0dc0b122258489a60c956cdbe0121512`.
-The remaining closure is the estimator differential: compare the hidden
-StFixest interaction result to pinned `reghdfe` for sample identity,
+The first executable differential case, `target_default_firm_year`, is accepted
+at exact-green source `3063e32b80bf1725df72cd390afef3f36eae32f9`.
+The remaining closure is to extend the differential across sample identity,
 coefficient/status layout, covariance, absorbed and residual DoF, fit
 statistics, singleton and weight behavior, constant handling, interaction
-identity, and contracted observation outputs. No parity claim is permitted
-until that family and the frozen projection are sealed.
+identity, and contracted observation outputs for the remaining accepted cases.
+No parity claim is permitted until that family and the frozen projection are
+sealed.
 
 Independent explicit-dummy Rust oracles remain mandatory. A successful
 `reghdfe` comparison is necessary but cannot replace independent mathematical
@@ -104,10 +112,11 @@ checks. Public dispatch stays disabled throughout this gate.
 
 ## Current handoff / resume point
 
-Build the hidden-StFixest versus pinned-`reghdfe` differential family from the
-accepted source-bound reference receipt and reseal the frozen 40-case
-projection. After that, reconcile and activate final-sample categorical
-rebasing on `main`; do not bypass the staged validation contract.
+Extend the accepted hidden-StFixest versus pinned-`reghdfe` differential from
+`target_default_firm_year` across the remaining source-bound receipt cases and
+reseal the frozen 40-case projection. After that, reconcile and activate
+final-sample categorical rebasing on `main`; do not bypass the staged validation
+contract.
 
 ## Current blockers — exact frozen manifest inventory
 
@@ -115,7 +124,7 @@ The historical sealed candidate executed 30 of the frozen 40 semantic cases.
 Current main adds hidden categorical-interaction implementation, but the frozen
 projection has not been resealed; these ten cases therefore remain formally open:
 
-1. `multi_fe_interactions` — hidden implementation and successful pinned reference probe present; estimator differential and resealed projection still required.
+1. `multi_fe_interactions` — hidden implementation, successful pinned reference probe, and first executable differential case are present; remaining differential cases and the resealed projection are still required.
 2. `intercept_and_slope` — absorbed intercept plus slope.
 3. `slope_only_multiple` — multiple absorbed slope-only terms.
 4. `string_fe` — string-source ingestion.
@@ -136,10 +145,10 @@ macOS validation exists.
 
 ## Next evidence to record
 
-Current order of operations: add the hidden StFixest versus pinned-`reghdfe`
-differential family; reseal the frozen projection; then activate and revalidate
-final-sample rebasing. Historical bullets below remain useful detail but do not
-supersede this order.
+Current order of operations: extend the accepted hidden StFixest versus
+pinned-`reghdfe` differential beyond `target_default_firm_year`; reseal the
+frozen projection; then activate and revalidate final-sample rebasing.
+Historical bullets below remain useful detail but do not supersede this order.
 
 - Replace the active 30/10 candidate receipt only after the numeric categorical
   FE-interaction gate passes independent core/oracle review, all failure and
@@ -283,9 +292,10 @@ supersede this order.
   exactly. Seven deterministic rollback stages plus an actual Control-C after
   the one plugin call restore named and null prior estimates and leave no
   requested residual; all licensed hidden parity/transaction fixtures pass.
-- Next complete and seal the hidden StFixest versus pinned-`reghdfe`
-  differential for native numeric categorical FE interactions and reseal the
-  frozen projection beginning with `firm#year`. Continue afterward with
+- Continue and seal the hidden StFixest versus pinned-`reghdfe` differential
+  for native numeric categorical FE interactions beyond the accepted
+  `target_default_firm_year` case, then reseal the frozen projection. Continue
+  afterward with
   independently gated string, absorbed-slope, broader ordinary-factor/time-
   series, saved-output, and postestimation work. No checkpoint may enable the
   public estimator or bypass the FE, solver-certificate, VCE, DoF,
