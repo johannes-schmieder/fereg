@@ -3,10 +3,11 @@ use stfixest_core::fe::{FeSolverKind, SolveReport, SolveStopReason};
 use stfixest_core::ols::{
     CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
     CertifiedPreparedOlsUnadjusted, PreparedOlsAbsorbedDofEffectIdentity,
-    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsClusteredData,
-    PreparedOlsClusteredPsdState, PreparedOlsData, PreparedOlsFitStatistics, PreparedOlsFitStatus,
-    PreparedOlsReferenceWeightReport,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsClusteredPsdState,
+    PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
 };
+
+use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 
 pub(crate) const FIT_ROWS: usize = 12;
 pub(crate) const DOF_ROWS: usize = 20;
@@ -130,14 +131,14 @@ pub(crate) struct OlsShadowResult<'a> {
 }
 
 pub(crate) fn build_shadow_result<'a>(
-    prepared: &'a PreparedOlsData,
-    clustered_prepared: Option<&'a PreparedOlsClusteredData>,
+    prepared: PreparedOlsResultData<'a>,
+    clustered_prepared: Option<PreparedOlsClusteredResultData<'a>>,
     inference: CertifiedOlsInference<'a>,
     residual_requested: bool,
 ) -> Result<OlsShadowResult<'a>> {
     validate_alignment(prepared, clustered_prepared, &inference)?;
     let fit = inference.fit();
-    let coefficient_count = prepared.model.coefficients.len();
+    let coefficient_count = prepared.model().coefficients.len();
     let covariance_dimension = inference.covariance_coordinates().len();
     let matrix_dimension = coefficient_count.max(1);
     let mut b = reserved_filled(matrix_dimension, 0.0, "OLS shadow coefficient vector")?;
@@ -299,8 +300,8 @@ pub(crate) fn build_shadow_result<'a>(
         subset_rows,
         residual_requested,
     )?;
-    if fit.residuals().len() != prepared.sample.n_active()
-        || prepared.sample.drop_reasons.len() != prepared.sample.n_original
+    if fit.residuals().len() != prepared.sample().n_active()
+        || prepared.sample().drop_reasons.len() != prepared.sample().n_original
     {
         return Err(invalid("prepared OLS observation outputs are misaligned"));
     }
@@ -324,20 +325,19 @@ pub(crate) fn build_shadow_result<'a>(
         fixed_effect_rows,
         cluster_rows,
         subset_rows,
-        drop_reasons: &prepared.sample.drop_reasons,
-        retained_rows: prepared.sample.retained_rows(),
+        drop_reasons: &prepared.sample().drop_reasons,
+        retained_rows: prepared.sample().retained_rows(),
         residuals: fit.residuals(),
     })
 }
 
 fn validate_alignment(
-    prepared: &PreparedOlsData,
-    clustered: Option<&PreparedOlsClusteredData>,
+    prepared: PreparedOlsResultData<'_>,
+    clustered: Option<PreparedOlsClusteredResultData<'_>>,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<()> {
     match (inference, clustered) {
-        (CertifiedOlsInference::Clustered(_), Some(value))
-            if std::ptr::eq(prepared, value.ols()) => {}
+        (CertifiedOlsInference::Clustered(_), Some(value)) if value.is_bound_to(prepared) => {}
         (CertifiedOlsInference::Clustered(_), _) => {
             return Err(invalid(
                 "clustered inference is not sample-bound to its preparation",
@@ -422,7 +422,7 @@ fn build_fit_statistics(statistics: PreparedOlsFitStatistics) -> Result<Vec<f64>
 }
 
 fn build_dof(
-    prepared: &PreparedOlsData,
+    prepared: PreparedOlsResultData<'_>,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<Vec<f64>> {
     let mut output = reserved_filled(DOF_ROWS * 2, 0.0, "OLS DoF table")?;
@@ -497,8 +497,8 @@ fn build_dof(
     let fields = [
         Some(weights.effective_observations as f64),
         Some(weights.physical_observations as f64),
-        Some(prepared.sample.n_candidate as f64),
-        Some(prepared.sample.n_active() as f64),
+        Some(prepared.sample().n_candidate as f64),
+        Some(prepared.sample().n_active() as f64),
         weights.raw_weight_sum,
         Some(finite_rank as f64),
         Some(finite_model_dof as f64),
@@ -510,8 +510,8 @@ fn build_dof(
         Some(nested as f64),
         Some(absorbed.initial_categories as f64),
         Some(absorbed.redundant_categories as f64),
-        Some(prepared.singletons.num_singletons as f64),
-        Some(prepared.singletons.cascade_events as f64),
+        Some(prepared.singletons().num_singletons as f64),
+        Some(prepared.singletons().cascade_events as f64),
         Some(f64::from(structural)),
         Some(f64::from(normalized)),
         Some(f64::from(approximate)),
@@ -591,7 +591,7 @@ fn build_fixed_effects(report: &PreparedOlsAbsorbedDofReport) -> Result<(Vec<f64
 }
 
 fn build_clusters(
-    prepared: Option<&PreparedOlsClusteredData>,
+    prepared: Option<PreparedOlsClusteredResultData<'_>>,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<(Vec<f64>, usize, Vec<f64>, usize)> {
     let (cluster_rows, subset_rows) = match inference {
@@ -874,7 +874,7 @@ fn set_selected_certificates(output: &mut [f64], selected: &[f64; 8]) -> Result<
 
 #[allow(clippy::too_many_arguments)]
 fn build_receipt(
-    prepared: &PreparedOlsData,
+    prepared: PreparedOlsResultData<'_>,
     kind: OlsVceKind,
     coefficient_count: usize,
     covariance_dimension: usize,
@@ -893,9 +893,9 @@ fn build_receipt(
         kind.code(),
         coefficient_count as f64,
         covariance_dimension as f64,
-        prepared.sample.n_original as f64,
-        prepared.sample.n_candidate as f64,
-        prepared.sample.n_active() as f64,
+        prepared.sample().n_original as f64,
+        prepared.sample().n_candidate as f64,
+        prepared.sample().n_active() as f64,
         logical_cluster_rows as f64,
         fixed_effect_rows as f64,
         logical_subset_rows as f64,

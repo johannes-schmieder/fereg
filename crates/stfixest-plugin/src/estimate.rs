@@ -6,6 +6,7 @@ use crate::result::{
     CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
     RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
+use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::metadata::{
     ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
@@ -131,7 +132,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                &prepared,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Iid(&inference),
                 action.outputs.residual.is_some(),
@@ -148,7 +149,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                &prepared,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Robust(&inference),
                 action.outputs.residual.is_some(),
@@ -170,8 +171,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                prepared.ols(),
-                Some(&prepared),
+                PreparedOlsResultData::legacy(prepared.ols()),
+                Some(PreparedOlsClusteredResultData::legacy(&prepared)),
                 CertifiedOlsInference::Clustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
