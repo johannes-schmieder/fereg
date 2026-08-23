@@ -86,9 +86,14 @@ assert e(stfixest_fe)[2,3] == 0
 assert e(stfixest_fe)[1,4] == 4
 assert e(stfixest_fe)[2,4] == 4
 assert e(stfixest_fe)[1,6] + e(stfixest_fe)[2,6] == e(df_a)
+local interaction_names : colfullnames e(b)
+di as error "STFIXEST_INTERACTION_DIAG b_cols=" colsof(e(b))
+di as error `"STFIXEST_INTERACTION_DIAG b_names=`interaction_names'"'
+matrix list e(b)
+matrix list e(stfixest_status)
+matrix list e(dof_table)
 assert colsof(e(b)) == 10
 assert rowsof(e(dof_table)) == 2
-local interaction_names : colfullnames e(b)
 assert `"`interaction_names'"' == ///
     "o.x1 2b.industry 3o.industry 2021b.year 2022o.year 2b.industry#2021b.year 2b.industry#2022o.year 3o.industry#2021b.year 3.industry#2022.year _cons"
 local interaction_dof_rows : rowfullnames e(dof_table)
