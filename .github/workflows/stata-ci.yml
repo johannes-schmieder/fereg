@@ -46,8 +46,6 @@ jobs:
     timeout-minutes: 240
     permissions:
       contents: write
-    outputs:
-      source_transform_applied: ${{ steps.source_transform.outputs.applied }}
     env:
       STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
       STATA_PROFILE: ${{ inputs.profile || 'quick' }}
@@ -57,63 +55,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply pending categorical cluster-preparation source transform
-        id: source_transform
-        if: ${{ github.event_name == 'push' }}
-        shell: bash
-        env:
-          BRANCH_NAME: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          echo "applied=false" >> "$GITHUB_OUTPUT"
-          transform="ci/source-transforms/activate_categorical_cluster_preparation.py"
-          if [[ ! -f "$transform" ]]; then
-            exit 0
-          fi
-
-          /usr/bin/python3 "$transform"
-          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
-
-          rm "$transform"
-          rmdir ci/source-transforms 2>/dev/null || true
-
-          # The generated source commit restores the ordinary CI workflow from
-          # this bootstrap commit's parent. The following push therefore runs
-          # the normal quick Stata/Rust suite against the generated source SHA.
-          git show "$GITHUB_SHA^:.github/workflows/stata-ci.yml" > .github/workflows/stata-ci.yml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git diff --cached --quiet && { echo "source transform produced no changes" >&2; exit 1; }
-          git commit -m "ols: add categorical clustered-data preparation"
-          git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-          git rebase "refs/remotes/origin/${BRANCH_NAME}"
-          git push origin "HEAD:refs/heads/${BRANCH_NAME}"
-          echo "applied=true" >> "$GITHUB_OUTPUT"
-
       - name: Test CI receipt machinery
-        if: ${{ steps.source_transform.outputs.applied != 'true' }}
         run: /usr/bin/python3 -m unittest discover -s ci/tests -p 'test_*.py'
 
       - name: Run licensed Stata profile
-        if: ${{ always() && steps.source_transform.outputs.applied != 'true' }}
+        if: ${{ always() }}
         run: ./ci/run_stata_ci.sh "$STATA_PROFILE"
 
       - name: Run quick Rust/C/source checks on normal pushes
-        if: ${{ always() && steps.source_transform.outputs.applied != 'true' && github.event_name == 'push' }}
+        if: ${{ always() && github.event_name == 'push' }}
         run: ./ci/record_rust_quick.sh
 
       - name: Add Rust result to the exact-SHA receipt
-        if: ${{ always() && steps.source_transform.outputs.applied != 'true' && github.event_name == 'push' }}
+        if: ${{ always() && github.event_name == 'push' }}
         run: >-
           /usr/bin/python3 ci/augment_ci_receipt.py
           .ci/stata/run/receipt.json
           .ci/stata/run/rust-quick.status
 
       - name: Upload Mac CI logs, candidate, and receipt
-        if: ${{ always() && steps.source_transform.outputs.applied != 'true' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: stata-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -124,7 +85,7 @@ jobs:
   publish-receipt:
     name: Publish exact-SHA receipt
     needs: mac-ci
-    if: ${{ always() && needs.mac-ci.result != 'cancelled' && needs.mac-ci.outputs.source_transform_applied != 'true' }}
+    if: ${{ always() && needs.mac-ci.result != 'cancelled' }}
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 10
     permissions:
