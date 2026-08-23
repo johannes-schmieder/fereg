@@ -578,15 +578,6 @@ fn perturb_optional_statistic(value: &mut Option<f64>) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn validate_fit_and_absorbed_dof(
-    prepared: &PreparedOlsData,
-    fit: &CertifiedPreparedOlsFit,
-    absorbed: &PreparedOlsAbsorbedDofReport,
-) -> Result<()> {
-    let summary = prepared.inference_absorbed_dof_summary(absorbed, absorbed.policy)?;
-    validate_fit_and_absorbed_dof_view(prepared, fit, summary)
-}
-
 pub(super) fn validate_fit_and_absorbed_dof_view<P: PreparedOlsInferenceView + ?Sized>(
     prepared: &P,
     fit: &CertifiedPreparedOlsFit,
@@ -886,16 +877,6 @@ pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView
         view,
         computed_error.max(reference_sum_error),
     ))
-}
-
-pub(super) fn build_residual_dof(
-    prepared: &PreparedOlsData,
-    fit: &CertifiedPreparedOlsFit,
-    absorbed: &PreparedOlsAbsorbedDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-) -> Result<PreparedOlsResidualDofReport> {
-    let summary = prepared.inference_absorbed_dof_summary(absorbed, absorbed.policy)?;
-    build_residual_dof_view(prepared, fit, summary, weights)
 }
 
 pub(super) fn build_clustered_base_residual_dof(
