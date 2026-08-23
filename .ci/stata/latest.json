@@ -1,11 +1,11 @@
 {
-  "completed_at": "2026-08-23T11:43:54.076714Z",
+  "completed_at": "2026-08-23T11:46:07.214794Z",
   "driver": "stfixest-fixtures",
-  "duration_seconds": 46.582,
+  "duration_seconds": 45.88,
   "failure_detail": "quick Rust/C/source checks returned 1",
   "failure_kind": "rust_error",
   "platform": "Unix; Mac (Apple Silicon)",
-  "plugin_sha256": "e6c41baea1ac62383c14ba90072d70098e54b402c194f6916e4320e412934079",
+  "plugin_sha256": "d1eb2a8e5521f1d0dab3e883f8c13c96a77e3ca3944e53ef730a17be444b49d4",
   "process_rc": 0,
   "profile": "quick",
   "ref": "refs/heads/codex/stfixest-osx-continuation",
@@ -21,12 +21,12 @@
     }
   ],
   "run_attempt": "1",
-  "run_id": "32637328496",
+  "run_id": "32637436553",
   "runner_name": "macstudio-stata-mp18-stfixest",
   "rust_rc": 1,
   "rust_status": "failure",
   "schema_version": 1,
-  "started_at": "2026-08-23T11:43:07.494252Z",
+  "started_at": "2026-08-23T11:45:21.334384Z",
   "stata_bundle_version": "18.0.130",
   "stata_edition": "MP",
   "stata_executable": "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
@@ -35,7 +35,7 @@
   "stata_status": "success",
   "stata_version": "18",
   "status": "failure",
-  "tested_sha": "b9ffae70c281e786770d2d4e674c27a8db2bdba2",
+  "tested_sha": "d4cdc8aaec25c3be11b4c28c8cba478d65dd3576",
   "tests_failed": 0,
   "tests_passed": 11
 }
