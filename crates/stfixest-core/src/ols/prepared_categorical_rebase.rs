@@ -89,13 +89,8 @@ pub(crate) fn rebase_categorical_model(
             .iter()
             .any(|component| component.base == MetadataFlag::True);
         let explicitly_omitted = term.whole_column_omitted && !originally_base;
-        let Some((kind, final_base_component)) = final_term_kind(
-            term,
-            candidate_model,
-            sources,
-            topology,
-            explicitly_omitted,
-        )?
+        let Some((kind, final_base_component)) =
+            final_term_kind(term, candidate_model, sources, topology, explicitly_omitted)?
         else {
             continue;
         };
@@ -314,7 +309,11 @@ fn next_slot(current_len: usize) -> Result<CoefficientSlot> {
 }
 
 fn canonical_factor_value(value: f64) -> f64 {
-    if value == 0.0 { 0.0 } else { value }
+    if value == 0.0 {
+        0.0
+    } else {
+        value
+    }
 }
 
 fn invalid(message: impl Into<String>) -> StFixestError {
@@ -370,7 +369,7 @@ mod tests {
 
     #[test]
     fn continuous_rebase_rejects_source_or_status_mismatch() {
-        let source = source(17);
+        let active_source = source(17);
         let active = PreparedOlsModel {
             coefficients: vec![PreparedOlsCoefficient {
                 coefficient_slot: slot(1),
@@ -380,7 +379,7 @@ mod tests {
             columns: vec![PreparedOlsColumn {
                 coefficient_slot: slot(1),
                 kind: PreparedOlsColumnKind::Continuous {
-                    source,
+                    source: active_source,
                     prepared_source_index: 3,
                 },
             }],
@@ -395,6 +394,6 @@ mod tests {
             }],
             columns: Vec::new(),
         };
-        assert!(candidate_continuous_kind(&omitted, slot(1), source).is_err());
+        assert!(candidate_continuous_kind(&omitted, slot(1), active_source).is_err());
     }
 }
