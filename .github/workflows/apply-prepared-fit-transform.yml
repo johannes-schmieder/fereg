@@ -6,6 +6,7 @@ on:
       - codex/stfixest-interactions
     paths:
       - ci/source-transforms/generalize_prepared_fit.py
+      - ci/source-transforms/trigger.txt
 
 permissions:
   contents: write
@@ -34,6 +35,7 @@ jobs:
       - name: Remove one-time transformation machinery
         run: |
           rm ci/source-transforms/generalize_prepared_fit.py
+          rm -f ci/source-transforms/trigger.txt
           rmdir ci/source-transforms 2>/dev/null || true
           rm .github/workflows/apply-prepared-fit-transform.yml
 
