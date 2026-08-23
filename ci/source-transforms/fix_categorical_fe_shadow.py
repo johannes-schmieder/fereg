@@ -95,24 +95,7 @@ estimate = replace_once(
     "categorical FE shadow validation helper",
 )
 
-estimate = replace_once(
-    estimate,
-    "mod tests {\n    use super::covariance_determinant;\n",
-    "mod tests {\n    use super::{covariance_determinant, validate_shadow_fixed_effect_row};\n",
-    "categorical FE shadow unit-test import",
-)
-old_test_tail = '''    fn covariance_determinant_fails_closed_on_malformed_or_nonfinite_input() {
-        assert!(covariance_determinant(&[1.0], 2).is_err());
-        assert!(covariance_determinant(&[f64::NAN], 1).is_err());
-        assert!(covariance_determinant(&[f64::MAX, 0.0, 0.0, f64::MAX], 2).is_err());
-    }
-}
-'''
-new_test_tail = '''    fn covariance_determinant_fails_closed_on_malformed_or_nonfinite_input() {
-        assert!(covariance_determinant(&[1.0], 2).is_err());
-        assert!(covariance_determinant(&[f64::NAN], 1).is_err());
-        assert!(covariance_determinant(&[f64::MAX, 0.0, 0.0, f64::MAX], 2).is_err());
-    }
+unit_tests = '''
 
     #[test]
     fn shadow_fe_identity_accepts_single_implicit_and_interaction_rows() {
@@ -138,14 +121,11 @@ new_test_tail = '''    fn covariance_determinant_fails_closed_on_malformed_or_no
             assert!(validate_shadow_fixed_effect_row(&row).is_err());
         }
     }
-}
 '''
-estimate = replace_once(
-    estimate,
-    old_test_tail,
-    new_test_tail,
-    "categorical FE shadow unit tests",
-)
+module_close = estimate.rfind("\n}\n")
+if module_close < 0:
+    raise SystemExit("categorical FE shadow unit tests: test-module close was not found")
+estimate = estimate[:module_close] + unit_tests + estimate[module_close:]
 ESTIMATE.write_text(estimate, encoding="utf-8")
 
 contract = CONTRACT.read_text(encoding="utf-8")
