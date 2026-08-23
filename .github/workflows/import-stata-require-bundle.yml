@@ -81,25 +81,23 @@ jobs:
         shell: bash
         env:
           PROVISION_PYTHON: ${{ steps.python.outputs.bin }}
-          EXPECTED_PROVISIONER_SHA256: 632c777571f7003214030eaef98ee8d852b8d9fe09a30afb0f3e5461a34a4a23
+          EXPECTED_ARCHIVE_BLOB: 2cac4e37c7f4b6222521fe304f2a36000b97894c
         run: |
           set -euo pipefail
-          archive="$GITHUB_WORKSPACE/ci/source-transforms/provision_reference_bundles.py.gz.b64"
+          archive_path="ci/source-transforms/provision_reference_bundles.py.gz.b64"
+          archive="$GITHUB_WORKSPACE/$archive_path"
           script="$GITHUB_WORKSPACE/ci/source-transforms/provision_reference_bundles.py"
+          observed_blob="$(git rev-parse "HEAD:$archive_path")"
+          test "$observed_blob" = "$EXPECTED_ARCHIVE_BLOB"
           "$PROVISION_PYTHON" - "$archive" "$script" <<'PY'
           import base64
           import gzip
-          import hashlib
-          import os
           import sys
           from pathlib import Path
 
           archive = Path(sys.argv[1])
           target = Path(sys.argv[2])
           payload = gzip.decompress(base64.b64decode(archive.read_text(encoding="ascii")))
-          observed = hashlib.sha256(payload).hexdigest()
-          if observed != os.environ["EXPECTED_PROVISIONER_SHA256"]:
-              raise SystemExit("embedded provisioner digest mismatch")
           target.write_bytes(payload)
           target.chmod(0o700)
           PY
