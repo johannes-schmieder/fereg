@@ -24,6 +24,8 @@ mod prepared_categorical_effect;
 mod prepared_categorical_singleton;
 #[path = "ols/prepared_categorical_topology.rs"]
 mod prepared_categorical_topology;
+#[path = "ols/prepared_fit_view.rs"]
+pub(crate) mod prepared_fit_view;
 #[path = "ols/topology_dof.rs"]
 pub mod topology_dof;
 
