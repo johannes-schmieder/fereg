@@ -3,18 +3,23 @@ name: Pinned reghdfe FE-interaction probe
 on:
   push:
     branches:
-      - codex/categorical-interactions
+      - main
     paths:
       - .github/workflows/fe-interaction-reference-probe.yml
       - scripts/fe_interaction_probe.py
+      - scripts/materialize_bundled_reference_root.py
       - scripts/resolve_reference_root.py
       - tests/python/test_fe_interaction_probe_contract.py
+      - tests/python/test_bundled_reference_root_contract.py
       - tests/python/test_reference_root_resolver_contract.py
+      - ci/reference-bundles/stata-require/**
+      - ci/reference-probes/triggers/bundled-reference-v1.txt
       - benchmarks/stata/probe_reghdfe_fe_interaction.do
       - benchmarks/stata/baseline_reghdfe.do
       - benchmarks/manifests/ols_v1.json
       - references.lock.toml
       - tests/fixtures/ols/ols_core.csv
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -110,15 +115,32 @@ jobs:
           set -euo pipefail
           root_file="$RUNNER_TEMP/stfixest-reference-root.path"
           materialize_parent="$RUNNER_TEMP/stfixest-reference-materialized"
+          bundled_resolver="scripts/materialize_bundled_reference_root.py"
+          fallback_resolver="scripts/resolve_reference_root.py"
           rm -f "$root_file"
           rm -rf "$materialize_parent"
           mkdir -m 700 "$materialize_parent"
-          "$PROBE_PYTHON" -m py_compile scripts/resolve_reference_root.py scripts/ols_reference.py
-          "$PROBE_PYTHON" scripts/resolve_reference_root.py \
+          "$PROBE_PYTHON" -m py_compile \
+            "$bundled_resolver" \
+            "$fallback_resolver" \
+            scripts/ols_reference.py
+
+          bundled_outcome="failure"
+          if "$PROBE_PYTHON" "$bundled_resolver" \
             --output "$root_file" \
-            --materialize-parent "$materialize_parent"
+            --materialize-parent "$materialize_parent"; then
+            bundled_outcome="success"
+          else
+            rm -f "$root_file"
+            rm -rf "$materialize_parent"
+            mkdir -m 700 "$materialize_parent"
+            "$PROBE_PYTHON" "$fallback_resolver" \
+              --output "$root_file" \
+              --materialize-parent "$materialize_parent"
+          fi
           chmod 600 "$root_file"
           echo "file=$root_file" >> "$GITHUB_OUTPUT"
+          echo "bundled_outcome=$bundled_outcome" >> "$GITHUB_OUTPUT"
 
       - name: Run isolated pinned reference probe
         id: probe
@@ -146,6 +168,7 @@ jobs:
         env:
           PYTHON_OUTCOME: ${{ steps.python.outcome }}
           REFERENCE_ROOT_OUTCOME: ${{ steps.reference_root.outcome }}
+          BUNDLED_REFERENCE_OUTCOME: ${{ steps.reference_root.outputs.bundled_outcome }}
           PROBE_OUTCOME: ${{ steps.probe.outcome }}
         run: |
           set -euo pipefail
@@ -175,7 +198,7 @@ jobs:
                       detail = "no trusted runner Python interpreter could import tomllib"
                   elif os.environ.get("REFERENCE_ROOT_OUTCOME") != "success":
                       reason = "offline_reference_root_unresolved"
-                      detail = "no allowlisted root or local object store passed exact offline reference preflight"
+                      detail = "no bundled or allowlisted local reference root passed exact offline preflight"
                   elif os.environ.get("PROBE_OUTCOME") != "success":
                       reason = "probe_process_failed_before_summary"
                       detail = "reference probe process failed before writing a terminal summary"
@@ -201,6 +224,9 @@ jobs:
                   "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
                   "python_outcome": os.environ.get("PYTHON_OUTCOME", "unknown"),
                   "reference_root_outcome": os.environ.get("REFERENCE_ROOT_OUTCOME", "unknown"),
+                  "bundled_reference_outcome": os.environ.get(
+                      "BUNDLED_REFERENCE_OUTCOME", "unknown"
+                  ),
                   "probe_outcome": os.environ.get("PROBE_OUTCOME", "unknown"),
               }
               canonical = json.dumps(
