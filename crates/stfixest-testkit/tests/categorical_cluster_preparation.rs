@@ -323,10 +323,15 @@ fn prepare_case(
             role: OlsInputRole::Outcome,
         },
     ];
-    bindings.extend(included_sources.iter().copied().map(|index| OlsInputBinding {
-        stata_var_position: u32::try_from(index + 3).expect("small binding"),
-        role: OlsInputRole::NumericSource(source_id(index)),
-    }));
+    bindings.extend(
+        included_sources
+            .iter()
+            .copied()
+            .map(|index| OlsInputBinding {
+                stata_var_position: u32::try_from(index + 3).expect("small binding"),
+                role: OlsInputRole::NumericSource(source_id(index)),
+            }),
+    );
     let request = OlsClusteredRequestV1 {
         ols: OlsRequestV1 {
             model: CompiledTermGraph {
