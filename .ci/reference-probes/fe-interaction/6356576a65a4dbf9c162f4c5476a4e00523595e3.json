@@ -1,0 +1,19 @@
+{
+  "payload": {
+    "failure_detail": "licensed reference probe failed: process_rc=0; baseline_sentinel_count=0",
+    "failure_kind": "ProbeError",
+    "raw_capture_committed": false,
+    "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+    "schema_version": 1,
+    "source_sha": "6356576a65a4dbf9c162f4c5476a4e00523595e3",
+    "stage": "probe_execution",
+    "status": "failure",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 32670877349
+  },
+  "seal": {
+    "algorithm": "sha256",
+    "canonicalization": "json-sort-keys-compact-ascii-v1",
+    "payload_sha256": "475da58c590e56686e7ae5e84abf8a79350e0a2229b3c2156541a945a4cb82bb"
+  }
+}
