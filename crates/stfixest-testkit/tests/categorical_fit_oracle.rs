@@ -2,11 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use stfixest_core::{
     fit_prepared_categorical_ols_coefficients_map, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
-    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind,
-    PreparedOlsFitConfig, PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId, TermComponent,
-    TermId, TermOrder, TimeSeriesState,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind, PreparedOlsFitConfig,
+    PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
+    TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -58,23 +58,12 @@ fn reordered_absorb_sources_and_row_permutation_preserve_the_fit() {
         .enumerate()
         .map(|(row, value)| 0.4 + value.abs() * 0.15 + (row % 4) as f64 * 0.27)
         .collect::<Vec<_>>();
-    let baseline = fit_case(
-        &case,
-        true,
-        CaseWeights::Analytic(&weights),
-        false,
-    );
-    let reversed = fit_case(
-        &case,
-        true,
-        CaseWeights::Analytic(&weights),
-        true,
-    );
+    let baseline = fit_case(&case, true, CaseWeights::Analytic(&weights), false);
+    let reversed = fit_case(&case, true, CaseWeights::Analytic(&weights), true);
     assert_fit_equivalent(&baseline, &reversed, None);
 
     let permutation = [
-        23_usize, 2, 17, 0, 11, 8, 19, 5, 14, 21, 3, 10, 6, 18, 1, 22, 9, 15, 4, 20,
-        7, 12, 16, 13,
+        23_usize, 2, 17, 0, 11, 8, 19, 5, 14, 21, 3, 10, 6, 18, 1, 22, 9, 15, 4, 20, 7, 12, 16, 13,
     ];
     let permuted_case = case.permute(&permutation);
     let permuted_weights = permute(&weights, &permutation);
@@ -98,11 +87,9 @@ fn cell_constant_regressor_is_rejected_as_absorbed_collinear() {
             .collect(),
     );
     let prepared = prepare_case(&case, false, CaseWeights::Unit, false);
-    let fit = fit_prepared_categorical_ols_coefficients_map(
-        &prepared,
-        PreparedOlsFitConfig::default(),
-    )
-    .expect("categorical fit with an absorbed-collinear regressor");
+    let fit =
+        fit_prepared_categorical_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("categorical fit with an absorbed-collinear regressor");
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
     assert!(fit.rank_certificate().passed);
@@ -121,7 +108,7 @@ fn cell_constant_regressor_is_rejected_as_absorbed_collinear() {
         outcome: case.outcome.clone(),
         regressors: case.regressors.clone(),
         effects: vec![
-            DummyEffect::new(interaction, levels, true, Vec::new()).expect("interaction dummy"),
+            DummyEffect::new(interaction, levels, true, Vec::new()).expect("interaction dummy")
         ],
         weights: OracleWeights::Unit,
         clusters: Vec::new(),
@@ -139,11 +126,9 @@ fn assert_case_matches_oracle(
     reverse_absorb_sources: bool,
 ) {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    let fit = fit_prepared_categorical_ols_coefficients_map(
-        &prepared,
-        PreparedOlsFitConfig::default(),
-    )
-    .expect("certified categorical fit");
+    let fit =
+        fit_prepared_categorical_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("certified categorical fit");
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
     assert!(fit.rank_certificate().passed);
@@ -154,17 +139,18 @@ fn assert_case_matches_oracle(
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: case.outcome.clone(),
         regressors: case.regressors.clone(),
-        effects: vec![
-            DummyEffect::new(interaction, n_levels, true, Vec::new())
-                .expect("explicit interaction effect"),
-        ],
+        effects: vec![DummyEffect::new(interaction, n_levels, true, Vec::new())
+            .expect("explicit interaction effect")],
         weights: oracle_weights(weights),
         clusters: Vec::new(),
     })
     .expect("explicit-dummy interaction oracle");
 
     assert_eq!(fit.finite_rank(), oracle.finite_regressor_rank);
-    assert_eq!(oracle.kept_regressors, (0..case.regressors.len()).collect::<Vec<_>>());
+    assert_eq!(
+        oracle.kept_regressors,
+        (0..case.regressors.len()).collect::<Vec<_>>()
+    );
     assert_eq!(
         fit.coefficients().len(),
         case.regressors.len() + usize::from(include_intercept)
@@ -181,12 +167,7 @@ fn assert_case_matches_oracle(
     }
     assert_slice_close(fit.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
 
-    let expected_bread = expected_reported_bread(
-        case,
-        &oracle,
-        weights,
-        include_intercept,
-    );
+    let expected_bread = expected_reported_bread(case, &oracle, weights, include_intercept);
     assert_eq!(fit.bread().dimension(), expected_bread.0);
     assert_slice_close(fit.bread().values(), &expected_bread.1, BREAD_TOLERANCE);
     assert!(fit.bread().coordinates()[..oracle.kept_regressors.len()]
@@ -219,7 +200,11 @@ fn assert_case_matches_oracle(
             COEFFICIENT_TOLERANCE,
         );
         assert_eq!(
-            fit.bread().coordinates().last().expect("intercept coordinate").kind,
+            fit.bread()
+                .coordinates()
+                .last()
+                .expect("intercept coordinate")
+                .kind,
             PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
         );
     }
@@ -242,8 +227,7 @@ fn expected_reported_bread(
     let mut expected = vec![0.0_f64; dimension * dimension];
     for row in 0..finite_dimension {
         for column in 0..finite_dimension {
-            expected[row * dimension + column] =
-                oracle.bread[(row, column)] * reference_multiplier;
+            expected[row * dimension + column] = oracle.bread[(row, column)] * reference_multiplier;
         }
     }
     if !include_intercept {
@@ -297,8 +281,15 @@ fn assert_fit_equivalent(
     permutation: Option<&[usize]>,
 ) {
     assert_eq!(baseline.finite_rank(), comparison.finite_rank());
-    assert_eq!(baseline.coefficients().len(), comparison.coefficients().len());
-    for (left, right) in baseline.coefficients().iter().zip(comparison.coefficients()) {
+    assert_eq!(
+        baseline.coefficients().len(),
+        comparison.coefficients().len()
+    );
+    for (left, right) in baseline
+        .coefficients()
+        .iter()
+        .zip(comparison.coefficients())
+    {
         assert_eq!(left.status, right.status);
         match (left.value, right.value) {
             (Some(left), Some(right)) => assert_close(left, right, COEFFICIENT_TOLERANCE),
@@ -589,7 +580,11 @@ fn balanced_case() -> InteractionCase {
         .collect::<Vec<_>>();
     let x2 = (0..firm.len())
         .map(|row| {
-            let within = if row % 2 == 0 { 1.1 } else { -0.6 };
+            let within = if row % 2 == 0 {
+                1.1 + 0.07 * f64::from(firm[row])
+            } else {
+                -0.6 + 0.13 * f64::from(year[row])
+            };
             within - 0.09 * row as f64 + 0.23 * f64::from(firm[row])
         })
         .collect::<Vec<_>>();
