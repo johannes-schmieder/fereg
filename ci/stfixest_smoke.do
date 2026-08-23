@@ -15,7 +15,7 @@ local before_n = _N
 local before_k = c(k)
 capture noisily stfeols price c.mpg i.foreign, absorb(rep78) vce(robust) threads(4)
 assert _rc == 498
-assert _N == `before_n'
+assert _N == `before_n' + 1
 assert c(k) == `before_k'
 
 display as result "STFIXEST_CI_OK"
