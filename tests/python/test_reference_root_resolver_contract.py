@@ -62,9 +62,13 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
 
     def test_workflow_passes_the_root_without_logging_or_artifacting_it(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("Resolve offline pinned reference root", text)
-        self.assertIn("scripts/resolve_reference_root.py --output", text)
-        self.assertIn("--materialize-parent", text)
+        self.assertIn("Resolve or materialize offline pinned reference root", text)
+        for token in (
+            "scripts/resolve_reference_root.py",
+            "--output",
+            "--materialize-parent",
+        ):
+            self.assertIn(token, text)
         self.assertIn('STFIXEST_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"', text)
         self.assertIn("REFERENCE_ROOT_OUTCOME", text)
         self.assertIn("offline_reference_root_unresolved", text)
