@@ -1,10 +1,12 @@
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
-use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::topology_dof::CategoricalTopologyDofReport;
 
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
+
+#[cfg(test)]
+use super::compute_prepared_ols_absorbed_dof;
 use super::{
     fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
     CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport,
