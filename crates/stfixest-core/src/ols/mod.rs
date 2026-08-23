@@ -48,8 +48,9 @@ pub use prepared_fit::{
 };
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub use prepared_robust::{
-    fit_prepared_ols_robust_map, CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate,
-    PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
+    fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,
+    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedOlsRobust,
+    PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
 };
 pub use prepared_unadjusted::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
