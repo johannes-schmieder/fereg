@@ -1,0 +1,65 @@
+name: Apply categorical FE shadow metadata fix
+
+on:
+  push:
+    branches:
+      - codex/categorical-interactions
+    paths:
+      - .github/workflows/apply-categorical-fe-shadow-fix.yml
+      - ci/source-transforms/fix_categorical_fe_shadow.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-categorical-fe-shadow-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 30
+    steps:
+      - name: Check out source-transform checkpoint
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Apply, compile, and push FE shadow repair
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          transform="ci/source-transforms/fix_categorical_fe_shadow.py"
+          /usr/bin/python3 -m py_compile "$transform"
+          /usr/bin/python3 "$transform"
+
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo fmt --all
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --all-targets --locked
+
+          rm "$transform"
+          rmdir ci/source-transforms 2>/dev/null || true
+          rm .github/workflows/apply-categorical-fe-shadow-fix.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { echo "FE shadow repair produced no changes" >&2; exit 1; }
+          git commit -m "plugin: validate categorical FE shadow identities"
+
+          for attempt in 1 2 3; do
+            git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git rebase "refs/remotes/origin/${BRANCH_NAME}"
+            if git push origin "HEAD:refs/heads/${BRANCH_NAME}"; then
+              exit 0
+            fi
+          done
+          echo "FE shadow repair lost three branch update races" >&2
+          exit 1
