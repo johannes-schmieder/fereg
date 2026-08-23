@@ -19,8 +19,8 @@ generate byte __stfx_expected_sample = inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 
 generate double __stfx_expected_resid = .
 replace __stfx_expected_resid = -1.99997fffffffdX-005 if obs_id == 3
 replace __stfx_expected_resid = +1.99997fffffffdX-005 if obs_id == 4
-replace __stfx_expected_resid = +1.9999bfffffff3X-005 if obs_id == 11
-replace __stfx_expected_resid = -1.9999bfffffff3X-005 if obs_id == 12
+replace __stfx_expected_resid = +1.99997fffffffdX-005 if obs_id == 11
+replace __stfx_expected_resid = -1.99997fffffffdX-005 if obs_id == 12
 replace __stfx_expected_resid = +1.9999bfffffff3X-005 if obs_id == 15
 replace __stfx_expected_resid = -1.9999bfffffff3X-005 if obs_id == 16
 replace __stfx_expected_resid = -1.9999bffffff7fX-005 if obs_id == 23
@@ -45,7 +45,8 @@ assert `"`e(vce)'"' == "ols"
 
 local coefficient_names : colfullnames e(b)
 assert `"`coefficient_names'"' == "o.x1 _cons"
-assert e(stfixest_status)[1,2] == 2
+* Native status 3 distinguishes FE collinearity from syntax omission (status 2).
+assert e(stfixest_status)[1,2] == 3
 assert e(stfixest_status)[2,2] == 1
 assert e(b)[1,1] == 0
 assert e(V)[1,1] == 0

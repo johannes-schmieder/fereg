@@ -16,12 +16,15 @@ CASE_ID = "target_default_firm_year"
 
 
 def _canonical_payload_sha256(payload: object) -> str:
-    encoded = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
-    ).encode("ascii")
+    encoded = (
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        + "\n"
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -127,8 +130,8 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
             {
                 3: "-1.99997fffffffdX-005",
                 4: "+1.99997fffffffdX-005",
-                11: "+1.9999bfffffff3X-005",
-                12: "-1.9999bfffffff3X-005",
+                11: "+1.99997fffffffdX-005",
+                12: "-1.99997fffffffdX-005",
                 15: "+1.9999bfffffff3X-005",
                 16: "-1.9999bfffffff3X-005",
                 23: "-1.9999bffffff7fX-005",
@@ -159,6 +162,7 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
             PAYLOAD_SHA256,
             CASE_ID,
             "o.x1 _cons",
+            "e(stfixest_status)[1,2] == 3",
             "+1.b99999c000000X+002",
             "+1.47ae1eb853fc5X-00a",
             "inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 24)",
