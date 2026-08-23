@@ -23,7 +23,6 @@ on:
   push:
     branches:
       - main
-      - "codex/**"
     paths-ignore:
       - ".ci/stata/latest.json"
       - ".ci/stata/results/**"
