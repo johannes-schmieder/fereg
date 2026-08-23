@@ -113,9 +113,9 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     }
     if `n_absorb_terms' > 0 {
         forvalues row = 1/`n_absorb_terms' {
-            if `absorb_terms'[`row',2] != 1 | `absorb_terms'[`row',3] != 1 | ///
+            if `absorb_terms'[`row',2] != 1 | `absorb_terms'[`row',3] < 1 | ///
                `absorb_terms'[`row',4] != 0 {
-                di as error "hidden prepared OLS supports only single-source intercept fixed effects"
+                di as error "hidden prepared OLS supports only all-categorical intercept fixed effects"
                 exit 498
             }
         }

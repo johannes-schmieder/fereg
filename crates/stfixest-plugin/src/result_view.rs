@@ -1,18 +1,20 @@
 //! Borrowed prepared-result views for the hidden OLS transport.
 //!
-//! The first checkpoint deliberately contains only the legacy prepared path.
-//! Centralizing these accesses lets a later bounded change add categorical-
-//! interaction preparation without cloning observation-scale state or
-//! duplicating the result serializer.
+//! Legacy single-source and categorical-interaction preparation own different
+//! topology artifacts but expose the same final model, sample, singleton, and
+//! cluster metadata. These copyable views let one serializer borrow either path
+//! without cloning observation-scale state or changing result-wire dimensions.
 
 use stfixest_core::{
-    PreparedNumericSample, PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData,
-    PreparedOlsModel, PreparedOlsSingletons,
+    PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
+    PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
+    PreparedOlsSingletons,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum PreparedOlsResultData<'a> {
     Legacy(&'a PreparedOlsData),
+    Categorical(&'a PreparedCategoricalOlsData),
 }
 
 impl<'a> PreparedOlsResultData<'a> {
@@ -20,27 +22,42 @@ impl<'a> PreparedOlsResultData<'a> {
         Self::Legacy(value)
     }
 
+    pub(crate) const fn categorical(value: &'a PreparedCategoricalOlsData) -> Self {
+        Self::Categorical(value)
+    }
+
     pub(crate) const fn model(self) -> &'a PreparedOlsModel {
         match self {
             Self::Legacy(value) => &value.model,
+            Self::Categorical(value) => value.model(),
         }
     }
 
     pub(crate) const fn sample(self) -> &'a PreparedNumericSample {
         match self {
             Self::Legacy(value) => &value.sample,
+            Self::Categorical(value) => value.sample(),
         }
     }
 
     pub(crate) const fn singletons(self) -> PreparedOlsSingletons {
         match self {
             Self::Legacy(value) => value.singletons,
+            Self::Categorical(value) => value.singletons(),
         }
     }
 
-    pub(crate) fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
+    fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
         match self {
             Self::Legacy(prepared) => std::ptr::eq(prepared, value),
+            Self::Categorical(_) => false,
+        }
+    }
+
+    fn is_same_categorical(self, value: &'a PreparedCategoricalOlsData) -> bool {
+        match self {
+            Self::Legacy(_) => false,
+            Self::Categorical(prepared) => std::ptr::eq(prepared, value),
         }
     }
 }
@@ -48,6 +65,7 @@ impl<'a> PreparedOlsResultData<'a> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum PreparedOlsClusteredResultData<'a> {
     Legacy(&'a PreparedOlsClusteredData),
+    Categorical(&'a PreparedCategoricalOlsClusteredData),
 }
 
 impl<'a> PreparedOlsClusteredResultData<'a> {
@@ -55,21 +73,28 @@ impl<'a> PreparedOlsClusteredResultData<'a> {
         Self::Legacy(value)
     }
 
+    pub(crate) const fn categorical(value: &'a PreparedCategoricalOlsClusteredData) -> Self {
+        Self::Categorical(value)
+    }
+
     pub(crate) const fn ols(self) -> PreparedOlsResultData<'a> {
         match self {
             Self::Legacy(value) => PreparedOlsResultData::Legacy(value.ols()),
+            Self::Categorical(value) => PreparedOlsResultData::Categorical(value.ols()),
         }
     }
 
     pub(crate) const fn clusters(self) -> &'a PreparedOlsClusterDesign {
         match self {
             Self::Legacy(value) => value.clusters(),
+            Self::Categorical(value) => value.clusters(),
         }
     }
 
     pub(crate) fn is_bound_to(self, prepared: PreparedOlsResultData<'a>) -> bool {
         match self.ols() {
             PreparedOlsResultData::Legacy(value) => prepared.is_same_legacy(value),
+            PreparedOlsResultData::Categorical(value) => prepared.is_same_categorical(value),
         }
     }
 }

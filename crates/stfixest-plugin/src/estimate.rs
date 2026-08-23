@@ -13,12 +13,15 @@ use stfixest_core::metadata::{
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 use stfixest_core::ols::{
-    fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
-    prepare_ols_clustered_data, prepare_ols_data, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsRobustConfig,
-    PreparedOlsUnadjustedConfig,
+    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
+    fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
+    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
+    LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig,
+    PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
 };
+use stfixest_core::prepare_categorical_ols_data;
 use stfixest_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
@@ -121,8 +124,13 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let loaded = load_ols_input(&action.request, spi)?;
-    match action.vce {
-        OlsVceKind::Iid => {
+    let categorical = action
+        .request
+        .absorbed_terms
+        .iter()
+        .any(|term| term.categorical_sources.len() > 1);
+    match (action.vce, categorical) {
+        (OlsVceKind::Iid, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_unadjusted_map(
                 &prepared,
@@ -139,7 +147,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             )?;
             precommit_and_store(&action, &shadow, spi)
         }
-        OlsVceKind::Robust => {
+        (OlsVceKind::Robust, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_robust_map(
                 &prepared,
@@ -156,7 +164,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             )?;
             precommit_and_store(&action, &shadow, spi)
         }
-        OlsVceKind::Clustered => {
+        (OlsVceKind::Clustered, false) => {
             let request = OlsClusteredRequestV1 {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
@@ -174,6 +182,62 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 PreparedOlsResultData::legacy(prepared.ols()),
                 Some(PreparedOlsClusteredResultData::legacy(&prepared)),
                 CertifiedOlsInference::Clustered(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Iid, true) => {
+            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_unadjusted_map(
+                &prepared,
+                PreparedOlsUnadjustedConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    ..PreparedOlsUnadjustedConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(&prepared),
+                None,
+                CertifiedOlsInference::CategoricalIid(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Robust, true) => {
+            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_robust_map(
+                &prepared,
+                PreparedOlsRobustConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    ..PreparedOlsRobustConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(&prepared),
+                None,
+                CertifiedOlsInference::CategoricalRobust(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Clustered, true) => {
+            let request = OlsClusteredRequestV1 {
+                ols: action.request.clone(),
+                clusters: action.clusters.clone(),
+            };
+            let prepared = prepare_categorical_ols_clustered_data(&request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_clustered_map(
+                &prepared,
+                PreparedOlsClusteredConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    account_cluster_nesting: action.account_cluster_nesting,
+                    ..PreparedOlsClusteredConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(prepared.ols()),
+                Some(PreparedOlsClusteredResultData::categorical(&prepared)),
+                CertifiedOlsInference::CategoricalClustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
             precommit_and_store(&action, &shadow, spi)
