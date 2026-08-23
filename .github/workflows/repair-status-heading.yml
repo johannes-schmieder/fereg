@@ -46,19 +46,7 @@ jobs:
             git fetch origin "$BRANCH_NAME"
             publish_tree="$RUNNER_TEMP/status-heading-$attempt"
             git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
-            STATUS_PATH="$publish_tree/STATUS.md" /usr/bin/python3 - <<'PY'
-            import os
-            from pathlib import Path
-
-            path = Path(os.environ["STATUS_PATH"])
-            text = path.read_text(encoding="utf-8")
-            old = "## Historical evidence-backed baseline (pre-categorical consolidation)"
-            new = "## Completed, evidence-backed baseline"
-            if new not in text:
-                if text.count(old) != 1:
-                    raise SystemExit("STATUS completed-baseline heading anchor mismatch")
-                path.write_text(text.replace(old, new, 1), encoding="utf-8")
-            PY
+            STATUS_PATH="$publish_tree/STATUS.md" /usr/bin/python3 -c 'import os; from pathlib import Path; path=Path(os.environ["STATUS_PATH"]); text=path.read_text(encoding="utf-8"); old="## Historical evidence-backed baseline (pre-categorical consolidation)"; new="## Completed, evidence-backed baseline"; assert new in text or text.count(old)==1, "STATUS completed-baseline heading anchor mismatch"; path.write_text(text if new in text else text.replace(old,new,1), encoding="utf-8")'
             git -C "$publish_tree" config user.name "github-actions[bot]"
             git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git -C "$publish_tree" add STATUS.md
