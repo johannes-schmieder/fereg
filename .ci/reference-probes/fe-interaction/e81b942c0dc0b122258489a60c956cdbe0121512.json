@@ -1,0 +1,5403 @@
+{
+  "payload": {
+    "capture_sha256": "e4f231b3484bc3153fc2e176034b68323770abd5ccd4ed9fc75de0f5fc155145",
+    "case_summary": [
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "target_default_firm_year",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.9eaaaaa000000X+002"
+        ],
+        "id": "target_keepsingletons",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "x",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+1.576510c34bad4X+000",
+          "+1.53e9bc7e29351X+002"
+        ],
+        "id": "tuple_second_fe_cascade",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          }
+        ],
+        "coefficient_names": [
+          "x",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+1.576510c34bacfX+000",
+          "+1.a01158a444c63X+002"
+        ],
+        "id": "fweight_frequency_cascade",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "x",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+1.8ccccccccccd1X+000",
+          "+1.47db97530eca8X+002"
+        ],
+        "id": "missing_interaction_components",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "repeated_identical_interaction",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 3
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "interaction_order_year_firm",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "dof_none",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "dof_firstpair",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "nested_simple_cluster",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "o.x1",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+0.0000000000000X-3ff",
+          "+1.b99999c000000X+002"
+        ],
+        "id": "identical_interaction_cluster",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "coefficient_names": [
+          "x",
+          "_cons"
+        ],
+        "coefficient_values_hex": [
+          "+1.576510c34bad4X+000",
+          "+1.53e9bc7e29351X+002"
+        ],
+        "id": "unrelated_interaction_cluster",
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "return_code": 0
+      }
+    ],
+    "cases": [
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "target_default_firm_year",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.47ae1eb853fc5X-00a"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+002",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "target_keepsingletons",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) keepsingletons residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.9eaaaaa000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.b4e828f5c551eX-00c"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+003"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+003"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.4000000000000X+004"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.4000000000000X+003"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.4000000000000X+003"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997ffffffb6X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997ffffffb6X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997ffffffb6X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997ffffffb6X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bffffffe7X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bffffffe7X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999c00000047X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999c00000047X-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.8000000000000X+004",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.6000000000000X+004",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+001",
+          "num_singletons": "+0.0000000000000X-3ff",
+          "sumweights": "+1.8000000000000X+004"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "tuple_second_fe_cascade",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x, absorb(worker firm#year) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.576510c34bad4X+000"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.53e9bc7e29351X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "+1.2b07f9473bbddX-005"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "-1.93b12a202a404X-008"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "-1.93b12a202a404X-008"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.ae3b26f81645dX-009"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 12,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "-1.2e93f80ed7b3fX-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.49660abdc3223X-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "-1.f264f7c3d9580X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "-1.4df49b95e3ae6X-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.70b7d698eadb6X-008"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "-1.2f194a70af820X-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.024f9d922dc42X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.c5ff48aeb97b1X-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+003",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+001",
+          "df_m": "+1.0000000000000X+000",
+          "df_r": "+1.0000000000000X+002",
+          "num_singletons": "+1.0000000000000X+002",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          }
+        ],
+        "id": "fweight_frequency_cascade",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x [fw=fw], absorb(worker firm#year) residuals(__stfx_probe_resid)",
+          "vce": "ols",
+          "wexp": "= fw",
+          "wtype": "fweight"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.576510c34bacfX+000"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.a01158a444c63X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "+1.de732871f9384X-006"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "-1.4b3c084ee79d1X-007"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "-1.4b3c084ee79d1X-007"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.2dae85efd719dX-008"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 12,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "-1.2e93f80ed79c5X-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.49660abdc325bX-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "-1.f264f7c3d9567X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "-1.4df49b95e3adaX-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.70b7d698ea7ecX-008"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "-1.2f194a70af81fX-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.024f9d922ddb0X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.c5ff48aeb9877X-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+1.7be70c648845bX-032"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+1.8d3021e9c959fX-033"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "-1.bf35d236b16dbX-033"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+1.a37e7531f95dbX-032"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.a000000000000X+003",
+          "N_full": "+1.a000000000000X+003",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.c000000000000X+002",
+          "df_m": "+1.0000000000000X+000",
+          "df_r": "+1.4000000000000X+002",
+          "num_singletons": "+0.0000000000000X-3ff",
+          "sumweights": "+1.a000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "missing_interaction_components",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x, absorb(worker firm#year) keepsingletons residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.8ccccccccccd1X+000"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.47db97530eca8X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "+1.47ae147ae1493X-009"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "-1.64ce9ed572779X-00a"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "-1.64ce9ed572779X-00a"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.cd5750cad6873X-00b"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 12,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9200000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9200000000000X+007",
+            "value_hex": "+1.2f98fe2d949feX-033"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9400000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9400000000000X+007",
+            "value_hex": "+1.9999999999938X-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9600000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9600000000000X+007",
+            "value_hex": "-1.9999999999928X-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9800000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9800000000000X+007",
+            "value_hex": "-1.2f98fe2d949feX-033"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9a00000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9a00000000000X+007",
+            "value_hex": "+1.9999999999928X-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9c00000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9c00000000000X+007",
+            "value_hex": "-1.99999999999e9X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9e00000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9e00000000000X+007",
+            "value_hex": "-1.d843527fcabfcX-033"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+007",
+            "value_hex": "+1.9999999999a14X-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a200000000000X+007",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a200000000000X+007",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a400000000000X+007",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a400000000000X+007",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a600000000000X+007",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a600000000000X+007",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a800000000000X+007",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a800000000000X+007",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.2000000000000X+003",
+          "N_full": "+1.2000000000000X+003",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.0000000000000X+002",
+          "df_m": "+1.0000000000000X+000",
+          "df_r": "+1.0000000000000X+002",
+          "num_singletons": "+0.0000000000000X-3ff",
+          "sumweights": "+1.2000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "repeated_identical_interaction",
+        "macros": {
+          "absvars": "worker firm#year firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year firm#year) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.47ae1eb853fc5X-00a"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 3,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 3,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 3,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 3,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 3,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 3
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.8000000000000X+001",
+          "df_a": "+1.8000000000000X+002",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "interaction_order_year_firm",
+        "macros": {
+          "absvars": "worker year#firm",
+          "cmdline": "reghdfe y c.x1, absorb(worker year#firm) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.47ae1eb853fc5X-00a"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.year#1.firm",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.year#1.firm",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.year#1.firm",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.year#1.firm",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.year#1.firm",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+002",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "dof_none",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) dof(none) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.47ae1eb853fc5X-009"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.c000000000000X+002",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+000",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "scalar",
+            "name": "N_clust"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clustervars"
+          },
+          {
+            "kind": "scalar",
+            "name": "N_clust1"
+          },
+          {
+            "kind": "macro",
+            "name": "clustvar"
+          },
+          {
+            "kind": "macro",
+            "name": "vcetype"
+          },
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "dof_firstpair",
+        "macros": {
+          "absvars": "worker firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) dof(firstpair) residuals(__stfx_probe_resid)",
+          "vce": "ols"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.47ae1eb853fc5X-00a"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+002",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.0000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "nested_simple_cluster",
+        "macros": {
+          "absvars": "worker firm#year",
+          "clustvar": "firm",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) vce(cluster firm) residuals(__stfx_probe_resid)",
+          "vce": "cluster",
+          "vcetype": "Robust"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.eaaaabaaaaaffX-069"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_clust": "+1.0000000000000X+002",
+          "N_clust1": "+1.0000000000000X+002",
+          "N_clustervars": "+1.0000000000000X+000",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+001",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.8000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "identical_interaction_cluster",
+        "macros": {
+          "absvars": "worker firm#year",
+          "clustvar": "firm#year",
+          "cmdline": "reghdfe y c.x1, absorb(worker firm#year) vce(cluster firm#year) residuals(__stfx_probe_resid)",
+          "vce": "cluster",
+          "vcetype": "Robust"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.b99999c000000X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "o.x1",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.eaaaabaaaaaffX-069"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.8000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+002"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 24,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+000",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+001",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+001",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+002",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+002",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+003",
+            "value_hex": "+1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+003",
+            "value_hex": "-1.99997fffffffdX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+003",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.e000000000000X+003",
+            "value_hex": "+1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.0000000000000X+004",
+            "value_hex": "-1.9999bfffffff3X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.1000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.2000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.3000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.4000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.5000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.6000000000000X+004",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.7000000000000X+004",
+            "value_hex": "-1.9999bffffff7fX-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.8000000000000X+004",
+            "value_hex": "+1.9999bffffff7fX-005"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_clust": "+1.0000000000000X+002",
+          "N_clust1": "+1.0000000000000X+002",
+          "N_clustervars": "+1.0000000000000X+000",
+          "N_full": "+1.8000000000000X+004",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+001",
+          "df_m": "+0.0000000000000X-3ff",
+          "df_r": "+1.8000000000000X+001",
+          "num_singletons": "+1.0000000000000X+004",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      },
+      {
+        "absent": [
+          {
+            "kind": "macro",
+            "name": "wtype"
+          },
+          {
+            "kind": "macro",
+            "name": "wexp"
+          }
+        ],
+        "id": "unrelated_interaction_cluster",
+        "macros": {
+          "absvars": "worker firm#year",
+          "clustvar": "cluster_u#cluster_v",
+          "cmdline": "reghdfe y c.x, absorb(worker firm#year) vce(cluster cluster_u#cluster_v) residuals(__stfx_probe_resid)",
+          "vce": "cluster",
+          "vcetype": "Robust"
+        },
+        "matrices": [
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.576510c34bad4X+000"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "b",
+            "row": 1,
+            "row_name": "y1",
+            "value_hex": "+1.53e9bc7e29351X+002"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "+1.22a49f7111152X-004"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 1,
+            "row_name": "x",
+            "value_hex": "+1.5d495a9f749d3X-008"
+          },
+          {
+            "column": 1,
+            "column_name": "x",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.5d495a9f749d3X-008"
+          },
+          {
+            "column": 2,
+            "column_name": "_cons",
+            "name": "V",
+            "row": 2,
+            "row_name": "_cons",
+            "value_hex": "+1.dcef7be02984dX-00b"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 1,
+            "row_name": "1.worker",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 1,
+            "column_name": "Categories",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+001"
+          },
+          {
+            "column": 2,
+            "column_name": "Redundant",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 3,
+            "column_name": "Num",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "column": 4,
+            "column_name": "Coefs",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "column": 5,
+            "column_name": "Inexact?",
+            "name": "dof_table",
+            "row": 2,
+            "row_name": "1.firm#1.year",
+            "value_hex": "+0.0000000000000X-3ff"
+          }
+        ],
+        "matrix_dimensions": {
+          "V": {
+            "columns": 2,
+            "rows": 2
+          },
+          "b": {
+            "columns": 2,
+            "rows": 1
+          },
+          "dof_table": {
+            "columns": 5,
+            "rows": 2
+          }
+        },
+        "observation_count": 12,
+        "observations": [
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9400000000000X+006",
+            "value_hex": "-1.2e93f80ed7b3fX-006"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9800000000000X+006",
+            "value_hex": "+1.49660abdc3223X-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.9c00000000000X+006",
+            "value_hex": "-1.f264f7c3d9580X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a000000000000X+006",
+            "value_hex": "-1.4df49b95e3ae6X-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a400000000000X+006",
+            "value_hex": "+1.70b7d698eadb6X-008"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.a800000000000X+006",
+            "value_hex": "-1.2f194a70af820X-003"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.ac00000000000X+006",
+            "value_hex": "+1.024f9d922dc42X-005"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.0000000000000X+000"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b000000000000X+006",
+            "value_hex": "+1.c5ff48aeb97b1X-004"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b400000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.b800000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.bc00000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          },
+          {
+            "field": "sample",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+0.0000000000000X-3ff"
+          },
+          {
+            "field": "residual",
+            "obs_id_hex": "+1.c000000000000X+006",
+            "value_hex": "+1.0000000000000X+3ff"
+          }
+        ],
+        "return_code": 0,
+        "scalars": {
+          "N": "+1.0000000000000X+003",
+          "N_clust": "+1.0000000000000X+002",
+          "N_clust1": "+1.0000000000000X+002",
+          "N_clustervars": "+1.0000000000000X+000",
+          "N_full": "+1.8000000000000X+003",
+          "N_hdfe": "+1.0000000000000X+001",
+          "df_a": "+1.8000000000000X+001",
+          "df_m": "+1.0000000000000X+000",
+          "df_r": "+1.8000000000000X+001",
+          "num_singletons": "+1.0000000000000X+002",
+          "sumweights": "+1.0000000000000X+003"
+        }
+      }
+    ],
+    "environment": {
+      "machine_type": "Mac (Apple Silicon)",
+      "os": "Unix",
+      "stata_flavor": "IC",
+      "stata_processors": "8",
+      "stata_processors_limit": "8",
+      "stata_version": "18"
+    },
+    "host": {
+      "cpu_count": 24,
+      "machine": "arm64",
+      "system": "Darwin"
+    },
+    "inputs": {
+      "baseline": "8f2cc73fa085241523979e87802c1f16ddd35a4f93796495233e96615e4d8d4b",
+      "manifest": "f11daeaee235d068bf928f4ebdf1067de2efd80e9daffdbf6dd5eb23a95b06d4",
+      "probe": "3f6b9d9ff237dc39a00c54b10891604d5f1659972075d56b6b0f6e126ea20c6c",
+      "target": "cb7d7e7ae21843f7c1dc5f84ac4daffa3954c9bfc54a9a109a3e2f6b50433bca"
+    },
+    "peak_rss": {
+      "method": "os_wait4_ru_maxrss",
+      "scope": "licensed_reference_probe",
+      "unit": "bytes",
+      "value": 147193856
+    },
+    "raw_capture_committed": false,
+    "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+    "references": {
+      "ftools": {
+        "commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+        "git_tree": "a09b13ad3a337e9635d93ce4b5a2fd0275ac79fc"
+      },
+      "reghdfe": {
+        "commit": "29b2b203f534413369d675d0c0f674d61291f536",
+        "git_tree": "6198858472637f73f65984e46f6a31a39a213651"
+      },
+      "require": {
+        "commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+        "git_tree": "950f5a8d484acbcbc621b05ee483ada0722aecbc"
+      }
+    },
+    "schema_version": 1,
+    "source_sha": "e81b942c0dc0b122258489a60c956cdbe0121512",
+    "status": "success"
+  },
+  "seal": {
+    "algorithm": "sha256",
+    "canonicalization": "json-sort-keys-compact-ascii-v1",
+    "payload_sha256": "1fba54c0adce40ec52964e1edd1b3e57283bc803cb07009a84933b241e630955"
+  }
+}
