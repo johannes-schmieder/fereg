@@ -1,9 +1,9 @@
-name: Import exact stata-require reference bundle
+name: Provision exact Stata reference bundles
 
 on:
   push:
     branches:
-      - codex/categorical-interactions
+      - main
     paths:
       - .github/workflows/import-stata-require-bundle.yml
   workflow_dispatch:
@@ -12,154 +12,199 @@ permissions:
   contents: write
 
 concurrency:
-  group: stfixest-import-stata-require-bundle-${{ github.repository }}-${{ github.ref }}
+  group: stfixest-provision-reference-bundles-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  import:
+  provision:
     if: github.repository == 'johannes-schmieder/StFixest'
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 30
-    env:
-      PUBLIC_REPOSITORY: johannes-schmieder/playground_stfixesf
-      PUBLIC_BRANCH: chatgpt/reference-bundle
-      UPSTREAM_REPOSITORY: https://github.com/sergiocorreia/stata-require
-      UPSTREAM_COMMIT: f4760b86e55cf73b82041ce59cf20e8e8224afb0
-      REQUIRE_ADO_SHA256: 240d7cec217f4648a9e6f25a1297a1ec8c3c8d10f0d63d5252ab807db63e0486
-      REQUIRE_PKG_SHA256: 1691c6f88c1f3524bc44d7baf0a5d17d4030bd240847e6616613d0a964302b59
     steps:
-      - name: Check out exact import checkpoint
+      - name: Check out exact provisioning source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Download, verify, and commit exact public bundle
-        id: import_bundle
-        continue-on-error: true
+      - name: Verify previous exact-green source checkpoint
         shell: bash
-        env:
-          BRANCH_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          work="$RUNNER_TEMP/stfixest-stata-require-import"
-          rm -rf "$work"
-          mkdir -m 700 "$work"
-          manifest="$work/manifest.json"
-          bundle="$work/stata-require-${UPSTREAM_COMMIT}.bundle"
-          base="https://raw.githubusercontent.com/${PUBLIC_REPOSITORY}/${PUBLIC_BRANCH}/bundles/stata-require/${UPSTREAM_COMMIT}"
-
-          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-            "$base/manifest.json" --output "$manifest"
-          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-            "$base/stata-require-${UPSTREAM_COMMIT}.bundle" --output "$bundle"
-
-          MANIFEST="$manifest" BUNDLE="$bundle" /usr/bin/python3 - <<'PY'
-          import hashlib
+          /usr/bin/python3 - <<'PY'
           import json
-          import os
           from pathlib import Path
 
-          manifest = json.loads(Path(os.environ["MANIFEST"]).read_text(encoding="utf-8"))
+          source_sha = "12f4453f05c47be98f3e5900fed24397a56976bb"
+          receipt = Path(".ci/stata/results") / f"{source_sha}.json"
+          payload = json.loads(receipt.read_text(encoding="utf-8"))
           expected = {
-              "schema": 1,
+              "tested_sha": source_sha,
               "status": "success",
-              "source_repository": os.environ["UPSTREAM_REPOSITORY"],
-              "source_commit": os.environ["UPSTREAM_COMMIT"],
-              "required_files": {
-                  "src/require.ado": os.environ["REQUIRE_ADO_SHA256"],
-                  "src/require.pkg": os.environ["REQUIRE_PKG_SHA256"],
-              },
-              "bundle_file": f"stata-require-{os.environ['UPSTREAM_COMMIT']}.bundle",
-              "provisioning_repository": os.environ["PUBLIC_REPOSITORY"],
+              "stata_status": "success",
+              "rust_status": "success",
+              "stata_rc": 0,
+              "rust_rc": 0,
           }
           for key, value in expected.items():
-              if manifest.get(key) != value:
-                  raise SystemExit(f"public bundle manifest mismatch: {key}")
-          bundle_bytes = Path(os.environ["BUNDLE"]).read_bytes()
-          observed = hashlib.sha256(bundle_bytes).hexdigest()
-          if manifest.get("bundle_sha256") != observed:
-              raise SystemExit("public bundle digest mismatch")
-          if not isinstance(manifest.get("provisioning_sha"), str) or len(manifest["provisioning_sha"]) != 40:
-              raise SystemExit("public bundle provisioning SHA is invalid")
-          if not isinstance(manifest.get("workflow_run_id"), int):
-              raise SystemExit("public bundle workflow identity is invalid")
+              if payload.get(key) != value:
+                  raise SystemExit(f"previous source receipt mismatch: {key}")
           PY
 
-          git bundle verify "$bundle"
-          heads="$work/bundle-heads.txt"
-          git bundle list-heads "$bundle" > "$heads"
-          test "$(wc -l < "$heads" | tr -d ' ')" = "1"
-          test "$(awk '{print $1}' "$heads")" = "$UPSTREAM_COMMIT"
-
-          verify="$work/verify"
-          git clone --quiet "$bundle" "$verify"
-          test "$(git -C "$verify" rev-parse --verify "${UPSTREAM_COMMIT}^{commit}")" = "$UPSTREAM_COMMIT"
-          git -C "$verify" checkout --detach --quiet "$UPSTREAM_COMMIT"
-          git -C "$verify" fsck --full --strict
-          test -z "$(git -C "$verify" status --porcelain=v1 --untracked-files=all)"
-          test "$(shasum -a 256 "$verify/src/require.ado" | awk '{print $1}')" = "$REQUIRE_ADO_SHA256"
-          test "$(shasum -a 256 "$verify/src/require.pkg" | awk '{print $1}')" = "$REQUIRE_PKG_SHA256"
-
-          destination="ci/reference-bundles/stata-require/$UPSTREAM_COMMIT"
-          mkdir -p "$destination"
-          cp "$bundle" "$destination/stata-require-${UPSTREAM_COMMIT}.bundle"
-          IMPORT_SOURCE_SHA="$GITHUB_SHA" MANIFEST="$manifest" \
-            /usr/bin/python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          source = json.loads(Path(os.environ["MANIFEST"]).read_text(encoding="utf-8"))
-          source["import_repository"] = os.environ["GITHUB_REPOSITORY"]
-          source["import_source_sha"] = os.environ["IMPORT_SOURCE_SHA"]
-          source["capture_network_policy"] = "offline-only"
-          target = Path("ci/reference-bundles/stata-require") / os.environ["UPSTREAM_COMMIT"] / "manifest.json"
-          target.write_text(
-              json.dumps(source, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
+      - name: Select Python with tomllib
+        id: python
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=(
+            /opt/homebrew/bin/python3
+            /usr/local/bin/python3
+            "$(command -v python3 2>/dev/null || true)"
+            /usr/bin/python3
           )
-          PY
-
-          rm .github/workflows/import-stata-require-bundle.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "ci(reference): import exact stata-require bundle"
-
-          for attempt in 1 2 3; do
-            git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-            git rebase "refs/remotes/origin/${BRANCH_NAME}"
-            if git push origin "HEAD:refs/heads/${BRANCH_NAME}"; then
+          for candidate in "${candidates[@]}"; do
+            [[ -n "$candidate" && -x "$candidate" ]] || continue
+            if "$candidate" -c 'import sys, tomllib; assert sys.version_info >= (3, 11)' >/dev/null 2>&1; then
+              echo "bin=$candidate" >> "$GITHUB_OUTPUT"
+              "$candidate" --version
               exit 0
             fi
           done
-          echo "stata-require bundle import lost three branch update races" >&2
+          echo "No Python interpreter with tomllib is available on the trusted runner." >&2
           exit 1
 
-      - name: Publish exact staging-SHA failure receipt
-        if: steps.import_bundle.outcome == 'failure'
+      - name: Decode and verify bounded provisioner
+        id: provisioner
+        if: steps.python.outcome == 'success'
+        continue-on-error: true
         shell: bash
         env:
+          PROVISION_PYTHON: ${{ steps.python.outputs.bin }}
+          EXPECTED_PROVISIONER_SHA256: 632c777571f7003214030eaef98ee8d852b8d9fe09a30afb0f3e5461a34a4a23
+        run: |
+          set -euo pipefail
+          archive="$GITHUB_WORKSPACE/ci/source-transforms/provision_reference_bundles.py.gz.b64"
+          script="$GITHUB_WORKSPACE/ci/source-transforms/provision_reference_bundles.py"
+          "$PROVISION_PYTHON" - "$archive" "$script" <<'PY'
+          import base64
+          import gzip
+          import hashlib
+          import os
+          import sys
+          from pathlib import Path
+
+          archive = Path(sys.argv[1])
+          target = Path(sys.argv[2])
+          payload = gzip.decompress(base64.b64decode(archive.read_text(encoding="ascii")))
+          observed = hashlib.sha256(payload).hexdigest()
+          if observed != os.environ["EXPECTED_PROVISIONER_SHA256"]:
+              raise SystemExit("embedded provisioner digest mismatch")
+          target.write_bytes(payload)
+          target.chmod(0o700)
+          PY
+          "$PROVISION_PYTHON" -m py_compile "$script"
+          echo "script=$script" >> "$GITHUB_OUTPUT"
+
+      - name: Build and independently verify exact public bundles
+        id: build
+        if: steps.python.outcome == 'success' && steps.provisioner.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          PROVISION_PYTHON: ${{ steps.python.outputs.bin }}
+          PROVISION_SCRIPT: ${{ steps.provisioner.outputs.script }}
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/stfixest-reference-bundles"
+          rm -rf "$stage"
+          "$PROVISION_PYTHON" "$PROVISION_SCRIPT" build --output-dir "$stage"
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+
+      - name: Publish bundles, offline resolver, tests, and status
+        id: publish
+        if: steps.python.outcome == 'success' && steps.provisioner.outcome == 'success' && steps.build.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          PROVISION_PYTHON: ${{ steps.python.outputs.bin }}
+          PROVISION_SCRIPT: ${{ steps.provisioner.outputs.script }}
+          BUNDLE_STAGE: ${{ steps.build.outputs.stage }}
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          receipt="$RUNNER_TEMP/stata-require-bundle-import-failure.json"
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/reference-bundle-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            "$PROVISION_PYTHON" "$PROVISION_SCRIPT" apply \
+              --repository "$publish_tree" \
+              --bundle-stage "$BUNDLE_STAGE" \
+              --source-sha "$GITHUB_SHA"
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add -A
+            git -C "$publish_tree" diff --cached --check
+            if git -C "$publish_tree" diff --cached --quiet; then
+              exit 0
+            fi
+            git -C "$publish_tree" commit -m "ci(reference): provision exact offline reference bundles"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          echo "reference-bundle publication lost three branch races" >&2
+          exit 1
+
+      - name: Publish redacted provisioning failure receipt
+        if: always() && (steps.python.outcome != 'success' || steps.provisioner.outcome != 'success' || steps.build.outcome != 'success' || steps.publish.outcome != 'success')
+        shell: bash
+        env:
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
+          PROVISIONER_OUTCOME: ${{ steps.provisioner.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/reference-bundle-provision-failure.json"
           RECEIPT="$receipt" /usr/bin/python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
+          if os.environ.get("PYTHON_OUTCOME") != "success":
+              failure_kind = "python_tomllib_unavailable"
+          elif os.environ.get("PROVISIONER_OUTCOME") != "success":
+              failure_kind = "reference_provisioner_decode_failure"
+          elif os.environ.get("BUILD_OUTCOME") != "success":
+              failure_kind = "reference_bundle_build_failure"
+          else:
+              failure_kind = "reference_bundle_publish_failure"
           payload = {
               "schema": 1,
               "status": "failure",
-              "failure_kind": "reference_bundle_import_failure",
-              "staging_sha": os.environ["GITHUB_SHA"],
+              "failure_kind": failure_kind,
+              "source_sha": os.environ["GITHUB_SHA"],
               "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
               "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
               "branch": os.environ["GITHUB_REF_NAME"],
-              "upstream_commit": os.environ["UPSTREAM_COMMIT"],
+              "python_outcome": os.environ.get("PYTHON_OUTCOME", "unknown"),
+              "provisioner_outcome": os.environ.get("PROVISIONER_OUTCOME", "unknown"),
+              "build_outcome": os.environ.get("BUILD_OUTCOME", "unknown"),
+              "publish_outcome": os.environ.get("PUBLISH_OUTCOME", "unknown"),
+              "raw_paths_committed": False,
           }
           Path(os.environ["RECEIPT"]).write_text(
               json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -167,19 +212,47 @@ jobs:
           )
           PY
 
-          result_path=".ci/source-transform/results/$GITHUB_SHA-stata-require-bundle-import.json"
-          publish="$RUNNER_TEMP/stata-require-import-publish"
-          git fetch origin "$BRANCH_NAME"
-          git worktree add --detach "$publish" "origin/$BRANCH_NAME"
-          mkdir -p "$publish/$(dirname "$result_path")"
-          cp "$receipt" "$publish/$result_path"
-          git -C "$publish" config user.name "github-actions[bot]"
-          git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$publish" add "$result_path"
-          git -C "$publish" commit -m "ci(source-transform): record ${GITHUB_SHA:0:12} bundle-import failure [skip ci]"
-          git -C "$publish" push origin "HEAD:refs/heads/$BRANCH_NAME"
-          git worktree remove --force "$publish"
+          result_path=".ci/source-transform/results/$GITHUB_SHA-reference-bundle-provision.json"
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/reference-bundle-failure-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            mkdir -p "$publish_tree/$(dirname "$result_path")"
+            cp "$receipt" "$publish_tree/$result_path"
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add "$result_path"
+            if git -C "$publish_tree" diff --cached --quiet; then
+              exit 0
+            fi
+            git -C "$publish_tree" commit -m "ci(source-transform): record ${GITHUB_SHA:0:12} reference-bundle failure [skip ci]"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          exit 1
 
-      - name: Enforce import success
-        if: steps.import_bundle.outcome == 'failure'
-        run: exit 1
+      - name: Enforce provisioning success
+        if: always()
+        shell: bash
+        env:
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
+          PROVISIONER_OUTCOME: ${{ steps.provisioner.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          set -euo pipefail
+          test "$PYTHON_OUTCOME" = success
+          test "$PROVISIONER_OUTCOME" = success
+          test "$BUILD_OUTCOME" = success
+          test "$PUBLISH_OUTCOME" = success
