@@ -1,4 +1,4 @@
-name: Restore canonical STATUS heading
+name: Retain failed FE-probe diagnostics
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: stfixest-restore-status-heading-${{ github.repository }}-${{ github.ref }}
+  group: stfixest-retain-fe-probe-diagnostics-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,18 +20,21 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 10
     steps:
-      - name: Check out exact repair source
+      - name: Check out exact transform source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Restore required section heading on current main
+      - name: Patch probe diagnostics on current main
         shell: bash
         env:
           BRANCH_NAME: ${{ github.ref_name }}
+          TRANSFORM_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpkZWYgcmVwbGFjZV9vbmNlKHBhdGg6IFBhdGgsIG9sZDogc3RyLCBuZXc6IHN0ciwgbGFiZWw6IHN0cikgLT4gTm9uZToKICAgIHRleHQgPSBwYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQogICAgaWYgdGV4dC5jb3VudChvbGQpICE9IDE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIntsYWJlbH0gYW5jaG9yIG1pc21hdGNoIGluIHtwYXRofSIpCiAgICBwYXRoLndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKSwgZW5jb2Rpbmc9InV0Zi04IikKCnNjcmlwdCA9IFBhdGgoInNjcmlwdHMvZmVfaW50ZXJhY3Rpb25fcHJvYmUucHkiKQpyZXBsYWNlX29uY2Uoc2NyaXB0LCAnICAgICAgICBpZiBjb21wbGV0ZWQucmV0dXJuY29kZSAhPSAwIG9yIGxvZ19zZW50aW5lbHMgIT0gW0JBU0VMSU5FX1NFTlRJTkVMXTpcbiAgICAgICAgICAgIHJhaXNlIFByb2JlRXJyb3IoImxpY2Vuc2VkIHJlZmVyZW5jZSBwcm9iZSBmYWlsZWQgb3IgbGFja2VkIGl0cyBiYXNlbGluZSBzZW50aW5lbCIpXG4gICAgICAgIGlmIG5vdCBjYXB0dXJlX2ZpbGUuaXNfZmlsZSgpOlxuICAgICAgICAgICAgcmFpc2UgUHJvYmVFcnJvcigibGljZW5zZWQgcmVmZXJlbmNlIHByb2JlIHdyb3RlIG5vIG1hY2hpbmUgY2FwdHVyZSIpXG4gICAgICAgIGNhcHR1cmVfdGV4dCA9IGNhcHR1cmVfZmlsZS5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IiwgZXJyb3JzPSJzdHJpY3QiKVxuICAgICAgICBwYXJzZWQgPSBwYXJzZV9wcm9iZV9jYXB0dXJlKGNhcHR1cmVfdGV4dCwgbWFuaWZlc3Rfc2hhMjU2KVxuICAgICAgICBzaHV0aWwuY29weTIoY2FwdHVyZV9maWxlLCBvdXRwdXRfZGlyIC8gImNhcHR1cmUubWFjaGluZSIpXG4gICAgICAgIGlmIGxvZ19maWxlLmlzX2ZpbGUoKTpcbiAgICAgICAgICAgIHNodXRpbC5jb3B5Mihsb2dfZmlsZSwgb3V0cHV0X2RpciAvICJydW4ubG9nIilcbicsICcgICAgICAgIGlmIGxvZ19maWxlLmlzX2ZpbGUoKTpcbiAgICAgICAgICAgIHNodXRpbC5jb3B5Mihsb2dfZmlsZSwgb3V0cHV0X2RpciAvICJydW4ubG9nIilcbiAgICAgICAgaWYgY2FwdHVyZV9maWxlLmlzX2ZpbGUoKTpcbiAgICAgICAgICAgIHNodXRpbC5jb3B5MihjYXB0dXJlX2ZpbGUsIG91dHB1dF9kaXIgLyAiY2FwdHVyZS5tYWNoaW5lIilcbiAgICAgICAgaWYgY29tcGxldGVkLnJldHVybmNvZGUgIT0gMCBvciBsb2dfc2VudGluZWxzICE9IFtCQVNFTElORV9TRU5USU5FTF06XG4gICAgICAgICAgICByYWlzZSBQcm9iZUVycm9yKFxuICAgICAgICAgICAgICAgICJsaWNlbnNlZCByZWZlcmVuY2UgcHJvYmUgZmFpbGVkOiAiXG4gICAgICAgICAgICAgICAgZiJwcm9jZXNzX3JjPXtjb21wbGV0ZWQucmV0dXJuY29kZX07ICJcbiAgICAgICAgICAgICAgICBmImJhc2VsaW5lX3NlbnRpbmVsX2NvdW50PXtsZW4obG9nX3NlbnRpbmVscyl9IlxuICAgICAgICAgICAgKVxuICAgICAgICBpZiBub3QgY2FwdHVyZV9maWxlLmlzX2ZpbGUoKTpcbiAgICAgICAgICAgIHJhaXNlIFByb2JlRXJyb3IoImxpY2Vuc2VkIHJlZmVyZW5jZSBwcm9iZSB3cm90ZSBubyBtYWNoaW5lIGNhcHR1cmUiKVxuICAgICAgICBjYXB0dXJlX3RleHQgPSBjYXB0dXJlX2ZpbGUucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIsIGVycm9ycz0ic3RyaWN0IilcbiAgICAgICAgcGFyc2VkID0gcGFyc2VfcHJvYmVfY2FwdHVyZShjYXB0dXJlX3RleHQsIG1hbmlmZXN0X3NoYTI1NilcbicsICJwcm9iZSBleGVjdXRpb24iKQpyZXBsYWNlX29uY2Uoc2NyaXB0LCAnZGVmIGZhaWx1cmVfZG9jdW1lbnQoc291cmNlX3NoYTogc3RyLCBleGM6IEJhc2VFeGNlcHRpb24pIC0+IGRpY3Rbc3RyLCBBbnldOlxuICAgIHBheWxvYWQgPSB7XG4gICAgICAgICJzY2hlbWFfdmVyc2lvbiI6IDEsXG4gICAgICAgICJyZWNlaXB0X3R5cGUiOiAic3RmaXhlc3QtcmVnaGRmZS1mZS1pbnRlcmFjdGlvbi1wcm9iZSIsXG4gICAgICAgICJzdGF0dXMiOiAiZmFpbHVyZSIsXG4gICAgICAgICJzb3VyY2Vfc2hhIjogc291cmNlX3NoYSxcbiAgICAgICAgImZhaWx1cmVfa2luZCI6IHR5cGUoZXhjKS5fX25hbWVfXyxcbiAgICAgICAgImZhaWx1cmVfZGV0YWlsIjogc2FuaXRpemVfbWVzc2FnZShzdHIoZXhjKSksXG4gICAgICAgICJyYXdfY2FwdHVyZV9jb21taXR0ZWQiOiBGYWxzZSxcbiAgICB9XG4gICAgcmV0dXJuIHNlYWxfcGF5bG9hZChwYXlsb2FkKVxuJywgJ2RlZiBmYWlsdXJlX2RvY3VtZW50KHNvdXJjZV9zaGE6IHN0ciwgZXhjOiBCYXNlRXhjZXB0aW9uKSAtPiBkaWN0W3N0ciwgQW55XTpcbiAgICBwYXlsb2FkID0ge1xuICAgICAgICAic2NoZW1hX3ZlcnNpb24iOiAxLFxuICAgICAgICAicmVjZWlwdF90eXBlIjogInN0Zml4ZXN0LXJlZ2hkZmUtZmUtaW50ZXJhY3Rpb24tcHJvYmUiLFxuICAgICAgICAic3RhdHVzIjogImZhaWx1cmUiLFxuICAgICAgICAic291cmNlX3NoYSI6IHNvdXJjZV9zaGEsXG4gICAgICAgICJzdGFnZSI6ICJwcm9iZV9leGVjdXRpb24iLFxuICAgICAgICAiZmFpbHVyZV9raW5kIjogdHlwZShleGMpLl9fbmFtZV9fLFxuICAgICAgICAiZmFpbHVyZV9kZXRhaWwiOiBzYW5pdGl6ZV9tZXNzYWdlKHN0cihleGMpKSxcbiAgICAgICAgInJhd19jYXB0dXJlX2NvbW1pdHRlZCI6IEZhbHNlLFxuICAgIH1cbiAgICBydW5faWQgPSBvcy5lbnZpcm9uLmdldCgiR0lUSFVCX1JVTl9JRCIpXG4gICAgcnVuX2F0dGVtcHQgPSBvcy5lbnZpcm9uLmdldCgiR0lUSFVCX1JVTl9BVFRFTVBUIilcbiAgICBpZiBydW5faWQgYW5kIHJ1bl9pZC5pc2RpZ2l0KCk6XG4gICAgICAgIHBheWxvYWRbIndvcmtmbG93X3J1bl9pZCJdID0gaW50KHJ1bl9pZClcbiAgICBpZiBydW5fYXR0ZW1wdCBhbmQgcnVuX2F0dGVtcHQuaXNkaWdpdCgpOlxuICAgICAgICBwYXlsb2FkWyJ3b3JrZmxvd19ydW5fYXR0ZW1wdCJdID0gaW50KHJ1bl9hdHRlbXB0KVxuICAgIHJldHVybiBzZWFsX3BheWxvYWQocGF5bG9hZClcbicsICJmYWlsdXJlIHBheWxvYWQiKQoKdGVzdCA9IFBhdGgoInRlc3RzL3B5dGhvbi90ZXN0X2ZlX2ludGVyYWN0aW9uX3Byb2JlX2NvbnRyYWN0LnB5IikKdGV4dCA9IHRlc3QucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCm1hcmtlciA9ICcgICAgZGVmIHRlc3Rfd29ya2Zsb3dfaXNfcHJpdmF0ZV9tYWluX2FuZF9tYWNfcnVubmVyX3Njb3BlZChzZWxmKSAtPiBOb25lOlxuJwppbnNlcnQgPSAnICAgIGRlZiB0ZXN0X2ZhaWxlZF9wcm9iZV9yZXRhaW5zX3ByaXZhdGVfZGVidWdfYXJ0aWZhY3RzKHNlbGYpIC0+IE5vbmU6XG4gICAgICAgIHRleHQgPSBTQ1JJUFQucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpXG4gICAgICAgIHNlbGYuYXNzZXJ0SW4oXCdzaHV0aWwuY29weTIobG9nX2ZpbGUsIG91dHB1dF9kaXIgLyAicnVuLmxvZyIpXCcsIHRleHQpXG4gICAgICAgIHNlbGYuYXNzZXJ0SW4oXCdzaHV0aWwuY29weTIoY2FwdHVyZV9maWxlLCBvdXRwdXRfZGlyIC8gImNhcHR1cmUubWFjaGluZSIpXCcsIHRleHQpXG4gICAgICAgIHNlbGYuYXNzZXJ0SW4oImJhc2VsaW5lX3NlbnRpbmVsX2NvdW50IiwgdGV4dClcbiAgICAgICAgc2VsZi5hc3NlcnRJbihcJyJzdGFnZSI6ICJwcm9iZV9leGVjdXRpb24iXCcsIHRleHQpXG4gICAgICAgIHNlbGYuYXNzZXJ0SW4oXCcid29ya2Zsb3dfcnVuX2lkIlwnLCB0ZXh0KVxuICAgICAgICBzZWxmLmFzc2VydEluKFwnIndvcmtmbG93X3J1bl9hdHRlbXB0IlwnLCB0ZXh0KVxuXG4nCmlmIGluc2VydCBub3QgaW4gdGV4dDoKICAgIGlmIHRleHQuY291bnQobWFya2VyKSAhPSAxOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoInByb2JlIGRpYWdub3N0aWMgdGVzdCBhbmNob3IgbWlzbWF0Y2giKQogICAgdGVzdC53cml0ZV90ZXh0KHRleHQucmVwbGFjZShtYXJrZXIsIGluc2VydCArIG1hcmtlciwgMSksIGVuY29kaW5nPSJ1dGYtOCIpCg==
         run: |
           set -euo pipefail
+          transform="$RUNNER_TEMP/retain-fe-probe-diagnostics.py"
+          TRANSFORM_PATH="$transform" /usr/bin/python3 -c 'import base64, os, pathlib; pathlib.Path(os.environ["TRANSFORM_PATH"]).write_bytes(base64.b64decode(os.environ["TRANSFORM_B64"], validate=True))'
           publish_tree=""
           cleanup() {
             if [[ -n "$publish_tree" ]]; then
@@ -44,21 +47,24 @@ jobs:
 
           for attempt in 1 2 3; do
             git fetch origin "$BRANCH_NAME"
-            publish_tree="$RUNNER_TEMP/status-heading-$attempt"
+            publish_tree="$RUNNER_TEMP/fe-probe-diagnostics-$attempt"
             git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
-            STATUS_PATH="$publish_tree/STATUS.md" /usr/bin/python3 -c 'import os; from pathlib import Path; path=Path(os.environ["STATUS_PATH"]); text=path.read_text(encoding="utf-8"); old="## Historical evidence-backed baseline (pre-categorical consolidation)"; new="## Completed, evidence-backed baseline"; assert new in text or text.count(old)==1, "STATUS completed-baseline heading anchor mismatch"; path.write_text(text if new in text else text.replace(old,new,1), encoding="utf-8")'
+            (
+              cd "$publish_tree"
+              /usr/bin/python3 "$transform"
+            )
             git -C "$publish_tree" config user.name "github-actions[bot]"
             git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git -C "$publish_tree" add STATUS.md
+            git -C "$publish_tree" add scripts/fe_interaction_probe.py tests/python/test_fe_interaction_probe_contract.py
             git -C "$publish_tree" diff --cached --check
             if git -C "$publish_tree" diff --cached --quiet; then
               exit 0
             fi
-            git -C "$publish_tree" commit -m "docs: restore canonical status section"
+            git -C "$publish_tree" commit -m "ci(reference): retain failed probe diagnostics"
             if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
               exit 0
             fi
             cleanup
           done
-          echo "STATUS heading repair lost three branch races" >&2
+          echo "FE-probe diagnostic transform lost three branch races" >&2
           exit 1
