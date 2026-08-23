@@ -138,10 +138,7 @@ fn assert_iid_case_matches_oracle(
     assert!(!absorbed.is_approximate);
     assert_eq!(absorbed.effects.len(), 1);
     assert_eq!(absorbed.effects[0].categories, n_levels);
-    assert_eq!(
-        absorbed.effects[0].coefficients,
-        oracle.explicit_dummy_rank
-    );
+    assert_eq!(absorbed.effects[0].coefficients, oracle.explicit_dummy_rank);
     assert!(!absorbed.effects[0].nested);
 
     let expected_rss = weighted_sum_of_squares(&oracle.residuals, &reference_weights, 0.0);
@@ -154,11 +151,7 @@ fn assert_iid_case_matches_oracle(
     let statistics = result.statistics();
     assert_close(statistics.rss, expected_rss, IID_TOLERANCE);
     assert_close(statistics.tss, expected_tss, IID_TOLERANCE);
-    assert_close(
-        statistics.within_tss,
-        expected_within_tss,
-        IID_TOLERANCE,
-    );
+    assert_close(statistics.within_tss, expected_within_tss, IID_TOLERANCE);
     assert_optional_close(
         statistics.r_squared,
         Some(1.0 - expected_rss / expected_tss),
@@ -178,8 +171,7 @@ fn assert_iid_case_matches_oracle(
         statistics.adjusted_within_r_squared,
         Some(
             1.0 - (expected_rss / dof.residual_dof as f64)
-                / (expected_within_tss
-                    / (dof.residual_dof + dof.finite_model_dof) as f64),
+                / (expected_within_tss / (dof.residual_dof + dof.finite_model_dof) as f64),
         ),
     );
     assert_close(
@@ -201,10 +193,7 @@ fn assert_iid_case_matches_oracle(
             effective_observations,
         )),
     );
-    assert_optional_close(
-        statistics.f_statistic,
-        Some(expected_wald_f(&oracle)),
-    );
+    assert_optional_close(statistics.f_statistic, Some(expected_wald_f(&oracle)));
 
     let (dimension, expected_bread) =
         expected_reported_bread(case, &oracle, weights, include_intercept);
@@ -219,11 +208,7 @@ fn assert_iid_case_matches_oracle(
         expected_variance_scale,
         IID_TOLERANCE,
     );
-    assert_slice_close(
-        covariance.values(),
-        &expected_covariance,
-        IID_TOLERANCE,
-    );
+    assert_slice_close(covariance.values(), &expected_covariance, IID_TOLERANCE);
     for (index, standard_error) in covariance.standard_errors().iter().copied().enumerate() {
         assert_close(
             standard_error,
@@ -254,22 +239,14 @@ fn assert_weight_report(
             assert_eq!(report.kind, None);
             assert_eq!(report.raw_weight_sum, None);
             assert_close(report.solver_weight_divisor, 1.0, IID_TOLERANCE);
-            assert_close(
-                report.reference_weight_multiplier,
-                1.0,
-                IID_TOLERANCE,
-            );
+            assert_close(report.reference_weight_multiplier, 1.0, IID_TOLERANCE);
         }
         CaseWeights::Analytic(values) => {
             let sum = values.iter().sum::<f64>();
             let maximum = values.iter().copied().fold(0.0_f64, f64::max);
             assert_eq!(report.kind, Some(WeightKind::Analytic));
             assert_optional_close(report.raw_weight_sum, Some(sum));
-            assert_close(
-                report.solver_weight_divisor,
-                maximum,
-                IID_TOLERANCE,
-            );
+            assert_close(report.solver_weight_divisor, maximum, IID_TOLERANCE);
             assert_close(
                 report.reference_weight_multiplier,
                 nobs as f64 * maximum / sum,
@@ -285,16 +262,8 @@ fn assert_weight_report(
                 .fold(0.0_f64, f64::max);
             assert_eq!(report.kind, Some(WeightKind::Frequency));
             assert_optional_close(report.raw_weight_sum, Some(sum));
-            assert_close(
-                report.solver_weight_divisor,
-                maximum,
-                IID_TOLERANCE,
-            );
-            assert_close(
-                report.reference_weight_multiplier,
-                maximum,
-                IID_TOLERANCE,
-            );
+            assert_close(report.solver_weight_divisor, maximum, IID_TOLERANCE);
+            assert_close(report.reference_weight_multiplier, maximum, IID_TOLERANCE);
         }
         CaseWeights::Probability(_) => panic!("probability iid must fail before weight reporting"),
     }
@@ -302,18 +271,17 @@ fn assert_weight_report(
 
 fn expected_wald_f(oracle: &ExplicitOlsResult) -> f64 {
     assert_eq!(oracle.kept_regressors.len(), 2);
-    let first = oracle.coefficients[oracle.kept_regressors[0]]
-        .expect("first identified coefficient");
-    let second = oracle.coefficients[oracle.kept_regressors[1]]
-        .expect("second identified coefficient");
+    let first =
+        oracle.coefficients[oracle.kept_regressors[0]].expect("first identified coefficient");
+    let second =
+        oracle.coefficients[oracle.kept_regressors[1]].expect("second identified coefficient");
     let v00 = oracle.iid_vce[(0, 0)];
     let v01 = oracle.iid_vce[(0, 1)];
     let v11 = oracle.iid_vce[(1, 1)];
     let determinant = v00 * v11 - v01 * v01;
     assert!(determinant > 0.0);
     let quadratic =
-        (first * first * v11 - 2.0 * first * second * v01 + second * second * v00)
-            / determinant;
+        (first * first * v11 - 2.0 * first * second * v01 + second * second * v00) / determinant;
     quadratic / 2.0
 }
 
@@ -339,8 +307,7 @@ fn expected_reported_bread(
     let mut expected = vec![0.0_f64; dimension * dimension];
     for row in 0..finite_dimension {
         for column in 0..finite_dimension {
-            expected[row * dimension + column] =
-                oracle.bread[(row, column)] * reference_multiplier;
+            expected[row * dimension + column] = oracle.bread[(row, column)] * reference_multiplier;
         }
     }
     if !include_intercept {
