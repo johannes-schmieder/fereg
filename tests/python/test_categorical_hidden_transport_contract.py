@@ -23,6 +23,9 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         ):
             self.assertIn(symbol, estimate)
         self.assertIn("categorical_sources.len() > 1", estimate)
+        self.assertIn("plan_categorical_absorbed_request", estimate)
+        self.assertIn("plan.availability_request().validate_and_compile()", estimate)
+        self.assertIn("validate_cluster_request_shape(&requested_clustered)", estimate)
         self.assertNotIn('ACTION_ESTIMATE_OLS: &str', estimate)
 
     def test_result_wire_retains_dimensions_and_interaction_identity(self):

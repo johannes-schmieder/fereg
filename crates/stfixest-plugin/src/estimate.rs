@@ -8,6 +8,7 @@ use crate::result::{
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
+use stfixest_core::fe::plan_categorical_absorbed_request;
 use stfixest_core::metadata::{
     ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
@@ -478,7 +479,33 @@ impl EstimateActionSpec {
         };
         let clusters = read_clusters(self, spi)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
-        let prepared_model = if self.vce == OlsVceKind::Clustered {
+        let categorical = request
+            .absorbed_terms
+            .iter()
+            .any(|term| term.categorical_sources.len() > 1);
+        let prepared_model = if categorical {
+            // Validate the original tuple identities and all-categorical
+            // intercept-only contract before any observation read. The
+            // availability request preserves the ordinary model and
+            // coefficient layout while replacing each tuple with one
+            // synthetic single-source availability marker, which is the
+            // only representation accepted by the legacy compiler.
+            let plan = plan_categorical_absorbed_request(&request)?;
+            if self.vce == OlsVceKind::Clustered {
+                let requested_clustered = OlsClusteredRequestV1 {
+                    ols: request.clone(),
+                    clusters: clusters.clone(),
+                };
+                validate_cluster_request_shape(&requested_clustered)?;
+                OlsClusteredRequestV1 {
+                    ols: plan.availability_request().clone(),
+                    clusters: clusters.clone(),
+                }
+                .validate_and_compile()?
+            } else {
+                plan.availability_request().validate_and_compile()?
+            }
+        } else if self.vce == OlsVceKind::Clustered {
             let clustered_request = OlsClusteredRequestV1 {
                 ols: request.clone(),
                 clusters: clusters.clone(),
