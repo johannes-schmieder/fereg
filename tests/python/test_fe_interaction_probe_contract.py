@@ -23,9 +23,10 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         self.assertNotIn("urllib", text)
         self.assertNotIn("requests", text)
 
-    def test_workflow_is_private_branch_and_mac_runner_scoped(self) -> None:
+    def test_workflow_is_private_main_and_mac_runner_scoped(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("codex/categorical-interactions", text)
+        self.assertIn("branches:\n      - main", text)
+        self.assertNotIn("codex/categorical-interactions", text)
         self.assertIn("self-hosted, macOS, ARM64, stata-mp, stfixest", text)
         self.assertIn("github.repository == 'johannes-schmieder/StFixest'", text)
         self.assertNotIn("pull_request", text)
