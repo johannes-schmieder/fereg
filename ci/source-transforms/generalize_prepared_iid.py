@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Repair clustered DoF composition after the shared iid-view refactor.
 
-The iid boundary must continue to reject cluster-nested absorbed effects.  The
-clustered pipeline, however, owns a separately certified nested DoF report.  It
-therefore needs a cluster-aware structural summary rather than the iid-only
-summary used by conventional and robust inference.
+The iid boundary remains nesting-free. Clustered inference receives a separate,
+fully validated summary for the nested absorbed-DoF report that it constructs in
+the same call.
 """
 
 from __future__ import annotations
@@ -97,16 +96,21 @@ view = replace_once(
     ") -> Result<PreparedOlsAbsorbedDofSummary> {\n",
     "cluster-aware legacy summary entry point",
 )
-view = replace_once(
-    view,
+
+categorical_marker = "\nfn validate_categorical_report("
+if view.count(categorical_marker) != 1:
+    raise SystemExit("categorical validator marker is not unique")
+legacy, categorical_tail = view.split(categorical_marker, 1)
+legacy = replace_once(
+    legacy,
     "    if report.effects.len() != expected_rows || report.nested_categories != 0 {\n",
     "    if report.effects.len() != expected_rows\n"
     "        || (nesting_state == LegacyNestingState::Iid && report.nested_categories != 0)\n"
     "    {\n",
     "legacy row-count and iid nesting gate",
 )
-view = replace_once(
-    view,
+legacy = replace_once(
+    legacy,
     "    let mut rank = 0_usize;\n"
     "    let mut approximate = false;\n"
     "    let mut rows = report.effects.as_slice();\n",
@@ -116,8 +120,8 @@ view = replace_once(
     "    let mut rows = report.effects.as_slice();\n",
     "legacy nested-category accumulator",
 )
-view = replace_once(
-    view,
+legacy = replace_once(
+    legacy,
     "            || row.coefficients != row.categories - row.redundant\n"
     "            || row.nested\n"
     "        {\n",
@@ -126,8 +130,8 @@ view = replace_once(
     "        {\n",
     "legacy explicit-row nesting validation",
 )
-view = replace_once(
-    view,
+legacy = replace_once(
+    legacy,
     "        approximate |= !row.redundancy_exact;\n"
     "    }\n"
     "    validate_totals(\n",
@@ -146,10 +150,8 @@ view = replace_once(
     "    validate_totals(\n",
     "legacy nested-category certificate",
 )
-view = replace_once(
-    view,
-    "fn validate_categorical_report(\n",
-    "fn legacy_nesting_row_is_valid(\n"
+legacy += (
+    "\nfn legacy_nesting_row_is_valid(\n"
     "    nesting_state: LegacyNestingState,\n"
     "    row: &PreparedOlsAbsorbedDofEffect,\n"
     ") -> bool {\n"
@@ -163,11 +165,9 @@ view = replace_once(
     "                && row.redundancy_exact\n"
     "        }\n"
     "    }\n"
-    "}\n\n"
-    "fn validate_categorical_report(\n",
-    "legacy nesting helper",
+    "}\n"
 )
-VIEW.write_text(view, encoding="utf-8")
+VIEW.write_text(legacy + categorical_marker + categorical_tail, encoding="utf-8")
 
 unadjusted = UNADJUSTED.read_text(encoding="utf-8")
 unadjusted = replace_once(
