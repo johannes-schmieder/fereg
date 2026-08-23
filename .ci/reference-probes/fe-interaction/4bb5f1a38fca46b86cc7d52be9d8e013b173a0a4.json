@@ -1,0 +1,19 @@
+{
+  "payload": {
+    "bundled_reference_outcome": "",
+    "failure_detail": "no bundled or allowlisted local reference root passed exact offline preflight",
+    "failure_kind": "offline_reference_root_unresolved",
+    "probe_outcome": "skipped",
+    "python_outcome": "success",
+    "raw_capture_committed": false,
+    "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+    "reference_root_outcome": "failure",
+    "schema_version": 1,
+    "source_sha": "4bb5f1a38fca46b86cc7d52be9d8e013b173a0a4",
+    "stage": "workflow_finalizer",
+    "status": "failure",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 32657268366
+  },
+  "payload_sha256": "4180d79ca47e5fd9fdd085cba6a82dbc56bab2468be8c70f1009467afc5bbd70"
+}
