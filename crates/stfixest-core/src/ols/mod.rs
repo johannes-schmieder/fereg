@@ -31,7 +31,8 @@ pub use prepared_categorical_clusters::{
     prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
 };
 pub use prepared_clustered::{
-    fit_prepared_ols_clustered_map, CertifiedPreparedOlsClustered,
+    fit_prepared_categorical_ols_clustered_map, fit_prepared_ols_clustered_map,
+    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedOlsClustered,
     PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
     PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
     PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,

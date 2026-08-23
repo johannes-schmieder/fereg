@@ -1,20 +1,23 @@
 use std::cmp::Ordering;
 
 use crate::error::{ErrorCode, Result, StFixestError};
+use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::topology_dof::CategoricalTopologyDofReport;
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
-use super::prepared_inference_view::PreparedOlsInferenceView;
+use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
+use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
 };
 use super::prepared_unadjusted::{
-    build_clustered_base_residual_dof, build_reference_weight_report, build_statistics,
-    checked_square, compensated_add, exact_integer_as_f64, relative_difference,
-    validate_sum_of_squares, weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
+    build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
+    compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
+    weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
 };
 use super::{
-    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
+    CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
     PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
     PreparedOlsClusteredData, PreparedOlsColumnKind, PreparedOlsFitConfig,
     PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
@@ -238,6 +241,86 @@ impl CertifiedPreparedOlsClustered {
     }
 }
 
+/// Categorical-interaction same-call fit, cluster-aware absorbed DoF,
+/// multiway covariance, statistics, and independent certificates.
+#[derive(Debug, PartialEq)]
+pub struct CertifiedPreparedCategoricalOlsClustered {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: CategoricalTopologyDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsClusteredDofReport,
+    cluster_counts: Vec<usize>,
+    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsClusteredCovariance,
+    certificate: PreparedOlsClusteredCertificate,
+}
+
+impl CertifiedPreparedCategoricalOlsClustered {
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub fn cluster_counts(&self) -> &[usize] {
+        &self.cluster_counts
+    }
+
+    #[must_use]
+    pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
+        &self.subsets
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
+        self.certificate
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct PreparedOlsClusteredComponents<A> {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: A,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsClusteredDofReport,
+    cluster_counts: Vec<usize>,
+    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsClusteredCovariance,
+    certificate: PreparedOlsClusteredCertificate,
+}
+
 #[derive(Debug)]
 struct RawClusterCovariance {
     uncorrected: Vec<f64>,
@@ -287,14 +370,58 @@ pub fn fit_prepared_ols_clustered_map(
     fit_with_reservation(prepared, config, &mut reservation)
 }
 
+/// Fit and certify categorical-interaction OLS/WLS with one-/multiway
+/// clustered covariance through the same numerical pipeline.
+pub fn fit_prepared_categorical_ols_clustered_map(
+    prepared: &PreparedCategoricalOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+) -> Result<CertifiedPreparedCategoricalOlsClustered> {
+    let mut reservation = SystemPreparedInferenceReservation;
+    let components = fit_clustered_view_with_reservation(prepared, config, &mut reservation)?;
+    Ok(CertifiedPreparedCategoricalOlsClustered {
+        fit: components.fit,
+        absorbed_dof: components.absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        cluster_counts: components.cluster_counts,
+        subsets: components.subsets,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
 fn fit_with_reservation<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsClusteredData,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsClustered> {
+    let components = fit_clustered_view_with_reservation(prepared, config, reservation)?;
+    Ok(CertifiedPreparedOlsClustered {
+        fit: components.fit,
+        absorbed_dof: components.absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        cluster_counts: components.cluster_counts,
+        subsets: components.subsets,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
+fn fit_clustered_view_with_reservation<
+    P: PreparedOlsClusteredView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &P,
+    config: PreparedOlsClusteredConfig,
+    reservation: &mut R,
+) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
+{
     validate_config(prepared, config)?;
-    let fit = fit_prepared_ols_coefficients_map(prepared.ols(), config.fit)?;
-    compose(
+    let fit = fit_prepared_ols_coefficients_view_map(prepared.clustered_ols(), config.fit)?;
+    compose_clustered_view(
         prepared,
         fit,
         config,
@@ -310,21 +437,44 @@ fn compose<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
+    let components = compose_clustered_view(prepared, fit, config, reservation, perturbations)?;
+    Ok(CertifiedPreparedOlsClustered {
+        fit: components.fit,
+        absorbed_dof: components.absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        cluster_counts: components.cluster_counts,
+        subsets: components.subsets,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
+fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
+    fit: CertifiedPreparedOlsFit,
+    config: PreparedOlsClusteredConfig,
+    reservation: &mut R,
+    perturbations: ClusteredPerturbations,
+) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
+{
+    let ols = prepared.clustered_ols();
     let dimensions = borrow_cluster_dimensions(prepared, reservation)?;
     let nesting_dimensions = if config.account_cluster_nesting {
         dimensions.as_slice()
     } else {
         &[]
     };
-    let absorbed_dof = prepared
-        .ols()
-        .inference_compute_clustered_absorbed_dof(config.absorbed_dof, nesting_dimensions)?;
-    validate_cluster_aware_absorbed_dof(prepared, &absorbed_dof, config)?;
+    let absorbed_dof =
+        ols.inference_compute_clustered_absorbed_dof(config.absorbed_dof, nesting_dimensions)?;
+    let absorbed_summary =
+        ols.inference_clustered_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
 
     let (weights, weight_view, weight_error) =
-        build_reference_weight_report(prepared.ols(), &fit, config.certificate_tolerance, true)?;
-    let base_dof = build_clustered_base_residual_dof(prepared.ols(), &fit, &absorbed_dof, weights)?;
-    let expected_dof = build_clustered_dof(prepared, weights, base_dof, &absorbed_dof)?;
+        build_reference_weight_report_view(ols, &fit, config.certificate_tolerance, true)?;
+    let base_dof = build_residual_dof_view(ols, &fit, absorbed_summary, weights)?;
+    let expected_dof = build_clustered_dof(prepared, weights, base_dof, absorbed_summary)?;
     let mut dof = expected_dof;
     if perturbations.residual_dof {
         dof.reported_residual_dof = dof
@@ -338,17 +488,17 @@ fn compose<R: PreparedInferenceReservation>(
         ));
     }
 
-    let outcome_mean = weighted_mean(&prepared.ols().sample.outcome, weight_view)?;
+    let outcome_mean = weighted_mean(&ols.fit_sample().outcome, weight_view)?;
     let center = if dof.has_structural_intercept {
         outcome_mean
     } else {
         0.0
     };
-    let tss = weighted_sum_of_squares(&prepared.ols().sample.outcome, weight_view, center)?;
-    let within_tss = if prepared.ols().fe_topology.effects().is_empty() {
-        tss
-    } else {
+    let tss = weighted_sum_of_squares(&ols.fit_sample().outcome, weight_view, center)?;
+    let within_tss = if ols.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
+    } else {
+        tss
     };
     let rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
     validate_sum_of_squares(rss, tss, within_tss)?;
@@ -371,7 +521,7 @@ fn compose<R: PreparedInferenceReservation>(
     }
 
     let mut scores = build_prepared_ols_score_design(
-        prepared.ols(),
+        ols,
         &fit,
         weight_view,
         config.fit.map,
@@ -451,7 +601,7 @@ fn compose<R: PreparedInferenceReservation>(
         };
     }
     let wald = build_wald(
-        prepared.ols(),
+        ols,
         &fit,
         &covariance,
         dof.finite_model_dof,
@@ -525,24 +675,24 @@ fn compose<R: PreparedInferenceReservation>(
         passed,
     };
     if !certificate.passed {
-        return Err(invalid_data(format!(
-            "prepared clustered covariance or statistic certificate did not pass: {certificate:?}",
-        )));
+        return Err(invalid_data(
+            "prepared clustered covariance or statistic certificate did not pass",
+        ));
     }
 
     let mut cluster_counts = reserved_empty(
         reservation,
-        prepared.clusters().len(),
-        "unable to reserve prepared clustered group counts",
+        prepared.clustered_design().len(),
+        "unable to reserve prepared clustered final group counts",
     )?;
-    for dimension in prepared.clusters().dimensions() {
+    for dimension in prepared.clustered_design().dimensions() {
         push_reserved(
             &mut cluster_counts,
             dimension.groups(),
-            "prepared clustered group-count capacity exhausted",
+            "prepared clustered final group-count capacity exhausted",
         )?;
     }
-    Ok(CertifiedPreparedOlsClustered {
+    Ok(PreparedOlsClusteredComponents {
         fit,
         absorbed_dof,
         weights,
@@ -598,57 +748,14 @@ fn borrow_cluster_dimensions<
     Ok(dimensions)
 }
 
-fn validate_cluster_aware_absorbed_dof(
-    prepared: &PreparedOlsClusteredData,
-    absorbed: &PreparedOlsAbsorbedDofReport,
-    config: PreparedOlsClusteredConfig,
-) -> Result<()> {
-    let nested_sum = absorbed
-        .effects
-        .iter()
-        .filter(|effect| effect.nested)
-        .try_fold(0_usize, |sum, effect| {
-            if effect.redundant != effect.categories
-                || effect.coefficients != 0
-                || !effect.redundancy_exact
-            {
-                return Err(invalid_data(
-                    "prepared clustered nested absorbed effect is not fully redundant",
-                ));
-            }
-            sum.checked_add(effect.categories)
-                .ok_or_else(|| allocation("prepared clustered nested category sum overflows"))
-        })?;
-    if nested_sum != absorbed.nested_categories
-        || (!config.account_cluster_nesting && nested_sum != 0)
-        || absorbed.effects.len()
-            != prepared
-                .ols()
-                .fe_topology
-                .effects()
-                .len()
-                .checked_add(usize::from(
-                    prepared.ols().fe_topology.effects().is_empty()
-                        && prepared.ols().structural_intercept
-                        && prepared.ols().sample.n_active() > 0,
-                ))
-                .ok_or_else(|| allocation("prepared clustered absorbed row count overflows"))?
-    {
-        return Err(invalid_data(
-            "prepared clustered absorbed-DoF nesting certificate did not pass",
-        ));
-    }
-    Ok(())
-}
-
-fn build_clustered_dof(
-    prepared: &PreparedOlsClusteredData,
+fn build_clustered_dof<P: PreparedOlsClusteredView + ?Sized>(
+    prepared: &P,
     weights: PreparedOlsReferenceWeightReport,
     base: PreparedOlsResidualDofReport,
-    absorbed: &PreparedOlsAbsorbedDofReport,
+    absorbed: PreparedOlsAbsorbedDofSummary,
 ) -> Result<PreparedOlsClusteredDofReport> {
     let minimum_cluster_count = prepared
-        .clusters()
+        .clustered_design()
         .dimensions()
         .iter()
         .map(|dimension| dimension.groups())
@@ -699,7 +806,7 @@ fn build_clustered_dof(
         minimum_cluster_count,
         has_structural_intercept: base.has_structural_intercept,
         has_normalized_absorbed_intercept: base.has_normalized_absorbed_intercept,
-        absorbed_rank_is_approximate: base.absorbed_rank_is_approximate,
+        absorbed_rank_is_approximate: absorbed.is_approximate,
     })
 }
 
@@ -1189,8 +1296,8 @@ fn certify_corrected_covariance(raw: &RawClusterCovariance) -> Result<f64> {
     Ok(error / scale)
 }
 
-fn apply_psd_policy<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     raw: &[f64],
     tolerance: f64,
@@ -1204,7 +1311,7 @@ fn apply_psd_policy<R: PreparedInferenceReservation>(
         ));
     }
     if p == 0 {
-        let state = if prepared.clusters().len() == 1 {
+        let state = if prepared.clustered_design().len() == 1 {
             PreparedOlsClusteredPsdState::OneWayStrict
         } else {
             PreparedOlsClusteredPsdState::MultiwayRawPsd
@@ -1247,13 +1354,13 @@ fn apply_psd_policy<R: PreparedInferenceReservation>(
         .copied()
         .fold(f64::INFINITY, f64::min);
     let scale = covariance_scale(&symmetric, p)?;
-    if prepared.clusters().len() == 1 && minimum_raw < -tolerance * scale {
+    if prepared.clustered_design().len() == 1 && minimum_raw < -tolerance * scale {
         return Err(invalid_data(
             "one-way prepared clustered covariance is materially indefinite",
         ));
     }
 
-    let cluster_dimensions = prepared.clusters().len();
+    let cluster_dimensions = prepared.clustered_design().len();
     let mut output = symmetric;
     let mut full_adjusted = false;
     let mut full_clipped = 0_usize;
@@ -1274,7 +1381,7 @@ fn apply_psd_policy<R: PreparedInferenceReservation>(
         full_clipped = clipped_count;
         full_adjusted = clipped_count > 0;
 
-        let intercept = reported_intercept_position(prepared.ols(), fit)?;
+        let intercept = reported_intercept_position(prepared.clustered_ols(), fit)?;
         if let Some(intercept) = intercept {
             let slope_dimension = p.checked_sub(1).ok_or_else(|| {
                 invalid_argument("prepared clustered slope dimension underflowed")
@@ -1412,7 +1519,7 @@ fn apply_psd_policy<R: PreparedInferenceReservation>(
     let final_scale = covariance_scale(&output, p)?;
     let strict_final_full_psd = !(cluster_dimensions > 1
         && full_adjusted
-        && reported_intercept_position(prepared.ols(), fit)?.is_some()
+        && reported_intercept_position(prepared.clustered_ols(), fit)?.is_some()
         && p > 1
         && slope_block_restored);
     if strict_final_full_psd && minimum_final < -tolerance * final_scale {
@@ -1464,8 +1571,8 @@ fn raw_eigen_input(raw: &[f64], p: usize, row: usize, column: usize) -> Result<f
     }
 }
 
-fn reported_intercept_position(
-    prepared: &super::PreparedOlsData,
+fn reported_intercept_position<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
 ) -> Result<Option<usize>> {
     let mut intercept = None;
@@ -1474,7 +1581,7 @@ fn reported_intercept_position(
             == PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
             || matches!(
                 prepared
-                    .model
+                    .fit_model()
                     .columns
                     .get(coordinate.generated_column_index)
                     .map(|column| &column.kind),
@@ -1754,8 +1861,8 @@ fn certify_clipped_reconstruction(
     Ok(error)
 }
 
-fn certify_psd_state<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsClusteredData,
+fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     covariance: &PreparedOlsClusteredCovariance,
     tolerance: f64,
@@ -1771,8 +1878,8 @@ fn certify_psd_state<R: PreparedInferenceReservation>(
             "prepared clustered independent PSD dimensions are inconsistent",
         ));
     }
-    let q = prepared.clusters().len();
-    let intercept = reported_intercept_position(prepared.ols(), fit)?;
+    let q = prepared.clustered_design().len();
+    let intercept = reported_intercept_position(prepared.clustered_ols(), fit)?;
     if p == 0 {
         let expected_state = if q == 1 {
             PreparedOlsClusteredPsdState::OneWayStrict
@@ -2048,8 +2155,8 @@ fn build_standard_errors<R: PreparedInferenceReservation>(
     Ok(standard_errors)
 }
 
-fn build_wald<R: PreparedInferenceReservation>(
-    prepared: &super::PreparedOlsData,
+fn build_wald<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     covariance: &PreparedOlsClusteredCovariance,
     slope_dimension: usize,
@@ -2073,7 +2180,7 @@ fn build_wald<R: PreparedInferenceReservation>(
             continue;
         }
         let column = prepared
-            .model
+            .fit_model()
             .columns
             .get(coordinate.generated_column_index)
             .ok_or_else(|| {

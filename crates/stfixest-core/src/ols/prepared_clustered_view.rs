@@ -7,18 +7,31 @@
 //! calculation.
 
 use crate::error::Result;
+use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 
+use super::prepared_inference_view::PreparedOlsInferenceView;
 use super::{
     PreparedCategoricalOlsClusteredData, PreparedOlsClusterDesign, PreparedOlsClusteredData,
+    PreparedOlsData,
 };
 
 pub(crate) trait PreparedOlsClusteredView {
+    type Ols: PreparedOlsInferenceView + ?Sized;
+
+    fn clustered_ols(&self) -> &Self::Ols;
+
     fn clustered_design(&self) -> &PreparedOlsClusterDesign;
 
     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]>;
 }
 
 impl PreparedOlsClusteredView for PreparedOlsClusteredData {
+    type Ols = PreparedOlsData;
+
+    fn clustered_ols(&self) -> &Self::Ols {
+        self.ols()
+    }
+
     fn clustered_design(&self) -> &PreparedOlsClusterDesign {
         self.clusters()
     }
@@ -29,6 +42,12 @@ impl PreparedOlsClusteredView for PreparedOlsClusteredData {
 }
 
 impl PreparedOlsClusteredView for PreparedCategoricalOlsClusteredData {
+    type Ols = PreparedCategoricalOlsData;
+
+    fn clustered_ols(&self) -> &Self::Ols {
+        self.ols()
+    }
+
     fn clustered_design(&self) -> &PreparedOlsClusterDesign {
         self.clusters()
     }

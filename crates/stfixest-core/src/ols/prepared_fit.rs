@@ -376,7 +376,7 @@ pub fn fit_prepared_categorical_ols_coefficients_map(
     fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
-fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + ?Sized>(
+pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
