@@ -39,7 +39,8 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
 
     def test_stata_gate_is_intercept_only_but_allows_categorical_tuples(self):
         stata = STATA.read_text(encoding="utf-8")
-        self.assertIn("`absorb_terms'[`row',3] < 1", stata)
+        self.assertIn("`absorb_terms'[`row',2] < 1", stata)
+        self.assertIn("`absorb_terms'[`row',3] != 1", stata)
         self.assertIn(
             "hidden prepared OLS supports only all-categorical intercept fixed effects",
             stata,
