@@ -1,11 +1,15 @@
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
+use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::topology_dof::CategoricalTopologyDofReport;
 
+use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::{
-    compute_prepared_ols_absorbed_dof, fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit,
-    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
-    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
+    CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport,
+    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsColumnKind,
+    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
 };
 
 /// Numerical and structural policy for the prepared iid OLS/WLS checkpoint.
@@ -173,6 +177,75 @@ impl CertifiedPreparedOlsUnadjusted {
     }
 }
 
+/// Certified categorical-interaction iid OLS/WLS result.
+///
+/// The numerical fit, covariance, statistics, and certificates are produced by
+/// the same common pipeline as [`CertifiedPreparedOlsUnadjusted`].  This result
+/// retains the interaction-aware absorbed-DoF identities rather than weakening
+/// them to the legacy single-source representation.
+#[derive(Debug, PartialEq)]
+pub struct CertifiedPreparedCategoricalOlsUnadjusted {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: CategoricalTopologyDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsUnadjustedCovariance,
+    certificate: PreparedOlsUnadjustedCertificate,
+}
+
+impl CertifiedPreparedCategoricalOlsUnadjusted {
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsUnadjustedCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsUnadjustedCertificate {
+        self.certificate
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct PreparedOlsUnadjustedComponents {
+    fit: CertifiedPreparedOlsFit,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsUnadjustedCovariance,
+    certificate: PreparedOlsUnadjustedCertificate,
+}
+
 trait InferenceReservation {
     fn reserve<T>(
         &mut self,
@@ -270,26 +343,16 @@ impl ReferenceWeightView<'_> {
 }
 
 /// Fit and certify the current prepared model with conventional homoskedastic
-/// covariance.  Probability weights fail closed because the pinned reference
+/// covariance. Probability weights fail closed because the pinned reference
 /// changes them to robust inference instead of producing iid covariance.
 pub fn fit_prepared_ols_unadjusted_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsUnadjustedConfig,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
-    if matches!(
-        &prepared.sample.weights,
-        PreparedWeights::Provided {
-            kind: WeightKind::Probability,
-            ..
-        }
-    ) {
-        return Err(unsupported(
-            "prepared iid covariance is unavailable for probability weights; the pinned reference requires robust inference",
-        ));
-    }
+    reject_probability_iid(prepared)?;
     let fit = fit_prepared_ols_coefficients_map(prepared, config.fit)?;
-    let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
+    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
     compose_internal(
         prepared,
@@ -301,6 +364,52 @@ pub fn fit_prepared_ols_unadjusted_map(
     )
 }
 
+/// Fit and certify categorical-interaction OLS/WLS with conventional
+/// homoskedastic covariance through the same common inference pipeline.
+pub fn fit_prepared_categorical_ols_unadjusted_map(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsUnadjustedConfig,
+) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
+    validate_config(config)?;
+    reject_probability_iid(prepared)?;
+    let fit = fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?;
+    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+    let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+    let mut reservation = SystemInferenceReservation;
+    let components = compose_view_internal(
+        prepared,
+        fit,
+        summary,
+        config.certificate_tolerance,
+        &mut reservation,
+        InferencePerturbations::default(),
+    )?;
+    Ok(CertifiedPreparedCategoricalOlsUnadjusted {
+        fit: components.fit,
+        absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
+fn reject_probability_iid<P: PreparedOlsInferenceView + ?Sized>(prepared: &P) -> Result<()> {
+    if matches!(
+        &prepared.fit_sample().weights,
+        PreparedWeights::Provided {
+            kind: WeightKind::Probability,
+            ..
+        }
+    ) {
+        return Err(unsupported(
+            "prepared iid covariance is unavailable for probability weights; the pinned reference requires robust inference",
+        ));
+    }
+    Ok(())
+}
+
 fn compose_internal<R: InferenceReservation>(
     prepared: &PreparedOlsData,
     fit: CertifiedPreparedOlsFit,
@@ -309,10 +418,38 @@ fn compose_internal<R: InferenceReservation>(
     reservation: &mut R,
     perturbations: InferencePerturbations,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
-    validate_fit_and_absorbed_dof(prepared, &fit, &absorbed_dof)?;
+    let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, absorbed_dof.policy)?;
+    let components = compose_view_internal(
+        prepared,
+        fit,
+        summary,
+        tolerance,
+        reservation,
+        perturbations,
+    )?;
+    Ok(CertifiedPreparedOlsUnadjusted {
+        fit: components.fit,
+        absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
+fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
+    prepared: &P,
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: PreparedOlsAbsorbedDofSummary,
+    tolerance: f64,
+    reservation: &mut R,
+    perturbations: InferencePerturbations,
+) -> Result<PreparedOlsUnadjustedComponents> {
+    validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, weight_sum_relative_error) =
-        build_reference_weight_report(prepared, &fit, tolerance, false)?;
-    let mut dof = build_residual_dof(prepared, &fit, &absorbed_dof, weights)?;
+        build_reference_weight_report_view(prepared, &fit, tolerance, false)?;
+    let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
             .residual_dof
@@ -320,17 +457,18 @@ fn compose_internal<R: InferenceReservation>(
             .ok_or_else(|| allocation("injected prepared iid residual DoF overflows"))?;
     }
 
-    let outcome_mean = weighted_mean(&prepared.sample.outcome, weight_view)?;
+    let outcome_mean = weighted_mean(&prepared.fit_sample().outcome, weight_view)?;
     let center = if dof.has_structural_intercept {
         outcome_mean
     } else {
         0.0
     };
-    let certified_tss = weighted_sum_of_squares(&prepared.sample.outcome, weight_view, center)?;
-    let certified_within_tss = if prepared.fe_topology.effects().is_empty() {
-        certified_tss
-    } else {
+    let certified_tss =
+        weighted_sum_of_squares(&prepared.fit_sample().outcome, weight_view, center)?;
+    let certified_within_tss = if prepared.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
+    } else {
+        certified_tss
     };
     let certified_rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
     let mut tss = certified_tss;
@@ -405,9 +543,8 @@ fn compose_internal<R: InferenceReservation>(
             "prepared iid covariance or fit-statistic certificate did not pass",
         ));
     }
-    Ok(CertifiedPreparedOlsUnadjusted {
+    Ok(PreparedOlsUnadjustedComponents {
         fit,
-        absorbed_dof,
         weights,
         dof,
         statistics,
@@ -441,26 +578,38 @@ pub(super) fn validate_fit_and_absorbed_dof(
     fit: &CertifiedPreparedOlsFit,
     absorbed: &PreparedOlsAbsorbedDofReport,
 ) -> Result<()> {
-    let nobs = prepared.sample.n_active();
+    let summary = prepared.inference_absorbed_dof_summary(absorbed, absorbed.policy)?;
+    validate_fit_and_absorbed_dof_view(prepared, fit, summary)
+}
+
+pub(super) fn validate_fit_and_absorbed_dof_view<P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &P,
+    fit: &CertifiedPreparedOlsFit,
+    absorbed: PreparedOlsAbsorbedDofSummary,
+) -> Result<()> {
+    let nobs = prepared.fit_sample().n_active();
     let reported_intercepts = prepared
-        .model
+        .fit_model()
         .columns
         .iter()
         .filter(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
         .count();
     if nobs == 0
-        || reported_intercepts != usize::from(prepared.report_intercept)
-        || prepared.report_intercept && !prepared.structural_intercept
+        || reported_intercepts != usize::from(prepared.fit_report_intercept())
+        || prepared.fit_report_intercept() && !prepared.fit_structural_intercept()
         || fit.residuals().len() != nobs
-        || fit.coefficients().len() != prepared.model.coefficients.len()
+        || fit.coefficients().len() != prepared.fit_model().coefficients.len()
         || !fit.rank_certificate().passed
         || !fit.score_certificate().passed
         || !fit.bread().certificate().passed
         || !fit.absorption_report().certified()
         || !fit.residual_absorption_report().certified()
+        || absorbed.nested_categories != 0
+        || absorbed.redundant_categories > absorbed.initial_categories
+        || absorbed.absorbed_rank != absorbed.initial_categories - absorbed.redundant_categories
     {
         return Err(invalid_argument(
-            "prepared iid fit is not a complete certified result for the final sample",
+            "prepared iid fit or absorbed rank is not complete for the final sample",
         ));
     }
     let bread_dimension = fit.bread().dimension();
@@ -477,7 +626,11 @@ pub(super) fn validate_fit_and_absorbed_dof(
     }
 
     let mut kept = 0_usize;
-    for (prepared_coefficient, fitted) in prepared.model.coefficients.iter().zip(fit.coefficients())
+    for (prepared_coefficient, fitted) in prepared
+        .fit_model()
+        .coefficients
+        .iter()
+        .zip(fit.coefficients())
     {
         if prepared_coefficient.coefficient_slot != fitted.coefficient_slot
             || prepared_coefficient.generated_column_index != fitted.generated_column_index
@@ -502,7 +655,7 @@ pub(super) fn validate_fit_and_absorbed_dof(
     let mut normalized_coordinates = 0_usize;
     for coordinate in fit.bread().coordinates() {
         let prepared_column = prepared
-            .model
+            .fit_model()
             .columns
             .get(coordinate.generated_column_index)
             .ok_or_else(|| invalid_argument("prepared iid bread coordinate is out of range"))?;
@@ -549,92 +702,10 @@ pub(super) fn validate_fit_and_absorbed_dof(
     if finite_coordinates != fit.finite_rank()
         || normalized_coordinates > 1
         || (normalized_coordinates == 1
-            && (!prepared.structural_intercept || !prepared.report_intercept))
+            && (!prepared.fit_structural_intercept() || !prepared.fit_report_intercept()))
     {
         return Err(invalid_argument(
             "prepared iid covariance-coordinate rank is inconsistent",
-        ));
-    }
-
-    let implicit_no_absorb = prepared.structural_intercept
-        && prepared.fe_topology.effects().is_empty()
-        && prepared.sample.n_active() > 0;
-    let expected_effect_rows = prepared
-        .fe_topology
-        .effects()
-        .len()
-        .checked_add(usize::from(implicit_no_absorb))
-        .ok_or_else(|| allocation("prepared iid absorbed row count overflows"))?;
-    if absorbed.effects.len() != expected_effect_rows {
-        return Err(invalid_argument(
-            "prepared iid absorbed-DoF report dimensions are inconsistent",
-        ));
-    }
-    let mut initial = 0_usize;
-    let mut redundant = 0_usize;
-    let mut rank = 0_usize;
-    let mut approximate = false;
-    let mut explicit_rows = absorbed.effects.as_slice();
-    if implicit_no_absorb {
-        let (implicit, remaining) = explicit_rows
-            .split_first()
-            .ok_or_else(|| invalid_argument("prepared iid implicit DoF row is absent"))?;
-        if implicit.identity != PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
-            || implicit.label != "_cons"
-            || implicit.categories != 1
-            || implicit.redundant != 0
-            || implicit.coefficients != 1
-            || !implicit.redundancy_exact
-            || implicit.nested
-        {
-            return Err(invalid_argument(
-                "prepared iid implicit no-absorb DoF row is inconsistent",
-            ));
-        }
-        initial = 1;
-        rank = 1;
-        explicit_rows = remaining;
-    }
-    for (effect, row) in prepared.fe_topology.effects().iter().zip(explicit_rows) {
-        let source = prepared
-            .fe_topology
-            .sources()
-            .get(effect.topology_source_index)
-            .ok_or_else(|| invalid_argument("prepared iid FE source is out of range"))?;
-        if row.identity
-            != (PreparedOlsAbsorbedDofEffectIdentity::Explicit {
-                term_id: effect.term_id,
-                source: effect.source,
-            })
-            || row.label != effect.label
-            || row.categories != source.n_levels()
-            || row.redundant > row.categories
-            || row.coefficients != row.categories - row.redundant
-            || row.nested
-        {
-            return Err(invalid_argument(
-                "prepared iid absorbed-DoF row is inconsistent",
-            ));
-        }
-        initial = initial
-            .checked_add(row.categories)
-            .ok_or_else(|| allocation("prepared iid absorbed category total overflows"))?;
-        redundant = redundant
-            .checked_add(row.redundant)
-            .ok_or_else(|| allocation("prepared iid absorbed redundancy total overflows"))?;
-        rank = rank
-            .checked_add(row.coefficients)
-            .ok_or_else(|| allocation("prepared iid absorbed rank total overflows"))?;
-        approximate |= !row.redundancy_exact;
-    }
-    if initial != absorbed.initial_categories
-        || redundant != absorbed.redundant_categories
-        || rank != absorbed.absorbed_rank
-        || absorbed.nested_categories != 0
-        || approximate != absorbed.is_approximate
-    {
-        return Err(invalid_argument(
-            "prepared iid absorbed-DoF totals are inconsistent",
         ));
     }
     Ok(())
@@ -650,11 +721,24 @@ pub(super) fn build_reference_weight_report<'a>(
     ReferenceWeightView<'a>,
     f64,
 )> {
-    let nobs = prepared.sample.n_active();
+    build_reference_weight_report_view(prepared, fit, tolerance, allow_probability)
+}
+
+pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &'a P,
+    fit: &CertifiedPreparedOlsFit,
+    tolerance: f64,
+    allow_probability: bool,
+) -> Result<(
+    PreparedOlsReferenceWeightReport,
+    ReferenceWeightView<'a>,
+    f64,
+)> {
+    let nobs = prepared.fit_sample().n_active();
     let bread_scale = fit.bread().weight_scale();
     let nobs_f64 = exact_integer_as_f64(nobs as u128)?;
     let (kind, values, effective, raw_weight_sum, expected_divisor, expected_multiplier) =
-        match &prepared.sample.weights {
+        match &prepared.fit_sample().weights {
             PreparedWeights::None => (None, None, nobs, None, 1.0, 1.0),
             PreparedWeights::Provided { kind, values } => {
                 if values.len() != nobs
@@ -805,6 +889,16 @@ pub(super) fn build_residual_dof(
     absorbed: &PreparedOlsAbsorbedDofReport,
     weights: PreparedOlsReferenceWeightReport,
 ) -> Result<PreparedOlsResidualDofReport> {
+    let summary = prepared.inference_absorbed_dof_summary(absorbed, absorbed.policy)?;
+    build_residual_dof_view(prepared, fit, summary, weights)
+}
+
+pub(super) fn build_residual_dof_view<P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &P,
+    fit: &CertifiedPreparedOlsFit,
+    absorbed: PreparedOlsAbsorbedDofSummary,
+    weights: PreparedOlsReferenceWeightReport,
+) -> Result<PreparedOlsResidualDofReport> {
     let mut finite_intercepts = 0_usize;
     let mut normalized_intercepts = 0_usize;
     for coordinate in fit.bread().coordinates() {
@@ -812,7 +906,7 @@ pub(super) fn build_residual_dof(
             PreparedOlsBreadCoordinateKind::FiniteRegressor => {
                 if matches!(
                     prepared
-                        .model
+                        .fit_model()
                         .columns
                         .get(coordinate.generated_column_index)
                         .map(|column| &column.kind),
@@ -835,8 +929,8 @@ pub(super) fn build_residual_dof(
             "prepared iid model contains multiple reported intercept coordinates",
         ));
     }
-    let ordinary_intercept_requested = prepared.report_intercept;
-    let has_absorbed_intercept = prepared.structural_intercept;
+    let ordinary_intercept_requested = prepared.fit_report_intercept();
+    let has_absorbed_intercept = prepared.fit_structural_intercept();
     // The structural constant direction is a property of the requested model
     // span, not of whichever duplicate coordinate won a numerical pivot tie.
     // Absorbed intercepts own that direction; otherwise a requested `_cons`
@@ -861,7 +955,7 @@ pub(super) fn build_residual_dof(
                 "prepared iid model has no positive residual degrees of freedom",
             )
         })?;
-    let has_structural_intercept = prepared.structural_intercept;
+    let has_structural_intercept = prepared.fit_structural_intercept();
     Ok(PreparedOlsResidualDofReport {
         finite_rank: fit.finite_rank(),
         finite_model_dof,
@@ -997,8 +1091,8 @@ fn build_covariance<R: InferenceReservation>(
     })
 }
 
-fn build_wald_f<R: InferenceReservation>(
-    prepared: &PreparedOlsData,
+fn build_wald_f<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     covariance: &PreparedOlsUnadjustedCovariance,
     dof: PreparedOlsResidualDofReport,
@@ -1027,7 +1121,7 @@ fn build_wald_f<R: InferenceReservation>(
     let mut slope_count = 0_usize;
     for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
         let column = prepared
-            .model
+            .fit_model()
             .columns
             .get(coordinate.generated_column_index)
             .ok_or_else(|| invalid_argument("prepared iid Wald coordinate is out of range"))?;
@@ -1188,8 +1282,8 @@ fn fitted_coordinate_value(fit: &CertifiedPreparedOlsFit, position: usize) -> Re
         .ok_or_else(|| invalid_data("prepared iid Wald coefficient is not finite"))
 }
 
-fn certify_inference(
-    prepared: &PreparedOlsData,
+fn certify_inference<P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
@@ -1197,8 +1291,8 @@ fn certify_inference(
     covariance: &PreparedOlsUnadjustedCovariance,
     inputs: InferenceCertificateInputs,
 ) -> Result<PreparedOlsUnadjustedCertificate> {
-    let ordinary_intercept_requested = prepared.report_intercept;
-    let has_absorbed_intercept = prepared.structural_intercept;
+    let ordinary_intercept_requested = prepared.fit_report_intercept();
+    let has_absorbed_intercept = prepared.fit_structural_intercept();
     let expected_finite_intercept_rank =
         usize::from(ordinary_intercept_requested && !has_absorbed_intercept);
     let expected_finite_model_dof = fit
@@ -1215,7 +1309,7 @@ fn certify_inference(
         .ok_or_else(|| invalid_data("prepared iid certificate residual DoF underflowed"))?;
     if dof.finite_rank != fit.finite_rank()
         || dof.finite_model_dof != expected_finite_model_dof
-        || dof.has_structural_intercept != prepared.structural_intercept
+        || dof.has_structural_intercept != prepared.fit_structural_intercept()
         || dof.model_rank != expected_model_rank
         || dof.residual_dof != expected_residual
         || dof.residual_dof == 0
@@ -1715,7 +1809,7 @@ mod tests {
 
     use super::super::{
         prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-        OlsRequestV1,
+        OlsRequestV1, PreparedOlsAbsorbedDofEffectIdentity,
     };
     use super::*;
 

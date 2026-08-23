@@ -7,6 +7,7 @@ mod prepared_clustered;
 mod prepared_clusters;
 mod prepared_dof;
 mod prepared_fit;
+mod prepared_inference_view;
 mod prepared_rhs;
 mod prepared_robust;
 mod prepared_scores;
@@ -51,8 +52,9 @@ pub use prepared_robust::{
     PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
 };
 pub use prepared_unadjusted::{
-    fit_prepared_ols_unadjusted_map, CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
+    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsUnadjusted,
+    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
     PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
