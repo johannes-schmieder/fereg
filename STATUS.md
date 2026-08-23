@@ -57,7 +57,7 @@ PPML, cross-platform release validation, signing, packaging, and publication
 are explicitly deferred. `stfepois` must remain fail-closed until its own
 scientific gates are met.
 
-## Historical evidence-backed baseline (pre-categorical consolidation)
+## Completed, evidence-backed baseline
 
 The rows below are retained as checkpoint-specific provenance. They describe
 the cited historical commits and are not the live current-main inventory; the
