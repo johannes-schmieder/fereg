@@ -13,6 +13,7 @@ use crate::topology_dof::{
     CategoricalTopologyDofReport,
 };
 
+use super::prepared_dof::compute_prepared_ols_absorbed_dof_with_nesting;
 use super::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
     PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
@@ -35,6 +36,12 @@ enum LegacyNestingState {
     ClusterAware,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CategoricalNestingState {
+    Iid,
+    ClusterAware,
+}
+
 pub(crate) trait PreparedOlsInferenceView: PreparedOlsFitView {
     type AbsorbedDofReport;
 
@@ -44,6 +51,18 @@ pub(crate) trait PreparedOlsInferenceView: PreparedOlsFitView {
     ) -> Result<Self::AbsorbedDofReport>;
 
     fn inference_absorbed_dof_summary(
+        &self,
+        report: &Self::AbsorbedDofReport,
+        expected_policy: PreparedOlsAbsorbedDofPolicy,
+    ) -> Result<PreparedOlsAbsorbedDofSummary>;
+
+    fn inference_compute_clustered_absorbed_dof(
+        &self,
+        policy: PreparedOlsAbsorbedDofPolicy,
+        cluster_dimensions: &[&[u32]],
+    ) -> Result<Self::AbsorbedDofReport>;
+
+    fn inference_clustered_absorbed_dof_summary(
         &self,
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
@@ -70,6 +89,27 @@ impl PreparedOlsInferenceView for PreparedOlsData {
         validate_legacy_report(self, report, expected_policy, LegacyNestingState::Iid)
     }
 
+    fn inference_compute_clustered_absorbed_dof(
+        &self,
+        policy: PreparedOlsAbsorbedDofPolicy,
+        cluster_dimensions: &[&[u32]],
+    ) -> Result<Self::AbsorbedDofReport> {
+        compute_prepared_ols_absorbed_dof_with_nesting(self, policy, cluster_dimensions)
+    }
+
+    fn inference_clustered_absorbed_dof_summary(
+        &self,
+        report: &Self::AbsorbedDofReport,
+        expected_policy: PreparedOlsAbsorbedDofPolicy,
+    ) -> Result<PreparedOlsAbsorbedDofSummary> {
+        validate_legacy_report(
+            self,
+            report,
+            expected_policy,
+            LegacyNestingState::ClusterAware,
+        )
+    }
+
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
         !self.fe_topology.effects().is_empty()
     }
@@ -90,7 +130,28 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_categorical_report(self, report, expected_policy)
+        validate_categorical_report(self, report, expected_policy, CategoricalNestingState::Iid)
+    }
+
+    fn inference_compute_clustered_absorbed_dof(
+        &self,
+        policy: PreparedOlsAbsorbedDofPolicy,
+        cluster_dimensions: &[&[u32]],
+    ) -> Result<Self::AbsorbedDofReport> {
+        self.absorbed_dof(categorical_policy(policy), cluster_dimensions)
+    }
+
+    fn inference_clustered_absorbed_dof_summary(
+        &self,
+        report: &Self::AbsorbedDofReport,
+        expected_policy: PreparedOlsAbsorbedDofPolicy,
+    ) -> Result<PreparedOlsAbsorbedDofSummary> {
+        validate_categorical_report(
+            self,
+            report,
+            expected_policy,
+            CategoricalNestingState::ClusterAware,
+        )
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
@@ -103,12 +164,7 @@ pub(super) fn validate_cluster_aware_legacy_absorbed_dof_summary(
     report: &PreparedOlsAbsorbedDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
 ) -> Result<PreparedOlsAbsorbedDofSummary> {
-    validate_legacy_report(
-        prepared,
-        report,
-        expected_policy,
-        LegacyNestingState::ClusterAware,
-    )
+    prepared.inference_clustered_absorbed_dof_summary(report, expected_policy)
 }
 
 fn validate_legacy_report(
@@ -244,6 +300,7 @@ fn validate_categorical_report(
     prepared: &PreparedCategoricalOlsData,
     report: &CategoricalTopologyDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
+    nesting_state: CategoricalNestingState,
 ) -> Result<PreparedOlsAbsorbedDofSummary> {
     if report.policy != categorical_policy(expected_policy) {
         return Err(invalid(
@@ -261,7 +318,7 @@ fn validate_categorical_report(
         .ok_or_else(|| allocation("categorical absorbed-DoF row count overflows"))?;
     if report.effects.len() != expected_rows
         || topology.effect_to_topology().len() != specs.len()
-        || report.nested_categories != 0
+        || (nesting_state == CategoricalNestingState::Iid && report.nested_categories != 0)
     {
         return Err(invalid(
             "categorical absorbed-DoF report dimensions or iid nesting state are inconsistent",
@@ -271,6 +328,7 @@ fn validate_categorical_report(
     let mut initial = 0_usize;
     let mut redundant = 0_usize;
     let mut rank = 0_usize;
+    let mut nested_categories = 0_usize;
     let mut approximate = false;
     let mut rows = report.effects.as_slice();
     if implicit_no_absorb {
@@ -310,7 +368,7 @@ fn validate_categorical_report(
             || row.categories != source.n_levels()
             || row.redundant > row.categories
             || row.coefficients != row.categories - row.redundant
-            || row.nested
+            || !categorical_nesting_row_is_valid(nesting_state, row)
         {
             return Err(invalid(
                 "categorical absorbed-DoF explicit row is inconsistent",
@@ -325,7 +383,19 @@ fn validate_categorical_report(
         rank = rank
             .checked_add(row.coefficients)
             .ok_or_else(|| allocation("categorical absorbed rank total overflows"))?;
+        if row.nested {
+            nested_categories = nested_categories
+                .checked_add(row.categories)
+                .ok_or_else(|| {
+                    allocation("categorical absorbed nested category total overflows")
+                })?;
+        }
         approximate |= !row.redundancy_exact;
+    }
+    if nested_categories != report.nested_categories {
+        return Err(invalid(
+            "categorical absorbed-DoF nested category total is inconsistent",
+        ));
     }
     validate_totals(
         report.initial_categories,
@@ -344,6 +414,21 @@ fn validate_categorical_report(
         report.nested_categories,
         report.is_approximate,
     ))
+}
+
+fn categorical_nesting_row_is_valid(
+    nesting_state: CategoricalNestingState,
+    row: &crate::topology_dof::CategoricalTopologyDofEffect,
+) -> bool {
+    match (nesting_state, row.nested) {
+        (CategoricalNestingState::Iid, false) | (CategoricalNestingState::ClusterAware, false) => {
+            true
+        }
+        (CategoricalNestingState::Iid, true) => false,
+        (CategoricalNestingState::ClusterAware, true) => {
+            row.redundant == row.categories && row.coefficients == 0 && row.redundancy_exact
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

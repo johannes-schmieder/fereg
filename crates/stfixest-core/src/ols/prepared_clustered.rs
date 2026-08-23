@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use crate::error::{ErrorCode, Result, StFixestError};
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
-use super::prepared_dof::compute_prepared_ols_absorbed_dof_with_nesting;
+use super::prepared_inference_view::PreparedOlsInferenceView;
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
@@ -316,11 +316,9 @@ fn compose<R: PreparedInferenceReservation>(
     } else {
         &[]
     };
-    let absorbed_dof = compute_prepared_ols_absorbed_dof_with_nesting(
-        prepared.ols(),
-        config.absorbed_dof,
-        nesting_dimensions,
-    )?;
+    let absorbed_dof = prepared
+        .ols()
+        .inference_compute_clustered_absorbed_dof(config.absorbed_dof, nesting_dimensions)?;
     validate_cluster_aware_absorbed_dof(prepared, &absorbed_dof, config)?;
 
     let (weights, weight_view, weight_error) =
