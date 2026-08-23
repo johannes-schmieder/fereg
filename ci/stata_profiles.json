@@ -50,7 +50,8 @@
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
         "tests/stata/installation/estimate_ols_categorical_interaction.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
@@ -115,7 +116,8 @@
       "build_plugin": true,
       "fixtures": [
         "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
@@ -154,7 +156,8 @@
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
         "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do"
       ],
       "run_break_fixture": true,
       "timeout_seconds": 13800,

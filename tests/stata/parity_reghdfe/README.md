@@ -13,15 +13,20 @@ source-bound receipt:
 
 `estimate_ols_categorical_interaction_parity.do` consumes the committed
 `target_default_firm_year` case from that sealed receipt. It checks the hidden
-StFixest sample, coefficient/status layout, covariance, absorbed and residual
-degrees of freedom, interaction DoF identity, and observation residuals. The
-fixture does not invoke `reghdfe`; Python contracts independently verify the
-receipt seal, pinned dependency identities, and every oracle constant used by
-the Stata fixture.
+StFixest sample after iterative singleton pruning, coefficient/status layout,
+covariance, absorbed and residual degrees of freedom, interaction DoF identity,
+and observation residuals.
 
-This first executable case does not close `multi_fe_interactions`. The
-remaining accepted receipt cases still need differential coverage, and the
-frozen semantic projection must be resealed before the status gate can close.
+`estimate_ols_categorical_interaction_keepsingletons_parity.do` consumes the
+companion `target_keepsingletons` case. It checks the all-observation sample,
+zero singleton deletion, the expanded worker and interaction topology, iid
+coefficient/covariance output, and all 24 residuals.
+
+Neither fixture invokes `reghdfe`; Python contracts independently verify the
+receipt seal and every oracle constant used by the Stata fixtures. These two
+executable cases do not close `multi_fe_interactions`. The remaining accepted
+receipt cases still need differential coverage, and the frozen semantic
+projection must be resealed before the status gate can close.
 
 The general licensed reference workflow is:
 
