@@ -1,4 +1,4 @@
-name: Repair FE-probe inline data builders
+name: Record successful FE-interaction reference gate
 
 on:
   push:
@@ -11,11 +11,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: stfixest-repair-fe-probe-data-${{ github.repository }}-${{ github.ref }}
+  group: stfixest-record-fe-reference-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  repair:
+  record:
     if: github.repository == 'johannes-schmieder/StFixest'
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 10
@@ -26,15 +26,15 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Repair inline probe datasets on current main
+      - name: Publish truthful status transition on current main
         shell: bash
         env:
           BRANCH_NAME: ${{ github.ref_name }}
-          TRANSFORM_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpkZWYgcmVwbGFjZV9vbmNlKHBhdGg6IFBhdGgsIG9sZDogc3RyLCBuZXc6IHN0ciwgbGFiZWw6IHN0cikgLT4gTm9uZToKICAgIHRleHQgPSBwYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQogICAgaWYgdGV4dC5jb3VudChvbGQpICE9IDE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIntsYWJlbH0gYW5jaG9yIG1pc21hdGNoIGluIHtwYXRofSIpCiAgICBwYXRoLndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKSwgZW5jb2Rpbmc9InV0Zi04IikKCnByb2JlID0gUGF0aCgiYmVuY2htYXJrcy9zdGF0YS9wcm9iZV9yZWdoZGZlX2ZlX2ludGVyYWN0aW9uLmRvIikKcmVwbGFjZV9vbmNlKHByb2JlLCAnY2FwdHVyZSBwcm9ncmFtIGRyb3AgX19zdGZ4X3Byb2JlX2Nhc2NhZGVcbnByb2dyYW0gZGVmaW5lIF9fc3RmeF9wcm9iZV9jYXNjYWRlXG4gICAgY2xlYXJcbiAgICBpbnB1dCBsb25nIG9ic19pZCBkb3VibGUoeSB4KSBpbnQod29ya2VyIGZpcm0geWVhciBjbHVzdGVyX3UgY2x1c3Rlcl92IGZ3KVxuICAgICAgICAxMDEgIDMuMjAgLTEuNDAgIDEgMTAgMjAyMCAxIDEgMVxuICAgICAgICAxMDIgIDQuMDUgLTAuOTAgIDEgMTAgMjAyMCAyIDIgMVxuICAgICAgICAxMDMgIDQuNjAgLTAuNDUgIDEgMjAgMjAyMSAxIDIgMVxuICAgICAgICAxMDQgIDUuMjUgIDAuMDUgIDEgMjAgMjAyMSAyIDEgMVxuICAgICAgICAxMDUgIDUuOTAgIDAuNDAgIDIgMTAgMjAyMCAxIDIgMVxuICAgICAgICAxMDYgIDYuMzUgIDAuODUgIDIgMTAgMjAyMCAyIDEgMVxuICAgICAgICAxMDcgIDcuMTAgIDEuMTUgIDIgMjAgMjAyMSAxIDEgMVxuICAgICAgICAxMDggIDcuODUgIDEuNjUgIDIgMjAgMjAyMSAyIDIgMVxuICAgICAgICAxMDkgIDguMTAgLTEuMTAgIDMgMTAgMjAyMCAxIDEgMVxuICAgICAgICAxMTAgIDguNzUgLTAuMjUgIDMgMzAgMjAyMiAyIDEgMVxuICAgICAgICAxMTEgIDkuMzAgIDAuNzAgIDQgMzAgMjAyMiAxIDIgMVxuICAgICAgICAxMTIgMTAuMDUgIDEuOTAgIDQgNDAgMjAyMyAyIDIgMlxuICAgIGVuZFxuZW5kXG4nLCAnY2FwdHVyZSBwcm9ncmFtIGRyb3AgX19zdGZ4X3Byb2JlX2Nhc2NhZGVcbnByb2dyYW0gZGVmaW5lIF9fc3RmeF9wcm9iZV9jYXNjYWRlXG4gICAgY2xlYXJcbiAgICBzZXQgb2JzIDEyXG4gICAgZ2VuZXJhdGUgbG9uZyBvYnNfaWQgPSAxMDAgKyBfblxuICAgIGdlbmVyYXRlIGRvdWJsZSB5ID0gcmVhbCh3b3JkKCIzLjIwIDQuMDUgNC42MCA1LjI1IDUuOTAgNi4zNSA3LjEwIDcuODUgOC4xMCA4Ljc1IDkuMzAgMTAuMDUiLCBfbikpXG4gICAgZ2VuZXJhdGUgZG91YmxlIHggPSByZWFsKHdvcmQoIi0xLjQwIC0wLjkwIC0wLjQ1IDAuMDUgMC40MCAwLjg1IDEuMTUgMS42NSAtMS4xMCAtMC4yNSAwLjcwIDEuOTAiLCBfbikpXG4gICAgZ2VuZXJhdGUgaW50IHdvcmtlciA9IHJlYWwod29yZCgiMSAxIDEgMSAyIDIgMiAyIDMgMyA0IDQiLCBfbikpXG4gICAgZ2VuZXJhdGUgaW50IGZpcm0gPSByZWFsKHdvcmQoIjEwIDEwIDIwIDIwIDEwIDEwIDIwIDIwIDEwIDMwIDMwIDQwIiwgX24pKVxuICAgIGdlbmVyYXRlIGludCB5ZWFyID0gcmVhbCh3b3JkKCIyMDIwIDIwMjAgMjAyMSAyMDIxIDIwMjAgMjAyMCAyMDIxIDIwMjEgMjAyMCAyMDIyIDIwMjIgMjAyMyIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgY2x1c3Rlcl91ID0gcmVhbCh3b3JkKCIxIDIgMSAyIDEgMiAxIDIgMSAyIDEgMiIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgY2x1c3Rlcl92ID0gcmVhbCh3b3JkKCIxIDIgMiAxIDIgMSAxIDIgMSAxIDIgMiIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgZncgPSByZWFsKHdvcmQoIjEgMSAxIDEgMSAxIDEgMSAxIDEgMSAyIiwgX24pKVxuZW5kXG4nLCAiY2FzY2FkZSBkYXRhIGJ1aWxkZXIiKQpyZXBsYWNlX29uY2UocHJvYmUsICdjYXB0dXJlIHByb2dyYW0gZHJvcCBfX3N0ZnhfcHJvYmVfbWlzc2luZ1xucHJvZ3JhbSBkZWZpbmUgX19zdGZ4X3Byb2JlX21pc3NpbmdcbiAgICBjbGVhclxuICAgIGlucHV0IGxvbmcgb2JzX2lkIGRvdWJsZSh5IHgpIGludCh3b3JrZXIgZmlybSB5ZWFyKVxuICAgICAgICAyMDEgMy4xMCAtMS4yMCAxIDEwIDIwMjBcbiAgICAgICAgMjAyIDMuOTAgLTAuNzAgMSAxMCAyMDIwXG4gICAgICAgIDIwMyA0LjQwIC0wLjIwIDEgMjAgMjAyMVxuICAgICAgICAyMDQgNS4yMCAgMC4zMCAxIDIwIDIwMjFcbiAgICAgICAgMjA1IDUuODAgIDAuODAgMiAxMCAyMDIwXG4gICAgICAgIDIwNiA2LjUwICAxLjMwIDIgMTAgMjAyMFxuICAgICAgICAyMDcgNy4xMCAgMS44MCAyIDIwIDIwMjFcbiAgICAgICAgMjA4IDcuOTAgIDIuMzAgMiAyMCAyMDIxXG4gICAgICAgIDIwOSA4LjQwIC0xLjAwIDMgIC4gMjAyMFxuICAgICAgICAyMTAgOS4wMCAtMC41MCAzIDMwICAgIC5cbiAgICAgICAgMjExICAgIC4gIDAuMDAgMyAzMCAyMDIyXG4gICAgICAgIDIxMiA5LjgwICAwLjUwIDMgMzAgMjAyMlxuICAgIGVuZFxuZW5kXG4nLCAnY2FwdHVyZSBwcm9ncmFtIGRyb3AgX19zdGZ4X3Byb2JlX21pc3NpbmdcbnByb2dyYW0gZGVmaW5lIF9fc3RmeF9wcm9iZV9taXNzaW5nXG4gICAgY2xlYXJcbiAgICBzZXQgb2JzIDEyXG4gICAgZ2VuZXJhdGUgbG9uZyBvYnNfaWQgPSAyMDAgKyBfblxuICAgIGdlbmVyYXRlIGRvdWJsZSB5ID0gcmVhbCh3b3JkKCIzLjEwIDMuOTAgNC40MCA1LjIwIDUuODAgNi41MCA3LjEwIDcuOTAgOC40MCA5LjAwIC4gOS44MCIsIF9uKSlcbiAgICBnZW5lcmF0ZSBkb3VibGUgeCA9IHJlYWwod29yZCgiLTEuMjAgLTAuNzAgLTAuMjAgMC4zMCAwLjgwIDEuMzAgMS44MCAyLjMwIC0xLjAwIC0wLjUwIDAuMDAgMC41MCIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgd29ya2VyID0gcmVhbCh3b3JkKCIxIDEgMSAxIDIgMiAyIDIgMyAzIDMgMyIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgZmlybSA9IHJlYWwod29yZCgiMTAgMTAgMjAgMjAgMTAgMTAgMjAgMjAgLiAzMCAzMCAzMCIsIF9uKSlcbiAgICBnZW5lcmF0ZSBpbnQgeWVhciA9IHJlYWwod29yZCgiMjAyMCAyMDIwIDIwMjEgMjAyMSAyMDIwIDIwMjAgMjAyMSAyMDIxIDIwMjAgLiAyMDIyIDIwMjIiLCBfbikpXG5lbmRcblicLCAibWlzc2luZyBkYXRhIGJ1aWxkZXIiKQoKdGVzdCA9IFBhdGgoInRlc3RzL3B5dGhvbi90ZXN0X2ZlX2ludGVyYWN0aW9uX3Byb2JlX2NvbnRyYWN0LnB5IikKcmVwbGFjZV9vbmNlKHRlc3QsICdTQ1JJUFQgPSBST09UIC8gInNjcmlwdHMvZmVfaW50ZXJhY3Rpb25fcHJvYmUucHkiXG5XT1JLRkxPVyA9IFJPT1QgLyAiLmdpdGh1Yi93b3JrZmxvd3MvZmUtaW50ZXJhY3Rpb24tcmVmZXJlbmNlLXByb2JlLnltbCJcbicsICdTQ1JJUFQgPSBST09UIC8gInNjcmlwdHMvZmVfaW50ZXJhY3Rpb25fcHJvYmUucHkiXG5QUk9CRV9ETyA9IFJPT1QgLyAiYmVuY2htYXJrcy9zdGF0YS9wcm9iZV9yZWdoZGZlX2ZlX2ludGVyYWN0aW9uLmRvIlxuV09SS0ZMT1cgPSBST09UIC8gIi5naXRodWIvd29ya2Zsb3dzL2ZlLWludGVyYWN0aW9uLXJlZmVyZW5jZS1wcm9iZS55bWwiXG4nLCAicHJvYmUgcGF0aCBjb25zdGFudCIpCnRleHQgPSB0ZXN0LnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQptYXJrZXIgPSAnICAgIGRlZiB0ZXN0X2ZhaWxlZF9wcm9iZV9yZXRhaW5zX3ByaXZhdGVfZGVidWdfYXJ0aWZhY3RzKHNlbGYpIC0+IE5vbmU6XG4nCmluc2VydCA9ICcgICAgZGVmIHRlc3RfcHJvYmVfZGF0YV9idWlsZGVyc19hdm9pZF9uZXN0ZWRfaW5wdXRfZW5kKHNlbGYpIC0+IE5vbmU6XG4gICAgICAgIHRleHQgPSBQUk9CRV9ETy5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IilcbiAgICAgICAgc2VsZi5hc3NlcnROb3RJbigiICAgIGlucHV0IGxvbmcgb2JzX2lkIiwgdGV4dClcbiAgICAgICAgZm9yIHRva2VuIGluIChcbiAgICAgICAgICAgICJwcm9ncmFtIGRlZmluZSBfX3N0ZnhfcHJvYmVfY2FzY2FkZSIsXG4gICAgICAgICAgICAicHJvZ3JhbSBkZWZpbmUgX19zdGZ4X3Byb2JlX21pc3NpbmciLFxuICAgICAgICAgICAgInNldCBvYnMgMTIiLFxuICAgICAgICAgICAgJ2dlbmVyYXRlIGxvbmcgb2JzX2lkID0gMTAwICsgX25cJyxcbiAgICAgICAgICAgICdnZW5lcmF0ZSBsb25nIG9ic19pZCA9IDIwMCArIF9uJyxcbiAgICAgICAgKTpcbiAgICAgICAgICAgIHNlbGYuYXNzZXJ0SW4odG9rZW4sIHRleHQpXG5cbicKaWYgaW5zZXJ0IG5vdCBpbiB0ZXh0OgogICAgaWYgdGV4dC5jb3VudChtYXJrZXIpICE9IDE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdCgicHJvYmUgYnVpbGRlciB0ZXN0IGFuY2hvciBtaXNtYXRjaCIpCiAgICB0ZXN0LndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG1hcmtlciwgaW5zZXJ0ICsgbWFya2VyLCAxKSwgZW5jb2Rpbmc9InV0Zi04IikK
+          TRANSFORM_ZLIB_B64: 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
         run: |
           set -euo pipefail
-          transform="$RUNNER_TEMP/repair-fe-probe-data.py"
-          TRANSFORM_PATH="$transform" /usr/bin/python3 -c 'import base64, os, pathlib; pathlib.Path(os.environ["TRANSFORM_PATH"]).write_bytes(base64.b64decode(os.environ["TRANSFORM_B64"], validate=True))'
+          transform="$RUNNER_TEMP/record-fe-reference-status.py"
+          TRANSFORM_PATH="$transform" /usr/bin/python3 -c 'import base64, os, pathlib, zlib; pathlib.Path(os.environ["TRANSFORM_PATH"]).write_bytes(zlib.decompress(base64.b64decode(os.environ["TRANSFORM_ZLIB_B64"], validate=True)))'
           publish_tree=""
           cleanup() {
             if [[ -n "$publish_tree" ]]; then
@@ -47,7 +47,7 @@ jobs:
 
           for attempt in 1 2 3; do
             git fetch origin "$BRANCH_NAME"
-            publish_tree="$RUNNER_TEMP/fe-probe-data-$attempt"
+            publish_tree="$RUNNER_TEMP/fe-reference-status-$attempt"
             git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
             (
               cd "$publish_tree"
@@ -55,16 +55,16 @@ jobs:
             )
             git -C "$publish_tree" config user.name "github-actions[bot]"
             git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git -C "$publish_tree" add benchmarks/stata/probe_reghdfe_fe_interaction.do tests/python/test_fe_interaction_probe_contract.py
+            git -C "$publish_tree" add -A
             git -C "$publish_tree" diff --cached --check
             if git -C "$publish_tree" diff --cached --quiet; then
               exit 0
             fi
-            git -C "$publish_tree" commit -m "ci(reference): repair inline probe datasets"
+            git -C "$publish_tree" commit -m "docs: record successful FE-interaction reference gate"
             if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
               exit 0
             fi
             cleanup
           done
-          echo "FE-probe data transform lost three branch races" >&2
+          echo "FE-reference status publication lost three branch races" >&2
           exit 1
