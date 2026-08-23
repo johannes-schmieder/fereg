@@ -29,9 +29,9 @@ def regex_once(text: str, pattern: str, replacement: str, label: str) -> str:
 result = RESULT.read_text(encoding="utf-8")
 result = replace_once(
     result,
-    "use crate::input::{PreparedMatrixStoreName, SpiApi};\n",
-    "use crate::input::{PreparedMatrixStoreName, SpiApi};\n"
-    "use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};\n",
+    "    PreparedOlsReferenceWeightReport,\n};\n\n",
+    "    PreparedOlsReferenceWeightReport,\n};\n\n"
+    "use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};\n\n",
     "result-view import",
 )
 result = replace_once(
