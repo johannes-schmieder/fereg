@@ -1,0 +1,14 @@
+{
+  "branch": "main",
+  "build_outcome": "skipped",
+  "failure_kind": "reference_provisioner_decode_failure",
+  "provisioner_outcome": "failure",
+  "publish_outcome": "skipped",
+  "python_outcome": "success",
+  "raw_paths_committed": false,
+  "schema": 1,
+  "source_sha": "f2a76077c324da083ff4c2263b19b487dc8fbc61",
+  "status": "failure",
+  "workflow_run_attempt": 1,
+  "workflow_run_id": 32662061518
+}
