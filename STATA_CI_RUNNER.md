@@ -122,6 +122,13 @@ into the macOS GUI session. AC system sleep is disabled (`sleep 0`); display
 sleep is harmless. No inbound port, SSH listener, or public endpoint is used.
 The runner connects outbound to GitHub.
 
+The service arrangement was proved with actual work, not only an idle/online
+indicator. On 2026-08-22, push run `32614167293` passed Stata and Rust for
+`ae4d400`; deliberate Stata failure run `32614279636` recorded `r(9)` for
+`d1e9497` while Rust remained green; and fix run `32614371462` passed both lanes
+for `955bc89`. The deliberate failure is retained only on the setup branch and
+its per-SHA receipt, not as a commit on `main`.
+
 A restricted automation shell can incorrectly report `Stopped` because
 `svc.sh` uses an unqualified launchd lookup. The authoritative check is:
 
