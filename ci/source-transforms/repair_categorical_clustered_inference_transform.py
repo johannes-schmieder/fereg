@@ -106,5 +106,28 @@ if text.count(old_export) != 1:
     )
 text = text.replace(old_export, new_export, 1)
 
+old_result_export = '''lib = replace_once(
+    lib,
+    "    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedCategoricalOlsUnadjusted,\\n"
+    "    CertifiedPreparedOlsClustered,\\n",
+    "    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,\\n"
+    "    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,\\n",
+    "crate categorical clustered result export",
+)'''
+new_result_export = '''lib = replace_once(
+    lib,
+    "    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedCategoricalOlsUnadjusted,\\n"
+    "    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,\\n",
+    "    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,\\n"
+    "    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,\\n"
+    "    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,\\n",
+    "crate categorical clustered result export",
+)'''
+if text.count(old_result_export) != 1:
+    raise SystemExit(
+        f"categorical clustered result-export repair: expected one occurrence, found {text.count(old_result_export)}"
+    )
+text = text.replace(old_result_export, new_result_export, 1)
+
 TARGET.write_text(text, encoding="utf-8")
 print("repaired categorical clustered-inference transform")
