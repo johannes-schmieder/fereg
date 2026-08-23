@@ -73,12 +73,9 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
         self.assertNotIn("repr(candidate", text)
         self.assertIn("candidate_index={index}", text)
         self.assertIn("materialization_attempts=", text)
-        for token in (
-            "reghdfe_object_stores=",
-            "ftools_object_stores=",
-            "require_object_stores=",
-        ):
-            self.assertIn(token, text)
+        self.assertIn("def _object_store_count_fields", text)
+        self.assertIn('f"{name}_object_stores=', text)
+        self.assertIn("for name in REQUIRED_CHILDREN", text)
 
     def test_workflow_passes_the_root_without_logging_or_artifacting_it(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
