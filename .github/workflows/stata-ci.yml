@@ -40,45 +40,6 @@ env:
   RUST_BACKTRACE: "1"
 
 jobs:
-  source-transform:
-    name: Format categorical fit oracle
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/stfixest-interactions' }}
-    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - name: Check out staged source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          fetch-depth: 0
-
-      - name: Apply and commit exact fixture repair when staged
-        shell: bash
-        env:
-          BRANCH_NAME: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          script=ci/source-transforms/repair_categorical_oracle_geometry.py
-          if [[ ! -f "$script" ]]; then
-            echo "No staged categorical oracle repair."
-            exit 0
-          fi
-          /usr/bin/python3 "$script"
-          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
-          PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH" cargo fmt --all
-          rm "$script"
-          rmdir ci/source-transforms 2>/dev/null || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git diff --cached --quiet && { echo "fixture repair produced no changes"; exit 1; }
-          git commit -m "test: format and identify categorical fit oracle"
-          git fetch origin "$BRANCH_NAME"
-          git rebase "origin/$BRANCH_NAME"
-          git push origin "HEAD:$BRANCH_NAME"
-
   mac-ci:
     name: Mac Rust quick + Stata / ${{ inputs.profile || 'quick' }}
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
