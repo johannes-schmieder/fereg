@@ -27,6 +27,8 @@ CANDIDATE_SUFFIXES = (
     "Git/references",
     "Git/References",
     "Git/StFixest/references",
+    "Git/StFixest/docs/references",
+    "Git/stfixest/docs/references",
     "Git/Vault/references",
     "git",
     "git/StFixest-references",
