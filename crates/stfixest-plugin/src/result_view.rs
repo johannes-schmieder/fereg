@@ -38,7 +38,7 @@ impl<'a> PreparedOlsResultData<'a> {
         }
     }
 
-    pub(crate) const fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
+    pub(crate) fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
         match self {
             Self::Legacy(prepared) => std::ptr::eq(prepared, value),
         }
@@ -67,7 +67,7 @@ impl<'a> PreparedOlsClusteredResultData<'a> {
         }
     }
 
-    pub(crate) const fn is_bound_to(self, prepared: PreparedOlsResultData<'a>) -> bool {
+    pub(crate) fn is_bound_to(self, prepared: PreparedOlsResultData<'a>) -> bool {
         match self {
             Self::Legacy(value) => prepared.is_same_legacy(value.ols()),
         }
