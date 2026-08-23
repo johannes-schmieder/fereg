@@ -57,7 +57,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply pending categorical iid source transform
+      - name: Apply pending categorical cluster-preparation source transform
         id: source_transform
         if: ${{ github.event_name == 'push' }}
         shell: bash
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "applied=false" >> "$GITHUB_OUTPUT"
-          transform="ci/source-transforms/generalize_prepared_iid.py"
+          transform="ci/source-transforms/activate_categorical_cluster_preparation.py"
           if [[ ! -f "$transform" ]]; then
             exit 0
           fi
@@ -75,9 +75,7 @@ jobs:
           /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
 
           rm "$transform"
-          rm -f ci/source-transforms/trigger-iid.txt
           rmdir ci/source-transforms 2>/dev/null || true
-          rm -f .github/workflows/apply-prepared-iid-transform.yml
 
           # The generated source commit restores the ordinary CI workflow from
           # this bootstrap commit's parent. The following push therefore runs
@@ -89,7 +87,7 @@ jobs:
           git add -A
           git diff --cached --check
           git diff --cached --quiet && { echo "source transform produced no changes" >&2; exit 1; }
-          git commit -m "ols: generalize certified iid inference over categorical view"
+          git commit -m "ols: add categorical clustered-data preparation"
           git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
           git rebase "refs/remotes/origin/${BRANCH_NAME}"
           git push origin "HEAD:refs/heads/${BRANCH_NAME}"
