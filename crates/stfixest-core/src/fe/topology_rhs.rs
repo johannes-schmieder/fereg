@@ -10,8 +10,8 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result, StFixestError};
 
 use super::{
-    absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights,
-    CertifiedBorrowedMap, FinalizedCategoricalTopology, MapConfig,
+    absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+    FinalizedCategoricalTopology, MapConfig,
 };
 
 /// Candidate-axis objective weights for categorical RHS compaction.
@@ -201,11 +201,7 @@ fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(
     };
 
     Ok(CompactedCategoricalRhs {
-        values: DenseMatrix::from_row_major(
-            retained_rows.len(),
-            candidate_values.ncols(),
-            values,
-        )?,
+        values: DenseMatrix::from_row_major(retained_rows.len(), candidate_values.ncols(), values)?,
         weights,
         candidate_nrows: candidate_values.nrows(),
     })
@@ -225,11 +221,7 @@ fn validate_retained_rows(retained_rows: &[usize], candidate_nrows: usize) -> Re
     Ok(())
 }
 
-fn extend_reserved<T: Copy>(
-    target: &mut Vec<T>,
-    values: &[T],
-    label: &'static str,
-) -> Result<()> {
+fn extend_reserved<T: Copy>(target: &mut Vec<T>, values: &[T], label: &'static str) -> Result<()> {
     if target.capacity().saturating_sub(target.len()) < values.len() {
         return Err(allocation(label));
     }
@@ -279,9 +271,7 @@ mod tests {
             let call = self.calls;
             self.calls += 1;
             if self.fail_at == Some(call) {
-                return Err(allocation(
-                    "injected categorical RHS allocation failure",
-                ));
+                return Err(allocation("injected categorical RHS allocation failure"));
             }
             if self.skip_at == Some(call) {
                 return Ok(());
@@ -340,12 +330,9 @@ mod tests {
     fn compacted_interaction_absorbs_without_another_rhs_copy() {
         let topology = pruned_topology();
         let candidate = candidate_matrix();
-        let compact = compact_categorical_rhs(
-            &topology,
-            &candidate,
-            CandidateCategoricalWeights::Unit,
-        )
-        .expect("compact");
+        let compact =
+            compact_categorical_rhs(&topology, &candidate, CandidateCategoricalWeights::Unit)
+                .expect("compact");
         let result = compact
             .absorb(&topology, MapConfig::default())
             .expect("MAP");
@@ -391,13 +378,9 @@ mod tests {
         ])
         .expect("short matrix");
         assert_eq!(
-            compact_categorical_rhs(
-                &topology,
-                &too_short,
-                CandidateCategoricalWeights::Unit,
-            )
-            .expect_err("short candidate")
-            .code,
+            compact_categorical_rhs(&topology, &too_short, CandidateCategoricalWeights::Unit,)
+                .expect_err("short candidate")
+                .code,
             ErrorCode::InvalidArgument
         );
     }
