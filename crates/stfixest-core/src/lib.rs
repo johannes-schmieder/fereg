@@ -16,6 +16,8 @@ pub mod ppml;
 pub mod ppml_separation;
 pub mod protocol;
 pub mod selftest;
+#[path = "ols/prepared_categorical_data.rs"]
+mod prepared_categorical_data;
 #[path = "ols/prepared_categorical_effect.rs"]
 mod prepared_categorical_effect;
 #[path = "ols/prepared_categorical_singleton.rs"]
@@ -95,6 +97,10 @@ pub use ppml_separation::{
     detect_separation, fit_ppml_separated, fit_ppml_separated_with_start, MethodStatus,
     SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
     SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
+};
+pub use prepared_categorical_data::{
+    prepare_categorical_ols_data, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
+    PreparedCategoricalOlsRhs,
 };
 pub use prepared_categorical_effect::{
     PreparedCategoricalEffect, PreparedCategoricalEffectRequest,
