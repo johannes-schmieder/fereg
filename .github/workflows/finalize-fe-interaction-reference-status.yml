@@ -1,0 +1,242 @@
+name: Finalize FE-interaction reference status
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/finalize-fe-interaction-reference-status.yml
+      - .ci/reference-probes/fe-interaction/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-finalize-fe-interaction-reference-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 15
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Select and validate successful source-bound probe
+        id: probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/stfixest-fe-reference-status"
+          rm -rf "$output"
+          mkdir -p "$output"
+          OUTPUT="$output/selected.json" /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          receipt_dir = Path(".ci/reference-probes/fe-interaction")
+          hex_commit = re.compile(r"^[0-9a-f]{40}$")
+          valid = []
+          if receipt_dir.is_dir():
+              for path in receipt_dir.glob("*.json"):
+                  source_sha = path.stem
+                  if not hex_commit.fullmatch(source_sha):
+                      continue
+                  try:
+                      document = json.loads(path.read_text(encoding="utf-8"))
+                  except (OSError, UnicodeError, json.JSONDecodeError):
+                      continue
+                  payload = document.get("payload")
+                  if not isinstance(payload, dict):
+                      continue
+                  canonical = json.dumps(
+                      payload,
+                      sort_keys=True,
+                      separators=(",", ":"),
+                      ensure_ascii=True,
+                  ).encode("utf-8")
+                  if document.get("payload_sha256") != hashlib.sha256(canonical).hexdigest():
+                      continue
+                  if payload.get("receipt_type") != "stfixest-reghdfe-fe-interaction-probe":
+                      continue
+                  if payload.get("status") != "success":
+                      continue
+                  if payload.get("source_sha") != source_sha:
+                      continue
+                  if payload.get("raw_capture_committed") is not False:
+                      continue
+                  run_id = payload.get("workflow_run_id")
+                  attempt = payload.get("workflow_run_attempt")
+                  if not isinstance(run_id, int) or not isinstance(attempt, int):
+                      continue
+                  ancestor = subprocess.run(
+                      ["git", "merge-base", "--is-ancestor", source_sha, "HEAD"],
+                      check=False,
+                      stdout=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL,
+                  )
+                  if ancestor.returncode != 0:
+                      continue
+                  required_objects = (
+                      f"{source_sha}:ci/reference-probes/triggers/bundled-reference-v1.txt",
+                      f"{source_sha}:scripts/materialize_bundled_reference_root.py",
+                  )
+                  if any(
+                      subprocess.run(
+                          ["git", "cat-file", "-e", obj],
+                          check=False,
+                          stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL,
+                      ).returncode
+                      for obj in required_objects
+                  ):
+                      continue
+                  valid.append((run_id, attempt, source_sha, path.as_posix()))
+
+          selected = max(valid) if valid else None
+          document = {
+              "status": "success" if selected else "pending",
+              "source_sha": selected[2] if selected else None,
+              "receipt_path": selected[3] if selected else None,
+              "workflow_run_id": selected[0] if selected else None,
+              "workflow_run_attempt": selected[1] if selected else None,
+          }
+          Path(os.environ["OUTPUT"]).write_text(
+              json.dumps(document, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          status="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$output/selected.json")"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "file=$output/selected.json" >> "$GITHUB_OUTPUT"
+
+      - name: Publish truthful status transition
+        if: steps.probe.outputs.status == 'success'
+        shell: bash
+        env:
+          SELECTED: ${{ steps.probe.outputs.file }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/fe-reference-status-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            STATUS_PATH="$publish_tree/STATUS.md" WORKFLOW_PATH="$publish_tree/.github/workflows/finalize-fe-interaction-reference-status.yml" SELECTED="$SELECTED" /usr/bin/python3 - <<'PY'
+            import json
+            import os
+            import re
+            from pathlib import Path
+
+            status_path = Path(os.environ["STATUS_PATH"])
+            workflow_path = Path(os.environ["WORKFLOW_PATH"])
+            selected = json.loads(Path(os.environ["SELECTED"]).read_text(encoding="utf-8"))
+            source_sha = selected["source_sha"]
+            receipt_path = selected["receipt_path"]
+            marker = f"Reference receipt: `{receipt_path}`"
+            text = status_path.read_text(encoding="utf-8")
+            if marker not in text:
+                old_milestone = (
+                    "**Active milestone:** close native numeric categorical absorbed FE interactions against the exact pinned `reghdfe` reference, then reseal the frozen OLS projection\n"
+                )
+                new_milestone = (
+                    "**Active milestone:** complete the hidden StFixest versus pinned `reghdfe` FE-interaction differential and reseal the frozen OLS projection\n"
+                )
+                if text.count(old_milestone) != 1:
+                    raise SystemExit("STATUS active-milestone anchor mismatch")
+                text = text.replace(old_milestone, new_milestone, 1)
+                old_pending = (
+                    "- This does **not** close `multi_fe_interactions`. No successful source-bound\n"
+                    "  pinned-`reghdfe` FE-interaction receipt has yet been accepted. The probe for\n"
+                    "  consolidation source `4bb5f1a...` stopped before Stata because no exact\n"
+                    "  offline reference root was available.\n"
+                )
+                new_success = (
+                    "- The exact pinned offline reference gate is now closed for source\n"
+                    f"  `{source_sha}`. {marker}. The licensed-Stata probe reached the\n"
+                    "  pinned `reghdfe`/`ftools`/`stata-require` closure and returned a\n"
+                    "  digest-valid redacted success summary. This proves the reference\n"
+                    "  environment and probe, not full StFixest estimator parity.\n"
+                )
+                if text.count(old_pending) != 1:
+                    raise SystemExit("STATUS pending-reference anchor mismatch")
+                text = text.replace(old_pending, new_success, 1)
+                pattern = (
+                    r"## Active checkpoint — categorical interaction reference closure\n"
+                    r".*?(?=Independent explicit-dummy Rust oracles remain mandatory\.)"
+                )
+                replacement = (
+                    "## Active checkpoint — categorical interaction differential closure\n\n"
+                    "The exact pinned reference environment and licensed-Stata probe are now\n"
+                    "source-bound and successful. The remaining closure is the estimator\n"
+                    "differential: compare the hidden StFixest interaction result to pinned\n"
+                    "`reghdfe` for sample identity, coefficient/status layout, covariance,\n"
+                    "absorbed and residual DoF, fit statistics, singleton and weight behavior,\n"
+                    "constant handling, interaction identity, and contracted observation\n"
+                    "outputs. No parity claim is permitted until that family and the frozen\n"
+                    "projection are sealed.\n\n"
+                )
+                text, count = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)
+                if count != 1:
+                    raise SystemExit("STATUS active-reference block mismatch")
+                text = text.replace(
+                    "First inspect the source-bound FE-interaction receipt produced after the exact\n"
+                    "reference bundles are committed. Accept it only when the payload is successful,\n"
+                    "source-bound, redacted, and the probe actually reached pinned `reghdfe` in\n"
+                    "licensed Stata. Then add the hidden-StFixest versus `reghdfe` differential\n"
+                    "family and reseal the frozen 40-case projection. After that, reconcile and\n"
+                    "activate final-sample categorical rebasing on `main`; do not bypass the staged\n"
+                    "validation contract.\n",
+                    "Add the hidden-StFixest versus pinned-`reghdfe` differential family and\n"
+                    "reseal the frozen 40-case projection. After that, reconcile and activate\n"
+                    "final-sample categorical rebasing on `main`; do not bypass the staged\n"
+                    "validation contract.\n",
+                    1,
+                )
+                text = text.replace(
+                    "1. `multi_fe_interactions` — hidden implementation present; pinned-`reghdfe` differential and resealed projection still required.\n",
+                    "1. `multi_fe_interactions` — hidden implementation and pinned reference probe present; estimator differential and resealed projection still required.\n",
+                    1,
+                )
+                status_path.write_text(text, encoding="utf-8")
+            workflow_path.unlink(missing_ok=True)
+            PY
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add -A
+            git -C "$publish_tree" diff --cached --check
+            if git -C "$publish_tree" diff --cached --quiet; then
+              exit 0
+            fi
+            git -C "$publish_tree" commit -m "docs: record successful FE-interaction reference probe"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          echo "FE-reference status publication lost three branch races" >&2
+          exit 1
+
+      - name: Report pending reference gate
+        if: steps.probe.outputs.status != 'success'
+        run: echo "No acceptable successful FE-interaction reference receipt is on current main yet."
