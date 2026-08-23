@@ -10,14 +10,12 @@ use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::Result;
 use crate::fe::{
     absorb_borrowed_intercept_map_with_structural_constant_certified,
-    absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights,
-    CertifiedBorrowedMap, MapConfig,
+    absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+    MapConfig,
 };
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 
-use super::{
-    build_prepared_ols_rhs, PreparedOlsData, PreparedOlsModel,
-};
+use super::{build_prepared_ols_rhs, PreparedOlsData, PreparedOlsModel};
 
 /// Common scientific input boundary for the prepared coefficient engine.
 ///
@@ -77,10 +75,7 @@ impl PreparedOlsFitView for PreparedOlsData {
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.borrowed_intercept_fe_design()?;
         absorb_borrowed_intercept_map_with_structural_constant_certified(
-            &design,
-            weights,
-            values,
-            config,
+            &design, weights, values, config,
         )
     }
 }
