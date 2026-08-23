@@ -32,6 +32,48 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
+      - name: Initialize durable probe status
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
+          rm -rf "$output"
+          mkdir -p "$output"
+          OUTPUT="$output/summary.json" /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema_version": 1,
+              "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+              "status": "failure",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "stage": "workflow_started",
+              "failure_kind": "probe_not_completed",
+              "failure_detail": "reference probe did not reach a terminal result",
+              "raw_capture_committed": False,
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+          }
+          canonical = json.dumps(
+              payload,
+              sort_keys=True,
+              separators=(",", ":"),
+              ensure_ascii=True,
+          ).encode("utf-8")
+          document = {
+              "payload": payload,
+              "payload_sha256": hashlib.sha256(canonical).hexdigest(),
+          }
+          path = Path(os.environ["OUTPUT"])
+          path.write_text(
+              json.dumps(document, indent=2, sort_keys=True, ensure_ascii=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Run isolated pinned reference probe
         id: probe
         continue-on-error: true
@@ -41,13 +83,72 @@ jobs:
         run: |
           set -euo pipefail
           output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
-          rm -rf "$output"
-          mkdir -p "$output"
           /usr/bin/python3 -m py_compile scripts/fe_interaction_probe.py
           /usr/bin/python3 scripts/fe_interaction_probe.py \
             --stata "$STATA_BIN" \
             --output-dir "$output" \
             --source-sha "$GITHUB_SHA"
+
+      - name: Finalize missing or malformed probe status
+        if: always()
+        shell: bash
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
+          mkdir -p "$output"
+          OUTPUT="$output/summary.json" /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["OUTPUT"])
+          reason = None
+          try:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              payload = document.get("payload", {})
+              if payload.get("source_sha") != os.environ["GITHUB_SHA"]:
+                  reason = "summary_source_sha_mismatch"
+              elif payload.get("raw_capture_committed") is not False:
+                  reason = "summary_raw_capture_policy_violation"
+              elif payload.get("status") not in {"success", "failure"}:
+                  reason = "summary_status_invalid"
+              elif os.environ.get("PROBE_OUTCOME") != "success" and payload.get("status") == "success":
+                  reason = "probe_process_failed_after_success_summary"
+          except (OSError, UnicodeError, json.JSONDecodeError, AttributeError, TypeError):
+              reason = "summary_missing_or_malformed"
+
+          if reason is not None:
+              payload = {
+                  "schema_version": 1,
+                  "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+                  "status": "failure",
+                  "source_sha": os.environ["GITHUB_SHA"],
+                  "stage": "workflow_finalizer",
+                  "failure_kind": reason,
+                  "failure_detail": "reference probe did not create a valid source-bound summary",
+                  "raw_capture_committed": False,
+                  "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+                  "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+                  "probe_outcome": os.environ.get("PROBE_OUTCOME", "unknown"),
+              }
+              canonical = json.dumps(
+                  payload,
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  ensure_ascii=True,
+              ).encode("utf-8")
+              document = {
+                  "payload": payload,
+                  "payload_sha256": hashlib.sha256(canonical).hexdigest(),
+              }
+              path.write_text(
+                  json.dumps(document, indent=2, sort_keys=True, ensure_ascii=True) + "\n",
+                  encoding="utf-8",
+              )
+          PY
 
       - name: Upload temporary probe evidence
         if: always()
@@ -58,7 +159,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish redacted sealed probe summary
+      - name: Publish redacted source-bound probe summary
         if: always()
         shell: bash
         env:
@@ -67,6 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/python3 - <<'PY'
+          import hashlib
           import json
           import os
           from pathlib import Path
@@ -77,28 +179,46 @@ jobs:
               raise SystemExit("probe summary source SHA mismatch")
           if payload.get("raw_capture_committed") is not False:
               raise SystemExit("probe summary violates raw-capture policy")
+          payload_sha256 = document.get("payload_sha256")
+          if payload_sha256 is not None:
+              canonical = json.dumps(
+                  payload,
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  ensure_ascii=True,
+              ).encode("utf-8")
+              if payload_sha256 != hashlib.sha256(canonical).hexdigest():
+                  raise SystemExit("probe summary payload digest mismatch")
           PY
 
           result_path=".ci/reference-probes/fe-interaction/$GITHUB_SHA.json"
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
           for attempt in 1 2 3; do
             git fetch origin "$BRANCH_NAME"
-            publish="$RUNNER_TEMP/fe-interaction-probe-publish-$attempt"
-            git worktree add --detach "$publish" "origin/$BRANCH_NAME"
-            mkdir -p "$publish/$(dirname "$result_path")"
-            cp "$SUMMARY" "$publish/$result_path"
-            git -C "$publish" config user.name "github-actions[bot]"
-            git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git -C "$publish" add "$result_path"
-            if git -C "$publish" diff --cached --quiet; then
-              git worktree remove --force "$publish"
+            publish_tree="$RUNNER_TEMP/fe-interaction-probe-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            mkdir -p "$publish_tree/$(dirname "$result_path")"
+            cp "$SUMMARY" "$publish_tree/$result_path"
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add "$result_path"
+            if git -C "$publish_tree" diff --cached --quiet; then
               exit 0
             fi
-            git -C "$publish" commit -m "ci(reference): record ${GITHUB_SHA:0:12} FE probe [skip ci]"
-            if git -C "$publish" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
-              git worktree remove --force "$publish"
+            git -C "$publish_tree" commit -m "ci(reference): record ${GITHUB_SHA:0:12} FE probe [skip ci]"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
               exit 0
             fi
-            git worktree remove --force "$publish"
+            cleanup
           done
           echo "reference-probe publication lost three branch races" >&2
           exit 1

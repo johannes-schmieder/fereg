@@ -32,11 +32,21 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         self.assertNotIn("ubuntu-latest", text)
         self.assertNotIn("windows-latest", text)
 
+    def test_every_started_probe_leaves_a_source_bound_summary(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("Initialize durable probe status", text)
+        self.assertIn("Finalize missing or malformed probe status", text)
+        self.assertIn("summary_missing_or_malformed", text)
+        self.assertIn("workflow_run_id", text)
+        self.assertIn("payload_sha256", text)
+        self.assertIn("probe summary source SHA mismatch", text)
+
     def test_only_redacted_summary_is_committed(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn(".ci/reference-probes/fe-interaction/$GITHUB_SHA.json", text)
         self.assertNotIn("git add capture.machine", text)
         self.assertNotIn("git add run.log", text)
+        self.assertIn('"raw_capture_committed": False', text)
 
 
 if __name__ == "__main__":
