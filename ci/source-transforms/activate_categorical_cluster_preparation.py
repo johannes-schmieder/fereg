@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CATEGORICAL = ROOT / "crates/stfixest-core/src/ols/prepared_categorical_data.rs"
+PREPARED = ROOT / "crates/stfixest-core/src/ols/prepared.rs"
 CLUSTERS = ROOT / "crates/stfixest-core/src/ols/prepared_clusters.rs"
 OLS_MOD = ROOT / "crates/stfixest-core/src/ols/mod.rs"
 LIB = ROOT / "crates/stfixest-core/src/lib.rs"
@@ -19,12 +20,23 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+prepared = PREPARED.read_text(encoding="utf-8")
+prepared = replace_once(
+    prepared,
+    "pub(super) fn prepare_ols_data_with_cluster_sources(\n",
+    "pub(crate) fn prepare_ols_data_with_cluster_sources(\n",
+    "cluster-aware numeric preparation visibility",
+)
+PREPARED.write_text(prepared, encoding="utf-8")
+
 categorical = CATEGORICAL.read_text(encoding="utf-8")
 categorical = replace_once(
     categorical,
+    "use super::{\n"
     "    prepare_ols_data, LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource,\n",
-    "    prepare_ols_data_with_cluster_sources, LoadedOlsInput, OlsRequestV1,\n"
-    "    PreparedCategoricalSource,\n",
+    "use crate::ols::prepare_ols_data_with_cluster_sources;\n\n"
+    "use super::{\n"
+    "    LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource,\n",
     "categorical preparation import",
 )
 categorical = replace_once(
@@ -53,6 +65,12 @@ categorical = replace_once(
     "        cluster_sources,\n"
     "    )?;\n",
     "cluster-aware categorical preparation boundary",
+)
+categorical = replace_once(
+    categorical,
+    "        } => SingletonMultiplicity::Frequency(values),\n",
+    "        } => SingletonMultiplicity::Frequency(values.as_slice()),\n",
+    "categorical frequency multiplicity borrow",
 )
 CATEGORICAL.write_text(categorical, encoding="utf-8")
 
@@ -92,9 +110,7 @@ clusters = replace_once(
 clusters = replace_once(
     clusters,
     "fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<SourceId>> {\n",
-    "pub(super) fn validate_request(\n"
-    "    request: &OlsClusteredRequestV1,\n"
-    ") -> Result<Vec<SourceId>> {\n",
+    "pub(super) fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<SourceId>> {\n",
     "cluster request validator visibility",
 )
 CLUSTERS.write_text(clusters, encoding="utf-8")
@@ -105,6 +121,13 @@ ols_mod = replace_once(
     "mod prepared_clustered;\nmod prepared_clusters;\n",
     "mod prepared_categorical_clusters;\nmod prepared_clustered;\nmod prepared_clusters;\n",
     "categorical cluster module declaration",
+)
+ols_mod = replace_once(
+    ols_mod,
+    "pub use prepared::{\n",
+    "pub(crate) use prepared::prepare_ols_data_with_cluster_sources;\n"
+    "pub use prepared::{\n",
+    "cluster-aware numeric preparation re-export",
 )
 ols_mod = replace_once(
     ols_mod,
@@ -120,16 +143,17 @@ OLS_MOD.write_text(ols_mod, encoding="utf-8")
 lib = LIB.read_text(encoding="utf-8")
 lib = replace_once(
     lib,
-    "    fit_prepared_categorical_ols_coefficients_map, fit_prepared_categorical_ols_robust_map,\n",
-    "    fit_prepared_categorical_ols_coefficients_map, fit_prepared_categorical_ols_robust_map,\n"
-    "    prepare_categorical_ols_clustered_data,\n",
+    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\n"
+    "    fit_prepared_ols_clustered_map,\n",
+    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\n"
+    "    fit_prepared_ols_clustered_map, prepare_categorical_ols_clustered_data,\n",
     "crate categorical cluster function export",
 )
 lib = replace_once(
     lib,
-    "    PreparedOlsClusteredPsdState, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,\n",
-    "    PreparedCategoricalOlsClusteredData, PreparedOlsClusteredPsdState,\n"
-    "    PreparedOlsCoefficient, PreparedOlsCoefficientStatus,\n",
+    "    PreparedOlsClusteredData, PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport,\n",
+    "    PreparedCategoricalOlsClusteredData, PreparedOlsClusteredData,\n"
+    "    PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport,\n",
     "crate categorical clustered-data type export",
 )
 LIB.write_text(lib, encoding="utf-8")
