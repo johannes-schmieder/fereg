@@ -2,6 +2,8 @@
 
 mod auto;
 mod borrowed_map;
+#[allow(unused_imports)]
+#[rustfmt::skip]
 mod categorical_request;
 mod certificate;
 mod components;
