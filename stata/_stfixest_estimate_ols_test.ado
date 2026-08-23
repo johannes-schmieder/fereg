@@ -365,6 +365,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         else {
             local term = `fe_shadow'[`row',2]
             local dof_row_name : word `term' of `absorb_labels'
+            local dof_row_name = subinstr(`"`dof_row_name'"', "#", "#1.", .)
             local dof_row_name `"1.`dof_row_name'"'
         }
         local dof_row_names `"`dof_row_names' `dof_row_name'"'

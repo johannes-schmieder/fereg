@@ -31,6 +31,8 @@ assert e(stfixest_fe)[1,2] == 1
 assert e(stfixest_fe)[1,3] == 0
 assert e(stfixest_fe)[1,4] == 24
 assert e(stfixest_fe)[1,6] == e(df_a)
+local interaction_dof_rows : rowfullnames e(dof_table)
+assert `"`interaction_dof_rows'"' == "1.firm#1.year"
 assert e(sample) == 1
 assert !missing(__stfx_interaction_resid)
 assert reldif(_b[x], `reference_x') < 1e-8
