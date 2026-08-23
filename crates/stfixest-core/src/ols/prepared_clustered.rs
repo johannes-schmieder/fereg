@@ -430,6 +430,7 @@ fn fit_clustered_view_with_reservation<
     )
 }
 
+#[cfg(test)]
 fn compose<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsClusteredData,
     fit: CertifiedPreparedOlsFit,
@@ -2667,7 +2668,7 @@ mod tests {
         perturbations: ClusteredPerturbations,
     ) -> Result<CertifiedPreparedOlsClustered> {
         let config = PreparedOlsClusteredConfig::default();
-        let fit = fit_prepared_ols_coefficients_map(prepared.ols(), config.fit)?;
+        let fit = fit_prepared_ols_coefficients_view_map(prepared.ols(), config.fit)?;
         compose(prepared, fit, config, reservation, perturbations)
     }
 

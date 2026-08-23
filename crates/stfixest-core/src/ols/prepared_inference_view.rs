@@ -159,14 +159,6 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
     }
 }
 
-pub(super) fn validate_cluster_aware_legacy_absorbed_dof_summary(
-    prepared: &PreparedOlsData,
-    report: &PreparedOlsAbsorbedDofReport,
-    expected_policy: PreparedOlsAbsorbedDofPolicy,
-) -> Result<PreparedOlsAbsorbedDofSummary> {
-    prepared.inference_clustered_absorbed_dof_summary(report, expected_policy)
-}
-
 fn validate_legacy_report(
     prepared: &PreparedOlsData,
     report: &PreparedOlsAbsorbedDofReport,

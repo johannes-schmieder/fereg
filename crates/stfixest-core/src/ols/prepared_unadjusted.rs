@@ -3,10 +3,7 @@ use crate::error::{ErrorCode, Result, StFixestError};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::topology_dof::CategoricalTopologyDofReport;
 
-use super::prepared_inference_view::{
-    validate_cluster_aware_legacy_absorbed_dof_summary, PreparedOlsAbsorbedDofSummary,
-    PreparedOlsInferenceView,
-};
+use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 
 #[cfg(test)]
 use super::compute_prepared_ols_absorbed_dof;
@@ -707,19 +704,6 @@ pub(super) fn validate_fit_and_absorbed_dof_view<P: PreparedOlsInferenceView + ?
     Ok(())
 }
 
-pub(super) fn build_reference_weight_report<'a>(
-    prepared: &'a PreparedOlsData,
-    fit: &CertifiedPreparedOlsFit,
-    tolerance: f64,
-    allow_probability: bool,
-) -> Result<(
-    PreparedOlsReferenceWeightReport,
-    ReferenceWeightView<'a>,
-    f64,
-)> {
-    build_reference_weight_report_view(prepared, fit, tolerance, allow_probability)
-}
-
 pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView + ?Sized>(
     prepared: &'a P,
     fit: &CertifiedPreparedOlsFit,
@@ -877,17 +861,6 @@ pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView
         view,
         computed_error.max(reference_sum_error),
     ))
-}
-
-pub(super) fn build_clustered_base_residual_dof(
-    prepared: &PreparedOlsData,
-    fit: &CertifiedPreparedOlsFit,
-    absorbed: &PreparedOlsAbsorbedDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-) -> Result<PreparedOlsResidualDofReport> {
-    let summary =
-        validate_cluster_aware_legacy_absorbed_dof_summary(prepared, absorbed, absorbed.policy)?;
-    build_residual_dof_view(prepared, fit, summary, weights)
 }
 
 pub(super) fn build_residual_dof_view<P: PreparedOlsInferenceView + ?Sized>(
