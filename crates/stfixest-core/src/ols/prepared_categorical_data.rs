@@ -1,47 +1,44 @@
 //! Integrated prepared-data path for numeric categorical absorbed interactions.
 //!
-//! This module leaves the existing single-source `PreparedOlsData` contract
-//! unchanged. It provides a parallel, fail-closed path for intercept-only
-//! numeric categorical effects such as `worker` and `firm#year`, carrying the
-//! request from authoritative sample construction through interaction-aware
-//! singleton pruning, final topology, absorbed DoF, RHS generation, and
-//! certified MAP residualization. Public estimator dispatch remains disabled.
+//! The existing `prepare_ols_data` boundary remains the authority for request
+//! validation, candidate-sample construction, missing-value accounting, weight
+//! semantics, and ordinary model recipes. This module uses the categorical
+//! absorbed-request planner to run that boundary with singleton deletion
+//! deliberately disabled, then applies the true single-source/interaction
+//! singleton fixed point exactly once and constructs the final deduplicated FE
+//! topology. Public estimator dispatch remains disabled.
 
-use crate::data::{
-    prepare_numeric_sample_with_source_uses, AdjustmentInput, DenseMatrix, DomainDecision,
-    DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
-    NumericSourceUse, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput,
-    WeightKind,
-};
+use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
-use crate::factorize::factorize_f64;
+use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
-    prune_categorical_partition_singletons, BorrowedMapWeights, CategoricalCodeView,
+    plan_categorical_absorbed_request, prune_categorical_partition_singletons,
+    BoundCategoricalAbsorbEffect, BorrowedMapWeights, CategoricalCodeView,
     CertifiedBorrowedMap, FinalizedCategoricalTopology, MapConfig, SingletonMultiplicity,
 };
-use crate::metadata::{
-    AbsorbedTerm, CoefficientSlot, ComponentKind, LevelState, MetadataFlag, RawTermKind,
-    SourceId, TimeSeriesState,
+use crate::metadata::SourceId;
+use crate::topology_dof::{
+    compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffectSpec,
+    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
 };
-use crate::ols::{
-    CategoricalTopologyDofEffectSpec, CategoricalTopologyDofPolicy,
-    CategoricalTopologyDofReport, LoadedNumericColumn, LoadedOlsInput, OlsInputRole,
-    OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
-    PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn,
-    PreparedOlsColumnKind, PreparedOlsModel, PreparedOlsSingletons,
-};
-use crate::topology_dof::compute_categorical_topology_absorbed_dof;
 
-/// Complete numeric categorical-interaction preparation result.
+use super::{
+    prepare_ols_data, LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource,
+    PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel,
+    PreparedOlsSingletons,
+};
+
+/// Complete native preparation result for intercept-only numeric categorical
+/// absorbed effects, including interactions such as `firm#year`.
 #[derive(Debug, PartialEq)]
 pub struct PreparedCategoricalOlsData {
     model: PreparedOlsModel,
     sample: PreparedNumericSample,
-    /// Final-sample factorization required only by ordinary categorical model
-    /// columns. FE-only raw codes live in `fe_topology`, avoiding a duplicate
-    /// observation-scale copy.
-    categorical_sources: Vec<PreparedCategoricalSource>,
+    /// Ordinary categorical sources on the final sample. Sources that also
+    /// participate in an absorbed term borrow their N-row codes from
+    /// `fe_topology`; only their small candidate-level table is retained here.
+    categorical_sources: Vec<PreparedCategoricalModelSource>,
     fe_topology: FinalizedCategoricalTopology,
     effect_specs: Vec<CategoricalTopologyDofEffectSpec>,
     structural_intercept: bool,
@@ -61,7 +58,7 @@ impl PreparedCategoricalOlsData {
     }
 
     #[must_use]
-    pub fn categorical_sources(&self) -> &[PreparedCategoricalSource] {
+    pub fn categorical_sources(&self) -> &[PreparedCategoricalModelSource] {
         &self.categorical_sources
     }
 
@@ -90,7 +87,8 @@ impl PreparedCategoricalOlsData {
         self.singletons
     }
 
-    /// Evaluate one generated ordinary model column on the final sample.
+    /// Evaluate one generated ordinary model column on the final compact row
+    /// axis without materializing an observation-scale model column.
     pub fn column_value(&self, column: usize, active_row: usize) -> Result<f64> {
         if active_row >= self.sample.n_active() {
             return Err(invalid("prepared categorical OLS row is out of range"));
@@ -116,16 +114,14 @@ impl PreparedCategoricalOlsData {
                 categorical_source_index,
                 level_code,
                 ..
-            } => categorical_indicator(
-                &self.categorical_sources,
+            } => self.categorical_indicator(
                 *categorical_source_index,
                 *level_code,
                 active_row,
             ),
             PreparedOlsColumnKind::CategoricalInteraction { components } => {
                 for component in components {
-                    if categorical_indicator(
-                        &self.categorical_sources,
+                    if self.categorical_indicator(
                         component.categorical_source_index,
                         component.level_code,
                         active_row,
@@ -139,15 +135,48 @@ impl PreparedCategoricalOlsData {
         }
     }
 
-    /// Build one observation-major `[Y, X]` batch without intermediate model
-    /// columns.
+    /// Build one observation-major `[Y, X]` batch directly from prepared
+    /// recipes. No intermediate N-row ordinary columns are allocated.
     pub fn build_rhs(&self) -> Result<PreparedCategoricalOlsRhs> {
-        let mut reservation = SystemCategoricalPreparationReservation;
-        build_rhs_with_reservation(self, &mut reservation)
+        self.validate()?;
+        let nrows = self.sample.n_active();
+        let ncols = self
+            .model
+            .columns
+            .len()
+            .checked_add(1)
+            .ok_or_else(|| allocation("categorical OLS RHS column count overflows"))?;
+        let elements = nrows
+            .checked_mul(ncols)
+            .ok_or_else(|| allocation("categorical OLS RHS dimensions overflow"))?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation("unable to reserve categorical OLS RHS"))?;
+        if values.capacity() < elements {
+            return Err(allocation(
+                "categorical OLS RHS reservation returned insufficient capacity",
+            ));
+        }
+        values.resize(elements, 0.0);
+        for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
+            destination[0] = self.sample.outcome[row];
+            for generated_column in 0..self.model.columns.len() {
+                destination[generated_column + 1] = self.column_value(generated_column, row)?;
+            }
+        }
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data(
+                "categorical OLS RHS construction produced a nonfinite value",
+            ));
+        }
+        Ok(PreparedCategoricalOlsRhs {
+            values: DenseMatrix::from_row_major(nrows, ncols, values)?,
+        })
     }
 
     /// Residualize the complete prepared batch through the strict borrowed MAP
-    /// solver. No caller-visible partially transformed state escapes failure.
+    /// solver. A failure returns no caller-visible partially transformed batch.
     pub fn absorb_rhs_map(&self, config: MapConfig) -> Result<CertifiedBorrowedMap> {
         self.validate()?;
         let rhs = self.build_rhs()?.into_values();
@@ -163,9 +192,9 @@ impl PreparedCategoricalOlsData {
         )
     }
 
-    /// Compute absorbed rank directly from the finalized interaction-aware
-    /// topology. Cluster dimensions, when supplied, must already be compact
-    /// final-sample codes.
+    /// Compute absorbed rank from the finalized interaction-aware topology.
+    /// Cluster dimensions, when supplied, are already compact final-sample
+    /// interaction codes.
     pub fn absorbed_dof(
         &self,
         policy: CategoricalTopologyDofPolicy,
@@ -181,6 +210,7 @@ impl PreparedCategoricalOlsData {
         )
     }
 
+    /// Revalidate the complete prepared artifact before numerical use.
     pub fn validate(&self) -> Result<()> {
         validate_numeric_sample(&self.sample)?;
         self.fe_topology.validate()?;
@@ -204,10 +234,177 @@ impl PreparedCategoricalOlsData {
                 "reported categorical OLS intercept lacks a structural intercept",
             ));
         }
-        validate_final_categorical_sources(&self.sample, &self.categorical_sources)?;
-        validate_model_recipes(self)?;
+        validate_categorical_model_sources(
+            &self.sample,
+            &self.fe_topology,
+            &self.categorical_sources,
+        )?;
+        validate_model_recipes(
+            &self.model,
+            &self.categorical_sources,
+            &self.fe_topology,
+        )?;
         Ok(())
     }
+
+    fn categorical_indicator(
+        &self,
+        source_index: usize,
+        level_code: Option<u32>,
+        row: usize,
+    ) -> Result<f64> {
+        let Some(level_code) = level_code else {
+            return Ok(0.0);
+        };
+        let source = self
+            .categorical_sources
+            .get(source_index)
+            .ok_or_else(|| invalid("ordinary categorical source is out of range"))?;
+        let code = source
+            .codes(&self.fe_topology)?
+            .get(row)
+            .copied()
+            .ok_or_else(|| invalid("ordinary categorical source row is out of range"))?;
+        Ok(f64::from(code == level_code))
+    }
+}
+
+/// One ordinary categorical source on the final sample.
+#[derive(Debug, PartialEq)]
+pub struct PreparedCategoricalModelSource {
+    source: SourceId,
+    prepared_source_index: usize,
+    storage: PreparedCategoricalModelSourceStorage,
+}
+
+impl PreparedCategoricalModelSource {
+    #[must_use]
+    pub const fn source(&self) -> SourceId {
+        self.source
+    }
+
+    #[must_use]
+    pub const fn prepared_source_index(&self) -> usize {
+        self.prepared_source_index
+    }
+
+    #[must_use]
+    pub const fn is_topology_backed(&self) -> bool {
+        matches!(
+            self.storage,
+            PreparedCategoricalModelSourceStorage::Topology { .. }
+        )
+    }
+
+    pub fn codes<'a>(
+        &'a self,
+        topology: &'a FinalizedCategoricalTopology,
+    ) -> Result<&'a [u32]> {
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology {
+                candidate_source_index,
+                ..
+            } => Ok(topology
+                .source_for_candidate(*candidate_source_index)?
+                .codes()),
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => Ok(&encoded.codes),
+        }
+    }
+
+    pub fn n_levels(&self, topology: &FinalizedCategoricalTopology) -> Result<usize> {
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology {
+                candidate_source_index,
+                ..
+            } => Ok(topology
+                .source_for_candidate(*candidate_source_index)?
+                .n_levels()),
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => Ok(encoded.n_levels()),
+        }
+    }
+
+    fn resolve_level(
+        &self,
+        topology: &FinalizedCategoricalTopology,
+        requested_level: f64,
+    ) -> Result<Option<u32>> {
+        let requested_level = canonical_factor_value(requested_level);
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology {
+                candidate_source_index,
+                candidate_levels,
+            } => {
+                let Some(candidate_level) = candidate_levels
+                    .binary_search_by(|value| value.total_cmp(&requested_level))
+                    .ok()
+                else {
+                    return Ok(None);
+                };
+                let candidate_level = u32::try_from(candidate_level)
+                    .map_err(|_| invalid("candidate categorical level exceeds u32"))?;
+                let final_source = topology.source_for_candidate(*candidate_source_index)?;
+                final_source
+                    .original_levels()
+                    .binary_search(&candidate_level)
+                    .ok()
+                    .map(|index| {
+                        u32::try_from(index)
+                            .map_err(|_| invalid("final categorical level exceeds u32"))
+                    })
+                    .transpose()
+            }
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => encoded
+                .levels
+                .binary_search_by(|value| value.total_cmp(&requested_level))
+                .ok()
+                .map(|index| {
+                    u32::try_from(index)
+                        .map_err(|_| invalid("ordinary categorical level exceeds u32"))
+                })
+                .transpose(),
+        }
+    }
+
+    fn level_value(
+        &self,
+        topology: &FinalizedCategoricalTopology,
+        final_level: u32,
+    ) -> Result<f64> {
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology {
+                candidate_source_index,
+                candidate_levels,
+            } => {
+                let final_source = topology.source_for_candidate(*candidate_source_index)?;
+                let candidate_level = final_source
+                    .original_levels()
+                    .get(final_level as usize)
+                    .copied()
+                    .ok_or_else(|| invalid("final categorical level is out of range"))?;
+                candidate_levels
+                    .get(candidate_level as usize)
+                    .copied()
+                    .ok_or_else(|| invalid("candidate categorical level is out of range"))
+            }
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => encoded
+                .levels
+                .get(final_level as usize)
+                .copied()
+                .ok_or_else(|| invalid("ordinary categorical level is out of range")),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum PreparedCategoricalModelSourceStorage {
+    /// Codes and final compact level identities are owned once by the FE
+    /// topology. Candidate levels are O(number of levels), not O(N).
+    Topology {
+        candidate_source_index: usize,
+        candidate_levels: Vec<f64>,
+    },
+    /// An ordinary categorical source not used by any absorbed effect.
+    Owned { encoded: EncodedFactor<f64> },
 }
 
 /// One directly materialized observation-major categorical OLS batch.
@@ -229,144 +426,80 @@ impl PreparedCategoricalOlsRhs {
 }
 
 /// Prepare intercept-only numeric categorical effects, including interactions.
+///
+/// This is a developer/core boundary. It does not activate any public estimator
+/// or Stata result-transport action.
 pub fn prepare_categorical_ols_data(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
 ) -> Result<PreparedCategoricalOlsData> {
-    let mut reservation = SystemCategoricalPreparationReservation;
-    prepare_with_reservation(request, loaded, &mut reservation)
-}
-
-trait CategoricalPreparationReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemCategoricalPreparationReservation;
-
-impl CategoricalPreparationReservation for SystemCategoricalPreparationReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
+    let plan = plan_categorical_absorbed_request(request)?;
+    let availability = prepare_ols_data(plan.availability_request(), loaded)?;
+    if !availability.singletons.kept_by_request
+        || availability.singletons.num_singletons != 0
+        || availability.singletons.cascade_events != 0
+    {
+        return Err(invalid(
+            "categorical source-availability preparation applied singleton deletion",
+        ));
     }
 
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
-}
-
-fn prepare_with_reservation<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-    reservation: &mut R,
-) -> Result<PreparedCategoricalOlsData> {
-    validate_request(request)?;
-    validate_bindings(request)?;
-    validate_loaded(request, loaded)?;
-    validate_candidate_ordinary_categorical_domain(request, loaded)?;
-    validate_candidate_weight_domain(loaded)?;
-
-    let ordinary_categorical = ordered_ordinary_categorical_sources(request, reservation)?;
-    let fixed_effect_sources = ordered_fixed_effect_sources(request, reservation)?;
-    let mut model = compile_model(request, &ordinary_categorical, reservation)?;
-    let source_uses = build_source_uses(request, reservation)?;
-    let regressor_views = loaded_regressor_views(loaded, reservation)?;
-    let weights = loaded_weight_input(loaded)?;
-    let input = NumericPreparationInput {
-        candidate: &loaded.candidate,
-        outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
-        regressors: &regressor_views,
-        weights,
-        adjustment: AdjustmentInput::None,
-    };
-    let candidate_sample =
-        prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?;
-
-    let candidate_fe_sources = factorize_sources(
-        request,
-        &candidate_sample,
-        &fixed_effect_sources,
-        reservation,
-        "unable to reserve candidate FE categorical sources",
-    )?;
-    let candidate_views = categorical_views(&candidate_fe_sources, reservation)?;
-    let (effect_recipes, effect_specs) =
-        build_effect_recipes(request, &candidate_fe_sources, reservation)?;
-    let recipe_views = recipe_views(&effect_recipes, reservation)?;
-    let initially_active = filled_bool(
-        candidate_sample.n_active(),
-        true,
-        reservation,
-        "unable to reserve categorical singleton active mask",
-    )?;
-    let multiplicity = match &candidate_sample.weights {
+    let bound_effects = plan.bind_effects(&availability.categorical_sources)?;
+    let candidate_views = categorical_views(&availability.categorical_sources)?;
+    let recipe_views = effect_recipe_views(&bound_effects)?;
+    let initially_active = fallible_filled_bool(availability.sample.n_active(), true)?;
+    let multiplicity = match &availability.sample.weights {
         PreparedWeights::Provided {
             kind: WeightKind::Frequency,
             values,
         } => SingletonMultiplicity::Frequency(values),
         PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
     };
-    let partition_singletons = prune_categorical_partition_singletons(
+    let singleton_result = prune_categorical_partition_singletons(
         &candidate_views,
         &recipe_views,
         &initially_active,
         multiplicity,
-        request.keep_singletons,
+        plan.requested_keep_singletons(),
     )?;
-    let singleton = partition_singletons.singleton();
+    let (singleton, _, _) = singleton_result.into_parts();
     let fe_topology =
         finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
-    let final_sample = candidate_sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
-    if fe_topology.retained_rows().len() != final_sample.n_active() {
+
+    let PreparedOlsData {
+        mut model,
+        sample,
+        categorical_sources: candidate_sources,
+        ..
+    } = availability;
+    let ordinary_sources = ordinary_categorical_sources(&model)?;
+    let model_source_plans = plan_model_sources(
+        candidate_sources,
+        &ordinary_sources,
+        &fe_topology,
+    )?;
+    let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
+    if fe_topology.retained_rows().len() != sample.n_active() {
         return Err(invalid(
             "final categorical topology retained-row count differs from compact sample",
         ));
     }
-
-    let categorical_sources = factorize_sources(
-        request,
-        &final_sample,
-        &ordinary_categorical,
-        reservation,
-        "unable to reserve final ordinary categorical sources",
-    )?;
-    resolve_model_levels(&mut model, &categorical_sources)?;
+    let categorical_sources =
+        build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
+    remap_and_resolve_model(&mut model, &categorical_sources, &fe_topology)?;
+    let effect_specs = effect_specs(&bound_effects)?;
     let prepared = PreparedCategoricalOlsData {
         model,
-        sample: final_sample,
+        sample,
         categorical_sources,
         fe_topology,
         effect_specs,
         structural_intercept: true,
         report_intercept: request.include_intercept,
         singletons: PreparedOlsSingletons {
-            kept_by_request: request.keep_singletons,
+            kept_by_request: plan.requested_keep_singletons(),
             num_singletons,
             cascade_events,
         },
@@ -375,762 +508,178 @@ fn prepare_with_reservation<R: CategoricalPreparationReservation>(
     Ok(prepared)
 }
 
-fn compile_model<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    ordinary_categorical: &[SourceId],
-    reservation: &mut R,
-) -> Result<PreparedOlsModel> {
-    request.model.validate_executable_metadata()?;
-    let report_intercept = request.include_intercept;
-    let capacity = request
-        .model
-        .terms
-        .len()
-        .checked_add(usize::from(report_intercept))
-        .ok_or_else(|| allocation("categorical OLS model-column count overflows"))?;
-    let mut columns = Vec::new();
-    reservation.reserve_vec(
-        &mut columns,
-        capacity,
-        "unable to reserve categorical OLS model columns",
-    )?;
-    let mut coefficients = Vec::new();
-    reservation.reserve_vec(
-        &mut coefficients,
-        capacity,
-        "unable to reserve categorical OLS coefficient slots",
-    )?;
+#[derive(Debug)]
+struct CategoricalModelSourcePlan {
+    source: SourceId,
+    prepared_source_index: usize,
+    storage: CategoricalModelSourcePlanStorage,
+}
 
-    for term in &request.model.terms {
-        let kind = match (term.raw_kind, term.components.as_slice()) {
-            (RawTermKind::Variable, [component])
-                if component.kind == ComponentKind::Continuous
-                    && component.level_state == LevelState::Absent
-                    && component.base == MetadataFlag::False
-                    && component.time_series_state == TimeSeriesState::None
-                    && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
-            {
-                PreparedOlsColumnKind::Continuous {
-                    source: component.source,
-                    prepared_source_index: model_source_index(request, component.source)?,
-                }
-            }
-            (RawTermKind::Factor, [component])
-                if component.kind == ComponentKind::Categorical
-                    && component.level_state == LevelState::Present
-                    && component.time_series_state == TimeSeriesState::None =>
-            {
-                validate_ordinary_categorical_value(
-                    component.level_value,
-                    "factor metadata level",
-                )?;
-                PreparedOlsColumnKind::Categorical {
-                    source: component.source,
-                    prepared_source_index: model_source_index(request, component.source)?,
-                    categorical_source_index: ordered_source_index(
-                        ordinary_categorical,
-                        component.source,
-                        "ordinary categorical source",
-                    )?,
-                    level_bits: canonical_factor_value(component.level_value).to_bits(),
-                    level_code: None,
-                }
-            }
-            (RawTermKind::Interaction | RawTermKind::Product, components)
-                if components.len() >= 2
-                    && components.iter().all(|component| {
-                        component.kind == ComponentKind::Categorical
-                            && component.level_state == LevelState::Present
-                            && component.time_series_state == TimeSeriesState::None
-                    }) =>
-            {
-                let mut prepared_components = Vec::new();
-                reservation.reserve_vec(
-                    &mut prepared_components,
-                    components.len(),
-                    "unable to reserve categorical ordinary-interaction recipe",
-                )?;
-                for component in components {
-                    validate_ordinary_categorical_value(
-                        component.level_value,
-                        "categorical interaction metadata level",
-                    )?;
-                    push_reserved(
-                        &mut prepared_components,
-                        PreparedOlsCategoricalComponent {
-                            source: component.source,
-                            categorical_source_index: ordered_source_index(
-                                ordinary_categorical,
-                                component.source,
-                                "ordinary categorical interaction source",
-                            )?,
-                            level_bits: canonical_factor_value(component.level_value).to_bits(),
-                            level_code: None,
-                        },
-                        "categorical ordinary-interaction recipe capacity exhausted",
-                    )?;
-                }
-                PreparedOlsColumnKind::CategoricalInteraction {
-                    components: prepared_components,
-                }
-            }
-            _ => {
-                return Err(unsupported(
-                    "categorical OLS preparation supports only non-time-series continuous terms, numeric factor main effects, and numeric all-categorical ordinary interactions",
-                ));
-            }
-        };
+#[derive(Debug)]
+enum CategoricalModelSourcePlanStorage {
+    Topology {
+        candidate_source_index: usize,
+        candidate_levels: Vec<f64>,
+    },
+    Owned,
+}
 
-        if term.whole_column_omitted {
-            push_reserved(
-                &mut coefficients,
-                PreparedOlsCoefficient {
-                    coefficient_slot: term.coefficient_slot,
-                    status: PreparedOlsCoefficientStatus::SyntaxOmitted,
-                    generated_column_index: None,
-                },
-                "categorical OLS coefficient capacity exhausted",
-            )?;
+fn plan_model_sources(
+    candidate_sources: Vec<PreparedCategoricalSource>,
+    ordinary_sources: &[SourceId],
+    topology: &FinalizedCategoricalTopology,
+) -> Result<Vec<CategoricalModelSourcePlan>> {
+    if topology.candidate_to_compacted_source().len() != candidate_sources.len() {
+        return Err(invalid(
+            "categorical topology source map and candidate source table differ in length",
+        ));
+    }
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(ordinary_sources.len())
+        .map_err(|_| allocation("unable to reserve categorical model-source plan"))?;
+    for (candidate_source_index, candidate) in candidate_sources.into_iter().enumerate() {
+        if !ordinary_sources.contains(&candidate.source) {
+            continue;
+        }
+        let storage = if topology.candidate_to_compacted_source()[candidate_source_index].is_some() {
+            CategoricalModelSourcePlanStorage::Topology {
+                candidate_source_index,
+                candidate_levels: candidate.encoded.levels,
+            }
         } else {
-            let generated_column_index = columns.len();
-            push_reserved(
-                &mut columns,
-                PreparedOlsColumn {
-                    coefficient_slot: term.coefficient_slot,
-                    kind,
-                },
-                "categorical OLS model-column capacity exhausted",
-            )?;
-            push_reserved(
-                &mut coefficients,
-                PreparedOlsCoefficient {
-                    coefficient_slot: term.coefficient_slot,
-                    status: PreparedOlsCoefficientStatus::Active,
-                    generated_column_index: Some(generated_column_index),
-                },
-                "categorical OLS coefficient capacity exhausted",
-            )?;
-        }
-    }
-
-    if report_intercept {
-        let slot = request
-            .model
-            .terms
-            .len()
-            .checked_add(1)
-            .and_then(|value| u32::try_from(value).ok())
-            .ok_or_else(|| invalid("categorical OLS intercept slot exceeds u32"))?;
-        let coefficient_slot = CoefficientSlot::new(slot)?;
-        let generated_column_index = columns.len();
-        push_reserved(
-            &mut columns,
-            PreparedOlsColumn {
-                coefficient_slot,
-                kind: PreparedOlsColumnKind::Intercept,
-            },
-            "categorical OLS model-column capacity exhausted",
-        )?;
-        push_reserved(
-            &mut coefficients,
-            PreparedOlsCoefficient {
-                coefficient_slot,
-                status: PreparedOlsCoefficientStatus::Active,
-                generated_column_index: Some(generated_column_index),
-            },
-            "categorical OLS coefficient capacity exhausted",
-        )?;
-    }
-
-    Ok(PreparedOlsModel {
-        coefficients,
-        columns,
-    })
-}
-
-fn validate_request(request: &OlsRequestV1) -> Result<()> {
-    if request.absorbed_terms.is_empty() {
-        return Err(unsupported(
-            "categorical OLS preparation requires at least one explicit absorbed term",
-        ));
-    }
-    for term in &request.absorbed_terms {
-        validate_absorbed_term(request, term)?;
-    }
-    Ok(())
-}
-
-fn validate_absorbed_term(request: &OlsRequestV1, term: &AbsorbedTerm) -> Result<()> {
-    if !term.intercept
-        || term.categorical_sources.is_empty()
-        || !term.slope_sources.is_empty()
-        || !term.saved_name.is_empty()
-    {
-        return Err(unsupported(
-            "categorical OLS preparation supports only unnamed intercept-only numeric categorical absorbed terms",
-        ));
-    }
-    if term.label.is_empty() {
-        return Err(invalid("categorical absorbed term label is empty"));
-    }
-    for source in &term.categorical_sources {
-        model_source_index(request, *source)?;
-    }
-    Ok(())
-}
-
-fn validate_bindings(request: &OlsRequestV1) -> Result<()> {
-    let mut positions = Vec::new();
-    positions
-        .try_reserve_exact(request.bindings.len())
-        .map_err(|_| allocation("unable to reserve categorical OLS binding positions"))?;
-    let mut bound_sources = Vec::new();
-    bound_sources
-        .try_reserve_exact(request.model.sources.len())
-        .map_err(|_| allocation("unable to reserve categorical OLS bound sources"))?;
-    let mut candidate_count = 0_usize;
-    let mut outcome_count = 0_usize;
-    let mut analytic_count = 0_usize;
-    let mut frequency_count = 0_usize;
-    let mut probability_count = 0_usize;
-    for binding in &request.bindings {
-        if binding.stata_var_position == 0 || positions.contains(&binding.stata_var_position) {
-            return Err(invalid(
-                "categorical OLS bindings require unique positive Stata positions",
-            ));
-        }
-        positions.push(binding.stata_var_position);
-        match binding.role {
-            OlsInputRole::Candidate => candidate_count += 1,
-            OlsInputRole::Outcome => outcome_count += 1,
-            OlsInputRole::NumericSource(source) => {
-                if bound_sources.contains(&source) {
-                    return Err(invalid("categorical OLS source is bound more than once"));
-                }
-                bound_sources.push(source);
-            }
-            OlsInputRole::AnalyticWeight => analytic_count += 1,
-            OlsInputRole::FrequencyWeight => frequency_count += 1,
-            OlsInputRole::ProbabilityWeight => probability_count += 1,
-        }
-    }
-    if candidate_count != 1 || outcome_count != 1 {
-        return Err(invalid(
-            "categorical OLS request requires one candidate and one outcome binding",
-        ));
-    }
-    if analytic_count + frequency_count + probability_count > 1 {
-        return Err(invalid(
-            "categorical OLS request permits at most one weight binding",
-        ));
-    }
-    if bound_sources.len() != request.model.sources.len()
-        || request
-            .model
-            .sources
-            .iter()
-            .any(|source| !bound_sources.contains(&source.id))
-    {
-        return Err(invalid(
-            "categorical OLS request must bind every model source exactly once",
-        ));
-    }
-    Ok(())
-}
-
-fn validate_loaded(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> Result<()> {
-    let n = loaded.candidate.len();
-    validate_loaded_column("outcome", &loaded.outcome, n)?;
-    if loaded.numeric_sources.len() != request.model.sources.len() {
-        return Err(invalid(
-            "loaded categorical OLS source count differs from the model registry",
-        ));
-    }
-    for (index, (source, column)) in loaded.numeric_sources.iter().enumerate() {
-        if *source != request.model.sources[index].id {
-            return Err(invalid(
-                "loaded categorical OLS sources are not in model-registry order",
-            ));
-        }
-        validate_loaded_column("numeric source", column, n)?;
-    }
-    validate_weight_binding(
-        request,
-        OlsInputRole::AnalyticWeight,
-        loaded.analytic_weight.as_ref(),
-        "analytic weight",
-        n,
-    )?;
-    validate_weight_binding(
-        request,
-        OlsInputRole::FrequencyWeight,
-        loaded.frequency_weight.as_ref(),
-        "frequency weight",
-        n,
-    )?;
-    validate_weight_binding(
-        request,
-        OlsInputRole::ProbabilityWeight,
-        loaded.probability_weight.as_ref(),
-        "probability weight",
-        n,
-    )?;
-    if usize::from(loaded.analytic_weight.is_some())
-        + usize::from(loaded.frequency_weight.is_some())
-        + usize::from(loaded.probability_weight.is_some())
-        > 1
-    {
-        return Err(invalid(
-            "loaded categorical OLS input has more than one weight column",
-        ));
-    }
-    Ok(())
-}
-
-fn validate_weight_binding(
-    request: &OlsRequestV1,
-    role: OlsInputRole,
-    loaded: Option<&LoadedNumericColumn>,
-    label: &str,
-    n: usize,
-) -> Result<()> {
-    let requested = request.bindings.iter().any(|binding| binding.role == role);
-    if requested != loaded.is_some() {
-        return Err(invalid(format!(
-            "loaded {label} does not match the categorical OLS binding"
-        )));
-    }
-    if let Some(column) = loaded {
-        validate_loaded_column(label, column, n)?;
-    }
-    Ok(())
-}
-
-fn validate_loaded_column(name: &str, column: &LoadedNumericColumn, n: usize) -> Result<()> {
-    if column.values.len() != n || column.missing.len() != n {
-        return Err(invalid(format!(
-            "loaded {name} values and missing mask must both have length {n}"
-        )));
-    }
-    Ok(())
-}
-
-fn validate_candidate_ordinary_categorical_domain(
-    request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-) -> Result<()> {
-    let ordinary = ordinary_categorical_source_set(request);
-    for (source, column) in &loaded.numeric_sources {
-        if !ordinary.contains(source) {
-            continue;
-        }
-        for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
-            if !candidate || column.missing[row] || !column.values[row].is_finite() {
-                continue;
-            }
-            validate_ordinary_categorical_value(
-                column.values[row],
-                &format!(
-                    "numeric categorical source {} at observation {}",
-                    source.get(),
-                    row + 1
-                ),
-            )?;
-        }
-    }
-    Ok(())
-}
-
-fn validate_ordinary_categorical_value(value: f64, label: &str) -> Result<()> {
-    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 {
-        return Err(invalid_data(format!(
-            "{label} must be a finite nonnegative integer"
-        )));
-    }
-    Ok(())
-}
-
-fn validate_candidate_weight_domain(loaded: &LoadedOlsInput) -> Result<()> {
-    let Some((kind, column)) = loaded_weight(loaded) else {
-        return Ok(());
-    };
-    for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
-        if !candidate || column.missing[row] {
-            continue;
-        }
-        let value = column.values[row];
-        match kind {
-            WeightKind::Analytic if value < 0.0 => {
-                return Err(StFixestError::new(
-                    ErrorCode::NegativeWeight,
-                    format!("analytic weight at observation {} is negative", row + 1),
-                ));
-            }
-            WeightKind::Frequency
-                if !value.is_finite()
-                    || value <= 0.0
-                    || value.fract() != 0.0
-                    || value > f64::from(u32::MAX) =>
-            {
-                return Err(StFixestError::new(
-                    ErrorCode::InvalidFrequencyWeight,
-                    format!(
-                        "frequency weight at observation {} must be a positive u32 integer",
-                        row + 1
-                    ),
-                ));
-            }
-            WeightKind::Probability if !value.is_finite() || value <= 0.0 => {
-                return Err(invalid_data(format!(
-                    "probability weight at observation {} must be positive and finite",
-                    row + 1
-                )));
-            }
-            WeightKind::Analytic | WeightKind::Frequency | WeightKind::Probability => {}
-            WeightKind::Importance => {
-                return Err(unsupported(
-                    "categorical OLS preparation received an unsupported weight kind",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn loaded_regressor_views<'a, R: CategoricalPreparationReservation>(
-    loaded: &'a LoadedOlsInput,
-    reservation: &mut R,
-) -> Result<Vec<NumericColumnView<'a>>> {
-    let mut views = Vec::new();
-    reservation.reserve_vec(
-        &mut views,
-        loaded.numeric_sources.len(),
-        "unable to reserve categorical OLS numeric source views",
-    )?;
-    for (_, column) in &loaded.numeric_sources {
-        push_reserved(
-            &mut views,
-            NumericColumnView::with_missing(&column.values, &column.missing),
-            "categorical OLS numeric source-view capacity exhausted",
-        )?;
-    }
-    Ok(views)
-}
-
-fn loaded_weight_input(loaded: &LoadedOlsInput) -> Result<WeightInput<'_>> {
-    match (
-        &loaded.analytic_weight,
-        &loaded.frequency_weight,
-        &loaded.probability_weight,
-    ) {
-        (None, None, None) => Ok(WeightInput::None),
-        (Some(column), None, None) => Ok(WeightInput::Provided {
-            kind: WeightKind::Analytic,
-            column: NumericColumnView::with_missing(&column.values, &column.missing),
-        }),
-        (None, Some(column), None) => Ok(WeightInput::Provided {
-            kind: WeightKind::Frequency,
-            column: NumericColumnView::with_missing(&column.values, &column.missing),
-        }),
-        (None, None, Some(column)) => Ok(WeightInput::Provided {
-            kind: WeightKind::Probability,
-            column: NumericColumnView::with_missing(&column.values, &column.missing),
-        }),
-        _ => Err(invalid(
-            "loaded categorical OLS input has more than one weight column",
-        )),
-    }
-}
-
-fn loaded_weight(loaded: &LoadedOlsInput) -> Option<(WeightKind, &LoadedNumericColumn)> {
-    match (
-        &loaded.analytic_weight,
-        &loaded.frequency_weight,
-        &loaded.probability_weight,
-    ) {
-        (Some(column), None, None) => Some((WeightKind::Analytic, column)),
-        (None, Some(column), None) => Some((WeightKind::Frequency, column)),
-        (None, None, Some(column)) => Some((WeightKind::Probability, column)),
-        _ => None,
-    }
-}
-
-fn build_source_uses<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    reservation: &mut R,
-) -> Result<Vec<NumericSourceUse>> {
-    let ordinary = ordinary_source_set(request);
-    let fixed_effect = fixed_effect_source_set(request);
-    let mut uses = Vec::new();
-    reservation.reserve_vec(
-        &mut uses,
-        request.model.sources.len(),
-        "unable to reserve categorical OLS source-use plan",
-    )?;
-    for source in &request.model.sources {
-        let usage = NumericSourceUse {
-            ordinary: ordinary.contains(&source.id),
-            fixed_effect: fixed_effect.contains(&source.id),
-            cluster: false,
+            CategoricalModelSourcePlanStorage::Owned
         };
-        if !usage.ordinary && !usage.fixed_effect {
-            return Err(invalid(format!(
-                "numeric source {} is unused by ordinary and absorbed terms",
-                source.id.get()
-            )));
-        }
-        push_reserved(
-            &mut uses,
-            usage,
-            "categorical OLS source-use capacity exhausted",
-        )?;
-    }
-    Ok(uses)
-}
-
-fn ordered_ordinary_categorical_sources<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    reservation: &mut R,
-) -> Result<Vec<SourceId>> {
-    let selected = ordinary_categorical_source_set(request);
-    ordered_sources(request, &selected, reservation, "ordinary categorical sources")
-}
-
-fn ordered_fixed_effect_sources<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    reservation: &mut R,
-) -> Result<Vec<SourceId>> {
-    let selected = fixed_effect_source_set(request);
-    ordered_sources(request, &selected, reservation, "fixed-effect categorical sources")
-}
-
-fn ordered_sources<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    selected: &[SourceId],
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<Vec<SourceId>> {
-    let mut output = Vec::new();
-    reservation.reserve_vec(&mut output, selected.len(), label)?;
-    for source in &request.model.sources {
-        if selected.contains(&source.id) {
-            push_reserved(
-                &mut output,
-                source.id,
-                "ordered categorical source capacity exhausted",
-            )?;
-        }
-    }
-    Ok(output)
-}
-
-fn ordinary_source_set(request: &OlsRequestV1) -> Vec<SourceId> {
-    request
-        .model
-        .terms
-        .iter()
-        .flat_map(|term| term.components.iter().map(|component| component.source))
-        .fold(Vec::new(), |mut sources, source| {
-            if !sources.contains(&source) {
-                sources.push(source);
-            }
-            sources
-        })
-}
-
-fn ordinary_categorical_source_set(request: &OlsRequestV1) -> Vec<SourceId> {
-    request
-        .model
-        .terms
-        .iter()
-        .flat_map(|term| &term.components)
-        .filter(|component| component.kind == ComponentKind::Categorical)
-        .map(|component| component.source)
-        .fold(Vec::new(), |mut sources, source| {
-            if !sources.contains(&source) {
-                sources.push(source);
-            }
-            sources
-        })
-}
-
-fn fixed_effect_source_set(request: &OlsRequestV1) -> Vec<SourceId> {
-    request
-        .absorbed_terms
-        .iter()
-        .flat_map(|term| term.categorical_sources.iter().copied())
-        .fold(Vec::new(), |mut sources, source| {
-            if !sources.contains(&source) {
-                sources.push(source);
-            }
-            sources
-        })
-}
-
-fn factorize_sources<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    sources: &[SourceId],
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<Vec<PreparedCategoricalSource>> {
-    let mut output = Vec::new();
-    reservation.reserve_vec(&mut output, sources.len(), label)?;
-    for source in sources {
-        let prepared_source_index = model_source_index(request, *source)?;
-        let values = sample
-            .regressors
-            .get(prepared_source_index)
-            .ok_or_else(|| invalid("categorical source is absent from the numeric sample"))?;
         push_reserved(
             &mut output,
-            PreparedCategoricalSource {
-                source: *source,
-                prepared_source_index,
-                encoded: factorize_f64(values)?,
+            CategoricalModelSourcePlan {
+                source: candidate.source,
+                prepared_source_index: candidate.prepared_source_index,
+                storage,
             },
-            "prepared categorical source capacity exhausted",
+            "categorical model-source plan capacity exhausted",
+        )?;
+    }
+    if output.len() != ordinary_sources.len()
+        || ordinary_sources
+            .iter()
+            .any(|source| !output.iter().any(|plan| plan.source == *source))
+    {
+        return Err(invalid(
+            "candidate categorical source table is missing an ordinary model source",
+        ));
+    }
+    Ok(output)
+}
+
+fn build_final_model_sources(
+    plans: Vec<CategoricalModelSourcePlan>,
+    sample: &PreparedNumericSample,
+    topology: &FinalizedCategoricalTopology,
+) -> Result<Vec<PreparedCategoricalModelSource>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(plans.len())
+        .map_err(|_| allocation("unable to reserve final categorical model sources"))?;
+    for plan in plans {
+        let storage = match plan.storage {
+            CategoricalModelSourcePlanStorage::Topology {
+                candidate_source_index,
+                candidate_levels,
+            } => {
+                topology.source_for_candidate(candidate_source_index)?;
+                PreparedCategoricalModelSourceStorage::Topology {
+                    candidate_source_index,
+                    candidate_levels,
+                }
+            }
+            CategoricalModelSourcePlanStorage::Owned => {
+                let values = sample
+                    .regressors
+                    .get(plan.prepared_source_index)
+                    .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
+                PreparedCategoricalModelSourceStorage::Owned {
+                    encoded: factorize_f64(values)?,
+                }
+            }
+        };
+        push_reserved(
+            &mut output,
+            PreparedCategoricalModelSource {
+                source: plan.source,
+                prepared_source_index: plan.prepared_source_index,
+                storage,
+            },
+            "final categorical model-source capacity exhausted",
         )?;
     }
     Ok(output)
 }
 
-fn categorical_views<'a, R: CategoricalPreparationReservation>(
-    sources: &'a [PreparedCategoricalSource],
-    reservation: &mut R,
-) -> Result<Vec<CategoricalCodeView<'a>>> {
-    let mut views = Vec::new();
-    reservation.reserve_vec(
-        &mut views,
-        sources.len(),
-        "unable to reserve categorical FE source views",
-    )?;
-    for source in sources {
-        push_reserved(
-            &mut views,
-            CategoricalCodeView::new(&source.encoded.codes, source.encoded.n_levels()),
-            "categorical FE source-view capacity exhausted",
-        )?;
-    }
-    Ok(views)
-}
-
-fn build_effect_recipes<R: CategoricalPreparationReservation>(
-    request: &OlsRequestV1,
-    candidate_sources: &[PreparedCategoricalSource],
-    reservation: &mut R,
-) -> Result<(Vec<Vec<usize>>, Vec<CategoricalTopologyDofEffectSpec>)> {
-    let mut recipes = Vec::new();
-    reservation.reserve_vec(
-        &mut recipes,
-        request.absorbed_terms.len(),
-        "unable to reserve categorical absorbed recipes",
-    )?;
-    let mut specs = Vec::new();
-    reservation.reserve_vec(
-        &mut specs,
-        request.absorbed_terms.len(),
-        "unable to reserve categorical absorbed effect metadata",
-    )?;
-    for term in &request.absorbed_terms {
-        let mut recipe = Vec::new();
-        reservation.reserve_vec(
-            &mut recipe,
-            term.categorical_sources.len(),
-            "unable to reserve categorical absorbed source recipe",
-        )?;
-        for source in &term.categorical_sources {
-            let index = candidate_sources
-                .iter()
-                .position(|candidate| candidate.source == *source)
-                .ok_or_else(|| invalid("absorbed categorical source plan disappeared"))?;
-            push_reserved(
-                &mut recipe,
-                index,
-                "categorical absorbed source-recipe capacity exhausted",
-            )?;
+fn ordinary_categorical_sources(model: &PreparedOlsModel) -> Result<Vec<SourceId>> {
+    let mut sources = Vec::new();
+    sources
+        .try_reserve_exact(model.columns.len())
+        .map_err(|_| allocation("unable to reserve ordinary categorical source identities"))?;
+    for column in &model.columns {
+        match &column.kind {
+            PreparedOlsColumnKind::Categorical { source, .. } => {
+                push_unique_source(&mut sources, *source)?;
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                for component in components {
+                    push_unique_source(&mut sources, component.source)?;
+                }
+            }
+            PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
         }
-        let mut spec_sources = Vec::new();
-        reservation.reserve_vec(
-            &mut spec_sources,
-            term.categorical_sources.len(),
-            "unable to reserve categorical absorbed source identities",
-        )?;
-        for source in &term.categorical_sources {
-            push_reserved(
-                &mut spec_sources,
-                *source,
-                "categorical absorbed source-identity capacity exhausted",
-            )?;
-        }
-        let label = fallible_string_copy(
-            &term.label,
-            reservation,
-            "unable to reserve categorical absorbed label",
-        )?;
-        push_reserved(
-            &mut recipes,
-            recipe,
-            "categorical absorbed recipe capacity exhausted",
-        )?;
-        push_reserved(
-            &mut specs,
-            CategoricalTopologyDofEffectSpec {
-                term_id: term.id,
-                sources: spec_sources,
-                label,
-            },
-            "categorical absorbed effect-metadata capacity exhausted",
-        )?;
     }
-    Ok((recipes, specs))
+    Ok(sources)
 }
 
-fn recipe_views<'a, R: CategoricalPreparationReservation>(
-    recipes: &'a [Vec<usize>],
-    reservation: &mut R,
-) -> Result<Vec<&'a [usize]>> {
-    let mut views = Vec::new();
-    reservation.reserve_vec(
-        &mut views,
-        recipes.len(),
-        "unable to reserve categorical absorbed recipe views",
-    )?;
-    for recipe in recipes {
-        push_reserved(
-            &mut views,
-            recipe.as_slice(),
-            "categorical absorbed recipe-view capacity exhausted",
-        )?;
+fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<()> {
+    if sources.contains(&source) {
+        return Ok(());
     }
-    Ok(views)
+    if sources.len() == sources.capacity() {
+        return Err(allocation(
+            "ordinary categorical source-identity capacity exhausted",
+        ));
+    }
+    sources.push(source);
+    Ok(())
 }
 
-fn resolve_model_levels(
+fn remap_and_resolve_model(
     model: &mut PreparedOlsModel,
-    categorical_sources: &[PreparedCategoricalSource],
+    sources: &[PreparedCategoricalModelSource],
+    topology: &FinalizedCategoricalTopology,
 ) -> Result<()> {
     for column in &mut model.columns {
         match &mut column.kind {
             PreparedOlsColumnKind::Categorical {
+                source,
+                prepared_source_index,
                 categorical_source_index,
                 level_bits,
                 level_code,
-                ..
             } => {
-                *level_code = resolve_level(
-                    categorical_sources,
-                    *categorical_source_index,
-                    *level_bits,
-                )?;
+                let new_index = categorical_model_source_index(sources, *source)?;
+                let categorical = &sources[new_index];
+                if categorical.prepared_source_index != *prepared_source_index {
+                    return Err(invalid(
+                        "ordinary categorical source identity changed during compaction",
+                    ));
+                }
+                *categorical_source_index = new_index;
+                *level_code = categorical.resolve_level(topology, f64::from_bits(*level_bits))?;
             }
             PreparedOlsColumnKind::CategoricalInteraction { components } => {
                 for component in components {
-                    component.level_code = resolve_level(
-                        categorical_sources,
-                        component.categorical_source_index,
-                        component.level_bits,
-                    )?;
+                    let new_index = categorical_model_source_index(sources, component.source)?;
+                    component.categorical_source_index = new_index;
+                    component.level_code = sources[new_index]
+                        .resolve_level(topology, f64::from_bits(component.level_bits))?;
                 }
             }
             PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
@@ -1139,68 +688,238 @@ fn resolve_model_levels(
     Ok(())
 }
 
-fn resolve_level(
-    sources: &[PreparedCategoricalSource],
-    source_index: usize,
-    level_bits: u64,
-) -> Result<Option<u32>> {
-    let source = sources
-        .get(source_index)
-        .ok_or_else(|| invalid("ordinary categorical source is out of range"))?;
-    let level = f64::from_bits(level_bits);
-    source
-        .encoded
-        .levels
-        .binary_search_by(|candidate| candidate.total_cmp(&level))
-        .ok()
-        .map(|index| {
-            u32::try_from(index)
-                .map_err(|_| invalid("ordinary categorical level code exceeds u32"))
-        })
-        .transpose()
+fn categorical_model_source_index(
+    sources: &[PreparedCategoricalModelSource],
+    source: SourceId,
+) -> Result<usize> {
+    sources
+        .iter()
+        .position(|candidate| candidate.source == source)
+        .ok_or_else(|| invalid("ordinary categorical model source is absent"))
 }
 
-fn build_rhs_with_reservation<R: CategoricalPreparationReservation>(
-    prepared: &PreparedCategoricalOlsData,
-    reservation: &mut R,
-) -> Result<PreparedCategoricalOlsRhs> {
-    prepared.validate()?;
-    let nrows = prepared.sample.n_active();
-    let ncols = prepared
-        .model
-        .columns
-        .len()
-        .checked_add(1)
-        .ok_or_else(|| allocation("categorical OLS RHS column count overflows"))?;
-    let elements = nrows
-        .checked_mul(ncols)
-        .ok_or_else(|| allocation("categorical OLS RHS dimensions overflow"))?;
-    let mut values = Vec::new();
-    reservation.reserve_vec(
-        &mut values,
-        elements,
-        "unable to reserve categorical OLS RHS",
-    )?;
-    if values.capacity() < elements {
-        return Err(allocation(
-            "categorical OLS RHS reservation returned insufficient capacity",
-        ));
+fn effect_specs(
+    effects: &[BoundCategoricalAbsorbEffect],
+) -> Result<Vec<CategoricalTopologyDofEffectSpec>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve categorical absorbed DoF metadata"))?;
+    for effect in effects {
+        push_reserved(
+            &mut output,
+            CategoricalTopologyDofEffectSpec {
+                term_id: effect.term_id,
+                sources: fallible_copy_slice(
+                    &effect.sources,
+                    "unable to reserve categorical absorbed DoF source identities",
+                )?,
+                label: fallible_string_copy(
+                    &effect.label,
+                    "unable to reserve categorical absorbed DoF label",
+                )?,
+            },
+            "categorical absorbed DoF metadata capacity exhausted",
+        )?;
     }
-    values.resize(elements, 0.0);
-    for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
-        destination[0] = prepared.sample.outcome[row];
-        for generated_column in 0..prepared.model.columns.len() {
-            destination[generated_column + 1] = prepared.column_value(generated_column, row)?;
+    Ok(output)
+}
+
+fn categorical_views(
+    sources: &[PreparedCategoricalSource],
+) -> Result<Vec<CategoricalCodeView<'_>>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(sources.len())
+        .map_err(|_| allocation("unable to reserve candidate categorical source views"))?;
+    for source in sources {
+        push_reserved(
+            &mut output,
+            CategoricalCodeView::new(&source.encoded.codes, source.encoded.n_levels()),
+            "candidate categorical source-view capacity exhausted",
+        )?;
+    }
+    Ok(output)
+}
+
+fn effect_recipe_views(
+    effects: &[BoundCategoricalAbsorbEffect],
+) -> Result<Vec<&[usize]>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve categorical effect recipe views"))?;
+    for effect in effects {
+        if effect.categorical_source_indices.is_empty() {
+            return Err(invalid(
+                "bound categorical absorbed effect has an empty source recipe",
+            ));
+        }
+        push_reserved(
+            &mut output,
+            effect.categorical_source_indices.as_slice(),
+            "categorical effect recipe-view capacity exhausted",
+        )?;
+    }
+    Ok(output)
+}
+
+fn validate_categorical_model_sources(
+    sample: &PreparedNumericSample,
+    topology: &FinalizedCategoricalTopology,
+    sources: &[PreparedCategoricalModelSource],
+) -> Result<()> {
+    let mut seen = Vec::new();
+    seen.try_reserve_exact(sources.len())
+        .map_err(|_| allocation("unable to reserve categorical source validation identities"))?;
+    for source in sources {
+        if seen.contains(&source.source) {
+            return Err(invalid(
+                "ordinary categorical source table contains duplicate source identities",
+            ));
+        }
+        push_reserved(
+            &mut seen,
+            source.source,
+            "categorical source validation identity capacity exhausted",
+        )?;
+        let expected_prepared_index = usize::try_from(source.source.get() - 1)
+            .map_err(|_| invalid("ordinary categorical source id does not fit usize"))?;
+        if source.prepared_source_index != expected_prepared_index {
+            return Err(invalid(
+                "ordinary categorical source index does not match its source id",
+            ));
+        }
+        let raw = sample
+            .regressors
+            .get(source.prepared_source_index)
+            .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
+        let codes = source.codes(topology)?;
+        let n_levels = source.n_levels(topology)?;
+        if codes.len() != sample.n_active() || raw.len() != sample.n_active() {
+            return Err(invalid(
+                "ordinary categorical source is not aligned with the final sample",
+            ));
+        }
+        if !codes.is_empty() && n_levels == 0 {
+            return Err(invalid(
+                "nonempty ordinary categorical source declares zero levels",
+            ));
+        }
+        for (row, code) in codes.iter().copied().enumerate() {
+            if code as usize >= n_levels {
+                return Err(invalid_data(
+                    "ordinary categorical source contains an out-of-range code",
+                ));
+            }
+            let level = source.level_value(topology, code)?;
+            if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
+                return Err(invalid(
+                    "ordinary categorical source codes do not represent their raw values",
+                ));
+            }
         }
     }
-    if values.iter().any(|value| !value.is_finite()) {
-        return Err(invalid_data(
-            "categorical OLS RHS construction produced a nonfinite value",
+    Ok(())
+}
+
+fn validate_model_recipes(
+    model: &PreparedOlsModel,
+    sources: &[PreparedCategoricalModelSource],
+    topology: &FinalizedCategoricalTopology,
+) -> Result<()> {
+    let mut generated = 0_usize;
+    for coefficient in &model.coefficients {
+        match coefficient.status {
+            PreparedOlsCoefficientStatus::Active => {
+                if coefficient.generated_column_index != Some(generated)
+                    || model
+                        .columns
+                        .get(generated)
+                        .is_none_or(|column| column.coefficient_slot != coefficient.coefficient_slot)
+                {
+                    return Err(invalid(
+                        "categorical OLS coefficient-to-column map is inconsistent",
+                    ));
+                }
+                generated = generated
+                    .checked_add(1)
+                    .ok_or_else(|| allocation("categorical OLS generated-column count overflows"))?;
+            }
+            PreparedOlsCoefficientStatus::SyntaxOmitted => {
+                if coefficient.generated_column_index.is_some() {
+                    return Err(invalid(
+                        "syntax-omitted categorical OLS coefficient has a generated column",
+                    ));
+                }
+            }
+        }
+    }
+    if generated != model.columns.len() {
+        return Err(invalid(
+            "categorical OLS generated columns are not covered exactly once",
         ));
     }
-    Ok(PreparedCategoricalOlsRhs {
-        values: DenseMatrix::from_row_major(nrows, ncols, values)?,
-    })
+    for column in &model.columns {
+        match &column.kind {
+            PreparedOlsColumnKind::Intercept => {}
+            PreparedOlsColumnKind::Continuous {
+                source,
+                prepared_source_index,
+            } => {
+                let expected = usize::try_from(source.get() - 1)
+                    .map_err(|_| invalid("continuous source id does not fit usize"))?;
+                if expected != *prepared_source_index {
+                    return Err(invalid(
+                        "categorical OLS continuous recipe identity is inconsistent",
+                    ));
+                }
+            }
+            PreparedOlsColumnKind::Categorical {
+                source,
+                prepared_source_index,
+                categorical_source_index,
+                level_bits,
+                level_code,
+            } => {
+                let categorical = sources
+                    .get(*categorical_source_index)
+                    .ok_or_else(|| invalid("categorical recipe source is out of range"))?;
+                if categorical.source != *source
+                    || categorical.prepared_source_index != *prepared_source_index
+                    || categorical.resolve_level(topology, f64::from_bits(*level_bits))?
+                        != *level_code
+                {
+                    return Err(invalid(
+                        "categorical OLS factor recipe is inconsistent",
+                    ));
+                }
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                if components.len() < 2 {
+                    return Err(invalid(
+                        "categorical ordinary interaction has fewer than two components",
+                    ));
+                }
+                for component in components {
+                    let categorical = sources
+                        .get(component.categorical_source_index)
+                        .ok_or_else(|| invalid("interaction recipe source is out of range"))?;
+                    if categorical.source != component.source
+                        || categorical.resolve_level(
+                            topology,
+                            f64::from_bits(component.level_bits),
+                        )? != component.level_code
+                    {
+                        return Err(invalid(
+                            "categorical OLS interaction recipe is inconsistent",
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
@@ -1209,7 +928,6 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
         || sample.drop_reasons.len() != sample.n_original
         || sample.outcome.len() != nrows
         || sample.regressors.iter().any(|source| source.len() != nrows)
-        || !matches!(sample.adjustment, PreparedAdjustment::None)
     {
         return Err(invalid(
             "prepared categorical OLS numeric sample is not aligned",
@@ -1268,225 +986,39 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
     Ok(())
 }
 
-fn validate_final_categorical_sources(
-    sample: &PreparedNumericSample,
-    sources: &[PreparedCategoricalSource],
-) -> Result<()> {
-    for source in sources {
-        let raw = sample
-            .regressors
-            .get(source.prepared_source_index)
-            .ok_or_else(|| invalid("ordinary categorical source is out of range"))?;
-        if source.encoded.codes.len() != sample.n_active() || raw.len() != sample.n_active() {
-            return Err(invalid(
-                "ordinary categorical source is not aligned with the final sample",
-            ));
-        }
-        for (row, code) in source.encoded.codes.iter().copied().enumerate() {
-            let level = source
-                .encoded
-                .levels
-                .get(code as usize)
-                .ok_or_else(|| invalid("ordinary categorical code is out of range"))?;
-            if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
-                return Err(invalid(
-                    "ordinary categorical codes do not represent their numeric source",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_model_recipes(prepared: &PreparedCategoricalOlsData) -> Result<()> {
-    let mut generated = 0_usize;
-    for coefficient in &prepared.model.coefficients {
-        match coefficient.status {
-            PreparedOlsCoefficientStatus::Active => {
-                if coefficient.generated_column_index != Some(generated)
-                    || prepared
-                        .model
-                        .columns
-                        .get(generated)
-                        .is_none_or(|column| column.coefficient_slot != coefficient.coefficient_slot)
-                {
-                    return Err(invalid(
-                        "categorical OLS coefficient-to-column map is inconsistent",
-                    ));
-                }
-                generated = generated
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("categorical OLS generated-column count overflows"))?;
-            }
-            PreparedOlsCoefficientStatus::SyntaxOmitted => {
-                if coefficient.generated_column_index.is_some() {
-                    return Err(invalid(
-                        "syntax-omitted categorical OLS coefficient has a column",
-                    ));
-                }
-            }
-        }
-    }
-    if generated != prepared.model.columns.len() {
-        return Err(invalid(
-            "categorical OLS generated columns are not covered exactly once",
-        ));
-    }
-    for column in &prepared.model.columns {
-        match &column.kind {
-            PreparedOlsColumnKind::Intercept => {}
-            PreparedOlsColumnKind::Continuous {
-                source,
-                prepared_source_index,
-            } => {
-                if model_source_index_from_id(*source)? != *prepared_source_index
-                    || prepared.sample.regressors.get(*prepared_source_index).is_none()
-                {
-                    return Err(invalid(
-                        "categorical OLS continuous recipe identity is inconsistent",
-                    ));
-                }
-            }
-            PreparedOlsColumnKind::Categorical {
-                source,
-                prepared_source_index,
-                categorical_source_index,
-                level_bits,
-                level_code,
-            } => validate_categorical_recipe(
-                prepared,
-                *source,
-                *prepared_source_index,
-                *categorical_source_index,
-                *level_bits,
-                *level_code,
-            )?,
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                if components.len() < 2 {
-                    return Err(invalid(
-                        "categorical ordinary interaction has fewer than two components",
-                    ));
-                }
-                for component in components {
-                    let categorical = prepared
-                        .categorical_sources
-                        .get(component.categorical_source_index)
-                        .ok_or_else(|| invalid("ordinary interaction source is out of range"))?;
-                    validate_categorical_recipe(
-                        prepared,
-                        component.source,
-                        categorical.prepared_source_index,
-                        component.categorical_source_index,
-                        component.level_bits,
-                        component.level_code,
-                    )?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_categorical_recipe(
-    prepared: &PreparedCategoricalOlsData,
-    source: SourceId,
-    prepared_source_index: usize,
-    categorical_source_index: usize,
-    level_bits: u64,
-    level_code: Option<u32>,
-) -> Result<()> {
-    let categorical = prepared
-        .categorical_sources
-        .get(categorical_source_index)
-        .ok_or_else(|| invalid("ordinary categorical recipe source is out of range"))?;
-    if categorical.source != source
-        || categorical.prepared_source_index != prepared_source_index
-        || model_source_index_from_id(source)? != prepared_source_index
-    {
-        return Err(invalid(
-            "ordinary categorical recipe identity is inconsistent",
-        ));
-    }
-    let requested = canonical_factor_value(f64::from_bits(level_bits));
-    if !requested.is_finite() || requested < 0.0 || requested.fract() != 0.0 {
-        return Err(invalid(
-            "ordinary categorical recipe level is invalid",
-        ));
-    }
-    let resolved = categorical
-        .encoded
-        .levels
-        .binary_search_by(|candidate| candidate.total_cmp(&requested))
-        .ok()
-        .and_then(|index| u32::try_from(index).ok());
-    if resolved != level_code {
-        return Err(invalid(
-            "ordinary categorical recipe level code is inconsistent",
-        ));
-    }
-    Ok(())
-}
-
-fn categorical_indicator(
-    sources: &[PreparedCategoricalSource],
-    source_index: usize,
-    level_code: Option<u32>,
-    row: usize,
-) -> Result<f64> {
-    let Some(level_code) = level_code else {
-        return Ok(0.0);
-    };
-    let code = sources
-        .get(source_index)
-        .and_then(|source| source.encoded.codes.get(row))
-        .copied()
-        .ok_or_else(|| invalid("ordinary categorical indicator source is out of range"))?;
-    Ok(f64::from(code == level_code))
-}
-
-fn model_source_index(request: &OlsRequestV1, source: SourceId) -> Result<usize> {
-    let index = model_source_index_from_id(source)?;
-    if request.model.sources.get(index).is_none_or(|entry| entry.id != source) {
-        return Err(invalid("model source registry is not contiguous and ordered"));
-    }
-    Ok(index)
-}
-
-fn model_source_index_from_id(source: SourceId) -> Result<usize> {
-    usize::try_from(source.get() - 1).map_err(|_| invalid("source id does not fit usize"))
-}
-
-fn ordered_source_index(sources: &[SourceId], source: SourceId, label: &str) -> Result<usize> {
-    sources
-        .iter()
-        .position(|candidate| *candidate == source)
-        .ok_or_else(|| invalid(format!("{label} is absent")))
-}
-
-fn filled_bool<R: CategoricalPreparationReservation>(
-    len: usize,
-    value: bool,
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<Vec<bool>> {
+fn fallible_filled_bool(len: usize, value: bool) -> Result<Vec<bool>> {
     let mut output = Vec::new();
-    reservation.reserve_vec(&mut output, len, label)?;
+    output
+        .try_reserve_exact(len)
+        .map_err(|_| allocation("unable to reserve categorical singleton active mask"))?;
     if output.capacity() < len {
         return Err(allocation(
-            "categorical OLS boolean reservation returned insufficient capacity",
+            "categorical singleton active-mask reservation returned insufficient capacity",
         ));
     }
     output.resize(len, value);
     Ok(output)
 }
 
-fn fallible_string_copy<R: CategoricalPreparationReservation>(
-    input: &str,
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<String> {
+fn fallible_copy_slice<T: Copy>(input: &[T], label: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(input.len())
+        .map_err(|_| allocation(label))?;
+    if output.capacity() < input.len() {
+        return Err(allocation(
+            "categorical OLS vector reservation returned insufficient capacity",
+        ));
+    }
+    output.extend_from_slice(input);
+    Ok(output)
+}
+
+fn fallible_string_copy(input: &str, label: &'static str) -> Result<String> {
     let mut output = String::new();
-    reservation.reserve_string(&mut output, input.len(), label)?;
+    output
+        .try_reserve_exact(input.len())
+        .map_err(|_| allocation(label))?;
     if output.capacity() < input.len() {
         return Err(allocation(
             "categorical OLS string reservation returned insufficient capacity",
@@ -1512,61 +1044,12 @@ fn canonical_factor_value(value: f64) -> f64 {
     }
 }
 
-struct OlsPreparationPolicy;
-
-impl NumericDomainPolicy for OlsPreparationPolicy {
-    fn outcome(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
-        Ok(DomainDecision::Retain)
-    }
-
-    fn weight(&self, _row: usize, kind: WeightKind, value: f64) -> Result<DomainDecision> {
-        match kind {
-            WeightKind::Analytic if value == 0.0 => Ok(DomainDecision::Drop),
-            WeightKind::Analytic if value < 0.0 => Err(StFixestError::new(
-                ErrorCode::NegativeWeight,
-                "analytic weight is negative",
-            )),
-            WeightKind::Analytic => Ok(DomainDecision::Retain),
-            WeightKind::Frequency
-                if value > 0.0 && value.fract() == 0.0 && value <= f64::from(u32::MAX) =>
-            {
-                Ok(DomainDecision::Retain)
-            }
-            WeightKind::Frequency => Err(StFixestError::new(
-                ErrorCode::InvalidFrequencyWeight,
-                "frequency weight must be a positive u32 integer",
-            )),
-            WeightKind::Probability if value > 0.0 => Ok(DomainDecision::Retain),
-            WeightKind::Probability => Err(invalid_data(
-                "probability weight must be positive and finite",
-            )),
-            WeightKind::Importance => Err(unsupported(
-                "categorical OLS preparation received an unsupported weight kind",
-            )),
-        }
-    }
-
-    fn offset(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
-        Err(invalid("categorical OLS preparation received an offset"))
-    }
-
-    fn exposure(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
-        Err(invalid(
-            "categorical OLS preparation received an exposure",
-        ))
-    }
-}
-
 fn invalid(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidArgument, message)
 }
 
 fn invalid_data(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> StFixestError {
-    StFixestError::new(ErrorCode::Unsupported, message)
 }
 
 fn allocation(message: impl Into<String>) -> StFixestError {
