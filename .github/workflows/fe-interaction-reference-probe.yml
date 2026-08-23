@@ -8,6 +8,8 @@ on:
       - .github/workflows/fe-interaction-reference-probe.yml
       - scripts/fe_interaction_probe.py
       - scripts/resolve_reference_root.py
+      - tests/python/test_fe_interaction_probe_contract.py
+      - tests/python/test_reference_root_resolver_contract.py
       - benchmarks/stata/probe_reghdfe_fe_interaction.do
       - benchmarks/stata/baseline_reghdfe.do
       - benchmarks/manifests/ols_v1.json
@@ -97,7 +99,7 @@ jobs:
           echo "No Python interpreter with tomllib is available on the trusted runner." >&2
           exit 1
 
-      - name: Resolve offline pinned reference root
+      - name: Resolve or materialize offline pinned reference root
         id: reference_root
         if: steps.python.outcome == 'success'
         continue-on-error: true
@@ -107,9 +109,14 @@ jobs:
         run: |
           set -euo pipefail
           root_file="$RUNNER_TEMP/stfixest-reference-root.path"
+          materialize_parent="$RUNNER_TEMP/stfixest-reference-materialized"
           rm -f "$root_file"
+          rm -rf "$materialize_parent"
+          mkdir -m 700 "$materialize_parent"
           "$PROBE_PYTHON" -m py_compile scripts/resolve_reference_root.py scripts/ols_reference.py
-          "$PROBE_PYTHON" scripts/resolve_reference_root.py --output "$root_file"
+          "$PROBE_PYTHON" scripts/resolve_reference_root.py \
+            --output "$root_file" \
+            --materialize-parent "$materialize_parent"
           chmod 600 "$root_file"
           echo "file=$root_file" >> "$GITHUB_OUTPUT"
 
@@ -168,7 +175,7 @@ jobs:
                       detail = "no trusted runner Python interpreter could import tomllib"
                   elif os.environ.get("REFERENCE_ROOT_OUTCOME") != "success":
                       reason = "offline_reference_root_unresolved"
-                      detail = "no allowlisted root passed the exact offline reference preflight"
+                      detail = "no allowlisted root or local object store passed exact offline reference preflight"
                   elif os.environ.get("PROBE_OUTCOME") != "success":
                       reason = "probe_process_failed_before_summary"
                       detail = "reference probe process failed before writing a terminal summary"
