@@ -72,6 +72,43 @@ categorical = replace_once(
     "        } => SingletonMultiplicity::Frequency(values.as_slice()),\n",
     "categorical frequency multiplicity borrow",
 )
+categorical = replace_once(
+    categorical,
+    "    let ordinary_sources = ordinary_categorical_sources(&model)?;\n"
+    "    let model_source_plans =\n"
+    "        plan_model_sources(candidate_sources, &ordinary_sources, &fe_topology)?;\n",
+    "    let final_sources = final_categorical_sources(&model, cluster_sources)?;\n"
+    "    let model_source_plans =\n"
+    "        plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;\n",
+    "final categorical cluster-source retention",
+)
+categorical = replace_once(
+    categorical,
+    "    Ok(sources)\n"
+    "}\n\n"
+    "fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<()> {\n",
+    "    Ok(sources)\n"
+    "}\n\n"
+    "fn final_categorical_sources(\n"
+    "    model: &PreparedOlsModel,\n"
+    "    cluster_sources: &[SourceId],\n"
+    ") -> Result<Vec<SourceId>> {\n"
+    "    let mut sources = ordinary_categorical_sources(model)?;\n"
+    "    let additional = cluster_sources\n"
+    "        .iter()\n"
+    "        .filter(|source| !sources.contains(source))\n"
+    "        .count();\n"
+    "    sources\n"
+    "        .try_reserve_exact(additional)\n"
+    "        .map_err(|_| allocation(\"unable to reserve final categorical cluster sources\"))?;\n"
+    "    for source in cluster_sources {\n"
+    "        push_unique_source(&mut sources, *source)?;\n"
+    "    }\n"
+    "    Ok(sources)\n"
+    "}\n\n"
+    "fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<()> {\n",
+    "final categorical source helper",
+)
 CATEGORICAL.write_text(categorical, encoding="utf-8")
 
 clusters = CLUSTERS.read_text(encoding="utf-8")
@@ -143,10 +180,9 @@ OLS_MOD.write_text(ols_mod, encoding="utf-8")
 lib = LIB.read_text(encoding="utf-8")
 lib = replace_once(
     lib,
-    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\n"
-    "    fit_prepared_ols_clustered_map,\n",
-    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\n"
-    "    fit_prepared_ols_clustered_map, prepare_categorical_ols_clustered_data,\n",
+    "    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map,\n",
+    "    fit_prepared_ols_clustered_map, prepare_categorical_ols_clustered_data,\n"
+    "    fit_prepared_ols_coefficients_map,\n",
     "crate categorical cluster function export",
 )
 lib = replace_once(
