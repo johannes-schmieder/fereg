@@ -72,7 +72,11 @@ jobs:
           fi
 
           /usr/bin/python3 "$transform"
-          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
+          /opt/homebrew/bin/rustup run 1.85.1 rustfmt --edition 2021 \
+            crates/stfixest-core/src/lib.rs \
+            crates/stfixest-core/src/ols/mod.rs \
+            crates/stfixest-core/src/ols/prepared_inference_view.rs \
+            crates/stfixest-core/src/ols/prepared_unadjusted.rs
 
           rm "$transform"
           rm -f ci/source-transforms/trigger-iid.txt
