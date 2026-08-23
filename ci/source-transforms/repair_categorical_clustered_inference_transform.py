@@ -6,11 +6,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TARGET = ROOT / "ci/source-transforms/activate_categorical_clustered_inference.py"
 text = TARGET.read_text(encoding="utf-8")
+
 start_marker = 'clustered = regex_once(\n    clustered,\n    r"fn build_clustered_dof'
 end_marker = '\nclustered = replace_once(\n    clustered,\n    "fn apply_psd_policy'
 start = text.index(start_marker)
 end = text.index(end_marker, start)
-replacement = """clustered = regex_once(
+dof_replacement = """clustered = regex_once(
     clustered,
     r"fn build_clustered_dof\\(.*?\\n}\\n\\n(?=fn cluster_correction)",
     r'''fn build_clustered_dof<P: PreparedOlsClusteredView + ?Sized>(
@@ -79,5 +80,31 @@ replacement = """clustered = regex_once(
     "generic clustered DoF builder",
 )
 """
-TARGET.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+text = text[:start] + dof_replacement + text[end:]
+
+old_export = '''lib = replace_once(
+    lib,
+    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\\n"
+    "    fit_prepared_ols_clustered_map, prepare_categorical_ols_clustered_data,\\n",
+    "    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,\\n"
+    "    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,\\n"
+    "    prepare_categorical_ols_clustered_data,\\n",
+    "crate categorical clustered function export",
+)'''
+new_export = '''lib = replace_once(
+    lib,
+    "    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,\\n"
+    "    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,\\n",
+    "    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,\\n"
+    "    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,\\n"
+    "    fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,\\n",
+    "crate categorical clustered function export",
+)'''
+if text.count(old_export) != 1:
+    raise SystemExit(
+        f"categorical clustered function-export repair: expected one occurrence, found {text.count(old_export)}"
+    )
+text = text.replace(old_export, new_export, 1)
+
+TARGET.write_text(text, encoding="utf-8")
 print("repaired categorical clustered-inference transform")
