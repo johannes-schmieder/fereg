@@ -23,6 +23,15 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         self.assertNotIn("urllib", text)
         self.assertNotIn("requests", text)
 
+    def test_failed_probe_retains_private_debug_artifacts(self) -> None:
+        text = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('shutil.copy2(log_file, output_dir / "run.log")', text)
+        self.assertIn('shutil.copy2(capture_file, output_dir / "capture.machine")', text)
+        self.assertIn("baseline_sentinel_count", text)
+        self.assertIn('"stage": "probe_execution"', text)
+        self.assertIn('"workflow_run_id"', text)
+        self.assertIn('"workflow_run_attempt"', text)
+
     def test_workflow_is_private_main_and_mac_runner_scoped(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("branches:\n      - main", text)

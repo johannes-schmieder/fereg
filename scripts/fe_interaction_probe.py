@@ -304,15 +304,20 @@ def execute_probe(
             for line in log_text.splitlines()
             if line.strip().startswith("END_FIXTURE|")
         ]
+        if log_file.is_file():
+            shutil.copy2(log_file, output_dir / "run.log")
+        if capture_file.is_file():
+            shutil.copy2(capture_file, output_dir / "capture.machine")
         if completed.returncode != 0 or log_sentinels != [BASELINE_SENTINEL]:
-            raise ProbeError("licensed reference probe failed or lacked its baseline sentinel")
+            raise ProbeError(
+                "licensed reference probe failed: "
+                f"process_rc={completed.returncode}; "
+                f"baseline_sentinel_count={len(log_sentinels)}"
+            )
         if not capture_file.is_file():
             raise ProbeError("licensed reference probe wrote no machine capture")
         capture_text = capture_file.read_text(encoding="utf-8", errors="strict")
         parsed = parse_probe_capture(capture_text, manifest_sha256)
-        shutil.copy2(capture_file, output_dir / "capture.machine")
-        if log_file.is_file():
-            shutil.copy2(log_file, output_dir / "run.log")
 
     identities_after = preflight_reference_root(reference_root, lock, ROOT)
     if {
@@ -362,10 +367,17 @@ def failure_document(source_sha: str, exc: BaseException) -> dict[str, Any]:
         "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
         "status": "failure",
         "source_sha": source_sha,
+        "stage": "probe_execution",
         "failure_kind": type(exc).__name__,
         "failure_detail": sanitize_message(str(exc)),
         "raw_capture_committed": False,
     }
+    run_id = os.environ.get("GITHUB_RUN_ID")
+    run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT")
+    if run_id and run_id.isdigit():
+        payload["workflow_run_id"] = int(run_id)
+    if run_attempt and run_attempt.isdigit():
+        payload["workflow_run_attempt"] = int(run_attempt)
     return seal_payload(payload)
 
 
