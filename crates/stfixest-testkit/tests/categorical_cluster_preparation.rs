@@ -14,7 +14,6 @@ const FIRM_SOURCE: usize = 1;
 const YEAR_SOURCE: usize = 2;
 const CLUSTER_A_SOURCE: usize = 3;
 const CLUSTER_B_SOURCE: usize = 4;
-const SOURCE_COUNT: usize = 5;
 
 #[test]
 fn simple_cluster_only_source_is_retained_and_borrowed_zero_copy() {
@@ -259,37 +258,59 @@ fn prepare_case(
     assert_eq!(case.cluster_a.len(), nobs);
     assert_eq!(case.cluster_b.len(), nobs);
 
-    let source_values = [
-        case.x.to_vec(),
-        case.firm.iter().map(|value| f64::from(*value)).collect(),
-        case.year.iter().map(|value| f64::from(*value)).collect(),
-        case.cluster_a
-            .iter()
-            .map(|value| f64::from(*value))
-            .collect(),
-        case.cluster_b
-            .iter()
-            .map(|value| f64::from(*value))
-            .collect(),
-    ];
-    let mut numeric_sources = source_values
-        .into_iter()
-        .enumerate()
-        .map(|(index, values)| (source_id(index), loaded_column(values)))
+    let uses_cluster_a = clusters
+        .iter()
+        .any(|term| term.sources.contains(&source_id(CLUSTER_A_SOURCE)));
+    let uses_cluster_b = clusters
+        .iter()
+        .any(|term| term.sources.contains(&source_id(CLUSTER_B_SOURCE)));
+    let mut included_sources = vec![X_SOURCE, FIRM_SOURCE, YEAR_SOURCE];
+    if uses_cluster_a {
+        included_sources.push(CLUSTER_A_SOURCE);
+    }
+    if uses_cluster_b {
+        included_sources.push(CLUSTER_B_SOURCE);
+    }
+
+    let mut numeric_sources = included_sources
+        .iter()
+        .copied()
+        .map(|index| {
+            let values = match index {
+                X_SOURCE => case.x.to_vec(),
+                FIRM_SOURCE => case.firm.iter().map(|value| f64::from(*value)).collect(),
+                YEAR_SOURCE => case.year.iter().map(|value| f64::from(*value)).collect(),
+                CLUSTER_A_SOURCE => case
+                    .cluster_a
+                    .iter()
+                    .map(|value| f64::from(*value))
+                    .collect(),
+                CLUSTER_B_SOURCE => case
+                    .cluster_b
+                    .iter()
+                    .map(|value| f64::from(*value))
+                    .collect(),
+                _ => unreachable!("bounded test source index"),
+            };
+            (source_id(index), loaded_column(values))
+        })
         .collect::<Vec<_>>();
     for (source_index, row) in missing.iter().copied() {
-        assert!(source_index < numeric_sources.len());
         assert!(row < nobs);
-        numeric_sources[source_index].1.missing[row] = true;
+        let (_, column) = numeric_sources
+            .iter_mut()
+            .find(|(source, _)| *source == source_id(source_index))
+            .expect("missing marker source is included");
+        column.missing[row] = true;
     }
 
     let source_names = ["x", "firm", "year", "cluster_a", "cluster_b"];
-    let sources = source_names
+    let sources = included_sources
         .iter()
-        .enumerate()
-        .map(|(index, name)| SourceEntry {
+        .copied()
+        .map(|index| SourceEntry {
             id: source_id(index),
-            canonical_name: (*name).to_owned(),
+            canonical_name: source_names[index].to_owned(),
         })
         .collect::<Vec<_>>();
     let mut bindings = vec![
@@ -302,7 +323,7 @@ fn prepare_case(
             role: OlsInputRole::Outcome,
         },
     ];
-    bindings.extend((0..SOURCE_COUNT).map(|index| OlsInputBinding {
+    bindings.extend(included_sources.iter().copied().map(|index| OlsInputBinding {
         stata_var_position: u32::try_from(index + 3).expect("small binding"),
         role: OlsInputRole::NumericSource(source_id(index)),
     }));
