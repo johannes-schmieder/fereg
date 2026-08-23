@@ -1,11 +1,10 @@
 use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{ErrorCode, Result, StFixestError};
-use crate::fe::{
-    absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights, MapConfig,
-};
+use crate::fe::{BorrowedMapWeights, MapConfig};
+use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
-use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsData};
+use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind};
 
 pub(super) trait PreparedInferenceReservation {
     fn reserve<T>(
@@ -93,15 +92,18 @@ impl CertifiedPreparedOlsScoreDesign {
     }
 }
 
-pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsData,
+pub(super) fn build_prepared_ols_score_design<
+    P: PreparedOlsFitView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     weights: ReferenceWeightView<'_>,
     map: MapConfig,
     tolerance: f64,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsScoreDesign> {
-    let nrows = prepared.sample.n_active();
+    let nrows = prepared.fit_sample().n_active();
     let rank = fit.finite_rank();
     let dimension = fit.bread().dimension();
     if nrows == 0 || !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
@@ -173,7 +175,7 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
     )?;
     for row in 0..nrows {
         for column in 0..rank {
-            let value = prepared.column_value(generated_columns[column], row)?;
+            let value = prepared.fit_column_value(generated_columns[column], row)?;
             if !value.is_finite() {
                 return Err(invalid_data(
                     "prepared robust raw score design contains a nonfinite value",
@@ -197,17 +199,11 @@ pub(super) fn build_prepared_ols_score_design<R: PreparedInferenceReservation>(
     let within = if rank == 0 {
         raw
     } else {
-        let design = prepared.borrowed_intercept_fe_design()?;
-        let map_weights = match &prepared.sample.weights {
+        let map_weights = match &prepared.fit_sample().weights {
             PreparedWeights::None => BorrowedMapWeights::Unit,
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
-        let absorbed = absorb_borrowed_intercept_map_with_structural_constant_certified(
-            &design,
-            map_weights,
-            raw,
-            map,
-        )?;
+        let absorbed = prepared.fit_absorb_matrix(map_weights, raw, map)?;
         if !absorbed.report().certified() {
             return Err(invalid_data(
                 "prepared robust score-design absorption did not certify",
