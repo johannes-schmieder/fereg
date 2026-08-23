@@ -72,16 +72,21 @@ jobs:
           fi
 
           /usr/bin/python3 "$transform"
-          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
+          /opt/homebrew/bin/rustup run 1.85.1 rustfmt --edition 2021 \
+            crates/stfixest-core/src/lib.rs \
+            crates/stfixest-core/src/ols/mod.rs \
+            crates/stfixest-core/src/ols/prepared_inference_view.rs \
+            crates/stfixest-core/src/ols/prepared_unadjusted.rs
 
           rm "$transform"
           rm -f ci/source-transforms/trigger-iid.txt
           rmdir ci/source-transforms 2>/dev/null || true
           rm -f .github/workflows/apply-prepared-iid-transform.yml
 
-          # The generated source commit restores the ordinary CI workflow from
-          # this bootstrap commit's parent. The following push therefore runs
-          # the normal quick Stata/Rust suite against the generated source SHA.
+          # The generated source commit restores the workflow from this
+          # transform commit's parent. With the transform removed, the next
+          # push runs the ordinary quick Stata/Rust suite against the generated
+          # source SHA.
           git show "$GITHUB_SHA^:.github/workflows/stata-ci.yml" > .github/workflows/stata-ci.yml
 
           git config user.name "github-actions[bot]"
@@ -89,7 +94,7 @@ jobs:
           git add -A
           git diff --cached --check
           git diff --cached --quiet && { echo "source transform produced no changes" >&2; exit 1; }
-          git commit -m "ols: generalize certified iid inference over categorical view"
+          git commit -m "ols: repair categorical iid inference imports"
           git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
           git rebase "refs/remotes/origin/${BRANCH_NAME}"
           git push origin "HEAD:refs/heads/${BRANCH_NAME}"
