@@ -434,24 +434,19 @@ fn balanced_case(repetitions: usize) -> ClusterCase {
                 firm.push(firm_value);
                 year.push(year_value);
                 cluster_a.push(
-                    u32::try_from(
-                        (firm_value as usize + 2 * repetition + year_value as usize) % 5,
-                    )
-                    .expect("bounded cluster a"),
+                    u32::try_from((firm_value as usize + 2 * repetition + year_value as usize) % 5)
+                        .expect("bounded cluster a"),
                 );
                 cluster_b.push(
-                    u32::try_from(
-                        (2 * firm_value as usize + repetition + year_value as usize) % 4,
-                    )
-                    .expect("bounded cluster b"),
+                    u32::try_from((2 * firm_value as usize + repetition + year_value as usize) % 4)
+                        .expect("bounded cluster b"),
                 );
             }
         }
     }
     let x = (0..firm.len())
         .map(|row| {
-            (0.31 * row as f64).sin() + 0.17 * f64::from(firm[row])
-                - 0.09 * f64::from(year[row])
+            (0.31 * row as f64).sin() + 0.17 * f64::from(firm[row]) - 0.09 * f64::from(year[row])
         })
         .collect::<Vec<_>>();
     let outcome = (0..firm.len())
