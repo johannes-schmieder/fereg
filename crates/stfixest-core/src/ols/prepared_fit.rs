@@ -566,7 +566,7 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
         ));
     }
     let reported_intercepts = prepared
-        .model
+        .fit_model()
         .columns
         .iter()
         .filter(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
@@ -596,7 +596,7 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
         ));
     }
     let axis = prepared
-        .sample
+        .fit_sample()
         .n_active()
         .max(prepared.fit_model().columns.len())
         .max(1);
@@ -1445,7 +1445,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             || !prepared.fit_structural_intercept()
             || !matches!(
                 prepared
-                    .model
+                    .fit_model()
                     .columns
                     .get(generated)
                     .map(|column| &column.kind),
@@ -1475,7 +1475,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     )?;
     for generated in finite.generated_columns.iter().copied() {
         let column = prepared
-            .model
+            .fit_model()
             .columns
             .get(generated)
             .ok_or_else(|| invalid_argument("prepared OLS bread coordinate is out of range"))?;
@@ -1593,7 +1593,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
 
         let intercept_position = finite_dimension;
         let intercept_column = prepared
-            .model
+            .fit_model()
             .columns
             .get(intercept_generated)
             .ok_or_else(|| invalid_argument("prepared OLS intercept column is out of range"))?;
