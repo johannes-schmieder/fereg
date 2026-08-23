@@ -10,7 +10,7 @@ use crate::error::{ErrorCode, Result, StFixestError};
 use crate::fe::FinalizedCategoricalTopology;
 use crate::metadata::{
     CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag, RawTermKind,
-    TimeSeriesState,
+    SourceId, TimeSeriesState,
 };
 use crate::prepared_categorical_data::PreparedCategoricalModelSource;
 
@@ -60,6 +60,7 @@ pub(crate) struct RebasedCategoricalOlsModel {
 
 pub(crate) fn rebase_categorical_model(
     graph: &CompiledTermGraph,
+    candidate_model: &PreparedOlsModel,
     sources: &[PreparedCategoricalModelSource],
     topology: &FinalizedCategoricalTopology,
     report_intercept: bool,
@@ -83,16 +84,21 @@ pub(crate) fn rebase_categorical_model(
         .map_err(|_| allocation("unable to reserve categorical reporting slots"))?;
 
     for term in &graph.terms {
-        let Some((kind, final_base_component)) =
-            final_term_kind(term, sources, topology)?
-        else {
-            continue;
-        };
         let originally_base = term
             .components
             .iter()
             .any(|component| component.base == MetadataFlag::True);
         let explicitly_omitted = term.whole_column_omitted && !originally_base;
+        let Some((kind, final_base_component)) = final_term_kind(
+            term,
+            candidate_model,
+            sources,
+            topology,
+            explicitly_omitted,
+        )?
+        else {
+            continue;
+        };
         let syntax_omitted = explicitly_omitted || final_base_component;
         let public_slot = next_slot(coefficients.len())?;
         original_slots.push(term.coefficient_slot);
@@ -103,6 +109,9 @@ pub(crate) fn rebase_categorical_model(
                 generated_column_index: None,
             });
         } else {
+            let kind = kind.ok_or_else(|| {
+                invalid("active rebased categorical term has no executable column recipe")
+            })?;
             let generated_column_index = columns.len();
             columns.push(PreparedOlsColumn {
                 coefficient_slot: public_slot,
@@ -158,22 +167,27 @@ pub(crate) fn rebase_categorical_model(
 
 fn final_term_kind(
     term: &crate::metadata::ExpandedTerm,
+    candidate_model: &PreparedOlsModel,
     sources: &[PreparedCategoricalModelSource],
     topology: &FinalizedCategoricalTopology,
-) -> Result<Option<(PreparedOlsColumnKind, bool)>> {
+    explicitly_omitted: bool,
+) -> Result<Option<(Option<PreparedOlsColumnKind>, bool)>> {
     match (term.raw_kind, term.components.as_slice()) {
         (RawTermKind::Variable, [component])
             if component.kind == ComponentKind::Continuous
                 && component.level_state == LevelState::Absent
                 && component.time_series_state == TimeSeriesState::None =>
         {
-            Ok(Some((
-                PreparedOlsColumnKind::Continuous {
-                    source: component.source,
-                    prepared_source_index: source_index(component.source)?,
-                },
-                false,
-            )))
+            let kind = if explicitly_omitted {
+                None
+            } else {
+                Some(candidate_continuous_kind(
+                    candidate_model,
+                    term.coefficient_slot,
+                    component.source,
+                )?)
+            };
+            Ok(Some((kind, false)))
         }
         (RawTermKind::Factor, [component])
             if component.kind == ComponentKind::Categorical
@@ -182,19 +196,17 @@ fn final_term_kind(
         {
             let categorical_source_index = categorical_source_index(sources, component.source)?;
             let source = &sources[categorical_source_index];
-            let Some(level_code) =
-                source.resolve_level(topology, component.level_value)?
-            else {
+            let Some(level_code) = source.resolve_level(topology, component.level_value)? else {
                 return Ok(None);
             };
             Ok(Some((
-                PreparedOlsColumnKind::Categorical {
+                Some(PreparedOlsColumnKind::Categorical {
                     source: component.source,
                     prepared_source_index: source.prepared_source_index(),
                     categorical_source_index,
                     level_bits: canonical_factor_value(component.level_value).to_bits(),
                     level_code: Some(level_code),
-                },
+                }),
                 level_code == 0,
             )))
         }
@@ -215,9 +227,7 @@ fn final_term_kind(
                 let categorical_source_index =
                     categorical_source_index(sources, component.source)?;
                 let source = &sources[categorical_source_index];
-                let Some(level_code) =
-                    source.resolve_level(topology, component.level_value)?
-                else {
+                let Some(level_code) = source.resolve_level(topology, component.level_value)? else {
                     return Ok(None);
                 };
                 final_base_component |= level_code == 0;
@@ -229,9 +239,9 @@ fn final_term_kind(
                 });
             }
             Ok(Some((
-                PreparedOlsColumnKind::CategoricalInteraction {
+                Some(PreparedOlsColumnKind::CategoricalInteraction {
                     components: prepared_components,
-                },
+                }),
                 final_base_component,
             )))
         }
@@ -241,19 +251,58 @@ fn final_term_kind(
     }
 }
 
+fn candidate_continuous_kind(
+    candidate_model: &PreparedOlsModel,
+    coefficient_slot: CoefficientSlot,
+    source: SourceId,
+) -> Result<PreparedOlsColumnKind> {
+    let coefficient_index = usize::try_from(coefficient_slot.get() - 1)
+        .map_err(|_| invalid("candidate continuous coefficient slot does not fit usize"))?;
+    let coefficient = candidate_model
+        .coefficients
+        .get(coefficient_index)
+        .ok_or_else(|| invalid("candidate continuous coefficient slot is absent"))?;
+    if coefficient.coefficient_slot != coefficient_slot
+        || coefficient.status != PreparedOlsCoefficientStatus::Active
+    {
+        return Err(invalid(
+            "candidate continuous coefficient identity or status is inconsistent",
+        ));
+    }
+    let generated_column_index = coefficient.generated_column_index.ok_or_else(|| {
+        invalid("candidate continuous coefficient has no generated column identity")
+    })?;
+    let column = candidate_model
+        .columns
+        .get(generated_column_index)
+        .ok_or_else(|| invalid("candidate continuous generated column is absent"))?;
+    if column.coefficient_slot != coefficient_slot {
+        return Err(invalid(
+            "candidate continuous generated column identity is inconsistent",
+        ));
+    }
+    match &column.kind {
+        PreparedOlsColumnKind::Continuous {
+            source: candidate_source,
+            prepared_source_index,
+        } if *candidate_source == source => Ok(PreparedOlsColumnKind::Continuous {
+            source,
+            prepared_source_index: *prepared_source_index,
+        }),
+        _ => Err(invalid(
+            "candidate continuous generated column recipe is inconsistent",
+        )),
+    }
+}
+
 fn categorical_source_index(
     sources: &[PreparedCategoricalModelSource],
-    source: crate::metadata::SourceId,
+    source: SourceId,
 ) -> Result<usize> {
     sources
         .iter()
         .position(|candidate| candidate.source() == source)
         .ok_or_else(|| invalid("rebased categorical model source is absent"))
-}
-
-fn source_index(source: crate::metadata::SourceId) -> Result<usize> {
-    usize::try_from(source.get() - 1)
-        .map_err(|_| invalid("rebased continuous source id does not fit usize"))
 }
 
 fn next_slot(current_len: usize) -> Result<CoefficientSlot> {
@@ -278,4 +327,74 @@ fn unsupported(message: impl Into<String>) -> StFixestError {
 
 fn allocation(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn slot(value: u32) -> CoefficientSlot {
+        CoefficientSlot::new(value).expect("valid coefficient slot")
+    }
+
+    fn source(value: u32) -> SourceId {
+        SourceId::new(value).expect("valid source id")
+    }
+
+    #[test]
+    fn continuous_rebase_preserves_validated_prepared_source_index() {
+        let source = source(17);
+        let candidate = PreparedOlsModel {
+            coefficients: vec![PreparedOlsCoefficient {
+                coefficient_slot: slot(1),
+                status: PreparedOlsCoefficientStatus::Active,
+                generated_column_index: Some(0),
+            }],
+            columns: vec![PreparedOlsColumn {
+                coefficient_slot: slot(1),
+                kind: PreparedOlsColumnKind::Continuous {
+                    source,
+                    prepared_source_index: 3,
+                },
+            }],
+        };
+        assert_eq!(
+            candidate_continuous_kind(&candidate, slot(1), source)
+                .expect("continuous candidate recipe"),
+            PreparedOlsColumnKind::Continuous {
+                source,
+                prepared_source_index: 3,
+            }
+        );
+    }
+
+    #[test]
+    fn continuous_rebase_rejects_source_or_status_mismatch() {
+        let source = source(17);
+        let active = PreparedOlsModel {
+            coefficients: vec![PreparedOlsCoefficient {
+                coefficient_slot: slot(1),
+                status: PreparedOlsCoefficientStatus::Active,
+                generated_column_index: Some(0),
+            }],
+            columns: vec![PreparedOlsColumn {
+                coefficient_slot: slot(1),
+                kind: PreparedOlsColumnKind::Continuous {
+                    source,
+                    prepared_source_index: 3,
+                },
+            }],
+        };
+        assert!(candidate_continuous_kind(&active, slot(1), source(18)).is_err());
+
+        let omitted = PreparedOlsModel {
+            coefficients: vec![PreparedOlsCoefficient {
+                coefficient_slot: slot(1),
+                status: PreparedOlsCoefficientStatus::SyntaxOmitted,
+                generated_column_index: None,
+            }],
+            columns: Vec::new(),
+        };
+        assert!(candidate_continuous_kind(&omitted, slot(1), source).is_err());
+    }
 }

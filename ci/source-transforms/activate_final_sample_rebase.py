@@ -118,6 +118,7 @@ data = replace_once(
     '    let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;\n'
     '    let rebased = rebase_categorical_model(\n'
     '        &request.model,\n'
+    '        &availability_model,\n'
     '        &categorical_sources,\n'
     '        &fe_topology,\n'
     '        request.include_intercept,\n'
