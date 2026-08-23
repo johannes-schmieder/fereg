@@ -2,11 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use stfixest_core::{
     fit_prepared_categorical_ols_robust_map, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
-    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsRobustConfig,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
-    WeightKind,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsRobustConfig, RawTermKind, SourceEntry,
+    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState, WeightKind,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, ExplicitOlsResult, OracleWeights,
@@ -96,11 +95,9 @@ fn assert_robust_case_matches_oracle(
     reverse_absorb_sources: bool,
 ) {
     let prepared = prepare_case(case, include_intercept, weights, reverse_absorb_sources);
-    let result = fit_prepared_categorical_ols_robust_map(
-        &prepared,
-        PreparedOlsRobustConfig::default(),
-    )
-    .expect("certified categorical HC1 inference");
+    let result =
+        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
+            .expect("certified categorical HC1 inference");
     assert!(result.fit().absorption_report().certified());
     assert!(result.fit().residual_absorption_report().certified());
     assert!(result.fit().rank_certificate().passed);
@@ -112,10 +109,8 @@ fn assert_robust_case_matches_oracle(
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: case.outcome.clone(),
         regressors: case.regressors.clone(),
-        effects: vec![
-            DummyEffect::new(interaction, n_levels, true, Vec::new())
-                .expect("explicit interaction effect"),
-        ],
+        effects: vec![DummyEffect::new(interaction, n_levels, true, Vec::new())
+            .expect("explicit interaction effect")],
         weights: oracle_weights(weights),
         clusters: Vec::new(),
     })
@@ -162,11 +157,7 @@ fn assert_robust_case_matches_oracle(
     let covariance = result.covariance();
     assert_eq!(covariance.dimension(), expected.nrows());
     assert_eq!(expected.nrows(), expected.ncols());
-    assert_slice_close(
-        covariance.values(),
-        expected.as_slice(),
-        ROBUST_TOLERANCE,
-    );
+    assert_slice_close(covariance.values(), expected.as_slice(), ROBUST_TOLERANCE);
     assert_close(
         covariance.hc1_correction(),
         effective_observations as f64 / dof.residual_dof as f64,
@@ -232,27 +223,13 @@ fn assert_weight_report(
             assert_eq!(report.kind, None);
             assert_eq!(report.raw_weight_sum, None);
             assert_close(report.solver_weight_divisor, 1.0, ROBUST_TOLERANCE);
-            assert_close(
-                report.reference_weight_multiplier,
-                1.0,
-                ROBUST_TOLERANCE,
-            );
+            assert_close(report.reference_weight_multiplier, 1.0, ROBUST_TOLERANCE);
         }
         CaseWeights::Analytic(values) => {
-            assert_weight_report_for_continuous(
-                report,
-                values,
-                nobs,
-                WeightKind::Analytic,
-            );
+            assert_weight_report_for_continuous(report, values, nobs, WeightKind::Analytic);
         }
         CaseWeights::Probability(values) => {
-            assert_weight_report_for_continuous(
-                report,
-                values,
-                nobs,
-                WeightKind::Probability,
-            );
+            assert_weight_report_for_continuous(report, values, nobs, WeightKind::Probability);
         }
         CaseWeights::Frequency(values) => {
             let sum = values.iter().map(|value| f64::from(*value)).sum::<f64>();
@@ -263,11 +240,7 @@ fn assert_weight_report(
                 .fold(0.0_f64, f64::max);
             assert_eq!(report.kind, Some(WeightKind::Frequency));
             assert_optional_close(report.raw_weight_sum, Some(sum));
-            assert_close(
-                report.solver_weight_divisor,
-                maximum,
-                ROBUST_TOLERANCE,
-            );
+            assert_close(report.solver_weight_divisor, maximum, ROBUST_TOLERANCE);
             assert_close(
                 report.reference_weight_multiplier,
                 maximum,
@@ -287,11 +260,7 @@ fn assert_weight_report_for_continuous(
     let maximum = values.iter().copied().fold(0.0_f64, f64::max);
     assert_eq!(report.kind, Some(kind));
     assert_optional_close(report.raw_weight_sum, Some(sum));
-    assert_close(
-        report.solver_weight_divisor,
-        maximum,
-        ROBUST_TOLERANCE,
-    );
+    assert_close(report.solver_weight_divisor, maximum, ROBUST_TOLERANCE);
     assert_close(
         report.reference_weight_multiplier,
         nobs as f64 * maximum / sum,
