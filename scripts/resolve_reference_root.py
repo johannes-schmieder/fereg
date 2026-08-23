@@ -18,6 +18,7 @@ from ols_reference import load_reference_lock, preflight_reference_root
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "references.lock.toml"
+REQUIRED_CHILDREN = ("reghdfe", "ftools", "require")
 
 # Finite conventional roots only. Do not replace this with filesystem search.
 CANDIDATE_SUFFIXES = (
@@ -49,9 +50,21 @@ SHARED_CANDIDATES = (
 
 
 class ResolverError(RuntimeError):
-    def __init__(self, kind: str) -> None:
+    def __init__(
+        self,
+        kind: str,
+        *,
+        checked: int = 0,
+        existing: int = 0,
+        layouts: int = 0,
+        preflight: int = 0,
+    ) -> None:
         super().__init__(kind)
         self.kind = kind
+        self.checked = checked
+        self.existing = existing
+        self.layouts = layouts
+        self.preflight = preflight
 
 
 def _deduplicate(candidates: list[Path]) -> list[Path]:
@@ -70,7 +83,7 @@ def candidate_roots() -> tuple[list[Path], bool]:
     if "STFIXEST_REFERENCE_ROOT" in os.environ:
         value = os.environ["STFIXEST_REFERENCE_ROOT"]
         if not value or not Path(value).expanduser().is_absolute():
-            raise ResolverError("explicit_reference_root_invalid")
+            raise ResolverError("explicit_reference_root_invalid", checked=1)
         return ([Path(value).expanduser()], True)
 
     home = Path.home()
@@ -79,28 +92,62 @@ def candidate_roots() -> tuple[list[Path], bool]:
     return (_deduplicate(candidates), False)
 
 
-def resolve_reference_root() -> tuple[Path, int, int]:
+def _has_direct_child_layout(candidate: Path) -> bool:
+    return all(
+        (candidate / child).is_dir() and not (candidate / child).is_symlink()
+        for child in REQUIRED_CHILDREN
+    )
+
+
+def resolve_reference_root() -> tuple[Path, int, int, int, int]:
     candidates, explicit = candidate_roots()
     lock = load_reference_lock(LOCK)
     valid: list[tuple[int, Path]] = []
+    existing = 0
+    layouts = 0
+    preflight = 0
     for index, candidate in enumerate(candidates, start=1):
+        if not candidate.is_absolute() or not candidate.is_dir() or candidate.is_symlink():
+            continue
+        existing += 1
+        if not _has_direct_child_layout(candidate):
+            continue
+        layouts += 1
         try:
-            if not candidate.is_absolute() or not candidate.is_dir() or candidate.is_symlink():
-                continue
             preflight_reference_root(candidate, lock, ROOT)
         except Exception:
             # Candidate details and preflight errors may contain private paths.
             continue
+        preflight += 1
         valid.append((index, candidate))
 
+    checked = len(candidates)
     if len(valid) == 1:
         index, selected = valid[0]
-        return selected, index, len(candidates)
+        return selected, index, checked, existing, layouts
     if explicit:
-        raise ResolverError("explicit_reference_root_failed_preflight")
-    if not valid:
-        raise ResolverError("offline_reference_root_unresolved")
-    raise ResolverError("offline_reference_root_ambiguous")
+        raise ResolverError(
+            "explicit_reference_root_failed_preflight",
+            checked=checked,
+            existing=existing,
+            layouts=layouts,
+            preflight=preflight,
+        )
+    if existing == 0:
+        kind = "offline_reference_root_not_found"
+    elif layouts == 0:
+        kind = "offline_reference_layout_absent"
+    elif preflight == 0:
+        kind = "offline_reference_preflight_failed"
+    else:
+        kind = "offline_reference_root_ambiguous"
+    raise ResolverError(
+        kind,
+        checked=checked,
+        existing=existing,
+        layouts=layouts,
+        preflight=preflight,
+    )
 
 
 def write_private_path(output: Path, selected: Path) -> None:
@@ -130,14 +177,21 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        selected, index, checked = resolve_reference_root()
+        selected, index, checked, existing, layouts = resolve_reference_root()
         write_private_path(args.output, selected)
     except ResolverError as exc:
-        print(f"REFERENCE_ROOT_RESOLVER status=failure kind={exc.kind}")
+        print(
+            "REFERENCE_ROOT_RESOLVER "
+            f"status=failure kind={exc.kind} candidates_checked={exc.checked} "
+            f"existing_candidates={exc.existing} layout_candidates={exc.layouts} "
+            f"preflight_candidates={exc.preflight}"
+        )
         return 1
     print(
         "REFERENCE_ROOT_RESOLVER "
-        f"status=success candidate_index={index} candidates_checked={checked}"
+        f"status=success candidate_index={index} candidates_checked={checked} "
+        f"existing_candidates={existing} layout_candidates={layouts} "
+        "preflight_candidates=1"
     )
     return 0
 
