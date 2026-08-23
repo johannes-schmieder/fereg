@@ -72,7 +72,7 @@ jobs:
           fi
 
           /usr/bin/python3 "$transform"
-          "$HOME/.cargo/bin/cargo" fmt --all
+          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
 
           rm "$transform"
           rm -f ci/source-transforms/trigger-iid.txt
