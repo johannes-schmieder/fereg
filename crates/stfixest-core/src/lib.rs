@@ -14,8 +14,6 @@ pub mod options;
 pub mod parallel;
 pub mod ppml;
 pub mod ppml_separation;
-pub mod protocol;
-pub mod selftest;
 #[path = "ols/prepared_categorical_data.rs"]
 mod prepared_categorical_data;
 #[path = "ols/prepared_categorical_effect.rs"]
@@ -26,6 +24,8 @@ mod prepared_categorical_singleton;
 mod prepared_categorical_topology;
 #[path = "ols/prepared_fit_view.rs"]
 pub(crate) mod prepared_fit_view;
+pub mod protocol;
+pub mod selftest;
 #[path = "ols/topology_dof.rs"]
 pub mod topology_dof;
 
