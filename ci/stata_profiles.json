@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "version": {
+      "driver": "stata-harness",
+      "suite": "ci/stata_version.do",
+      "timeout_seconds": 300,
+      "required_outputs": []
+    },
+    "smoke": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stfixest_smoke.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "syntax": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": false,
+      "fixtures": [
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do"
+      ],
+      "timeout_seconds": 900,
+      "required_outputs": []
+    },
+    "quick": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stfixest_smoke.do",
+        "tests/stata/installation/phase01_smoke.do",
+        "tests/stata/installation/reload_loop.do",
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do",
+        "tests/stata/postestimation/fail_closed.do"
+      ],
+      "timeout_seconds": 5400,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "mata-unit": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/installation/prepare_ols_boundary.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "plugin-build": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stfixest_smoke.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "plugin-load": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stfixest_smoke.do",
+        "tests/stata/installation/phase01_smoke.do",
+        "tests/stata/installation/reload_loop.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "numerical-small": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "tests/stata/installation/prepare_ols_boundary.do",
+        "tests/stata/installation/estimate_ols_eclass_transaction.do"
+      ],
+      "timeout_seconds": 5400,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "differential": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do"
+      ],
+      "timeout_seconds": 5400,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "benchmark-small": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stata_benchmark_small.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    },
+    "full": {
+      "driver": "stfixest-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stfixest_smoke.do",
+        "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "tests/stata/installation/phase01_smoke.do",
+        "tests/stata/installation/prepare_ols_boundary.do",
+        "tests/stata/installation/reload_loop.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do",
+        "tests/stata/postestimation/fail_closed.do",
+        "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do"
+      ],
+      "run_break_fixture": true,
+      "timeout_seconds": 13800,
+      "required_outputs": [
+        "plugin-evidence/stfixest_macos.plugin",
+        "plugin-evidence/stfixest_macos.plugin.sha256"
+      ]
+    }
+  }
+}

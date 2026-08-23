@@ -19,3 +19,4 @@ __pycache__/
 *.pyc
 native-artifacts/
 release-artifacts/
+/.ci/stata/run/
