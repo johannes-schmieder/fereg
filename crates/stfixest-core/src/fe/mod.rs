@@ -2,6 +2,7 @@
 
 mod auto;
 mod borrowed_map;
+mod categorical_request;
 mod certificate;
 mod components;
 mod design;
@@ -26,6 +27,10 @@ pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub(crate) use borrowed_map::absorb_borrowed_intercept_map_with_structural_constant_certified;
 pub use borrowed_map::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+};
+pub use categorical_request::{
+    plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
+    CategoricalAbsorbEffectIdentity, CategoricalAbsorbRequestPlan,
 };
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
