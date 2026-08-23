@@ -260,7 +260,7 @@ fn prepare_case(
     assert_eq!(case.cluster_b.len(), nobs);
 
     let source_values = [
-        case.x.iter().copied().collect::<Vec<_>>(),
+        case.x.to_vec(),
         case.firm.iter().map(|value| f64::from(*value)).collect(),
         case.year.iter().map(|value| f64::from(*value)).collect(),
         case.cluster_a
