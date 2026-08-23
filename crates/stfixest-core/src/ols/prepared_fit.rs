@@ -1,14 +1,11 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, Result, StFixestError};
-use crate::fe::{
-    absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
-    MapConfig, SolveReport,
-};
+use crate::fe::{BorrowedMapWeights, MapConfig, SolveReport};
 use crate::metadata::CoefficientSlot;
+use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::{
-    build_prepared_ols_rhs, PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData,
-};
+use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
 
 /// Numerical policy for the guarded prepared-data coefficient checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -366,6 +363,23 @@ pub fn fit_prepared_ols_coefficients_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
+    fit_prepared_ols_coefficients_view_map(prepared, config)
+}
+
+/// Fit the interaction-aware categorical prepared artifact through the exact
+/// same certified MAP, scaled pivoted QR, bread, residual, and score path used
+/// by the legacy prepared boundary.
+pub fn fit_prepared_categorical_ols_coefficients_map(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsFitConfig,
+) -> Result<CertifiedPreparedOlsFit> {
+    fit_prepared_ols_coefficients_view_map(prepared, config)
+}
+
+fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+) -> Result<CertifiedPreparedOlsFit> {
     let mut reservation = SystemFitReservation;
     fit_with_controls_internal(
         prepared,
@@ -375,18 +389,17 @@ pub fn fit_prepared_ols_coefficients_map(
     )
 }
 
-fn fit_with_controls_internal<R: FitReservation>(
-    prepared: &PreparedOlsData,
+fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
-    let design = prepared.borrowed_intercept_fe_design()?;
     let weights = normalized_weights(prepared)?;
 
-    let raw = build_prepared_ols_rhs(prepared)?.into_values();
-    let generated_columns = prepared.model.columns.len();
+    let raw = prepared.fit_build_rhs()?;
+    let generated_columns = prepared.fit_model().columns.len();
     let mut reference_norms = reserved_filled(
         reservation,
         generated_columns,
@@ -397,12 +410,7 @@ fn fit_with_controls_internal<R: FitReservation>(
         *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
     }
 
-    let absorbed = absorb_borrowed_intercept_map_with_structural_constant_certified(
-        &design,
-        weights.borrowed(),
-        raw,
-        config.map,
-    )?;
+    let absorbed = prepared.fit_absorb_matrix(weights.borrowed(), raw, config.map)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -441,15 +449,15 @@ fn fit_with_controls_internal<R: FitReservation>(
 
     let mut raw_residuals = reserved_filled(
         reservation,
-        prepared.sample.n_active(),
+        prepared.fit_sample().n_active(),
         0.0_f64,
         "unable to reserve prepared OLS final residual",
     )?;
     for (row, residual) in raw_residuals.iter_mut().enumerate() {
-        let mut value = prepared.sample.outcome[row];
+        let mut value = prepared.fit_sample().outcome[row];
         for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
             if let Some(coefficient) = coefficient {
-                let regressor = prepared.column_value(column, row)?;
+                let regressor = prepared.fit_column_value(column, row)?;
                 value = (-*coefficient).mul_add(regressor, value);
             }
         }
@@ -480,13 +488,9 @@ fn fit_with_controls_internal<R: FitReservation>(
         ));
     }
     let residual_matrix =
-        DenseMatrix::from_row_major(prepared.sample.n_active(), 1, raw_residuals)?;
-    let residual_absorbed = absorb_borrowed_intercept_map_with_structural_constant_certified(
-        &design,
-        weights.borrowed(),
-        residual_matrix,
-        config.map,
-    )?;
+        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, raw_residuals)?;
+    let residual_absorbed =
+        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.map)?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS residual absorption returned an uncertified result",
@@ -552,8 +556,11 @@ fn fit_with_controls<R: FitReservation>(
     )
 }
 
-fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> Result<()> {
-    if prepared.sample.n_active() == 0 {
+fn validate_config<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+) -> Result<()> {
+    if prepared.fit_sample().n_active() == 0 {
         return Err(insufficient_observations(
             "prepared OLS coefficient fitting requires a nonempty final sample",
         ));
@@ -564,8 +571,8 @@ fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> 
         .iter()
         .filter(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
         .count();
-    if !prepared.structural_intercept
-        || reported_intercepts != usize::from(prepared.report_intercept)
+    if !prepared.fit_structural_intercept()
+        || reported_intercepts != usize::from(prepared.fit_report_intercept())
     {
         return Err(invalid_argument(
             "prepared OLS report and structural intercept metadata are inconsistent",
@@ -591,7 +598,7 @@ fn validate_config(prepared: &PreparedOlsData, config: PreparedOlsFitConfig) -> 
     let axis = prepared
         .sample
         .n_active()
-        .max(prepared.model.columns.len())
+        .max(prepared.fit_model().columns.len())
         .max(1);
     let relative = config.rank_tolerance_multiplier * f64::EPSILON * axis as f64;
     if !valid_unit_tolerance(relative) {
@@ -606,15 +613,17 @@ const fn valid_unit_tolerance(value: f64) -> bool {
     value.is_finite() && value > 0.0 && value < 1.0
 }
 
-fn normalized_weights(prepared: &PreparedOlsData) -> Result<NormalizedWeights<'_>> {
-    match &prepared.sample.weights {
+fn normalized_weights<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+) -> Result<NormalizedWeights<'_>> {
+    match &prepared.fit_sample().weights {
         PreparedWeights::None => Ok(NormalizedWeights {
             values: None,
             raw_scale: 1.0,
             kind: None,
         }),
         PreparedWeights::Provided { kind, values } => {
-            if values.len() != prepared.sample.n_active()
+            if values.len() != prepared.fit_sample().n_active()
                 || values
                     .iter()
                     .any(|weight| !weight.is_finite() || *weight <= 0.0)
@@ -641,8 +650,8 @@ fn normalized_weights(prepared: &PreparedOlsData) -> Result<NormalizedWeights<'_
     }
 }
 
-fn fit_scaled_pivoted_qr<R: FitReservation>(
-    prepared: &PreparedOlsData,
+fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
     within: &mut DenseMatrix,
     weights: NormalizedWeights<'_>,
     reference_norms: &[f64],
@@ -651,7 +660,7 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
     perturb_bread: bool,
 ) -> Result<QrFit> {
     let nrows = within.nrows();
-    let generated_columns = prepared.model.columns.len();
+    let generated_columns = prepared.fit_model().columns.len();
     let expected_columns = generated_columns
         .checked_add(1)
         .ok_or_else(|| allocation("prepared OLS absorbed RHS column count overflows"))?;
@@ -678,10 +687,10 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS QR candidate columns",
     )?;
-    let has_absorbed_intercept = prepared.structural_intercept;
+    let has_absorbed_intercept = prepared.fit_structural_intercept();
     for column in 0..generated_columns {
         let is_intercept = matches!(
-            prepared.model.columns[column].kind,
+            prepared.fit_model().columns[column].kind,
             PreparedOlsColumnKind::Intercept
         );
         if has_absorbed_intercept && is_intercept {
@@ -994,8 +1003,8 @@ fn fit_scaled_pivoted_qr<R: FitReservation>(
     })
 }
 
-fn build_finite_bread_draft<R: FitReservation>(
-    prepared: &PreparedOlsData,
+fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
     inputs: FiniteBreadInputs<'_>,
     tolerance: f64,
     reservation: &mut R,
@@ -1018,7 +1027,7 @@ fn build_finite_bread_draft<R: FitReservation>(
     if rank > candidate_count
         || pivot_columns.len() != candidate_count
         || standardized_gram.len() != candidate_square
-        || reference_norms.len() != prepared.model.columns.len()
+        || reference_norms.len() != prepared.fit_model().columns.len()
     {
         return Err(invalid_argument(
             "prepared OLS bread inputs have inconsistent dimensions",
@@ -1316,11 +1325,11 @@ fn inverse_relative_infinity_norm(
     }
 }
 
-fn prepared_bread_weight_scale(
-    prepared: &PreparedOlsData,
+fn prepared_bread_weight_scale<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
     weights: NormalizedWeights<'_>,
 ) -> Result<PreparedOlsBreadWeightScale> {
-    let nrows = prepared.sample.n_active();
+    let nrows = prepared.fit_sample().n_active();
     let nrows_f64 = exact_nonnegative_integer_as_f64(nrows as u128)?;
     let mut solver_sum = 0.0_f64;
     let mut correction = 0.0_f64;
@@ -1336,7 +1345,7 @@ fn prepared_bread_weight_scale(
     let (reference_weight_multiplier, reference_weight_sum) = match weights.kind {
         None => (1.0, nrows_f64),
         Some(WeightKind::Frequency) => {
-            let PreparedWeights::Provided { values, .. } = &prepared.sample.weights else {
+            let PreparedWeights::Provided { values, .. } = &prepared.fit_sample().weights else {
                 return Err(invalid_argument(
                     "prepared OLS frequency-weight scale has no weight column",
                 ));
@@ -1393,8 +1402,8 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
     Ok(value as f64)
 }
 
-fn finalize_reported_bread_and_intercept<R: FitReservation>(
-    prepared: &PreparedOlsData,
+fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
     qr: &mut QrFit,
     raw_residuals: &mut [f64],
     weights: NormalizedWeights<'_>,
@@ -1402,7 +1411,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
     reservation: &mut R,
     perturbations: FitPerturbations,
 ) -> Result<PreparedOlsBread> {
-    if raw_residuals.len() != prepared.sample.n_active() {
+    if raw_residuals.len() != prepared.fit_sample().n_active() {
         return Err(invalid_argument(
             "prepared OLS reported-intercept residual axis is inconsistent",
         ));
@@ -1433,7 +1442,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
             continue;
         }
         if deferred_intercept.replace(generated).is_some()
-            || !prepared.structural_intercept
+            || !prepared.fit_structural_intercept()
             || !matches!(
                 prepared
                     .model
@@ -1515,8 +1524,8 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
             "unable to reserve prepared OLS reported-intercept means",
         )?;
         for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
-            means[position] = weighted_mean_by(prepared.sample.n_active(), weights, |row| {
-                prepared.column_value(generated, row)
+            means[position] = weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+                prepared.fit_column_value(generated, row)
             })?;
         }
 
@@ -1530,7 +1539,7 @@ fn finalize_reported_bread_and_intercept<R: FitReservation>(
                 "prepared OLS normalized reported intercept is not finite",
             ));
         }
-        let outcome_mean = weighted_mean_slice(&prepared.sample.outcome, weights)?;
+        let outcome_mean = weighted_mean_slice(&prepared.fit_sample().outcome, weights)?;
         let mut finite_mean_fit = 0.0_f64;
         let mut finite_mean_fit_correction = 0.0_f64;
         for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
@@ -2053,8 +2062,8 @@ fn checked_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn certify_scores(
-    prepared: &PreparedOlsData,
+fn certify_scores<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
     residuals: &[f64],
     weights: NormalizedWeights<'_>,
     reference_norms: &[f64],
@@ -2063,10 +2072,10 @@ fn certify_scores(
     within_outcome_norm: f64,
     tolerance: f64,
 ) -> Result<PreparedOlsScoreCertificate> {
-    if residuals.len() != prepared.sample.n_active()
-        || reference_norms.len() != prepared.model.columns.len()
-        || score_norms.len() != prepared.model.columns.len()
-        || statuses.len() != prepared.model.columns.len()
+    if residuals.len() != prepared.fit_sample().n_active()
+        || reference_norms.len() != prepared.fit_model().columns.len()
+        || score_norms.len() != prepared.fit_model().columns.len()
+        || statuses.len() != prepared.fit_model().columns.len()
         || !within_outcome_norm.is_finite()
         || within_outcome_norm < 0.0
     {
@@ -2117,7 +2126,7 @@ fn certify_scores(
             let mut correction = 0.0_f64;
             for (row, residual) in residuals.iter().copied().enumerate() {
                 let root_weight = weights.root(row)?;
-                let regressor = prepared.column_value(column, row)?;
+                let regressor = prepared.fit_column_value(column, row)?;
                 let left = (root_weight * regressor) / denominator;
                 let right = (root_weight * residual) / response_scale;
                 let term = left * right;
@@ -2178,17 +2187,17 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     }
 }
 
-fn build_coefficient_slots<R: FitReservation>(
-    prepared: &PreparedOlsData,
+fn build_coefficient_slots<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
     qr: &QrFit,
     reservation: &mut R,
 ) -> Result<Vec<PreparedOlsFittedCoefficient>> {
     let mut output = reserved_empty(
         reservation,
-        prepared.model.coefficients.len(),
+        prepared.fit_model().coefficients.len(),
         "unable to reserve prepared OLS coefficient-slot results",
     )?;
-    for coefficient in &prepared.model.coefficients {
+    for coefficient in &prepared.fit_model().coefficients {
         let fitted = match coefficient.status {
             PreparedOlsCoefficientStatus::SyntaxOmitted => PreparedOlsFittedCoefficient {
                 coefficient_slot: coefficient.coefficient_slot,

@@ -20,9 +20,7 @@ use super::{build_prepared_ols_rhs, PreparedOlsData, PreparedOlsModel};
 /// Common scientific input boundary for the prepared coefficient engine.
 ///
 /// Implementations must return an owned certified result and may not expose a
-/// partially transformed matrix on failure. The temporary dead-code allowance
-/// is removed when `prepared_fit` is generalized over this view.
-#[allow(dead_code)]
+/// partially transformed matrix on failure.
 pub(crate) trait PreparedOlsFitView {
     fn fit_model(&self) -> &PreparedOlsModel;
 

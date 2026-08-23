@@ -63,8 +63,8 @@ pub use metadata::{
 };
 pub use ols::{
     absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, compute_dof,
-    compute_prepared_ols_absorbed_dof, fit_ols, fit_prepared_ols_clustered_map,
-    fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
+    compute_prepared_ols_absorbed_dof, fit_ols, fit_prepared_categorical_ols_coefficients_map,
+    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
     fit_prepared_ols_unadjusted_map, prepare_ols_clustered_data, prepare_ols_data,
     solve_rank_revealing, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
     CertifiedPreparedOlsUnadjusted, ClusterSubsetReport, DofConfig, DofMethod, DofReport,
