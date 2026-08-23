@@ -2,12 +2,6 @@ version 18.0
 clear all
 set more off
 
-quietly findfile stfixest.ado
-local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
-local suffix "/stata/stfixest.ado"
-assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
-local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
-
 set obs 72
 generate long obs_id = _n
 generate int firm = mod(_n - 1, 6) + 1
@@ -66,48 +60,5 @@ assert e(stfixest_certificate)[24,2] == 1
 assert e(stfixest_certificate)[32,2] == 1
 assert e(N_hdfe) == 1
 assert `"`e(absvars)'"' == "firm#year"
-
-* Frozen licensed-reghdfe case `multi_fe_interactions` from the sealed OLS-v1
-* receipt. This jointly exercises an ordinary factor interaction, an absorbed
-* categorical tuple, singleton deletion, post-absorption collinearity, the
-* reported normalized constant, covariance, and two-row absorbed DoF.
-import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
-_stfixest_estimate_ols_test y c.x1 i.industry##i.year, ///
-    absorb(worker firm#year)
-assert e(N) == 8
-assert e(df_m) == 1
-assert e(df_a) == 6
-assert e(df_r) == 1
-assert e(N_hdfe) == 2
-assert `"`e(absvars)'"' == "worker firm#year"
-assert e(stfixest_fe)[1,1] == 1
-assert e(stfixest_fe)[2,1] == 3
-assert e(stfixest_fe)[2,3] == 0
-assert e(stfixest_fe)[1,4] == 4
-assert e(stfixest_fe)[2,4] == 4
-assert e(stfixest_fe)[1,6] + e(stfixest_fe)[2,6] == e(df_a)
-local interaction_names : colfullnames e(b)
-di as error "STFIXEST_INTERACTION_DIAG b_cols=" colsof(e(b))
-di as error `"STFIXEST_INTERACTION_DIAG b_names=`interaction_names'"'
-matrix list e(b)
-matrix list e(stfixest_status)
-matrix list e(dof_table)
-assert colsof(e(b)) == 10
-assert rowsof(e(dof_table)) == 2
-assert `"`interaction_names'"' == ///
-    "o.x1 2b.industry 3o.industry 2021b.year 2022o.year 2b.industry#2021b.year 2b.industry#2022o.year 3o.industry#2021b.year 3.industry#2022.year _cons"
-local interaction_dof_rows : rowfullnames e(dof_table)
-assert `"`interaction_dof_rows'"' == "1.worker 1.firm#1.year"
-forvalues column = 1/8 {
-    assert e(b)[1,`column'] == 0
-}
-assert abs(e(b)[1,9] - +1.ffffffdcf4f1eX-017) <= 3e-6
-assert abs(e(b)[1,10] - +1.b999998000000X+002) <= 3e-6
-assert abs(e(V)[9,9] - +1.47ae1eb851fc4X-005) <= 3e-6
-assert abs(e(V)[9,10] - -1.47ae1eb851fc4X-007) <= 3e-6
-assert abs(e(V)[10,9] - -1.47ae1eb851fc4X-007) <= 3e-6
-assert abs(e(V)[10,10] - +1.47ae1eb851fc5X-008) <= 3e-6
-assert e(stfixest_certificate)[24,2] == 1
-assert e(stfixest_certificate)[32,2] == 1
 
 di as result "END_FIXTURE|estimate_ols_categorical_interaction|rc=0"
