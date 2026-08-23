@@ -3,7 +3,7 @@ name: Apply categorical cluster preparation
 on:
   push:
     branches:
-      - codex/stfixest-interactions
+      - codex/stfixest-osx-continuation
     paths:
       - .github/workflows/apply-categorical-cluster-preparation.yml
       - ci/source-transforms/activate_categorical_cluster_preparation.py
