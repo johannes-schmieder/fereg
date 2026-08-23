@@ -72,7 +72,7 @@ jobs:
           fi
 
           /usr/bin/python3 "$transform"
-          cargo fmt --all
+          "$HOME/.cargo/bin/cargo" fmt --all
 
           rm "$transform"
           rm -f ci/source-transforms/trigger-iid.txt
