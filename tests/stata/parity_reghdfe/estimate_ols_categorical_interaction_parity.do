@@ -47,7 +47,8 @@ local coefficient_names : colfullnames e(b)
 assert `"`coefficient_names'"' == "o.x1 _cons"
 * Native status 3 distinguishes FE collinearity from syntax omission (status 2).
 assert e(stfixest_status)[1,2] == 3
-assert e(stfixest_status)[2,2] == 1
+* Native status 5 identifies the normalized absorbed intercept reported as _cons.
+assert e(stfixest_status)[2,2] == 5
 assert e(b)[1,1] == 0
 assert e(V)[1,1] == 0
 assert e(V)[1,2] == 0

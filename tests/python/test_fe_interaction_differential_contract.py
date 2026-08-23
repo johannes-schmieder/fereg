@@ -163,6 +163,7 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
             CASE_ID,
             "o.x1 _cons",
             "e(stfixest_status)[1,2] == 3",
+            "e(stfixest_status)[2,2] == 5",
             "+1.b99999c000000X+002",
             "+1.47ae1eb853fc5X-00a",
             "inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 24)",
