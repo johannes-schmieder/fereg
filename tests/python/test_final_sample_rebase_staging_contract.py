@@ -24,9 +24,10 @@ class FinalSampleRebaseStagingContractTests(unittest.TestCase):
         self.assertIn(
             "final_categorical_sources(&availability_model, cluster_sources)", text
         )
-        # The transform must retain exactly one copy of the old source anchor
-        # that it replaces. Rejecting that literal globally is a false positive.
-        self.assertEqual(text.count("mut model,"), 1)
+        # The transform must retain exactly one copy of the quoted old
+        # destructuring anchor that it replaces. Other old fragments may
+        # legitimately contain the substring `&mut model,`.
+        self.assertEqual(text.count("'        mut model,\\n'"), 1)
 
     def test_staged_rebase_remains_outside_public_dispatch(self) -> None:
         text = REBASE.read_text(encoding="utf-8")
