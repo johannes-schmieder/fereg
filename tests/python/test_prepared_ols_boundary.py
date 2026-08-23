@@ -393,7 +393,9 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         inference = (
             ROOT / "crates/stfixest-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
-        production = inference.split("#[cfg(test)]", maxsplit=1)[0]
+        production = inference.split(
+            "\n#[cfg(test)]\nmod tests {", maxsplit=1
+        )[0]
         inference_view = (
             ROOT / "crates/stfixest-core/src/ols/prepared_inference_view.rs"
         ).read_text(encoding="utf-8")
