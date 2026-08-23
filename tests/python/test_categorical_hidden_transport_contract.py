@@ -40,6 +40,12 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         )
         self.assertNotIn("unsafe {", result + view)
 
+    def test_native_fe_shadow_validator_accepts_only_structured_interactions(self):
+        estimate = (PLUGIN / "estimate.rs").read_text(encoding="utf-8")
+        self.assertIn("validate_shadow_fixed_effect_row(row)?", estimate)
+        self.assertIn("3 => term > 0 && source == 0", estimate)
+        self.assertIn("coefficients != categories - redundant", estimate)
+
     def test_stata_gate_is_intercept_only_but_allows_categorical_tuples(self):
         stata = STATA.read_text(encoding="utf-8")
         self.assertIn("`absorb_terms'[`row',2] < 1", stata)
