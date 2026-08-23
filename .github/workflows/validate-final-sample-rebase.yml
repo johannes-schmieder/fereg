@@ -9,6 +9,7 @@ on:
       - ci/source-transforms/activate_final_sample_rebase.py
       - crates/stfixest-core/src/ols/prepared_categorical_rebase.rs
       - tests/python/test_final_sample_rebase_staging_contract.py
+      - tests/python/test_final_sample_rebase_validation_contract.py
 
 permissions:
   contents: write
