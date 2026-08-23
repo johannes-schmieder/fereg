@@ -1,0 +1,21 @@
+{
+  "bundle_file": "require-f4760b86e55cf73b82041ce59cf20e8e8224afb0.bundle",
+  "bundle_head_ref": "refs/heads/stfixest-pin-require",
+  "bundle_sha256": "99851c215f39e8039bf206bdac1816287cfed959f25561632f02d986751dbfe3",
+  "capture_network_policy": "offline-only",
+  "checkout_dir": "require",
+  "component": "require",
+  "provisioning_network_policy": "network-allowed-public-source-only",
+  "provisioning_repository": "johannes-schmieder/StFixest",
+  "provisioning_source_sha": "5d7e87e7c1119fee27d55954bce2db1886fc99ac",
+  "required_files": {
+    "src/require.ado": "0f5a7bad374ade6c6ba0f05973666bb06b63d4acc36ddb0e277a060249a0e6de",
+    "src/require.pkg": "d9965f30b072949f7012fe3f0e6e83baf20dd6317ff2e21b15e185085a36ed62"
+  },
+  "schema": 2,
+  "source_commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+  "source_repository": "https://github.com/sergiocorreia/stata-require",
+  "status": "success",
+  "workflow_run_attempt": 1,
+  "workflow_run_id": 32662595436
+}

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Materialize the lock-pinned reference root from local stores and a Git bundle.
+"""Materialize the exact lock-pinned Stata reference root from Git bundles.
 
-The repository-contained `stata-require` bundle is public-source provisioning,
-not capture-time network access. This resolver never fetches or enumerates the
-filesystem. It combines exactly one allowlisted local object store for each
-large dependency with one digest-bound Git bundle, then applies the unchanged
-clean-checkout and locked-file preflight before writing a private path file.
+All three public reference repositories are carried as digest-bound,
+full-history Git bundles in this private repository. Capture is offline-only:
+this resolver never searches the machine, never fetches, and never prints a
+selected path. It clones each bundle into runner-temporary storage, restores
+the public origin, and applies the unchanged clean-checkout and locked-file
+preflight.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -25,35 +27,24 @@ from ols_reference import load_reference_lock, preflight_reference_root
 from resolve_reference_root import (
     LOCK,
     ROOT,
-    CandidateMaterializationError,
     ResolverError,
     _locked_capture_entries,
     _prepare_materialization_parent,
-    _verify_local_object_store,
-    repository_candidates,
     write_private_path,
 )
 
-LOCAL_COMPONENTS = ("reghdfe", "ftools")
-BUNDLED_COMPONENT = "require"
+COMPONENTS = ("reghdfe", "ftools", "require")
 BUNDLE_ROOT = ROOT / "ci/reference-bundles/stata-require"
 MATERIALIZED_PREFIX = "stfixest-bundled-reference-"
+HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class BundledResolverError(RuntimeError):
-    def __init__(
-        self,
-        kind: str,
-        *,
-        reghdfe_matches: int = 0,
-        ftools_matches: int = 0,
-        bundle_present: bool = False,
-    ) -> None:
+    def __init__(self, kind: str, *, component: str = "none") -> None:
         super().__init__(kind)
         self.kind = kind
-        self.reghdfe_matches = reghdfe_matches
-        self.ftools_matches = ftools_matches
-        self.bundle_present = bundle_present
+        self.component = component if component in {*COMPONENTS, "none"} else "invalid"
 
 
 def _git_environment() -> dict[str, str]:
@@ -68,7 +59,7 @@ def _git_environment() -> dict[str, str]:
     return environment
 
 
-def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
+def _run(arguments: Sequence[str], *, cwd: Path | None = None, component: str) -> str:
     completed = subprocess.run(
         list(arguments),
         cwd=cwd,
@@ -79,12 +70,15 @@ def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
         env=_git_environment(),
     )
     if completed.returncode:
-        raise BundledResolverError("local_git_command_failed")
+        raise BundledResolverError("local_git_command_failed", component=component)
     return completed.stdout.strip()
 
 
-def _run_git(checkout: Path, arguments: Sequence[str]) -> str:
-    return _run(["git", "-C", os.fspath(checkout), *arguments])
+def _run_git(checkout: Path, arguments: Sequence[str], *, component: str) -> str:
+    return _run(
+        ["git", "-C", os.fspath(checkout), *arguments],
+        component=component,
+    )
 
 
 def _sha256(path: Path) -> str:
@@ -95,126 +89,162 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _locked_file_hashes(entry: Mapping[str, Any]) -> dict[str, str]:
-    raw_files = entry.get("file")
-    if not isinstance(raw_files, list) or not raw_files:
-        raise BundledResolverError("bundle_lock_files_invalid")
+def _required_file_hashes(
+    entry: Mapping[str, Any],
+    *,
+    component: str,
+) -> dict[str, str]:
+    raw_files = entry.get("required_capture_files")
+    raw_hashes = entry.get("required_capture_sha256")
+    if (
+        not isinstance(raw_files, list)
+        or not raw_files
+        or not all(isinstance(value, str) and value for value in raw_files)
+        or len(set(raw_files)) != len(raw_files)
+        or not isinstance(raw_hashes, Mapping)
+        or set(raw_hashes) != set(raw_files)
+    ):
+        raise BundledResolverError("bundle_lock_files_invalid", component=component)
     output: dict[str, str] = {}
-    for raw in raw_files:
-        if not isinstance(raw, Mapping):
-            raise BundledResolverError("bundle_lock_files_invalid")
-        path = raw.get("path")
-        sha256 = raw.get("sha256")
-        if not isinstance(path, str) or not isinstance(sha256, str):
-            raise BundledResolverError("bundle_lock_files_invalid")
-        if path in output or len(sha256) != 64:
-            raise BundledResolverError("bundle_lock_files_invalid")
-        output[path] = sha256
+    for path in raw_files:
+        digest = raw_hashes.get(path)
+        if not isinstance(digest, str) or not HEX_SHA256.fullmatch(digest):
+            raise BundledResolverError("bundle_lock_files_invalid", component=component)
+        output[path] = digest
     return output
 
 
-def _bundle_inventory(entry: Mapping[str, Any]) -> tuple[Path, Path]:
+def _bundle_inventory(
+    component: str,
+    entry: Mapping[str, Any],
+) -> tuple[Path, Path]:
     commit = str(entry["commit"])
-    directory = BUNDLE_ROOT / commit
+    directory = BUNDLE_ROOT / component / commit
     manifest = directory / "manifest.json"
-    bundle = directory / f"stata-require-{commit}.bundle"
-    for path in (directory, manifest, bundle):
+    bundle = directory / f"{component}-{commit}.bundle"
+    for path in (BUNDLE_ROOT, directory, manifest, bundle):
         if path.is_symlink():
-            raise BundledResolverError("bundle_inventory_symlink")
+            raise BundledResolverError("bundle_inventory_symlink", component=component)
     if not directory.is_dir() or not manifest.is_file() or not bundle.is_file():
-        raise BundledResolverError("bundle_inventory_absent")
+        raise BundledResolverError("bundle_inventory_absent", component=component)
     return manifest, bundle
 
 
 def _validate_bundle_manifest(
+    component: str,
     entry: Mapping[str, Any],
     manifest_path: Path,
     bundle_path: Path,
-) -> None:
+) -> str:
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise BundledResolverError("bundle_manifest_invalid") from exc
+        raise BundledResolverError("bundle_manifest_invalid", component=component) from exc
     expected = {
-        "schema": 1,
+        "schema": 2,
         "status": "success",
+        "component": component,
         "source_repository": entry["repository"],
         "source_commit": entry["commit"],
-        "required_files": _locked_file_hashes(entry),
+        "checkout_dir": entry["checkout_dir"],
+        "required_files": _required_file_hashes(entry, component=component),
         "bundle_file": bundle_path.name,
+        "provisioning_repository": "johannes-schmieder/StFixest",
+        "provisioning_network_policy": "network-allowed-public-source-only",
         "capture_network_policy": "offline-only",
     }
     for key, value in expected.items():
         if manifest.get(key) != value:
-            raise BundledResolverError("bundle_manifest_identity_mismatch")
-    observed = _sha256(bundle_path)
-    if manifest.get("bundle_sha256") != observed:
-        raise BundledResolverError("bundle_digest_mismatch")
-    if not isinstance(manifest.get("provisioning_sha"), str) or len(manifest["provisioning_sha"]) != 40:
-        raise BundledResolverError("bundle_provisioning_identity_invalid")
-    if not isinstance(manifest.get("workflow_run_id"), int):
-        raise BundledResolverError("bundle_provisioning_identity_invalid")
+            raise BundledResolverError(
+                "bundle_manifest_identity_mismatch",
+                component=component,
+            )
+    if manifest.get("bundle_sha256") != _sha256(bundle_path):
+        raise BundledResolverError("bundle_digest_mismatch", component=component)
+    source_sha = manifest.get("provisioning_source_sha")
+    if not isinstance(source_sha, str) or not HEX_COMMIT.fullmatch(source_sha):
+        raise BundledResolverError(
+            "bundle_provisioning_identity_invalid",
+            component=component,
+        )
+    if not isinstance(manifest.get("workflow_run_id"), int) or not isinstance(
+        manifest.get("workflow_run_attempt"), int
+    ):
+        raise BundledResolverError(
+            "bundle_provisioning_identity_invalid",
+            component=component,
+        )
+    head_ref = manifest.get("bundle_head_ref")
+    if head_ref != f"refs/heads/stfixest-pin-{component}":
+        raise BundledResolverError("bundle_head_identity_mismatch", component=component)
+    return head_ref
 
 
-def _validate_bundle_heads(entry: Mapping[str, Any], bundle: Path) -> None:
-    _run(["git", "bundle", "verify", os.fspath(bundle)], cwd=ROOT)
-    heads = _run(["git", "bundle", "list-heads", os.fspath(bundle)], cwd=ROOT).splitlines()
-    if len(heads) != 1 or heads[0].split(maxsplit=1)[0] != entry["commit"]:
-        raise BundledResolverError("bundle_heads_mismatch")
-
-
-def _find_unique_local_store(
-    name: str,
+def _validate_bundle_heads(
+    component: str,
     entry: Mapping[str, Any],
-) -> tuple[Path | None, int]:
-    matches: list[Path] = []
-    for candidate in repository_candidates(name):
-        try:
-            _verify_local_object_store(candidate, entry)
-        except (CandidateMaterializationError, ResolverError):
-            continue
-        matches.append(candidate)
-    if len(matches) > 1:
-        raise BundledResolverError(f"{name}_object_store_ambiguous", **{f"{name}_matches": len(matches)})
-    return (matches[0] if matches else None, len(matches))
+    bundle: Path,
+    head_ref: str,
+) -> None:
+    heads = _run(
+        ["git", "bundle", "list-heads", os.fspath(bundle)],
+        cwd=ROOT,
+        component=component,
+    ).splitlines()
+    if len(heads) != 1:
+        raise BundledResolverError("bundle_heads_mismatch", component=component)
+    pieces = heads[0].split()
+    if len(pieces) != 2 or pieces[0] != entry["commit"] or pieces[1] != head_ref:
+        raise BundledResolverError("bundle_heads_mismatch", component=component)
 
 
-def _clone_local_store(source: Path, destination: Path, entry: Mapping[str, Any]) -> None:
-    _run(
-        [
-            "git",
-            "-c",
-            "protocol.file.allow=always",
-            "clone",
-            "--local",
-            "--no-hardlinks",
-            "--no-checkout",
-            "--quiet",
-            os.fspath(source),
-            os.fspath(destination),
-        ]
-    )
-    _finish_checkout(destination, entry)
-
-
-def _clone_bundle(bundle: Path, destination: Path, entry: Mapping[str, Any]) -> None:
-    _run(["git", "clone", "--no-checkout", "--quiet", os.fspath(bundle), os.fspath(destination)])
-    _finish_checkout(destination, entry)
-    _run_git(destination, ["fsck", "--full", "--strict"])
-
-
-def _finish_checkout(destination: Path, entry: Mapping[str, Any]) -> None:
+def _finish_checkout(
+    destination: Path,
+    entry: Mapping[str, Any],
+    *,
+    component: str,
+) -> None:
     commit = str(entry["commit"])
-    observed = _run_git(destination, ["rev-parse", "--verify", f"{commit}^{{commit}}"])
+    observed = _run_git(
+        destination,
+        ["rev-parse", "--verify", f"{commit}^{{commit}}"],
+        component=component,
+    )
     if observed != commit:
-        raise BundledResolverError("materialized_commit_mismatch")
-    _run_git(destination, ["checkout", "--detach", "--quiet", commit])
-    _run_git(destination, ["remote", "set-url", "origin", str(entry["repository"])])
-    if _run_git(destination, ["status", "--porcelain=v1", "--untracked-files=all"]):
-        raise BundledResolverError("materialized_checkout_dirty")
+        raise BundledResolverError("materialized_commit_mismatch", component=component)
+    _run_git(
+        destination,
+        ["checkout", "--detach", "--quiet", commit],
+        component=component,
+    )
+    _run_git(
+        destination,
+        ["remote", "set-url", "origin", str(entry["repository"])],
+        component=component,
+    )
+    if _run_git(
+        destination,
+        ["status", "--porcelain=v1", "--untracked-files=all"],
+        component=component,
+    ):
+        raise BundledResolverError("materialized_checkout_dirty", component=component)
 
 
-def materialize_bundled_reference_root(parent: Path) -> tuple[Path, int, int]:
+def _clone_bundle(
+    component: str,
+    bundle: Path,
+    destination: Path,
+    entry: Mapping[str, Any],
+) -> None:
+    _run(
+        ["git", "clone", "--no-checkout", "--quiet", os.fspath(bundle), os.fspath(destination)],
+        component=component,
+    )
+    _finish_checkout(destination, entry, component=component)
+    _run_git(destination, ["fsck", "--full", "--strict"], component=component)
+
+
+def materialize_bundled_reference_root(parent: Path) -> tuple[Path, int]:
     try:
         materialize_parent = _prepare_materialization_parent(parent)
         lock = load_reference_lock(LOCK)
@@ -222,27 +252,26 @@ def materialize_bundled_reference_root(parent: Path) -> tuple[Path, int, int]:
     except ResolverError as exc:
         raise BundledResolverError(exc.kind) from exc
 
-    reghdfe, reghdfe_count = _find_unique_local_store("reghdfe", entries["reghdfe"])
-    ftools, ftools_count = _find_unique_local_store("ftools", entries["ftools"])
-    if reghdfe is None or ftools is None:
-        raise BundledResolverError(
-            "bundled_reference_local_store_incomplete",
-            reghdfe_matches=reghdfe_count,
-            ftools_matches=ftools_count,
-        )
-
-    manifest, bundle = _bundle_inventory(entries[BUNDLED_COMPONENT])
-    _validate_bundle_manifest(entries[BUNDLED_COMPONENT], manifest, bundle)
-    _validate_bundle_heads(entries[BUNDLED_COMPONENT], bundle)
+    inventory: dict[str, tuple[Path, Mapping[str, Any]]] = {}
+    for component in COMPONENTS:
+        entry = entries[component]
+        if not isinstance(entry.get("commit"), str) or not HEX_COMMIT.fullmatch(
+            str(entry["commit"])
+        ):
+            raise BundledResolverError("reference_commit_invalid", component=component)
+        manifest, bundle = _bundle_inventory(component, entry)
+        head_ref = _validate_bundle_manifest(component, entry, manifest, bundle)
+        _validate_bundle_heads(component, entry, bundle, head_ref)
+        inventory[component] = (bundle, entry)
 
     target = Path(tempfile.mkdtemp(prefix=MATERIALIZED_PREFIX, dir=materialize_parent))
     target.chmod(stat.S_IRWXU)
     try:
-        _clone_local_store(reghdfe, target / "reghdfe", entries["reghdfe"])
-        _clone_local_store(ftools, target / "ftools", entries["ftools"])
-        _clone_bundle(bundle, target / "require", entries["require"])
+        for component in COMPONENTS:
+            bundle, entry = inventory[component]
+            _clone_bundle(component, bundle, target / component, entry)
         preflight_reference_root(target, lock, ROOT)
-        return target, reghdfe_count, ftools_count
+        return target, len(inventory)
     except Exception:
         shutil.rmtree(target, ignore_errors=True)
         raise
@@ -254,26 +283,23 @@ def main() -> int:
     parser.add_argument("--materialize-parent", type=Path, required=True)
     args = parser.parse_args()
     try:
-        selected, reghdfe_count, ftools_count = materialize_bundled_reference_root(
-            args.materialize_parent
-        )
+        selected, present = materialize_bundled_reference_root(args.materialize_parent)
         write_private_path(args.output, selected)
     except BundledResolverError as exc:
         print(
             "BUNDLED_REFERENCE_ROOT "
-            f"status=failure kind={exc.kind} "
-            f"reghdfe_object_stores={exc.reghdfe_matches} "
-            f"ftools_object_stores={exc.ftools_matches} "
-            f"bundle_present={int(exc.bundle_present)}"
+            f"status=failure kind={exc.kind} component={exc.component} bundles_present=0"
         )
         return 1
     except Exception:
-        print("BUNDLED_REFERENCE_ROOT status=failure kind=preflight_or_materialization_failed")
+        print(
+            "BUNDLED_REFERENCE_ROOT status=failure "
+            "kind=preflight_or_materialization_failed component=none bundles_present=0"
+        )
         return 1
     print(
         "BUNDLED_REFERENCE_ROOT "
-        f"status=success reghdfe_object_stores={reghdfe_count} "
-        f"ftools_object_stores={ftools_count} bundle_present=1"
+        f"status=success components={','.join(COMPONENTS)} bundles_present={present}"
     )
     return 0
 

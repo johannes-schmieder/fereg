@@ -1,0 +1,21 @@
+{
+  "bundle_file": "reghdfe-29b2b203f534413369d675d0c0f674d61291f536.bundle",
+  "bundle_head_ref": "refs/heads/stfixest-pin-reghdfe",
+  "bundle_sha256": "1e4437ecd2d9cf14f490d737c3474644d27a0e41a8d8f6c130a14018f0cb8303",
+  "capture_network_policy": "offline-only",
+  "checkout_dir": "reghdfe",
+  "component": "reghdfe",
+  "provisioning_network_policy": "network-allowed-public-source-only",
+  "provisioning_repository": "johannes-schmieder/StFixest",
+  "provisioning_source_sha": "5d7e87e7c1119fee27d55954bce2db1886fc99ac",
+  "required_files": {
+    "src/reghdfe.ado": "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc",
+    "src/reghdfe.mata": "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6"
+  },
+  "schema": 2,
+  "source_commit": "29b2b203f534413369d675d0c0f674d61291f536",
+  "source_repository": "https://github.com/sergiocorreia/reghdfe",
+  "status": "success",
+  "workflow_run_attempt": 1,
+  "workflow_run_id": 32662595436
+}

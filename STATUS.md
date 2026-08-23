@@ -1,13 +1,42 @@
 # StFixest implementation status
 
-**Last updated:** 2026-08-22
-**Branch / baseline:** `main` through `2e32dc1`; the active candidate remains the `d731b327` implementation with its receipt sealed by `9e2f23e`
-**Active milestone:** complete the ten blocked OLS semantic cases, beginning with native numeric categorical FE interactions
-**Release state:** development only — not a production or cross-platform release
+**Last updated:** 2026-08-23
+**Branch / baseline:** consolidated `main`; last pre-handover exact-green source `8ddaa790a2c3be615eecb9d2da2d20634f91f38f`, recorded by receipt commit `7032b64b4f02711a3466298430d5f40f86c3e9bd`
+**Active milestone:** close native numeric categorical absorbed FE interactions against the exact pinned `reghdfe` reference, then reseal the frozen OLS projection
+**Release state:** development only — public estimators remain fail-closed; no production or cross-platform release claim
 
 `STATUS.md` is the repository's only mutable progress record. Immutable command
 receipts live under `build_evidence/` and `benchmarks/reports/captured/`.
 Contracts and reference documentation record requirements, not live progress.
+
+## Current consolidated main state
+
+- Only `main` is used for StFixest development. The former categorical and OSX
+  continuation lines were consolidated by `4bb5f1a38fca46b86cc7d52be9d8e013b173a0a4`;
+  obsolete StFixest branches were then deleted.
+- Exact-SHA quick CI for source `8ddaa790a2c3be615eecb9d2da2d20634f91f38f`
+  is green: overall, licensed-Stata, and Rust statuses are `success`, Stata
+  returned zero, and all 12 quick fixtures passed.
+- Current main contains substantial hidden categorical-interaction support:
+  collision-free compact tuple factorization; canonical partition reuse;
+  final-sample topology; iterative singleton and frequency-weight behavior;
+  certified MAP; prepared fit, absorbed DoF, iid, HC1, and clustered inference;
+  hidden/native result transport; Stata-side hidden transport; independent
+  explicit-dummy oracles; and a licensed-Stata categorical quick fixture.
+- This does **not** close `multi_fe_interactions`. No successful source-bound
+  pinned-`reghdfe` FE-interaction receipt has yet been accepted. The probe for
+  consolidation source `4bb5f1a...` stopped before Stata because no exact
+  offline reference root was available.
+- The one-shot provisioning checkpoint triggered from `5d7e87e7c1119fee27d55954bce2db1886fc99ac` adds
+  digest-bound full-history Git bundles for the pinned `reghdfe`, `ftools`, and
+  `stata-require` commits. The permanent probe must materialize those bundles
+  offline and produce a successful redacted receipt before parity is claimed.
+- Final-sample categorical rebasing remains staged rather than live. Its module,
+  source transform, validation workflow, and prior validation receipts are
+  preserved, but activation must be reconciled with `main` and rerun after the
+  reference gate.
+- `stfeols`, `stfepois`, public `estimate-ols`, and public `estimate-ppml`
+  remain deliberately disabled.
 
 ## Milestone exit criteria
 
@@ -28,7 +57,11 @@ PPML, cross-platform release validation, signing, packaging, and publication
 are explicitly deferred. `stfepois` must remain fail-closed until its own
 scientific gates are met.
 
-## Completed, evidence-backed baseline
+## Historical evidence-backed baseline (pre-categorical consolidation)
+
+The rows below are retained as checkpoint-specific provenance. They describe
+the cited historical commits and are not the live current-main inventory; the
+consolidated state above and active checkpoint below control current work.
 
 | Gate | State | Evidence |
 |---|---|---|
@@ -51,42 +84,38 @@ scientific gates are met.
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
-## Active checkpoint — first blocked semantic case
+## Active checkpoint — categorical interaction reference closure
 
-The highest-leverage next gate is native numeric categorical absorbed
-interaction support, beginning with the frozen `multi_fe_interactions` case
-(`firm#year`). It must extend preparation, topology/DoF, certified MAP,
-candidate-bound capture, mutation/allocation tests, and sealed licensed parity
-without materializing the interaction in Stata or weakening the one-call
-transaction. Public dispatch stays disabled throughout this gate.
+The hidden native implementation for numeric categorical absorbed interactions,
+beginning with the frozen `firm#year` case, is now substantial and passes the
+normal quick lane. The remaining closure is external and differential: prove
+that the exact pinned reference environment can be materialized offline, run
+the licensed-Stata probe, and compare the hidden StFixest result to `reghdfe`
+for sample identity, coefficient/status layout, covariance, absorbed and
+residual DoF, fit statistics, singleton and weight behavior, constant handling,
+interaction identity, and contracted observation outputs.
 
-The separately reviewed implementation design for this bounded `firm#year`
-gate is frozen. A project-owned draft Stata benchmark probe now exists at
-`benchmarks/stata/probe_reghdfe_fe_interaction.do`, but it is deliberately
-unsealed and is not evidence. It still needs a versioned harness and manifest,
-a clean capture against the exact pinned reference closure, receipt
-verification and mutation coverage, and independent review before any result
-from it can support an implementation or parity claim.
-
-After that repair, rerun the same candidate-bound 40-case projection and replace
-the active receipt only when the external identity manifest binds a new reviewed
-commit, plugin, immutable receipt, and exact case inventory. Performance/RSS is
-a later gate; the current candidate makes no performance claim.
+Independent explicit-dummy Rust oracles remain mandatory. A successful
+`reghdfe` comparison is necessary but cannot replace independent mathematical
+checks. Public dispatch stays disabled throughout this gate.
 
 ## Current handoff / resume point
 
-Resume at the reference-probe evidence gate for `firm#year`. First bind the
-draft probe to the reviewed harness and manifest, capture it from a clean exact
-pinned reference installation, add verifier and mutation tests, and obtain
-independent review. Only then begin the frozen native implementation plan; do
-not cite the draft probe or any local output from it as evidence.
+First inspect the source-bound FE-interaction receipt produced after the exact
+reference bundles are committed. Accept it only when the payload is successful,
+source-bound, redacted, and the probe actually reached pinned `reghdfe` in
+licensed Stata. Then add the hidden-StFixest versus `reghdfe` differential
+family and reseal the frozen 40-case projection. After that, reconcile and
+activate final-sample categorical rebasing on `main`; do not bypass the staged
+validation contract.
 
 ## Current blockers — exact frozen manifest inventory
 
-The active candidate executes 30 of the frozen 40 semantic cases. These ten
-cases remain explicit blockers:
+The historical sealed candidate executed 30 of the frozen 40 semantic cases.
+Current main adds hidden categorical-interaction implementation, but the frozen
+projection has not been resealed; these ten cases therefore remain formally open:
 
-1. `multi_fe_interactions` — absorbed categorical interaction; next priority.
+1. `multi_fe_interactions` — hidden implementation present; pinned-`reghdfe` differential and resealed projection still required.
 2. `intercept_and_slope` — absorbed intercept plus slope.
 3. `slope_only_multiple` — multiple absorbed slope-only terms.
 4. `string_fe` — string-source ingestion.
@@ -106,6 +135,11 @@ all continue to return `r(498)`. No real Linux/Windows or native Intel-host
 macOS validation exists.
 
 ## Next evidence to record
+
+Current order of operations: accept the exact offline bundle/probe receipt; add
+the hidden StFixest versus pinned-`reghdfe` differential family; reseal the frozen
+projection; then activate and revalidate final-sample rebasing. Historical bullets
+below remain useful detail but do not supersede this order.
 
 - Replace the active 30/10 candidate receipt only after the numeric categorical
   FE-interaction gate passes independent core/oracle review, all failure and

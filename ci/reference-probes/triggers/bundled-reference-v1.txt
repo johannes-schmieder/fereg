@@ -1,0 +1,4 @@
+schema=2
+components=reghdfe,ftools,require
+provisioning_source_sha=5d7e87e7c1119fee27d55954bce2db1886fc99ac
+capture_network_policy=offline-only
