@@ -40,8 +40,80 @@ env:
   RUST_BACKTRACE: "1"
 
 jobs:
+  source-transform:
+    name: Apply bounded source transform
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/codex/stfixest-interactions' }}
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Apply exact source transformation when staged
+        id: transform
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f ci/source-transforms/generalize_prepared_fit.py ]]; then
+            echo "staged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "staged=true" >> "$GITHUB_OUTPUT"
+          mkdir -p .ci
+          set +e
+          /usr/bin/python3 ci/source-transforms/generalize_prepared_fit.py > .ci/source-transform.log 2>&1
+          rc=$?
+          set -e
+          cat .ci/source-transform.log
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Publish transformation diagnostic on failure
+        if: ${{ steps.transform.outputs.staged == 'true' && steps.transform.outputs.rc != '0' }}
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/source-transform.log
+          git commit -m "build: record failed prepared fit-view transform"
+          git fetch origin "$BRANCH_NAME"
+          git rebase "origin/$BRANCH_NAME"
+          git push origin "HEAD:$BRANCH_NAME"
+          exit 1
+
+      - name: Commit transformed source
+        if: ${{ steps.transform.outputs.staged == 'true' && steps.transform.outputs.rc == '0' }}
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          rm ci/source-transforms/generalize_prepared_fit.py
+          rm -f ci/source-transforms/trigger.txt
+          rmdir ci/source-transforms 2>/dev/null || true
+          rm -f .github/workflows/apply-prepared-fit-transform.yml
+          rm -f .ci/source-transform.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { echo "transformation produced no changes"; exit 1; }
+          git commit -m "ols: generalize certified fit over categorical view"
+          git fetch origin "$BRANCH_NAME"
+          git rebase "origin/$BRANCH_NAME"
+          git push origin "HEAD:$BRANCH_NAME"
+
   mac-ci:
     name: Mac Rust quick + Stata / ${{ inputs.profile || 'quick' }}
+    needs: source-transform
+    if: ${{ always() }}
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 240
     env:
