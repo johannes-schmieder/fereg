@@ -180,9 +180,9 @@ OLS_MOD.write_text(ols_mod, encoding="utf-8")
 lib = LIB.read_text(encoding="utf-8")
 lib = replace_once(
     lib,
-    "    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map,\n",
+    "    fit_prepared_ols_clustered_map, fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,\n",
     "    fit_prepared_ols_clustered_map, prepare_categorical_ols_clustered_data,\n"
-    "    fit_prepared_ols_coefficients_map,\n",
+    "    fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,\n",
     "crate categorical cluster function export",
 )
 lib = replace_once(
