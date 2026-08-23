@@ -87,39 +87,28 @@ end
 capture program drop __stfx_probe_cascade
 program define __stfx_probe_cascade
     clear
-    input long obs_id double(y x) int(worker firm year cluster_u cluster_v fw)
-        101  3.20 -1.40  1 10 2020 1 1 1
-        102  4.05 -0.90  1 10 2020 2 2 1
-        103  4.60 -0.45  1 20 2021 1 2 1
-        104  5.25  0.05  1 20 2021 2 1 1
-        105  5.90  0.40  2 10 2020 1 2 1
-        106  6.35  0.85  2 10 2020 2 1 1
-        107  7.10  1.15  2 20 2021 1 1 1
-        108  7.85  1.65  2 20 2021 2 2 1
-        109  8.10 -1.10  3 10 2020 1 1 1
-        110  8.75 -0.25  3 30 2022 2 1 1
-        111  9.30  0.70  4 30 2022 1 2 1
-        112 10.05  1.90  4 40 2023 2 2 2
-    end
+    set obs 12
+    generate long obs_id = 100 + _n
+    generate double y = real(word("3.20 4.05 4.60 5.25 5.90 6.35 7.10 7.85 8.10 8.75 9.30 10.05", _n))
+    generate double x = real(word("-1.40 -0.90 -0.45 0.05 0.40 0.85 1.15 1.65 -1.10 -0.25 0.70 1.90", _n))
+    generate int worker = real(word("1 1 1 1 2 2 2 2 3 3 4 4", _n))
+    generate int firm = real(word("10 10 20 20 10 10 20 20 10 30 30 40", _n))
+    generate int year = real(word("2020 2020 2021 2021 2020 2020 2021 2021 2020 2022 2022 2023", _n))
+    generate int cluster_u = real(word("1 2 1 2 1 2 1 2 1 2 1 2", _n))
+    generate int cluster_v = real(word("1 2 2 1 2 1 1 2 1 1 2 2", _n))
+    generate int fw = real(word("1 1 1 1 1 1 1 1 1 1 1 2", _n))
 end
 
 capture program drop __stfx_probe_missing
 program define __stfx_probe_missing
     clear
-    input long obs_id double(y x) int(worker firm year)
-        201 3.10 -1.20 1 10 2020
-        202 3.90 -0.70 1 10 2020
-        203 4.40 -0.20 1 20 2021
-        204 5.20  0.30 1 20 2021
-        205 5.80  0.80 2 10 2020
-        206 6.50  1.30 2 10 2020
-        207 7.10  1.80 2 20 2021
-        208 7.90  2.30 2 20 2021
-        209 8.40 -1.00 3  . 2020
-        210 9.00 -0.50 3 30    .
-        211    .  0.00 3 30 2022
-        212 9.80  0.50 3 30 2022
-    end
+    set obs 12
+    generate long obs_id = 200 + _n
+    generate double y = real(word("3.10 3.90 4.40 5.20 5.80 6.50 7.10 7.90 8.40 9.00 . 9.80", _n))
+    generate double x = real(word("-1.20 -0.70 -0.20 0.30 0.80 1.30 1.80 2.30 -1.00 -0.50 0.00 0.50", _n))
+    generate int worker = real(word("1 1 1 1 2 2 2 2 3 3 3 3", _n))
+    generate int firm = real(word("10 10 20 20 10 10 20 20 . 30 30 30", _n))
+    generate int year = real(word("2020 2020 2021 2021 2020 2020 2021 2021 2020 . 2022 2022", _n))
 end
 
 file open __stfx_probe_capture using `"`capture_file'"', write text replace
