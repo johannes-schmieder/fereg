@@ -21,7 +21,12 @@ class FinalSampleRebaseStagingContractTests(unittest.TestCase):
         text = ACTIVATE.read_text(encoding="utf-8")
         self.assertIn("model: availability_model", text)
         self.assertIn("&availability_model,", text)
-        self.assertNotIn("mut model,", text)
+        self.assertIn(
+            "final_categorical_sources(&availability_model, cluster_sources)", text
+        )
+        # The transform must retain exactly one copy of the old source anchor
+        # that it replaces. Rejecting that literal globally is a false positive.
+        self.assertEqual(text.count("mut model,"), 1)
 
     def test_staged_rebase_remains_outside_public_dispatch(self) -> None:
         text = REBASE.read_text(encoding="utf-8")
