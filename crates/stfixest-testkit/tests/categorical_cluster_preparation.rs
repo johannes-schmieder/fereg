@@ -35,7 +35,11 @@ fn simple_cluster_only_source_is_retained_and_borrowed_zero_copy() {
     assert!(!dimension.is_interaction());
     assert_eq!(
         dimension.groups(),
-        case.cluster_a.iter().copied().collect::<BTreeSet<_>>().len()
+        case.cluster_a
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .len()
     );
 
     let source = prepared
@@ -70,7 +74,10 @@ fn missing_cluster_is_reason_six_before_singleton_pruning() {
     assert_eq!(prepared.ols().singletons().num_singletons, 0);
     assert!(!prepared.ols().sample().retained_rows().contains(&0));
     assert_eq!(
-        prepared.cluster_codes(0).expect("final cluster codes").len(),
+        prepared
+            .cluster_codes(0)
+            .expect("final cluster codes")
+            .len(),
         case.outcome.len() - 1
     );
 }
@@ -135,10 +142,7 @@ fn categorical_cluster_interaction_matches_independent_tuple_partition() {
     assert!(dimension.is_interaction());
     assert_eq!(
         dimension.sources(),
-        &[
-            source_id(CLUSTER_A_SOURCE),
-            source_id(CLUSTER_B_SOURCE)
-        ]
+        &[source_id(CLUSTER_A_SOURCE), source_id(CLUSTER_B_SOURCE)]
     );
     let expected = independent_tuple_codes(
         &case.cluster_a,
@@ -146,7 +150,10 @@ fn categorical_cluster_interaction_matches_independent_tuple_partition() {
         prepared.ols().sample().retained_rows(),
     );
     assert_eq!(dimension.groups(), expected.1);
-    assert_eq!(prepared.cluster_codes(0).expect("interaction codes"), expected.0);
+    assert_eq!(
+        prepared.cluster_codes(0).expect("interaction codes"),
+        expected.0
+    );
 }
 
 #[test]
@@ -373,12 +380,7 @@ fn independent_tuple_codes(
         .iter()
         .copied()
         .enumerate()
-        .map(|(index, tuple)| {
-            (
-                tuple,
-                u32::try_from(index).expect("small interaction code"),
-            )
-        })
+        .map(|(index, tuple)| (tuple, u32::try_from(index).expect("small interaction code")))
         .collect::<BTreeMap<_, _>>();
     let codes = retained_rows
         .iter()
@@ -432,28 +434,29 @@ fn balanced_case(repetitions: usize) -> ClusterCase {
                 firm.push(firm_value);
                 year.push(year_value);
                 cluster_a.push(
-                    u32::try_from((firm_value as usize + 2 * repetition + year_value as usize) % 5)
-                        .expect("bounded cluster a"),
+                    u32::try_from(
+                        (firm_value as usize + 2 * repetition + year_value as usize) % 5,
+                    )
+                    .expect("bounded cluster a"),
                 );
                 cluster_b.push(
-                    u32::try_from((2 * firm_value as usize + repetition + year_value as usize) % 4)
-                        .expect("bounded cluster b"),
+                    u32::try_from(
+                        (2 * firm_value as usize + repetition + year_value as usize) % 4,
+                    )
+                    .expect("bounded cluster b"),
                 );
             }
         }
     }
     let x = (0..firm.len())
         .map(|row| {
-            (0.31 * row as f64).sin()
-                + 0.17 * f64::from(firm[row])
+            (0.31 * row as f64).sin() + 0.17 * f64::from(firm[row])
                 - 0.09 * f64::from(year[row])
         })
         .collect::<Vec<_>>();
     let outcome = (0..firm.len())
         .map(|row| {
-            1.4 * x[row]
-                + 0.7 * f64::from(firm[row])
-                - 0.45 * f64::from(year[row])
+            1.4 * x[row] + 0.7 * f64::from(firm[row]) - 0.45 * f64::from(year[row])
                 + 0.12 * f64::from(firm[row] * year[row])
                 + 0.03 * (row as f64 * 0.8).cos()
         })
