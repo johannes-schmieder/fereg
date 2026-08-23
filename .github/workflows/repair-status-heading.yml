@@ -1,5 +1,4 @@
-name: Restore canonical STATUS heading
-# Existing-workflow activation checkpoint.
+name: Reconcile live STATUS after reference provisioning
 
 on:
   push:
@@ -12,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: stfixest-repair-status-heading-${{ github.repository }}-${{ github.ref }}
+  group: stfixest-reconcile-status-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -27,7 +26,7 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Restore canonical heading and remove transform
+      - name: Reconcile STATUS on current main
         shell: bash
         env:
           BRANCH_NAME: ${{ github.ref_name }}
@@ -45,36 +44,80 @@ jobs:
 
           for attempt in 1 2 3; do
             git fetch origin "$BRANCH_NAME"
-            publish_tree="$RUNNER_TEMP/status-heading-repair-$attempt"
+            publish_tree="$RUNNER_TEMP/status-reconcile-$attempt"
             git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
-            STATUS_PATH="$publish_tree/STATUS.md" WORKFLOW_PATH="$publish_tree/.github/workflows/repair-status-heading.yml" /usr/bin/python3 - <<'PY'
+            STATUS_PATH="$publish_tree/STATUS.md" /usr/bin/python3 - <<'PY'
             import os
             from pathlib import Path
 
-            status = Path(os.environ["STATUS_PATH"])
-            workflow = Path(os.environ["WORKFLOW_PATH"])
-            text = status.read_text(encoding="utf-8")
-            old = "## Historical evidence-backed baseline (pre-categorical consolidation)"
-            new = "## Completed, evidence-backed baseline"
-            if new not in text:
+            path = Path(os.environ["STATUS_PATH"])
+            text = path.read_text(encoding="utf-8")
+
+            def replace_once(old: str, new: str, label: str) -> None:
+                global text
                 if text.count(old) != 1:
-                    raise SystemExit("STATUS historical-heading anchor mismatch")
+                    raise SystemExit(f"STATUS {label} anchor mismatch")
                 text = text.replace(old, new, 1)
-                status.write_text(text, encoding="utf-8")
-            workflow.unlink(missing_ok=True)
+
+            replace_once(
+                "**Branch / baseline:** consolidated `main`; last pre-handover exact-green source `8ddaa790a2c3be615eecb9d2da2d20634f91f38f`, recorded by receipt commit `7032b64b4f02711a3466298430d5f40f86c3e9bd`",
+                "**Branch / baseline:** consolidated `main`; latest accepted exact-green source before this repair is `5d7e87e7c1119fee27d55954bce2db1886fc99ac`, recorded by receipt commit `a61e780d073c046de23625be7d36666dc871ffdc`",
+                "baseline",
+            )
+            replace_once(
+                "- Exact-SHA quick CI for source `8ddaa790a2c3be615eecb9d2da2d20634f91f38f`\n  is green: overall, licensed-Stata, and Rust statuses are `success`, Stata\n  returned zero, and all 12 quick fixtures passed.\n",
+                "- Exact-SHA quick CI for source `5d7e87e7c1119fee27d55954bce2db1886fc99ac`\n  is green: overall, licensed-Stata, and Rust statuses are `success`, Stata\n  returned zero, and all 12 quick fixtures passed. Source\n  `f983f7f36d0f0a9805a75c09f1cf93af42ab241f` also passed all 12 licensed-Stata\n  fixtures but failed the Rust/source gate because this file lacked the required\n  canonical completed-baseline heading; this checkpoint repairs that invariant.\n",
+                "green checkpoint",
+            )
+            replace_once(
+                "- This does **not** close `multi_fe_interactions`. No successful source-bound\n  pinned-`reghdfe` FE-interaction receipt has yet been accepted. The probe for\n  consolidation source `4bb5f1a...` stopped before Stata because no exact\n  offline reference root was available.\n",
+                "- This does **not** close `multi_fe_interactions`. Exact offline bundles are\n  now committed, but the source-bound licensed-Stata probe for\n  `bf47f34149a0e7b5e2ee6874cbae6fd5d903f804` failed before its baseline success\n  sentinel. The redacted failure receipt is\n  `.ci/reference-probes/fe-interaction/bf47f34149a0e7b5e2ee6874cbae6fd5d903f804.json`;\n  no estimator-parity claim is permitted.\n",
+                "reference result",
+            )
+            replace_once(
+                "- The one-shot provisioning checkpoint triggered from `5d7e87e7c1119fee27d55954bce2db1886fc99ac` adds\n  digest-bound full-history Git bundles for the pinned `reghdfe`, `ftools`, and\n  `stata-require` commits. The permanent probe must materialize those bundles\n  offline and produce a successful redacted receipt before parity is claimed.\n",
+                "- Commit `bf47f34149a0e7b5e2ee6874cbae6fd5d903f804` contains digest-bound\n  full-history Git bundles for the pinned `reghdfe`, `ftools`, and\n  `stata-require` commits. The permanent probe can materialize that closure\n  offline; the remaining immediate task is to diagnose and repair the\n  licensed-Stata probe failure, then obtain a successful redacted receipt.\n",
+                "bundle state",
+            )
+            replace_once(
+                "## Historical evidence-backed baseline (pre-categorical consolidation)",
+                "## Completed, evidence-backed baseline",
+                "completed heading",
+            )
+            replace_once(
+                "The hidden native implementation for numeric categorical absorbed interactions,\nbeginning with the frozen `firm#year` case, is now substantial and passes the\nnormal quick lane. The remaining closure is external and differential: prove\nthat the exact pinned reference environment can be materialized offline, run\nthe licensed-Stata probe, and compare the hidden StFixest result to `reghdfe`\nfor sample identity, coefficient/status layout, covariance, absorbed and\nresidual DoF, fit statistics, singleton and weight behavior, constant handling,\ninteraction identity, and contracted observation outputs.\n",
+                "The hidden native implementation for numeric categorical absorbed interactions,\nbeginning with the frozen `firm#year` case, is substantial and its licensed\nquick fixture passes. The exact pinned reference environment is now available\noffline, but the first source-bound licensed-Stata probe failed before the\nbaseline sentinel. Diagnose that failure and obtain a successful probe before\ncomparing hidden StFixest to `reghdfe` for sample identity, coefficient/status\nlayout, covariance, absorbed and residual DoF, fit statistics, singleton and\nweight behavior, constant handling, interaction identity, and contracted\nobservation outputs.\n",
+                "active checkpoint",
+            )
+            replace_once(
+                "First inspect the source-bound FE-interaction receipt produced after the exact\nreference bundles are committed. Accept it only when the payload is successful,\nsource-bound, redacted, and the probe actually reached pinned `reghdfe` in\nlicensed Stata. Then add the hidden-StFixest versus `reghdfe` differential\nfamily and reseal the frozen 40-case projection. After that, reconcile and\nactivate final-sample categorical rebasing on `main`; do not bypass the staged\nvalidation contract.\n",
+                "First restore an exact-green source checkpoint, then improve the probe's\nredacted diagnostics and rerun it against the committed offline bundles. Accept\na reference receipt only when it is successful, source-bound, redacted, and the\nprobe actually reached pinned `reghdfe` in licensed Stata. Then add the hidden\nStFixest versus `reghdfe` differential family and reseal the frozen 40-case\nprojection. After that, reconcile and activate final-sample categorical\nrebasing on `main`; do not bypass the staged validation contract.\n",
+                "resume point",
+            )
+            replace_once(
+                "1. `multi_fe_interactions` — hidden implementation present; pinned-`reghdfe` differential and resealed projection still required.",
+                "1. `multi_fe_interactions` — hidden implementation and exact offline reference bundles are present; a successful licensed probe, estimator differential, and resealed projection are still required.",
+                "blocker row",
+            )
+            replace_once(
+                "Current order of operations: accept the exact offline bundle/probe receipt; add\nthe hidden StFixest versus pinned-`reghdfe` differential family; reseal the frozen\nprojection; then activate and revalidate final-sample rebasing. Historical bullets\nbelow remain useful detail but do not supersede this order.\n",
+                "Current order of operations: restore exact-green CI; repair and rerun the\nsource-bound licensed reference probe; accept a successful exact offline probe\nreceipt; add the hidden StFixest versus pinned-`reghdfe` differential family;\nreseal the frozen projection; then activate and revalidate final-sample rebasing.\nHistorical bullets below remain useful detail but do not supersede this order.\n",
+                "evidence order",
+            )
+            path.write_text(text, encoding="utf-8")
             PY
             git -C "$publish_tree" config user.name "github-actions[bot]"
             git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git -C "$publish_tree" add -A
+            git -C "$publish_tree" add STATUS.md
             git -C "$publish_tree" diff --cached --check
             if git -C "$publish_tree" diff --cached --quiet; then
               exit 0
             fi
-            git -C "$publish_tree" commit -m "docs: restore canonical status section"
+            git -C "$publish_tree" commit -m "docs: reconcile live reference status"
             if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
               exit 0
             fi
             cleanup
           done
-          echo "STATUS heading repair lost three branch races" >&2
+          echo "STATUS reconciliation lost three branch races" >&2
           exit 1
