@@ -13,9 +13,9 @@ use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
-    plan_categorical_absorbed_request, prune_categorical_partition_singletons,
-    BoundCategoricalAbsorbEffect, BorrowedMapWeights, CategoricalCodeView,
-    CertifiedBorrowedMap, FinalizedCategoricalTopology, MapConfig, SingletonMultiplicity,
+    plan_categorical_absorbed_request, prune_categorical_partition_singletons, BorrowedMapWeights,
+    BoundCategoricalAbsorbEffect, CategoricalCodeView, CertifiedBorrowedMap,
+    FinalizedCategoricalTopology, MapConfig, SingletonMultiplicity,
 };
 use crate::metadata::SourceId;
 use crate::topology_dof::{
@@ -114,11 +114,7 @@ impl PreparedCategoricalOlsData {
                 categorical_source_index,
                 level_code,
                 ..
-            } => self.categorical_indicator(
-                *categorical_source_index,
-                *level_code,
-                active_row,
-            ),
+            } => self.categorical_indicator(*categorical_source_index, *level_code, active_row),
             PreparedOlsColumnKind::CategoricalInteraction { components } => {
                 for component in components {
                     if self.categorical_indicator(
@@ -184,12 +180,7 @@ impl PreparedCategoricalOlsData {
             PreparedWeights::None => BorrowedMapWeights::Unit,
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
-        absorb_finalized_categorical_topology_map_certified(
-            &self.fe_topology,
-            weights,
-            rhs,
-            config,
-        )
+        absorb_finalized_categorical_topology_map_certified(&self.fe_topology, weights, rhs, config)
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.
@@ -239,11 +230,7 @@ impl PreparedCategoricalOlsData {
             &self.fe_topology,
             &self.categorical_sources,
         )?;
-        validate_model_recipes(
-            &self.model,
-            &self.categorical_sources,
-            &self.fe_topology,
-        )?;
+        validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
         Ok(())
     }
 
@@ -291,15 +278,12 @@ impl PreparedCategoricalModelSource {
     #[must_use]
     pub const fn is_topology_backed(&self) -> bool {
         matches!(
-            self.storage,
+            &self.storage,
             PreparedCategoricalModelSourceStorage::Topology { .. }
         )
     }
 
-    pub fn codes<'a>(
-        &'a self,
-        topology: &'a FinalizedCategoricalTopology,
-    ) -> Result<&'a [u32]> {
+    pub fn codes<'a>(&'a self, topology: &'a FinalizedCategoricalTopology) -> Result<&'a [u32]> {
         match &self.storage {
             PreparedCategoricalModelSourceStorage::Topology {
                 candidate_source_index,
@@ -475,19 +459,15 @@ pub fn prepare_categorical_ols_data(
         ..
     } = availability;
     let ordinary_sources = ordinary_categorical_sources(&model)?;
-    let model_source_plans = plan_model_sources(
-        candidate_sources,
-        &ordinary_sources,
-        &fe_topology,
-    )?;
+    let model_source_plans =
+        plan_model_sources(candidate_sources, &ordinary_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
     if fe_topology.retained_rows().len() != sample.n_active() {
         return Err(invalid(
             "final categorical topology retained-row count differs from compact sample",
         ));
     }
-    let categorical_sources =
-        build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
+    let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
     remap_and_resolve_model(&mut model, &categorical_sources, &fe_topology)?;
     let effect_specs = effect_specs(&bound_effects)?;
     let prepared = PreparedCategoricalOlsData {
@@ -542,7 +522,8 @@ fn plan_model_sources(
         if !ordinary_sources.contains(&candidate.source) {
             continue;
         }
-        let storage = if topology.candidate_to_compacted_source()[candidate_source_index].is_some() {
+        let storage = if topology.candidate_to_compacted_source()[candidate_source_index].is_some()
+        {
             CategoricalModelSourcePlanStorage::Topology {
                 candidate_source_index,
                 candidate_levels: candidate.encoded.levels,
@@ -617,9 +598,19 @@ fn build_final_model_sources(
 }
 
 fn ordinary_categorical_sources(model: &PreparedOlsModel) -> Result<Vec<SourceId>> {
+    let capacity = model.columns.iter().try_fold(0_usize, |total, column| {
+        let additional = match &column.kind {
+            PreparedOlsColumnKind::Categorical { .. } => 1,
+            PreparedOlsColumnKind::CategoricalInteraction { components } => components.len(),
+            PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => 0,
+        };
+        total
+            .checked_add(additional)
+            .ok_or_else(|| allocation("ordinary categorical recipe arity overflows"))
+    })?;
     let mut sources = Vec::new();
     sources
-        .try_reserve_exact(model.columns.len())
+        .try_reserve_exact(capacity)
         .map_err(|_| allocation("unable to reserve ordinary categorical source identities"))?;
     for column in &model.columns {
         match &column.kind {
@@ -742,9 +733,7 @@ fn categorical_views(
     Ok(output)
 }
 
-fn effect_recipe_views(
-    effects: &[BoundCategoricalAbsorbEffect],
-) -> Result<Vec<&[usize]>> {
+fn effect_recipe_views(effects: &[BoundCategoricalAbsorbEffect]) -> Result<Vec<&[usize]>> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(effects.len())
@@ -833,18 +822,17 @@ fn validate_model_recipes(
         match coefficient.status {
             PreparedOlsCoefficientStatus::Active => {
                 if coefficient.generated_column_index != Some(generated)
-                    || model
-                        .columns
-                        .get(generated)
-                        .is_none_or(|column| column.coefficient_slot != coefficient.coefficient_slot)
+                    || model.columns.get(generated).is_none_or(|column| {
+                        column.coefficient_slot != coefficient.coefficient_slot
+                    })
                 {
                     return Err(invalid(
                         "categorical OLS coefficient-to-column map is inconsistent",
                     ));
                 }
-                generated = generated
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("categorical OLS generated-column count overflows"))?;
+                generated = generated.checked_add(1).ok_or_else(|| {
+                    allocation("categorical OLS generated-column count overflows")
+                })?;
             }
             PreparedOlsCoefficientStatus::SyntaxOmitted => {
                 if coefficient.generated_column_index.is_some() {
@@ -890,9 +878,7 @@ fn validate_model_recipes(
                     || categorical.resolve_level(topology, f64::from_bits(*level_bits))?
                         != *level_code
                 {
-                    return Err(invalid(
-                        "categorical OLS factor recipe is inconsistent",
-                    ));
+                    return Err(invalid("categorical OLS factor recipe is inconsistent"));
                 }
             }
             PreparedOlsColumnKind::CategoricalInteraction { components } => {
@@ -906,10 +892,9 @@ fn validate_model_recipes(
                         .get(component.categorical_source_index)
                         .ok_or_else(|| invalid("interaction recipe source is out of range"))?;
                     if categorical.source != component.source
-                        || categorical.resolve_level(
-                            topology,
-                            f64::from_bits(component.level_bits),
-                        )? != component.level_code
+                        || categorical
+                            .resolve_level(topology, f64::from_bits(component.level_bits))?
+                            != component.level_code
                     {
                         return Err(invalid(
                             "categorical OLS interaction recipe is inconsistent",
