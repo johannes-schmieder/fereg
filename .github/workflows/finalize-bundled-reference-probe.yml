@@ -1,0 +1,242 @@
+name: Finalize bundled reference probe
+
+on:
+  push:
+    branches:
+      - codex/categorical-interactions
+    paths:
+      - .github/workflows/finalize-bundled-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-finalize-bundled-reference-probe-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 45
+    steps:
+      - name: Check out exact finalization checkpoint
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Repair, verify, and push final bundled probe source
+        id: finalize
+        continue-on-error: true
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(".github/workflows/fe-interaction-reference-probe.yml")
+          text = workflow.read_text(encoding="utf-8")
+
+          required_paths = (
+              "scripts/materialize_bundled_reference_root.py",
+              "scripts/resolve_reference_root.py",
+              "tests/python/test_bundled_reference_root_contract.py",
+              "ci/reference-bundles/stata-require/**",
+              "ci/reference-probes/triggers/bundled-reference-v1.txt",
+          )
+          lines = text.splitlines()
+          try:
+              paths_index = next(
+                  index for index, line in enumerate(lines) if line.strip() == "paths:"
+              )
+              permissions_index = next(
+                  index
+                  for index in range(paths_index + 1, len(lines))
+                  if lines[index].startswith("permissions:")
+              )
+          except StopIteration as exc:
+              raise SystemExit("reference workflow path section is inconsistent") from exc
+          path_lines = {
+              line.strip()[2:]
+              for line in lines[paths_index + 1 : permissions_index]
+              if line.strip().startswith("- ")
+          }
+          missing = [path for path in required_paths if path not in path_lines]
+          for path in missing:
+              lines.insert(permissions_index, f"      - {path}")
+              permissions_index += 1
+          text = "\n".join(lines) + "\n"
+
+          start_marker = "      - name: Resolve or materialize offline pinned reference root\n"
+          end_marker = "      - name: Run isolated pinned reference probe\n"
+          start = text.find(start_marker)
+          end = text.find(end_marker, start + 1)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit("reference-root workflow step boundaries are inconsistent")
+          block = text[start:end]
+          if "scripts/materialize_bundled_reference_root.py" not in block:
+              replacement = '''      - name: Resolve or materialize offline pinned reference root
+                id: reference_root
+                if: steps.python.outcome == 'success'
+                continue-on-error: true
+                shell: bash
+                env:
+                  PROBE_PYTHON: ${{ steps.python.outputs.bin }}
+                run: |
+                  set -euo pipefail
+                  root_file="$RUNNER_TEMP/stfixest-reference-root.path"
+                  materialize_parent="$RUNNER_TEMP/stfixest-reference-materialized"
+                  bundled_resolver="scripts/materialize_bundled_reference_root.py"
+                  fallback_resolver="scripts/resolve_reference_root.py"
+                  rm -f "$root_file"
+                  rm -rf "$materialize_parent"
+                  mkdir -m 700 "$materialize_parent"
+                  "$PROBE_PYTHON" -m py_compile \
+                    "$bundled_resolver" \
+                    "$fallback_resolver" \
+                    scripts/ols_reference.py
+
+                  bundled_outcome="failure"
+                  if "$PROBE_PYTHON" "$bundled_resolver" \
+                    --output "$root_file" \
+                    --materialize-parent "$materialize_parent"; then
+                    bundled_outcome="success"
+                  else
+                    rm -f "$root_file"
+                    rm -rf "$materialize_parent"
+                    mkdir -m 700 "$materialize_parent"
+                    "$PROBE_PYTHON" "$fallback_resolver" \
+                      --output "$root_file" \
+                      --materialize-parent "$materialize_parent"
+                  fi
+                  chmod 600 "$root_file"
+                  echo "file=$root_file" >> "$GITHUB_OUTPUT"
+                  echo "bundled_outcome=$bundled_outcome" >> "$GITHUB_OUTPUT"
+
+          '''
+              text = text[:start] + replacement + text[end:]
+
+          if "BUNDLED_REFERENCE_OUTCOME:" not in text:
+              marker = "          REFERENCE_ROOT_OUTCOME: ${{ steps.reference_root.outcome }}\n"
+              if text.count(marker) != 1:
+                  raise SystemExit("reference-root finalizer environment is inconsistent")
+              text = text.replace(
+                  marker,
+                  marker
+                  + "          BUNDLED_REFERENCE_OUTCOME: ${{ steps.reference_root.outputs.bundled_outcome }}\n",
+                  1,
+              )
+
+          if '"bundled_reference_outcome"' not in text:
+              marker = '''                  "reference_root_outcome": os.environ.get("REFERENCE_ROOT_OUTCOME", "unknown"),
+                  "probe_outcome": os.environ.get("PROBE_OUTCOME", "unknown"),
+          '''
+              replacement = '''                  "reference_root_outcome": os.environ.get("REFERENCE_ROOT_OUTCOME", "unknown"),
+                  "bundled_reference_outcome": os.environ.get(
+                      "BUNDLED_REFERENCE_OUTCOME", "unknown"
+                  ),
+                  "probe_outcome": os.environ.get("PROBE_OUTCOME", "unknown"),
+          '''
+              if text.count(marker) != 1:
+                  raise SystemExit("reference-probe failure payload is inconsistent")
+              text = text.replace(marker, replacement, 1)
+
+          workflow.write_text(text, encoding="utf-8")
+          PY
+
+          /usr/bin/python3 -m py_compile \
+            scripts/materialize_bundled_reference_root.py \
+            scripts/resolve_reference_root.py \
+            scripts/ols_reference.py
+          /usr/bin/python3 -m unittest discover \
+            -s tests/python \
+            -p 'test_bundled_reference_root_contract.py'
+          /usr/bin/python3 -m unittest discover \
+            -s tests/python \
+            -p 'test_reference_root_resolver_contract.py'
+
+          root_file="$RUNNER_TEMP/stfixest-finalize-bundled-reference.path"
+          materialize_parent="$RUNNER_TEMP/stfixest-finalize-bundled-reference"
+          rm -f "$root_file"
+          rm -rf "$materialize_parent"
+          mkdir -m 700 "$materialize_parent"
+          /usr/bin/python3 scripts/materialize_bundled_reference_root.py \
+            --output "$root_file" \
+            --materialize-parent "$materialize_parent"
+          chmod 600 "$root_file"
+          test -s "$root_file"
+
+          mkdir -p ci/reference-probes/triggers
+          cat > ci/reference-probes/triggers/bundled-reference-v1.txt <<'EOF'
+          Exact offline stata-require Git bundle plus pinned local reghdfe/ftools stores.
+          EOF
+
+          rm -f .github/workflows/apply-bundled-reference-probe.yml
+          rm -f ci/source-transforms/activate_bundled_reference_probe.py
+          rmdir ci/source-transforms 2>/dev/null || true
+          rm .github/workflows/finalize-bundled-reference-probe.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "ci(reference): finalize offline bundled probe path"
+
+          for attempt in 1 2 3; do
+            git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git rebase "refs/remotes/origin/${BRANCH_NAME}"
+            if git push origin "HEAD:refs/heads/${BRANCH_NAME}"; then
+              exit 0
+            fi
+          done
+          echo "bundled reference finalization lost three branch update races" >&2
+          exit 1
+
+      - name: Publish exact staging-SHA failure receipt
+        if: steps.finalize.outcome == 'failure'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/bundled-reference-finalization-failure.json"
+          RECEIPT="$receipt" /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema": 1,
+              "status": "failure",
+              "failure_kind": "bundled_reference_finalization_failure",
+              "staging_sha": os.environ["GITHUB_SHA"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "branch": os.environ["GITHUB_REF_NAME"],
+          }
+          Path(os.environ["RECEIPT"]).write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          result_path=".ci/source-transform/results/$GITHUB_SHA-bundled-reference-finalization.json"
+          publish="$RUNNER_TEMP/bundled-reference-finalization-publish"
+          git fetch origin "$BRANCH_NAME"
+          git worktree add --detach "$publish" "origin/$BRANCH_NAME"
+          mkdir -p "$publish/$(dirname "$result_path")"
+          cp "$receipt" "$publish/$result_path"
+          git -C "$publish" config user.name "github-actions[bot]"
+          git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$publish" add "$result_path"
+          git -C "$publish" commit -m "ci(source-transform): record ${GITHUB_SHA:0:12} bundled-finalization failure [skip ci]"
+          git -C "$publish" push origin "HEAD:refs/heads/$BRANCH_NAME"
+          git worktree remove --force "$publish"
+
+      - name: Enforce finalization success
+        if: steps.finalize.outcome == 'failure'
+        run: exit 1
