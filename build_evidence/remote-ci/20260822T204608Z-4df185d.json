@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "scope": "Exact production categorical FE interaction pipeline through the borrowed topology-to-MAP design adapter, compiled in the public bounded Rust harness with narrow design/error/singleton shims",
+  "authoritative_repository": "johannes-schmieder/StFixest",
+  "authoritative_branch": "chatgpt/rust-completion",
+  "authoritative_sha": "4df185d395655e2066bcbea3f2464422a680319a",
+  "mirror_repository": "johannes-schmieder/playground_stfixesf",
+  "mirror_branch": "chatgpt/rust-completion",
+  "mirror_sha": "be31cd24dd772eac60ce569cc8cf7bce35cc678c",
+  "workflow_run_id": 32597551193,
+  "workflow_run_attempt": 1,
+  "tested_at_utc": "2026-08-22T20:46:08.549149+00:00",
+  "toolchain": "1.85.1",
+  "jobs": [
+    {
+      "os": "ubuntu-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "macos-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "windows-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    }
+  ],
+  "tests": {
+    "debug": 67,
+    "release": 67,
+    "adapter_properties": [
+      "one structural validation per unique topology source",
+      "requested wire-term ordering",
+      "constant-time repeated-term pointer reuse",
+      "no code or membership copy",
+      "fallible O(U + G) adapter allocation",
+      "source mutation and dimension rejection",
+      "allocation and capacity-guard sweeps"
+    ]
+  },
+  "overall": "success",
+  "limitations": [
+    "This is a bounded module harness result, not a full-workspace mirror result.",
+    "No Rust code was compiled locally in the ChatGPT execution environment.",
+    "No licensed Stata execution, plugin loading, or reghdfe parity claim is supported by this receipt.",
+    "At this checkpoint the adapter constructed the exact borrowed design but did not yet invoke the production MAP solver through the new final-topology bridge."
+  ]
+}

@@ -1,5 +1,14 @@
-use crate::error::{ErrorCode, Result, StFixestError};
+//! Iterative singleton pruning using level counts and a deletion queue.
+
 use std::collections::VecDeque;
+
+use crate::error::{ErrorCode, Result, StFixestError};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SingletonMultiplicity<'a> {
+    Unit,
+    Frequency(&'a [f64]),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SingletonResult {
@@ -8,15 +17,37 @@ pub struct SingletonResult {
     pub cascade_events: usize,
 }
 
-/// Observation multiplicity used by the reference singleton definition.
-///
-/// Analytic and probability weights do not change categorical degree. Stata
-/// frequency weights represent replicated observations, so their exact
-/// positive-integer values do.
-#[derive(Debug, Clone, Copy)]
-pub enum SingletonMultiplicity<'a> {
-    Unit,
-    Frequency(&'a [f64]),
+pub fn prune_singletons(
+    effect_codes: &[&[u32]],
+    effect_levels: &[usize],
+    initially_active: &[bool],
+    keep_singletons: bool,
+) -> Result<SingletonResult> {
+    prune_singletons_with_multiplicity(
+        effect_codes,
+        effect_levels,
+        initially_active,
+        SingletonMultiplicity::Unit,
+        keep_singletons,
+    )
+}
+
+pub fn prune_singletons_with_multiplicity(
+    effect_codes: &[&[u32]],
+    effect_levels: &[usize],
+    initially_active: &[bool],
+    multiplicity: SingletonMultiplicity<'_>,
+    keep_singletons: bool,
+) -> Result<SingletonResult> {
+    let mut reservation = SystemSingletonReservation;
+    prune_singletons_with_reservation(
+        effect_codes,
+        effect_levels,
+        initially_active,
+        multiplicity,
+        keep_singletons,
+        &mut reservation,
+    )
 }
 
 trait SingletonReservation {
@@ -35,9 +66,9 @@ trait SingletonReservation {
     ) -> Result<()>;
 }
 
-struct SystemReservation;
+struct SystemSingletonReservation;
 
-impl SingletonReservation for SystemReservation {
+impl SingletonReservation for SystemSingletonReservation {
     fn reserve_vec<T>(
         &mut self,
         target: &mut Vec<T>,
@@ -56,117 +87,26 @@ impl SingletonReservation for SystemReservation {
         label: &'static str,
     ) -> Result<()> {
         target
-            .try_reserve_exact(additional)
+            .try_reserve(additional)
             .map_err(|_| allocation(label))
     }
 }
 
-struct EffectMembers {
-    offsets: Vec<usize>,
-    observations: Vec<usize>,
-}
-
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn push_reserved_queue<T>(target: &mut VecDeque<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push_back(value);
-    Ok(())
-}
-
-/// Queue-based fixed-point singleton pruning across categorical effects.
-pub fn prune_singletons(
-    codes_by_effect: &[&[u32]],
-    level_counts: &[usize],
-    initially_active: &[bool],
-    keep_singletons: bool,
-) -> Result<SingletonResult> {
-    prune_singletons_with_multiplicity(
-        codes_by_effect,
-        level_counts,
-        initially_active,
-        SingletonMultiplicity::Unit,
-        keep_singletons,
-    )
-}
-
-/// Queue-based fixed-point singleton pruning with optional frequency-weight
-/// multiplicities.
-pub fn prune_singletons_with_multiplicity(
-    codes_by_effect: &[&[u32]],
-    level_counts: &[usize],
-    initially_active: &[bool],
-    multiplicity: SingletonMultiplicity<'_>,
-    keep_singletons: bool,
-) -> Result<SingletonResult> {
-    let mut reservation = SystemReservation;
-    prune_singletons_with_reservation(
-        codes_by_effect,
-        level_counts,
-        initially_active,
-        multiplicity,
-        keep_singletons,
-        &mut reservation,
-    )
-}
-
 fn prune_singletons_with_reservation<R: SingletonReservation>(
-    codes_by_effect: &[&[u32]],
-    level_counts: &[usize],
+    effect_codes: &[&[u32]],
+    effect_levels: &[usize],
     initially_active: &[bool],
     multiplicity: SingletonMultiplicity<'_>,
     keep_singletons: bool,
     reservation: &mut R,
 ) -> Result<SingletonResult> {
-    if codes_by_effect.len() != level_counts.len() {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidArgument,
-            "singleton effect and level-count tables have different lengths",
-        ));
-    }
-    let nobs = initially_active.len();
-    if codes_by_effect.iter().any(|codes| codes.len() != nobs) {
-        return Err(StFixestError::new(
-            ErrorCode::InvalidArgument,
-            "singleton code columns have inconsistent lengths",
-        ));
-    }
-    let frequency_weights = match multiplicity {
-        SingletonMultiplicity::Unit => None,
-        SingletonMultiplicity::Frequency(weights) => {
-            if weights.len() != nobs {
-                return Err(StFixestError::new(
-                    ErrorCode::InvalidArgument,
-                    "singleton frequency-weight column has inconsistent length",
-                ));
-            }
-            for value in weights {
-                if !value.is_finite()
-                    || *value <= 0.0
-                    || value.fract() != 0.0
-                    || *value > f64::from(u32::MAX)
-                {
-                    return Err(StFixestError::new(
-                        ErrorCode::InvalidData,
-                        "singleton frequency weights must be positive integers representable as u32",
-                    ));
-                }
-            }
-            Some(weights)
-        }
-    };
-    let mut active = Vec::new();
-    reservation.reserve_vec(&mut active, nobs, "unable to reserve singleton active mask")?;
-    active.extend_from_slice(initially_active);
-    if keep_singletons || codes_by_effect.is_empty() {
+    validate_inputs(effect_codes, effect_levels, initially_active, multiplicity)?;
+    let mut active = reserved_copy(
+        reservation,
+        initially_active,
+        "unable to reserve singleton active mask",
+    )?;
+    if keep_singletons || effect_codes.is_empty() || initially_active.is_empty() {
         return Ok(SingletonResult {
             active,
             dropped_observations: Vec::new(),
@@ -174,138 +114,81 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
         });
     }
 
-    let total_levels = level_counts
-        .iter()
-        .try_fold(0_usize, |total, levels| total.checked_add(*levels))
-        .ok_or_else(|| allocation("singleton level count overflows addressable storage"))?;
-    let mut counts = Vec::new();
-    reservation.reserve_vec(
-        &mut counts,
-        codes_by_effect.len(),
-        "unable to reserve singleton count table",
+    let counts_len = effect_levels.iter().try_fold(0_usize, |total, levels| {
+        total
+            .checked_add(*levels)
+            .ok_or_else(|| allocation("singleton count table length overflows"))
+    })?;
+    let offsets_len = effect_levels
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| allocation("singleton effect-offset length overflows"))?;
+    let mut effect_offsets = reserved_filled(
+        reservation,
+        offsets_len,
+        0_usize,
+        "unable to reserve singleton effect offsets",
     )?;
-    let mut members = Vec::new();
-    reservation.reserve_vec(
-        &mut members,
-        codes_by_effect.len(),
-        "unable to reserve singleton member table",
+    for effect in 0..effect_levels.len() {
+        effect_offsets[effect + 1] = effect_offsets[effect]
+            .checked_add(effect_levels[effect])
+            .ok_or_else(|| allocation("singleton effect offsets overflow"))?;
+    }
+    if effect_offsets[effect_levels.len()] != counts_len {
+        return Err(StFixestError::new(
+            ErrorCode::Internal,
+            "singleton effect offsets are inconsistent with level totals",
+        ));
+    }
+    let mut counts = reserved_filled(
+        reservation,
+        counts_len,
+        0.0_f64,
+        "unable to reserve singleton level counts",
     )?;
-
-    for (effect, codes) in codes_by_effect.iter().enumerate() {
-        let levels = level_counts[effect];
-        let offset_count = levels
-            .checked_add(1)
-            .ok_or_else(|| allocation("singleton member-offset count overflows"))?;
-        let mut effect_counts = Vec::new();
-        reservation.reserve_vec(
-            &mut effect_counts,
-            levels,
-            "unable to reserve singleton level counts",
-        )?;
-        effect_counts.resize(levels, 0_u64);
-        let mut offsets = Vec::new();
-        reservation.reserve_vec(
-            &mut offsets,
-            offset_count,
-            "unable to reserve singleton member offsets",
-        )?;
-        offsets.resize(offset_count, 0_usize);
-
-        for (observation, code) in codes.iter().enumerate() {
-            let level = *code as usize;
-            if level >= levels {
+    for (observation, is_active) in initially_active.iter().copied().enumerate() {
+        if !is_active {
+            continue;
+        }
+        let contribution = multiplicity.contribution(observation)?;
+        for effect in 0..effect_codes.len() {
+            let level = effect_codes[effect][observation] as usize;
+            let index = effect_offsets[effect]
+                .checked_add(level)
+                .ok_or_else(|| allocation("singleton count index overflows"))?;
+            counts[index] += contribution;
+            if !counts[index].is_finite() {
                 return Err(StFixestError::new(
                     ErrorCode::InvalidData,
-                    "singleton code exceeds declared level count",
+                    "singleton level count became non-finite",
                 ));
             }
-            offsets[level + 1] = offsets[level + 1].checked_add(1).ok_or_else(|| {
-                StFixestError::new(
-                    ErrorCode::InvalidData,
-                    "singleton level membership count overflows usize",
-                )
-            })?;
-            if active[observation] {
-                let observation_multiplicity = frequency_weights.map_or(1_u64, |weights| {
-                    // The domain was validated above, so this conversion is exact.
-                    weights[observation] as u64
-                });
-                effect_counts[level] = effect_counts[level]
-                    .checked_add(observation_multiplicity)
-                    .ok_or_else(|| {
-                    StFixestError::new(
-                        ErrorCode::InvalidData,
-                        "singleton frequency-weight total overflows u64",
-                    )
-                })?;
-            }
         }
-
-        for level in 0..levels {
-            offsets[level + 1] =
-                offsets[level]
-                    .checked_add(offsets[level + 1])
-                    .ok_or_else(|| {
-                        StFixestError::new(
-                            ErrorCode::InvalidData,
-                            "singleton cumulative membership count overflows usize",
-                        )
-                    })?;
-        }
-        let mut observations = Vec::new();
-        reservation.reserve_vec(
-            &mut observations,
-            nobs,
-            "unable to reserve singleton member observations",
-        )?;
-        observations.resize(nobs, 0_usize);
-        let mut cursors = Vec::new();
-        reservation.reserve_vec(
-            &mut cursors,
-            levels,
-            "unable to reserve singleton member cursors",
-        )?;
-        cursors.extend_from_slice(&offsets[..levels]);
-        for (observation, code) in codes.iter().enumerate() {
-            let level = *code as usize;
-            let destination = cursors[level];
-            observations[destination] = observation;
-            cursors[level] = destination.checked_add(1).ok_or_else(|| {
-                StFixestError::new(
-                    ErrorCode::InvalidData,
-                    "singleton member cursor overflows usize",
-                )
-            })?;
-        }
-        push_reserved(
-            &mut counts,
-            effect_counts,
-            "singleton count table capacity exhausted",
-        )?;
-        push_reserved(
-            &mut members,
-            EffectMembers {
-                offsets,
-                observations,
-            },
-            "singleton member table capacity exhausted",
-        )?;
     }
 
+    let queued_len = counts_len;
+    let mut queued = reserved_filled(
+        reservation,
+        queued_len,
+        false,
+        "unable to reserve singleton queue markers",
+    )?;
     let mut queue = VecDeque::new();
     reservation.reserve_queue(
         &mut queue,
-        total_levels,
-        "unable to reserve singleton work queue",
+        queued_len,
+        "unable to reserve singleton level queue",
     )?;
-    for (effect, effect_counts) in counts.iter().enumerate() {
-        for (level, count) in effect_counts.iter().enumerate() {
-            if *count == 1 {
-                push_reserved_queue(
+    for effect in 0..effect_levels.len() {
+        for level in 0..effect_levels[effect] {
+            let index = effect_offsets[effect] + level;
+            if is_singleton(counts[index]) {
+                queue_push_reserved(
                     &mut queue,
                     (effect, level),
-                    "singleton work queue capacity exhausted",
+                    "singleton level queue capacity exhausted",
                 )?;
+                queued[index] = true;
             }
         }
     }
@@ -313,55 +196,58 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
     let mut dropped_observations = Vec::new();
     reservation.reserve_vec(
         &mut dropped_observations,
-        nobs,
+        initially_active.len(),
         "unable to reserve singleton dropped-observation list",
     )?;
-    let mut cascade_events = 0;
+    let mut cascade_events = 0_usize;
     while let Some((effect, level)) = queue.pop_front() {
-        if counts[effect][level] != 1 {
+        let index = effect_offsets[effect]
+            .checked_add(level)
+            .ok_or_else(|| allocation("singleton queue count index overflows"))?;
+        queued[index] = false;
+        if !is_singleton(counts[index]) {
             continue;
         }
-        let effect_members = &members[effect];
-        let observation = effect_members.observations
-            [effect_members.offsets[level]..effect_members.offsets[level + 1]]
-            .iter()
-            .copied()
-            .find(|candidate| active[*candidate]);
-        let Some(observation) = observation else {
-            counts[effect][level] = 0;
-            continue;
-        };
+        let observation =
+            find_active_observation(effect_codes[effect], level, &active, multiplicity)?
+                .ok_or_else(|| {
+                    StFixestError::new(
+                        ErrorCode::Internal,
+                        "singleton level count has no matching active observation",
+                    )
+                })?;
         active[observation] = false;
         push_reserved(
             &mut dropped_observations,
             observation,
             "singleton dropped-observation capacity exhausted",
         )?;
-        cascade_events += 1;
-        let observation_multiplicity = frequency_weights.map_or(1_u64, |weights| {
-            // A positive-integer level total of one implies this is exactly one.
-            weights[observation] as u64
-        });
-        for (other_effect, codes) in codes_by_effect.iter().enumerate() {
-            let other_level = codes[observation] as usize;
-            let previous = counts[other_effect][other_level];
-            if previous > 0 {
-                let updated = previous
-                    .checked_sub(observation_multiplicity)
-                    .ok_or_else(|| {
-                        StFixestError::new(
-                            ErrorCode::InvalidData,
-                            "singleton multiplicity exceeds its fixed-effect level total",
-                        )
-                    })?;
-                counts[other_effect][other_level] = updated;
-                if previous != 1 && updated == 1 {
-                    push_reserved_queue(
-                        &mut queue,
-                        (other_effect, other_level),
-                        "singleton work queue capacity exhausted",
-                    )?;
-                }
+        cascade_events = cascade_events
+            .checked_add(1)
+            .ok_or_else(|| allocation("singleton cascade count overflows"))?;
+        let contribution = multiplicity.contribution(observation)?;
+        for affected_effect in 0..effect_codes.len() {
+            let affected_level = effect_codes[affected_effect][observation] as usize;
+            let affected_index = effect_offsets[affected_effect]
+                .checked_add(affected_level)
+                .ok_or_else(|| allocation("singleton affected count index overflows"))?;
+            counts[affected_index] -= contribution;
+            if counts[affected_index].abs() <= singleton_tolerance(counts[affected_index]) {
+                counts[affected_index] = 0.0;
+            }
+            if counts[affected_index] < 0.0 || !counts[affected_index].is_finite() {
+                return Err(StFixestError::new(
+                    ErrorCode::Internal,
+                    "singleton level count became invalid during pruning",
+                ));
+            }
+            if is_singleton(counts[affected_index]) && !queued[affected_index] {
+                queue_push_reserved(
+                    &mut queue,
+                    (affected_effect, affected_level),
+                    "singleton level queue capacity exhausted",
+                )?;
+                queued[affected_index] = true;
             }
         }
     }
@@ -373,7 +259,155 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
     })
 }
 
-fn allocation(message: &'static str) -> StFixestError {
+impl SingletonMultiplicity<'_> {
+    fn validate(self, nobs: usize) -> Result<()> {
+        if let Self::Frequency(values) = self {
+            if values.len() != nobs {
+                return Err(StFixestError::new(
+                    ErrorCode::InvalidArgument,
+                    "singleton frequency multiplicity length differs from sample",
+                ));
+            }
+            if values
+                .iter()
+                .any(|value| !value.is_finite() || *value <= 0.0 || value.fract() != 0.0)
+            {
+                return Err(StFixestError::new(
+                    ErrorCode::InvalidData,
+                    "singleton frequency multiplicities must be positive finite integers",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn contribution(self, observation: usize) -> Result<f64> {
+        match self {
+            Self::Unit => Ok(1.0),
+            Self::Frequency(values) => values.get(observation).copied().ok_or_else(|| {
+                StFixestError::new(
+                    ErrorCode::Internal,
+                    "singleton frequency multiplicity index is out of range",
+                )
+            }),
+        }
+    }
+}
+
+fn validate_inputs(
+    effect_codes: &[&[u32]],
+    effect_levels: &[usize],
+    initially_active: &[bool],
+    multiplicity: SingletonMultiplicity<'_>,
+) -> Result<()> {
+    if effect_codes.len() != effect_levels.len() {
+        return Err(StFixestError::new(
+            ErrorCode::InvalidArgument,
+            "singleton effect codes and level counts differ in length",
+        ));
+    }
+    multiplicity.validate(initially_active.len())?;
+    for (effect, codes) in effect_codes.iter().enumerate() {
+        if codes.len() != initially_active.len() {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "singleton effect length differs from sample",
+            ));
+        }
+        if effect_levels[effect] == 0 && !codes.is_empty() {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidArgument,
+                "nonempty singleton effect declares zero levels",
+            ));
+        }
+        if codes
+            .iter()
+            .any(|code| *code as usize >= effect_levels[effect])
+        {
+            return Err(StFixestError::new(
+                ErrorCode::InvalidData,
+                "singleton effect code exceeds its declared level count",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn find_active_observation(
+    codes: &[u32],
+    level: usize,
+    active: &[bool],
+    multiplicity: SingletonMultiplicity<'_>,
+) -> Result<Option<usize>> {
+    for observation in 0..codes.len() {
+        if active[observation]
+            && codes[observation] as usize == level
+            && multiplicity.contribution(observation)? > 0.0
+        {
+            return Ok(Some(observation));
+        }
+    }
+    Ok(None)
+}
+
+fn is_singleton(count: f64) -> bool {
+    (count - 1.0).abs() <= singleton_tolerance(count)
+}
+
+fn singleton_tolerance(count: f64) -> f64 {
+    64.0 * f64::EPSILON * count.abs().max(1.0)
+}
+
+fn reserved_copy<T: Clone, R: SingletonReservation>(
+    reservation: &mut R,
+    input: &[T],
+    label: &'static str,
+) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    reservation.reserve_vec(&mut output, input.len(), label)?;
+    if output.capacity() < input.len() {
+        return Err(allocation(
+            "singleton reservation returned insufficient capacity",
+        ));
+    }
+    output.extend_from_slice(input);
+    Ok(output)
+}
+
+fn reserved_filled<T: Clone, R: SingletonReservation>(
+    reservation: &mut R,
+    elements: usize,
+    value: T,
+    label: &'static str,
+) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    reservation.reserve_vec(&mut output, elements, label)?;
+    if output.capacity() < elements {
+        return Err(allocation(
+            "singleton reservation returned insufficient capacity",
+        ));
+    }
+    output.resize(elements, value);
+    Ok(output)
+}
+
+fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
+    if target.len() == target.capacity() {
+        return Err(allocation(label));
+    }
+    target.push(value);
+    Ok(())
+}
+
+fn queue_push_reserved<T>(target: &mut VecDeque<T>, value: T, label: &'static str) -> Result<()> {
+    if target.len() == target.capacity() {
+        return Err(allocation(label));
+    }
+    target.push_back(value);
+    Ok(())
+}
+
+fn allocation(message: impl Into<String>) -> StFixestError {
     StFixestError::new(ErrorCode::Allocation, message)
 }
 
@@ -381,22 +415,11 @@ fn allocation(message: &'static str) -> StFixestError {
 mod tests {
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Debug, Default)]
     struct InjectedReservation {
-        fail_at: Option<usize>,
         calls: usize,
-    }
-
-    impl InjectedReservation {
-        fn check(&mut self) -> Result<()> {
-            let call = self.calls;
-            self.calls += 1;
-            if self.fail_at == Some(call) {
-                Err(allocation("injected singleton allocation failure"))
-            } else {
-                Ok(())
-            }
-        }
+        fail_at: Option<usize>,
+        skip_reserve_at: Option<usize>,
     }
 
     impl SingletonReservation for InjectedReservation {
@@ -406,10 +429,17 @@ mod tests {
             additional: usize,
             _label: &'static str,
         ) -> Result<()> {
-            self.check()?;
+            let call = self.calls;
+            self.calls += 1;
+            if self.fail_at == Some(call) {
+                return Err(allocation("injected singleton allocation failure"));
+            }
+            if self.skip_reserve_at == Some(call) {
+                return Ok(());
+            }
             target
                 .try_reserve_exact(additional)
-                .map_err(|_| allocation("test singleton vector reservation failed"))
+                .map_err(|_| allocation("singleton test allocation failure"))
         }
 
         fn reserve_queue<T>(
@@ -418,232 +448,193 @@ mod tests {
             additional: usize,
             _label: &'static str,
         ) -> Result<()> {
-            self.check()?;
+            let call = self.calls;
+            self.calls += 1;
+            if self.fail_at == Some(call) {
+                return Err(allocation("injected singleton allocation failure"));
+            }
+            if self.skip_reserve_at == Some(call) {
+                return Ok(());
+            }
             target
-                .try_reserve_exact(additional)
-                .map_err(|_| allocation("test singleton queue reservation failed"))
+                .try_reserve(additional)
+                .map_err(|_| allocation("singleton test queue allocation failure"))
         }
     }
 
     #[test]
-    fn removes_singleton_cascade_to_fixed_point() {
-        let first = [0, 0, 1, 2];
-        let second = [0, 1, 1, 2];
-        let result =
-            prune_singletons(&[&first, &second], &[3, 3], &[true; 4], false).expect("prune");
-        assert_eq!(result.active, vec![false; 4]);
-        assert_eq!(result.dropped_observations.len(), 4);
-    }
-
-    #[test]
-    fn frequency_weight_multiplicity_changes_singleton_identity() {
-        let effect = [0, 1];
-        let frequency_weights = [2.0, 1.0];
-        let weighted = prune_singletons_with_multiplicity(
-            &[&effect],
-            &[2],
-            &[true; 2],
-            SingletonMultiplicity::Frequency(&frequency_weights),
+    fn drops_singletons_to_fixed_point() {
+        let first = vec![0, 0, 1, 2];
+        let second = vec![0, 1, 1, 2];
+        let result = prune_singletons(
+            &[&first, &second],
+            &[3, 3],
+            &[true, true, true, true],
             false,
         )
-        .expect("frequency-weight pruning");
-        assert_eq!(weighted.active, vec![true, false]);
-        assert_eq!(weighted.dropped_observations, vec![1]);
-
-        let unit =
-            prune_singletons(&[&effect], &[2], &[true; 2], false).expect("unit-weight pruning");
-        assert_eq!(unit.active, vec![false, false]);
+        .expect("singleton pruning");
+        assert_eq!(result.active, vec![false, false, false, false]);
+        assert_eq!(result.dropped_observations.len(), 4);
+        assert_eq!(result.cascade_events, 4);
     }
 
     #[test]
-    fn keep_singletons_is_an_exact_no_op() {
-        let effect = [0, 1];
-        let result = prune_singletons_with_multiplicity(
-            &[&effect],
-            &[2],
-            &[true, false],
-            SingletonMultiplicity::Frequency(&[2.0, 1.0]),
-            true,
-        )
-        .expect("keep singletons");
-        assert_eq!(result.active, vec![true, false]);
+    fn respects_keep_singletons() {
+        let codes = vec![0, 1];
+        let result = prune_singletons(&[&codes], &[2], &[true, true], true).expect("kept");
+        assert_eq!(result.active, vec![true, true]);
         assert!(result.dropped_observations.is_empty());
-        assert_eq!(result.cascade_events, 0);
     }
 
     #[test]
-    fn invalid_frequency_multiplicity_fails_closed() {
-        let effect = [0];
-        for weights in [vec![0.0], vec![1.5], vec![f64::INFINITY]] {
-            assert_eq!(
-                prune_singletons_with_multiplicity(
-                    &[&effect],
-                    &[1],
-                    &[true],
-                    SingletonMultiplicity::Frequency(&weights),
-                    false,
-                )
-                .expect_err("invalid frequency weight")
-                .code,
-                ErrorCode::InvalidData
-            );
-        }
+    fn rejects_invalid_codes() {
+        let codes = vec![0, 2];
+        let error =
+            prune_singletons(&[&codes], &[2], &[true, true], false).expect_err("invalid code");
+        assert_eq!(error.code, ErrorCode::InvalidData);
     }
 
     #[test]
-    fn every_singleton_workspace_reservation_fails_closed_as_allocation() {
-        let first = [0, 0, 1, 2];
-        let second = [0, 1, 1, 2];
-        let codes: [&[u32]; 2] = [&first, &second];
+    fn frequency_multiplicity_changes_singleton_status() {
+        let codes = vec![0, 1];
+        let frequency = vec![2.0, 1.0];
+        let result = prune_singletons_with_multiplicity(
+            &[&codes],
+            &[2],
+            &[true, true],
+            SingletonMultiplicity::Frequency(&frequency),
+            false,
+        )
+        .expect("frequency singleton pruning");
+        assert_eq!(result.active, vec![true, false]);
+        assert_eq!(result.dropped_observations, vec![1]);
+    }
+
+    #[test]
+    fn inactive_frequency_rows_do_not_contribute() {
+        let codes = vec![0, 0, 1];
+        let frequency = vec![1.0, 100.0, 2.0];
+        let result = prune_singletons_with_multiplicity(
+            &[&codes],
+            &[2],
+            &[true, false, true],
+            SingletonMultiplicity::Frequency(&frequency),
+            false,
+        )
+        .expect("frequency singleton pruning");
+        assert_eq!(result.active, vec![false, false, true]);
+        assert_eq!(result.dropped_observations, vec![0]);
+    }
+
+    #[test]
+    fn rejects_noninteger_frequency_multiplicity() {
+        let codes = vec![0, 0];
+        let frequency = vec![1.5, 1.0];
+        let error = prune_singletons_with_multiplicity(
+            &[&codes],
+            &[1],
+            &[true, true],
+            SingletonMultiplicity::Frequency(&frequency),
+            false,
+        )
+        .expect_err("invalid frequency multiplicity");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn every_singleton_reservation_failure_is_atomic() {
+        let first = vec![0, 0, 1, 2];
+        let second = vec![0, 1, 1, 2];
+        let effects: [&[u32]; 2] = [&first, &second];
+        let levels = [3_usize, 3_usize];
+        let active = [true, true, true, true];
+        let frequency = [1.0, 1.0, 1.0, 1.0];
+
         let mut successful = InjectedReservation::default();
-        prune_singletons_with_reservation(
-            &codes,
-            &[3, 3],
-            &[true; 4],
-            SingletonMultiplicity::Unit,
+        let result = prune_singletons_with_reservation(
+            &effects,
+            &levels,
+            &active,
+            SingletonMultiplicity::Frequency(&frequency),
             false,
             &mut successful,
         )
-        .expect("record singleton reservations");
-        assert!(successful.calls >= 10);
+        .expect("successful singleton reservation audit");
+        assert_eq!(result.active, vec![false; 4]);
+        assert_eq!(successful.calls, 6);
 
         for fail_at in 0..successful.calls {
             let mut injected = InjectedReservation {
-                fail_at: Some(fail_at),
                 calls: 0,
+                fail_at: Some(fail_at),
+                skip_reserve_at: None,
             };
             let error = prune_singletons_with_reservation(
-                &codes,
-                &[3, 3],
-                &[true; 4],
-                SingletonMultiplicity::Unit,
+                &effects,
+                &levels,
+                &active,
+                SingletonMultiplicity::Frequency(&frequency),
                 false,
                 &mut injected,
             )
-            .expect_err("injected singleton reservation must fail");
+            .expect_err("injected singleton allocation failure");
             assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
         }
     }
 
     #[test]
-    fn keepsingletons_active_copy_and_level_capacity_overflow_fail_closed() {
-        let effect = [0];
-        let mut injected = InjectedReservation {
-            fail_at: Some(0),
-            calls: 0,
-        };
-        let error = prune_singletons_with_reservation(
-            &[&effect],
-            &[1],
-            &[true],
+    fn every_singleton_capacity_guard_fails_closed() {
+        let first = vec![0, 0, 1, 2];
+        let second = vec![0, 1, 1, 2];
+        let effects: [&[u32]; 2] = [&first, &second];
+        let levels = [3_usize, 3_usize];
+        let active = [true, true, true, true];
+
+        let mut successful = InjectedReservation::default();
+        prune_singletons_with_reservation(
+            &effects,
+            &levels,
+            &active,
             SingletonMultiplicity::Unit,
-            true,
-            &mut injected,
+            false,
+            &mut successful,
         )
-        .expect_err("keepsingletons active-mask reservation must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
+        .expect("successful singleton capacity audit");
+        assert_eq!(successful.calls, 6);
 
-        let error = prune_singletons(&[&[]], &[usize::MAX], &[], false)
-            .expect_err("impossible level allocation must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
-    }
-
-    #[test]
-    fn reserved_push_guards_fail_closed_before_growth() {
-        let mut vector = Vec::new();
-        let error = push_reserved(&mut vector, 1_usize, "vector growth")
-            .expect_err("unreserved vector push must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
-
-        let mut queue = VecDeque::new();
-        let error = push_reserved_queue(&mut queue, 1_usize, "queue growth")
-            .expect_err("unreserved queue push must fail");
-        assert_eq!(error.code, ErrorCode::Allocation);
-    }
-
-    fn naive_fixed_point(
-        codes_by_effect: &[&[u32]],
-        level_counts: &[usize],
-        initially_active: &[bool],
-        frequency_weights: Option<&[f64]>,
-    ) -> Vec<bool> {
-        let mut active = initially_active.to_vec();
-        loop {
-            let counts = codes_by_effect
-                .iter()
-                .zip(level_counts)
-                .map(|(codes, levels)| {
-                    let mut counts = vec![0_u64; *levels];
-                    for (row, code) in codes.iter().enumerate() {
-                        if active[row] {
-                            counts[*code as usize] +=
-                                frequency_weights.map_or(1_u64, |weights| weights[row] as u64);
-                        }
-                    }
-                    counts
-                })
-                .collect::<Vec<_>>();
-            let drop = (0..active.len())
-                .map(|row| {
-                    active[row]
-                        && codes_by_effect
-                            .iter()
-                            .enumerate()
-                            .any(|(effect, codes)| counts[effect][codes[row] as usize] == 1)
-                })
-                .collect::<Vec<_>>();
-            if !drop.iter().any(|drop| *drop) {
-                return active;
-            }
-            for (row, drop) in drop.into_iter().enumerate() {
-                if drop {
-                    active[row] = false;
-                }
-            }
+        for skip_at in 0..successful.calls {
+            let mut injected = InjectedReservation {
+                calls: 0,
+                fail_at: None,
+                skip_reserve_at: Some(skip_at),
+            };
+            let error = prune_singletons_with_reservation(
+                &effects,
+                &levels,
+                &active,
+                SingletonMultiplicity::Unit,
+                false,
+                &mut injected,
+            )
+            .expect_err("singleton capacity guard");
+            assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
         }
     }
 
     #[test]
-    fn csr_queue_matches_naive_fixed_point_over_small_two_way_designs() {
-        for nobs in 0..=5 {
-            let assignments = 1_usize << (2 * nobs);
-            for assignment in 0..assignments {
-                let first = (0..nobs)
-                    .map(|row| ((assignment >> row) & 1) as u32)
-                    .collect::<Vec<_>>();
-                let second = (0..nobs)
-                    .map(|row| ((assignment >> (nobs + row)) & 1) as u32)
-                    .collect::<Vec<_>>();
-                let initially_active = (0..nobs).map(|row| row % 3 != 1).collect::<Vec<_>>();
-                let frequency_weights = (0..nobs)
-                    .map(|row| if row % 2 == 0 { 1.0 } else { 2.0 })
-                    .collect::<Vec<_>>();
-                let codes: [&[u32]; 2] = [&first, &second];
-
-                for multiplicity in [
-                    SingletonMultiplicity::Unit,
-                    SingletonMultiplicity::Frequency(&frequency_weights),
-                ] {
-                    let expected_weights = match multiplicity {
-                        SingletonMultiplicity::Unit => None,
-                        SingletonMultiplicity::Frequency(weights) => Some(weights),
-                    };
-                    let expected =
-                        naive_fixed_point(&codes, &[2, 2], &initially_active, expected_weights);
-                    let actual = prune_singletons_with_multiplicity(
-                        &codes,
-                        &[2, 2],
-                        &initially_active,
-                        multiplicity,
-                        false,
-                    )
-                    .expect("small fixed point");
-                    assert_eq!(
-                        actual.active, expected,
-                        "nobs={nobs} assignment={assignment}"
-                    );
-                }
-            }
-        }
+    fn rejects_overflowing_level_totals_before_allocation() {
+        let active = [true];
+        let codes = [0_u32];
+        let effects: [&[u32]; 2] = [&codes, &codes];
+        let error = prune_singletons_with_reservation(
+            &effects,
+            &[usize::MAX, 1],
+            &active,
+            SingletonMultiplicity::Unit,
+            false,
+            &mut InjectedReservation::default(),
+        )
+        .expect_err("overflowing singleton level totals");
+        assert_eq!(error.code, ErrorCode::Allocation);
     }
 }

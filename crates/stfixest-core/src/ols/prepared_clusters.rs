@@ -33,7 +33,7 @@ impl OlsClusteredRequestV1 {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum PreparedOlsClusterCodes {
+pub(super) enum PreparedOlsClusterCodes {
     /// Reuse the authoritative final categorical codes owned by OLS.
     CategoricalSource { categorical_source_index: usize },
     /// One collision-free interaction code per final active observation.
@@ -43,10 +43,10 @@ enum PreparedOlsClusterCodes {
 /// One final-sample cluster dimension in declared order.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreparedOlsClusterDimension {
-    label: String,
-    sources: Vec<SourceId>,
-    codes: PreparedOlsClusterCodes,
-    groups: usize,
+    pub(super) label: String,
+    pub(super) sources: Vec<SourceId>,
+    pub(super) codes: PreparedOlsClusterCodes,
+    pub(super) groups: usize,
 }
 
 impl PreparedOlsClusterDimension {
@@ -75,7 +75,7 @@ impl PreparedOlsClusterDimension {
 /// contain only a categorical-source index and never copy observation codes.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreparedOlsClusterDesign {
-    dimensions: Vec<PreparedOlsClusterDimension>,
+    pub(super) dimensions: Vec<PreparedOlsClusterDimension>,
 }
 
 impl PreparedOlsClusterDesign {
@@ -205,7 +205,7 @@ pub fn prepare_ols_clustered_data(
     Ok(prepared)
 }
 
-fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<SourceId>> {
+pub(super) fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<SourceId>> {
     if !(1..=10).contains(&request.clusters.len()) {
         return Err(invalid_argument(
             "prepared clustered OLS requires between one and ten declared cluster dimensions",

@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "scope": "Exact production categorical FE interaction pipeline through the certified finalized-topology-to-borrowed-MAP bridge, compiled in the public bounded Rust harness with narrow design/error/singleton/numerical shims",
+  "authoritative_repository": "johannes-schmieder/StFixest",
+  "authoritative_branch": "chatgpt/rust-completion",
+  "authoritative_sha": "f68dae8fddb10e753b104c268d639bba8612a703",
+  "mirror_repository": "johannes-schmieder/playground_stfixesf",
+  "mirror_branch": "chatgpt/rust-completion",
+  "mirror_sha": "1e557f44eb894a6a8a6973f0e41c6ece406d821c",
+  "status_commit_sha": "891cbc8a513adce687bac0a52fe8db37c69b8500",
+  "workflow_run_id": 32598105054,
+  "workflow_run_attempt": 1,
+  "tested_at_utc": "2026-08-22T20:57:08.551370+00:00",
+  "toolchain": "1.85.1",
+  "jobs": [
+    {
+      "os": "ubuntu-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "macos-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "windows-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    }
+  ],
+  "overall": "success",
+  "bridge_properties": [
+    "final topology validation before numerical mutation",
+    "one compact source-view table and O(U + G) borrowed-design tables",
+    "no observation-scale code, weight, or membership copy",
+    "weighted direct group-demeaning equality for a categorical interaction",
+    "repeated interaction-term projection invariance",
+    "mixed single-source and interaction effects",
+    "dimension rejection and pre-MAP allocation/capacity guards"
+  ],
+  "limitations": [
+    "This is a bounded module harness result, not a full-workspace mirror result.",
+    "The public harness uses an independent weighted alternating-projection implementation to exercise the exact production bridge API; the private full-workspace production MAP module was not mirrored in this bounded run.",
+    "No Rust code was compiled locally in the ChatGPT execution environment.",
+    "No licensed Stata execution, plugin loading, or reghdfe parity claim is supported by this receipt.",
+    "PreparedOlsData, plugin transport, absorbed-DoF publication, and public estimator dispatch were not enabled at this checkpoint."
+  ]
+}

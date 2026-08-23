@@ -127,10 +127,7 @@ indicator. On 2026-08-22, push run `32614167293` passed Stata and Rust for
 `ae4d400`; deliberate Stata failure run `32614279636` recorded `r(9)` for
 `d1e9497` while Rust remained green; and fix run `32614371462` passed both lanes
 for `955bc89`. The deliberate failure is retained only on the setup branch and
-its per-SHA receipt, not as a commit on `main`. PR #10 was squash-merged as
-`4bc9d71244c29903966b47dd3441b6508472f1d0`; final main run `32614591791`
-passed its 11-fixture quick profile (including the StFixest smoke fixture) and
-the Rust/C/source lane.
+its per-SHA receipt, not as a commit on `main`.
 
 A restricted automation shell can incorrectly report `Stopped` because
 `svc.sh` uses an unqualified launchd lookup. The authoritative check is:

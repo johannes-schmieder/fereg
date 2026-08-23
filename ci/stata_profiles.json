@@ -48,7 +48,8 @@
         "tests/stata/parser/reject_ambiguous_absorb.do",
         "tests/stata/parser/string_sources.do",
         "tests/stata/parser/time_series_marker.do",
-        "tests/stata/postestimation/fail_closed.do"
+        "tests/stata/postestimation/fail_closed.do",
+        "tests/stata/installation/estimate_ols_categorical_interaction.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
@@ -138,6 +139,7 @@
       "fixtures": [
         "ci/stfixest_smoke.do",
         "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "tests/stata/installation/estimate_ols_categorical_interaction.do",
         "tests/stata/installation/phase01_smoke.do",
         "tests/stata/installation/prepare_ols_boundary.do",
         "tests/stata/installation/reload_loop.do",

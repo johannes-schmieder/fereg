@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "scope": "Exact production categorical FE interaction, partition, candidate registry, interaction-aware singleton, final-sample topology, validation, topology-source, and topology-registry modules compiled in the public bounded Rust harness with narrow design/error/singleton shims",
+  "authoritative_repository": "johannes-schmieder/StFixest",
+  "authoritative_branch": "chatgpt/rust-completion",
+  "authoritative_sha": "801958dc4fcd203af1956f6f8b43b885009d8a7e",
+  "mirror_repository": "johannes-schmieder/playground_stfixesf",
+  "mirror_branch": "chatgpt/rust-completion",
+  "mirror_sha": "ebd180471223d14972086a5d4c8655fdf730e0f5",
+  "workflow_run_id": 32597098331,
+  "workflow_run_attempt": 1,
+  "tested_at_utc": "2026-08-22T20:36:50.083443+00:00",
+  "toolchain": "1.85.1",
+  "jobs": [
+    {
+      "os": "ubuntu-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "macos-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "windows-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    }
+  ],
+  "overall": "success",
+  "limitations": [
+    "This is a bounded module harness result, not a full-workspace mirror result.",
+    "No Rust code was compiled locally in the ChatGPT execution environment.",
+    "No licensed Stata execution, plugin loading, or reghdfe parity claim is supported by this receipt.",
+    "The production interaction topology was not yet connected to PreparedOlsData, plugin transport, DoF publication, or a public estimator at this checkpoint."
+  ]
+}

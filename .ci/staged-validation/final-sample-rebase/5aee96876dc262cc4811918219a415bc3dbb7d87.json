@@ -1,0 +1,29 @@
+{
+  "payload": {
+    "activation_committed": false,
+    "gates": {
+      "apply": "success",
+      "build_release": "skipped",
+      "clippy": "failure",
+      "fmt": "success",
+      "test_debug": "skipped",
+      "test_release": "skipped"
+    },
+    "generated_diff_sha256": "344e1766e74b70656801759afc82b4b95913ac02dffbdf5d58f854035597afc3",
+    "generated_files": [
+      "crates/stfixest-core/src/lib.rs",
+      "crates/stfixest-core/src/ols/prepared_categorical_data.rs",
+      "crates/stfixest-core/src/ols/prepared_categorical_rebase.rs"
+    ],
+    "platform": "macOS ARM64",
+    "receipt_type": "stfixest-staged-final-sample-rebase",
+    "ref": "refs/heads/codex/categorical-interactions",
+    "runner_name": "macstudio-stata-mp18-stfixest",
+    "schema_version": 1,
+    "status": "failure",
+    "tested_sha": "5aee96876dc262cc4811918219a415bc3dbb7d87",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 32653122989
+  },
+  "payload_sha256": "991d6929ac89db67639194aaf3133a2109137079032485398702c9b2070ce403"
+}

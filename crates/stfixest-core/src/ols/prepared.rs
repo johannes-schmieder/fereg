@@ -599,7 +599,7 @@ pub fn prepare_ols_data(
     prepare_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
-pub(super) fn prepare_ols_data_with_cluster_sources(
+pub(crate) fn prepare_ols_data_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],

@@ -1,20 +1,24 @@
 use crate::data::WeightKind;
 use crate::error::{ErrorCode, Result, StFixestError};
+use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::topology_dof::CategoricalTopologyDofReport;
 
+use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
 };
 use super::prepared_unadjusted::{
-    build_reference_weight_report, build_residual_dof, build_statistics, checked_square,
-    compensated_add, exact_integer_as_f64, relative_difference, validate_fit_and_absorbed_dof,
+    build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
+    compensated_add, exact_integer_as_f64, relative_difference, validate_fit_and_absorbed_dof_view,
     validate_sum_of_squares, weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
 };
 use super::{
-    compute_prepared_ols_absorbed_dof, fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate,
-    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics,
-    PreparedOlsFitStatus, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    compute_prepared_ols_absorbed_dof, fit_prepared_categorical_ols_coefficients_map,
+    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsColumnKind,
+    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics, PreparedOlsFitStatus,
+    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
 };
 
 /// Numerical and structural policy for the prepared HC1 OLS/WLS checkpoint.
@@ -140,6 +144,72 @@ impl CertifiedPreparedOlsRobust {
     }
 }
 
+/// Same-call categorical-interaction fit, absorbed rank, HC1 covariance, and
+/// fit statistics. The categorical topology DoF report remains exact and is
+/// retained without changing the legacy result or plugin wire identity.
+#[derive(Debug, PartialEq)]
+pub struct CertifiedPreparedCategoricalOlsRobust {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: CategoricalTopologyDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsRobustCovariance,
+    certificate: PreparedOlsRobustCertificate,
+}
+
+impl CertifiedPreparedCategoricalOlsRobust {
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsRobustCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsRobustCertificate {
+        self.certificate
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct PreparedOlsRobustComponents {
+    fit: CertifiedPreparedOlsFit,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsResidualDofReport,
+    statistics: PreparedOlsFitStatistics,
+    covariance: PreparedOlsRobustCovariance,
+    certificate: PreparedOlsRobustCertificate,
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct RobustPerturbations {
     score_design: bool,
@@ -196,6 +266,37 @@ pub fn fit_prepared_ols_robust_map(
     )
 }
 
+/// Fit and certify categorical-interaction HC1 covariance through the same
+/// numerical composition used by the legacy prepared path.
+pub fn fit_prepared_categorical_ols_robust_map(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsRobustConfig,
+) -> Result<CertifiedPreparedCategoricalOlsRobust> {
+    validate_config(config)?;
+    let fit = fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?;
+    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+    let absorbed_summary =
+        prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+    let mut reservation = SystemPreparedInferenceReservation;
+    let components = compose_view_internal(
+        prepared,
+        fit,
+        absorbed_summary,
+        config,
+        &mut reservation,
+        RobustPerturbations::default(),
+    )?;
+    Ok(CertifiedPreparedCategoricalOlsRobust {
+        fit: components.fit,
+        absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
 fn compose_internal<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsData,
     fit: CertifiedPreparedOlsFit,
@@ -204,10 +305,39 @@ fn compose_internal<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: RobustPerturbations,
 ) -> Result<CertifiedPreparedOlsRobust> {
-    validate_fit_and_absorbed_dof(prepared, &fit, &absorbed_dof)?;
+    let absorbed_summary =
+        prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+    let components = compose_view_internal(
+        prepared,
+        fit,
+        absorbed_summary,
+        config,
+        reservation,
+        perturbations,
+    )?;
+    Ok(CertifiedPreparedOlsRobust {
+        fit: components.fit,
+        absorbed_dof,
+        weights: components.weights,
+        dof: components.dof,
+        statistics: components.statistics,
+        covariance: components.covariance,
+        certificate: components.certificate,
+    })
+}
+
+fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: PreparedOlsAbsorbedDofSummary,
+    config: PreparedOlsRobustConfig,
+    reservation: &mut R,
+    perturbations: RobustPerturbations,
+) -> Result<PreparedOlsRobustComponents> {
+    validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, reference_weight_error) =
-        build_reference_weight_report(prepared, &fit, config.certificate_tolerance, true)?;
-    let mut dof = build_residual_dof(prepared, &fit, &absorbed_dof, weights)?;
+        build_reference_weight_report_view(prepared, &fit, config.certificate_tolerance, true)?;
+    let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
             .residual_dof
@@ -216,14 +346,14 @@ fn compose_internal<R: PreparedInferenceReservation>(
     }
     certify_dof_identity(prepared, &fit, weights, dof)?;
 
-    let outcome_mean = weighted_mean(&prepared.sample.outcome, weight_view)?;
+    let outcome_mean = weighted_mean(&prepared.fit_sample().outcome, weight_view)?;
     let center = if dof.has_structural_intercept {
         outcome_mean
     } else {
         0.0
     };
-    let tss = weighted_sum_of_squares(&prepared.sample.outcome, weight_view, center)?;
-    let within_tss = if prepared.fe_topology.effects().is_empty() {
+    let tss = weighted_sum_of_squares(&prepared.fit_sample().outcome, weight_view, center)?;
+    let within_tss = if !prepared.inference_has_explicit_absorbed_effects() {
         tss
     } else {
         fit.initial_absorbed_outcome_sum_of_squares()
@@ -362,9 +492,8 @@ fn compose_internal<R: PreparedInferenceReservation>(
     }
     // `score_design` owns the only N-by-kept-coordinate inference matrix. It
     // goes out of scope here and is intentionally absent from the result.
-    Ok(CertifiedPreparedOlsRobust {
+    Ok(PreparedOlsRobustComponents {
         fit,
-        absorbed_dof,
         weights,
         dof,
         statistics,
@@ -385,14 +514,14 @@ fn validate_config(config: PreparedOlsRobustConfig) -> Result<()> {
     Ok(())
 }
 
-fn certify_dof_identity(
-    prepared: &PreparedOlsData,
+fn certify_dof_identity<P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
 ) -> Result<()> {
     let expected_finite_intercept =
-        usize::from(prepared.report_intercept && !prepared.structural_intercept);
+        usize::from(prepared.fit_report_intercept() && !prepared.fit_structural_intercept());
     let expected_finite_model = fit
         .finite_rank()
         .checked_sub(expected_finite_intercept)
@@ -410,7 +539,7 @@ fn certify_dof_identity(
         || dof.finite_model_dof != expected_finite_model
         || dof.model_rank != expected_model_rank
         || dof.residual_dof != expected_residual
-        || dof.has_structural_intercept != prepared.structural_intercept
+        || dof.has_structural_intercept != prepared.fit_structural_intercept()
     {
         return Err(invalid_data(
             "prepared robust rank and residual-DoF identity did not pass",
@@ -799,8 +928,8 @@ fn certify_psd<R: PreparedInferenceReservation>(
     })
 }
 
-fn build_robust_wald<R: PreparedInferenceReservation>(
-    prepared: &PreparedOlsData,
+fn build_robust_wald<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
     fit: &CertifiedPreparedOlsFit,
     covariance: &PreparedOlsRobustCovariance,
     dof: PreparedOlsResidualDofReport,
@@ -824,7 +953,7 @@ fn build_robust_wald<R: PreparedInferenceReservation>(
     let mut count = 0_usize;
     for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
         let column = prepared
-            .model
+            .fit_model()
             .columns
             .get(coordinate.generated_column_index)
             .ok_or_else(|| invalid_argument("prepared robust Wald coordinate is out of range"))?;

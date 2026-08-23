@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "scope": "exact production crates/stfixest-core/src/fe/topology_rhs.rs compiled with the existing exact categorical topology and certified MAP bridge in the bounded public harness",
+  "authoritative_repository": "johannes-schmieder/StFixest",
+  "authoritative_branch": "chatgpt/rust-completion",
+  "authoritative_sha": "fb2e2be5df60a97379a8e808da79174c0e01e289",
+  "mirror_repository": "johannes-schmieder/playground_stfixesf",
+  "mirror_branch": "chatgpt/rust-completion",
+  "mirror_sha": "aa1af3fd5865d72f0cfea8b7bead9775eaad302e",
+  "status_commit_sha": "9bcc945fe8e114152d27e8e3ca25b07bc1583f7b",
+  "workflow_run_id": 32607785419,
+  "workflow_run_attempt": 1,
+  "tested_at_utc": "2026-08-23T00:26:08.088783+00:00",
+  "toolchain": "1.85.1",
+  "jobs": [
+    {
+      "os": "ubuntu-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "macos-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "windows-latest",
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    }
+  ],
+  "tests": {
+    "debug": 81,
+    "release": 81,
+    "new_scope": [
+      "exact retained-row RHS compaction",
+      "provided-weight compaction",
+      "certified interaction-aware MAP handoff",
+      "invalid dimensions and weights",
+      "fail-at-every reservation",
+      "undersize-at-every reservation"
+    ]
+  },
+  "overall": "success",
+  "limitations": [
+    "This is bounded-harness evidence, not a full private-workspace result.",
+    "No Rust code was compiled locally in the ChatGPT execution environment.",
+    "No native plugin or C bridge was built by this bounded checkpoint.",
+    "No licensed Stata execution or reghdfe parity claim is supported.",
+    "The request and plugin adapters for multi-source absorbed terms remain pending."
+  ]
+}

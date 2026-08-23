@@ -324,11 +324,10 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("fit_prepared_ols_coefficients_map", production)
-        self.assertIn("build_prepared_ols_rhs", production)
-        self.assertIn(
-            "absorb_borrowed_intercept_map_with_structural_constant_certified",
-            production,
-        )
+        self.assertIn("fit_prepared_categorical_ols_coefficients_map", production)
+        self.assertIn("PreparedOlsFitView", production)
+        self.assertIn("fit_build_rhs", production)
+        self.assertIn("fit_absorb_matrix", production)
         self.assertNotIn("absorb_borrowed_intercept_map_certified(", production)
         self.assertIn("AbsorbedInterceptDeferred", production)
         self.assertIn("fit_scaled_pivoted_qr", production)
@@ -394,7 +393,12 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         inference = (
             ROOT / "crates/stfixest-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
-        production = inference.split("#[cfg(test)]", maxsplit=1)[0]
+        production = inference.split(
+            "\n#[cfg(test)]\nmod tests {", maxsplit=1
+        )[0]
+        inference_view = (
+            ROOT / "crates/stfixest-core/src/ols/prepared_inference_view.rs"
+        ).read_text(encoding="utf-8")
         fit = (ROOT / "crates/stfixest-core/src/ols/prepared_fit.rs").read_text(
             encoding="utf-8"
         )
@@ -405,8 +409,11 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("fit_prepared_ols_unadjusted_map", production)
+        self.assertIn("fit_prepared_categorical_ols_unadjusted_map", production)
         self.assertIn("fit_prepared_ols_coefficients_map", production)
-        self.assertIn("compute_prepared_ols_absorbed_dof", production)
+        self.assertIn("PreparedOlsInferenceView", inference_view)
+        self.assertIn("compute_prepared_ols_absorbed_dof", inference_view)
+        self.assertIn("inference_compute_absorbed_dof", inference_view)
         self.assertIn("initial_absorbed_outcome_sum_of_squares", fit)
         self.assertIn("PreparedOlsUnadjustedCertificate", production)
         self.assertIn("PreparedOlsReferenceWeightReport", production)
@@ -428,6 +435,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, production)
         self.assertNotIn("fit_prepared_ols_unadjusted_map", plugin)
+        self.assertNotIn("fit_prepared_categorical_ols_unadjusted_map", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
         self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
 

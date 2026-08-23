@@ -3,10 +3,13 @@
 mod dof;
 mod fit;
 mod prepared;
+mod prepared_categorical_clusters;
 mod prepared_clustered;
+mod prepared_clustered_view;
 mod prepared_clusters;
 mod prepared_dof;
 mod prepared_fit;
+mod prepared_inference_view;
 mod prepared_rhs;
 mod prepared_robust;
 mod prepared_scores;
@@ -16,6 +19,7 @@ mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
+pub(crate) use prepared::prepare_ols_data_with_cluster_sources;
 pub use prepared::{
     prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
     OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
@@ -23,8 +27,12 @@ pub use prepared::{
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
 };
+pub use prepared_categorical_clusters::{
+    prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
+};
 pub use prepared_clustered::{
-    fit_prepared_ols_clustered_map, CertifiedPreparedOlsClustered,
+    fit_prepared_categorical_ols_clustered_map, fit_prepared_ols_clustered_map,
+    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedOlsClustered,
     PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
     PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
     PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
@@ -39,19 +47,22 @@ pub use prepared_dof::{
     PreparedOlsAbsorbedDofReport,
 };
 pub use prepared_fit::{
-    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsBread,
-    PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
-    PreparedOlsBreadWeightScale, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient, PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
+    fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
+    CertifiedPreparedOlsFit, PreparedOlsBread, PreparedOlsBreadCertificate,
+    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
+    PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub use prepared_robust::{
-    fit_prepared_ols_robust_map, CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate,
-    PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
+    fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,
+    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedOlsRobust,
+    PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
 };
 pub use prepared_unadjusted::{
-    fit_prepared_ols_unadjusted_map, CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
+    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsUnadjusted,
+    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
     PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};

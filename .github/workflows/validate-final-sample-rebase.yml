@@ -1,0 +1,287 @@
+name: Validate staged final-sample categorical rebase
+
+on:
+  push:
+    branches:
+      - codex/categorical-interactions
+    paths:
+      - .github/workflows/validate-final-sample-rebase.yml
+      - ci/source-transforms/activate_final_sample_rebase.py
+      - crates/stfixest-core/src/ols/prepared_categorical_rebase.rs
+      - tests/python/test_final_sample_rebase_staging_contract.py
+      - tests/python/test_final_sample_rebase_validation_contract.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-final-sample-rebase-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 120
+    steps:
+      - name: Check out exact staged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Apply staged rebase in the runner worktree
+        id: apply
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 -m py_compile ci/source-transforms/activate_final_sample_rebase.py
+          /usr/bin/python3 ci/source-transforms/activate_final_sample_rebase.py
+          /usr/bin/python3 - <<'PY'
+          import subprocess
+
+          changed = set(
+              subprocess.check_output(
+                  ["git", "diff", "--name-only", "--"], text=True
+              ).splitlines()
+          )
+          required = {
+              "crates/stfixest-core/src/lib.rs",
+              "crates/stfixest-core/src/ols/prepared_categorical_data.rs",
+          }
+          allowed = required | {
+              "crates/stfixest-core/src/ols/prepared_categorical_rebase.rs",
+          }
+          if not required.issubset(changed):
+              raise SystemExit("staged rebase did not modify its required production files")
+          unexpected = changed - allowed
+          if unexpected:
+              raise SystemExit(
+                  "staged rebase modified unexpected files: " + ", ".join(sorted(unexpected))
+              )
+          PY
+
+      - name: Format activated source
+        id: fmt
+        if: steps.apply.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo fmt --all
+          cargo fmt --all -- --check
+          git diff --check
+          /usr/bin/python3 - <<'PY'
+          import subprocess
+
+          changed = set(
+              subprocess.check_output(
+                  ["git", "diff", "--name-only", "--"], text=True
+              ).splitlines()
+          )
+          allowed = {
+              "crates/stfixest-core/src/lib.rs",
+              "crates/stfixest-core/src/ols/prepared_categorical_data.rs",
+              "crates/stfixest-core/src/ols/prepared_categorical_rebase.rs",
+          }
+          unexpected = changed - allowed
+          if unexpected:
+              raise SystemExit(
+                  "formatting activated rebase changed unexpected files: "
+                  + ", ".join(sorted(unexpected))
+              )
+          PY
+
+      - name: Clippy activated source
+        id: clippy
+        if: steps.fmt.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test activated source
+        id: test_debug
+        if: steps.clippy.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo test --workspace --all-targets --locked
+
+      - name: Test activated source in release mode
+        id: test_release
+        if: steps.test_debug.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo test --workspace --all-targets --locked --release
+
+      - name: Build activated source in release mode
+        id: build_release
+        if: steps.test_release.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo build --workspace --locked --release
+
+      - name: Build exact-SHA staged-validation receipt
+        if: always()
+        shell: bash
+        env:
+          APPLY: ${{ steps.apply.outcome }}
+          FMT: ${{ steps.fmt.outcome }}
+          CLIPPY: ${{ steps.clippy.outcome }}
+          TEST_DEBUG: ${{ steps.test_debug.outcome }}
+          TEST_RELEASE: ${{ steps.test_release.outcome }}
+          BUILD_RELEASE: ${{ steps.build_release.outcome }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/final-sample-rebase-receipt.json"
+          RECEIPT="$receipt" /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          gates = {
+              "apply": os.environ.get("APPLY", "unknown"),
+              "fmt": os.environ.get("FMT", "unknown"),
+              "clippy": os.environ.get("CLIPPY", "unknown"),
+              "test_debug": os.environ.get("TEST_DEBUG", "unknown"),
+              "test_release": os.environ.get("TEST_RELEASE", "unknown"),
+              "build_release": os.environ.get("BUILD_RELEASE", "unknown"),
+          }
+          success = all(value == "success" for value in gates.values())
+          diff = subprocess.check_output(
+              ["git", "diff", "--binary", "--no-ext-diff", "--"],
+          )
+          files = subprocess.check_output(
+              ["git", "diff", "--name-only", "--"], text=True
+          ).splitlines()
+          payload = {
+              "schema_version": 1,
+              "receipt_type": "stfixest-staged-final-sample-rebase",
+              "status": "success" if success else "failure",
+              "tested_sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "runner_name": os.environ.get("RUNNER_NAME", ""),
+              "platform": "macOS ARM64",
+              "activation_committed": False,
+              "generated_diff_sha256": hashlib.sha256(diff).hexdigest(),
+              "generated_files": files,
+              "gates": gates,
+          }
+          canonical = json.dumps(
+              payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+          ).encode("utf-8")
+          document = {
+              "payload": payload,
+              "payload_sha256": hashlib.sha256(canonical).hexdigest(),
+          }
+          Path(os.environ["RECEIPT"]).write_text(
+              json.dumps(document, indent=2, sort_keys=True, ensure_ascii=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload staged-validation receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: final-sample-rebase-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/final-sample-rebase-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish exact-SHA staged-validation receipt
+        if: always()
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          RECEIPT: ${{ runner.temp }}/final-sample-rebase-receipt.json
+        run: |
+          set -euo pipefail
+          result_path=".ci/staged-validation/final-sample-rebase/$GITHUB_SHA.json"
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
+          /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          document = json.loads(Path(os.environ["RECEIPT"]).read_text(encoding="utf-8"))
+          payload = document.get("payload", {})
+          if payload.get("tested_sha") != os.environ["GITHUB_SHA"]:
+              raise SystemExit("staged-validation receipt source SHA mismatch")
+          if payload.get("activation_committed") is not False:
+              raise SystemExit("staged-validation receipt claims activation")
+          canonical = json.dumps(
+              payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+          ).encode("utf-8")
+          if document.get("payload_sha256") != hashlib.sha256(canonical).hexdigest():
+              raise SystemExit("staged-validation receipt digest mismatch")
+          PY
+
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/final-sample-rebase-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            mkdir -p "$publish_tree/$(dirname "$result_path")"
+            cp "$RECEIPT" "$publish_tree/$result_path"
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add "$result_path"
+            if git -C "$publish_tree" diff --cached --quiet; then
+              exit 0
+            fi
+            git -C "$publish_tree" commit -m "ci(staged): record ${GITHUB_SHA:0:12} rebase [skip ci]"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          echo "staged-validation receipt publication lost three branch races" >&2
+          exit 1
+
+      - name: Enforce staged-validation success
+        if: always()
+        shell: bash
+        env:
+          RECEIPT: ${{ runner.temp }}/final-sample-rebase-receipt.json
+        run: |
+          /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          document = json.loads(Path(os.environ["RECEIPT"]).read_text(encoding="utf-8"))
+          if document.get("payload", {}).get("status") != "success":
+              raise SystemExit("staged final-sample rebase validation failed")
+          PY

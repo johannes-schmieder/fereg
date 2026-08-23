@@ -31,20 +31,21 @@ open. This repository must not be presented as a production release.
 - Build machinery for one self-contained plugin per platform, binary
   dependency/export audits, mock-SPI tests, and target-native ABI harnesses.
 
-These claims describe source and local tests, not Stata-facing estimator
-availability.
+These claims describe source and CI-tested development components, not public
+Stata-facing estimator availability.
 
 ## Development status
 
 `STATUS.md` is the sole live scientific progress record. Normal pushes to
-`main` and `codex/**` run the quick Rust/C/source checks and a licensed Stata
-quick suite on a private repository-level Mac runner. Exact-SHA CI receipts are
-committed under `.ci/stata/`; full logs and the tested plugin are retained as
-Actions artifacts. GitHub-hosted Linux, Windows, and macOS qualification is
-manual rather than duplicated on every push. Machine setup and the remote
-development interface are documented in `STATA_CI_RUNNER.md`. Immutable
-scientific receipts remain under `build_evidence/` and
-`benchmarks/reports/captured/` and are not replaced by CI status receipts.
+`main` and, during historical branch consolidation, `codex/**` run the quick
+Rust/C/source checks and a licensed Stata quick suite on a private
+repository-level Mac runner. Exact-SHA CI receipts are committed under
+`.ci/stata/`; full logs and the tested plugin are retained as Actions artifacts.
+GitHub-hosted Linux, Windows, and macOS qualification is manual rather than
+duplicated on every push. Machine setup and the remote development interface
+are documented in `STATA_CI_RUNNER.md`. Immutable scientific receipts remain
+under `build_evidence/` and `benchmarks/reports/captured/` and are not replaced
+by CI status receipts.
 
 ## Local build and test
 

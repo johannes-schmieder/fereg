@@ -14,8 +14,20 @@ pub mod options;
 pub mod parallel;
 pub mod ppml;
 pub mod ppml_separation;
+#[path = "ols/prepared_categorical_data.rs"]
+mod prepared_categorical_data;
+#[path = "ols/prepared_categorical_effect.rs"]
+mod prepared_categorical_effect;
+#[path = "ols/prepared_categorical_singleton.rs"]
+mod prepared_categorical_singleton;
+#[path = "ols/prepared_categorical_topology.rs"]
+mod prepared_categorical_topology;
+#[path = "ols/prepared_fit_view.rs"]
+pub(crate) mod prepared_fit_view;
 pub mod protocol;
 pub mod selftest;
+#[path = "ols/topology_dof.rs"]
+pub mod topology_dof;
 
 pub use data::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, ColumnRecipe,
@@ -29,12 +41,17 @@ pub use factorize::{
     factorize_f64, factorize_i64, factorize_strings, interaction_codes, EncodedFactor,
 };
 pub use fe::{
-    absorb_borrowed_intercept_map_certified, absorb_fixed_effects, absorb_lsmr, absorb_map,
-    certify_residuals, connected_components, prune_singletons, prune_singletons_with_multiplicity,
-    AbsorbConfig, BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights,
-    CertifiedBorrowedMap, ComponentInfo, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
-    LsmrConfig, LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
-    SolveStopReason,
+    absorb_borrowed_intercept_map_certified, absorb_finalized_categorical_topology_map_certified,
+    absorb_fixed_effects, absorb_lsmr, absorb_map, borrow_categorical_topology_design,
+    certify_residuals, connected_components, factorize_code_interaction,
+    finalize_categorical_topology, prune_categorical_partition_singletons, prune_singletons,
+    prune_singletons_with_multiplicity, validate_categorical_partition, AbsorbConfig,
+    BorrowedInterceptEffect, BorrowedInterceptFeDesign, BorrowedMapWeights, CategoricalCodeView,
+    CategoricalPartition, CategoricalPartitionRegistry, CategoricalPartitionSingletonResult,
+    CategoricalTopologyRegistry, CategoricalTopologySource, CertifiedBorrowedMap,
+    CompactedCategoricalSource, ComponentInfo, EffectTerm, EncodedInteraction, FeCertificate,
+    FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
+    MapConfig, SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
 };
 pub use memory::{estimate_phase2_memory, MemoryEstimate};
 pub use metadata::{
@@ -46,13 +63,18 @@ pub use metadata::{
 };
 pub use ols::{
     absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, compute_dof,
-    compute_prepared_ols_absorbed_dof, fit_ols, fit_prepared_ols_clustered_map,
+    compute_prepared_ols_absorbed_dof, fit_ols, fit_prepared_categorical_ols_clustered_map,
+    fit_prepared_categorical_ols_coefficients_map, fit_prepared_categorical_ols_robust_map,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
-    fit_prepared_ols_unadjusted_map, prepare_ols_clustered_data, prepare_ols_data,
-    solve_rank_revealing, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
-    CertifiedPreparedOlsUnadjusted, ClusterSubsetReport, DofConfig, DofMethod, DofReport,
-    FiniteSolver, FitStatistics, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult,
+    fit_prepared_ols_unadjusted_map, prepare_categorical_ols_clustered_data,
+    prepare_ols_clustered_data, prepare_ols_data, solve_rank_revealing,
+    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
+    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
+    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
+    ClusterSubsetReport, DofConfig, DofMethod, DofReport, FiniteSolver, FitStatistics,
+    LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1, OlsClusteredRequestV1, OlsConfig,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalOlsClusteredData,
     PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect, PreparedOlsAbsorbedDofEffectIdentity,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport, PreparedOlsBread,
     PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
@@ -83,8 +105,22 @@ pub use ppml_separation::{
     SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
     SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
 };
+pub use prepared_categorical_data::{
+    prepare_categorical_ols_data, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
+    PreparedCategoricalOlsRhs,
+};
+pub use prepared_categorical_effect::{
+    PreparedCategoricalEffect, PreparedCategoricalEffectRequest,
+};
+pub use prepared_categorical_singleton::prune_prepared_categorical_singletons;
+pub use prepared_categorical_topology::PreparedCategoricalFeTopology;
 pub use protocol::{
     Handshake, ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
     OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
+pub use topology_dof::{
+    compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffect,
+    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofEffectSpec,
+    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
+};

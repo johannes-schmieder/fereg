@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "scope": "Prepared categorical OLS bridge and its exact FE interaction/topology dependencies, compiled in the public Rust CI harness with narrow design/error/numerical shims",
+  "authoritative_repository": "johannes-schmieder/StFixest",
+  "authoritative_branch": "chatgpt/rust-completion",
+  "authoritative_sha": "4cb11b789259be954ce0b12045b3a04fd7d52acf",
+  "mirror_repository": "johannes-schmieder/playground_stfixesf",
+  "mirror_branch": "chatgpt/rust-completion",
+  "mirror_sha": "488be05f76ae1d390ad8fc6629319164bb421a1e",
+  "status_commit_sha": "16328d9697c392f2bba8765514412880ce2067b3",
+  "workflow_run_id": 32602508842,
+  "workflow_run_attempt": 1,
+  "tested_at_utc": "2026-08-23T02:33:49.156002+00:00",
+  "toolchain": "1.85.1",
+  "matrix": [
+    {
+      "os": "ubuntu-latest",
+      "job_id": 97102837787,
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "macos-latest",
+      "job_id": 97102837680,
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    },
+    {
+      "os": "windows-latest",
+      "job_id": 97102837685,
+      "fmt": "success",
+      "clippy": "success",
+      "test_debug": "success",
+      "test_release": "success",
+      "build_release": "success"
+    }
+  ],
+  "tests_per_profile_per_os": {
+    "unit": 77,
+    "integration": 5,
+    "total": 82
+  },
+  "profiles": ["debug", "release"],
+  "overall": "success",
+  "covered_contracts": [
+    "collision-free categorical interaction coding",
+    "candidate partition deduplication",
+    "interaction-aware singleton fixed point including frequency multiplicity",
+    "final-sample categorical compaction",
+    "zero-copy single-source topology",
+    "one-u32-per-observation interaction topology",
+    "borrowed FE-design adapter",
+    "certified topology-to-MAP bridge",
+    "categorical absorbed DoF policies",
+    "prepared categorical term/source identity preservation",
+    "prepared singleton and final-topology bridge",
+    "allocation and capacity-guard failure paths in the bounded modules"
+  ],
+  "limitations": [
+    "No Rust code was compiled locally in the ChatGPT execution environment.",
+    "This receipt covers the public bounded harness, not the complete private workspace or linked Stata plugin.",
+    "No licensed Stata execution, plugin loading, reghdfe parity, or performance claim is supported.",
+    "The prepared categorical bridge is compiled and tested but is not yet wired into PreparedOlsData, plugin input, result transport, or public estimator dispatch.",
+    "Public activation remains false."
+  ]
+}

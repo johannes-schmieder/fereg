@@ -6,18 +6,23 @@ use crate::result::{
     CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
     RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
+use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use stfixest_core::error::{ErrorCode, Result, StFixestError};
+use stfixest_core::fe::plan_categorical_absorbed_request;
 use stfixest_core::metadata::{
     ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 use stfixest_core::ols::{
-    fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
-    prepare_ols_clustered_data, prepare_ols_data, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsRobustConfig,
-    PreparedOlsUnadjustedConfig,
+    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
+    fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
+    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
+    LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig,
+    PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
 };
+use stfixest_core::prepare_categorical_ols_data;
 use stfixest_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
@@ -120,8 +125,13 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let loaded = load_ols_input(&action.request, spi)?;
-    match action.vce {
-        OlsVceKind::Iid => {
+    let categorical = action
+        .request
+        .absorbed_terms
+        .iter()
+        .any(|term| term.categorical_sources.len() > 1);
+    match (action.vce, categorical) {
+        (OlsVceKind::Iid, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_unadjusted_map(
                 &prepared,
@@ -131,14 +141,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                &prepared,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Iid(&inference),
                 action.outputs.residual.is_some(),
             )?;
             precommit_and_store(&action, &shadow, spi)
         }
-        OlsVceKind::Robust => {
+        (OlsVceKind::Robust, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_robust_map(
                 &prepared,
@@ -148,14 +158,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                &prepared,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Robust(&inference),
                 action.outputs.residual.is_some(),
             )?;
             precommit_and_store(&action, &shadow, spi)
         }
-        OlsVceKind::Clustered => {
+        (OlsVceKind::Clustered, false) => {
             let request = OlsClusteredRequestV1 {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
@@ -170,9 +180,65 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 },
             )?;
             let shadow = build_shadow_result(
-                prepared.ols(),
-                Some(&prepared),
+                PreparedOlsResultData::legacy(prepared.ols()),
+                Some(PreparedOlsClusteredResultData::legacy(&prepared)),
                 CertifiedOlsInference::Clustered(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Iid, true) => {
+            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_unadjusted_map(
+                &prepared,
+                PreparedOlsUnadjustedConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    ..PreparedOlsUnadjustedConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(&prepared),
+                None,
+                CertifiedOlsInference::CategoricalIid(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Robust, true) => {
+            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_robust_map(
+                &prepared,
+                PreparedOlsRobustConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    ..PreparedOlsRobustConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(&prepared),
+                None,
+                CertifiedOlsInference::CategoricalRobust(&inference),
+                action.outputs.residual.is_some(),
+            )?;
+            precommit_and_store(&action, &shadow, spi)
+        }
+        (OlsVceKind::Clustered, true) => {
+            let request = OlsClusteredRequestV1 {
+                ols: action.request.clone(),
+                clusters: action.clusters.clone(),
+            };
+            let prepared = prepare_categorical_ols_clustered_data(&request, &loaded)?;
+            let inference = fit_prepared_categorical_ols_clustered_map(
+                &prepared,
+                PreparedOlsClusteredConfig {
+                    absorbed_dof: action.absorbed_dof,
+                    account_cluster_nesting: action.account_cluster_nesting,
+                    ..PreparedOlsClusteredConfig::default()
+                },
+            )?;
+            let shadow = build_shadow_result(
+                PreparedOlsResultData::categorical(prepared.ols()),
+                Some(PreparedOlsClusteredResultData::categorical(&prepared)),
+                CertifiedOlsInference::CategoricalClustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
             precommit_and_store(&action, &shadow, spi)
@@ -413,7 +479,33 @@ impl EstimateActionSpec {
         };
         let clusters = read_clusters(self, spi)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
-        let prepared_model = if self.vce == OlsVceKind::Clustered {
+        let categorical = request
+            .absorbed_terms
+            .iter()
+            .any(|term| term.categorical_sources.len() > 1);
+        let prepared_model = if categorical {
+            // Validate the original tuple identities and all-categorical
+            // intercept-only contract before any observation read. The
+            // availability request preserves the ordinary model and
+            // coefficient layout while replacing each tuple with one
+            // synthetic single-source availability marker, which is the
+            // only representation accepted by the legacy compiler.
+            let plan = plan_categorical_absorbed_request(&request)?;
+            if self.vce == OlsVceKind::Clustered {
+                let requested_clustered = OlsClusteredRequestV1 {
+                    ols: request.clone(),
+                    clusters: clusters.clone(),
+                };
+                validate_cluster_request_shape(&requested_clustered)?;
+                OlsClusteredRequestV1 {
+                    ols: plan.availability_request().clone(),
+                    clusters: clusters.clone(),
+                }
+                .validate_and_compile()?
+            } else {
+                plan.availability_request().validate_and_compile()?
+            }
+        } else if self.vce == OlsVceKind::Clustered {
             let clustered_request = OlsClusteredRequestV1 {
                 ols: request.clone(),
                 clusters: clusters.clone(),
@@ -986,18 +1078,7 @@ fn validate_shadow_diagnostics(
         }
     }
     for row in shadow.fixed_effects.chunks_exact(FE_COLUMNS) {
-        if !matches!(row[0], 1.0 | 2.0)
-            || exact_usize(row[1], "OLS FE term identity").is_err()
-            || exact_usize(row[2], "OLS FE source identity").is_err()
-            || exact_usize(row[3], "OLS FE category count").is_err()
-            || row[3] < 1.0
-            || exact_usize(row[4], "OLS FE redundancy").is_err()
-            || exact_usize(row[5], "OLS FE coefficient count").is_err()
-            || !matches!(row[6], 0.0 | 1.0)
-            || !matches!(row[7], 0.0 | 1.0)
-        {
-            return Err(invalid("OLS FE shadow metadata is invalid"));
-        }
+        validate_shadow_fixed_effect_row(row)?;
     }
     if shadow.dof[0] != 1.0
         || shadow.dof[12] != 1.0
@@ -1047,6 +1128,51 @@ fn validate_shadow_diagnostics(
                 return Err(invalid("OLS cluster-subset shadow metadata is invalid"));
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_shadow_fixed_effect_row(row: &[f64]) -> Result<()> {
+    if row.len() != FE_COLUMNS {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    }
+    let Ok(identity) = exact_usize(row[0], "OLS FE identity") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let Ok(term) = exact_usize(row[1], "OLS FE term identity") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let Ok(source) = exact_usize(row[2], "OLS FE source identity") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let Ok(categories) = exact_usize(row[3], "OLS FE category count") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let Ok(redundant) = exact_usize(row[4], "OLS FE redundancy") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let Ok(coefficients) = exact_usize(row[5], "OLS FE coefficient count") else {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
+    };
+    let identity_is_valid = match identity {
+        // One categorical source is represented directly.
+        1 => term > 0 && source > 0,
+        // The implicit no-absorb constant has no term or source identity.
+        2 => term == 0 && source == 0,
+        // A categorical tuple retains the absorbed-term identity, while the
+        // single source cell is deliberately zero because no one source is
+        // authoritative for the interaction partition.
+        3 => term > 0 && source == 0,
+        _ => false,
+    };
+    if !identity_is_valid
+        || categories == 0
+        || redundant > categories
+        || coefficients != categories - redundant
+        || !matches!(row[6], 0.0 | 1.0)
+        || !matches!(row[7], 0.0 | 1.0)
+    {
+        return Err(invalid("OLS FE shadow metadata is invalid"));
     }
     Ok(())
 }
@@ -2434,5 +2560,30 @@ mod tests {
         assert_eq!(error.code, ErrorCode::Interrupted);
         assert_eq!(interrupt_spi.store_calls, 0);
         assert_eq!(interrupt_spi.receipt_complete(), 0.0);
+    }
+
+    #[test]
+    fn shadow_fe_identity_accepts_single_implicit_and_interaction_rows() {
+        for row in [
+            [1.0, 1.0, 2.0, 3.0, 1.0, 2.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0, 6.0, 1.0, 5.0, 1.0, 0.0],
+        ] {
+            validate_shadow_fixed_effect_row(&row).expect("valid FE shadow row");
+        }
+    }
+
+    #[test]
+    fn shadow_fe_identity_rejects_malformed_combinations() {
+        for row in [
+            [1.0, 1.0, 0.0, 3.0, 1.0, 2.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+            [3.0, 0.0, 0.0, 6.0, 1.0, 5.0, 1.0, 0.0],
+            [3.0, 1.0, 2.0, 6.0, 1.0, 5.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0, 2.0, 3.0, 0.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0, 2.0, 1.0, 2.0, 1.0, 0.0],
+        ] {
+            assert!(validate_shadow_fixed_effect_row(&row).is_err());
+        }
     }
 }

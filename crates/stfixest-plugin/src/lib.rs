@@ -5,6 +5,7 @@ mod estimate;
 mod input;
 mod output;
 mod result;
+mod result_view;
 
 #[cfg(feature = "ffi")]
 mod ffi;
