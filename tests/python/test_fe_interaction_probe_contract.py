@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/fe_interaction_probe.py"
+PROBE_DO = ROOT / "benchmarks/stata/probe_reghdfe_fe_interaction.do"
 WORKFLOW = ROOT / ".github/workflows/fe-interaction-reference-probe.yml"
 
 
@@ -22,6 +23,18 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         self.assertIn('"preflight"', text)
         self.assertNotIn("urllib", text)
         self.assertNotIn("requests", text)
+
+    def test_probe_data_builders_avoid_nested_input_end(self) -> None:
+        text = PROBE_DO.read_text(encoding="utf-8")
+        self.assertNotIn("    input long obs_id", text)
+        for token in (
+            "program define __stfx_probe_cascade",
+            "program define __stfx_probe_missing",
+            "set obs 12",
+            "generate long obs_id = 100 + _n",
+            "generate long obs_id = 200 + _n",
+        ):
+            self.assertIn(token, text)
 
     def test_failed_probe_retains_private_debug_artifacts(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8")
