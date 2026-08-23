@@ -1,0 +1,16 @@
+{
+  "payload": {
+    "failure_detail": "STFIXEST_REFERENCE_ROOT is not configured on the trusted runner",
+    "failure_kind": "ProbeError",
+    "raw_capture_committed": false,
+    "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+    "schema_version": 1,
+    "source_sha": "5616e1c57e1bd11879115dcb1870a073d7a989a3",
+    "status": "failure"
+  },
+  "seal": {
+    "algorithm": "sha256",
+    "canonicalization": "json-sort-keys-compact-ascii-v1",
+    "payload_sha256": "6a82ab4b6c4ca80bad6784716e59e5537f30aa1898770e62342156aed61a0a96"
+  }
+}
