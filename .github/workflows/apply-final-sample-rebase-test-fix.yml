@@ -1,6 +1,7 @@
 name: Apply final-sample rebase test repair
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - codex/categorical-interactions
@@ -28,6 +29,8 @@ jobs:
           fetch-depth: 0
 
       - name: Apply and push the source-only repair
+        id: apply_repair
+        continue-on-error: true
         shell: bash
         env:
           BRANCH_NAME: ${{ github.ref_name }}
@@ -81,3 +84,63 @@ jobs:
           done
           echo "final-sample rebase test repair lost three branch update races" >&2
           exit 1
+
+      - name: Publish exact staging-SHA failure receipt
+        if: steps.apply_repair.outcome == 'failure'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/final-sample-rebase-test-fix.json"
+          RECEIPT="$receipt" /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema": 1,
+              "status": "failure",
+              "staging_sha": os.environ["GITHUB_SHA"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "failure_kind": "source_transform_failure",
+          }
+          Path(os.environ["RECEIPT"]).write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          result_path=".ci/source-transform/results/$GITHUB_SHA-final-sample-rebase-test-fix.json"
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/final-sample-rebase-test-fix-publish-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            mkdir -p "$publish_tree/$(dirname "$result_path")"
+            cp "$receipt" "$publish_tree/$result_path"
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add "$result_path"
+            git -C "$publish_tree" commit -m "ci(source-transform): record ${GITHUB_SHA:0:12} rebase-test-fix failure [skip ci]"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          exit 1
+
+      - name: Enforce repair success
+        if: steps.apply_repair.outcome == 'failure'
+        run: exit 1
