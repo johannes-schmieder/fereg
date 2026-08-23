@@ -1,4 +1,5 @@
 name: Restore canonical STATUS heading
+# Existing-workflow activation checkpoint.
 
 on:
   push:
