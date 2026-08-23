@@ -1,0 +1,76 @@
+name: Delete consolidated development branches
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/delete-obsolete-branches.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-delete-consolidated-branches-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  delete:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact cleanup source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify ancestry and delete obsolete branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            chatgpt/rust-completion
+            codex/categorical-interactions
+            codex/recovered-categorical-fit-oracle
+            codex/stfixest-interactions
+            codex/stfixest-interactions-safety-6c9c52
+            codex/stfixest-interactions-safety-3844e6f
+            codex/stfixest-interactions-safety-063266
+            codex/stfixest-interactions-safety-e2e9b23
+            codex/stfixest-osx-continuation
+            codex/stfixest-stata-ci
+          )
+
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          for branch in "${branches[@]}"; do
+            ref="refs/remotes/origin/$branch"
+            if ! git show-ref --verify --quiet "$ref"; then
+              echo "already absent: $branch"
+              continue
+            fi
+            tip="$(git rev-parse "$ref")"
+            if ! git merge-base --is-ancestor "$tip" "$GITHUB_SHA"; then
+              echo "refusing to delete non-ancestor branch $branch at $tip" >&2
+              exit 1
+            fi
+          done
+
+          for branch in "${branches[@]}"; do
+            ref="refs/remotes/origin/$branch"
+            if git show-ref --verify --quiet "$ref"; then
+              git push origin --delete "$branch"
+            fi
+          done
+
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          extras="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin \
+            | sed 's#^origin/##' \
+            | grep -v '^main$' \
+            | grep -v '^HEAD$' || true)"
+          if [[ -n "$extras" ]]; then
+            echo "unexpected remote branches remain:" >&2
+            printf '%s\n' "$extras" >&2
+            exit 1
+          fi
