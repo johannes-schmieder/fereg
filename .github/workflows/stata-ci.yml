@@ -65,7 +65,8 @@ jobs:
             exit 0
           fi
           /usr/bin/python3 "$script"
-          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH" cargo fmt --all
           rm "$script"
           rmdir ci/source-transforms 2>/dev/null || true
           git config user.name "github-actions[bot]"
