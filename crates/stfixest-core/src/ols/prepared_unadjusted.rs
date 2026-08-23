@@ -3,7 +3,10 @@ use crate::error::{ErrorCode, Result, StFixestError};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::topology_dof::CategoricalTopologyDofReport;
 
-use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
+use super::prepared_inference_view::{
+    validate_cluster_aware_legacy_absorbed_dof_summary, PreparedOlsAbsorbedDofSummary,
+    PreparedOlsInferenceView,
+};
 
 #[cfg(test)]
 use super::compute_prepared_ols_absorbed_dof;
@@ -892,6 +895,17 @@ pub(super) fn build_residual_dof(
     weights: PreparedOlsReferenceWeightReport,
 ) -> Result<PreparedOlsResidualDofReport> {
     let summary = prepared.inference_absorbed_dof_summary(absorbed, absorbed.policy)?;
+    build_residual_dof_view(prepared, fit, summary, weights)
+}
+
+pub(super) fn build_clustered_base_residual_dof(
+    prepared: &PreparedOlsData,
+    fit: &CertifiedPreparedOlsFit,
+    absorbed: &PreparedOlsAbsorbedDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+) -> Result<PreparedOlsResidualDofReport> {
+    let summary =
+        validate_cluster_aware_legacy_absorbed_dof_summary(prepared, absorbed, absorbed.policy)?;
     build_residual_dof_view(prepared, fit, summary, weights)
 }
 

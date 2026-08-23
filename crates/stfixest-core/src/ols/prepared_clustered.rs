@@ -8,9 +8,9 @@ use super::prepared_scores::{
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
 };
 use super::prepared_unadjusted::{
-    build_reference_weight_report, build_residual_dof, build_statistics, checked_square,
-    compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
-    weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
+    build_clustered_base_residual_dof, build_reference_weight_report, build_statistics,
+    checked_square, compensated_add, exact_integer_as_f64, relative_difference,
+    validate_sum_of_squares, weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
 };
 use super::{
     fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
@@ -324,7 +324,7 @@ fn compose<R: PreparedInferenceReservation>(
 
     let (weights, weight_view, weight_error) =
         build_reference_weight_report(prepared.ols(), &fit, config.certificate_tolerance, true)?;
-    let base_dof = build_residual_dof(prepared.ols(), &fit, &absorbed_dof, weights)?;
+    let base_dof = build_clustered_base_residual_dof(prepared.ols(), &fit, &absorbed_dof, weights)?;
     let expected_dof = build_clustered_dof(prepared, weights, base_dof, &absorbed_dof)?;
     let mut dof = expected_dof;
     if perturbations.residual_dof {

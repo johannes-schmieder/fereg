@@ -14,8 +14,9 @@ use crate::topology_dof::{
 };
 
 use super::{
-    compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffectIdentity,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport, PreparedOlsData,
+    compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
+    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport, PreparedOlsData,
 };
 
 /// Topology-validated summary consumed by common inference calculations.
@@ -26,6 +27,12 @@ pub(crate) struct PreparedOlsAbsorbedDofSummary {
     pub absorbed_rank: usize,
     pub nested_categories: usize,
     pub is_approximate: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LegacyNestingState {
+    Iid,
+    ClusterAware,
 }
 
 pub(crate) trait PreparedOlsInferenceView: PreparedOlsFitView {
@@ -60,7 +67,7 @@ impl PreparedOlsInferenceView for PreparedOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_legacy_report(self, report, expected_policy)
+        validate_legacy_report(self, report, expected_policy, LegacyNestingState::Iid)
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
@@ -91,10 +98,24 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
     }
 }
 
+pub(super) fn validate_cluster_aware_legacy_absorbed_dof_summary(
+    prepared: &PreparedOlsData,
+    report: &PreparedOlsAbsorbedDofReport,
+    expected_policy: PreparedOlsAbsorbedDofPolicy,
+) -> Result<PreparedOlsAbsorbedDofSummary> {
+    validate_legacy_report(
+        prepared,
+        report,
+        expected_policy,
+        LegacyNestingState::ClusterAware,
+    )
+}
+
 fn validate_legacy_report(
     prepared: &PreparedOlsData,
     report: &PreparedOlsAbsorbedDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
+    nesting_state: LegacyNestingState,
 ) -> Result<PreparedOlsAbsorbedDofSummary> {
     if report.policy != expected_policy {
         return Err(invalid(
@@ -110,7 +131,9 @@ fn validate_legacy_report(
         .len()
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("prepared absorbed-DoF row count overflows"))?;
-    if report.effects.len() != expected_rows || report.nested_categories != 0 {
+    if report.effects.len() != expected_rows
+        || (nesting_state == LegacyNestingState::Iid && report.nested_categories != 0)
+    {
         return Err(invalid(
             "prepared absorbed-DoF report dimensions or iid nesting state are inconsistent",
         ));
@@ -119,6 +142,7 @@ fn validate_legacy_report(
     let mut initial = 0_usize;
     let mut redundant = 0_usize;
     let mut rank = 0_usize;
+    let mut nested_categories = 0_usize;
     let mut approximate = false;
     let mut rows = report.effects.as_slice();
     if implicit_no_absorb {
@@ -157,7 +181,7 @@ fn validate_legacy_report(
             || row.categories != source.n_levels()
             || row.redundant > row.categories
             || row.coefficients != row.categories - row.redundant
-            || row.nested
+            || !legacy_nesting_row_is_valid(nesting_state, row)
         {
             return Err(invalid(
                 "prepared absorbed-DoF explicit row is inconsistent",
@@ -172,7 +196,17 @@ fn validate_legacy_report(
         rank = rank
             .checked_add(row.coefficients)
             .ok_or_else(|| allocation("prepared absorbed rank total overflows"))?;
+        if row.nested {
+            nested_categories = nested_categories
+                .checked_add(row.categories)
+                .ok_or_else(|| allocation("prepared absorbed nested category total overflows"))?;
+        }
         approximate |= !row.redundancy_exact;
+    }
+    if nested_categories != report.nested_categories {
+        return Err(invalid(
+            "prepared absorbed-DoF nested category total is inconsistent",
+        ));
     }
     validate_totals(
         report.initial_categories,
@@ -191,6 +225,19 @@ fn validate_legacy_report(
         report.nested_categories,
         report.is_approximate,
     ))
+}
+
+fn legacy_nesting_row_is_valid(
+    nesting_state: LegacyNestingState,
+    row: &PreparedOlsAbsorbedDofEffect,
+) -> bool {
+    match (nesting_state, row.nested) {
+        (LegacyNestingState::Iid, false) | (LegacyNestingState::ClusterAware, false) => true,
+        (LegacyNestingState::Iid, true) => false,
+        (LegacyNestingState::ClusterAware, true) => {
+            row.redundant == row.categories && row.coefficients == 0 && row.redundancy_exact
+        }
+    }
 }
 
 fn validate_categorical_report(
