@@ -68,8 +68,8 @@ impl<'a> PreparedOlsClusteredResultData<'a> {
     }
 
     pub(crate) fn is_bound_to(self, prepared: PreparedOlsResultData<'a>) -> bool {
-        match self {
-            Self::Legacy(value) => prepared.is_same_legacy(value.ols()),
+        match self.ols() {
+            PreparedOlsResultData::Legacy(value) => prepared.is_same_legacy(value),
         }
     }
 }
