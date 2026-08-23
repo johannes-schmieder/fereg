@@ -1,0 +1,185 @@
+name: Import exact stata-require reference bundle
+
+on:
+  push:
+    branches:
+      - codex/categorical-interactions
+    paths:
+      - .github/workflows/import-stata-require-bundle.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-import-stata-require-bundle-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 30
+    env:
+      PUBLIC_REPOSITORY: johannes-schmieder/playground_stfixesf
+      PUBLIC_BRANCH: chatgpt/reference-bundle
+      UPSTREAM_REPOSITORY: https://github.com/sergiocorreia/stata-require
+      UPSTREAM_COMMIT: f4760b86e55cf73b82041ce59cf20e8e8224afb0
+      REQUIRE_ADO_SHA256: 240d7cec217f4648a9e6f25a1297a1ec8c3c8d10f0d63d5252ab807db63e0486
+      REQUIRE_PKG_SHA256: 1691c6f88c1f3524bc44d7baf0a5d17d4030bd240847e6616613d0a964302b59
+    steps:
+      - name: Check out exact import checkpoint
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Download, verify, and commit exact public bundle
+        id: import_bundle
+        continue-on-error: true
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/stfixest-stata-require-import"
+          rm -rf "$work"
+          mkdir -m 700 "$work"
+          manifest="$work/manifest.json"
+          bundle="$work/stata-require-${UPSTREAM_COMMIT}.bundle"
+          base="https://raw.githubusercontent.com/${PUBLIC_REPOSITORY}/${PUBLIC_BRANCH}/bundles/stata-require/${UPSTREAM_COMMIT}"
+
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            "$base/manifest.json" --output "$manifest"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            "$base/stata-require-${UPSTREAM_COMMIT}.bundle" --output "$bundle"
+
+          MANIFEST="$manifest" BUNDLE="$bundle" /usr/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = json.loads(Path(os.environ["MANIFEST"]).read_text(encoding="utf-8"))
+          expected = {
+              "schema": 1,
+              "status": "success",
+              "source_repository": os.environ["UPSTREAM_REPOSITORY"],
+              "source_commit": os.environ["UPSTREAM_COMMIT"],
+              "required_files": {
+                  "src/require.ado": os.environ["REQUIRE_ADO_SHA256"],
+                  "src/require.pkg": os.environ["REQUIRE_PKG_SHA256"],
+              },
+              "bundle_file": f"stata-require-{os.environ['UPSTREAM_COMMIT']}.bundle",
+              "provisioning_repository": os.environ["PUBLIC_REPOSITORY"],
+          }
+          for key, value in expected.items():
+              if manifest.get(key) != value:
+                  raise SystemExit(f"public bundle manifest mismatch: {key}")
+          bundle_bytes = Path(os.environ["BUNDLE"]).read_bytes()
+          observed = hashlib.sha256(bundle_bytes).hexdigest()
+          if manifest.get("bundle_sha256") != observed:
+              raise SystemExit("public bundle digest mismatch")
+          if not isinstance(manifest.get("provisioning_sha"), str) or len(manifest["provisioning_sha"]) != 40:
+              raise SystemExit("public bundle provisioning SHA is invalid")
+          if not isinstance(manifest.get("workflow_run_id"), int):
+              raise SystemExit("public bundle workflow identity is invalid")
+          PY
+
+          git bundle verify "$bundle"
+          heads="$work/bundle-heads.txt"
+          git bundle list-heads "$bundle" > "$heads"
+          test "$(wc -l < "$heads" | tr -d ' ')" = "1"
+          test "$(awk '{print $1}' "$heads")" = "$UPSTREAM_COMMIT"
+
+          verify="$work/verify"
+          git clone --quiet "$bundle" "$verify"
+          test "$(git -C "$verify" rev-parse --verify "${UPSTREAM_COMMIT}^{commit}")" = "$UPSTREAM_COMMIT"
+          git -C "$verify" checkout --detach --quiet "$UPSTREAM_COMMIT"
+          git -C "$verify" fsck --full --strict
+          test -z "$(git -C "$verify" status --porcelain=v1 --untracked-files=all)"
+          test "$(shasum -a 256 "$verify/src/require.ado" | awk '{print $1}')" = "$REQUIRE_ADO_SHA256"
+          test "$(shasum -a 256 "$verify/src/require.pkg" | awk '{print $1}')" = "$REQUIRE_PKG_SHA256"
+
+          destination="ci/reference-bundles/stata-require/$UPSTREAM_COMMIT"
+          mkdir -p "$destination"
+          cp "$bundle" "$destination/stata-require-${UPSTREAM_COMMIT}.bundle"
+          IMPORT_SOURCE_SHA="$GITHUB_SHA" MANIFEST="$manifest" \
+            /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = json.loads(Path(os.environ["MANIFEST"]).read_text(encoding="utf-8"))
+          source["import_repository"] = os.environ["GITHUB_REPOSITORY"]
+          source["import_source_sha"] = os.environ["IMPORT_SOURCE_SHA"]
+          source["capture_network_policy"] = "offline-only"
+          target = Path("ci/reference-bundles/stata-require") / os.environ["UPSTREAM_COMMIT"] / "manifest.json"
+          target.write_text(
+              json.dumps(source, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          rm .github/workflows/import-stata-require-bundle.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "ci(reference): import exact stata-require bundle"
+
+          for attempt in 1 2 3; do
+            git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git rebase "refs/remotes/origin/${BRANCH_NAME}"
+            if git push origin "HEAD:refs/heads/${BRANCH_NAME}"; then
+              exit 0
+            fi
+          done
+          echo "stata-require bundle import lost three branch update races" >&2
+          exit 1
+
+      - name: Publish exact staging-SHA failure receipt
+        if: steps.import_bundle.outcome == 'failure'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/stata-require-bundle-import-failure.json"
+          RECEIPT="$receipt" /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema": 1,
+              "status": "failure",
+              "failure_kind": "reference_bundle_import_failure",
+              "staging_sha": os.environ["GITHUB_SHA"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "upstream_commit": os.environ["UPSTREAM_COMMIT"],
+          }
+          Path(os.environ["RECEIPT"]).write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          result_path=".ci/source-transform/results/$GITHUB_SHA-stata-require-bundle-import.json"
+          publish="$RUNNER_TEMP/stata-require-import-publish"
+          git fetch origin "$BRANCH_NAME"
+          git worktree add --detach "$publish" "origin/$BRANCH_NAME"
+          mkdir -p "$publish/$(dirname "$result_path")"
+          cp "$receipt" "$publish/$result_path"
+          git -C "$publish" config user.name "github-actions[bot]"
+          git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$publish" add "$result_path"
+          git -C "$publish" commit -m "ci(source-transform): record ${GITHUB_SHA:0:12} bundle-import failure [skip ci]"
+          git -C "$publish" push origin "HEAD:refs/heads/$BRANCH_NAME"
+          git worktree remove --force "$publish"
+
+      - name: Enforce import success
+        if: steps.import_bundle.outcome == 'failure'
+        run: exit 1
