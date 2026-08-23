@@ -1,1 +1,1 @@
-apply categorical iid inference refactor
+apply categorical iid inference refactor: established workflow trigger
