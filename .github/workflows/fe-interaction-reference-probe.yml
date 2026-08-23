@@ -1,0 +1,124 @@
+name: Pinned reghdfe FE-interaction probe
+
+on:
+  push:
+    branches:
+      - codex/categorical-interactions
+    paths:
+      - .github/workflows/fe-interaction-reference-probe.yml
+      - scripts/fe_interaction_probe.py
+      - benchmarks/stata/probe_reghdfe_fe_interaction.do
+      - benchmarks/stata/baseline_reghdfe.do
+      - benchmarks/manifests/ols_v1.json
+      - references.lock.toml
+      - tests/fixtures/ols/ols_core.csv
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-fe-interaction-probe-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact probe source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Run isolated pinned reference probe
+        id: probe
+        continue-on-error: true
+        shell: bash
+        env:
+          STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
+          rm -rf "$output"
+          mkdir -p "$output"
+          /usr/bin/python3 -m py_compile scripts/fe_interaction_probe.py
+          /usr/bin/python3 scripts/fe_interaction_probe.py \
+            --stata "$STATA_BIN" \
+            --output-dir "$output" \
+            --source-sha "$GITHUB_SHA"
+
+      - name: Upload temporary probe evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fe-interaction-probe-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/stfixest-fe-interaction-probe/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish redacted sealed probe summary
+        if: always()
+        shell: bash
+        env:
+          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          document = json.loads(Path(os.environ["SUMMARY"]).read_text(encoding="utf-8"))
+          payload = document.get("payload", {})
+          if payload.get("source_sha") != os.environ["GITHUB_SHA"]:
+              raise SystemExit("probe summary source SHA mismatch")
+          if payload.get("raw_capture_committed") is not False:
+              raise SystemExit("probe summary violates raw-capture policy")
+          PY
+
+          result_path=".ci/reference-probes/fe-interaction/$GITHUB_SHA.json"
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish="$RUNNER_TEMP/fe-interaction-probe-publish-$attempt"
+            git worktree add --detach "$publish" "origin/$BRANCH_NAME"
+            mkdir -p "$publish/$(dirname "$result_path")"
+            cp "$SUMMARY" "$publish/$result_path"
+            git -C "$publish" config user.name "github-actions[bot]"
+            git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish" add "$result_path"
+            if git -C "$publish" diff --cached --quiet; then
+              git worktree remove --force "$publish"
+              exit 0
+            fi
+            git -C "$publish" commit -m "ci(reference): record ${GITHUB_SHA:0:12} FE probe [skip ci]"
+            if git -C "$publish" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              git worktree remove --force "$publish"
+              exit 0
+            fi
+            git worktree remove --force "$publish"
+          done
+          echo "reference-probe publication lost three branch races" >&2
+          exit 1
+
+      - name: Enforce probe success
+        if: always()
+        shell: bash
+        env:
+          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          document = json.loads(Path(os.environ["SUMMARY"]).read_text(encoding="utf-8"))
+          if os.environ["PROBE_OUTCOME"] != "success":
+              raise SystemExit("reference probe process failed")
+          if document.get("payload", {}).get("status") != "success":
+              raise SystemExit("reference probe summary is not successful")
+          PY

@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "scripts/fe_interaction_probe.py"
+WORKFLOW = ROOT / ".github/workflows/fe-interaction-reference-probe.yml"
+
+
+class FeInteractionProbeContractTests(unittest.TestCase):
+    def test_probe_reuses_exact_isolated_reference_preflight(self) -> None:
+        text = SCRIPT.read_text(encoding="utf-8")
+        for token in (
+            "preflight_reference_root",
+            "stage_references",
+            "_write_wrapper",
+            "seal_payload",
+            "raw_capture_committed",
+        ):
+            self.assertIn(token, text)
+        self.assertIn('"preflight"', text)
+        self.assertNotIn("urllib", text)
+        self.assertNotIn("requests", text)
+
+    def test_workflow_is_private_branch_and_mac_runner_scoped(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("codex/categorical-interactions", text)
+        self.assertIn("self-hosted, macOS, ARM64, stata-mp, stfixest", text)
+        self.assertIn("github.repository == 'johannes-schmieder/StFixest'", text)
+        self.assertNotIn("pull_request", text)
+        self.assertNotIn("ubuntu-latest", text)
+        self.assertNotIn("windows-latest", text)
+
+    def test_only_redacted_summary_is_committed(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn(".ci/reference-probes/fe-interaction/$GITHUB_SHA.json", text)
+        self.assertNotIn("git add capture.machine", text)
+        self.assertNotIn("git add run.log", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
