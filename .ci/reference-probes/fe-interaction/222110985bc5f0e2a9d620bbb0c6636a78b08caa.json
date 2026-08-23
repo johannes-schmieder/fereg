@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "failure_detail": "reference probe did not reach a terminal result",
+    "failure_kind": "probe_not_completed",
+    "raw_capture_committed": false,
+    "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+    "schema_version": 1,
+    "source_sha": "222110985bc5f0e2a9d620bbb0c6636a78b08caa",
+    "stage": "workflow_started",
+    "status": "failure",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 32650700405
+  },
+  "payload_sha256": "facb7882ad99d9b72929c829b89da20d2ffb36b9e0867d45ea633bd1952404c4"
+}
