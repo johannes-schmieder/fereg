@@ -1,0 +1,79 @@
+name: Restore canonical STATUS heading
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repair-status-heading.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stfixest-repair-status-heading-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact repair source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Restore canonical heading and remove transform
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          publish_tree=""
+          cleanup() {
+            if [[ -n "$publish_tree" ]]; then
+              git worktree remove --force "$publish_tree" 2>/dev/null || true
+              git worktree prune
+              publish_tree=""
+            fi
+          }
+          trap cleanup EXIT
+
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH_NAME"
+            publish_tree="$RUNNER_TEMP/status-heading-repair-$attempt"
+            git worktree add --detach "$publish_tree" "origin/$BRANCH_NAME"
+            STATUS_PATH="$publish_tree/STATUS.md" WORKFLOW_PATH="$publish_tree/.github/workflows/repair-status-heading.yml" /usr/bin/python3 - <<'PY'
+            import os
+            from pathlib import Path
+
+            status = Path(os.environ["STATUS_PATH"])
+            workflow = Path(os.environ["WORKFLOW_PATH"])
+            text = status.read_text(encoding="utf-8")
+            old = "## Historical evidence-backed baseline (pre-categorical consolidation)"
+            new = "## Completed, evidence-backed baseline"
+            if new not in text:
+                if text.count(old) != 1:
+                    raise SystemExit("STATUS historical-heading anchor mismatch")
+                text = text.replace(old, new, 1)
+                status.write_text(text, encoding="utf-8")
+            workflow.unlink(missing_ok=True)
+            PY
+            git -C "$publish_tree" config user.name "github-actions[bot]"
+            git -C "$publish_tree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$publish_tree" add -A
+            git -C "$publish_tree" diff --cached --check
+            if git -C "$publish_tree" diff --cached --quiet; then
+              exit 0
+            fi
+            git -C "$publish_tree" commit -m "docs: restore canonical status section"
+            if git -C "$publish_tree" push origin "HEAD:refs/heads/$BRANCH_NAME"; then
+              exit 0
+            fi
+            cleanup
+          done
+          echo "STATUS heading repair lost three branch races" >&2
+          exit 1
