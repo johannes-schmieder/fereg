@@ -36,10 +36,15 @@ availability.
 
 ## Development status
 
-`STATUS.md` is the sole live progress record. This project does not use GitHub
-Actions: validation is performed through the documented local and
-target-native commands below, with immutable receipts stored under
-`build_evidence/` and `benchmarks/reports/captured/`.
+`STATUS.md` is the sole live scientific progress record. Normal pushes to
+`main` and `codex/**` run the quick Rust/C/source checks and a licensed Stata
+quick suite on a private repository-level Mac runner. Exact-SHA CI receipts are
+committed under `.ci/stata/`; full logs and the tested plugin are retained as
+Actions artifacts. GitHub-hosted Linux, Windows, and macOS qualification is
+manual rather than duplicated on every push. Machine setup and the remote
+development interface are documented in `STATA_CI_RUNNER.md`. Immutable
+scientific receipts remain under `build_evidence/` and
+`benchmarks/reports/captured/` and are not replaced by CI status receipts.
 
 ## Local build and test
 
@@ -47,8 +52,10 @@ The pinned Rust toolchain is 1.85.1. On the validated macOS host, put the pinned
 Rust tools and Homebrew Python ahead of the system Python:
 
 ```bash
-PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/run_tests.sh
-PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/build_macos.sh
+PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch64-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/run_tests.sh
+PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch64-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/build_macos.sh
+./ci/run_stata_ci.sh smoke
+./ci/run_stata_ci.sh quick
 ```
 
 Native build entry points for the remaining targets are:
