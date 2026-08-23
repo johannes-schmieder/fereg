@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -238,5 +240,21 @@ lib = replace_once(
     "crate fit export",
 )
 LIB.write_text(lib, encoding="utf-8")
+
+# Make the next workflow step use the repository-pinned Rust toolchain without
+# mutating machine-level shell configuration.
+github_path = os.environ.get("GITHUB_PATH")
+if github_path:
+    rustup_bin = Path(os.environ.get("RUSTUP_BIN", "/opt/homebrew/bin/rustup"))
+    toolchain = os.environ.get("RUST_TOOLCHAIN", "1.85.1")
+    if not rustup_bin.is_file():
+        raise SystemExit(f"required rustup executable is absent: {rustup_bin}")
+    sysroot = subprocess.check_output(
+        [str(rustup_bin), "run", toolchain, "rustc", "--print", "sysroot"],
+        text=True,
+    ).strip()
+    with Path(github_path).open("a", encoding="utf-8") as handle:
+        handle.write(f"{sysroot}/bin\n")
+        handle.write("/opt/homebrew/bin\n")
 
 print("generalized prepared_fit.rs over PreparedOlsFitView")
