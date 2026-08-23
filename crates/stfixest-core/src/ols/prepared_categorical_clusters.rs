@@ -115,11 +115,8 @@ pub fn prepare_categorical_ols_clustered_data(
     loaded: &LoadedOlsInput,
 ) -> Result<PreparedCategoricalOlsClusteredData> {
     let cluster_sources = validate_request(request)?;
-    let ols = prepare_categorical_ols_data_with_cluster_sources(
-        &request.ols,
-        loaded,
-        &cluster_sources,
-    )?;
+    let ols =
+        prepare_categorical_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
     let mut reservation = SystemCategoricalClusterReservation;
     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
     let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };
@@ -153,7 +150,10 @@ fn build_cluster_design<R: CategoricalClusterReservation>(
         } else {
             let encoded = factorize_interaction(ols, &categorical_indices, reservation)?;
             let groups = encoded.n_levels();
-            (PreparedOlsClusterCodes::Interaction(encoded.into_codes()), groups)
+            (
+                PreparedOlsClusterCodes::Interaction(encoded.into_codes()),
+                groups,
+            )
         };
         if groups < 2 {
             return Err(invalid_data(
@@ -232,10 +232,9 @@ fn factorize_interaction<R: CategoricalClusterReservation>(
         "unable to reserve categorical cluster interaction views",
     )?;
     for index in categorical_indices {
-        let source = ols
-            .categorical_sources()
-            .get(*index)
-            .ok_or_else(|| invalid_argument("categorical cluster interaction source disappeared"))?;
+        let source = ols.categorical_sources().get(*index).ok_or_else(|| {
+            invalid_argument("categorical cluster interaction source disappeared")
+        })?;
         push_reserved(
             &mut views,
             CategoricalCodeView::new(
@@ -266,11 +265,7 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) -> 
         let source_indices =
             resolve_source_indices(&prepared.ols, &dimension.sources, &mut reservation)?;
         let codes = prepared.cluster_codes(dimension_index)?;
-        if codes.len() != nobs
-            || codes
-                .iter()
-                .any(|code| *code as usize >= dimension.groups)
-        {
+        if codes.len() != nobs || codes.iter().any(|code| *code as usize >= dimension.groups) {
             return Err(invalid_data(
                 "categorical cluster codes or group count failed certification",
             ));
@@ -286,7 +281,9 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) -> 
                     .ols
                     .categorical_sources()
                     .get(*expected)
-                    .ok_or_else(|| invalid_argument("certified simple cluster source disappeared"))?;
+                    .ok_or_else(|| {
+                        invalid_argument("certified simple cluster source disappeared")
+                    })?;
                 if source.n_levels(prepared.ols.fe_topology())? != dimension.groups
                     || !std::ptr::eq(
                         codes.as_ptr(),

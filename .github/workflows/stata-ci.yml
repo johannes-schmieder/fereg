@@ -72,9 +72,7 @@ jobs:
           fi
 
           /usr/bin/python3 "$transform"
-          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
-          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
-          cargo fmt --all
+          /opt/homebrew/bin/rustup run 1.85.1 cargo fmt --all
 
           rm "$transform"
           rmdir ci/source-transforms 2>/dev/null || true

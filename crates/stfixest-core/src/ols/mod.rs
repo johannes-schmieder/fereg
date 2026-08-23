@@ -3,6 +3,7 @@
 mod dof;
 mod fit;
 mod prepared;
+mod prepared_categorical_clusters;
 mod prepared_clustered;
 mod prepared_clusters;
 mod prepared_dof;
@@ -17,12 +18,16 @@ mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
+pub(crate) use prepared::prepare_ols_data_with_cluster_sources;
 pub use prepared::{
     prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
     OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
+};
+pub use prepared_categorical_clusters::{
+    prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
 };
 pub use prepared_clustered::{
     fit_prepared_ols_clustered_map, CertifiedPreparedOlsClustered,

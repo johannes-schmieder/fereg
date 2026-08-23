@@ -23,10 +23,11 @@ use crate::topology_dof::{
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
 };
 
+use crate::ols::prepare_ols_data_with_cluster_sources;
+
 use super::{
-    prepare_ols_data, LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource,
-    PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel,
-    PreparedOlsSingletons,
+    LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficientStatus,
+    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel, PreparedOlsSingletons,
 };
 
 /// Complete native preparation result for intercept-only numeric categorical
@@ -417,8 +418,20 @@ pub fn prepare_categorical_ols_data(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
 ) -> Result<PreparedCategoricalOlsData> {
+    prepare_categorical_ols_data_with_cluster_sources(request, loaded, &[])
+}
+
+pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<PreparedCategoricalOlsData> {
     let plan = plan_categorical_absorbed_request(request)?;
-    let availability = prepare_ols_data(plan.availability_request(), loaded)?;
+    let availability = prepare_ols_data_with_cluster_sources(
+        plan.availability_request(),
+        loaded,
+        cluster_sources,
+    )?;
     if !availability.singletons.kept_by_request
         || availability.singletons.num_singletons != 0
         || availability.singletons.cascade_events != 0
@@ -436,7 +449,7 @@ pub fn prepare_categorical_ols_data(
         PreparedWeights::Provided {
             kind: WeightKind::Frequency,
             values,
-        } => SingletonMultiplicity::Frequency(values),
+        } => SingletonMultiplicity::Frequency(values.as_slice()),
         PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
     };
     let singleton_result = prune_categorical_partition_singletons(
@@ -458,9 +471,8 @@ pub fn prepare_categorical_ols_data(
         categorical_sources: candidate_sources,
         ..
     } = availability;
-    let ordinary_sources = ordinary_categorical_sources(&model)?;
-    let model_source_plans =
-        plan_model_sources(candidate_sources, &ordinary_sources, &fe_topology)?;
+    let final_sources = final_categorical_sources(&model, cluster_sources)?;
+    let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
     if fe_topology.retained_rows().len() != sample.n_active() {
         return Err(invalid(
@@ -624,6 +636,24 @@ fn ordinary_categorical_sources(model: &PreparedOlsModel) -> Result<Vec<SourceId
             }
             PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
         }
+    }
+    Ok(sources)
+}
+
+fn final_categorical_sources(
+    model: &PreparedOlsModel,
+    cluster_sources: &[SourceId],
+) -> Result<Vec<SourceId>> {
+    let mut sources = ordinary_categorical_sources(model)?;
+    let additional = cluster_sources
+        .iter()
+        .filter(|source| !sources.contains(source))
+        .count();
+    sources
+        .try_reserve_exact(additional)
+        .map_err(|_| allocation("unable to reserve final categorical cluster sources"))?;
+    for source in cluster_sources {
+        push_unique_source(&mut sources, *source)?;
     }
     Ok(sources)
 }
