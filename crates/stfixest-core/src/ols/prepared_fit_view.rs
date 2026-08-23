@@ -1,7 +1,7 @@
 //! Shared data/absorption view for certified prepared OLS fitting.
 //!
 //! The legacy prepared path and the categorical-interaction path differ only in
-//! how they own and validate fixed-effect topology.  They must not fork the
+//! how they own and validate fixed-effect topology. They must not fork the
 //! rank-revealing QR, bread, residual, or score-certificate implementation.
 //! This trait exposes the common immutable model/sample surface and one
 //! topology-specific certified absorption operation.
@@ -30,8 +30,6 @@ pub(crate) trait PreparedOlsFitView {
 
     fn fit_report_intercept(&self) -> bool;
 
-    fn fit_has_explicit_absorbed_effects(&self) -> bool;
-
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64>;
 
     fn fit_build_rhs(&self) -> Result<DenseMatrix>;
@@ -59,10 +57,6 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_report_intercept(&self) -> bool {
         self.report_intercept
-    }
-
-    fn fit_has_explicit_absorbed_effects(&self) -> bool {
-        !self.fe_topology.effects().is_empty()
     }
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
@@ -101,10 +95,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
 
     fn fit_report_intercept(&self) -> bool {
         self.report_intercept()
-    }
-
-    fn fit_has_explicit_absorbed_effects(&self) -> bool {
-        !self.fe_topology().effect_to_topology().is_empty()
     }
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
