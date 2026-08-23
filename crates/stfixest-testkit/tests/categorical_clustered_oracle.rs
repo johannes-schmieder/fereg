@@ -4,10 +4,9 @@ use stfixest_core::{
     fit_prepared_categorical_ols_clustered_map, prepare_categorical_ols_clustered_data,
     AbsorbTermId, AbsorbedTerm, CertifiedPreparedCategoricalOlsClustered, CoefficientSlot,
     CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsClusteredConfig, PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId,
-    TermComponent, TermId, TermOrder, TimeSeriesState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsClusteredConfig, PreparedOlsFitStatus,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -39,12 +38,7 @@ fn one_and_two_way_clustered_covariances_match_explicit_interaction_dummies() {
         vec![vec![CLUSTER_A_SOURCE], vec![CLUSTER_B_SOURCE]],
     ] {
         for include_intercept in [false, true] {
-            assert_case_matches_oracle(
-                &case,
-                include_intercept,
-                CaseWeights::Unit,
-                &cluster_specs,
-            );
+            assert_case_matches_oracle(&case, include_intercept, CaseWeights::Unit, &cluster_specs);
         }
     }
 }
@@ -74,12 +68,8 @@ fn analytic_and_probability_weight_scaling_match_explicit_cluster_scores() {
     let scaled = weights.iter().map(|value| value * 1e8).collect::<Vec<_>>();
     let cluster_specs = vec![vec![CLUSTER_A_SOURCE], vec![CLUSTER_B_SOURCE]];
 
-    let analytic = assert_case_matches_oracle(
-        &case,
-        true,
-        CaseWeights::Analytic(&weights),
-        &cluster_specs,
-    );
+    let analytic =
+        assert_case_matches_oracle(&case, true, CaseWeights::Analytic(&weights), &cluster_specs);
     let probability = assert_case_matches_oracle(
         &case,
         true,
@@ -112,12 +102,7 @@ fn row_permutation_preserves_clustered_interaction_result() {
     let baseline = fit_case(&case, true, CaseWeights::Unit, &cluster_specs);
     let permutation = (0..case.outcome.len()).rev().collect::<Vec<_>>();
     let permuted_case = case.permute(&permutation);
-    let permuted = fit_case(
-        &permuted_case,
-        true,
-        CaseWeights::Unit,
-        &cluster_specs,
-    );
+    let permuted = fit_case(&permuted_case, true, CaseWeights::Unit, &cluster_specs);
 
     assert_eq!(baseline.fit().finite_rank(), permuted.fit().finite_rank());
     assert_eq!(baseline.cluster_counts(), permuted.cluster_counts());
@@ -250,11 +235,8 @@ fn fit_case(
     cluster_specs: &[Vec<usize>],
 ) -> CertifiedPreparedCategoricalOlsClustered {
     let prepared = prepare_case(case, include_intercept, weights, cluster_specs);
-    fit_prepared_categorical_ols_clustered_map(
-        &prepared,
-        PreparedOlsClusteredConfig::default(),
-    )
-    .expect("certified categorical clustered fit")
+    fit_prepared_categorical_ols_clustered_map(&prepared, PreparedOlsClusteredConfig::default())
+        .expect("certified categorical clustered fit")
 }
 
 fn prepare_case(
@@ -383,10 +365,17 @@ fn prepare_case(
 
 fn oracle_cluster_codes(case: &ClusteredInteractionCase, sources: &[usize]) -> Vec<u64> {
     match sources {
-        [CLUSTER_A_SOURCE] => case.cluster_a.iter().map(|value| u64::from(*value)).collect(),
-        [CLUSTER_B_SOURCE] => case.cluster_b.iter().map(|value| u64::from(*value)).collect(),
-        [CLUSTER_A_SOURCE, CLUSTER_B_SOURCE]
-        | [CLUSTER_B_SOURCE, CLUSTER_A_SOURCE] => {
+        [CLUSTER_A_SOURCE] => case
+            .cluster_a
+            .iter()
+            .map(|value| u64::from(*value))
+            .collect(),
+        [CLUSTER_B_SOURCE] => case
+            .cluster_b
+            .iter()
+            .map(|value| u64::from(*value))
+            .collect(),
+        [CLUSTER_A_SOURCE, CLUSTER_B_SOURCE] | [CLUSTER_B_SOURCE, CLUSTER_A_SOURCE] => {
             let (codes, _) = independent_interaction_codes(&case.cluster_a, &case.cluster_b);
             codes.into_iter().map(u64::from).collect()
         }
@@ -429,12 +418,7 @@ fn independent_interaction_codes(first: &[u32], second: &[u32]) -> (Vec<u32>, us
         .iter()
         .copied()
         .enumerate()
-        .map(|(index, tuple)| {
-            (
-                tuple,
-                u32::try_from(index).expect("small interaction code"),
-            )
-        })
+        .map(|(index, tuple)| (tuple, u32::try_from(index).expect("small interaction code")))
         .collect::<BTreeMap<_, _>>();
     let codes = first
         .iter()
@@ -551,10 +535,8 @@ fn balanced_case(repetitions: usize) -> ClusteredInteractionCase {
         .collect::<Vec<_>>();
     let cluster_a = (0..firm.len())
         .map(|row| {
-            u32::try_from(
-                (firm[row] as usize + 2 * year[row] as usize + repetition_index[row]) % 7,
-            )
-            .expect("bounded cluster A")
+            u32::try_from((firm[row] as usize + 2 * year[row] as usize + repetition_index[row]) % 7)
+                .expect("bounded cluster A")
         })
         .collect::<Vec<_>>();
     let cluster_b = (0..firm.len())
