@@ -35,7 +35,10 @@ class FeInteractionProbeContractTests(unittest.TestCase):
     def test_every_started_probe_leaves_a_source_bound_summary(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("Initialize durable probe status", text)
+        self.assertIn("Select Python with tomllib", text)
         self.assertIn("Finalize missing or malformed probe status", text)
+        self.assertIn("python_tomllib_unavailable", text)
+        self.assertIn("probe_process_failed_before_summary", text)
         self.assertIn("summary_missing_or_malformed", text)
         self.assertIn("workflow_run_id", text)
         self.assertIn("payload_sha256", text)

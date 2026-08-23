@@ -67,24 +67,48 @@ jobs:
               "payload": payload,
               "payload_sha256": hashlib.sha256(canonical).hexdigest(),
           }
-          path = Path(os.environ["OUTPUT"])
-          path.write_text(
+          Path(os.environ["OUTPUT"]).write_text(
               json.dumps(document, indent=2, sort_keys=True, ensure_ascii=True) + "\n",
               encoding="utf-8",
           )
           PY
 
+      - name: Select Python with tomllib
+        id: python
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=(
+            /opt/homebrew/bin/python3
+            /usr/local/bin/python3
+            "$(command -v python3 2>/dev/null || true)"
+            /usr/bin/python3
+          )
+          for candidate in "${candidates[@]}"; do
+            [[ -n "$candidate" && -x "$candidate" ]] || continue
+            if "$candidate" -c 'import sys, tomllib; assert sys.version_info >= (3, 11)' >/dev/null 2>&1; then
+              echo "bin=$candidate" >> "$GITHUB_OUTPUT"
+              "$candidate" --version
+              exit 0
+            fi
+          done
+          echo "No Python interpreter with tomllib is available on the trusted runner." >&2
+          exit 1
+
       - name: Run isolated pinned reference probe
         id: probe
+        if: steps.python.outcome == 'success'
         continue-on-error: true
         shell: bash
         env:
+          PROBE_PYTHON: ${{ steps.python.outputs.bin }}
           STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
         run: |
           set -euo pipefail
           output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
-          /usr/bin/python3 -m py_compile scripts/fe_interaction_probe.py
-          /usr/bin/python3 scripts/fe_interaction_probe.py \
+          "$PROBE_PYTHON" -m py_compile scripts/fe_interaction_probe.py scripts/ols_reference.py
+          "$PROBE_PYTHON" scripts/fe_interaction_probe.py \
             --stata "$STATA_BIN" \
             --output-dir "$output" \
             --source-sha "$GITHUB_SHA"
@@ -93,6 +117,7 @@ jobs:
         if: always()
         shell: bash
         env:
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
           PROBE_OUTCOME: ${{ steps.probe.outcome }}
         run: |
           set -euo pipefail
@@ -106,6 +131,7 @@ jobs:
 
           path = Path(os.environ["OUTPUT"])
           reason = None
+          detail = "reference probe did not create a valid source-bound summary"
           try:
               document = json.loads(path.read_text(encoding="utf-8"))
               payload = document.get("payload", {})
@@ -115,6 +141,16 @@ jobs:
                   reason = "summary_raw_capture_policy_violation"
               elif payload.get("status") not in {"success", "failure"}:
                   reason = "summary_status_invalid"
+              elif payload.get("stage") == "workflow_started":
+                  if os.environ.get("PYTHON_OUTCOME") != "success":
+                      reason = "python_tomllib_unavailable"
+                      detail = "no trusted runner Python interpreter could import tomllib"
+                  elif os.environ.get("PROBE_OUTCOME") != "success":
+                      reason = "probe_process_failed_before_summary"
+                      detail = "reference probe process failed before writing a terminal summary"
+                  else:
+                      reason = "probe_process_did_not_replace_initial_summary"
+                      detail = "reference probe returned success without replacing its initialized summary"
               elif os.environ.get("PROBE_OUTCOME") != "success" and payload.get("status") == "success":
                   reason = "probe_process_failed_after_success_summary"
           except (OSError, UnicodeError, json.JSONDecodeError, AttributeError, TypeError):
@@ -128,10 +164,11 @@ jobs:
                   "source_sha": os.environ["GITHUB_SHA"],
                   "stage": "workflow_finalizer",
                   "failure_kind": reason,
-                  "failure_detail": "reference probe did not create a valid source-bound summary",
+                  "failure_detail": detail,
                   "raw_capture_committed": False,
                   "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
                   "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+                  "python_outcome": os.environ.get("PYTHON_OUTCOME", "unknown"),
                   "probe_outcome": os.environ.get("PROBE_OUTCOME", "unknown"),
               }
               canonical = json.dumps(
@@ -227,8 +264,9 @@ jobs:
         if: always()
         shell: bash
         env:
-          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
           PROBE_OUTCOME: ${{ steps.probe.outcome }}
+          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
         run: |
           set -euo pipefail
           /usr/bin/python3 - <<'PY'
@@ -237,6 +275,8 @@ jobs:
           from pathlib import Path
 
           document = json.loads(Path(os.environ["SUMMARY"]).read_text(encoding="utf-8"))
+          if os.environ["PYTHON_OUTCOME"] != "success":
+              raise SystemExit("reference probe Python capability check failed")
           if os.environ["PROBE_OUTCOME"] != "success":
               raise SystemExit("reference probe process failed")
           if document.get("payload", {}).get("status") != "success":
