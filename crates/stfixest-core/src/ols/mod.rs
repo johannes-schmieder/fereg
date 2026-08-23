@@ -5,6 +5,7 @@ mod fit;
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;
+mod prepared_clustered_view;
 mod prepared_clusters;
 mod prepared_dof;
 mod prepared_fit;

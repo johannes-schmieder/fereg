@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use crate::error::{ErrorCode, Result, StFixestError};
 
+use super::prepared_clustered_view::PreparedOlsClusteredView;
 use super::prepared_dof::compute_prepared_ols_absorbed_dof_with_nesting;
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
@@ -556,11 +557,11 @@ fn compose<R: PreparedInferenceReservation>(
     })
 }
 
-fn validate_config(
-    prepared: &PreparedOlsClusteredData,
+fn validate_config<P: PreparedOlsClusteredView + ?Sized>(
+    prepared: &P,
     config: PreparedOlsClusteredConfig,
 ) -> Result<()> {
-    if !(1..=10).contains(&prepared.clusters().len()) {
+    if !(1..=10).contains(&prepared.clustered_design().len()) {
         return Err(invalid_argument(
             "prepared clustered OLS requires one to ten cluster dimensions",
         ));
@@ -576,19 +577,23 @@ fn validate_config(
     Ok(())
 }
 
-fn borrow_cluster_dimensions<'a, R: PreparedInferenceReservation>(
-    prepared: &'a PreparedOlsClusteredData,
+fn borrow_cluster_dimensions<
+    'a,
+    P: PreparedOlsClusteredView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &'a P,
     reservation: &mut R,
 ) -> Result<Vec<&'a [u32]>> {
     let mut dimensions = reserved_empty(
         reservation,
-        prepared.clusters().len(),
+        prepared.clustered_design().len(),
         "unable to reserve prepared clustered code views",
     )?;
-    for index in 0..prepared.clusters().len() {
+    for index in 0..prepared.clustered_design().len() {
         push_reserved(
             &mut dimensions,
-            prepared.cluster_codes(index)?,
+            prepared.clustered_codes(index)?,
             "prepared clustered code-view capacity exhausted",
         )?;
     }
