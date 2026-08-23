@@ -9,16 +9,28 @@ WORKFLOW = ROOT / ".github/workflows/fe-interaction-reference-probe.yml"
 
 
 class ReferenceRootResolverContractTests(unittest.TestCase):
-    def test_resolver_uses_a_finite_non_enumerating_allowlist(self) -> None:
+    def test_resolver_uses_finite_non_enumerating_allowlists(self) -> None:
         text = RESOLVER.read_text(encoding="utf-8")
-        self.assertIn("CANDIDATE_SUFFIXES = (", text)
-        self.assertIn('"Git"', text)
-        self.assertIn("preflight_reference_root", text)
-        self.assertIn("offline_reference_root_ambiguous", text)
-        self.assertIn("explicit_reference_root_failed_preflight", text)
+        for token in (
+            "CANDIDATE_SUFFIXES = (",
+            "REPOSITORY_CANDIDATE_SUFFIXES:",
+            '"Git"',
+            '"Git/reghdfe"',
+            '"Git/ftools"',
+            '"Git/stata-require"',
+            "preflight_reference_root",
+            "offline_reference_root_ambiguous",
+            "offline_reference_object_store_ambiguous",
+            "offline_reference_object_store_incomplete",
+            "explicit_reference_root_failed_preflight",
+        ):
+            self.assertIn(token, text)
         for forbidden in (
             ".rglob(",
             ".glob(",
+            ".iterdir(",
+            "os.listdir",
+            "os.scandir",
             "os.walk",
             "urllib",
             "requests",
@@ -38,6 +50,8 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
             '"remote", "get-url", "origin"',
             '"rev-parse", "--verify", f"{commit}^{{commit}}"',
             "_github_repository_identity",
+            "_matching_independent_object_stores",
+            "_materialize_sources",
             "preflight_reference_root(target, lock, ROOT)",
         ):
             self.assertIn(token, text)
@@ -59,6 +73,12 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
         self.assertNotIn("repr(candidate", text)
         self.assertIn("candidate_index={index}", text)
         self.assertIn("materialization_attempts=", text)
+        for token in (
+            "reghdfe_object_stores=",
+            "ftools_object_stores=",
+            "require_object_stores=",
+        ):
+            self.assertIn(token, text)
 
     def test_workflow_passes_the_root_without_logging_or_artifacting_it(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
