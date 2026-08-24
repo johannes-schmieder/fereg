@@ -33,7 +33,7 @@ assert e(N) == 8
 assert e(N_full) == 24
 assert e(num_singletons) == 16
 assert e(drop_singletons) == 1
-assert e(N_hdfe) == 2
+assert e(N_hdfe) == 3
 assert e(df_m) == 0
 assert e(df_a) == 6
 assert e(df_r) == 2

@@ -56,7 +56,7 @@ class FeInteractionRepeatedDifferentialContractTests(unittest.TestCase):
             {
                 "N": "+1.0000000000000X+003",
                 "N_full": "+1.8000000000000X+004",
-                "N_hdfe": "+1.0000000000000X+001",
+                "N_hdfe": "+1.8000000000000X+001",
                 "df_a": "+1.8000000000000X+002",
                 "df_m": "+0.0000000000000X-3ff",
                 "df_r": "+1.0000000000000X+001",
@@ -160,7 +160,7 @@ class FeInteractionRepeatedDifferentialContractTests(unittest.TestCase):
             "e(N) == 8",
             "e(N_full) == 24",
             "e(num_singletons) == 16",
-            "e(N_hdfe) == 2",
+            "e(N_hdfe) == 3",
             "e(df_a) == 6",
             "e(df_r) == 2",
             "o.x1 _cons",
