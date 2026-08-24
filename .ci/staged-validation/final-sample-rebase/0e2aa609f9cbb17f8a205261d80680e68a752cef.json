@@ -1,0 +1,56 @@
+{
+  "payload": {
+    "schema_version": 1,
+    "receipt_type": "stfixest-accepted-final-sample-rebase",
+    "status": "success",
+    "source_sha": "0e2aa609f9cbb17f8a205261d80680e68a752cef",
+    "source_tree": "c7b15f32fc6b55a6d40fdb2845deba2dec658fff",
+    "ref": "refs/heads/main",
+    "platform": "macOS Apple Silicon",
+    "activation_committed": true,
+    "public_activation": false,
+    "ppml_public_activation": false,
+    "result_wire": "1.1",
+    "candidate_capacity_is_separate_from_final_logical_graph": true,
+    "explicit_base_policy": "fail_closed_until_public_parser_distinguishes_explicit_base",
+    "gates": {
+      "fmt": "success",
+      "clippy_all_targets": "success",
+      "test_debug_all_targets": "success",
+      "test_release_all_targets": "success",
+      "build_release": "success",
+      "python_contracts": "success",
+      "macos_universal_binary_audit": "success",
+      "actual_plugin_loader": "success",
+      "licensed_stata_full": "success",
+      "pinned_reghdfe_differential": "success",
+      "independent_explicit_dummy_oracle": "success",
+      "transaction_and_rollback": "success"
+    },
+    "evidence": {
+      "licensed_stata_full_receipt": ".ci/stata/full-results/0e2aa609f9cbb17f8a205261d80680e68a752cef.json",
+      "licensed_stata_full_receipt_sha256": "31e5ca5f54be4d0781e54802e7412768900d917a55613b603dd62fc723598bce",
+      "pinned_reference_receipt": ".ci/reference-probes/fe-interaction/0e2aa609f9cbb17f8a205261d80680e68a752cef.json",
+      "pinned_reference_receipt_sha256": "e3b55cdf23d9df14fbb5d2eed31e31a31ba54ebc6c720311c503aa0fbdc1975a",
+      "pinned_reference_payload_sha256": "fab875a998edc8f91bbeebfca8ca8ef92c09f43f6044fbbcef0b1e7da8fcf387",
+      "licensed_stata_plugin_sha256": "89e00baf2ddecceedeb209c6a3506218a06fe1eb134ee9a0b2731679c3aca57d",
+      "licensed_stata_tests_passed": 25,
+      "licensed_stata_tests_failed": 0,
+      "python_tests_passed_before_evidence_binding": 209,
+      "python_tests_passed_with_evidence_binding": 215,
+      "python_tests_failed": 0,
+      "rust_core_unit_tests_per_profile": 265,
+      "rust_plugin_unit_tests_per_profile": 43,
+      "new_independent_oracle_tests_per_profile": 1
+    },
+    "privacy": {
+      "raw_logs_committed": false,
+      "local_paths_committed": false,
+      "license_identity_committed": false,
+      "agent_transcripts_committed": false
+    },
+    "performance_measured": false,
+    "performance_claim": false
+  },
+  "payload_sha256": "5c0bc70e218cc9e696c4ba33cd435d37ff04b5706b617e7f365a612568ec7ac8"
+}

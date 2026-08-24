@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "tested_sha": "0e2aa609f9cbb17f8a205261d80680e68a752cef",
+  "status": "success",
+  "profile": "full",
+  "driver": "stfixest-fixtures",
+  "platform": "macOS Apple Silicon",
+  "stata_version": "18",
+  "stata_bundle_version": "18.0.130",
+  "stata_edition": "MP",
+  "stata_processors": 8,
+  "stata_status": "success",
+  "stata_rc": 0,
+  "rust_status": "success",
+  "rust_rc": 0,
+  "process_rc": 0,
+  "tests_passed": 25,
+  "tests_failed": 0,
+  "failure_kind": null,
+  "failure_detail": null,
+  "plugin_sha256": "89e00baf2ddecceedeb209c6a3506218a06fe1eb134ee9a0b2731679c3aca57d",
+  "started_at": "2026-08-24T10:19:59.395435Z",
+  "completed_at": "2026-08-24T10:20:52.763845Z",
+  "duration_seconds": 53.368,
+  "repository": "johannes-schmieder/StFixest",
+  "ref": "refs/heads/main",
+  "privacy": {
+    "local_paths_committed": false,
+    "raw_logs_committed": false,
+    "license_identity_committed": false
+  }
+}

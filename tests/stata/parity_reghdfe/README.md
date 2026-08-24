@@ -71,13 +71,19 @@ reference behavior when singleton deletion removes an entire ordinary factor
 level. It checks final-sample base/name rebasing for a factor main effect and a
 factor interaction, native status and transaction invariants, and fail-closed
 explicit/FV-set base policies. The independent explicit-dummy Rust oracle is
-the mathematical authority for the corresponding compact fit.
+the mathematical authority for the corresponding compact fit. The accepted
+activation is source `0e2aa609f9cbb17f8a205261d80680e68a752cef` and consumes
+the sanitized reference receipt
+`.ci/reference-probes/fe-interaction/0e2aa609f9cbb17f8a205261d80680e68a752cef.json`,
+whose sealed payload is
+`fab875a998edc8f91bbeebfca8ca8ef92c09f43f6044fbbcef0b1e7da8fcf387`.
+The exact-source licensed full-profile receipt records 25 passing fixtures at
+`.ci/stata/full-results/0e2aa609f9cbb17f8a205261d80680e68a752cef.json`.
 
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
-used by the Stata fixtures. The remaining accepted receipt cases still need
-differential coverage, and the frozen semantic projection must be resealed
-before the status gate can close.
+used by the Stata fixtures. The accepted rebasing gate does not expand the
+frozen semantic projection or activate a public estimator.
 
 The general licensed reference workflow is:
 
