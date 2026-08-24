@@ -656,7 +656,6 @@ fn normalized_weights<P: PreparedOlsFitView + ?Sized>(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     within: &mut DenseMatrix,
