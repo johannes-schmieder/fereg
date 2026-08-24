@@ -1,0 +1,50 @@
+name: Dispatch option A source correction once
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+
+jobs:
+  dispatch:
+    if: >-
+      github.repository == 'johannes-schmieder/StFixest' &&
+      github.event.issue.title == 'INTERNAL: dispatch option A source correction'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch the bounded Mac coding gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            "repos/${REPOSITORY}/actions/workflows/codex-next-stfeols-gate.yml/dispatches" \
+            -f ref=main
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Remove this one-shot dispatcher and close its trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          rm .github/workflows/dispatch-option-a-source-correction.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/dispatch-option-a-source-correction.yml
+          git commit -m "ci(dev): remove one-shot option A dispatcher [skip ci]"
+          git push origin HEAD:main
+          gh issue close "$ISSUE_NUMBER" --repo "$REPOSITORY" --reason completed
