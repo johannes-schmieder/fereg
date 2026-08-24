@@ -33,6 +33,9 @@ covariance matrix, and retained-sample residuals.
 frequency of two on the last physical row prevents the cascade, all 12 physical
 rows remain while effective N and `sumweights` are 13, and coefficient,
 covariance, DoF, weight metadata, and residual output match the sealed payload.
+The normalized absorbed-intercept score moment is scaled by the raw intercept
+norm rather than a numerically nonzero MAP-roundoff norm; the raw score remains
+checked, and an explicit perturbation still fails closed.
 
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
