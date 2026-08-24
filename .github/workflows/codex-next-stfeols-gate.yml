@@ -1,0 +1,37 @@
+name: Run one bounded coding-agent stfeols gate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/codex-next-stfeols-gate.yml"
+      - "scripts/development/run_codex_next_stfeols_gate.sh"
+      - ".ci/dev/codex-runner-probe.json"
+  workflow_dispatch:
+
+concurrency:
+  group: stfixest-mac-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
+
+jobs:
+  next-gate:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Run one bounded implementation gate when available
+        shell: bash
+        run: bash scripts/development/run_codex_next_stfeols_gate.sh
