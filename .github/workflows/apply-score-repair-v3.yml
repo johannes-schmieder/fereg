@@ -1,0 +1,94 @@
+name: Apply absorbed-intercept score repair v3
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-score-repair-v3.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 45
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch only the normalized-intercept score denominator
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path("crates/stfixest-core/src/ols/prepared_fit.rs")
+          text = source.read_text(encoding="utf-8")
+          start = text.index("fn certify_scores")
+          end = text.index("\nfn compensated_add", start)
+          function = text[start:end]
+          old = (
+              "        let denominator = if score_norm > 0.0 {\n"
+              "            score_norm\n"
+              "        } else {\n"
+              "            reference_norm\n"
+              "        };\n"
+          )
+          new = (
+              "        let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {\n"
+              "            reference_norm\n"
+              "        } else if score_norm > 0.0 {\n"
+              "            score_norm\n"
+              "        } else {\n"
+              "            reference_norm\n"
+              "        };\n"
+          )
+          if new not in function:
+              if function.count(old) != 1:
+                  raise SystemExit("certify_scores denominator anchor is not unique")
+              function = function.replace(old, new)
+              text = text[:start] + function + text[end:]
+              source.write_text(text, encoding="utf-8")
+
+          stata_ci = Path(".github/workflows/stata-ci.yml")
+          stata_text = stata_ci.read_text(encoding="utf-8")
+          marker = "\n  # BEGIN ONE-SHOT ABSORBED-INTERCEPT SCORE REPAIR\n"
+          if marker in stata_text:
+              stata_ci.write_text(stata_text.split(marker, 1)[0] + "\n", encoding="utf-8")
+
+          for path in (
+              Path(".github/workflows/repair-prepared-score-intercept.yml"),
+              Path(".github/workflows/apply-score-repair-v2.yml"),
+              Path(".github/workflows/apply-score-repair-v3.yml"),
+          ):
+              if path.exists():
+                  path.unlink()
+          PY
+          cargo fmt --all
+          cargo test -p stfixest-core
+
+      - name: Commit and push the bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "core: stabilize absorbed-intercept score certificate"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
