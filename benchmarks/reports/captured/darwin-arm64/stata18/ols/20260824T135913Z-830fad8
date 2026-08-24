@@ -17,10 +17,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3954573312
+              "value": 3974610944
             },
             "repetition": 1,
-            "seconds_hex": "+1.5ee147ae147aeX+004",
+            "seconds_hex": "+1.68ccccccccccdX+004",
             "stata_processors": 1
           },
           {
@@ -30,10 +30,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3521495040
+              "value": 3842801664
             },
             "repetition": 2,
-            "seconds_hex": "+1.5e49ba5e353f8X+004",
+            "seconds_hex": "+1.652b020c49ba6X+004",
             "stata_processors": 1
           },
           {
@@ -43,10 +43,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3711041536
+              "value": 3825713152
             },
             "repetition": 3,
-            "seconds_hex": "+1.5add2f1a9fbe7X+004",
+            "seconds_hex": "+1.64395810624ddX+004",
             "stata_processors": 1
           },
           {
@@ -56,10 +56,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3658825728
+              "value": 3682975744
             },
             "repetition": 4,
-            "seconds_hex": "+1.5d5c28f5c28f6X+004",
+            "seconds_hex": "+1.631eb851eb852X+004",
             "stata_processors": 1
           },
           {
@@ -69,10 +69,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3562405888
+              "value": 3700310016
             },
             "repetition": 5,
-            "seconds_hex": "+1.5cb851eb851ecX+004",
+            "seconds_hex": "+1.6a8b439581062X+004",
             "stata_processors": 1
           },
           {
@@ -82,10 +82,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3522723840
+              "value": 3797434368
             },
             "repetition": 6,
-            "seconds_hex": "+1.5645a1cac0831X+004",
+            "seconds_hex": "+1.666e978d4fdf4X+004",
             "stata_processors": 1
           }
         ],
@@ -116,10 +116,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3957178368
+              "value": 3974037504
             },
             "repetition": 1,
-            "seconds_hex": "+1.20e147ae147aeX+004",
+            "seconds_hex": "+1.2cac083126e98X+004",
             "stata_processors": 8
           },
           {
@@ -129,10 +129,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3921313792
+              "value": 3942006784
             },
             "repetition": 2,
-            "seconds_hex": "+1.1b5810624dd2fX+004",
+            "seconds_hex": "+1.270624dd2f1aaX+004",
             "stata_processors": 8
           },
           {
@@ -142,10 +142,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3974955008
+              "value": 3923050496
             },
             "repetition": 3,
-            "seconds_hex": "+1.1cf9db22d0e56X+004",
+            "seconds_hex": "+1.265604189374cX+004",
             "stata_processors": 8
           },
           {
@@ -155,10 +155,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3956523008
+              "value": 3957604352
             },
             "repetition": 4,
-            "seconds_hex": "+1.1efdf3b645a1dX+004",
+            "seconds_hex": "+1.2a7ef9db22d0eX+004",
             "stata_processors": 8
           },
           {
@@ -168,10 +168,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3820994560
+              "value": 3939401728
             },
             "repetition": 5,
-            "seconds_hex": "+1.199db22d0e560X+004",
+            "seconds_hex": "+1.23d2f1a9fbe77X+004",
             "stata_processors": 8
           },
           {
@@ -181,10 +181,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3924410368
+              "value": 3848486912
             },
             "repetition": 6,
-            "seconds_hex": "+1.1ed4fdf3b645aX+004",
+            "seconds_hex": "+1.29126e978d4feX+004",
             "stata_processors": 8
           }
         ],
@@ -215,10 +215,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4643913728
+              "value": 4662968320
             },
             "repetition": 1,
-            "seconds_hex": "+1.f276c8b439581X+004",
+            "seconds_hex": "+1.06be76c8b4396X+005",
             "stata_processors": 1
           },
           {
@@ -228,10 +228,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3912810496
+              "value": 4420091904
             },
             "repetition": 2,
-            "seconds_hex": "+1.f4147ae147ae1X+004",
+            "seconds_hex": "+1.faa3d70a3d70aX+004",
             "stata_processors": 1
           },
           {
@@ -241,10 +241,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3922460672
+              "value": 3917889536
             },
             "repetition": 3,
-            "seconds_hex": "+1.f6147ae147ae1X+004",
+            "seconds_hex": "+1.ff374bc6a7efaX+004",
             "stata_processors": 1
           },
           {
@@ -254,10 +254,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3918479360
+              "value": 3919331328
             },
             "repetition": 4,
-            "seconds_hex": "+1.f224dd2f1a9fcX+004",
+            "seconds_hex": "+1.02126e978d4feX+005",
             "stata_processors": 1
           },
           {
@@ -267,10 +267,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3919937536
+              "value": 3917692928
             },
             "repetition": 5,
-            "seconds_hex": "+1.f24dd2f1a9fbeX+004",
+            "seconds_hex": "+1.fc45a1cac0831X+004",
             "stata_processors": 1
           },
           {
@@ -280,10 +280,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3913924608
+              "value": 3915186176
             },
             "repetition": 6,
-            "seconds_hex": "+1.ece147ae147aeX+004",
+            "seconds_hex": "+1.fcc49ba5e353fX+004",
             "stata_processors": 1
           }
         ],
@@ -314,10 +314,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4636426240
+              "value": 4648697856
             },
             "repetition": 1,
-            "seconds_hex": "+1.9276c8b439581X+004",
+            "seconds_hex": "+1.9c00000000000X+004",
             "stata_processors": 8
           },
           {
@@ -327,10 +327,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4063674368
+              "value": 4478697472
             },
             "repetition": 2,
-            "seconds_hex": "+1.85810624dd2f2X+004",
+            "seconds_hex": "+1.9b9db22d0e560X+004",
             "stata_processors": 8
           },
           {
@@ -340,10 +340,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4066164736
+              "value": 4478042112
             },
             "repetition": 3,
-            "seconds_hex": "+1.84ccccccccccdX+004",
+            "seconds_hex": "+1.af020c49ba5e3X+004",
             "stata_processors": 8
           },
           {
@@ -353,10 +353,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4066148352
+              "value": 4480122880
             },
             "repetition": 4,
-            "seconds_hex": "+1.8bbe76c8b4396X+004",
+            "seconds_hex": "+1.9a51eb851eb85X+004",
             "stata_processors": 8
           },
           {
@@ -366,10 +366,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4475092992
+              "value": 4476370944
             },
             "repetition": 5,
-            "seconds_hex": "+1.92c49ba5e353fX+004",
+            "seconds_hex": "+1.95a1cac083127X+004",
             "stata_processors": 8
           },
           {
@@ -379,10 +379,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4091215872
+              "value": 4488413184
             },
             "repetition": 6,
-            "seconds_hex": "+1.8fced916872b0X+004",
+            "seconds_hex": "+1.9fdb22d0e5604X+004",
             "stata_processors": 8
           }
         ],
@@ -413,10 +413,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4515692544
+              "value": 4517134336
             },
             "repetition": 1,
-            "seconds_hex": "+1.a79db22d0e560X+004",
+            "seconds_hex": "+1.b27ef9db22d0eX+004",
             "stata_processors": 1
           },
           {
@@ -426,10 +426,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3929341952
+              "value": 4141826048
             },
             "repetition": 2,
-            "seconds_hex": "+1.a0083126e978dX+004",
+            "seconds_hex": "+1.ad78d4fdf3b64X+004",
             "stata_processors": 1
           },
           {
@@ -439,10 +439,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4024516608
+              "value": 4108025856
             },
             "repetition": 3,
-            "seconds_hex": "+1.9f78d4fdf3b64X+004",
+            "seconds_hex": "+1.abc28f5c28f5cX+004",
             "stata_processors": 1
           },
           {
@@ -452,10 +452,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3929849856
+              "value": 4141760512
             },
             "repetition": 4,
-            "seconds_hex": "+1.9f4395810624eX+004",
+            "seconds_hex": "+1.b2d0e56041893X+004",
             "stata_processors": 1
           },
           {
@@ -465,10 +465,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3931537408
+              "value": 4302520320
             },
             "repetition": 5,
-            "seconds_hex": "+1.9f1eb851eb852X+004",
+            "seconds_hex": "+1.b11eb851eb852X+004",
             "stata_processors": 1
           },
           {
@@ -478,10 +478,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3929096192
+              "value": 4112760832
             },
             "repetition": 6,
-            "seconds_hex": "+1.a472b020c49baX+004",
+            "seconds_hex": "+1.b0d0e56041893X+004",
             "stata_processors": 1
           }
         ],
@@ -512,10 +512,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4516167680
+              "value": 4535009280
             },
             "repetition": 1,
-            "seconds_hex": "+1.4db22d0e56042X+004",
+            "seconds_hex": "+1.5a3126e978d50X+004",
             "stata_processors": 8
           },
           {
@@ -525,10 +525,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3932176384
+              "value": 4535533568
             },
             "repetition": 2,
-            "seconds_hex": "+1.4a189374bc6a8X+004",
+            "seconds_hex": "+1.548b439581062X+004",
             "stata_processors": 8
           },
           {
@@ -538,10 +538,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4268867584
+              "value": 4533485568
             },
             "repetition": 3,
-            "seconds_hex": "+1.4f020c49ba5e3X+004",
+            "seconds_hex": "+1.54f1a9fbe76c9X+004",
             "stata_processors": 8
           },
           {
@@ -551,10 +551,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3957129216
+              "value": 4517085184
             },
             "repetition": 4,
-            "seconds_hex": "+1.4f95810624dd3X+004",
+            "seconds_hex": "+1.54ed916872b02X+004",
             "stata_processors": 8
           },
           {
@@ -564,10 +564,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4302176256
+              "value": 4535517184
             },
             "repetition": 5,
-            "seconds_hex": "+1.4e49ba5e353f8X+004",
+            "seconds_hex": "+1.548b439581062X+004",
             "stata_processors": 8
           },
           {
@@ -577,10 +577,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4147036160
+              "value": 4517888000
             },
             "repetition": 6,
-            "seconds_hex": "+1.4e7ef9db22d0eX+004",
+            "seconds_hex": "+1.55d70a3d70a3dX+004",
             "stata_processors": 8
           }
         ],
@@ -611,10 +611,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4072570880
+              "value": 4072505344
             },
             "repetition": 1,
-            "seconds_hex": "+1.2f89374bc6a7fX+004",
+            "seconds_hex": "+1.369374bc6a7f0X+004",
             "stata_processors": 1
           },
           {
@@ -624,10 +624,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4072751104
+              "value": 4071948288
             },
             "repetition": 2,
-            "seconds_hex": "+1.2eb4395810625X+004",
+            "seconds_hex": "+1.334395810624eX+004",
             "stata_processors": 1
           },
           {
@@ -637,10 +637,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4071325696
+              "value": 4090216448
             },
             "repetition": 3,
-            "seconds_hex": "+1.29f3b645a1cacX+004",
+            "seconds_hex": "+1.33126e978d4feX+004",
             "stata_processors": 1
           },
           {
@@ -650,10 +650,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4069703680
+              "value": 4074307584
             },
             "repetition": 4,
-            "seconds_hex": "+1.28b851eb851ecX+004",
+            "seconds_hex": "+1.3472b020c49baX+004",
             "stata_processors": 1
           },
           {
@@ -663,10 +663,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4070277120
+              "value": 4090970112
             },
             "repetition": 5,
-            "seconds_hex": "+1.296872b020c4aX+004",
+            "seconds_hex": "+1.321cac083126fX+004",
             "stata_processors": 1
           },
           {
@@ -676,10 +676,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4070490112
+              "value": 4072439808
             },
             "repetition": 6,
-            "seconds_hex": "+1.2f8d4fdf3b646X+004",
+            "seconds_hex": "+1.3170a3d70a3d7X+004",
             "stata_processors": 1
           }
         ],
@@ -710,10 +710,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4057071616
+              "value": 4074356736
             },
             "repetition": 1,
-            "seconds_hex": "+1.dc00000000000X+003",
+            "seconds_hex": "+1.e4c49ba5e353fX+003",
             "stata_processors": 8
           },
           {
@@ -723,10 +723,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4026286080
+              "value": 3698507776
             },
             "repetition": 2,
-            "seconds_hex": "+1.dfb645a1cac08X+003",
+            "seconds_hex": "+1.e820c49ba5e35X+003",
             "stata_processors": 8
           },
           {
@@ -736,10 +736,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3498573824
+              "value": 3500408832
             },
             "repetition": 3,
-            "seconds_hex": "+1.d8f5c28f5c28fX+003",
+            "seconds_hex": "+1.dc72b020c49baX+003",
             "stata_processors": 8
           },
           {
@@ -749,10 +749,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 4027777024
+              "value": 3600760832
             },
             "repetition": 4,
-            "seconds_hex": "+1.d978d4fdf3b64X+003",
+            "seconds_hex": "+1.e1cac083126e9X+003",
             "stata_processors": 8
           },
           {
@@ -762,10 +762,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3581280256
+              "value": 3513778176
             },
             "repetition": 5,
-            "seconds_hex": "+1.d9810624dd2f2X+003",
+            "seconds_hex": "+1.dda9fbe76c8b4X+003",
             "stata_processors": 8
           },
           {
@@ -775,10 +775,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 3470229504
+              "value": 3576659968
             },
             "repetition": 6,
-            "seconds_hex": "+1.e2147ae147ae1X+003",
+            "seconds_hex": "+1.de147ae147ae1X+003",
             "stata_processors": 8
           }
         ],
@@ -809,10 +809,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10167779328
+              "value": 10168434688
             },
             "repetition": 1,
-            "seconds_hex": "+1.17c9ba5e353f8X+007",
+            "seconds_hex": "+1.22b22d0e56042X+007",
             "stata_processors": 1
           },
           {
@@ -822,10 +822,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10430496768
+              "value": 10990829568
             },
             "repetition": 2,
-            "seconds_hex": "+1.1770a3d70a3d7X+007",
+            "seconds_hex": "+1.21f851eb851ecX+007",
             "stata_processors": 1
           },
           {
@@ -835,10 +835,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11149606912
+              "value": 10992091136
             },
             "repetition": 3,
-            "seconds_hex": "+1.164083126e979X+007",
+            "seconds_hex": "+1.225999999999aX+007",
             "stata_processors": 1
           },
           {
@@ -848,10 +848,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10401955840
+              "value": 10454122496
             },
             "repetition": 4,
-            "seconds_hex": "+1.228d4fdf3b646X+007",
+            "seconds_hex": "+1.2406a7ef9db23X+007",
             "stata_processors": 1
           },
           {
@@ -861,10 +861,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10503258112
+              "value": 10504208384
             },
             "repetition": 5,
-            "seconds_hex": "+1.32cdd2f1a9fbeX+007",
+            "seconds_hex": "+1.26204189374bcX+007",
             "stata_processors": 1
           },
           {
@@ -874,10 +874,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10507730944
+              "value": 10840670208
             },
             "repetition": 6,
-            "seconds_hex": "+1.290fdf3b645a2X+007",
+            "seconds_hex": "+1.217851eb851ecX+007",
             "stata_processors": 1
           }
         ],
@@ -908,10 +908,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 10170023936
+              "value": 10179592192
             },
             "repetition": 1,
-            "seconds_hex": "+1.75f8d4fdf3b64X+006",
+            "seconds_hex": "+1.76010624dd2f2X+006",
             "stata_processors": 8
           },
           {
@@ -921,10 +921,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11294965760
+              "value": 11225595904
             },
             "repetition": 2,
-            "seconds_hex": "+1.6d9cac083126fX+006",
+            "seconds_hex": "+1.701999999999aX+006",
             "stata_processors": 8
           },
           {
@@ -934,10 +934,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11242438656
+              "value": 11226562560
             },
             "repetition": 3,
-            "seconds_hex": "+1.6a2b020c49ba6X+006",
+            "seconds_hex": "+1.7525e353f7ceeX+006",
             "stata_processors": 8
           },
           {
@@ -947,10 +947,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11172675584
+              "value": 11214749696
             },
             "repetition": 4,
-            "seconds_hex": "+1.6e9999999999aX+006",
+            "seconds_hex": "+1.6fa4dd2f1a9fcX+006",
             "stata_processors": 8
           },
           {
@@ -960,10 +960,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11225989120
+              "value": 11174543360
             },
             "repetition": 5,
-            "seconds_hex": "+1.6dba5e353f7cfX+006",
+            "seconds_hex": "+1.74d4fdf3b645aX+006",
             "stata_processors": 8
           },
           {
@@ -973,10 +973,10 @@
               "method": "os_wait4_ru_maxrss",
               "scope": "fresh_estimator_process_prepared_inputs",
               "unit": "bytes",
-              "value": 11174363136
+              "value": 11224924160
             },
             "repetition": 6,
-            "seconds_hex": "+1.6ac8b43958106X+006",
+            "seconds_hex": "+1.722b020c49ba6X+006",
             "stata_processors": 8
           }
         ],
@@ -1261,7 +1261,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.0000000000000X-003"
+            "seconds_hex": "+1.0a3d70a3d70a4X-003"
           }
         ]
       },
@@ -1587,7 +1587,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.eb851eb851eb8X-007"
+            "seconds_hex": "+1.16872b020c49cX-006"
           }
         ]
       },
@@ -2591,7 +2591,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.89374bc6a7efaX-007"
+            "seconds_hex": "+1.a9fbe76c8b439X-007"
           }
         ]
       },
@@ -2605,11 +2605,11 @@
         "matrices": [
           {
             "column": 1,
-            "column_name": "x1",
+            "column_name": "o.x1",
             "name": "b",
             "row": 1,
             "row_name": "y1",
-            "value_hex": "+1.911111111110eX+001"
+            "value_hex": "+0.0000000000000X-3ff"
           },
           {
             "column": 2,
@@ -2617,31 +2617,31 @@
             "name": "b",
             "row": 1,
             "row_name": "y1",
-            "value_hex": "+1.7f3333333333dX+004"
+            "value_hex": "+1.9eaaaaa000001X+002"
           },
           {
             "column": 1,
-            "column_name": "x1",
+            "column_name": "o.x1",
             "name": "V",
             "row": 1,
-            "row_name": "x1",
-            "value_hex": "+1.d17670c0655fcX-008"
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
           },
           {
             "column": 2,
             "column_name": "_cons",
             "name": "V",
             "row": 1,
-            "row_name": "x1",
-            "value_hex": "-1.1f471996be911X-003"
+            "row_name": "o.x1",
+            "value_hex": "+0.0000000000000X-3ff"
           },
           {
             "column": 1,
-            "column_name": "x1",
+            "column_name": "o.x1",
             "name": "V",
             "row": 2,
             "row_name": "_cons",
-            "value_hex": "-1.1f471996be911X-003"
+            "value_hex": "+0.0000000000000X-3ff"
           },
           {
             "column": 2,
@@ -2649,7 +2649,7 @@
             "name": "V",
             "row": 2,
             "row_name": "_cons",
-            "value_hex": "+1.689310380a87aX+001"
+            "value_hex": "+1.3dc01dca03e5aX-00f"
           },
           {
             "column": 1,
@@ -2657,7 +2657,7 @@
             "name": "dof_table",
             "row": 1,
             "row_name": "1.firm",
-            "value_hex": "+1.0000000000000X+002"
+            "value_hex": "+1.0000000000000X+003"
           },
           {
             "column": 2,
@@ -2673,7 +2673,7 @@
             "name": "dof_table",
             "row": 1,
             "row_name": "1.firm",
-            "value_hex": "+1.0000000000000X+002"
+            "value_hex": "+1.0000000000000X+003"
           },
           {
             "column": 4,
@@ -2697,7 +2697,7 @@
             "name": "dof_table",
             "row": 2,
             "row_name": "1.firm#c.time",
-            "value_hex": "+1.0000000000000X+002"
+            "value_hex": "+1.0000000000000X+003"
           },
           {
             "column": 2,
@@ -2713,7 +2713,7 @@
             "name": "dof_table",
             "row": 2,
             "row_name": "1.firm#c.time",
-            "value_hex": "+1.0000000000000X+002"
+            "value_hex": "+1.0000000000000X+003"
           },
           {
             "column": 4,
@@ -2737,7 +2737,7 @@
             "name": "dof_table",
             "row": 3,
             "row_name": "1.worker",
-            "value_hex": "+1.8000000000000X+002"
+            "value_hex": "+1.8000000000000X+003"
           },
           {
             "column": 2,
@@ -2745,7 +2745,7 @@
             "name": "dof_table",
             "row": 3,
             "row_name": "1.worker",
-            "value_hex": "+1.0000000000000X+000"
+            "value_hex": "+1.0000000000000X+001"
           },
           {
             "column": 3,
@@ -2753,7 +2753,7 @@
             "name": "dof_table",
             "row": 3,
             "row_name": "1.worker",
-            "value_hex": "+1.4000000000000X+002"
+            "value_hex": "+1.4000000000000X+003"
           },
           {
             "column": 4,
@@ -2793,14 +2793,14 @@
         "runtime_thread_count": null,
         "scalars": {
           "N": "+1.8000000000000X+005",
-          "df_a": "+1.a000000000000X+003",
-          "df_r": "+1.1000000000000X+005"
+          "df_a": "+1.a000000000000X+004",
+          "df_r": "+1.6000000000000X+004"
         },
         "timings": [
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.6872b020c49baX-007"
+            "seconds_hex": "+1.89374bc6a7efaX-007"
           }
         ]
       },
@@ -3201,7 +3201,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.47ae147ae147bX-007"
+            "seconds_hex": "+1.6872b020c49baX-007"
           }
         ]
       },
@@ -3336,7 +3336,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.26e978d4fdf3bX-007"
+            "seconds_hex": "+1.47ae147ae147bX-007"
           }
         ]
       },
@@ -4114,7 +4114,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.cac083126e979X-008"
+            "seconds_hex": "+1.89374bc6a7efaX-008"
           }
         ]
       },
@@ -4822,7 +4822,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.26e978d4fdf3bX-007"
+            "seconds_hex": "+1.cac083126e979X-007"
           }
         ]
       },
@@ -4970,7 +4970,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.26e978d4fdf3bX-007"
+            "seconds_hex": "+1.47ae147ae147bX-007"
           }
         ]
       },
@@ -5137,7 +5137,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.47ae147ae147bX-007"
+            "seconds_hex": "+1.26e978d4fdf3bX-007"
           }
         ]
       },
@@ -5411,7 +5411,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.26e978d4fdf3bX-007"
+            "seconds_hex": "+1.47ae147ae147bX-007"
           }
         ]
       },
@@ -5557,7 +5557,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.0624dd2f1a9fcX-007"
+            "seconds_hex": "+1.26e978d4fdf3bX-007"
           }
         ]
       },
@@ -5704,7 +5704,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.0624dd2f1a9fcX-007"
+            "seconds_hex": "+1.0624dd2f1aa00X-007"
           }
         ]
       },
@@ -5836,7 +5836,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.6872b020c49baX-007"
+            "seconds_hex": "+1.89374bc6a7efaX-007"
           }
         ]
       },
@@ -6190,7 +6190,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.47ae147ae147bX-007"
+            "seconds_hex": "+1.6872b020c49baX-007"
           }
         ]
       },
@@ -6530,7 +6530,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.47ae147ae1480X-007"
+            "seconds_hex": "+1.47ae147ae147bX-007"
           }
         ]
       },
@@ -6948,7 +6948,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.89374bc6a7efaX-007"
+            "seconds_hex": "+1.6872b020c49baX-007"
           }
         ]
       },
@@ -8273,7 +8273,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.0624dd2f1a9fcX-009"
+            "seconds_hex": "+1.89374bc6a7efaX-009"
           }
         ]
       },
@@ -8294,7 +8294,7 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.89374bc6a7efaX-009"
+            "seconds_hex": "+1.0624dd2f1a9fcX-009"
           }
         ]
       },
@@ -8528,32 +8528,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.5ee147ae147aeX+004"
+            "seconds_hex": "+1.68ccccccccccdX+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.5e49ba5e353f8X+004"
+            "seconds_hex": "+1.652b020c49ba6X+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.5add2f1a9fbe7X+004"
+            "seconds_hex": "+1.64395810624ddX+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.5d5c28f5c28f6X+004"
+            "seconds_hex": "+1.631eb851eb852X+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.5cb851eb851ecX+004"
+            "seconds_hex": "+1.6a8b439581062X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.5645a1cac0831X+004"
+            "seconds_hex": "+1.666e978d4fdf4X+004"
           }
         ]
       },
@@ -8787,32 +8787,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.20e147ae147aeX+004"
+            "seconds_hex": "+1.2cac083126e98X+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.1b5810624dd2fX+004"
+            "seconds_hex": "+1.270624dd2f1aaX+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.1cf9db22d0e56X+004"
+            "seconds_hex": "+1.265604189374cX+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.1efdf3b645a1dX+004"
+            "seconds_hex": "+1.2a7ef9db22d0eX+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.199db22d0e560X+004"
+            "seconds_hex": "+1.23d2f1a9fbe77X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.1ed4fdf3b645aX+004"
+            "seconds_hex": "+1.29126e978d4feX+004"
           }
         ]
       },
@@ -9046,32 +9046,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.f276c8b439581X+004"
+            "seconds_hex": "+1.06be76c8b4396X+005"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.f4147ae147ae1X+004"
+            "seconds_hex": "+1.faa3d70a3d70aX+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.f6147ae147ae1X+004"
+            "seconds_hex": "+1.ff374bc6a7efaX+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.f224dd2f1a9fcX+004"
+            "seconds_hex": "+1.02126e978d4feX+005"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.f24dd2f1a9fbeX+004"
+            "seconds_hex": "+1.fc45a1cac0831X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.ece147ae147aeX+004"
+            "seconds_hex": "+1.fcc49ba5e353fX+004"
           }
         ]
       },
@@ -9305,32 +9305,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.9276c8b439581X+004"
+            "seconds_hex": "+1.9c00000000000X+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.85810624dd2f2X+004"
+            "seconds_hex": "+1.9b9db22d0e560X+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.84ccccccccccdX+004"
+            "seconds_hex": "+1.af020c49ba5e3X+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.8bbe76c8b4396X+004"
+            "seconds_hex": "+1.9a51eb851eb85X+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.92c49ba5e353fX+004"
+            "seconds_hex": "+1.95a1cac083127X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.8fced916872b0X+004"
+            "seconds_hex": "+1.9fdb22d0e5604X+004"
           }
         ]
       },
@@ -9604,32 +9604,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.a79db22d0e560X+004"
+            "seconds_hex": "+1.b27ef9db22d0eX+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.a0083126e978dX+004"
+            "seconds_hex": "+1.ad78d4fdf3b64X+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.9f78d4fdf3b64X+004"
+            "seconds_hex": "+1.abc28f5c28f5cX+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.9f4395810624eX+004"
+            "seconds_hex": "+1.b2d0e56041893X+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.9f1eb851eb852X+004"
+            "seconds_hex": "+1.b11eb851eb852X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.a472b020c49baX+004"
+            "seconds_hex": "+1.b0d0e56041893X+004"
           }
         ]
       },
@@ -9903,32 +9903,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.4db22d0e56042X+004"
+            "seconds_hex": "+1.5a3126e978d50X+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.4a189374bc6a8X+004"
+            "seconds_hex": "+1.548b439581062X+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.4f020c49ba5e3X+004"
+            "seconds_hex": "+1.54f1a9fbe76c9X+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.4f95810624dd3X+004"
+            "seconds_hex": "+1.54ed916872b02X+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.4e49ba5e353f8X+004"
+            "seconds_hex": "+1.548b439581062X+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.4e7ef9db22d0eX+004"
+            "seconds_hex": "+1.55d70a3d70a3dX+004"
           }
         ]
       },
@@ -10167,32 +10167,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.2f89374bc6a7fX+004"
+            "seconds_hex": "+1.369374bc6a7f0X+004"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.2eb4395810625X+004"
+            "seconds_hex": "+1.334395810624eX+004"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.29f3b645a1cacX+004"
+            "seconds_hex": "+1.33126e978d4feX+004"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.28b851eb851ecX+004"
+            "seconds_hex": "+1.3472b020c49baX+004"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.296872b020c4aX+004"
+            "seconds_hex": "+1.321cac083126fX+004"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.2f8d4fdf3b646X+004"
+            "seconds_hex": "+1.3170a3d70a3d7X+004"
           }
         ]
       },
@@ -10431,32 +10431,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.dc00000000000X+003"
+            "seconds_hex": "+1.e4c49ba5e353fX+003"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.dfb645a1cac08X+003"
+            "seconds_hex": "+1.e820c49ba5e35X+003"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.d8f5c28f5c28fX+003"
+            "seconds_hex": "+1.dc72b020c49baX+003"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.d978d4fdf3b64X+003"
+            "seconds_hex": "+1.e1cac083126e9X+003"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.d9810624dd2f2X+003"
+            "seconds_hex": "+1.dda9fbe76c8b4X+003"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.e2147ae147ae1X+003"
+            "seconds_hex": "+1.de147ae147ae1X+003"
           }
         ]
       },
@@ -19571,32 +19571,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.17c9ba5e353f8X+007"
+            "seconds_hex": "+1.22b22d0e56042X+007"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.1770a3d70a3d7X+007"
+            "seconds_hex": "+1.21f851eb851ecX+007"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.164083126e979X+007"
+            "seconds_hex": "+1.225999999999aX+007"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.228d4fdf3b646X+007"
+            "seconds_hex": "+1.2406a7ef9db23X+007"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.32cdd2f1a9fbeX+007"
+            "seconds_hex": "+1.26204189374bcX+007"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.290fdf3b645a2X+007"
+            "seconds_hex": "+1.217851eb851ecX+007"
           }
         ]
       },
@@ -28711,32 +28711,32 @@
           {
             "kind": "cold",
             "repetition": 1,
-            "seconds_hex": "+1.75f8d4fdf3b64X+006"
+            "seconds_hex": "+1.76010624dd2f2X+006"
           },
           {
             "kind": "warm",
             "repetition": 2,
-            "seconds_hex": "+1.6d9cac083126fX+006"
+            "seconds_hex": "+1.701999999999aX+006"
           },
           {
             "kind": "warm",
             "repetition": 3,
-            "seconds_hex": "+1.6a2b020c49ba6X+006"
+            "seconds_hex": "+1.7525e353f7ceeX+006"
           },
           {
             "kind": "warm",
             "repetition": 4,
-            "seconds_hex": "+1.6e9999999999aX+006"
+            "seconds_hex": "+1.6fa4dd2f1a9fcX+006"
           },
           {
             "kind": "warm",
             "repetition": 5,
-            "seconds_hex": "+1.6dba5e353f7cfX+006"
+            "seconds_hex": "+1.74d4fdf3b645aX+006"
           },
           {
             "kind": "warm",
             "repetition": 6,
-            "seconds_hex": "+1.6ac8b43958106X+006"
+            "seconds_hex": "+1.722b020c49ba6X+006"
           }
         ]
       }
@@ -28750,8 +28750,8 @@
       "stata_version": "18"
     },
     "generated_datasets": {
-      "generated_dense": "87ee87e655b8440d1a5f81049170b7f0a304b3a6a4ed1914ccd8ee95917ddcf5",
-      "generated_sparse": "8477b627d90d144994f75fb534fbde14a9efead086a13cfd9b73b5b669c7805b"
+      "generated_dense": "d4ab44b11134781eaaddb18ffd52d2b53b8a4330525803a294e9bf844e120ee9",
+      "generated_sparse": "004930c45731821460a65b46da69dc6293b7feb1dce351a2704c4ce419ec03d6"
     },
     "host": {
       "cpu_count": 24,
@@ -28763,7 +28763,7 @@
       "benchmarks/stata/baseline_reghdfe.do": "8f2cc73fa085241523979e87802c1f16ddd35a4f93796495233e96615e4d8d4b",
       "scripts/ols_reference.py": "f3600a2530177e45423aa4223fa6f7258b78737c049f651633fa26b18f000c94",
       "tests/fixtures/ols/ols_core.csv": "cb7d7e7ae21843f7c1dc5f84ac4daffa3954c9bfc54a9a109a3e2f6b50433bca",
-      "tests/fixtures/ols/ols_intercept_slope_positive.csv": "b3d8557334cf688771432dc0b8f02ef2d3de503574f173b8d53937e17b16eb50",
+      "tests/fixtures/ols/ols_intercept_slope_positive_dof.csv": "b6986ed24a6266fd3addeea42e2a834b420c1f590bcc31f84f8584cc821ae3f8",
       "tests/fixtures/ols/ols_missing.csv": "f472d34f2d7ef24d174ca09d8a2068a4f47d72b88a1b402ac33da16f510f1749",
       "tests/fixtures/ols/ols_singletons.csv": "43cceb783643ce730a6d5436c31389891a5281abc16ab121177a5a16e1a98e88",
       "tests/fixtures/ols/ols_ts.csv": "f6fb4e1cfb120384d04b37f2a3e988e279442bf4f71550c53b7b731d0d7f4810",
@@ -28771,7 +28771,7 @@
     },
     "manifest": {
       "id": "ols_v1",
-      "sha256": "19f2004f22591cace6827b46d69138bb91f6f93c93ed26581b7f2de772642373"
+      "sha256": "830fad813e1113eca4987f2af07038bfa3b9d6ee6ba576fa71ee717e5431d7b0"
     },
     "receipt_type": "stfixest-ols-v1-reference",
     "references": {
@@ -28793,6 +28793,6 @@
   "seal": {
     "algorithm": "sha256",
     "canonicalization": "json-sort-keys-compact-ascii-v1",
-    "payload_sha256": "eb72f0b4e1e72168d6456284b7102a5dc579cb0f50b433f3a6bcc2d965417fa2"
+    "payload_sha256": "9c4318e9996b41fae3de705ff97567a7be2a97136bb52a81090242fc86fb589e"
   }
 }

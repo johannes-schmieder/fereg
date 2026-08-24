@@ -93,9 +93,9 @@ case. Its sealed 32-case/8-blocker receipt is
 Public activation and performance claims remain false.
 
 `estimate_ols_intercept_slope_parity.do` consumes the frozen
-`intercept_and_slope` comparator case on its dedicated exact-integer 48-row
-fixture. It binds the hidden coefficient, positive iid covariance, positive
-`df_r=34`, three-row extended absorbed-DoF table, solver and transaction
+`intercept_and_slope` comparator case on its dedicated topology-preserving
+48-row fixture. It binds the hidden omitted coefficient, positive iid
+covariance, positive `df_r=22`, three-row extended absorbed-DoF table, solver and transaction
 certificates, the reference inexact slope-count flag, and continued public
 failure. The independent Rust explicit-dummy oracle remains the mathematical
 authority for projection rank, residuals, RSS, bread, and covariance formula;

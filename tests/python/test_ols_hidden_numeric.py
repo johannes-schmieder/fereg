@@ -152,7 +152,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             "_stfixest_ols_hidden_numeric_v1 y c.x1, "
             "absorb(firm##c.time worker)",
         )
-        self.assertEqual(slope["dataset"], "ols_intercept_slope_positive")
+        self.assertEqual(slope["dataset"], "ols_intercept_slope_positive_dof")
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(

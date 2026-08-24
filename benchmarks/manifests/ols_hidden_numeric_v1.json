@@ -6,12 +6,12 @@
   "performance": "unmeasured",
   "parent_manifest": {
     "path": "benchmarks/manifests/ols_v1.json",
-    "sha256": "19f2004f22591cace6827b46d69138bb91f6f93c93ed26581b7f2de772642373"
+    "sha256": "830fad813e1113eca4987f2af07038bfa3b9d6ee6ba576fa71ee717e5431d7b0"
   },
   "comparator_receipt": {
-    "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T123332Z-19f2004",
-    "file_sha256": "d7f0002d1e9c9e4c4e94db39d1044e3905be5ccded8dabda56de5dee7ff9fa6a",
-    "payload_sha256": "eb72f0b4e1e72168d6456284b7102a5dc579cb0f50b433f3a6bcc2d965417fa2"
+    "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T135913Z-830fad8",
+    "file_sha256": "fbb56dbd6abc23978dbf8563e6b05e57b188a8e71ef2be93e148d4beddde3f2b",
+    "payload_sha256": "9c4318e9996b41fae3de705ff97567a7be2a97136bb52a81090242fc86fb589e"
   },
   "candidate_command": "_stfixest_ols_hidden_numeric_v1",
   "intended_public_command": "stfeols",
