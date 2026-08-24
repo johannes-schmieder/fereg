@@ -117,7 +117,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             BLOCKERS,
         )
         manifest = projected_manifest(projection)
-        self.assertEqual(len(manifest["semantic_cases"]), 31)
+        self.assertEqual(len(manifest["semantic_cases"]), 32)
         self.assertFalse(manifest["benchmark_cases"])
         for case in manifest["semantic_cases"]:
             self.assertTrue(case["command"].startswith("_stfixest_ols_hidden_numeric_v1 "))
@@ -141,6 +141,16 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )
         self.assertEqual(
             interaction["capture"]["matrices"][:3], ["b", "V", "dof_table"]
+        )
+        slope = next(
+            case
+            for case in manifest["semantic_cases"]
+            if case["id"] == "intercept_and_slope"
+        )
+        self.assertEqual(
+            slope["command"],
+            "_stfixest_ols_hidden_numeric_v1 y c.x1, "
+            "absorb(firm##c.time worker)",
         )
 
     def test_projection_mutations_fail_closed(self):
@@ -507,7 +517,10 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         native_validator = native.split("fn validate_shadow_against_outputs", 1)[1].split(
             "fn store_shadow", 1
         )[0]
-        self.assertIn("validate_shadow_coefficients(shadow)?", native_validator)
+        self.assertIn(
+            "validate_shadow_coefficients(shadow, action.vce == OlsVceKind::Iid)?",
+            native_validator,
+        )
 
     def test_hidden_adapter_uses_native_determinant_and_handles_k0(self):
         adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(

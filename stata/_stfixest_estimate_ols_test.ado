@@ -112,15 +112,38 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         }
     }
     local has_absorb_interaction 0
+    local n_absorb_slopes 0
     if `n_absorb_terms' > 0 {
         forvalues row = 1/`n_absorb_terms' {
             if `absorb_terms'[`row',2] < 1 | `absorb_terms'[`row',3] != 1 | ///
-               `absorb_terms'[`row',4] != 0 {
-                di as error "hidden prepared OLS supports only all-categorical intercept fixed effects"
+               `absorb_terms'[`row',4] > 1 {
+                di as error "hidden prepared OLS supports categorical intercept effects and one guarded slope"
                 exit 498
             }
-            if `absorb_terms'[`row',2] > 1 local has_absorb_interaction 1
+            if `absorb_terms'[`row',4] == 1 & `absorb_terms'[`row',2] != 1 {
+                di as error "hidden prepared OLS absorbed slope requires one categorical source"
+                exit 498
+            }
+            local n_absorb_slopes = `n_absorb_slopes' + `absorb_terms'[`row',4]
+            if `absorb_terms'[`row',2] > 1 | `absorb_terms'[`row',4] > 0 ///
+                local has_absorb_interaction 1
         }
+    }
+    if `n_absorb_slopes' > 1 {
+        di as error "hidden prepared OLS currently supports at most one absorbed slope"
+        exit 498
+    }
+    if `n_absorb_slopes' > 0 & `"`vce_wire'"' != "iid" {
+        di as error "hidden prepared OLS absorbed slope is qualified only for iid inference"
+        exit 498
+    }
+    if `n_absorb_slopes' > 0 & `requested_weights' > 0 {
+        di as error "hidden prepared OLS absorbed slope is not yet qualified for weights"
+        exit 498
+    }
+    if `n_absorb_slopes' > 0 & `"`dof_wire'"' != "pairwise" {
+        di as error "hidden prepared OLS absorbed slope currently requires pairwise absorbed DoF"
+        exit 498
     }
     if `has_absorb_interaction' {
         if regexm(lower(`"`indepvars'"'), "(^|[ #])ib[^ #]*[.]") {
@@ -213,7 +236,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     local keep_singletons = (`"`keepsingletons'"' != "")
     local coefficient_capacity = `n_terms' + `include_intercept'
     local matrix_dimension = max(`coefficient_capacity', 1)
-    local fe_rows = max(`n_absorb_terms', 1)
+    local fe_rows = max(`n_absorb_terms' + `n_absorb_slopes', 1)
     local cluster_rows = max(`n_cluster_terms', 1)
     local subset_rows = max(2^`n_cluster_terms' - 1, 1)
 
@@ -358,6 +381,10 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         ereturn post `eweight', depname(`depvar') obs(`N_effective') ///
             dof(`df_r') esample(`sample_shadow') buildfvinfo
     }
+    // Stata's ereturn post deliberately leaves e(df_r) undefined for a
+    // negative dof() argument. The pinned absorbed-slope convention is signed,
+    // so publish the already native-certified scalar explicitly.
+    ereturn scalar df_r = `df_r'
     if `"`inject'"' == "postereturn" exit 3498
 
     local fit_names rss tss tss_within mss r2 r2_a r2_within r2_a_within rmse F ll ll_0
@@ -382,7 +409,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     ereturn scalar ic = `solver_shadow'[1,3]
     ereturn scalar converged = 1
     ereturn scalar report_constant = `include_intercept'
-    ereturn scalar N_hdfe = `fe_rows'
+    ereturn scalar N_hdfe = `n_absorb_terms'
     ereturn scalar N_hdfe_extended = `fe_rows'
     ereturn scalar stfixest_df_fit = `dof_shadow'[11,2]
     ereturn scalar stfixest_df_correction = `dof_shadow'[12,2]
@@ -401,7 +428,15 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         else {
             local term = `fe_shadow'[`row',2]
             local dof_row_name : word `term' of `absorb_labels'
-            local dof_row_name = subinstr(`"`dof_row_name'"', "#", "#1.", .)
+            if `fe_shadow'[`row',1] == 4 {
+                local dof_row_name = subinstr(`"`dof_row_name'"', "##", "#", .)
+            }
+            else {
+                local slope_delimiter = strpos(`"`dof_row_name'"', "##")
+                if `slope_delimiter' > 0 ///
+                    local dof_row_name = substr(`"`dof_row_name'"', 1, `slope_delimiter' - 1)
+                local dof_row_name = subinstr(`"`dof_row_name'"', "#", "#1.", .)
+            }
             local dof_row_name `"1.`dof_row_name'"'
         }
         local dof_row_names `"`dof_row_names' `dof_row_name'"'

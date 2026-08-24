@@ -39,6 +39,21 @@ impl CertifiedBorrowedMap {
     pub fn into_parts(self) -> (DenseMatrix, SolveReport) {
         (self.residualized, self.report)
     }
+
+    pub(crate) fn from_certified_parts(
+        residualized: DenseMatrix,
+        report: SolveReport,
+    ) -> Result<Self> {
+        if !report.certified() {
+            return Err(invalid_data(
+                "borrowed MAP attempted to construct an uncertified result",
+            ));
+        }
+        Ok(Self {
+            residualized,
+            report,
+        })
+    }
 }
 
 trait WorkspaceReservation {

@@ -14,10 +14,12 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         for symbol in (
             "prepare_categorical_ols_data",
             "prepare_categorical_ols_clustered_data",
+            "fit_prepared_categorical_ols_signed_unadjusted_map",
             "fit_prepared_categorical_ols_unadjusted_map",
             "fit_prepared_categorical_ols_robust_map",
             "fit_prepared_categorical_ols_clustered_map",
             "CategoricalIid",
+            "CategoricalSignedIid",
             "CategoricalRobust",
             "CategoricalClustered",
         ):
@@ -44,16 +46,21 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         estimate = (PLUGIN / "estimate.rs").read_text(encoding="utf-8")
         self.assertIn("validate_shadow_fixed_effect_row(row)?", estimate)
         self.assertIn("3 => term > 0 && source == 0", estimate)
+        self.assertIn("4 => term > 0 && source > 0", estimate)
         self.assertIn("coefficients != categories - redundant", estimate)
 
-    def test_stata_gate_is_intercept_only_but_allows_categorical_tuples(self):
+    def test_stata_gate_allows_one_guarded_intercept_slope_channel(self):
         stata = STATA.read_text(encoding="utf-8")
         self.assertIn("`absorb_terms'[`row',2] < 1", stata)
         self.assertIn("`absorb_terms'[`row',3] != 1", stata)
         self.assertIn(
-            "hidden prepared OLS supports only all-categorical intercept fixed effects",
+            "hidden prepared OLS supports categorical intercept effects and one guarded slope",
             stata,
         )
+        self.assertIn("if `n_absorb_slopes' > 1", stata)
+        self.assertIn("absorbed slope is qualified only for iid inference", stata)
+        self.assertIn("absorbed slope is not yet qualified for weights", stata)
+        self.assertIn("absorbed slope currently requires pairwise absorbed DoF", stata)
         self.assertNotIn("only single-source intercept fixed effects", stata)
 
 

@@ -189,8 +189,11 @@ read:
 - an initially incomplete result receipt.
 
 The action supports the current prepared continuous/numeric-factor,
-intercept-only numeric-FE, unit/a/f/p-weight surface and selects exactly one of
-iid, HC1 robust, or one-/multiway clustered inference. It performs one native
+categorical-intercept numeric-FE, unit/a/f/p-weight surface and selects exactly
+one of iid, HC1 robust, or one-/multiway clustered inference. One additional
+guarded route accepts at most one intercept-plus-continuous-slope FE term only
+for unweighted iid inference with pairwise absorbed DoF; slope-only, multiple
+slope, weighted, robust, and clustered slope requests fail closed. It performs one native
 source-loading phase, prepares the authoritative sample once, and calls the
 selected certified same-call core composition. It never calls the legacy VCE,
 DoF, fit, or posting paths and never returns residualized N-by-K data to Stata.
@@ -303,7 +306,7 @@ the final residual/estimate commit.
 eclass helper. It retains the private command identity in `e(cmd)` and
 `e(cmdline)` while recording `stfeols` only as an intended future public
 command. It projects the frozen 40-case `ols_v1` semantic manifest without
-enabling public syntax: 31 cases execute and nine remain exact, named blockers.
+enabling public syntax: 32 cases execute and eight remain exact, named blockers.
 
 The active candidate receipt is
 `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.

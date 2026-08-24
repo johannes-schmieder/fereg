@@ -92,6 +92,14 @@ The later frozen-projection gate at source
 `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.
 Public activation and performance claims remain false.
 
+`estimate_ols_intercept_slope_parity.do` consumes the frozen
+`intercept_and_slope` comparator case. It binds the hidden coefficient,
+signed iid covariance, three-row extended absorbed-DoF table, solver and
+transaction certificates, and continued public failure. The independent Rust
+explicit-dummy oracle remains the mathematical authority for projection rank,
+collinearity, residuals, and RSS; the licensed comparator supplies the pinned
+conservative absorbed-DoF and Stata-facing VCE convention.
+
 The general licensed reference workflow is:
 
 ```bash

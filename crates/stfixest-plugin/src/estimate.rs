@@ -15,6 +15,7 @@ use stfixest_core::metadata::{
 };
 use stfixest_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
+    fit_prepared_categorical_ols_signed_unadjusted_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
     prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
@@ -129,7 +130,17 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         .request
         .absorbed_terms
         .iter()
-        .any(|term| term.categorical_sources.len() > 1);
+        .any(|term| term.categorical_sources.len() > 1 || !term.slope_sources.is_empty());
+    let has_slope = action
+        .request
+        .absorbed_terms
+        .iter()
+        .any(|term| !term.slope_sources.is_empty());
+    if has_slope && action.vce != OlsVceKind::Iid {
+        return Err(unsupported(
+            "absorbed slopes are currently qualified only for iid inference",
+        ));
+    }
     match (action.vce, categorical) {
         (OlsVceKind::Iid, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
@@ -189,6 +200,22 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Iid, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            if prepared.has_absorbed_slope() {
+                let inference = fit_prepared_categorical_ols_signed_unadjusted_map(
+                    &prepared,
+                    PreparedOlsUnadjustedConfig {
+                        absorbed_dof: action.absorbed_dof,
+                        ..PreparedOlsUnadjustedConfig::default()
+                    },
+                )?;
+                let shadow = build_shadow_result(
+                    PreparedOlsResultData::categorical(&prepared),
+                    None,
+                    CertifiedOlsInference::CategoricalSignedIid(&inference),
+                    action.outputs.residual.is_some(),
+                )?;
+                return precommit_and_store(&action, &shadow, spi);
+            }
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -482,10 +509,19 @@ impl EstimateActionSpec {
         let categorical = request
             .absorbed_terms
             .iter()
-            .any(|term| term.categorical_sources.len() > 1);
+            .any(|term| term.categorical_sources.len() > 1 || !term.slope_sources.is_empty());
+        let has_slope = request
+            .absorbed_terms
+            .iter()
+            .any(|term| !term.slope_sources.is_empty());
+        if has_slope && self.vce != OlsVceKind::Iid {
+            return Err(unsupported(
+                "absorbed slopes are currently qualified only for iid inference",
+            ));
+        }
         let prepared_model = if categorical {
-            // Validate the original tuple identities and all-categorical
-            // intercept-only contract before any observation read. The
+            // Validate the original tuple identities and guarded categorical
+            // intercept/one-slope contract before any observation read. The
             // availability request preserves the ordinary model and
             // coefficient layout while replacing each tuple with one
             // synthetic single-source availability marker, which is the
@@ -516,12 +552,20 @@ impl EstimateActionSpec {
         } else {
             request.validate_and_compile()?
         };
+        let extended_fe_rows = request
+            .absorbed_terms
+            .iter()
+            .try_fold(0_usize, |total, term| {
+                total
+                    .checked_add(1 + term.slope_sources.len())
+                    .ok_or_else(|| allocation("extended absorbed-effect row count overflows"))
+            })?;
         let matrices = validate_layout(
             &request,
             self.outputs,
             &self.matrices,
             prepared_model.coefficients.len(),
-            self.absorb_term_count.max(1),
+            extended_fe_rows.max(1),
             self.cluster_term_count,
             spi,
             &[
@@ -918,7 +962,7 @@ fn validate_shadow_against_outputs(
         ));
     }
     validate_shadow_receipt(action, shadow)?;
-    validate_shadow_coefficients(shadow)?;
+    validate_shadow_coefficients(shadow, action.vce == OlsVceKind::Iid)?;
     validate_defined_value_table(&shadow.fit, "OLS fit-statistics shadow")?;
     validate_defined_value_table(&shadow.dof, "OLS DoF shadow")?;
     validate_defined_value_table(&shadow.certificates, "OLS certificate shadow")?;
@@ -962,7 +1006,10 @@ fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>
     Ok(())
 }
 
-fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
+fn validate_shadow_coefficients(
+    shadow: &OlsShadowResult<'_>,
+    allow_signed_negative_dof: bool,
+) -> Result<()> {
     let dimension = shadow.coefficient_count.max(1);
     if shadow.coefficient_count == 0 {
         if shadow.covariance_dimension != 0
@@ -1041,7 +1088,9 @@ fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
                 return Err(invalid("OLS omitted covariance row is not zero"));
             }
         }
-        if shadow.covariance[row * dimension + row] < 0.0 {
+        let signed_negative_dof =
+            allow_signed_negative_dof && shadow.dof[18] == 1.0 && shadow.dof[19] < 0.0;
+        if shadow.covariance[row * dimension + row] < 0.0 && !signed_negative_dof {
             return Err(invalid("OLS covariance shadow has a negative diagonal"));
         }
     }
@@ -1097,7 +1146,7 @@ fn validate_shadow_diagnostics(
         || shadow.dof[14] != 1.0
         || shadow.dof[18] != 1.0
         || shadow.dof[1] <= 0.0
-        || shadow.dof[19] <= 0.0
+        || shadow.dof[19] == 0.0
     {
         return Err(invalid("OLS required DoF shadow fields are invalid"));
     }
@@ -1175,6 +1224,9 @@ fn validate_shadow_fixed_effect_row(row: &[f64]) -> Result<()> {
         // single source cell is deliberately zero because no one source is
         // authoritative for the interaction partition.
         3 => term > 0 && source == 0,
+        // The guarded continuous-slope row retains its term identity and the
+        // slope-source identity in the source cell.
+        4 => term > 0 && source > 0,
         _ => false,
     };
     if !identity_is_valid
@@ -2329,23 +2381,23 @@ mod tests {
 
     #[test]
     fn native_coefficient_shadow_certification_rejects_every_scatter_family() {
-        validate_shadow_coefficients(&coefficient_shadow()).expect("valid native shadow");
+        validate_shadow_coefficients(&coefficient_shadow(), false).expect("valid native shadow");
 
         let mut duplicate = coefficient_shadow();
         duplicate.coefficient_status[7] = 1.0;
-        assert!(validate_shadow_coefficients(&duplicate).is_err());
+        assert!(validate_shadow_coefficients(&duplicate, false).is_err());
 
         let mut asymmetric = coefficient_shadow();
         asymmetric.covariance[1] += 1.0;
-        assert!(validate_shadow_coefficients(&asymmetric).is_err());
+        assert!(validate_shadow_coefficients(&asymmetric, false).is_err());
 
         let mut negative_diagonal = coefficient_shadow();
         negative_diagonal.covariance[0] = -1.0;
-        assert!(validate_shadow_coefficients(&negative_diagonal).is_err());
+        assert!(validate_shadow_coefficients(&negative_diagonal, false).is_err());
 
         let mut marker = coefficient_shadow();
         marker.omission_v_marker[1] = 1.0;
-        assert!(validate_shadow_coefficients(&marker).is_err());
+        assert!(validate_shadow_coefficients(&marker, false).is_err());
 
         let mut omitted = coefficient_shadow();
         omitted.coefficient_status[1] = 2.0;
@@ -2353,7 +2405,7 @@ mod tests {
         omitted.b[0] = 0.0;
         omitted.omission_b_marker[0] = 0.0;
         omitted.omission_v_marker[0] = 0.0;
-        assert!(validate_shadow_coefficients(&omitted).is_err());
+        assert!(validate_shadow_coefficients(&omitted, false).is_err());
     }
 
     #[test]
@@ -2588,11 +2640,12 @@ mod tests {
     }
 
     #[test]
-    fn shadow_fe_identity_accepts_single_implicit_and_interaction_rows() {
+    fn shadow_fe_identity_accepts_intercept_interaction_and_slope_rows() {
         for row in [
             [1.0, 1.0, 2.0, 3.0, 1.0, 2.0, 1.0, 0.0],
             [2.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
             [3.0, 1.0, 0.0, 6.0, 1.0, 5.0, 1.0, 0.0],
+            [4.0, 1.0, 3.0, 8.0, 0.0, 8.0, 1.0, 0.0],
         ] {
             validate_shadow_fixed_effect_row(&row).expect("valid FE shadow row");
         }
@@ -2607,6 +2660,9 @@ mod tests {
             [3.0, 1.0, 2.0, 6.0, 1.0, 5.0, 1.0, 0.0],
             [3.0, 1.0, 0.0, 2.0, 3.0, 0.0, 1.0, 0.0],
             [3.0, 1.0, 0.0, 2.0, 1.0, 2.0, 1.0, 0.0],
+            [4.0, 0.0, 3.0, 8.0, 0.0, 8.0, 1.0, 0.0],
+            [4.0, 1.0, 0.0, 8.0, 0.0, 8.0, 1.0, 0.0],
+            [4.0, 1.0, 3.0, 8.0, 1.0, 8.0, 1.0, 0.0],
         ] {
             assert!(validate_shadow_fixed_effect_row(&row).is_err());
         }

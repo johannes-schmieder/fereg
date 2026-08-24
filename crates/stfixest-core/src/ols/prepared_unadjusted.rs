@@ -91,6 +91,123 @@ pub struct PreparedOlsUnadjustedCertificate {
     pub passed: bool,
 }
 
+/// Signed reference residual-DoF accounting used only by the guarded
+/// intercept-plus-slope compatibility path.  The pinned command can report a
+/// conservative absorbed count larger than the physical sample even when the
+/// actual explicit design has positive numerical residual rank.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreparedOlsSignedResidualDofReport {
+    pub finite_rank: usize,
+    pub finite_model_dof: usize,
+    pub absorbed_rank: usize,
+    pub model_rank: usize,
+    pub residual_dof: i64,
+    pub has_structural_intercept: bool,
+    pub has_normalized_absorbed_intercept: bool,
+    pub absorbed_rank_is_approximate: bool,
+}
+
+/// Fit statistics whose scale-dependent fields may be undefined when the
+/// pinned conservative residual DoF is negative.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsSignedFitStatistics {
+    pub rss: f64,
+    pub tss: f64,
+    pub within_tss: f64,
+    pub r_squared: Option<f64>,
+    pub adjusted_r_squared: Option<f64>,
+    pub within_r_squared: Option<f64>,
+    pub adjusted_within_r_squared: Option<f64>,
+    pub root_mean_squared_error: Option<f64>,
+    pub f_statistic: Option<f64>,
+    pub gaussian_log_likelihood: Option<f64>,
+    pub gaussian_null_log_likelihood: Option<f64>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PreparedOlsSignedUnadjustedCovariance {
+    variance_scale: f64,
+    values: Vec<f64>,
+}
+
+impl PreparedOlsSignedUnadjustedCovariance {
+    #[must_use]
+    pub const fn variance_scale(&self) -> f64 {
+        self.variance_scale
+    }
+
+    #[must_use]
+    pub fn values(&self) -> &[f64] {
+        &self.values
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreparedOlsSignedUnadjustedCertificate {
+    pub covariance_scale_relative_infinity_norm: f64,
+    pub covariance_symmetry_relative_infinity_norm: f64,
+    pub statistic_formula_relative_infinity_norm: f64,
+    pub conservative_dof_identity_passed: bool,
+    pub passed: bool,
+}
+
+/// Certified iid result for the frozen intercept-plus-slope compatibility
+/// gate.  This type is intentionally separate from ordinary iid inference:
+/// negative covariance is accepted only when it is exactly implied by the
+/// pinned signed residual-DoF identity and independently certified bread/RSS.
+#[derive(Debug, PartialEq)]
+pub struct CertifiedPreparedCategoricalOlsSignedUnadjusted {
+    fit: CertifiedPreparedOlsFit,
+    absorbed_dof: CategoricalTopologyDofReport,
+    weights: PreparedOlsReferenceWeightReport,
+    dof: PreparedOlsSignedResidualDofReport,
+    statistics: PreparedOlsSignedFitStatistics,
+    covariance: PreparedOlsSignedUnadjustedCovariance,
+    certificate: PreparedOlsSignedUnadjustedCertificate,
+}
+
+impl CertifiedPreparedCategoricalOlsSignedUnadjusted {
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsSignedResidualDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsSignedFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsSignedUnadjustedCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsSignedUnadjustedCertificate {
+        self.certificate
+    }
+}
+
 /// Conventional homoskedastic covariance on the fit's canonical bread axis.
 #[derive(Debug, PartialEq)]
 pub struct PreparedOlsUnadjustedCovariance {
@@ -394,6 +511,193 @@ pub fn fit_prepared_categorical_ols_unadjusted_map(
         statistics: components.statistics,
         covariance: components.covariance,
         certificate: components.certificate,
+    })
+}
+
+/// Fit the guarded intercept-plus-slope surface while preserving the pinned
+/// command's signed conservative residual-DoF convention.
+pub fn fit_prepared_categorical_ols_signed_unadjusted_map(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsUnadjustedConfig,
+) -> Result<CertifiedPreparedCategoricalOlsSignedUnadjusted> {
+    validate_config(config)?;
+    if !prepared.has_absorbed_slope() {
+        return Err(unsupported(
+            "signed categorical iid inference requires an absorbed slope",
+        ));
+    }
+    if config.absorbed_dof != PreparedOlsAbsorbedDofPolicy::Pairwise {
+        return Err(unsupported(
+            "signed categorical iid inference currently requires pairwise absorbed DoF",
+        ));
+    }
+    if !matches!(prepared.sample().weights, PreparedWeights::None) {
+        return Err(unsupported(
+            "signed categorical iid inference is not yet qualified for weights",
+        ));
+    }
+    let fit = fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?;
+    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+    let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+    validate_fit_and_absorbed_dof_view(prepared, &fit, summary)?;
+    let (weights, weight_view, reference_weight_error) =
+        build_reference_weight_report_view(prepared, &fit, config.certificate_tolerance, false)?;
+    if reference_weight_error > config.certificate_tolerance
+        || weights.kind.is_some()
+        || weights.effective_observations != prepared.sample().n_active()
+    {
+        return Err(invalid_data(
+            "signed categorical iid reference-weight identity did not pass",
+        ));
+    }
+
+    let finite_intercept_rank =
+        usize::from(prepared.report_intercept() && !prepared.structural_intercept());
+    let finite_model_dof = fit
+        .finite_rank()
+        .checked_sub(finite_intercept_rank)
+        .ok_or_else(|| invalid_data("signed categorical iid finite model DoF underflowed"))?;
+    let model_rank = fit
+        .finite_rank()
+        .checked_add(summary.absorbed_rank)
+        .ok_or_else(|| allocation("signed categorical iid model rank overflows"))?;
+    let effective = i64::try_from(weights.effective_observations)
+        .map_err(|_| allocation("signed categorical iid effective N exceeds i64"))?;
+    let signed_model_rank = i64::try_from(model_rank)
+        .map_err(|_| allocation("signed categorical iid model rank exceeds i64"))?;
+    let residual_dof = effective
+        .checked_sub(signed_model_rank)
+        .filter(|value| *value != 0)
+        .ok_or_else(|| {
+            insufficient_observations(
+                "signed categorical iid model has zero residual degrees of freedom",
+            )
+        })?;
+    let normalized_intercepts = fit
+        .bread()
+        .coordinates()
+        .iter()
+        .filter(|coordinate| {
+            coordinate.kind == PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+        })
+        .count();
+    if normalized_intercepts != 1 {
+        return Err(invalid_data(
+            "signed categorical iid fit lacks its normalized absorbed intercept",
+        ));
+    }
+    let dof = PreparedOlsSignedResidualDofReport {
+        finite_rank: fit.finite_rank(),
+        finite_model_dof,
+        absorbed_rank: summary.absorbed_rank,
+        model_rank,
+        residual_dof,
+        has_structural_intercept: prepared.structural_intercept(),
+        has_normalized_absorbed_intercept: true,
+        absorbed_rank_is_approximate: summary.is_approximate,
+    };
+
+    let outcome_mean = weighted_mean(&prepared.sample().outcome, weight_view)?;
+    let tss = weighted_sum_of_squares(&prepared.sample().outcome, weight_view, outcome_mean)?;
+    let within_tss = fit.initial_absorbed_outcome_sum_of_squares();
+    let rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
+    validate_sum_of_squares(rss, tss, within_tss)?;
+    let positive_residual_dof = usize::try_from(residual_dof).ok();
+    let root_mean_squared_error = positive_residual_dof
+        .map(|value| (rss / value as f64).sqrt())
+        .filter(|value| value.is_finite());
+    let n = exact_integer_as_f64(weights.effective_observations as u128)?;
+    let statistics = PreparedOlsSignedFitStatistics {
+        rss,
+        tss,
+        within_tss,
+        r_squared: one_minus_ratio(rss, tss)?,
+        adjusted_r_squared: None,
+        within_r_squared: one_minus_ratio(rss, within_tss)?,
+        adjusted_within_r_squared: None,
+        root_mean_squared_error,
+        f_statistic: None,
+        gaussian_log_likelihood: gaussian_log_likelihood_from_ss(rss, n)?,
+        gaussian_null_log_likelihood: gaussian_log_likelihood_from_ss(within_tss, n)?,
+    };
+
+    let dimension = fit.bread().dimension();
+    let square = checked_square(
+        dimension,
+        "signed categorical iid covariance dimensions overflow",
+    )?;
+    if fit.bread().values().len() != square {
+        return Err(invalid_argument(
+            "signed categorical iid bread dimensions are inconsistent",
+        ));
+    }
+    let variance_scale = rss / residual_dof as f64;
+    if !variance_scale.is_finite() {
+        return Err(invalid_data(
+            "signed categorical iid covariance scale is nonfinite",
+        ));
+    }
+    let mut covariance_values = reserved_filled(
+        &mut SystemInferenceReservation,
+        square,
+        0.0_f64,
+        "unable to reserve signed categorical iid covariance",
+    )?;
+    let mut covariance_formula_error = 0.0_f64;
+    for (value, bread) in covariance_values.iter_mut().zip(fit.bread().values()) {
+        *value = variance_scale * *bread;
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "signed categorical iid covariance contains a nonfinite value",
+            ));
+        }
+        let expected = (rss / residual_dof as f64) * *bread;
+        covariance_formula_error = covariance_formula_error.max(relative_difference(
+            *value,
+            expected,
+            expected.abs().max(1.0),
+        )?);
+    }
+    let covariance_symmetry_error =
+        signed_covariance_symmetry_relative_infinity_norm(&covariance_values, dimension)?;
+    let statistic_formula_error = statistics
+        .r_squared
+        .zip(one_minus_ratio(rss, tss)?)
+        .map_or(0.0, |(reported, expected)| {
+            (reported - expected).abs() / expected.abs().max(1.0)
+        });
+    let conservative_dof_identity_passed = dof.model_rank == dof.finite_rank + dof.absorbed_rank
+        && dof.residual_dof == effective - signed_model_rank
+        && absorbed_dof
+            .effects
+            .iter()
+            .any(|effect| effect.slope_source.is_some());
+    let certificate = PreparedOlsSignedUnadjustedCertificate {
+        covariance_scale_relative_infinity_norm: covariance_formula_error,
+        covariance_symmetry_relative_infinity_norm: covariance_symmetry_error,
+        statistic_formula_relative_infinity_norm: statistic_formula_error,
+        conservative_dof_identity_passed,
+        passed: conservative_dof_identity_passed
+            && covariance_formula_error <= config.certificate_tolerance
+            && covariance_symmetry_error <= config.certificate_tolerance
+            && statistic_formula_error <= config.certificate_tolerance,
+    };
+    if !certificate.passed {
+        return Err(invalid_data(
+            "signed categorical iid covariance certificate did not pass",
+        ));
+    }
+    Ok(CertifiedPreparedCategoricalOlsSignedUnadjusted {
+        fit,
+        absorbed_dof,
+        weights,
+        dof,
+        statistics,
+        covariance: PreparedOlsSignedUnadjustedCovariance {
+            variance_scale,
+            values: covariance_values,
+        },
+        certificate,
     })
 }
 
@@ -1730,6 +2034,36 @@ pub(super) fn exact_integer_as_f64(value: u128) -> Result<f64> {
 
 pub(super) fn checked_square(value: usize, message: &'static str) -> Result<usize> {
     value.checked_mul(value).ok_or_else(|| allocation(message))
+}
+
+fn signed_covariance_symmetry_relative_infinity_norm(
+    values: &[f64],
+    dimension: usize,
+) -> Result<f64> {
+    if values.len() != checked_square(dimension, "signed covariance symmetry dimensions overflow")?
+    {
+        return Err(invalid_argument(
+            "signed covariance symmetry dimensions are inconsistent",
+        ));
+    }
+    let mut maximum = 0.0_f64;
+    for row in 0..dimension {
+        let mut error = 0.0_f64;
+        let mut scale = 1.0_f64;
+        for column in 0..dimension {
+            let value = values[row * dimension + column];
+            let transpose = values[column * dimension + row];
+            error += (value - transpose).abs();
+            scale += value.abs().max(transpose.abs());
+        }
+        if !error.is_finite() || !scale.is_finite() {
+            return Err(invalid_data(
+                "signed covariance symmetry accumulation is nonfinite",
+            ));
+        }
+        maximum = maximum.max(error / scale);
+    }
+    Ok(maximum)
 }
 
 fn reserved_filled<T: Clone, R: InferenceReservation>(

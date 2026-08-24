@@ -47,6 +47,15 @@ or change-in-iterate test can substitute for this certificate. An exhausted
 budget or failed/nonfinite certificate returns an error; every successful
 result has `SolveReport::certified() == true`.
 
+The categorical topology path has a separate guarded solver for an intercept
+plus at most one continuous slope channel in the complete request. It borrows
+the final-sample slope source and topology, solves scaled two-column group Gram
+systems, rejects any locally rank-deficient group, and preallocates all O(K)
+norm, Gram, cross-product, and coefficient workspace before projection. Its
+success certificate recomputes both intercept and slope projections directly.
+It does not make the legacy intercept-only view slope-capable or activate any
+public estimator.
+
 `build_prepared_ols_rhs` is the bounded bridge from prepared OLS data to this
 solver. It revalidates the prepared sample/model identities and directly
 constructs one fallibly reserved row-major batch with Y first, followed by the
@@ -200,11 +209,17 @@ the sealed licensed-Stata receipt anchors `df_a=8` for one firm FE,
 `df_a=19` for `dof(none)` on worker plus firm, and `df_a=21` for
 `dof(firstpair)` on worker, firm, and year.
 
-This checkpoint deliberately excludes absorbed slopes, FE/cluster nesting,
+The legacy checkpoint deliberately excludes absorbed slopes, FE/cluster nesting,
 finite-regressor rank, normalized absorbed-model intercept handling, effective
 frequency-weight observation counts, residual DoF, covariance corrections,
 and fit statistics. It has no plugin action or SPI write and does not enable
 `stfeols`.
+
+The categorical topology DoF path separately emits an intercept row and one
+guarded continuous-slope row when requested. The slope row carries its source
+identity and the pinned conservative category count. The resulting signed iid
+composition is a separate type, so a negative reference-compatible residual
+DoF/covariance cannot enter the ordinary positive-DoF inference path.
 
 ## Certified prepared unadjusted-inference checkpoint
 

@@ -63,6 +63,7 @@ EXECUTABLE_CASE_IDS = (
     "unweighted_no_fe",
     "one_fe_robust",
     "multi_fe_interactions",
+    "intercept_and_slope",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -94,7 +95,6 @@ EXECUTABLE_CASE_IDS = (
 )
 
 BLOCKERS = (
-    ("intercept_and_slope", "absorbed_intercept_slope"),
     ("slope_only_multiple", "absorbed_slope_only_multiple"),
     ("string_fe", "string_source_ingestion"),
     ("time_series_lag", "time_series_materialization"),

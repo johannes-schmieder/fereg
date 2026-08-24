@@ -10,6 +10,7 @@ use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::Result;
 use crate::fe::{
     absorb_borrowed_intercept_map_with_structural_constant_certified,
+    absorb_finalized_categorical_intercept_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
     MapConfig,
 };
@@ -111,11 +112,22 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        absorb_finalized_categorical_topology_map_certified(
-            self.fe_topology(),
-            weights,
-            values,
-            config,
-        )
+        if self.has_absorbed_slope() {
+            let slopes = self.slope_views()?;
+            absorb_finalized_categorical_intercept_slope_map_certified(
+                self.fe_topology(),
+                &slopes,
+                weights,
+                values,
+                config,
+            )
+        } else {
+            absorb_finalized_categorical_topology_map_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config,
+            )
+        }
     }
 }

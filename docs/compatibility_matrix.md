@@ -4,23 +4,23 @@
 
 This is a target contract, not a public implementation claim. `stfeols` still
 returns `r(498)`. The frozen reference-only `ols_v1` receipt defines 40 semantic
-cases. The developer-only candidate projection currently passes 31 of them and
-retains nine exact blockers; `public_activation=false` and performance remains
+cases. The developer-only candidate projection currently passes 32 of them and
+retains eight exact blockers; `public_activation=false` and performance remains
 unmeasured.
 
 | Surface | OLS-v1 reference cases | StFixest state |
 |---|---|---|
 | No, one, and multiple FEs | no-FE, factor FE, two/three-way FE, disconnected graph | Hidden transport solves the supported repeated single-source intercept-only numeric-FE topology through certified borrowed MAP; general FE forms and the public estimator remain disabled |
-| FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | The hidden projection passes the full numeric categorical-interaction case; absorbed slopes remain disabled pending their own certificates |
+| FE interactions/slopes | categorical interactions, intercept-plus-slope, slope-only, multiple slopes | The hidden projection passes categorical interactions and one guarded unweighted iid intercept-plus-slope case through a certified continuous-slope MAP path plus an independent explicit-dummy rank/residual oracle. Slope-only and multiple slopes remain disabled. |
 | Ordinary regressors | continuous, factors, factor interactions, lag/lead/difference operators across panel calendar gaps, no-regressor, FE-collinear column | Hidden transport supports continuous, numeric factor main effects and all-categorical numeric interactions with canonical statuses; mixed/time-series and public estimation remain disabled |
 | Samples/singletons | missing outcome/regressor/FE/cluster, `if`/`in`, cascade, `keepsingletons`, empty and one-row errors | The candidate-bound hidden projection passes the numeric sample, cascade/keep, missingness, empty-sample, and one-observation cases with exact identities and pinned 402/401/2001 errors where applicable. Public syntax/identity remains disabled. |
 | Weights | unweighted, `aweight`, `fweight`, `pweight`, `iweight` probe, scaling, invalid-domain probes, and invalid-weight-outside-candidate precedence | Candidate-bound parity passes unit/a/f/p objectives, scaling, domain, missing, large-weight, candidate-scope, and weighted-singleton cases. `iweight_probe` remains an explicit blocker; public syntax/metadata remains disabled. |
-| Inference | iid, robust, one/two/three-way cluster, cluster interaction, nesting, default/none/firstpair/continuous DoF | Prepared iid, HC1 robust, and one-/multiway clustered compositions are certified for the current intercept-only numeric-FE surface and consumed only by hidden `estimate-ols-test`. One source load and one selected same-call composition write private versioned shadows with `COMPLETE` last; the current candidate-bound sweeps cover 222 Fake and 219 live store ordinals. The hidden eclass helper revalidates and posts iid/HC1/one-/multiway covariance under `_estimates hold`, including exact whole-Mata q2/q3 CGM restored-state preservation and rollback/actual-Break evidence. `dof_continuous`, broader model forms, and public activation remain pending. |
+| Inference | iid, robust, one/two/three-way cluster, cluster interaction, nesting, default/none/firstpair/continuous DoF | Prepared iid, HC1 robust, and one-/multiway clustered compositions are certified for the categorical-intercept numeric-FE surface and consumed only by hidden `estimate-ols-test`. The guarded slope route is separately typed and limited to unweighted pairwise iid, including the pinned signed conservative residual-DoF identity; ordinary positive-DoF iid inference cannot consume its covariance. One source load and one selected same-call composition write private versioned shadows with `COMPLETE` last. The hidden eclass helper revalidates and posts under `_estimates hold`, including rollback/actual-Break evidence. `dof_continuous`, broader slope forms, and public activation remain pending. |
 | Outputs | `e()` scalars, `e(b)`, `e(V)`, `e(sample)`, residual, `xb`, `xbd`, absorbed sum, named FEs, `test`, `estat summarize` | The hidden helper transactionally posts bounded b/V/status/fit/DoF/diagnostics/e(sample)/optional-residual outputs and restores prior named/null estimates on every tested failure/Break. It remains developer-only; prediction, absorbed/saved FE outputs, postestimation, broader sealed parity, and public dispatch remain disabled. |
 | Benchmarks | dense and sparse two-FE, absorbed slope, clustered VCE, moderate K | 10M+ primary cases at 1/8 threads; scientific parity/certificates precede 1 cold + 5 fresh-process timing/RSS gates; candidate blocked |
 
-The nine frozen blockers are: `intercept_and_slope` (next priority),
-`slope_only_multiple`, `string_fe`, `time_series_lag`, `time_series_lead_difference_gaps`,
+The eight frozen blockers are: `slope_only_multiple` (next priority), `string_fe`,
+`time_series_lag`, `time_series_lead_difference_gaps`,
 `iweight_probe`, `dof_continuous`, `saved_outputs`, and
 `postestimation_test_summarize`. Broader ordinary factor/interactions remain
 activation work even though the bounded numeric candidate supports numeric

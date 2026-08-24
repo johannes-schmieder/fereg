@@ -304,8 +304,12 @@ fn validate_categorical_report(
     let implicit_no_absorb = prepared.fit_structural_intercept()
         && specs.is_empty()
         && prepared.fit_sample().n_active() > 0;
-    let expected_rows = specs
-        .len()
+    let explicit_rows = specs.iter().try_fold(0_usize, |total, spec| {
+        total
+            .checked_add(1 + usize::from(spec.slope.is_some()))
+            .ok_or_else(|| allocation("categorical absorbed-DoF extended row count overflows"))
+    })?;
+    let expected_rows = explicit_rows
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("categorical absorbed-DoF row count overflows"))?;
     if report.effects.len() != expected_rows
@@ -334,6 +338,7 @@ fn validate_categorical_report(
             || implicit.coefficients != 1
             || !implicit.redundancy_exact
             || implicit.nested
+            || implicit.slope_source.is_some()
         {
             return Err(invalid(
                 "categorical implicit no-absorb DoF row is inconsistent",
@@ -344,7 +349,14 @@ fn validate_categorical_report(
         rows = remaining;
     }
 
-    for (effect_index, (spec, row)) in specs.iter().zip(rows).enumerate() {
+    let mut row_index = 0_usize;
+    for (effect_index, spec) in specs.iter().enumerate() {
+        let row = rows
+            .get(row_index)
+            .ok_or_else(|| invalid("categorical absorbed-DoF intercept row is absent"))?;
+        row_index = row_index
+            .checked_add(1)
+            .ok_or_else(|| allocation("categorical absorbed-DoF row index overflows"))?;
         let topology_source_index = *topology
             .effect_to_topology()
             .get(effect_index)
@@ -360,6 +372,7 @@ fn validate_categorical_report(
             || row.categories != source.n_levels()
             || row.redundant > row.categories
             || row.coefficients != row.categories - row.redundant
+            || row.slope_source.is_some()
             || !categorical_nesting_row_is_valid(nesting_state, row)
         {
             return Err(invalid(
@@ -383,6 +396,44 @@ fn validate_categorical_report(
                 })?;
         }
         approximate |= !row.redundancy_exact;
+
+        if let Some(slope) = &spec.slope {
+            let slope_row = rows
+                .get(row_index)
+                .ok_or_else(|| invalid("categorical absorbed-DoF slope row is absent"))?;
+            row_index = row_index
+                .checked_add(1)
+                .ok_or_else(|| allocation("categorical absorbed-DoF row index overflows"))?;
+            let slope_identity_matches = matches!(
+                &slope_row.identity,
+                CategoricalTopologyDofEffectIdentity::Explicit { term_id, sources }
+                    if *term_id == spec.term_id && sources == &spec.sources
+            );
+            if !slope_identity_matches
+                || slope_row.label != slope.label
+                || slope_row.categories != source.n_levels()
+                || slope_row.redundant != 0
+                || slope_row.coefficients != slope_row.categories
+                || !slope_row.redundancy_exact
+                || slope_row.nested
+                || slope_row.slope_source != Some(slope.source)
+            {
+                return Err(invalid(
+                    "categorical absorbed-DoF slope row is inconsistent",
+                ));
+            }
+            initial = initial
+                .checked_add(slope_row.categories)
+                .ok_or_else(|| allocation("categorical absorbed-slope category total overflows"))?;
+            rank = rank
+                .checked_add(slope_row.coefficients)
+                .ok_or_else(|| allocation("categorical absorbed-slope rank total overflows"))?;
+        }
+    }
+    if row_index != rows.len() {
+        return Err(invalid(
+            "categorical absorbed-DoF report contains trailing rows",
+        ));
     }
     if nested_categories != report.nested_categories {
         return Err(invalid(

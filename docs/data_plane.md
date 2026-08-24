@@ -17,8 +17,9 @@ exact prepared Y/X absorption batch and consumes it through the separate strict
 MAP path before any diagnostic store. It discards the numerical output and
 does not execute or enable a public estimator. A separate hidden
 `estimate-ols-test` action now exercises numeric cluster preparation, the
-certified prepared iid/HC1/clustered compositions, and shadow-result transport;
-it is test-only and posts no `e()` state.
+certified prepared iid/HC1/clustered compositions, one guarded unweighted iid
+intercept-plus-slope composition, and shadow-result transport; it is test-only
+and posts no public `e()` state.
 
 Public estimator actions remain disabled. Passing these tests does not make
 OLS/WLS or PPML available.

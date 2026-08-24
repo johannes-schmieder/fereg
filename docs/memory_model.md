@@ -54,9 +54,15 @@ first numerical mutation. Injected failures and undersized reservations cover
 all six points and map to `ErrorCode::Allocation`/Stata 909. Projection and
 final certification allocate nothing.
 
+The guarded categorical intercept-plus-slope solver borrows the continuous
+slope and final topology and adds only O(K) norm/cross-product/coefficient
+buffers plus constant-size 2-by-2 Gram storage. All buffers are fallibly
+reserved before the first projection, and fail-at-every plus undersized
+reservation tests prove that iteration and certification allocate nothing.
+
 This is a fast-style developer-only materialization checkpoint, not a complete
 estimator memory model. It does not yet cover blockwise/low-memory RHS
-generation, general slope-capable solvers, OLS rank/VCE workspaces, SPI result
+generation, general multiple-slope solvers, OLS rank/VCE workspaces, SPI result
 buffers, or measured peak RSS.
 
 ## Prepared coefficient-fit allocation discipline

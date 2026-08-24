@@ -29,6 +29,16 @@ pub struct CategoricalTopologyDofEffectSpec {
     /// Source tuple in requested wire order. Interaction partition coding is
     /// canonicalized independently; this identity tuple is not reordered.
     pub sources: Vec<SourceId>,
+    /// Intercept-row label.  For `firm##c.time` this is `firm`.
+    pub label: String,
+    /// The separately reported continuous-slope row, if present.
+    pub slope: Option<CategoricalTopologyDofSlopeSpec>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CategoricalTopologyDofSlopeSpec {
+    pub source: SourceId,
+    /// Reference-compatible extended-row label, e.g. `firm#c.time`.
     pub label: String,
 }
 
@@ -53,6 +63,9 @@ pub struct CategoricalTopologyDofEffect {
     pub coefficients: usize,
     pub redundancy_exact: bool,
     pub nested: bool,
+    /// `None` identifies the categorical intercept row.  A source identifies
+    /// one continuous slope row on the same categorical topology.
+    pub slope_source: Option<SourceId>,
 }
 
 /// Certified absorbed-rank report for finalized categorical topology.
@@ -342,8 +355,12 @@ fn build_report<R: TopologyDofReservation>(
 ) -> Result<CategoricalTopologyDofReport> {
     let nobs = topology.retained_rows().len();
     let implicit_no_absorb = structural_intercept && effect_specs.is_empty() && nobs > 0;
-    let row_count = effect_specs
-        .len()
+    let explicit_rows = effect_specs.iter().try_fold(0_usize, |total, spec| {
+        total
+            .checked_add(1 + usize::from(spec.slope.is_some()))
+            .ok_or_else(|| allocation("categorical absorbed-DoF extended row count overflows"))
+    })?;
+    let row_count = explicit_rows
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("categorical absorbed-DoF report row count overflows"))?;
     let mut rows = Vec::new();
@@ -372,6 +389,7 @@ fn build_report<R: TopologyDofReservation>(
                 coefficients: 1,
                 redundancy_exact: true,
                 nested: false,
+                slope_source: None,
             },
             "categorical absorbed-DoF implicit-row capacity exhausted",
         )?;
@@ -422,9 +440,44 @@ fn build_report<R: TopologyDofReservation>(
                 coefficients,
                 redundancy_exact: exact[effect_index],
                 nested: nested[effect_index],
+                slope_source: None,
             },
             "categorical absorbed-DoF effect-row capacity exhausted",
         )?;
+
+        if let Some(slope) = &spec.slope {
+            initial_categories = initial_categories
+                .checked_add(categories)
+                .ok_or_else(|| allocation("categorical absorbed slope category total overflows"))?;
+            absorbed_rank = absorbed_rank
+                .checked_add(categories)
+                .ok_or_else(|| allocation("categorical absorbed slope rank overflows"))?;
+            push_reserved(
+                &mut rows,
+                CategoricalTopologyDofEffect {
+                    identity: CategoricalTopologyDofEffectIdentity::Explicit {
+                        term_id: spec.term_id,
+                        sources: fallible_vec_copy(
+                            &spec.sources,
+                            reservation,
+                            "unable to reserve categorical absorbed-slope source identity",
+                        )?,
+                    },
+                    label: fallible_string_copy(
+                        &slope.label,
+                        reservation,
+                        "unable to reserve categorical absorbed-slope label",
+                    )?,
+                    categories,
+                    redundant: 0,
+                    coefficients: categories,
+                    redundancy_exact: true,
+                    nested: false,
+                    slope_source: Some(slope.source),
+                },
+                "categorical absorbed-DoF slope-row capacity exhausted",
+            )?;
+        }
     }
 
     let recomputed_rank = initial_categories

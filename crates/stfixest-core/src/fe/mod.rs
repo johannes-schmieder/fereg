@@ -23,6 +23,7 @@ mod topology_finalize;
 mod topology_map;
 mod topology_registry;
 mod topology_rhs;
+mod topology_slope_map;
 mod topology_source;
 
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
@@ -64,4 +65,5 @@ pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_rhs::{
     compact_categorical_rhs, CandidateCategoricalWeights, CompactedCategoricalRhs,
 };
+pub use topology_slope_map::absorb_finalized_categorical_intercept_slope_map_certified;
 pub use topology_source::CategoricalTopologySource;

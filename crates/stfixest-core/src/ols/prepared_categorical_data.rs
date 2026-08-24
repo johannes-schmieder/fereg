@@ -12,6 +12,7 @@ use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeight
 use crate::error::{ErrorCode, Result, StFixestError};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
+    absorb_finalized_categorical_intercept_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons, BorrowedMapWeights,
     BoundCategoricalAbsorbEffect, CategoricalCodeView, CertifiedBorrowedMap,
@@ -23,7 +24,7 @@ use crate::prepared_categorical_rebase::{
 };
 use crate::topology_dof::{
     compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffectSpec,
-    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
+    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
 };
 
 use crate::ols::prepare_ols_data_with_cluster_sources;
@@ -33,8 +34,8 @@ use super::{
     PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel, PreparedOlsSingletons,
 };
 
-/// Complete native preparation result for intercept-only numeric categorical
-/// absorbed effects, including interactions such as `firm#year`.
+/// Complete native preparation result for numeric categorical absorbed
+/// effects, including interactions and one guarded intercept-plus-slope term.
 #[derive(Debug, PartialEq)]
 pub struct PreparedCategoricalOlsData {
     model: PreparedOlsModel,
@@ -75,6 +76,13 @@ impl PreparedCategoricalOlsData {
     #[must_use]
     pub fn effect_specs(&self) -> &[CategoricalTopologyDofEffectSpec] {
         &self.effect_specs
+    }
+
+    #[must_use]
+    pub fn has_absorbed_slope(&self) -> bool {
+        self.effect_specs
+            .iter()
+            .any(|effect| effect.slope.is_some())
     }
 
     #[must_use]
@@ -190,7 +198,23 @@ impl PreparedCategoricalOlsData {
             PreparedWeights::None => BorrowedMapWeights::Unit,
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
-        absorb_finalized_categorical_topology_map_certified(&self.fe_topology, weights, rhs, config)
+        if self.has_absorbed_slope() {
+            let slopes = self.slope_views()?;
+            absorb_finalized_categorical_intercept_slope_map_certified(
+                &self.fe_topology,
+                &slopes,
+                weights,
+                rhs,
+                config,
+            )
+        } else {
+            absorb_finalized_categorical_topology_map_certified(
+                &self.fe_topology,
+                weights,
+                rhs,
+                config,
+            )
+        }
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.
@@ -225,6 +249,12 @@ impl PreparedCategoricalOlsData {
                 "prepared categorical effect metadata and topology map differ in length",
             ));
         }
+        let slopes = self.slope_views()?;
+        if slopes.iter().flatten().count() > 1 {
+            return Err(invalid(
+                "prepared categorical OLS contains more than one absorbed slope",
+            ));
+        }
         if !self.structural_intercept {
             return Err(invalid(
                 "numeric categorical absorbed effects must contain a structural intercept",
@@ -243,6 +273,38 @@ impl PreparedCategoricalOlsData {
         validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
         validate_report_plan(&self.model, &self.report_plan)?;
         Ok(())
+    }
+
+    pub(crate) fn slope_views(&self) -> Result<Vec<Option<&[f64]>>> {
+        let mut output = Vec::new();
+        output
+            .try_reserve_exact(self.effect_specs.len())
+            .map_err(|_| allocation("unable to reserve prepared absorbed-slope views"))?;
+        for effect in &self.effect_specs {
+            let slope = effect
+                .slope
+                .as_ref()
+                .map(|slope| {
+                    let source_index = usize::try_from(slope.source.get() - 1)
+                        .map_err(|_| invalid("absorbed-slope source index overflows"))?;
+                    self.sample
+                        .regressors
+                        .get(source_index)
+                        .map(Vec::as_slice)
+                        .ok_or_else(|| invalid("absorbed-slope source is out of range"))
+                })
+                .transpose()?;
+            if slope.is_some_and(|values| {
+                values.len() != self.sample.n_active()
+                    || values.iter().any(|value| !value.is_finite())
+            }) {
+                return Err(invalid_data(
+                    "prepared absorbed-slope source is not finite and aligned",
+                ));
+            }
+            output.push(slope);
+        }
+        Ok(output)
     }
 
     fn categorical_indicator(
@@ -420,7 +482,8 @@ impl PreparedCategoricalOlsRhs {
     }
 }
 
-/// Prepare intercept-only numeric categorical effects, including interactions.
+/// Prepare numeric categorical intercept effects, including interactions and
+/// the guarded single intercept-plus-slope channel.
 ///
 /// This is a developer/core boundary. It does not activate any public estimator
 /// or Stata result-transport action.
@@ -497,7 +560,7 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
         &fe_topology,
         request.include_intercept,
     )?;
-    let effect_specs = effect_specs(&bound_effects)?;
+    let effect_specs = effect_specs(&bound_effects, &request.model)?;
     let prepared = PreparedCategoricalOlsData {
         model: rebased.model,
         sample,
@@ -690,12 +753,48 @@ fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<(
 
 fn effect_specs(
     effects: &[BoundCategoricalAbsorbEffect],
+    model: &crate::metadata::CompiledTermGraph,
 ) -> Result<Vec<CategoricalTopologyDofEffectSpec>> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(effects.len())
         .map_err(|_| allocation("unable to reserve categorical absorbed DoF metadata"))?;
     for effect in effects {
+        let slope = effect
+            .slope_source
+            .map(|source| {
+                let source_name = model
+                    .sources
+                    .iter()
+                    .find(|entry| entry.id == source)
+                    .map(|entry| entry.canonical_name.as_str())
+                    .ok_or_else(|| invalid("absorbed-slope source identity is absent"))?;
+                let categorical_name = model
+                    .sources
+                    .iter()
+                    .find(|entry| effect.sources.first() == Some(&entry.id))
+                    .map(|entry| entry.canonical_name.as_str())
+                    .ok_or_else(|| invalid("absorbed intercept source identity is absent"))?;
+                Ok(CategoricalTopologyDofSlopeSpec {
+                    source,
+                    label: absorbed_slope_label(categorical_name, source_name)?,
+                })
+            })
+            .transpose()?;
+        let intercept_label = if slope.is_some() {
+            let source = effect
+                .sources
+                .first()
+                .ok_or_else(|| invalid("absorbed slope lacks a categorical source"))?;
+            model
+                .sources
+                .iter()
+                .find(|entry| entry.id == *source)
+                .map(|entry| entry.canonical_name.as_str())
+                .ok_or_else(|| invalid("absorbed intercept source identity is absent"))?
+        } else {
+            effect.label.as_str()
+        };
         push_reserved(
             &mut output,
             CategoricalTopologyDofEffectSpec {
@@ -705,13 +804,30 @@ fn effect_specs(
                     "unable to reserve categorical absorbed DoF source identities",
                 )?,
                 label: fallible_string_copy(
-                    &effect.label,
+                    intercept_label,
                     "unable to reserve categorical absorbed DoF label",
                 )?,
+                slope,
             },
             "categorical absorbed DoF metadata capacity exhausted",
         )?;
     }
+    Ok(output)
+}
+
+fn absorbed_slope_label(categorical: &str, slope: &str) -> Result<String> {
+    let capacity = categorical
+        .len()
+        .checked_add(slope.len())
+        .and_then(|value| value.checked_add(3))
+        .ok_or_else(|| allocation("categorical absorbed-slope label length overflows"))?;
+    let mut output = String::new();
+    output
+        .try_reserve_exact(capacity)
+        .map_err(|_| allocation("unable to reserve categorical absorbed-slope label"))?;
+    output.push_str(categorical);
+    output.push_str("#c.");
+    output.push_str(slope);
     Ok(output)
 }
 
