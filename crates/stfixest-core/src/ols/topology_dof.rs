@@ -452,6 +452,10 @@ fn build_report<R: TopologyDofReservation>(
             absorbed_rank = absorbed_rank
                 .checked_add(categories)
                 .ok_or_else(|| allocation("categorical absorbed slope rank overflows"))?;
+            // The pinned reference counts one slope coefficient per observed
+            // category but marks that count inexact: this path has not run a
+            // continuous-rank search for zero or collinear group slopes.
+            is_approximate = true;
             push_reserved(
                 &mut rows,
                 CategoricalTopologyDofEffect {
@@ -471,7 +475,7 @@ fn build_report<R: TopologyDofReservation>(
                     categories,
                     redundant: 0,
                     coefficients: categories,
-                    redundancy_exact: true,
+                    redundancy_exact: false,
                     nested: false,
                     slope_source: Some(slope.source),
                 },

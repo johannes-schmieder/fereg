@@ -75,6 +75,14 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
             with self.subTest(profile=name):
                 self.assertIn(fixture, profiles[name]["fixtures"])
 
+    def test_licensed_slope_fixture_checks_reference_inexact_dof_metadata(self):
+        fixture = (
+            ROOT
+            / "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do"
+        ).read_text(encoding="utf-8")
+        self.assertIn("e(dof_table)[2,4] == 1", fixture)
+        self.assertNotIn("e(dof_table)[2,4] == 0", fixture)
+
 
 if __name__ == "__main__":
     unittest.main()

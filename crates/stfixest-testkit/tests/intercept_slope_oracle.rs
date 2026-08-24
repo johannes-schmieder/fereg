@@ -74,9 +74,14 @@ fn frozen_intercept_slope_case_matches_explicit_rank_and_pinned_signed_dof() {
     assert!(absorbed.effects[0].slope_source.is_none());
     assert!(absorbed.effects[1].slope_source.is_some());
     assert!(absorbed.effects[2].slope_source.is_none());
+    assert!(absorbed.effects[0].redundancy_exact);
+    assert!(!absorbed.effects[1].redundancy_exact);
+    assert!(absorbed.effects[2].redundancy_exact);
+    assert!(absorbed.is_approximate);
     let dof = result.dof();
     assert_eq!(dof.model_rank, 26);
     assert_eq!(dof.residual_dof, -2);
+    assert!(dof.absorbed_rank_is_approximate);
 
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: y,

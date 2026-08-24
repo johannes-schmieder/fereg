@@ -60,7 +60,8 @@ assert e(dof_table)[1,5] == 0
 assert e(dof_table)[2,1] == 8
 assert e(dof_table)[2,2] == 0
 assert e(dof_table)[2,3] == 8
-assert e(dof_table)[2,4] == 0
+* reghdfe marks the conventional one-slope-per-category count inexact.
+assert e(dof_table)[2,4] == 1
 assert e(dof_table)[2,5] == 0
 assert e(dof_table)[3,1] == 12
 assert e(dof_table)[3,2] == 2

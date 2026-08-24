@@ -414,7 +414,7 @@ fn validate_categorical_report(
                 || slope_row.categories != source.n_levels()
                 || slope_row.redundant != 0
                 || slope_row.coefficients != slope_row.categories
-                || !slope_row.redundancy_exact
+                || slope_row.redundancy_exact
                 || slope_row.nested
                 || slope_row.slope_source != Some(slope.source)
             {
@@ -428,6 +428,7 @@ fn validate_categorical_report(
             rank = rank
                 .checked_add(slope_row.coefficients)
                 .ok_or_else(|| allocation("categorical absorbed-slope rank total overflows"))?;
+            approximate |= !slope_row.redundancy_exact;
         }
     }
     if row_index != rows.len() {
