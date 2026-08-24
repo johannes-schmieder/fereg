@@ -275,7 +275,7 @@ jobs:
           if sentinel.exists():
               sentinel.unlink()
           PY
-          cargo fmt --all
+          /Users/johannes/.cargo/bin/cargo fmt --all
 
       - name: Push repair to main
         shell: bash
