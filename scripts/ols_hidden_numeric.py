@@ -819,7 +819,12 @@ def _run_stata_capture(
             encoding="utf-8",
         )
         isolated = run_dir / "sysdirs"
-        lines = ["version 18.0", "clear all", "set more off"]
+        lines = [
+            "version 18.0",
+            "clear all",
+            "set more off",
+            "set linesize 255",
+        ]
         for name in ("PERSONAL", "PLUS", "OLDPLACE", "SITE"):
             target = isolated / name.lower()
             target.mkdir(parents=True)

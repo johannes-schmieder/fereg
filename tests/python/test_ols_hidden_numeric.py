@@ -300,6 +300,17 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                 self.assertIn(identity["sha256"], command)
                 self.assertNotIn(str((ROOT / "dist").resolve()), " ".join(command))
 
+    def test_capture_uses_wide_stata_logs_for_unbroken_plugin_provenance(self):
+        source = (ROOT / "scripts/ols_hidden_numeric.py").read_text(encoding="utf-8")
+        self.assertIn(
+            '"set more off",\n            "set linesize 255",',
+            source,
+        )
+        self.assertLess(
+            source.index('"set linesize 255",'),
+            source.index('"plugin call __fereg_candidate_provenance, version"'),
+        )
+
     def test_source_identity_binds_complete_commit_tree_and_rejects_staleness(self):
         with tempfile.TemporaryDirectory() as raw:
             repository = Path(raw)
