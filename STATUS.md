@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-24
 **Branch / baseline:** consolidated `main`; latest accepted exact-green source `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`, recorded by corrected quick/full receipt-identity commit `8917e6162d17a2aeb49b2af62fe71c09d68702a2`
-**Active milestone:** reseal the frozen hidden OLS projection after exact-green closure of the 12-case FE-interaction differential
+**Active milestone:** reconcile and activate final-sample categorical rebasing after the exact-green frozen hidden OLS projection reseal
 **Release state:** development only — public estimators remain fail-closed; no production or cross-platform release claim
 
 `STATUS.md` is the repository's only mutable progress record. Immutable command
@@ -45,8 +45,14 @@ Contracts and reference documentation record requirements, not live progress.
   projection is resealed.
 - Digest-bound full-history Git bundles for the pinned `reghdfe`, `ftools`,
   and `stata-require` commits are committed and were materialized offline by
-  the successful source-bound probe. The next evidence gate is to reseal the
-  frozen projection or repair its first concrete failure.
+  the successful source-bound probe.
+- The unchanged frozen 40-case hidden OLS partition is resealed at source
+  `d58310783150e81739ea87eee868fd6bc8334b33`: all 30 executable cases pass
+  against the pinned comparator, the ten unsupported cases remain explicit
+  blockers, and the identical staged plugin passed fake-SPI/actual-loader store
+  failure sweeps plus licensed-Stata parity, rollback, and actual-Break gates.
+  The canonical receipt is
+  `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T093209Z-d583107`.
 - Final-sample categorical rebasing remains staged rather than live. Its module,
   source transform, validation workflow, and prior validation receipts are
   preserved, but activation must be reconciled with `main` and rerun after the
@@ -94,21 +100,22 @@ consolidated state above and active checkpoint below control current work.
 | Core-only prepared one-/multiway clustered OLS/WLS inference | Implemented, fully validated, and independently reviewed for the current prepared intercept-only numeric-FE surface through `b226d62` plus repair `89132055`; not plugin-enabled | Sample-bound numeric cluster preparation supports 1--10 declared dimensions, treats a declared source tuple as one interaction dimension, applies reason 6 before FE singleton deletion, never uses cluster counts to delete singletons, and factorizes final-sample interactions collision-free after pruning. `CertifiedPreparedOlsClustered` composes fit, cluster-aware absorbed DoF, reported/fit/correction DoF, statistics, score design, inclusion--exclusion meat, one common reghdfe correction, CGM repair, slope-only Wald, and independent certificates in one core call. Group scores are `sum(omega_i e_i z_i)` for unit/a/f/p reference weights; every required subset must have at least two groups. One-way covariance is strictly PSD with no repair. Multiway covariance follows the pinned two-stage transform exactly: when the raw full matrix is indefinite, clip the full eigensystem, independently clip the original raw slope block when a reported `_cons` and slopes exist, restore that slope block, and never reclip the final full matrix. Only that exact restored state may retain a diagnostic final negative eigenvalue; the pre-restore full matrix and restored slope block remain strictly certified PSD. Internal explicit-dummy/raw/transform/certificate comparisons are at most `2e-10`. Separate frozen DEFAULT-`reghdfe` receipt comparisons, after exact structural assertions, use absolute behavioral caps only of `1e-7` (one-way), `2e-6` (two-way), `4e-6` (three-way), and `1e-7` (one declared interaction), documenting the upstream MAP stopping artifact rather than weakening scientific tolerances. All allocations are fallible; subset aggregation holds one ordering and one P-vector at a time and never a G x P table. Mutation, undersize, allocation, nesting, weight, virtual-constant, disconnected/repeated-FE, default/`noconstant`, rank-zero, intercept-only, paired-cluster, and sealed receipt tests pass. No legacy VCE/DoF, plugin/SPI/public posting, or estimator action was used. |
 | Hidden atomic prepared-OLS transport | Implemented and independently approved through `7f61650`, allocation-safety repair `0623241`, and candidate hardening `d731b327`; developer-only and not a public estimator | Guarded action `estimate-ols-test` requires exact action protocol 1.1, result wire 1.0, loaded-plugin version, and `confirm=developer-estimation-test` before any observation read. It performs one native source-loading phase and one same-call certified iid, HC1, or clustered composition, then fallibly adapts the complete result into private shadow coefficient, covariance, status, fit, DoF, solver, FE, cluster, subset, certificate, receipt, sample, residual, and drop-reason destinations. Rust validates the entire N/K/K² result, including native omission markers, before the first store. All 11 result-matrix names and dimensions are converted to borrowed C handles before commit. The receipt `COMPLETE` cell is the final operation. SPI cannot physically roll back earlier writes, so a failed commit may dirty only private shadow destinations; they have no logical meaning unless the final receipt is complete. Numeric/matrix store errors and their C reports are prepared before commit and allocate nothing after a store failure. Current candidate-bound sweeps fail each of 222 Fake stores and 219 actual-loader stores; every failure leaves `COMPLETE=0`. The universal macOS build/audit/loader passes. Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain `r(498)` and no public `e()` state is posted. |
 | Hidden licensed-Stata OLS eclass transaction | Implemented, fully validated, and independently approved through `3473f49` plus candidate hardening `d731b327`; developer-only and non-public | `_stfixest_estimate_ols_test` creates private matrix/variable shadows, holds prior estimates with `_estimates hold ..., restore nullok varname()`, sends the complete guarded request as one canonical length-framed bundle, and makes exactly one substantive `estimate-ols-test` plugin call. Rust has already validated all N/K/K² results and omission markers; the helper retains only constant-size receipt/table/transaction checks before posting. The K=0 branch posts no b/V. A whole-matrix Mata copy preserves the pinned two-/three-way CGM covariance, including its certified restored-state negative determinant, without Stata's nonsymmetry warning or numerical alteration. The helper posts the selected fit/DoF/diagnostic/e(sample)/weight/cluster mapping, then commits only in a `nobreak` residual rename plus `_estimates unhold ..., not` block. Deterministic failure stages, a real scientific failure, null/non-null prior estimates, and an actual PTY Control-C after the sole plugin call restore prior `e()` state and sample exactly and expose no requested residual. Licensed iid/HC1/one-/multiway clustered, weights, default/`noconstant`, omission, K=0, sample/residual, and sealed q2/q3 covariance fixtures pass. Public commands/actions remain `r(498)`. |
-| Hidden numeric OLS candidate projection | Implemented, candidate-bound, sealed, and independently approved through `d731b327` plus receipt commit `9e2f23e`; developer-only and non-public | `_stfixest_ols_hidden_numeric_v1` projects exactly 30 executable cases from the frozen 40-case `ols_v1` semantic manifest through the hidden eclass helper. It captures result, sample, residual/error, certificate, store-failure, rollback, and actual-Break evidence while retaining ten explicit blockers. Every Stata capture and supporting gate loads the identical isolated staged plugin (`sha256=eda2629198429d419a476151886936e0761eca26f2a8cc34fe83c52146703980`, embedded `d731b3276eab`); the external identity manifest binds the committed receipt path, payload/file hashes, git blob, and mode against resealing. Rust validates all N-, K-, and K²-scale outputs and native omission markers before stores; Stata performs only constant-size transaction and identity checks. The active receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260822T132813Z-d731b32`, payload seal `1558571563006bd3f5a1ce5a39b33f1f552256a83212a865d51cebdbdfe37279`, file SHA-256 `3cc24fa4fefa5917a74e8d89a1d03170df487a93db3141c35715a5bddaf86a1a`, git blob `f5317de6d199d4fa735f0282ce1299a5813e666d`, mode `100644`. Full Rust, Python, licensed-Stata, universal binary/loader, failure-injection, rollback/Break, repository, and receipt-verification gates pass. `public_activation=false`; performance is unmeasured and no speed/RSS claim is made. |
+| Hidden numeric OLS candidate projection | Implemented, candidate-bound, resealed at source `d58310783150e81739ea87eee868fd6bc8334b33`; developer-only and non-public | `_stfixest_ols_hidden_numeric_v1` projects exactly 30 executable cases from the frozen 40-case `ols_v1` semantic manifest through the hidden eclass helper. It captures result, sample, residual/error, certificate, store-failure, rollback, and actual-Break evidence while retaining ten explicit blockers. Every Stata capture and supporting gate loaded the identical isolated staged plugin (`sha256=f1e0cc0eb6f849e524cd8474e16de4e8b07b08bfe43d08b2b66f72464874605b`, embedded `d58310783150`); the external identity manifest binds the committed receipt path, payload/file hashes, git blob, and mode. Rust validates all N-, K-, and K²-scale outputs and native omission markers before stores; Stata performs only constant-size transaction and identity checks. The active receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T093209Z-d583107`, payload seal `85680710585bba7f12ebae534295057348bc63e67919dad254b47fe7a01f76dd`, file SHA-256 `f61ed80ecbaf2bea021e9ed62cafd5be2820d6a1e834e0ab61954a96542ed20e`, git blob `89fab138f4dbcdba802e3d527f106417af9c44c9`, mode `100644`. Full debug/release Rust and independent-oracle tests, the licensed 30-case capture, universal binary audit/loader, failure-injection, rollback/Break, and warning audit pass. `public_activation=false`; performance is unmeasured and no speed/RSS claim is made. |
 | Single-status-file rule | Complete | Commit `0ce3ad9` consolidated live project state into this file and repository checks reject duplicate status documents. |
 | Independent OLS oracle | Complete | Commits `6520b50` and `aa3b67a` add an independent explicit-dummy WLS/FWL, rank, VCE, and failure oracle; a separate scientific review found and verified fixes for three P1 defects. |
 | OLS reference-contract harness | Complete; baseline captured | Commits `01c4b560`, `178ca247`, `13cec3d`, `30d2841`, `10e96b6`, `db4bf0b`, and `3da43a4` provide an independently reviewed isolated reference closure, full semantic manifest, scientific-first performance gates, sealed evidence, estimator-only RSS measurement, and regression-tested semantic/private-mlib/benchmark-identity capture corrections. The sealed ARM64 macOS/Stata 18 reference receipt is `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260821T030000Z-a5181f9` (`sha256=6e861febcedfc8cc76570ee627c2010d4738750c732c600bc2cf0f29e88e8002`): 40 semantic plus 10 comparator benchmark cases passed receipt validation. |
 | GitHub Actions | Intentionally absent | Target-native local validation and recorded receipts are required. |
 
-## Active checkpoint — frozen hidden OLS projection reseal
+## Active checkpoint — final-sample categorical rebasing activation
 
 The exact pinned offline reference environment and licensed-Stata probe are
 source-bound and successful for `e81b942c0dc0b122258489a60c956cdbe0121512`.
 All 12 executable FE-interaction differential cases are accepted at exact-green
-source `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`. The next formally required
-gate is to reseal the frozen 40-case hidden OLS projection or repair the first
-concrete failure that prevents resealing. No complete estimator-parity claim is
-permitted until that projection is sealed.
+source `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`, and the unchanged frozen
+30-executable/10-blocked projection is resealed at exact source
+`d58310783150e81739ea87eee868fd6bc8334b33`. The next formally required gate is
+to reconcile the staged final-sample categorical rebase with current `main`,
+activate it in the hidden path, and rerun its independent and licensed gates.
 
 Independent explicit-dummy Rust oracles remain mandatory. A successful
 `reghdfe` comparison is necessary but cannot replace independent mathematical
@@ -116,10 +123,9 @@ checks. Public dispatch stays disabled throughout this gate.
 
 ## Current handoff / resume point
 
-Reseal the frozen 40-case hidden OLS projection, repairing its first concrete
-scientific, API, transaction, or projection failure if it is not green. After
-that, reconcile and activate final-sample categorical rebasing on `main`; do not
-bypass the staged validation contract.
+Reconcile and activate final-sample categorical rebasing on `main`; preserve
+the staged validation contract and rerun the relevant independent and licensed
+qualification before changing the frozen executable/blocker partition.
 
 ## Current blockers — exact frozen manifest inventory
 
@@ -127,7 +133,7 @@ The historical sealed candidate executed 30 of the frozen 40 semantic cases.
 Current main adds hidden categorical-interaction implementation, but the frozen
 projection has not been resealed; these ten cases therefore remain formally open:
 
-1. `multi_fe_interactions` — hidden implementation, successful pinned reference probe, and all 12 executable differential cases are exact-green; the resealed frozen projection is still required.
+1. `multi_fe_interactions` — hidden implementation, successful pinned reference probe, all 12 executable differential cases, and the frozen 30/10 projection reseal are exact-green; final-sample categorical rebasing and a later expanded projection remain required.
 2. `intercept_and_slope` — absorbed intercept plus slope.
 3. `slope_only_multiple` — multiple absorbed slope-only terms.
 4. `string_fe` — string-source ingestion.
@@ -148,16 +154,15 @@ macOS validation exists.
 
 ## Next evidence to record
 
-Current order of operations: reseal the frozen hidden OLS projection; then
-activate and revalidate final-sample rebasing.
+Current order of operations: reconcile, activate, and revalidate final-sample
+categorical rebasing; then expand the frozen executable projection only when
+the rebased hidden surface passes its independent and licensed gates.
 Historical bullets below remain useful detail but do not supersede this order.
 
-- Replace the active 30/10 candidate receipt only after the numeric categorical
-  FE-interaction gate passes independent core/oracle review, all failure and
-  allocation sweeps, the complete licensed 40-case projection, identical staged
-  plugin binding, rollback/Break fixtures, and external receipt-identity
-  verification. The next receipt must continue to say
-  `public_activation=false` and `performance=unmeasured`.
+- The active 30/10 candidate receipt now binds source `d58310783150`, the
+  identical staged plugin, the complete frozen partition, failure/allocation
+  sweeps, rollback/Break fixtures, and the external receipt identity. It
+  continues to state `public_activation=false` and `performance=unmeasured`.
 - The borrowed-adapter rereview is complete through `1b1954f`: it confirms
   exact wire ordering, one structural validation per unique topology source,
   constant-time repeated-term construction and pointer reuse without a code or
@@ -296,8 +301,9 @@ Historical bullets below remain useful detail but do not supersede this order.
   requested residual; all licensed hidden parity/transaction fixtures pass.
 - The hidden StFixest versus pinned-`reghdfe` differential for native numeric
   categorical FE interactions is sealed across all 12 accepted cases at
-  `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`. Reseal the frozen projection,
-  then continue afterward with
+  `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`, and the frozen projection is
+  resealed at `d58310783150e81739ea87eee868fd6bc8334b33`. Continue with the
+  final-sample categorical rebase, then with
   independently gated string, absorbed-slope, broader ordinary-factor/time-
   series, saved-output, and postestimation work. No checkpoint may enable the
   public estimator or bypass the FE, solver-certificate, VCE, DoF,
