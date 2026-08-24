@@ -555,6 +555,12 @@ generate int year = real(word("2020 2020 2021 2021 2020 2020 2021 2021 2020 . 20
 """
 
 
+def cascade_cluster_data_block(cascade_block: str) -> str:
+    return cascade_block + """generate int cluster_u = real(word("1 2 1 2 1 2 1 2 1 2 1 2", _n))
+generate int cluster_v = real(word("1 2 2 1 2 1 1 2 1 1 2 2", _n))
+"""
+
+
 def render_fixture(
     *,
     fixture_base: str,
@@ -568,6 +574,7 @@ def render_fixture(
     builders = {
         "target": target_block,
         "cascade": cascade_block,
+        "cascade_cluster": cascade_cluster_data_block(cascade_block),
         "missing": manual_missing_data_block(),
     }
     _, reference_cases = load_reference()
@@ -765,17 +772,17 @@ def add_cluster_gate() -> bool:
         (
             "nested_simple_cluster",
             "target",
-            "y c.x1, absorb(worker firm#year) vce(cluster firm)",
+            "y c.x1, absorb(worker firm#year) cluster(firm)",
         ),
         (
             "identical_interaction_cluster",
             "target",
-            "y c.x1, absorb(worker firm#year) vce(cluster firm#year)",
+            "y c.x1, absorb(worker firm#year) cluster(firm#year)",
         ),
         (
             "unrelated_interaction_cluster",
-            "cascade",
-            "y c.x, absorb(worker firm#year) vce(cluster cluster_u#cluster_v)",
+            "cascade_cluster",
+            "y c.x, absorb(worker firm#year) cluster(cluster_u#cluster_v)",
         ),
     )
     fixture.write_text(
@@ -802,7 +809,7 @@ def add_cluster_gate() -> bool:
 `unrelated_interaction_cluster` cases. It binds cluster identity, nesting,
 cluster-aware absorbed and residual DoF, covariance, sample, and residual
 transport for simple and declared-interaction clusters.""",
-        "nested_simple_cluster",
+        "estimate_ols_categorical_interaction_cluster_parity.do",
     )
     sha = commit_source(
         "test(reference): add clustered interaction differentials",

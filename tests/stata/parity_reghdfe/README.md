@@ -60,6 +60,12 @@ and residuals remain identical to the single-interaction case.
 missing-component sample exclusion, repeated and reordered interaction identity,
 and the exact none/first-pair absorbed-DoF policies.
 
+`estimate_ols_categorical_interaction_cluster_parity.do` consumes the
+`nested_simple_cluster`, `identical_interaction_cluster`, and
+`unrelated_interaction_cluster` cases. It binds cluster identity, nesting,
+cluster-aware absorbed and residual DoF, covariance, sample, and residual
+transport for simple and declared-interaction clusters.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need
