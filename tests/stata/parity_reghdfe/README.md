@@ -22,6 +22,11 @@ companion `target_keepsingletons` case. It checks the all-observation sample,
 zero singleton deletion, the expanded worker and interaction topology, iid
 coefficient/covariance output, and all 24 residuals.
 
+`estimate_ols_categorical_interaction_cascade_parity.do` consumes
+`tuple_second_fe_cascade`. It checks a non-collinear continuous slope through a
+four-observation singleton cascade, the retained interaction topology and DoF,
+the full iid covariance matrix, and retained-sample residuals.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need
