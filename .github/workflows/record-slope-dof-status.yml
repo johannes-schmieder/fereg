@@ -1,5 +1,4 @@
 name: Record absorbed-slope scientific decision in STATUS
-# status-update-trigger: 1
 
 on:
   push:
@@ -7,6 +6,9 @@ on:
       - main
     paths:
       - ".github/workflows/record-slope-dof-status.yml"
+  issues:
+    types:
+      - opened
 
 permissions:
   contents: write
@@ -17,7 +19,10 @@ concurrency:
 
 jobs:
   record:
-    if: github.repository == 'johannes-schmieder/StFixest'
+    if: >-
+      github.repository == 'johannes-schmieder/StFixest' &&
+      (github.event_name == 'push' ||
+       github.event.issue.title == 'INTERNAL: apply absorbed-slope STATUS update')
     runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
     timeout-minutes: 20
     steps:
