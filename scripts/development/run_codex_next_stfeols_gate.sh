@@ -43,13 +43,28 @@ scientific, transaction, parity, performance, and activation gate is actually
 complete and exact-green.
 
 Your task in this invocation is ONE coherent next gate toward completing
-stfeols, chosen from the current live repository state. First finish or repair
-any red FE-interaction differential/score-certificate work already on main. If
-all twelve sealed interaction-reference cases are exact-green, take the next
-formally required gate in STATUS.md: reseal the frozen hidden OLS projection or
-repair the first concrete failure that prevents that reseal. Do not skip ahead
-or weaken tolerances, sample rules, covariance behavior, DoF rules, solver
-certificates, rollback, or fail-closed contracts.
+stfeols, selected from the first incomplete machine-verifiable gate in the live
+STATUS.md. Do not redo an accepted gate merely because this prompt names an
+older checkpoint. At the expected current state, the twelve sealed numeric
+categorical FE-interaction cases and the unchanged frozen 30-executable/10-
+blocked hidden OLS projection have already been accepted exact-green. Verify
+that evidence first. If STATUS.md has advanced further, follow its newer active
+checkpoint instead.
+
+At the expected current checkpoint, reconcile and activate final-sample
+categorical model rebasing on main. Use the preserved staged implementation and
+validation contract as evidence, not as an excuse to bypass review. Inspect at
+least prepared_categorical_rebase.rs, prepared_categorical_data.rs,
+activate_final_sample_rebase.py, the staging/validation contract tests, and the
+stale validation workflow. Remove obsolete deleted-branch assumptions. Ensure
+that factor levels removed by authoritative singleton/sample compaction are
+handled on the final sample, that the compact public-to-original coefficient
+report plan is validated and transported correctly through every affected
+hidden iid/robust/clustered path, and that continuous-source storage identity,
+omission/base-level semantics, canonical ordering, allocation failure, and
+failure atomicity remain intact. Add focused independent tests for the actual
+activation. Do not broaden the frozen executable partition or enable public
+dispatch as part of this gate.
 
 Use maximum care and reasoning effort. Treat reghdfe comparison as necessary
 but not sufficient; preserve independent mathematical/oracle checks. Run all
@@ -57,13 +72,14 @@ relevant Rust, Python, C/loader, and licensed Stata tests locally on this runner
 Only call a source accepted when an exact-SHA receipt records overall, Rust, and
 licensed Stata success. Make small coherent commits directly to main and push
 after meaningful changes. Do not commit raw licensed logs, local paths, secrets,
-or restricted data. Update STATUS.md only from exact-green evidence.
+or restricted data. Update STATUS.md only after exact-green evidence exists,
+and bind it to the reachable accepted source and receipt.
 
 Stop this invocation after one coherent gate is exact-green and pushed, or at
 the first genuinely scientific/API/architectural ambiguity requiring the user.
 For an ordinary implementation or debugging decision, use best judgment and
 continue. Leave a concise final report naming source SHA, receipt path/commit,
-tests, and the exact next gate.
+tests, files changed, and the exact next gate.
 PROMPT
 
 args=(codex exec)
