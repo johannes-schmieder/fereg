@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "completed_at": "2026-08-24T09:26:05.094252+00:00",
+  "head_sha": "a667e1aa09ad257a917a0fc295c0e008d8695c9c",
+  "worktree_clean": true,
+  "transcript_committed": false,
+  "raw_logs_committed": false,
+  "scope": "one coherent next stfeols gate"
+}
