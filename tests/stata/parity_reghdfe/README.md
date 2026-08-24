@@ -28,6 +28,12 @@ four-observation singleton cascade, with `obs_id` 101--108 retained and
 109--112 deleted, plus the retained interaction topology and DoF, the full iid
 covariance matrix, and retained-sample residuals.
 
+`estimate_ols_categorical_interaction_fweight_parity.do` consumes
+`fweight_frequency_cascade`. It checks frequency-mass singleton semantics: a
+frequency of two on the last physical row prevents the cascade, all 12 physical
+rows remain while effective N and `sumweights` are 13, and coefficient,
+covariance, DoF, weight metadata, and residual output match the sealed payload.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need
