@@ -1,4 +1,5 @@
 name: Run one bounded coding-agent stfeols gate
+# bounded-gate-trigger: frozen-projection-expansion
 
 on:
   push:
