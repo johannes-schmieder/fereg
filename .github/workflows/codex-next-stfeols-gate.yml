@@ -1,5 +1,5 @@
 name: Run one bounded coding-agent stfeols gate
-# bounded-gate-trigger: option-a-positive-dof-fixture-1
+# bounded-gate-trigger: option-a-positive-dof-source-2
 
 on:
   push:
