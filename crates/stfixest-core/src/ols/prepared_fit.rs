@@ -2228,12 +2228,23 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         ));
     }
     let residual_norm = weighted_slice_norm(residuals, weights)?;
-    let response_scale = within_outcome_norm
-        .max(residual_norm)
-        .max(f64::MIN_POSITIVE);
-    let mut relative_infinity_norm = finite_score.infinity_scale / response_scale;
-    let response_square = response_scale * response_scale;
-    let mut relative_square_sum = finite_score.square_sum_scale / response_square;
+    let response_scale = within_outcome_norm.max(residual_norm);
+    let zero_response = response_scale == 0.0;
+    let (mut relative_infinity_norm, finite_relative_two_norm) = if zero_response {
+        if finite_score.infinity_scale == 0.0 && finite_score.square_sum_scale == 0.0 {
+            (0.0, 0.0)
+        } else {
+            return Err(invalid_data(
+                "prepared OLS finite score is nonzero for an exact-zero response",
+            ));
+        }
+    } else {
+        (
+            finite_score.infinity_scale / response_scale,
+            finite_score.square_sum_scale.sqrt() / response_scale,
+        )
+    };
+    let mut relative_square_sum = finite_relative_two_norm * finite_relative_two_norm;
     let mut moments = finite_score.moments;
     if !relative_infinity_norm.is_finite() || !relative_square_sum.is_finite() {
         return Err(invalid_data(
@@ -2278,7 +2289,7 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         } else {
             reference_norm
         };
-        let relative = if denominator == 0.0 {
+        let relative = if denominator == 0.0 || zero_response {
             0.0
         } else {
             let mut sum = 0.0_f64;
@@ -3604,10 +3615,10 @@ mod tests {
             .zip(&g)
             .map(|(within, group)| 10.0 * group + within)
             .collect::<Vec<_>>();
-        let prepared = prepared(&y, &[], &[], Some(&g), true, TestWeights::Unit);
+        let fe_prepared = prepared(&y, &[], &[], Some(&g), true, TestWeights::Unit);
         let mut control_reservation = InjectedReservation::default();
         let control = fit_with_controls(
-            &prepared,
+            &fe_prepared,
             PreparedOlsFitConfig::default(),
             &mut control_reservation,
             false,
@@ -3623,15 +3634,16 @@ mod tests {
             control.coefficients()[0]
                 .value
                 .expect("normalized intercept"),
-            weighted_mean_slice(&y, normalized_weights(&prepared).expect("weights")).expect("mean"),
+            weighted_mean_slice(&y, normalized_weights(&fe_prepared).expect("weights"))
+                .expect("mean"),
             1e-10,
         );
 
         // A structurally absorbed intercept can acquire a tiny nonzero within
         // norm from iterative MAP roundoff. Its score remains a raw intercept
         // moment, not a moment normalized by that numerical noise.
-        let weights = normalized_weights(&prepared).expect("weights");
-        let rhs = prepared.fit_build_rhs().expect("rhs");
+        let weights = normalized_weights(&fe_prepared).expect("weights");
+        let rhs = fe_prepared.fit_build_rhs().expect("rhs");
         let reference_norm =
             weighted_matrix_column_norm(&rhs, 1, weights).expect("reference intercept norm");
         let mut roundoff_residuals = control.residuals().to_vec();
@@ -3639,7 +3651,7 @@ mod tests {
             *residual += 1e-14;
         }
         let roundoff = certify_scores(
-            &prepared,
+            &fe_prepared,
             &roundoff_residuals,
             weights,
             &[reference_norm],
@@ -3653,10 +3665,63 @@ mod tests {
         assert!(roundoff.passed);
         assert!(roundoff.relative_infinity_norm < 1e-12);
 
+        // Exact-zero outcomes and residuals have a mathematically exact zero
+        // score even though no positive response normalization exists. A
+        // nonzero finite-coordinate score under the same response must remain
+        // fatal instead of being hidden by a numerical floor.
+        let zero_outcome = vec![0.0; 6];
+        let varying = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
+        let zero_response = prepared(
+            &zero_outcome,
+            &[varying],
+            &[false],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let zero_weights = normalized_weights(&zero_response).expect("zero-response weights");
+        let exact_zero = certify_scores(
+            &zero_response,
+            &zero_outcome,
+            zero_weights,
+            &[1.0],
+            &[1.0],
+            FiniteScoreDraft {
+                infinity_scale: 0.0,
+                square_sum_scale: 0.0,
+                moments: 1,
+            },
+            &[PreparedOlsFitStatus::Kept],
+            0.0,
+            PreparedOlsFitConfig::default().score_tolerance,
+        )
+        .expect("exact-zero response score certificate");
+        assert!(exact_zero.passed);
+        assert_eq!(exact_zero.relative_infinity_norm, 0.0);
+        assert_eq!(exact_zero.relative_two_norm, 0.0);
+
+        let nonzero_error = certify_scores(
+            &zero_response,
+            &zero_outcome,
+            zero_weights,
+            &[1.0],
+            &[1.0],
+            FiniteScoreDraft {
+                infinity_scale: f64::MIN_POSITIVE,
+                square_sum_scale: 0.0,
+                moments: 1,
+            },
+            &[PreparedOlsFitStatus::Kept],
+            0.0,
+            PreparedOlsFitConfig::default().score_tolerance,
+        )
+        .expect_err("nonzero score under an exact-zero response must fail");
+        assert_eq!(nonzero_error.code, ErrorCode::InvalidData);
+
         let mut reservation = InjectedReservation::default();
         assert_eq!(
             fit_with_controls(
-                &prepared,
+                &fe_prepared,
                 PreparedOlsFitConfig::default(),
                 &mut reservation,
                 false,
