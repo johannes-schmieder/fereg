@@ -317,6 +317,16 @@ impl<'a> NormalizedWeights<'a> {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct FiniteScoreDraft {
+    /// Largest finite-coordinate score after dividing out the within-X norm.
+    /// The final response scale is applied only after the returned residual is
+    /// independently certified against the FE span.
+    infinity_scale: f64,
+    square_sum_scale: f64,
+    moments: usize,
+}
+
 #[derive(Debug)]
 struct FiniteBreadDraft {
     generated_columns: Vec<usize>,
@@ -345,6 +355,7 @@ struct QrFit {
     dropped: Vec<usize>,
     rank: usize,
     certificate: PreparedOlsRankCertificate,
+    finite_score: FiniteScoreDraft,
     bread: Option<FiniteBreadDraft>,
 }
 
@@ -433,19 +444,12 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         &mut within,
         weights,
         &reference_norms,
+        &score_norms,
         config,
         reservation,
+        perturbations.first_coefficient,
         perturbations.finite_bread,
     )?;
-    if perturbations.first_coefficient {
-        let coefficient = qr
-            .generated_coefficients
-            .iter_mut()
-            .flatten()
-            .next()
-            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
-        *coefficient += 0.25;
-    }
 
     let mut raw_residuals = reserved_filled(
         reservation,
@@ -508,6 +512,7 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         weights,
         &reference_norms,
         &score_norms,
+        qr.finite_score,
         &qr.generated_statuses,
         within_outcome_norm,
         config.score_tolerance,
@@ -655,8 +660,10 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     within: &mut DenseMatrix,
     weights: NormalizedWeights<'_>,
     reference_norms: &[f64],
+    score_norms: &[f64],
     config: PreparedOlsFitConfig,
     reservation: &mut R,
+    perturb_first_coefficient: bool,
     perturb_bread: bool,
 ) -> Result<QrFit> {
     let nrows = within.nrows();
@@ -664,7 +671,10 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let expected_columns = generated_columns
         .checked_add(1)
         .ok_or_else(|| allocation("prepared OLS absorbed RHS column count overflows"))?;
-    if within.ncols() != expected_columns || reference_norms.len() != generated_columns {
+    if within.ncols() != expected_columns
+        || reference_norms.len() != generated_columns
+        || score_norms.len() != generated_columns
+    {
         return Err(invalid_argument(
             "prepared OLS absorbed RHS dimensions are inconsistent",
         ));
@@ -783,6 +793,33 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 ));
             }
             within[(row, column + 1)] = scaled;
+        }
+    }
+
+    let mut standardized_rhs = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized RHS cross-products",
+    )?;
+    for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+        let matrix_column = generated
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared OLS standardized RHS column overflows"))?;
+        let mut sum = 0.0_f64;
+        let mut correction = 0.0_f64;
+        for row in 0..nrows {
+            compensated_add(
+                within[(row, matrix_column)] * within[(row, 0)],
+                &mut sum,
+                &mut correction,
+            )?;
+        }
+        standardized_rhs[position] = sum + correction;
+        if !standardized_rhs[position].is_finite() {
+            return Err(invalid_data(
+                "prepared OLS standardized RHS cross-product is not finite",
+            ));
         }
     }
 
@@ -948,6 +985,14 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     for &column in &candidate_columns[rank..] {
         generated_statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
     }
+    if perturb_first_coefficient {
+        let coefficient = generated_coefficients
+            .iter_mut()
+            .flatten()
+            .next()
+            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
+        *coefficient += 0.25;
+    }
     for (column, status) in generated_statuses.iter().copied().enumerate() {
         if status != PreparedOlsFitStatus::Kept {
             push_reserved(
@@ -972,6 +1017,15 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             "prepared OLS QR condition proxy is not finite",
         ));
     }
+    let finite_score = build_finite_score_draft(
+        &canonical_candidates,
+        &standardized_gram,
+        &standardized_rhs,
+        &generated_coefficients,
+        &generated_statuses,
+        reference_norms,
+        score_norms,
+    )?;
     let bread = build_finite_bread_draft(
         prepared,
         FiniteBreadInputs {
@@ -999,8 +1053,96 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             condition_proxy,
             passed: true,
         },
+        finite_score,
         bread: Some(bread),
     })
+}
+
+fn build_finite_score_draft(
+    canonical_candidates: &[usize],
+    standardized_gram: &[f64],
+    standardized_rhs: &[f64],
+    generated_coefficients: &[Option<f64>],
+    generated_statuses: &[PreparedOlsFitStatus],
+    reference_norms: &[f64],
+    score_norms: &[f64],
+) -> Result<FiniteScoreDraft> {
+    let candidate_count = canonical_candidates.len();
+    let candidate_square = checked_square(
+        candidate_count,
+        "prepared OLS finite-score Gram dimensions overflow usize",
+    )?;
+    if standardized_gram.len() != candidate_square
+        || standardized_rhs.len() != candidate_count
+        || generated_coefficients.len() != generated_statuses.len()
+        || reference_norms.len() != generated_statuses.len()
+        || score_norms.len() != generated_statuses.len()
+    {
+        return Err(invalid_argument(
+            "prepared OLS finite-score dimensions are inconsistent",
+        ));
+    }
+
+    let mut draft = FiniteScoreDraft::default();
+    for (left, generated) in canonical_candidates.iter().copied().enumerate() {
+        let status = generated_statuses[generated];
+        if !matches!(
+            status,
+            PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NumericallyRankDeficient
+        ) {
+            return Err(invalid_argument(
+                "prepared OLS finite-score candidate has a non-finite status",
+            ));
+        }
+        let reference_norm = reference_norms[generated];
+        let score_norm = score_norms[generated];
+        if !reference_norm.is_finite()
+            || reference_norm <= 0.0
+            || !score_norm.is_finite()
+            || score_norm <= 0.0
+        {
+            return Err(invalid_data(
+                "prepared OLS finite-score regressor scale is not finite and positive",
+            ));
+        }
+
+        let mut fitted = 0.0_f64;
+        let mut correction = 0.0_f64;
+        for (right, other_generated) in canonical_candidates.iter().copied().enumerate() {
+            if let Some(coefficient) = generated_coefficients[other_generated] {
+                let standardized_coefficient = coefficient * reference_norms[other_generated];
+                if !standardized_coefficient.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS standardized coefficient is not finite",
+                    ));
+                }
+                compensated_add(
+                    standardized_gram[left * candidate_count + right] * standardized_coefficient,
+                    &mut fitted,
+                    &mut correction,
+                )?;
+            }
+        }
+        let standardized_score = (standardized_rhs[left] - (fitted + correction)).abs();
+        let scale = standardized_score * reference_norm / score_norm;
+        if !scale.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS finite-score normal-equation scale is not finite",
+            ));
+        }
+        draft.infinity_scale = draft.infinity_scale.max(scale);
+        draft.square_sum_scale = scale.mul_add(scale, draft.square_sum_scale);
+        if !draft.square_sum_scale.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS finite-score two-norm scale is not finite",
+            ));
+        }
+        draft.moments = draft
+            .moments
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared OLS finite-score moment count overflows"))?;
+    }
+    Ok(draft)
 }
 
 fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -2068,6 +2210,7 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
     weights: NormalizedWeights<'_>,
     reference_norms: &[f64],
     score_norms: &[f64],
+    finite_score: FiniteScoreDraft,
     statuses: &[PreparedOlsFitStatus],
     within_outcome_norm: f64,
     tolerance: f64,
@@ -2087,9 +2230,15 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
     let response_scale = within_outcome_norm
         .max(residual_norm)
         .max(f64::MIN_POSITIVE);
-    let mut relative_infinity_norm = 0.0_f64;
-    let mut relative_square_sum = 0.0_f64;
-    let mut moments = 0_usize;
+    let mut relative_infinity_norm = finite_score.infinity_scale / response_scale;
+    let response_square = response_scale * response_scale;
+    let mut relative_square_sum = finite_score.square_sum_scale / response_square;
+    let mut moments = finite_score.moments;
+    if !relative_infinity_norm.is_finite() || !relative_square_sum.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS finite-score response normalization is not finite",
+        ));
+    }
     for (column, ((reference_norm, score_norm), status)) in reference_norms
         .iter()
         .copied()
@@ -2113,7 +2262,12 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         // still keeps its raw score moment, but that moment uses the raw intercept
         // norm instead of a numerically nonzero MAP-noise norm. Finite
         // rank-deficient coordinates remain checked on their within scale.
-        if status == PreparedOlsFitStatus::CollinearWithFixedEffects {
+        if matches!(
+            status,
+            PreparedOlsFitStatus::Kept
+                | PreparedOlsFitStatus::NumericallyRankDeficient
+                | PreparedOlsFitStatus::CollinearWithFixedEffects
+        ) {
             continue;
         }
         let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
@@ -3489,6 +3643,7 @@ mod tests {
             weights,
             &[reference_norm],
             &[reference_norm * 1e-14],
+            FiniteScoreDraft::default(),
             &[PreparedOlsFitStatus::NormalizedAbsorbedIntercept],
             1.0,
             PreparedOlsFitConfig::default().score_tolerance,
