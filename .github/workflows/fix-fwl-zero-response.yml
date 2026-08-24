@@ -91,3 +91,5 @@ jobs:
             sleep 2
           done
           exit 1
+
+# Retriggered after the licensed qualification runner became idle.
