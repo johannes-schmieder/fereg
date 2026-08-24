@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "crates/stfixest-plugin/src"
 STATA = ROOT / "stata/_stfixest_estimate_ols_test.ado"
+PROFILES = ROOT / "ci/stata_profiles.json"
 
 
 class CategoricalHiddenTransportContractTests(unittest.TestCase):
@@ -62,6 +64,16 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         self.assertIn("absorbed slope is not yet qualified for weights", stata)
         self.assertIn("absorbed slope currently requires pairwise absorbed DoF", stata)
         self.assertNotIn("only single-source intercept fixed effects", stata)
+
+    def test_licensed_slope_fixture_is_in_every_qualification_profile(self):
+        fixture = (
+            "tests/stata/parity_reghdfe/"
+            "estimate_ols_intercept_slope_parity.do"
+        )
+        profiles = json.loads(PROFILES.read_text(encoding="utf-8"))["profiles"]
+        for name in ("quick", "differential", "full"):
+            with self.subTest(profile=name):
+                self.assertIn(fixture, profiles[name]["fixtures"])
 
 
 if __name__ == "__main__":
