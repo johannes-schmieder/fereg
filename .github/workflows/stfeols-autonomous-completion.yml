@@ -1,0 +1,53 @@
+name: Run exact-green stfeols completion orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      phases:
+        description: Maximum one-gate coding phases
+        required: true
+        default: "24"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stfeols-autonomous-completion.yml"
+      - "scripts/development/stfeols_autonomous_completion.py"
+
+concurrency:
+  group: stfixest-completion-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
+  STFIXEST_COMPLETION_PHASES: ${{ inputs.phases || '24' }}
+
+jobs:
+  complete:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Run guarded completion phases
+        shell: bash
+        run: /usr/bin/python3 scripts/development/stfeols_autonomous_completion.py
+      - name: Upload private diagnostic logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: stfeols-completion-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .ci/stata/run/
+            .ci/dev/stfeols-completion-orchestrator.json
+          if-no-files-found: ignore
+          retention-days: 30
