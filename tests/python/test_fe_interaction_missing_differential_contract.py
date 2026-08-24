@@ -105,8 +105,8 @@ class FeInteractionMissingDifferentialContractTests(unittest.TestCase):
             dof_entries[(2, 1)],
             ("1.firm#1.year", "+1.8000000000000X+001"),
         )
-        self.assertEqual(dof_entries[(2, 2)][1], "+1.0000000000000X+000")
-        self.assertEqual(dof_entries[(2, 3)][1], "+1.0000000000000X+001")
+        self.assertEqual(dof_entries[(2, 2)][1], "+1.0000000000000X+001")
+        self.assertEqual(dof_entries[(2, 3)][1], "+1.0000000000000X+000")
 
         observations = self.case["observations"]
         sample_by_id = {
@@ -176,6 +176,8 @@ class FeInteractionMissingDifferentialContractTests(unittest.TestCase):
             "+1.8ccccccccccd1X+000",
             "+1.47db97530eca8X+002",
             "+1.47ae147ae1493X-009",
+            "e(dof_table)[2,2] == 2",
+            "e(dof_table)[2,3] == 1",
             "obs_id == 212",
             "1.worker 1.firm#1.year",
             "missing(__stfx_reference_resid) if !__stfx_expected_sample",

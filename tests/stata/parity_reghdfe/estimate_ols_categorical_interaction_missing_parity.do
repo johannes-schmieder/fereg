@@ -73,8 +73,8 @@ assert e(dof_table)[1,3] == 3
 assert e(dof_table)[1,4] == 0
 assert e(dof_table)[1,5] == 0
 assert e(dof_table)[2,1] == 3
-assert e(dof_table)[2,2] == 1
-assert e(dof_table)[2,3] == 2
+assert e(dof_table)[2,2] == 2
+assert e(dof_table)[2,3] == 1
 assert e(dof_table)[2,4] == 0
 assert e(dof_table)[2,5] == 0
 
