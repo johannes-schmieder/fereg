@@ -1,11 +1,11 @@
 {
-  "completed_at": "2026-08-24T10:32:49.828379Z",
+  "completed_at": "2026-08-24T10:50:01.459626Z",
   "driver": "stfixest-fixtures",
-  "duration_seconds": 50.236,
+  "duration_seconds": 53.125,
   "failure_detail": null,
   "failure_kind": null,
   "platform": "Unix; Mac (Apple Silicon)",
-  "plugin_sha256": "3f57100d119e50b41e012da9e8bf13fe154bc3d2ca96604c0c15c01cc3b8a0a4",
+  "plugin_sha256": "3d45182d8dc011b6d75221ddf118034c163664f6574332be2b6903a57ca4745d",
   "process_rc": 0,
   "profile": "quick",
   "ref": "refs/heads/main",
@@ -26,7 +26,7 @@
   "rust_rc": 0,
   "rust_status": "success",
   "schema_version": 1,
-  "started_at": "2026-08-24T10:31:59.592847Z",
+  "started_at": "2026-08-24T10:49:08.334833Z",
   "stata_bundle_version": "18.0.130",
   "stata_edition": "MP",
   "stata_executable": "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
@@ -35,7 +35,7 @@
   "stata_status": "success",
   "stata_version": "18",
   "status": "success",
-  "tested_sha": "0b84a6b34cd1ca28a97460fe15e112c5f9945f5b",
+  "tested_sha": "f5d3a2964ef3a73e8b82d21dc5f9e9e56d1fb00b",
   "tests_failed": 0,
   "tests_passed": 21
 }
