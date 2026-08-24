@@ -29,10 +29,12 @@ may be retained. The active semantic case, however, must use the deterministic
 reference. The original 24-row over-absorbed case is a required
 insufficient-observations failure test.
 
-The signed result type and the 32-executable/8-blocked receipt produced by the
-superseded route are historical evidence only. Until option A is exact-green,
-the active accepted candidate remains 31 executable / 9 blocked at
-`f61fee923db2bd3544d457dfe50de8117d27adda`.
+The signed result type and its receipts are historical evidence only. The
+active option-A source projects 32 executable / 8 blocked cases and binds the
+positive-DoF comparator at
+`benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d`.
+This source is not accepted until its own exact-SHA Rust and licensed-Stata
+receipts are reachable; `STATUS.md` records only accepted evidence.
 
 ## Pinned absorbed-intercept and bread contract
 

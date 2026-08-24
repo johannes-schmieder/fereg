@@ -117,7 +117,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             BLOCKERS,
         )
         manifest = projected_manifest(projection)
-        self.assertEqual(len(manifest["semantic_cases"]), 31)
+        self.assertEqual(len(manifest["semantic_cases"]), 32)
         self.assertFalse(manifest["benchmark_cases"])
         for case in manifest["semantic_cases"]:
             self.assertTrue(case["command"].startswith("_fereg_ols_hidden_numeric_v1 "))
@@ -142,10 +142,17 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         self.assertEqual(
             interaction["capture"]["matrices"][:3], ["b", "V", "dof_table"]
         )
-        self.assertNotIn(
-            "intercept_and_slope",
-            {case["id"] for case in manifest["semantic_cases"]},
+        slope = next(
+            case
+            for case in manifest["semantic_cases"]
+            if case["id"] == "intercept_and_slope"
         )
+        self.assertEqual(
+            slope["command"],
+            "_fereg_ols_hidden_numeric_v1 y c.x1, "
+            "absorb(firm##c.time worker)",
+        )
+        self.assertEqual(slope["dataset"], "ols_intercept_slope_positive_dof")
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(
