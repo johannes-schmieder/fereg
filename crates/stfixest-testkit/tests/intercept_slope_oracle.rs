@@ -1,9 +1,9 @@
 use stfixest_core::{
-    fit_prepared_categorical_ols_signed_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry,
-    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
+    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use stfixest_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -12,7 +12,138 @@ use stfixest_testkit::explicit_ols::{
 const TOLERANCE: f64 = 2e-8;
 
 #[test]
-fn frozen_intercept_slope_case_matches_explicit_rank_and_pinned_signed_dof() {
+fn positive_dof_intercept_slope_case_matches_explicit_dummy_oracle() {
+    let mut y = Vec::with_capacity(48);
+    let mut x1 = Vec::with_capacity(48);
+    let mut firm = Vec::with_capacity(48);
+    let mut worker = Vec::with_capacity(48);
+    let mut time = Vec::with_capacity(48);
+    for firm_value in 1_u32..=4 {
+        for worker_value in 1_u32..=6 {
+            for time_value in 0_u32..=1 {
+                let x_value = firm_value * worker_value
+                    + 2 * worker_value * time_value
+                    + firm_value * firm_value;
+                let error = i64::from((7 * firm_value + 3 * worker_value + 5 * time_value) % 7) - 3;
+                let outcome = 10_i64
+                    + 3 * i64::from(firm_value)
+                    + (2 * i64::from(firm_value) - 1) * i64::from(time_value)
+                    + 2 * i64::from(worker_value)
+                    + 3 * i64::from(x_value)
+                    + error;
+                y.push(outcome as f64);
+                x1.push(f64::from(x_value));
+                firm.push(firm_value - 1);
+                worker.push(worker_value - 1);
+                time.push(f64::from(time_value));
+            }
+        }
+    }
+
+    let prepared = prepare_case(&y, &x1, &firm, &time, &worker);
+    let result = fit_prepared_categorical_ols_unadjusted_map(
+        &prepared,
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("certified positive-DoF intercept-slope fit");
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome: y.clone(),
+        regressors: vec![x1.clone()],
+        effects: vec![
+            DummyEffect::new(firm, 4, true, vec![time]).expect("firm intercept and slope"),
+            DummyEffect::new(worker, 6, true, Vec::new()).expect("worker intercept"),
+        ],
+        weights: OracleWeights::Unit,
+        clusters: Vec::new(),
+    })
+    .expect("independent positive-DoF explicit-dummy oracle");
+
+    assert!(result.fit().absorption_report().certified());
+    assert!(result.fit().residual_absorption_report().certified());
+    assert!(result.fit().rank_certificate().passed);
+    assert!(result.fit().score_certificate().passed);
+    assert!(result.fit().bread().certificate().passed);
+    assert!(result.certificate().passed);
+    assert_eq!(result.fit().finite_rank(), 1);
+    assert_eq!(
+        result.fit().coefficients()[0].status,
+        PreparedOlsFitStatus::Kept
+    );
+    assert_eq!(
+        result.fit().coefficients()[1].status,
+        PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+    );
+    assert_eq!(oracle.explicit_dummy_columns, 14);
+    assert_eq!(oracle.explicit_dummy_rank, 13);
+    assert_eq!(oracle.finite_regressor_rank, 1);
+    assert_eq!(oracle.model_rank, 14);
+    assert_eq!(oracle.residual_degrees_of_freedom, 34);
+    assert_close(
+        result.fit().coefficients()[0]
+            .value
+            .expect("x1 coefficient"),
+        oracle.coefficients[0].expect("oracle x1 coefficient"),
+    );
+    assert_close(
+        oracle.coefficients[0].expect("oracle coefficient"),
+        47.0 / 15.0,
+    );
+    let mean_y = y.iter().sum::<f64>() / y.len() as f64;
+    let mean_x = x1.iter().sum::<f64>() / x1.len() as f64;
+    assert_close(
+        result.fit().coefficients()[1].value.expect("intercept"),
+        mean_y - mean_x * oracle.coefficients[0].expect("oracle coefficient"),
+    );
+    assert_close(oracle.weighted_rss, 1_141.0 / 15.0);
+    assert_close(result.statistics().rss, oracle.weighted_rss);
+    assert_slice_close(result.fit().residuals(), &oracle.residuals);
+
+    let absorbed = result.absorbed_dof();
+    assert_eq!(absorbed.effects.len(), 3);
+    assert_eq!(absorbed.initial_categories, 14);
+    assert_eq!(absorbed.redundant_categories, 1);
+    assert_eq!(absorbed.absorbed_rank, 13);
+    assert_eq!(
+        absorbed
+            .effects
+            .iter()
+            .map(|row| (row.categories, row.redundant, row.coefficients))
+            .collect::<Vec<_>>(),
+        vec![(4, 0, 4), (4, 0, 4), (6, 1, 5)]
+    );
+    assert!(absorbed.effects[0].slope_source.is_none());
+    assert!(absorbed.effects[1].slope_source.is_some());
+    assert!(absorbed.effects[2].slope_source.is_none());
+    assert!(!absorbed.effects[1].redundancy_exact);
+    assert!(absorbed.is_approximate);
+    let dof = result.dof();
+    assert_eq!(dof.finite_rank, 1);
+    assert_eq!(dof.absorbed_rank, 13);
+    assert_eq!(dof.model_rank, 14);
+    assert_eq!(dof.residual_dof, 34);
+    assert!(dof.absorbed_rank_is_approximate);
+
+    let finite_bread = oracle.bread[(0, 0)];
+    let expected_bread = [
+        finite_bread,
+        -finite_bread * mean_x,
+        -finite_bread * mean_x,
+        1.0 / y.len() as f64 + mean_x * mean_x * finite_bread,
+    ];
+    assert_slice_close(result.fit().bread().values(), &expected_bread);
+    let reference_scale = oracle.weighted_rss / dof.residual_dof as f64;
+    let expected_covariance = expected_bread.map(|value| reference_scale * value);
+    assert_slice_close(result.covariance().values(), &expected_covariance);
+    assert!(result.covariance().values()[0] >= 0.0);
+    assert!(result.covariance().values()[3] >= 0.0);
+    assert_close(
+        result.statistics().root_mean_squared_error,
+        reference_scale.sqrt(),
+    );
+}
+
+#[test]
+fn old_overabsorbed_intercept_slope_case_fails_before_inference_publication() {
     let y = vec![
         4.20, 4.95, 5.10, 5.65, 5.90, 6.55, 6.70, 7.35, 7.60, 8.05, 8.50, 8.85, 3.80, 4.45, 4.90,
         5.25, 5.80, 6.15, 6.60, 6.95, 7.40, 7.85, 8.20, 8.75,
@@ -32,56 +163,15 @@ fn frozen_intercept_slope_case_matches_explicit_rank_and_pinned_signed_dof() {
         2.0, 3.0, 0.0, 1.0, 2.0, 3.0,
     ];
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker);
-    let result = fit_prepared_categorical_ols_signed_unadjusted_map(
+    let error = fit_prepared_categorical_ols_unadjusted_map(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
     )
-    .expect("certified frozen intercept-slope fit");
-
-    assert!(result.fit().absorption_report().certified());
-    assert!(result.fit().residual_absorption_report().certified());
-    assert!(result.fit().rank_certificate().passed);
-    assert!(result.fit().score_certificate().passed);
-    assert!(result.fit().bread().certificate().passed);
-    assert!(result.certificate().passed);
-    assert_eq!(result.fit().finite_rank(), 0);
-    assert_eq!(
-        result.fit().coefficients()[0].status,
-        PreparedOlsFitStatus::CollinearWithFixedEffects
-    );
-    assert_eq!(
-        result.fit().coefficients()[1].status,
-        PreparedOlsFitStatus::NormalizedAbsorbedIntercept
-    );
-    assert_close(
-        result.fit().coefficients()[1].value.expect("intercept"),
-        6.479_166_666_666_667,
-    );
-
-    let absorbed = result.absorbed_dof();
-    assert_eq!(absorbed.effects.len(), 3);
-    assert_eq!(absorbed.initial_categories, 28);
-    assert_eq!(absorbed.redundant_categories, 2);
-    assert_eq!(absorbed.absorbed_rank, 26);
-    assert_eq!(
-        absorbed
-            .effects
-            .iter()
-            .map(|row| (row.categories, row.redundant, row.coefficients))
-            .collect::<Vec<_>>(),
-        vec![(8, 0, 8), (8, 0, 8), (12, 2, 10)]
-    );
-    assert!(absorbed.effects[0].slope_source.is_none());
-    assert!(absorbed.effects[1].slope_source.is_some());
-    assert!(absorbed.effects[2].slope_source.is_none());
-    assert!(absorbed.effects[0].redundancy_exact);
-    assert!(!absorbed.effects[1].redundancy_exact);
-    assert!(absorbed.effects[2].redundancy_exact);
-    assert!(absorbed.is_approximate);
-    let dof = result.dof();
-    assert_eq!(dof.model_rank, 26);
-    assert_eq!(dof.residual_dof, -2);
-    assert!(dof.absorbed_rank_is_approximate);
+    .expect_err("nonpositive conservative residual DoF must fail closed");
+    assert_eq!(error.code, ErrorCode::InsufficientObservations);
+    assert!(error
+        .message
+        .contains("no positive residual degrees of freedom"));
 
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: y,
@@ -101,13 +191,6 @@ fn frozen_intercept_slope_case_matches_explicit_rank_and_pinned_signed_dof() {
     assert_eq!(oracle.residual_degrees_of_freedom, 2);
     assert!(oracle.coefficients[0].is_none());
     assert_close(oracle.weighted_rss, 0.02);
-    assert_close(result.statistics().rss, oracle.weighted_rss);
-    assert_slice_close(result.fit().residuals(), &oracle.residuals);
-    assert_eq!(result.covariance().values().len(), 1);
-    assert_close(
-        result.covariance().values()[0],
-        oracle.weighted_rss / -2.0 / 24.0,
-    );
 }
 
 fn prepare_case(

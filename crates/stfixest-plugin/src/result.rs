@@ -2,15 +2,13 @@ use stfixest_core::error::{ErrorCode, Result, StFixestError};
 use stfixest_core::fe::{FeSolverKind, SolveReport, SolveStopReason};
 use stfixest_core::ols::{
     CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
-    CertifiedPreparedCategoricalOlsSignedUnadjusted, CertifiedPreparedCategoricalOlsUnadjusted,
-    CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
-    CertifiedPreparedOlsUnadjusted, PreparedOlsAbsorbedDofEffectIdentity,
-    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsClusterSubsetCertificate,
-    PreparedOlsClusteredCertificate, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
-    PreparedOlsClusteredPsdState, PreparedOlsFitStatistics, PreparedOlsFitStatus,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport, PreparedOlsRobustCertificate,
-    PreparedOlsSignedFitStatistics, PreparedOlsSignedResidualDofReport,
-    PreparedOlsSignedUnadjustedCertificate, PreparedOlsUnadjustedCertificate,
+    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
+    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
+    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate,
+    PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
+    PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdState,
+    PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
+    PreparedOlsResidualDofReport, PreparedOlsRobustCertificate, PreparedOlsUnadjustedCertificate,
 };
 use stfixest_core::protocol::OLS_RESULT_WIRE_VERSION;
 use stfixest_core::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofReport};
@@ -55,12 +53,6 @@ enum PreparedAbsorbedDofData<'a> {
     Categorical(&'a CategoricalTopologyDofReport),
 }
 
-#[derive(Debug, Clone, Copy)]
-enum PreparedFitStatisticsData {
-    Standard(PreparedOlsFitStatistics),
-    Signed(PreparedOlsSignedFitStatistics),
-}
-
 impl PreparedAbsorbedDofData<'_> {
     fn effects_len(self) -> usize {
         match self {
@@ -96,7 +88,6 @@ pub(crate) enum CertifiedOlsInference<'a> {
     Robust(&'a CertifiedPreparedOlsRobust),
     Clustered(&'a CertifiedPreparedOlsClustered),
     CategoricalIid(&'a CertifiedPreparedCategoricalOlsUnadjusted),
-    CategoricalSignedIid(&'a CertifiedPreparedCategoricalOlsSignedUnadjusted),
     CategoricalRobust(&'a CertifiedPreparedCategoricalOlsRobust),
     CategoricalClustered(&'a CertifiedPreparedCategoricalOlsClustered),
 }
@@ -104,9 +95,7 @@ pub(crate) enum CertifiedOlsInference<'a> {
 impl<'a> CertifiedOlsInference<'a> {
     pub(crate) const fn kind(&self) -> OlsVceKind {
         match self {
-            Self::Iid(_) | Self::CategoricalIid(_) | Self::CategoricalSignedIid(_) => {
-                OlsVceKind::Iid
-            }
+            Self::Iid(_) | Self::CategoricalIid(_) => OlsVceKind::Iid,
             Self::Robust(_) | Self::CategoricalRobust(_) => OlsVceKind::Robust,
             Self::Clustered(_) | Self::CategoricalClustered(_) => OlsVceKind::Clustered,
         }
@@ -118,7 +107,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => value.fit(),
             Self::Clustered(value) => value.fit(),
             Self::CategoricalIid(value) => value.fit(),
-            Self::CategoricalSignedIid(value) => value.fit(),
             Self::CategoricalRobust(value) => value.fit(),
             Self::CategoricalClustered(value) => value.fit(),
         }
@@ -130,9 +118,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
             Self::Clustered(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
             Self::CategoricalIid(value) => {
-                PreparedAbsorbedDofData::Categorical(value.absorbed_dof())
-            }
-            Self::CategoricalSignedIid(value) => {
                 PreparedAbsorbedDofData::Categorical(value.absorbed_dof())
             }
             Self::CategoricalRobust(value) => {
@@ -150,27 +135,19 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => value.weights(),
             Self::Clustered(value) => value.weights(),
             Self::CategoricalIid(value) => value.weights(),
-            Self::CategoricalSignedIid(value) => value.weights(),
             Self::CategoricalRobust(value) => value.weights(),
             Self::CategoricalClustered(value) => value.weights(),
         }
     }
 
-    fn statistics(&self) -> PreparedFitStatisticsData {
+    fn statistics(&self) -> PreparedOlsFitStatistics {
         match self {
-            Self::Iid(value) => PreparedFitStatisticsData::Standard(value.statistics()),
-            Self::Robust(value) => PreparedFitStatisticsData::Standard(value.statistics()),
-            Self::Clustered(value) => PreparedFitStatisticsData::Standard(value.statistics()),
-            Self::CategoricalIid(value) => PreparedFitStatisticsData::Standard(value.statistics()),
-            Self::CategoricalSignedIid(value) => {
-                PreparedFitStatisticsData::Signed(value.statistics())
-            }
-            Self::CategoricalRobust(value) => {
-                PreparedFitStatisticsData::Standard(value.statistics())
-            }
-            Self::CategoricalClustered(value) => {
-                PreparedFitStatisticsData::Standard(value.statistics())
-            }
+            Self::Iid(value) => value.statistics(),
+            Self::Robust(value) => value.statistics(),
+            Self::Clustered(value) => value.statistics(),
+            Self::CategoricalIid(value) => value.statistics(),
+            Self::CategoricalRobust(value) => value.statistics(),
+            Self::CategoricalClustered(value) => value.statistics(),
         }
     }
 
@@ -180,7 +157,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => value.covariance_coordinates(),
             Self::Clustered(value) => value.covariance_coordinates(),
             Self::CategoricalIid(value) => value.covariance_coordinates(),
-            Self::CategoricalSignedIid(value) => value.covariance_coordinates(),
             Self::CategoricalRobust(value) => value.covariance_coordinates(),
             Self::CategoricalClustered(value) => value.covariance_coordinates(),
         }
@@ -192,7 +168,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => value.covariance().values(),
             Self::Clustered(value) => value.covariance().values(),
             Self::CategoricalIid(value) => value.covariance().values(),
-            Self::CategoricalSignedIid(value) => value.covariance().values(),
             Self::CategoricalRobust(value) => value.covariance().values(),
             Self::CategoricalClustered(value) => value.covariance().values(),
         }
@@ -204,15 +179,7 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Robust(value) => Some(value.dof()),
             Self::CategoricalIid(value) => Some(value.dof()),
             Self::CategoricalRobust(value) => Some(value.dof()),
-            Self::CategoricalSignedIid(_) => None,
             Self::Clustered(_) | Self::CategoricalClustered(_) => None,
-        }
-    }
-
-    fn signed_residual_dof(&self) -> Option<PreparedOlsSignedResidualDofReport> {
-        match self {
-            Self::CategoricalSignedIid(value) => Some(value.dof()),
-            _ => None,
         }
     }
 
@@ -256,13 +223,6 @@ impl<'a> CertifiedOlsInference<'a> {
         }
     }
 
-    fn signed_iid_certificate(&self) -> Option<PreparedOlsSignedUnadjustedCertificate> {
-        match self {
-            Self::CategoricalSignedIid(value) => Some(value.certificate()),
-            _ => None,
-        }
-    }
-
     fn robust_certificate(&self) -> Option<PreparedOlsRobustCertificate> {
         match self {
             Self::Robust(value) => Some(value.certificate()),
@@ -281,9 +241,6 @@ impl<'a> CertifiedOlsInference<'a> {
 
     fn certificate_passed(&self) -> bool {
         self.iid_certificate().is_some_and(|value| value.passed)
-            || self
-                .signed_iid_certificate()
-                .is_some_and(|value| value.passed)
             || self.robust_certificate().is_some_and(|value| value.passed)
             || self
                 .clustered_certificate()
@@ -562,78 +519,53 @@ fn validate_alignment(
     Ok(())
 }
 
-fn build_fit_statistics(statistics: PreparedFitStatisticsData) -> Result<Vec<f64>> {
+fn build_fit_statistics(statistics: PreparedOlsFitStatistics) -> Result<Vec<f64>> {
     let mut output = reserved_filled(FIT_ROWS * 2, 0.0, "OLS fit-statistics table")?;
-    let (
-        rss,
-        tss,
-        within_tss,
-        r_squared,
-        adjusted_r_squared,
-        within_r_squared,
-        adjusted_within_r_squared,
-        root_mean_squared_error,
-        f_statistic,
-        gaussian_log_likelihood,
-        gaussian_null_log_likelihood,
-    ) = match statistics {
-        PreparedFitStatisticsData::Standard(value) => (
-            value.rss,
-            value.tss,
-            value.within_tss,
-            value.r_squared,
-            value.adjusted_r_squared,
-            value.within_r_squared,
-            value.adjusted_within_r_squared,
-            Some(value.root_mean_squared_error),
-            value.f_statistic,
-            value.gaussian_log_likelihood,
-            value.gaussian_null_log_likelihood,
-        ),
-        PreparedFitStatisticsData::Signed(value) => (
-            value.rss,
-            value.tss,
-            value.within_tss,
-            value.r_squared,
-            value.adjusted_r_squared,
-            value.within_r_squared,
-            value.adjusted_within_r_squared,
-            value.root_mean_squared_error,
-            value.f_statistic,
-            value.gaussian_log_likelihood,
-            value.gaussian_null_log_likelihood,
-        ),
-    };
-    set_defined(&mut output, 0, Some(rss), "RSS")?;
-    set_defined(&mut output, 1, Some(tss), "TSS")?;
-    set_defined(&mut output, 2, Some(within_tss), "within TSS")?;
-    set_defined(&mut output, 3, Some(tss - rss), "model sum of squares")?;
-    set_defined(&mut output, 4, r_squared, "R-squared")?;
-    set_defined(&mut output, 5, adjusted_r_squared, "adjusted R-squared")?;
-    set_defined(&mut output, 6, within_r_squared, "within R-squared")?;
+    set_defined(&mut output, 0, Some(statistics.rss), "RSS")?;
+    set_defined(&mut output, 1, Some(statistics.tss), "TSS")?;
+    set_defined(&mut output, 2, Some(statistics.within_tss), "within TSS")?;
+    set_defined(
+        &mut output,
+        3,
+        Some(statistics.tss - statistics.rss),
+        "model sum of squares",
+    )?;
+    set_defined(&mut output, 4, statistics.r_squared, "R-squared")?;
+    set_defined(
+        &mut output,
+        5,
+        statistics.adjusted_r_squared,
+        "adjusted R-squared",
+    )?;
+    set_defined(
+        &mut output,
+        6,
+        statistics.within_r_squared,
+        "within R-squared",
+    )?;
     set_defined(
         &mut output,
         7,
-        adjusted_within_r_squared,
+        statistics.adjusted_within_r_squared,
         "adjusted within R-squared",
     )?;
     set_defined(
         &mut output,
         8,
-        root_mean_squared_error,
+        Some(statistics.root_mean_squared_error),
         "root mean squared error",
     )?;
-    set_defined(&mut output, 9, f_statistic, "F statistic")?;
+    set_defined(&mut output, 9, statistics.f_statistic, "F statistic")?;
     set_defined(
         &mut output,
         10,
-        gaussian_log_likelihood,
+        statistics.gaussian_log_likelihood,
         "Gaussian log likelihood",
     )?;
     set_defined(
         &mut output,
         11,
-        gaussian_null_log_likelihood,
+        statistics.gaussian_null_log_likelihood,
         "Gaussian null log likelihood",
     )?;
     Ok(output)
@@ -672,20 +604,6 @@ fn build_dof(
             dof.fit_residual_dof as f64,
             dof.correction_denominator_dof as f64,
             dof.nested_absorbed_categories,
-            dof.has_structural_intercept,
-            dof.has_normalized_absorbed_intercept,
-            dof.absorbed_rank_is_approximate,
-        )
-    } else if let Some(dof) = inference.signed_residual_dof() {
-        (
-            dof.finite_rank,
-            dof.finite_model_dof,
-            dof.absorbed_rank,
-            dof.model_rank,
-            dof.residual_dof as f64,
-            dof.residual_dof as f64,
-            dof.residual_dof as f64,
-            absorbed.nested_categories(),
             dof.has_structural_intercept,
             dof.has_normalized_absorbed_intercept,
             dof.absorbed_rank_is_approximate,
@@ -981,19 +899,7 @@ fn build_certificates(
     for (row, value) in common.into_iter().enumerate() {
         set_defined(&mut output, row, value, "OLS fit certificate")?;
     }
-    if let Some(certificate) = inference.signed_iid_certificate() {
-        let selected = [
-            0.0,
-            certificate.covariance_scale_relative_infinity_norm,
-            certificate.covariance_symmetry_relative_infinity_norm,
-            0.0,
-            0.0,
-            0.0,
-            certificate.statistic_formula_relative_infinity_norm,
-            f64::from(certificate.passed && certificate.conservative_dof_identity_passed),
-        ];
-        set_selected_certificates(&mut output, &selected)?;
-    } else if let Some(certificate) = inference.iid_certificate() {
+    if let Some(certificate) = inference.iid_certificate() {
         let selected = [
             certificate.reference_weight_sum_relative_error,
             certificate.covariance_scale_relative_infinity_norm,

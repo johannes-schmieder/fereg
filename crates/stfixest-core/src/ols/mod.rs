@@ -60,14 +60,10 @@ pub use prepared_robust::{
     PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
 };
 pub use prepared_unadjusted::{
-    fit_prepared_categorical_ols_signed_unadjusted_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
-    CertifiedPreparedCategoricalOlsSignedUnadjusted, CertifiedPreparedCategoricalOlsUnadjusted,
-    CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
-    PreparedOlsResidualDofReport, PreparedOlsSignedFitStatistics,
-    PreparedOlsSignedResidualDofReport, PreparedOlsSignedUnadjustedCertificate,
-    PreparedOlsSignedUnadjustedCovariance, PreparedOlsUnadjustedCertificate,
-    PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
+    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsUnadjusted,
+    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
 pub use vce::{ClusterSubsetReport, VceKind, VceReport};

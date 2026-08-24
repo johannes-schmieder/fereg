@@ -15,7 +15,6 @@ use stfixest_core::metadata::{
 };
 use stfixest_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
-    fit_prepared_categorical_ols_signed_unadjusted_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
     prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
@@ -200,22 +199,6 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Iid, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
-            if prepared.has_absorbed_slope() {
-                let inference = fit_prepared_categorical_ols_signed_unadjusted_map(
-                    &prepared,
-                    PreparedOlsUnadjustedConfig {
-                        absorbed_dof: action.absorbed_dof,
-                        ..PreparedOlsUnadjustedConfig::default()
-                    },
-                )?;
-                let shadow = build_shadow_result(
-                    PreparedOlsResultData::categorical(&prepared),
-                    None,
-                    CertifiedOlsInference::CategoricalSignedIid(&inference),
-                    action.outputs.residual.is_some(),
-                )?;
-                return precommit_and_store(&action, &shadow, spi);
-            }
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -962,7 +945,7 @@ fn validate_shadow_against_outputs(
         ));
     }
     validate_shadow_receipt(action, shadow)?;
-    validate_shadow_coefficients(shadow, action.vce == OlsVceKind::Iid)?;
+    validate_shadow_coefficients(shadow)?;
     validate_defined_value_table(&shadow.fit, "OLS fit-statistics shadow")?;
     validate_defined_value_table(&shadow.dof, "OLS DoF shadow")?;
     validate_defined_value_table(&shadow.certificates, "OLS certificate shadow")?;
@@ -1006,10 +989,7 @@ fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>
     Ok(())
 }
 
-fn validate_shadow_coefficients(
-    shadow: &OlsShadowResult<'_>,
-    allow_signed_negative_dof: bool,
-) -> Result<()> {
+fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
     let dimension = shadow.coefficient_count.max(1);
     if shadow.coefficient_count == 0 {
         if shadow.covariance_dimension != 0
@@ -1088,9 +1068,7 @@ fn validate_shadow_coefficients(
                 return Err(invalid("OLS omitted covariance row is not zero"));
             }
         }
-        let signed_negative_dof =
-            allow_signed_negative_dof && shadow.dof[18] == 1.0 && shadow.dof[19] < 0.0;
-        if shadow.covariance[row * dimension + row] < 0.0 && !signed_negative_dof {
+        if shadow.covariance[row * dimension + row] < 0.0 {
             return Err(invalid("OLS covariance shadow has a negative diagonal"));
         }
     }
@@ -2381,23 +2359,23 @@ mod tests {
 
     #[test]
     fn native_coefficient_shadow_certification_rejects_every_scatter_family() {
-        validate_shadow_coefficients(&coefficient_shadow(), false).expect("valid native shadow");
+        validate_shadow_coefficients(&coefficient_shadow()).expect("valid native shadow");
 
         let mut duplicate = coefficient_shadow();
         duplicate.coefficient_status[7] = 1.0;
-        assert!(validate_shadow_coefficients(&duplicate, false).is_err());
+        assert!(validate_shadow_coefficients(&duplicate).is_err());
 
         let mut asymmetric = coefficient_shadow();
         asymmetric.covariance[1] += 1.0;
-        assert!(validate_shadow_coefficients(&asymmetric, false).is_err());
+        assert!(validate_shadow_coefficients(&asymmetric).is_err());
 
         let mut negative_diagonal = coefficient_shadow();
         negative_diagonal.covariance[0] = -1.0;
-        assert!(validate_shadow_coefficients(&negative_diagonal, false).is_err());
+        assert!(validate_shadow_coefficients(&negative_diagonal).is_err());
 
         let mut marker = coefficient_shadow();
         marker.omission_v_marker[1] = 1.0;
-        assert!(validate_shadow_coefficients(&marker, false).is_err());
+        assert!(validate_shadow_coefficients(&marker).is_err());
 
         let mut omitted = coefficient_shadow();
         omitted.coefficient_status[1] = 2.0;
@@ -2405,7 +2383,7 @@ mod tests {
         omitted.b[0] = 0.0;
         omitted.omission_b_marker[0] = 0.0;
         omitted.omission_v_marker[0] = 0.0;
-        assert!(validate_shadow_coefficients(&omitted, false).is_err());
+        assert!(validate_shadow_coefficients(&omitted).is_err());
     }
 
     #[test]
@@ -2510,6 +2488,18 @@ mod tests {
             assert_eq!(spi.store_calls, failing_ordinal);
             assert_eq!(spi.stores.capacity(), prepared_capacity);
         }
+    }
+
+    #[test]
+    fn nonpositive_residual_dof_stores_nothing_and_leaves_receipt_incomplete() {
+        let (args, mut spi) = fixture(OlsVceKind::Iid);
+        spi.nobs = 2;
+        let error = estimate_ols_test(&args, &mut spi)
+            .expect_err("a saturated model must fail before result storage");
+        assert_eq!(error.code, ErrorCode::InsufficientObservations);
+        assert_eq!(spi.store_calls, 0);
+        assert!(spi.stores.is_empty());
+        assert_eq!(spi.receipt_complete(), 0.0);
     }
 
     #[test]

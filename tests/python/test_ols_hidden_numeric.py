@@ -152,6 +152,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             "_stfixest_ols_hidden_numeric_v1 y c.x1, "
             "absorb(firm##c.time worker)",
         )
+        self.assertEqual(slope["dataset"], "ols_intercept_slope_positive")
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(
@@ -518,7 +519,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             "fn store_shadow", 1
         )[0]
         self.assertIn(
-            "validate_shadow_coefficients(shadow, action.vce == OlsVceKind::Iid)?",
+            "validate_shadow_coefficients(shadow)?",
             native_validator,
         )
 

@@ -16,16 +16,20 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         for symbol in (
             "prepare_categorical_ols_data",
             "prepare_categorical_ols_clustered_data",
-            "fit_prepared_categorical_ols_signed_unadjusted_map",
             "fit_prepared_categorical_ols_unadjusted_map",
             "fit_prepared_categorical_ols_robust_map",
             "fit_prepared_categorical_ols_clustered_map",
             "CategoricalIid",
-            "CategoricalSignedIid",
             "CategoricalRobust",
             "CategoricalClustered",
         ):
             self.assertIn(symbol, estimate)
+        for forbidden in (
+            "fit_prepared_categorical_ols_signed_unadjusted_map",
+            "CategoricalSignedIid",
+            "allow_signed_negative_dof",
+        ):
+            self.assertNotIn(forbidden, estimate)
         self.assertIn("categorical_sources.len() > 1", estimate)
         self.assertIn("plan_categorical_absorbed_request", estimate)
         self.assertIn("plan.availability_request().validate_and_compile()", estimate)
@@ -43,6 +47,30 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
             "Categorical(&'a PreparedCategoricalOlsClusteredData)", view
         )
         self.assertNotIn("unsafe {", result + view)
+
+    def test_signed_residual_dof_publication_path_is_absent(self):
+        core = (
+            ROOT / "crates/stfixest-core/src/ols/prepared_unadjusted.rs"
+        ).read_text(encoding="utf-8")
+        exports = (
+            ROOT / "crates/stfixest-core/src/ols/mod.rs"
+        ).read_text(encoding="utf-8")
+        result = (PLUGIN / "result.rs").read_text(encoding="utf-8")
+        stata = STATA.read_text(encoding="utf-8")
+        combined = core + exports + result
+        for forbidden in (
+            "PreparedOlsSignedResidualDofReport",
+            "PreparedOlsSignedFitStatistics",
+            "PreparedOlsSignedUnadjustedCovariance",
+            "CertifiedPreparedCategoricalOlsSignedUnadjusted",
+            "fit_prepared_categorical_ols_signed_unadjusted_map",
+            "CategoricalSignedIid",
+        ):
+            self.assertNotIn(forbidden, combined)
+        self.assertNotIn("ereturn scalar df_r = `df_r'", stata)
+        self.assertIn("shadow.covariance[row * dimension + row] < 0.0", (
+            PLUGIN / "estimate.rs"
+        ).read_text(encoding="utf-8"))
 
     def test_native_fe_shadow_validator_accepts_only_structured_interactions(self):
         estimate = (PLUGIN / "estimate.rs").read_text(encoding="utf-8")
@@ -65,15 +93,18 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         self.assertIn("absorbed slope currently requires pairwise absorbed DoF", stata)
         self.assertNotIn("only single-source intercept fixed effects", stata)
 
-    def test_licensed_slope_fixture_is_in_every_qualification_profile(self):
-        fixture = (
+    def test_licensed_slope_fixtures_are_in_every_qualification_profile(self):
+        fixtures = (
             "tests/stata/parity_reghdfe/"
-            "estimate_ols_intercept_slope_parity.do"
+            "estimate_ols_intercept_slope_parity.do",
+            "tests/stata/parity_reghdfe/"
+            "estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
         )
         profiles = json.loads(PROFILES.read_text(encoding="utf-8"))["profiles"]
         for name in ("quick", "differential", "full"):
             with self.subTest(profile=name):
-                self.assertIn(fixture, profiles[name]["fixtures"])
+                for fixture in fixtures:
+                    self.assertIn(fixture, profiles[name]["fixtures"])
 
     def test_licensed_slope_fixture_checks_reference_inexact_dof_metadata(self):
         fixture = (

@@ -381,10 +381,6 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         ereturn post `eweight', depname(`depvar') obs(`N_effective') ///
             dof(`df_r') esample(`sample_shadow') buildfvinfo
     }
-    // Stata's ereturn post deliberately leaves e(df_r) undefined for a
-    // negative dof() argument. The pinned absorbed-slope convention is signed,
-    // so publish the already native-certified scalar explicitly.
-    ereturn scalar df_r = `df_r'
     if `"`inject'"' == "postereturn" exit 3498
 
     local fit_names rss tss tss_within mss r2 r2_a r2_within r2_a_within rmse F ll ll_0

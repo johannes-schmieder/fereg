@@ -59,6 +59,14 @@
       }
     },
     {
+      "id": "ols_intercept_slope_positive",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_intercept_slope_positive.csv",
+        "sha256": "b3d8557334cf688771432dc0b8f02ef2d3de503574f173b8d53937e17b16eb50"
+      }
+    },
+    {
       "id": "ols_missing",
       "kind": "fixture_csv",
       "source": {
@@ -148,7 +156,7 @@
     },
     {
       "id": "intercept_and_slope",
-      "dataset": "ols_core",
+      "dataset": "ols_intercept_slope_positive",
       "command": "reghdfe y c.x1, absorb(firm##c.time worker)",
       "expected": "must_succeed",
       "covers": ["models:intercept_slope"],

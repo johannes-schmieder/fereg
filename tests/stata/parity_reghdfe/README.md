@@ -93,13 +93,19 @@ case. Its sealed 32-case/8-blocker receipt is
 Public activation and performance claims remain false.
 
 `estimate_ols_intercept_slope_parity.do` consumes the frozen
-`intercept_and_slope` comparator case. It binds the hidden coefficient,
-signed iid covariance, three-row extended absorbed-DoF table, solver and
-transaction certificates, the reference inexact slope-count flag, and
-continued public failure. The independent Rust
-explicit-dummy oracle remains the mathematical authority for projection rank,
-collinearity, residuals, and RSS; the licensed comparator supplies the pinned
-conservative absorbed-DoF and Stata-facing VCE convention.
+`intercept_and_slope` comparator case on its dedicated exact-integer 48-row
+fixture. It binds the hidden coefficient, positive iid covariance, positive
+`df_r=34`, three-row extended absorbed-DoF table, solver and transaction
+certificates, the reference inexact slope-count flag, and continued public
+failure. The independent Rust explicit-dummy oracle remains the mathematical
+authority for projection rank, residuals, RSS, bread, and covariance formula;
+the licensed comparator supplies pinned Stata-facing metadata.
+
+`estimate_ols_intercept_slope_overabsorbed_fail_closed.do` retains the former
+disconnected 24-row construction solely as a failure oracle. Its nonpositive
+conservative residual DoF returns `r(2001)`, exposes no residual or completed
+receipt, and restores both populated and null prior `e()` state. It is not an
+executable success case.
 
 The general licensed reference workflow is:
 
