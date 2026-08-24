@@ -33,9 +33,19 @@ covariance matrix, and retained-sample residuals.
 frequency of two on the last physical row prevents the cascade, all 12 physical
 rows remain while effective N and `sumweights` are 13, and coefficient,
 covariance, DoF, weight metadata, and residual output match the sealed payload.
-The normalized absorbed-intercept score moment is scaled by the raw intercept
-norm rather than a numerically nonzero MAP-roundoff norm; the raw score remains
-checked, and an explicit perturbation still fails closed.
+Finite-coordinate first-order conditions are certified directly from the same
+pre-QR FWL Gram and RHS cross-products used by the solve, while the independent
+FE certificate continues to govern the absorbed span. The normalized reported
+intercept retains its raw score moment and all injected score mutations still
+fail closed.
+
+`estimate_ols_categorical_interaction_missing_parity.do` consumes
+`missing_interaction_components`. It checks that missing outcomes and missing
+components of `firm#year` are removed before final topology construction even
+under `keepsingletons`: observations 201--208 and 212 remain, observations
+209--211 are absent from `e(sample)`, residuals are missing outside the sample,
+and the retained coefficient, covariance, DoF, and interaction identity match
+the sealed payload.
 
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
