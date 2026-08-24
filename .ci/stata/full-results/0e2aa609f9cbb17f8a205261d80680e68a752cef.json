@@ -24,6 +24,8 @@
   "duration_seconds": 53.368,
   "repository": "johannes-schmieder/StFixest",
   "ref": "refs/heads/main",
+  "run_id": "local-exact-source-qualification",
+  "run_attempt": "1",
   "privacy": {
     "local_paths_committed": false,
     "raw_logs_committed": false,

@@ -29,7 +29,7 @@
     },
     "evidence": {
       "licensed_stata_full_receipt": ".ci/stata/full-results/0e2aa609f9cbb17f8a205261d80680e68a752cef.json",
-      "licensed_stata_full_receipt_sha256": "31e5ca5f54be4d0781e54802e7412768900d917a55613b603dd62fc723598bce",
+      "licensed_stata_full_receipt_sha256": "90b9790c1e0385f7dccd35c215827e291d26b8bf63dafba89473563fe9bf9af0",
       "pinned_reference_receipt": ".ci/reference-probes/fe-interaction/0e2aa609f9cbb17f8a205261d80680e68a752cef.json",
       "pinned_reference_receipt_sha256": "e3b55cdf23d9df14fbb5d2eed31e31a31ba54ebc6c720311c503aa0fbdc1975a",
       "pinned_reference_payload_sha256": "fab875a998edc8f91bbeebfca8ca8ef92c09f43f6044fbbcef0b1e7da8fcf387",
@@ -52,5 +52,5 @@
     "performance_measured": false,
     "performance_claim": false
   },
-  "payload_sha256": "5c0bc70e218cc9e696c4ba33cd435d37ff04b5706b617e7f365a612568ec7ac8"
+  "payload_sha256": "befa77d57586ccb5ec0ee322cfd040ad80c86c90a7428e9ffecd7a93a946cb82"
 }
