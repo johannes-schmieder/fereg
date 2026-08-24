@@ -28,9 +28,9 @@ factor main effects. Public `stfeols`, `stfepois`, `estimate-ols`, and
 `estimate-ppml` remain `r(498)`.
 
 The active developer receipt is
-`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`
+`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T114506Z-6bbe04d`
 (payload seal
-`08ce2cff8e62bfaacf1b36337198f4cc94a7f673d749a46f6f04bf18f04d29bb`).
+`6b225fd4899239881b23e5e28bb46ceec7eb91c79bc44cf0a2a996751a1383de`).
 Its external identity manifest binds the file SHA-256, git blob, and mode, and
 all capture/supporting gates use the identical universal x86_64+arm64 staged
 plugin. Older candidate receipts are historical rather than active evidence.

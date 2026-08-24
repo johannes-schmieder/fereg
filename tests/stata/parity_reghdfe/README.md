@@ -85,17 +85,18 @@ Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The accepted rebasing gate does not expand the
 frozen semantic projection or activate a public estimator.
 
-The later frozen-projection gate at source
-`f61fee923db2bd3544d457dfe50de8117d27adda` executes the complete
-`multi_fe_interactions` manifest case and closes that blocker only. Its sealed
-31-case/9-blocker receipt is
-`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.
+The active frozen-projection gate at source
+`6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1` executes both the complete
+`multi_fe_interactions` manifest case and the guarded `intercept_and_slope`
+case. Its sealed 32-case/8-blocker receipt is
+`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T114506Z-6bbe04d`.
 Public activation and performance claims remain false.
 
 `estimate_ols_intercept_slope_parity.do` consumes the frozen
 `intercept_and_slope` comparator case. It binds the hidden coefficient,
 signed iid covariance, three-row extended absorbed-DoF table, solver and
-transaction certificates, and continued public failure. The independent Rust
+transaction certificates, the reference inexact slope-count flag, and
+continued public failure. The independent Rust
 explicit-dummy oracle remains the mathematical authority for projection rank,
 collinearity, residuals, and RSS; the licensed comparator supplies the pinned
 conservative absorbed-DoF and Stata-facing VCE convention.

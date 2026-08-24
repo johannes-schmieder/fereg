@@ -217,7 +217,8 @@ and fit statistics. It has no plugin action or SPI write and does not enable
 
 The categorical topology DoF path separately emits an intercept row and one
 guarded continuous-slope row when requested. The slope row carries its source
-identity and the pinned conservative category count. The resulting signed iid
+identity and the pinned conservative category count, marked inexact because no
+continuous-rank search has certified that count. The resulting signed iid
 composition is a separate type, so a negative reference-compatible residual
 DoF/covariance cannot enter the ordinary positive-DoF inference path.
 
