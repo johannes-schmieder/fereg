@@ -24,8 +24,6 @@ jobs:
       STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: "1"
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
     steps:
       - name: Check out current main
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -33,25 +31,19 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Resolve authenticated Codex CLI without exposing credentials
+      - name: Verify preinstalled authenticated Codex CLI
         shell: bash
         run: |
           set -euo pipefail
           git pull --ff-only origin main
           if ! command -v codex >/dev/null 2>&1; then
-            command -v npm >/dev/null
-            mkdir -p "$RUNNER_TEMP/codex-cli"
-            npm install --prefix "$RUNNER_TEMP/codex-cli" @openai/codex@latest
-            echo "$RUNNER_TEMP/codex-cli/node_modules/.bin" >> "$GITHUB_PATH"
-            export PATH="$RUNNER_TEMP/codex-cli/node_modules/.bin:$PATH"
+            echo "The trusted runner has no preinstalled Codex CLI; refusing an unpinned network install." >&2
+            exit 78
           fi
-          command -v codex >/dev/null
           codex --version > "$RUNNER_TEMP/codex-version.txt"
           codex exec --help > "$RUNNER_TEMP/codex-exec-help.txt"
-          if ! test -s "$HOME/.codex/auth.json" &&
-             test -z "${OPENAI_API_KEY:-}" &&
-             test -z "${CODEX_API_KEY:-}"; then
-            echo "No noninteractive Codex credential is available on the licensed runner." >&2
+          if ! test -s "$HOME/.codex/auth.json"; then
+            echo "The trusted runner has no noninteractive Codex authentication file." >&2
             exit 78
           fi
 
@@ -59,7 +51,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/codex-cli/node_modules/.bin:$PATH"
           prompt_file="$GITHUB_WORKSPACE/.github/stfeols_completion_prompt.md"
           help_file="$RUNNER_TEMP/codex-exec-help.txt"
           mkdir -p "$RUNNER_TEMP/stfeols-agent-logs"
