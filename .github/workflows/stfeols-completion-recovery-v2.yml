@@ -1,0 +1,155 @@
+name: Continue bounded stfeols completion recovery
+
+on:
+  workflow_run:
+    workflows:
+      - Complete stfeols transactionally on licensed runner
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: stfixest-stfeols-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    if: >-
+      github.repository == 'johannes-schmieder/StFixest' &&
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+      FAILED_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Require the first recovery pass and reject scientific ambiguity
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f SCIENTIFIC_QUESTION.md; then
+            echo "A scientific question is committed; automated implementation must stop." >&2
+            exit 72
+          fi
+          state=.ci/stfeols-agent-state.json
+          test -f "$state" || {
+            echo "The first-pass recovery workflow has not yet recorded state; it owns this failure." >&2
+            exit 0
+          }
+          /usr/bin/python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          state = json.loads(Path('.ci/stfeols-agent-state.json').read_text())
+          recovery_pass = int(state.get('recovery_pass', 0))
+          failed_run = int(os.environ['FAILED_RUN_ID'])
+          prior_run = int(state.get('failed_run_id', 0))
+          if recovery_pass < 1:
+              raise SystemExit('first recovery pass is not yet recorded')
+          if recovery_pass >= 5:
+              raise SystemExit('maximum bounded recovery passes exhausted')
+          if prior_run == failed_run:
+              raise SystemExit('this failed run has already been consumed')
+          PY
+          echo "eligible=1" >> "$GITHUB_OUTPUT"
+
+      - name: Download private diagnostics and update only the sanitized digest
+        if: steps.gate.outputs.eligible == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="stfeols-completion-v2-$FAILED_RUN_ID-$FAILED_RUN_ATTEMPT"
+          root="$RUNNER_TEMP/stfeols-recovery-v2"
+          mkdir -p "$root"
+          gh run download "$FAILED_RUN_ID" --name "$artifact" --dir "$root" || true
+
+          /usr/bin/python3 - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          state_path = Path('.ci/stfeols-agent-state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          next_pass = int(state.get('recovery_pass', 0)) + 1
+          root = Path(os.environ['RUNNER_TEMP']) / 'stfeols-recovery-v2'
+          patterns = re.compile(
+              r'(FAIL|ERROR|error:|panicked|assertion|r\([0-9]+\)|completion gate|'
+              r'credential|authentication|not found|timed out|exit code|mismatch|red)',
+              re.IGNORECASE,
+          )
+          lines: list[str] = []
+          for path in sorted(root.rglob('*')):
+              if not path.is_file() or path.stat().st_size > 20_000_000:
+                  continue
+              try:
+                  content = path.read_text(encoding='utf-8', errors='replace').splitlines()
+              except OSError:
+                  continue
+              for line in content:
+                  if not patterns.search(line):
+                      continue
+                  line = re.sub(r'\x1b\[[0-9;]*m', '', line)
+                  line = re.sub(r'/Users/[^/\s]+', '/Users/<runner>', line)
+                  line = re.sub(r'/home/runner', '/home/<runner>', line)
+                  line = re.sub(r'(?i)(api[_-]?key|token|authorization)[=: ]+\S+', r'\1=<redacted>', line)
+                  lines.append(line[-1200:])
+          state = {
+              'schema_version': 1,
+              'recovery_pass': next_pass,
+              'failed_run_id': int(os.environ['FAILED_RUN_ID']),
+              'failure_digest': lines[-160:],
+              'raw_logs_committed': False,
+          }
+          state_path.parent.mkdir(parents=True, exist_ok=True)
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
+
+          driver = Path('.github/workflows/stfeols-autonomous-completion-v2.yml')
+          text = driver.read_text(encoding='utf-8')
+          text = re.sub(
+              r'^# recovery-pass: [0-9]+\n',
+              f'# recovery-pass: {next_pass}\n',
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          marker = 'name: Complete stfeols transactionally on licensed runner\n'
+          if not re.search(r'^# recovery-pass: [0-9]+$', text, re.MULTILINE):
+              if text.count(marker) != 1:
+                  raise SystemExit('completion driver name anchor is not unique')
+              text = text.replace(marker, marker + f'# recovery-pass: {next_pass}\n', 1)
+          driver.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Retrigger the transactional completion pass
+        if: steps.gate.outputs.eligible == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/stfeols-agent-state.json .github/workflows/stfeols-autonomous-completion-v2.yml
+          git commit -m "ci(stfeols): continue bounded completion recovery"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
