@@ -22,12 +22,12 @@ companion `target_keepsingletons` case. It checks the all-observation sample,
 zero singleton deletion, the expanded worker and interaction topology, iid
 coefficient/covariance output, and all 24 residuals.
 
-Each committed fixture consumes the sealed receipt and does not invoke
-`reghdfe`; Python contracts independently verify the receipt seal and every
-oracle constant used by the Stata fixtures. This executable differential set
-does not close `multi_fe_interactions`. The remaining accepted receipt cases
-still need differential coverage, and the frozen semantic projection must be
-resealed before the status gate can close.
+Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`;
+Python contracts independently verify the receipt seal and every oracle constant
+used by the Stata fixtures. This executable differential set does not close
+`multi_fe_interactions`. The remaining accepted receipt cases still need
+differential coverage, and the frozen semantic projection must be resealed
+before the status gate can close.
 
 The general licensed reference workflow is:
 
