@@ -377,7 +377,15 @@ def load_reference() -> tuple[dict[str, object], dict[str, dict[str, object]]]:
 
 def extract_data_block(path: Path) -> str:
     text = path.read_text(encoding="utf-8")
-    start = text.index("clear\n")
+    marker = (
+        "* This fixture consumes the committed sealed receipt; "
+        "it does not invoke reghdfe.\n"
+    )
+    if text.count(marker) != 1:
+        raise SystemExit(f"fixture data-block marker is not unique: {path}")
+    start = text.index(marker) + len(marker)
+    while start < len(text) and text[start] == "\n":
+        start += 1
     call = text.index("_stfixest_estimate_ols_test", start)
     block = text[start:call]
     expected = block.find("__stfx_expected")
@@ -454,7 +462,14 @@ def render_matrix_assertions(case: dict[str, object], name: str) -> list[str]:
         f"assert colsof({stata_name}) == {dimensions['columns']}",
     ]
     row_names = " ".join(matrix_names(entries, "row"))
-    column_names = " ".join(matrix_names(entries, "column"))
+    if name == "dof_table":
+        # The sealed probe enumerated `: colfullnames` with Stata's `word()`.
+        # That splits the single `Num Coefs` stripe into two words, shifts the
+        # later labels, and drops `Nested?`.  The matrix values and dimensions
+        # are sound; bind the canonical five-column reghdfe stripe explicitly.
+        column_names = "Categories Redundant Num Coefs Inexact? Nested?"
+    else:
+        column_names = " ".join(matrix_names(entries, "column"))
     lines.extend(
         [
             f"local __stfx_names : rowfullnames {stata_name}",
@@ -507,7 +522,7 @@ def render_case_assertions(case: dict[str, object], *, cluster: bool) -> list[st
         [
             "matrix __stfx_S = e(stfixest_status)",
             f"assert rowsof(__stfx_S) == {len(column_names)}",
-            "assert colsof(__stfx_S) == 2",
+            "assert colsof(__stfx_S) == 4",
         ]
     )
     for position, column_name in enumerate(column_names, start=1):
@@ -728,7 +743,7 @@ def add_remaining_iid_gate() -> bool:
 `interaction_order_year_firm`, `dof_none`, and `dof_firstpair` cases. It binds
 missing-component sample exclusion, repeated and reordered interaction identity,
 and the exact none/first-pair absorbed-DoF policies.""",
-        "missing_interaction_components",
+        "estimate_ols_categorical_interaction_remaining_iid_parity.do",
     )
     sha = commit_source(
         "test(reference): add remaining iid interaction differentials",

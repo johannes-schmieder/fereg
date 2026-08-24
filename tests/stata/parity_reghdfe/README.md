@@ -54,6 +54,12 @@ partition: the second row contributes the identified interaction span, the
 third is structurally fully redundant, and sample, coefficients, covariance,
 and residuals remain identical to the single-interaction case.
 
+`estimate_ols_categorical_interaction_remaining_iid_parity.do` consumes the
+`missing_interaction_components`, `repeated_identical_interaction`,
+`interaction_order_year_firm`, `dof_none`, and `dof_firstpair` cases. It binds
+missing-component sample exclusion, repeated and reordered interaction identity,
+and the exact none/first-pair absorbed-DoF policies.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need
