@@ -48,9 +48,18 @@ jobs:
             exit 0
           fi
 
+          status_complete=false
+          if grep -q 'signed-DoF publication was removed' STATUS.md \
+             && grep -q 'ols_intercept_slope_positive_dof' benchmarks/manifests/ols_v1.json \
+             && ! grep -R -q 'fit_prepared_categorical_ols_signed_unadjusted_map' \
+                    crates/stfixest-core crates/stfixest-plugin crates/stfixest-testkit; then
+            status_complete=true
+          fi
+
           mkdir -p .ci/dev
-          /usr/bin/python3 - <<'PY'
+          STATUS_COMPLETE="$status_complete" /usr/bin/python3 - <<'PY'
           import json
+          import os
           import subprocess
           from datetime import datetime, timezone
           from pathlib import Path
@@ -58,14 +67,17 @@ jobs:
           head = subprocess.check_output(
               ('git', 'rev-parse', 'HEAD'), text=True
           ).strip()
+          already_complete = os.environ['STATUS_COMPLETE'] == 'true'
           Path('.ci/dev/option-a-source-correction-dispatched.json').write_text(
               json.dumps(
                   {
                       'schema_version': 1,
-                      'dispatched_at': datetime.now(timezone.utc).isoformat(),
+                      'recorded_at': datetime.now(timezone.utc).isoformat(),
                       'source_head': head,
                       'policy': 'option_a_positive_residual_dof',
                       'workflow': 'codex-next-stfeols-gate.yml',
+                      'dispatch_required': not already_complete,
+                      'already_complete': already_complete,
                   },
                   indent=2,
               ) + '\n',
@@ -90,8 +102,12 @@ jobs:
             sleep $((2 * attempt))
           done
 
-          gh api \
-            --method POST \
-            "repos/${REPOSITORY}/actions/workflows/codex-next-stfeols-gate.yml/dispatches" \
-            -f ref=main
+          if [[ "$status_complete" != true ]]; then
+            gh api \
+              --method POST \
+              "repos/${REPOSITORY}/actions/workflows/codex-next-stfeols-gate.yml/dispatches" \
+              -f ref=main
+          else
+            echo "Option A is already complete; no duplicate coding run dispatched."
+          fi
           gh issue close 14 --repo "$REPOSITORY" --reason completed || true
