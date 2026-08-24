@@ -1,4 +1,5 @@
 name: Reconcile STATUS with option A absorbed-slope decision
+# option-a-status-trigger: 2026-08-24
 
 on:
   push:
