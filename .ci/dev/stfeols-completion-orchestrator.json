@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-24T10:32:59.799813+00:00",
+  "updated_at": "2026-08-24T10:50:13.479672+00:00",
   "status": "accepted_gate",
-  "phase": 2,
-  "source_sha": "0b84a6b34cd1ca28a97460fe15e112c5f9945f5b",
+  "phase": 3,
+  "source_sha": "f5d3a2964ef3a73e8b82d21dc5f9e9e56d1fb00b",
   "detail": "one coherent gate accepted exact-green",
   "receipt_status": "success",
   "tests_passed": 21,
