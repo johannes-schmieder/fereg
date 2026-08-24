@@ -85,6 +85,13 @@ Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The accepted rebasing gate does not expand the
 frozen semantic projection or activate a public estimator.
 
+The later frozen-projection gate at source
+`f61fee923db2bd3544d457dfe50de8117d27adda` executes the complete
+`multi_fe_interactions` manifest case and closes that blocker only. Its sealed
+31-case/9-blocker receipt is
+`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.
+Public activation and performance claims remain false.
+
 The general licensed reference workflow is:
 
 ```bash

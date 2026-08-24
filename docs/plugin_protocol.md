@@ -303,15 +303,15 @@ the final residual/estimate commit.
 eclass helper. It retains the private command identity in `e(cmd)` and
 `e(cmdline)` while recording `stfeols` only as an intended future public
 command. It projects the frozen 40-case `ols_v1` semantic manifest without
-enabling public syntax: 30 cases execute and ten remain exact, named blockers.
+enabling public syntax: 31 cases execute and nine remain exact, named blockers.
 
 The active candidate receipt is
-`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260822T132813Z-d731b32`.
+`benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.
 Every Stata capture and supporting gate loads one identical isolated staged
 plugin (SHA-256
-`eda2629198429d419a476151886936e0761eca26f2a8cc34fe83c52146703980`,
-universal x86_64+arm64, embedded `d731b3276eab`). The receipt's payload seal is
-`1558571563006bd3f5a1ce5a39b33f1f552256a83212a865d51cebdbdfe37279`.
+`6630e8837b96d05cfe858e21e111c4f97c5a3a33830f46587f81e7337136d6e2`,
+universal x86_64+arm64, embedded `f61fee923db2`). The receipt's payload seal is
+`08ce2cff8e62bfaacf1b36337198f4cc94a7f673d749a46f6f04bf18f04d29bb`.
 `benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json` separately
 binds the complete file SHA-256, git blob, and mode, so changing and resealing
 committed receipt content does not preserve eligibility. Older receipts are
@@ -319,8 +319,9 @@ historical only. The receipt explicitly records `public_activation=false` and
 unmeasured performance.
 
 Public `estimate-ols`, `stfeols`, `estimate-ppml`, and `stfepois` remain
-fail-closed at `r(498)`. The next gate is broader sealed estimator-level parity
-and reviewed activation wiring across the complete supported public surface.
+fail-closed at `r(498)`. The next gate is the frozen `intercept_and_slope`
+blocker; public activation remains later than every remaining scientific,
+transaction, prediction/postestimation, and benchmark gate.
 
 ## Return-code map
 
