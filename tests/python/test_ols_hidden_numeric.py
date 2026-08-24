@@ -117,11 +117,31 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             BLOCKERS,
         )
         manifest = projected_manifest(projection)
-        self.assertEqual(len(manifest["semantic_cases"]), 30)
+        self.assertEqual(len(manifest["semantic_cases"]), 31)
         self.assertFalse(manifest["benchmark_cases"])
         for case in manifest["semantic_cases"]:
             self.assertTrue(case["command"].startswith("_stfixest_ols_hidden_numeric_v1 "))
             self.assertNotIn("stfeols ", case["command"])
+        interaction = next(
+            case
+            for case in manifest["semantic_cases"]
+            if case["id"] == "multi_fe_interactions"
+        )
+        self.assertEqual(
+            interaction["command"],
+            "_stfixest_ols_hidden_numeric_v1 y c.x1 i.industry##i.year, "
+            "absorb(worker firm#year)",
+        )
+        self.assertEqual(
+            interaction["capture"]["scalars"],
+            ["N", "df_m", "df_r", "df_a", "N_hdfe"],
+        )
+        self.assertEqual(
+            interaction["capture"]["macros"], ["absvars", "indepvars"]
+        )
+        self.assertEqual(
+            interaction["capture"]["matrices"][:3], ["b", "V", "dof_table"]
+        )
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(
@@ -191,6 +211,18 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         self.assertIn('ereturn local cmd "_stfixest_ols_hidden_numeric_v1"', adapter)
         self.assertIn('ereturn local stfixest_intended_public_command "stfeols"', adapter)
         self.assertNotIn('ereturn local cmd "stfeols"', adapter)
+
+    def test_hidden_adapter_builds_reference_indepvars_from_native_statuses(self):
+        adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("if e(stfixest_status)[`slot',2] == 2 continue", adapter)
+        self.assertIn("local intended_component `\"`factor_level'bn.", adapter)
+        self.assertIn("parse(\"#\")", adapter)
+        self.assertNotIn(
+            'subinstr(`"`name\'"\', "o.", "", 1)',
+            adapter,
+        )
 
     def test_supplied_plugin_identity_rejects_selection_mismatch(self):
         with tempfile.TemporaryDirectory() as raw:

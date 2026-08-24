@@ -74,6 +74,44 @@ assert abs(e(V)[1,3] - -1.aacc28464cca4X-00c) <= 3e-6
 assert abs(e(V)[1,4] - -1.661d37ef6b7e8X-00a) <= 3e-6
 assert abs(e(V)[5,5] - +1.31b4b891013a3X-009) <= 3e-6
 
+* Full frozen multi_fe_interactions case: the ordinary factor interaction,
+* absorbed categorical tuple, final-sample rebase, omission axis, and
+* reference e(indepvars) contract must hold together in the hidden adapter.
+_stfixest_ols_hidden_numeric_v1 y c.x1 i.industry##i.year, ///
+    absorb(worker firm#year)
+assert e(N) == 8
+assert e(df_m) == 1
+assert e(df_a) == 6
+assert e(df_r) == 1
+assert e(N_hdfe) == 2
+assert `"`e(absvars)'"' == "worker firm#year"
+assert `"`e(indepvars)'"' == ///
+    "x1 3bn.industry 2022bn.year 3bn.industry#2022bn.year _cons"
+local interaction_names : colfullnames e(b)
+assert `"`interaction_names'"' == ///
+    "o.x1 2b.industry 3o.industry 2021b.year 2022o.year 2b.industry#2021b.year 2b.industry#2022o.year 3o.industry#2021b.year 3.industry#2022.year _cons"
+assert e(stfixest_status)[1,2] == 3
+assert e(stfixest_status)[2,2] == 2
+assert e(stfixest_status)[3,2] == 3
+assert e(stfixest_status)[4,2] == 2
+assert e(stfixest_status)[5,2] == 3
+assert e(stfixest_status)[6,2] == 2
+assert e(stfixest_status)[7,2] == 2
+assert e(stfixest_status)[8,2] == 2
+assert e(stfixest_status)[9,2] == 1
+assert e(stfixest_status)[10,2] == 5
+assert abs(e(b)[1,9] - +1.ffffffdcf4f1eX-017) <= 1e-7
+assert abs(e(b)[1,10] - +1.b999998000000X+002) <= 1e-7
+assert abs(e(V)[9,9] - +1.47ae1eb851fc4X-005) <= 1e-6
+assert abs(e(V)[9,10] - -1.47ae1eb851fc4X-007) <= 1e-6
+assert abs(e(V)[10,10] - +1.47ae1eb851fc5X-008) <= 1e-6
+local interaction_dof_rows : rowfullnames e(dof_table)
+assert `"`interaction_dof_rows'"' == "1.worker 1.firm#1.year"
+assert e(dof_table)[1,1] == 4 & e(dof_table)[1,2] == 0
+assert e(dof_table)[1,3] == 4
+assert e(dof_table)[2,1] == 4 & e(dof_table)[2,2] == 2
+assert e(dof_table)[2,3] == 2
+
 _stfixest_estimate_ols_test y c.x1, absorb(worker firm) cluster(cluster_a)
 assert e(df_r) == 7
 local clustered_dof_rows : rowfullnames e(dof_table)

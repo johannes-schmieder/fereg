@@ -26,6 +26,7 @@
   "executable_case_ids": [
     "unweighted_no_fe",
     "one_fe_robust",
+    "multi_fe_interactions",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -56,7 +57,6 @@
     "one_observation_error"
   ],
   "blockers": [
-    {"case_id": "multi_fe_interactions", "reason": "absorbed_categorical_interaction"},
     {"case_id": "intercept_and_slope", "reason": "absorbed_intercept_slope"},
     {"case_id": "slope_only_multiple", "reason": "absorbed_slope_only_multiple"},
     {"case_id": "string_fe", "reason": "string_source_ingestion"},

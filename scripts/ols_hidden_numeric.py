@@ -62,6 +62,7 @@ FORBIDDEN_WARNING_BYTES = FORBIDDEN_WARNING.encode("utf-8")
 EXECUTABLE_CASE_IDS = (
     "unweighted_no_fe",
     "one_fe_robust",
+    "multi_fe_interactions",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -93,7 +94,6 @@ EXECUTABLE_CASE_IDS = (
 )
 
 BLOCKERS = (
-    ("multi_fe_interactions", "absorbed_categorical_interaction"),
     ("intercept_and_slope", "absorbed_intercept_slope"),
     ("slope_only_multiple", "absorbed_slope_only_multiple"),
     ("string_fe", "string_source_ingestion"),
