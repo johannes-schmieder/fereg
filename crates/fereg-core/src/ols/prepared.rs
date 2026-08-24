@@ -479,7 +479,10 @@ impl OlsRequestV1 {
                     if component.kind == ComponentKind::Continuous
                         && component.level_state == LevelState::Absent
                         && component.base == MetadataFlag::False
-                        && component.time_series_state == TimeSeriesState::None
+                        && matches!(
+                            component.time_series_state,
+                            TimeSeriesState::None | TimeSeriesState::Materialized
+                        )
                         && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
                 {
                     PreparedOlsColumnKind::Continuous {
@@ -490,7 +493,10 @@ impl OlsRequestV1 {
                 (RawTermKind::Factor, [component])
                     if component.kind == ComponentKind::Categorical
                         && component.level_state == LevelState::Present
-                        && component.time_series_state == TimeSeriesState::None =>
+                        && matches!(
+                            component.time_series_state,
+                            TimeSeriesState::None | TimeSeriesState::Materialized
+                        ) =>
                 {
                     validate_categorical_value(component.level_value, "factor metadata level")?;
                     PreparedOlsColumnKind::Categorical {
@@ -1269,13 +1275,10 @@ fn source_index(source: SourceId) -> Result<usize> {
 
 fn validate_absorbed_preparation(request: &OlsRequestV1) -> Result<()> {
     for term in &request.absorbed_terms {
-        if term.categorical_sources.len() != 1
-            || !term.intercept
-            || !term.slope_sources.is_empty()
-            || !term.saved_name.is_empty()
+        if term.categorical_sources.len() != 1 || !term.intercept || !term.slope_sources.is_empty()
         {
             return Err(unsupported(
-                "prepare-ols-test supports only unnamed single-source intercept-only numeric fixed effects",
+                "prepare-ols-test supports only single-source intercept-only numeric fixed effects",
             ));
         }
     }
@@ -3498,7 +3501,7 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_fixed_effect_shapes_fail_before_loaded_data_is_considered() {
+    fn legacy_compile_rejects_unsupported_categorical_shapes_before_loading() {
         let source = SourceId::new(1).expect("source");
         for term in [
             AbsorbedTerm {
@@ -3517,14 +3520,6 @@ mod tests {
                 label: "g#c.g".to_owned(),
                 saved_name: String::new(),
             },
-            AbsorbedTerm {
-                id: AbsorbTermId::new(1).expect("term"),
-                intercept: true,
-                categorical_sources: vec![source],
-                slope_sources: Vec::new(),
-                label: "saved=g".to_owned(),
-                saved_name: "saved".to_owned(),
-            },
         ] {
             for include_intercept in [true, false] {
                 let mut request = mixed_numeric_factor_request();
@@ -3533,11 +3528,35 @@ mod tests {
                 assert_eq!(
                     request
                         .validate_and_compile()
-                        .expect_err("unsupported FE shape before loading")
+                        .expect_err("legacy compile rejects unsupported FE shape")
                         .code,
                     ErrorCode::Unsupported
                 );
             }
+        }
+    }
+
+    #[test]
+    fn saved_single_source_categorical_effect_compiles_before_loading() {
+        let source = SourceId::new(1).expect("source");
+        for include_intercept in [true, false] {
+            let mut request = mixed_numeric_factor_request();
+            request.include_intercept = include_intercept;
+            request.absorbed_terms = vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("term"),
+                intercept: true,
+                categorical_sources: vec![source],
+                slope_sources: Vec::new(),
+                label: "saved=g".to_owned(),
+                saved_name: "saved".to_owned(),
+            }];
+            let compiled = request
+                .validate_and_compile()
+                .expect("saved categorical FE shape compiles before loading");
+            assert_eq!(
+                compiled.coefficients.len(),
+                if include_intercept { 6 } else { 5 }
+            );
         }
     }
 }

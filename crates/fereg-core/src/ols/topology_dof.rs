@@ -20,6 +20,7 @@ pub enum CategoricalTopologyDofPolicy {
     FirstPair,
     #[default]
     Pairwise,
+    Continuous,
 }
 
 /// Wire identity and display metadata for one requested absorbed term.
@@ -29,10 +30,13 @@ pub struct CategoricalTopologyDofEffectSpec {
     /// Source tuple in requested wire order. Interaction partition coding is
     /// canonicalized independently; this identity tuple is not reordered.
     pub sources: Vec<SourceId>,
-    /// Intercept-row label.  For `firm##c.time` this is `firm`.
+    /// Whether the term contains a categorical intercept channel.
+    pub intercept: bool,
+    /// Intercept-row label. For `firm##c.time` this is `firm`. It remains
+    /// available as term identity when the term is slope-only.
     pub label: String,
-    /// The separately reported continuous-slope row, if present.
-    pub slope: Option<CategoricalTopologyDofSlopeSpec>,
+    /// Separately reported continuous-slope rows in requested order.
+    pub slopes: Vec<CategoricalTopologyDofSlopeSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,6 +97,24 @@ pub fn compute_categorical_topology_absorbed_dof(
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
 ) -> Result<CategoricalTopologyDofReport> {
+    compute_categorical_topology_absorbed_dof_with_slopes(
+        topology,
+        effect_specs,
+        structural_intercept,
+        policy,
+        cluster_dimensions,
+        &[],
+    )
+}
+
+pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
+    topology: &FinalizedCategoricalTopology,
+    effect_specs: &[CategoricalTopologyDofEffectSpec],
+    structural_intercept: bool,
+    policy: CategoricalTopologyDofPolicy,
+    cluster_dimensions: &[&[u32]],
+    slope_values_by_source: &[Vec<f64>],
+) -> Result<CategoricalTopologyDofReport> {
     let mut reservation = SystemTopologyDofReservation;
     compute_with_reservation(
         topology,
@@ -100,6 +122,7 @@ pub fn compute_categorical_topology_absorbed_dof(
         structural_intercept,
         policy,
         cluster_dimensions,
+        slope_values_by_source,
         &mut reservation,
     )
 }
@@ -152,6 +175,7 @@ fn compute_with_reservation<R: TopologyDofReservation>(
     structural_intercept: bool,
     policy: CategoricalTopologyDofPolicy,
     cluster_dimensions: &[&[u32]],
+    slope_values_by_source: &[Vec<f64>],
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
     topology.validate()?;
@@ -186,12 +210,18 @@ fn compute_with_reservation<R: TopologyDofReservation>(
     let mut eligible = reserved_filled(
         reservation,
         effect_count,
-        true,
+        false,
         "unable to reserve categorical absorbed-DoF eligibility flags",
     )?;
+    for (effect_index, spec) in effect_specs.iter().enumerate() {
+        eligible[effect_index] = spec.intercept;
+    }
 
     let mut nested_categories = 0_usize;
     for effect_index in 0..effect_count {
+        if !effect_specs[effect_index].intercept {
+            continue;
+        }
         let source = effect_source(topology, effect_index)?;
         if effect_is_nested_within_any_cluster(
             source.codes(&source_views)?,
@@ -242,6 +272,7 @@ fn compute_with_reservation<R: TopologyDofReservation>(
         &exact,
         &nested,
         nested_categories,
+        slope_values_by_source,
         reservation,
     )
 }
@@ -298,7 +329,7 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     reservation: &mut R,
 ) -> Result<()> {
     match policy {
-        CategoricalTopologyDofPolicy::None => {}
+        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => {}
         CategoricalTopologyDofPolicy::FirstPair => {
             if eligible_indices.len() >= 2 {
                 let earlier = eligible_indices[0];
@@ -351,13 +382,14 @@ fn build_report<R: TopologyDofReservation>(
     exact: &[bool],
     nested: &[bool],
     nested_categories: usize,
+    slope_values_by_source: &[Vec<f64>],
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
     let nobs = topology.retained_rows().len();
     let implicit_no_absorb = structural_intercept && effect_specs.is_empty() && nobs > 0;
     let explicit_rows = effect_specs.iter().try_fold(0_usize, |total, spec| {
         total
-            .checked_add(1 + usize::from(spec.slope.is_some()))
+            .checked_add(usize::from(spec.intercept) + spec.slopes.len())
             .ok_or_else(|| allocation("categorical absorbed-DoF extended row count overflows"))
     })?;
     let row_count = explicit_rows
@@ -399,62 +431,85 @@ fn build_report<R: TopologyDofReservation>(
 
     for (effect_index, spec) in effect_specs.iter().enumerate() {
         let categories = effect_source(topology, effect_index)?.n_levels();
-        let effect_redundant = redundant[effect_index];
-        if effect_redundant > categories {
-            return Err(invalid_data(
-                "categorical absorbed-DoF redundancy exceeds category count",
-            ));
-        }
-        let coefficients = categories
-            .checked_sub(effect_redundant)
-            .ok_or_else(|| invalid_data("categorical absorbed-DoF subtraction underflowed"))?;
-        initial_categories = initial_categories
-            .checked_add(categories)
-            .ok_or_else(|| allocation("categorical absorbed-DoF category total overflows"))?;
-        redundant_categories = redundant_categories
-            .checked_add(effect_redundant)
-            .ok_or_else(|| allocation("categorical absorbed-DoF redundancy total overflows"))?;
-        absorbed_rank = absorbed_rank
-            .checked_add(coefficients)
-            .ok_or_else(|| allocation("categorical absorbed rank overflows"))?;
-        is_approximate |= !exact[effect_index];
-
-        push_reserved(
-            &mut rows,
-            CategoricalTopologyDofEffect {
-                identity: CategoricalTopologyDofEffectIdentity::Explicit {
-                    term_id: spec.term_id,
-                    sources: fallible_vec_copy(
-                        &spec.sources,
+        if spec.intercept {
+            let effect_redundant = redundant[effect_index];
+            if effect_redundant > categories {
+                return Err(invalid_data(
+                    "categorical absorbed-DoF redundancy exceeds category count",
+                ));
+            }
+            let coefficients = categories
+                .checked_sub(effect_redundant)
+                .ok_or_else(|| invalid_data("categorical absorbed-DoF subtraction underflowed"))?;
+            initial_categories = initial_categories
+                .checked_add(categories)
+                .ok_or_else(|| allocation("categorical absorbed-DoF category total overflows"))?;
+            redundant_categories = redundant_categories
+                .checked_add(effect_redundant)
+                .ok_or_else(|| allocation("categorical absorbed-DoF redundancy total overflows"))?;
+            absorbed_rank = absorbed_rank
+                .checked_add(coefficients)
+                .ok_or_else(|| allocation("categorical absorbed rank overflows"))?;
+            is_approximate |= !exact[effect_index];
+            push_reserved(
+                &mut rows,
+                CategoricalTopologyDofEffect {
+                    identity: CategoricalTopologyDofEffectIdentity::Explicit {
+                        term_id: spec.term_id,
+                        sources: fallible_vec_copy(
+                            &spec.sources,
+                            reservation,
+                            "unable to reserve categorical absorbed-slope source identity",
+                        )?,
+                    },
+                    label: fallible_string_copy(
+                        &spec.label,
                         reservation,
-                        "unable to reserve categorical absorbed-DoF source identity",
+                        "unable to reserve categorical absorbed-DoF label",
                     )?,
+                    categories,
+                    redundant: effect_redundant,
+                    coefficients,
+                    redundancy_exact: exact[effect_index],
+                    nested: nested[effect_index],
+                    slope_source: None,
                 },
-                label: fallible_string_copy(
-                    &spec.label,
-                    reservation,
-                    "unable to reserve categorical absorbed-DoF label",
-                )?,
-                categories,
-                redundant: effect_redundant,
-                coefficients,
-                redundancy_exact: exact[effect_index],
-                nested: nested[effect_index],
-                slope_source: None,
-            },
-            "categorical absorbed-DoF effect-row capacity exhausted",
-        )?;
+                "categorical absorbed-DoF effect-row capacity exhausted",
+            )?;
+        }
 
-        if let Some(slope) = &spec.slope {
+        for slope in &spec.slopes {
+            let slope_redundant = if policy == CategoricalTopologyDofPolicy::Continuous {
+                continuous_slope_redundancy(
+                    topology,
+                    effect_index,
+                    slope.source,
+                    spec.intercept,
+                    slope_values_by_source,
+                    reservation,
+                )?
+            } else {
+                0
+            };
+            if slope_redundant > categories {
+                return Err(invalid_data(
+                    "categorical absorbed slope redundancy exceeds category count",
+                ));
+            }
+            let slope_coefficients = categories.checked_sub(slope_redundant).ok_or_else(|| {
+                invalid_data("categorical absorbed slope subtraction underflowed")
+            })?;
             initial_categories = initial_categories
                 .checked_add(categories)
                 .ok_or_else(|| allocation("categorical absorbed slope category total overflows"))?;
+            redundant_categories = redundant_categories
+                .checked_add(slope_redundant)
+                .ok_or_else(|| {
+                    allocation("categorical absorbed slope redundancy total overflows")
+                })?;
             absorbed_rank = absorbed_rank
-                .checked_add(categories)
+                .checked_add(slope_coefficients)
                 .ok_or_else(|| allocation("categorical absorbed slope rank overflows"))?;
-            // The pinned reference counts one slope coefficient per observed
-            // category but marks that count inexact: this path has not run a
-            // continuous-rank search for zero or collinear group slopes.
             is_approximate = true;
             push_reserved(
                 &mut rows,
@@ -473,8 +528,8 @@ fn build_report<R: TopologyDofReservation>(
                         "unable to reserve categorical absorbed-slope label",
                     )?,
                     categories,
-                    redundant: 0,
-                    coefficients: categories,
+                    redundant: slope_redundant,
+                    coefficients: slope_coefficients,
                     redundancy_exact: false,
                     nested: false,
                     slope_source: Some(slope.source),
@@ -504,6 +559,80 @@ fn build_report<R: TopologyDofReservation>(
     })
 }
 
+fn continuous_slope_redundancy<R: TopologyDofReservation>(
+    topology: &FinalizedCategoricalTopology,
+    effect_index: usize,
+    slope_source: SourceId,
+    has_intercept: bool,
+    slope_values_by_source: &[Vec<f64>],
+    reservation: &mut R,
+) -> Result<usize> {
+    const ZERO_TOLERANCE: f64 = 1e-6;
+    let topology_source = effect_source(topology, effect_index)?;
+    let views = source_views(topology, reservation)?;
+    let codes = topology_source.codes(&views)?;
+    let values = slope_values_by_source
+        .get(source_index(slope_source)?)
+        .ok_or_else(|| invalid_argument("continuous DoF slope source is unavailable"))?;
+    if values.len() != codes.len() {
+        return Err(invalid_argument(
+            "continuous DoF slope source is not aligned with final topology",
+        ));
+    }
+    let levels = topology_source.n_levels();
+    let mut minimum = reserved_filled(
+        reservation,
+        levels,
+        f64::INFINITY,
+        "unable to reserve continuous DoF minima",
+    )?;
+    let mut maximum = reserved_filled(
+        reservation,
+        levels,
+        f64::NEG_INFINITY,
+        "unable to reserve continuous DoF maxima",
+    )?;
+    for (code, value) in codes.iter().copied().zip(values.iter().copied()) {
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "continuous DoF slope source contains a nonfinite final-sample value",
+            ));
+        }
+        let level = usize::try_from(code)
+            .map_err(|_| invalid_argument("continuous DoF level code exceeds usize"))?;
+        let lower = minimum
+            .get_mut(level)
+            .ok_or_else(|| invalid_argument("continuous DoF level code is out of range"))?;
+        *lower = lower.min(value);
+        let upper = maximum
+            .get_mut(level)
+            .ok_or_else(|| invalid_argument("continuous DoF level code is out of range"))?;
+        *upper = upper.max(value);
+    }
+    let mut redundant = 0_usize;
+    for (lower, upper) in minimum.into_iter().zip(maximum) {
+        if !lower.is_finite() || !upper.is_finite() {
+            return Err(invalid_argument(
+                "continuous DoF encountered an empty categorical level",
+            ));
+        }
+        let is_redundant = if has_intercept {
+            upper - lower <= ZERO_TOLERANCE
+        } else {
+            lower.abs() + upper.abs() <= ZERO_TOLERANCE
+        };
+        redundant = redundant
+            .checked_add(usize::from(is_redundant))
+            .ok_or_else(|| allocation("continuous DoF redundancy total overflows"))?;
+    }
+    Ok(redundant)
+}
+
+fn source_index(source: SourceId) -> Result<usize> {
+    usize::try_from(source.get() - 1)
+        .map_err(|_| invalid_argument("continuous DoF source id exceeds usize"))
+}
+
 fn validate_inputs(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],
@@ -530,6 +659,16 @@ fn validate_inputs(
         if spec.label.is_empty() {
             return Err(invalid_argument(
                 "categorical absorbed-DoF explicit effect has an empty label",
+            ));
+        }
+        if !spec.intercept && spec.slopes.is_empty() {
+            return Err(invalid_argument(
+                "categorical absorbed-DoF effect has neither an intercept nor slope",
+            ));
+        }
+        if spec.slopes.iter().any(|slope| slope.label.is_empty()) {
+            return Err(invalid_argument(
+                "categorical absorbed-DoF slope has an empty label",
             ));
         }
     }

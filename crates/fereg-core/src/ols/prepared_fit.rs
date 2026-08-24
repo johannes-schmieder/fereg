@@ -185,8 +185,9 @@ pub struct CertifiedPreparedOlsFit {
     bread: PreparedOlsBread,
     absorption_report: SolveReport,
     residual_absorption_report: SolveReport,
-    /// Reference-weight sum of squares of the outcome immediately after the
-    /// initial certified FE absorption and before finite-regressor QR.
+    /// Reference-weight sum of squares of the outcome after the initial
+    /// certified FE absorption and, when the absorbed span does not own the
+    /// constant, after projecting on the residualized ordinary intercept.
     ///
     /// With at least one prepared intercept FE this is the reference command's
     /// within TSS.  A no-FE model may still need ordinary-intercept centering,
@@ -429,6 +430,8 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
     }
     let (mut within, absorption_report) = absorbed.into_parts();
     let within_outcome_norm = weighted_matrix_column_norm(&within, 0, weights)?;
+    let normalized_initial_within_sum_of_squares =
+        initial_within_sum_of_squares(prepared, &within, weights, within_outcome_norm)?;
     let mut score_norms = reserved_filled(
         reservation,
         generated_columns,
@@ -481,9 +484,8 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         reservation,
         perturbations,
     )?;
-    let initial_absorbed_outcome_sum_of_squares = within_outcome_norm
-        .mul_add(within_outcome_norm, 0.0)
-        * bread.weight_scale().reference_weight_multiplier;
+    let initial_absorbed_outcome_sum_of_squares =
+        normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
     if !initial_absorbed_outcome_sum_of_squares.is_finite()
         || initial_absorbed_outcome_sum_of_squares < 0.0
     {
@@ -698,7 +700,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS QR candidate columns",
     )?;
-    let has_absorbed_intercept = prepared.fit_structural_intercept();
+    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
     for column in 0..generated_columns {
         let is_intercept = matches!(
             prepared.fit_model().columns[column].kind,
@@ -1585,7 +1587,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             continue;
         }
         if deferred_intercept.replace(generated).is_some()
-            || !prepared.fit_structural_intercept()
+            || !prepared.fit_has_absorbed_intercept()
             || !matches!(
                 prepared
                     .fit_model()
@@ -2149,6 +2151,66 @@ fn weighted_matrix_column_norm(
         update_scaled_sum_of_squares(value, &mut scale, &mut scaled_square_sum)?;
     }
     checked_norm(scale, scaled_square_sum)
+}
+
+fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    within: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    outcome_norm: f64,
+) -> Result<f64> {
+    let uncentered = outcome_norm.mul_add(outcome_norm, 0.0);
+    if !prepared.fit_report_intercept() || prepared.fit_has_absorbed_intercept() {
+        return Ok(uncentered);
+    }
+    let intercept = prepared
+        .fit_model()
+        .columns
+        .iter()
+        .position(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
+        .ok_or_else(|| invalid_argument("prepared OLS ordinary intercept column is absent"))?;
+    let intercept_column = intercept
+        .checked_add(1)
+        .ok_or_else(|| allocation("prepared OLS intercept RHS column overflows"))?;
+    let intercept_norm = weighted_matrix_column_norm(within, intercept_column, weights)?;
+    if outcome_norm == 0.0 || intercept_norm == 0.0 {
+        return Ok(uncentered);
+    }
+
+    let mut normalized_cross = 0.0_f64;
+    let mut cross_correction = 0.0_f64;
+    for row in 0..within.nrows() {
+        let weight = weights.value(row)?;
+        let term = weight
+            * (within[(row, 0)] / outcome_norm)
+            * (within[(row, intercept_column)] / intercept_norm);
+        compensated_add(term, &mut normalized_cross, &mut cross_correction)?;
+    }
+    let coefficient = (outcome_norm / intercept_norm) * (normalized_cross + cross_correction);
+    if !coefficient.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS ordinary-intercept baseline coefficient is not finite",
+        ));
+    }
+    let mut scale = 0.0_f64;
+    let mut scaled_square_sum = 1.0_f64;
+    for row in 0..within.nrows() {
+        let residual = (-coefficient).mul_add(within[(row, intercept_column)], within[(row, 0)]);
+        update_scaled_sum_of_squares(
+            weights.root(row)? * residual,
+            &mut scale,
+            &mut scaled_square_sum,
+        )?;
+    }
+    let norm = checked_norm(scale, scaled_square_sum)?;
+    let sum_of_squares = norm.mul_add(norm, 0.0);
+    if sum_of_squares.is_finite() && sum_of_squares >= 0.0 {
+        Ok(sum_of_squares)
+    } else {
+        Err(invalid_data(
+            "prepared OLS ordinary-intercept baseline sum of squares is invalid",
+        ))
+    }
 }
 
 fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {

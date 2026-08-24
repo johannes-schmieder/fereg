@@ -65,5 +65,10 @@ pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_rhs::{
     compact_categorical_rhs, CandidateCategoricalWeights, CompactedCategoricalRhs,
 };
-pub use topology_slope_map::absorb_finalized_categorical_intercept_slope_map_certified;
+pub use topology_slope_map::{
+    absorb_finalized_categorical_intercept_slope_map_certified,
+    absorb_finalized_categorical_slope_map_certified,
+    recover_finalized_categorical_effects_map_certified, CategoricalAbsorbedEffectView,
+    RecoveredCategoricalEffects,
+};
 pub use topology_source::CategoricalTopologySource;

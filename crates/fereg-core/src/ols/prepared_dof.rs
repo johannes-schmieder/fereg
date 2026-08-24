@@ -14,6 +14,7 @@ pub enum PreparedOlsAbsorbedDofPolicy {
     FirstPair,
     #[default]
     Pairwise,
+    Continuous,
 }
 
 /// One wire-ordered row of the prepared absorbed-DoF table.
@@ -210,7 +211,7 @@ fn compute_with_nesting_reservation<R: PreparedDofReservation>(
     }
 
     match policy {
-        PreparedOlsAbsorbedDofPolicy::None => {}
+        PreparedOlsAbsorbedDofPolicy::None | PreparedOlsAbsorbedDofPolicy::Continuous => {}
         PreparedOlsAbsorbedDofPolicy::FirstPair => {
             if eligible_indices.len() >= 2 {
                 let earlier = eligible_indices[0];

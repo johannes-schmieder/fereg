@@ -521,7 +521,7 @@ fn certify_dof_identity<P: PreparedOlsInferenceView + ?Sized>(
     dof: PreparedOlsResidualDofReport,
 ) -> Result<()> {
     let expected_finite_intercept =
-        usize::from(prepared.fit_report_intercept() && !prepared.fit_structural_intercept());
+        usize::from(prepared.fit_report_intercept() && !prepared.fit_has_absorbed_intercept());
     let expected_finite_model = fit
         .finite_rank()
         .checked_sub(expected_finite_intercept)

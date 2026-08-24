@@ -20,6 +20,14 @@ extern "C" {
     fn fereg_spi_nvars() -> c_int;
     fn fereg_spi_is_missing(value: f64) -> c_int;
     fn fereg_spi_var_is_string(variable: c_int) -> c_int;
+    fn fereg_spi_var_is_strl(variable: c_int) -> c_int;
+    fn fereg_spi_sdatalen(variable: c_int, observation: c_int) -> c_int;
+    fn fereg_spi_read_string(
+        variable: c_int,
+        observation: c_int,
+        buffer: *mut c_char,
+        length: c_int,
+    ) -> c_int;
     fn fereg_spi_vdata(variable: c_int, observation: c_int, value: *mut f64) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
     fn fereg_spi_matrix_rows(name: *const c_char) -> c_int;
@@ -62,6 +70,23 @@ unsafe fn fereg_spi_is_missing(_value: f64) -> c_int {
 #[cfg(test)]
 unsafe fn fereg_spi_var_is_string(_variable: c_int) -> c_int {
     -1
+}
+#[cfg(test)]
+unsafe fn fereg_spi_var_is_strl(_variable: c_int) -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn fereg_spi_sdatalen(_variable: c_int, _observation: c_int) -> c_int {
+    -1
+}
+#[cfg(test)]
+unsafe fn fereg_spi_read_string(
+    _variable: c_int,
+    _observation: c_int,
+    _buffer: *mut c_char,
+    _length: c_int,
+) -> c_int {
+    498
 }
 #[cfg(test)]
 unsafe fn fereg_spi_vdata(_variable: c_int, _observation: c_int, _value: *mut f64) -> c_int {
@@ -215,6 +240,19 @@ impl SpiApi for SpiSession {
         }
     }
 
+    fn variable_is_strl(&mut self, variable: u32) -> Result<bool, FeregError> {
+        let variable = Self::position(variable, "variable position")?;
+        // SAFETY: position is representable and the session is thread-confined.
+        match unsafe { fereg_spi_var_is_strl(variable) } {
+            0 => Ok(false),
+            1 => Ok(true),
+            value => Err(FeregError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid strL status {value}"),
+            )),
+        }
+    }
+
     fn read_numeric(
         &mut self,
         variable: u32,
@@ -238,6 +276,50 @@ impl SpiApi for SpiSession {
                 format!("Stata SPI returned invalid missing status {other}"),
             )),
         }
+    }
+
+    fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>, FeregError> {
+        let variable = Self::position(variable, "variable position")?;
+        let observation = Self::observation(observation)?;
+        // SAFETY: indices are checked and the session is thread-confined.
+        let needed = unsafe { fereg_spi_sdatalen(variable, observation) };
+        if needed < 0 {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                format!("Stata SPI returned invalid string length {needed}"),
+            ));
+        }
+        let length = needed.checked_add(1).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "string buffer length overflows")
+        })?;
+        let length_usize = usize::try_from(length).map_err(|_| {
+            FeregError::new(ErrorCode::Allocation, "string buffer length exceeds usize")
+        })?;
+        let mut buffer = Vec::<c_char>::new();
+        buffer.try_reserve_exact(length_usize).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve Stata string buffer",
+            )
+        })?;
+        buffer.resize(length_usize, 0);
+        // SAFETY: the buffer is writable for `length` bytes; indices are checked
+        // and the session remains confined to Stata's calling thread.
+        Self::spi_rc(
+            unsafe { fereg_spi_read_string(variable, observation, buffer.as_mut_ptr(), length) },
+            "string read",
+        )?;
+        // SAFETY: the bridge guarantees NUL termination within the supplied buffer.
+        let bytes = unsafe { CStr::from_ptr(buffer.as_ptr()) }.to_bytes();
+        let mut output = Vec::new();
+        output.try_reserve_exact(bytes.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve copied Stata string",
+            )
+        })?;
+        output.extend_from_slice(bytes);
+        Ok(output)
     }
 
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize), FeregError> {

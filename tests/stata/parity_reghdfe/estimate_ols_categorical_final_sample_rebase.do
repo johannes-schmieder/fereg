@@ -93,7 +93,9 @@ assert mreldif(e(V), `accepted_V') == 0
 fvset clear f
 
 capture noisily fereg y x, absorb(a#b)
-assert _rc == 498
+assert _rc == 0
+assert `"`e(cmd)'"' == "fereg"
+assert e(N) == 8
 capture noisily feppml y x, absorb(a#b)
 assert _rc == 498
 

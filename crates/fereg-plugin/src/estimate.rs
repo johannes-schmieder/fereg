@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::result::{
@@ -10,22 +10,24 @@ use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::fe::plan_categorical_absorbed_request;
 use fereg_core::metadata::{
-    ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
-    COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
+    ComponentKind, ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH,
+    ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 use fereg_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
     prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
-    LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig,
+    CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
+    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsFitStatus,
     PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
 };
 use fereg_core::prepare_categorical_ols_data;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
+use fereg_core::{MapConfig, PreparedCategoricalOlsData};
 
 pub const ACTION_ESTIMATE_OLS_TEST: &str = "estimate-ols-test";
 const CONFIRMATION: &str = "developer-estimation-test";
@@ -67,11 +69,23 @@ struct PreparedResultMatrices {
     receipt: PreparedMatrixStoreName,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct ObservationOutputs {
     sample: u32,
     residual: Option<u32>,
     drop_reason: Option<u32>,
+    xb: Option<u32>,
+    xbd: Option<u32>,
+    absorbed: Option<u32>,
+    saved_channels: Vec<Option<u32>>,
+}
+
+#[derive(Debug)]
+struct DerivedObservationOutputs {
+    xb: Option<Vec<f64>>,
+    xbd: Option<Vec<f64>>,
+    absorbed: Option<Vec<f64>>,
+    saved_channels: Vec<Option<Vec<f64>>>,
 }
 
 #[derive(Debug)]
@@ -125,11 +139,11 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let loaded = load_ols_input(&action.request, spi)?;
-    let categorical = action
-        .request
-        .absorbed_terms
-        .iter()
-        .any(|term| term.categorical_sources.len() > 1 || !term.slope_sources.is_empty());
+    let categorical = action.request.absorbed_terms.iter().any(|term| {
+        term.categorical_sources.len() > 1
+            || !term.slope_sources.is_empty()
+            || !term.saved_name.is_empty()
+    });
     let has_slope = action
         .request
         .absorbed_terms
@@ -150,13 +164,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsUnadjustedConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::legacy(&prepared);
+            let derived = build_derived_observation_outputs(
+                result_data,
+                None,
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::legacy(&prepared),
+                result_data,
                 None,
                 CertifiedOlsInference::Iid(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
         (OlsVceKind::Robust, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
@@ -167,13 +188,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsRobustConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::legacy(&prepared);
+            let derived = build_derived_observation_outputs(
+                result_data,
+                None,
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::legacy(&prepared),
+                result_data,
                 None,
                 CertifiedOlsInference::Robust(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
         (OlsVceKind::Clustered, false) => {
             let request = OlsClusteredRequestV1 {
@@ -189,13 +217,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsClusteredConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::legacy(prepared.ols());
+            let derived = build_derived_observation_outputs(
+                result_data,
+                None,
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::legacy(prepared.ols()),
+                result_data,
                 Some(PreparedOlsClusteredResultData::legacy(&prepared)),
                 CertifiedOlsInference::Clustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
         (OlsVceKind::Iid, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
@@ -206,13 +241,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsUnadjustedConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::categorical(&prepared);
+            let derived = build_derived_observation_outputs(
+                result_data,
+                Some(&prepared),
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::categorical(&prepared),
+                result_data,
                 None,
                 CertifiedOlsInference::CategoricalIid(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
         (OlsVceKind::Robust, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
@@ -223,13 +265,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsRobustConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::categorical(&prepared);
+            let derived = build_derived_observation_outputs(
+                result_data,
+                Some(&prepared),
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::categorical(&prepared),
+                result_data,
                 None,
                 CertifiedOlsInference::CategoricalRobust(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
         (OlsVceKind::Clustered, true) => {
             let request = OlsClusteredRequestV1 {
@@ -245,13 +294,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsClusteredConfig::default()
                 },
             )?;
+            let result_data = PreparedOlsResultData::categorical(prepared.ols());
+            let derived = build_derived_observation_outputs(
+                result_data,
+                Some(prepared.ols()),
+                inference.fit(),
+                &action.outputs,
+            )?;
             let shadow = build_shadow_result(
-                PreparedOlsResultData::categorical(prepared.ols()),
+                result_data,
                 Some(PreparedOlsClusteredResultData::categorical(&prepared)),
                 CertifiedOlsInference::CategoricalClustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, spi)
+            precommit_and_store(&action, &shadow, &derived, spi)
         }
     }
 }
@@ -297,6 +353,10 @@ impl EstimateActionSpec {
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
         let output_residual = parse_nonnegative_u32(&values, "output_residual")?;
         let output_drop_reason = parse_nonnegative_u32(&values, "output_drop_reason")?;
+        let output_xb = parse_nonnegative_u32(&values, "output_xb")?;
+        let output_xbd = parse_nonnegative_u32(&values, "output_xbd")?;
+        let output_absorbed = parse_nonnegative_u32(&values, "output_absorbed")?;
+        let output_saved_count = parse_usize(&values, "output_saved_count")?;
         let specification = Self {
             model_major: f64::from(parse_u16(&values, "model_major")?),
             model_minor: f64::from(parse_u16(&values, "model_minor")?),
@@ -344,6 +404,13 @@ impl EstimateActionSpec {
                 sample: parse_positive_u32(&values, "output_sample")?,
                 residual: (output_residual != 0).then_some(output_residual),
                 drop_reason: (output_drop_reason != 0).then_some(output_drop_reason),
+                xb: (output_xb != 0).then_some(output_xb),
+                xbd: (output_xbd != 0).then_some(output_xbd),
+                absorbed: (output_absorbed != 0).then_some(output_absorbed),
+                saved_channels: decode_output_position_registry(
+                    required(&values, "output_saved_channels")?,
+                    output_saved_count,
+                )?,
             },
             matrices: ResultMatrices {
                 b: required(&values, "output_b_matrix")?.to_owned(),
@@ -408,6 +475,11 @@ impl EstimateActionSpec {
             "output_sample",
             "output_residual",
             "output_drop_reason",
+            "output_xb",
+            "output_xbd",
+            "output_absorbed",
+            "output_saved_count",
+            "output_saved_channels",
             "output_b_matrix",
             "output_v_matrix",
             "output_status_matrix",
@@ -489,10 +561,11 @@ impl EstimateActionSpec {
         };
         let clusters = read_clusters(self, spi)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
-        let categorical = request
-            .absorbed_terms
-            .iter()
-            .any(|term| term.categorical_sources.len() > 1 || !term.slope_sources.is_empty());
+        let categorical = request.absorbed_terms.iter().any(|term| {
+            term.categorical_sources.len() > 1
+                || !term.slope_sources.is_empty()
+                || !term.saved_name.is_empty()
+        });
         let has_slope = request
             .absorbed_terms
             .iter()
@@ -540,12 +613,30 @@ impl EstimateActionSpec {
             .iter()
             .try_fold(0_usize, |total, term| {
                 total
-                    .checked_add(1 + term.slope_sources.len())
+                    .checked_add(usize::from(term.intercept) + term.slope_sources.len())
                     .ok_or_else(|| allocation("extended absorbed-effect row count overflows"))
             })?;
+        if self.outputs.saved_channels.len() != extended_fe_rows {
+            return Err(invalid(
+                "saved fixed-effect output layout differs from extended absorbed channels",
+            ));
+        }
+        let mut saved_cursor = 0_usize;
+        for term in &request.absorbed_terms {
+            let expected = !term.saved_name.is_empty();
+            let channels = usize::from(term.intercept) + term.slope_sources.len();
+            for _ in 0..channels {
+                if self.outputs.saved_channels[saved_cursor].is_some() != expected {
+                    return Err(invalid(
+                        "saved fixed-effect positions disagree with absorbed saved-name metadata",
+                    ));
+                }
+                saved_cursor += 1;
+            }
+        }
         let matrices = validate_layout(
             &request,
-            self.outputs,
+            &self.outputs,
             &self.matrices,
             prepared_model.coefficients.len(),
             extended_fe_rows.max(1),
@@ -568,7 +659,7 @@ impl EstimateActionSpec {
             vce: self.vce,
             absorbed_dof: self.absorbed_dof,
             account_cluster_nesting: self.account_cluster_nesting,
-            outputs: self.outputs,
+            outputs: self.outputs.clone(),
             matrices,
         })
     }
@@ -797,11 +888,32 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
         candidate[observation - 1] = value == 1.0;
     }
     let mut outcome = empty_loaded_column(n, "OLS outcome")?;
-    let mut numeric_sources = reserved_empty(request.model.sources.len(), "OLS source table")?;
+    let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
+        let position = source_position(request, source.id)?;
+        let loader = if spi.variable_is_string(position)? {
+            if source_requires_numeric(request, source.id) {
+                return Err(unsupported(format!(
+                    "model source {} must be numeric",
+                    source.id.get()
+                )));
+            }
+            if spi.variable_is_strl(position)? {
+                return Err(unsupported(format!(
+                    "model source {} uses unsupported strL storage",
+                    source.id.get()
+                )));
+            }
+            OlsSourceLoader::FixedWidthString {
+                column: empty_loaded_column(n, "OLS string source codes")?,
+                provisional_codes: HashMap::new(),
+            }
+        } else {
+            OlsSourceLoader::Numeric(empty_loaded_column(n, "OLS numeric source")?)
+        };
         push_reserved(
-            &mut numeric_sources,
-            (source.id, empty_loaded_column(n, "OLS numeric source")?),
+            &mut source_loaders,
+            (source.id, loader),
             "OLS source table capacity exhausted",
         )?;
     }
@@ -833,8 +945,8 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
         spi.check_interrupted()?;
         let observation = zero_based + 1;
         read_into(spi, outcome_position, observation, &mut outcome, zero_based)?;
-        for ((_, destination), position) in numeric_sources.iter_mut().zip(&source_positions) {
-            read_into(spi, *position, observation, destination, zero_based)?;
+        for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
+            destination.read_into(spi, *position, observation, zero_based)?;
         }
         if let (Some(position), Some(destination)) = (analytic_position, analytic_weight.as_mut()) {
             read_into(spi, position, observation, destination, zero_based)?;
@@ -849,6 +961,14 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
             read_into(spi, position, observation, destination, zero_based)?;
         }
     }
+    let mut numeric_sources = reserved_empty(source_loaders.len(), "final OLS source table")?;
+    for (source, loader) in source_loaders {
+        push_reserved(
+            &mut numeric_sources,
+            (source, loader.finalize()?),
+            "final OLS source table capacity exhausted",
+        )?;
+    }
     Ok(LoadedOlsInput {
         candidate,
         outcome,
@@ -857,6 +977,96 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
         frequency_weight,
         probability_weight,
     })
+}
+
+enum OlsSourceLoader {
+    Numeric(LoadedNumericColumn),
+    FixedWidthString {
+        column: LoadedNumericColumn,
+        provisional_codes: HashMap<Vec<u8>, u32>,
+    },
+}
+
+impl OlsSourceLoader {
+    fn read_into(
+        &mut self,
+        spi: &mut dyn SpiApi,
+        position: u32,
+        observation: usize,
+        zero_based: usize,
+    ) -> Result<()> {
+        match self {
+            Self::Numeric(column) => read_into(spi, position, observation, column, zero_based),
+            Self::FixedWidthString {
+                column,
+                provisional_codes,
+            } => {
+                let value = spi.read_string(position, observation)?;
+                if value.is_empty() {
+                    column.missing[zero_based] = true;
+                    return Ok(());
+                }
+                let code = if let Some(code) = provisional_codes.get(value.as_slice()) {
+                    *code
+                } else {
+                    let code = u32::try_from(provisional_codes.len()).map_err(|_| {
+                        unsupported("fixed-width string source has more than u32::MAX levels")
+                    })?;
+                    provisional_codes.try_reserve(1).map_err(|_| {
+                        allocation("unable to reserve fixed-width string factorization table")
+                    })?;
+                    provisional_codes.insert(value, code);
+                    code
+                };
+                column.values[zero_based] = f64::from(code);
+                column.missing[zero_based] = false;
+                Ok(())
+            }
+        }
+    }
+
+    fn finalize(self) -> Result<LoadedNumericColumn> {
+        match self {
+            Self::Numeric(column) => Ok(column),
+            Self::FixedWidthString {
+                mut column,
+                provisional_codes,
+            } => {
+                let mut levels =
+                    reserved_empty(provisional_codes.len(), "fixed-width string level ordering")?;
+                for entry in provisional_codes {
+                    push_reserved(
+                        &mut levels,
+                        entry,
+                        "fixed-width string level ordering capacity exhausted",
+                    )?;
+                }
+                levels.sort_unstable_by(|left, right| left.0.cmp(&right.0));
+                let mut recode = reserved_filled(
+                    levels.len(),
+                    0_u32,
+                    "fixed-width string deterministic recode",
+                )?;
+                for (sorted, (_, provisional)) in levels.into_iter().enumerate() {
+                    recode[usize::try_from(provisional).map_err(|_| {
+                        invalid("fixed-width string provisional code exceeds usize")
+                    })?] = u32::try_from(sorted).map_err(|_| {
+                        unsupported("fixed-width string source has more than u32::MAX levels")
+                    })?;
+                }
+                for (value, missing) in column.values.iter_mut().zip(&column.missing) {
+                    if *missing {
+                        continue;
+                    }
+                    let provisional = *value as usize;
+                    *value = f64::from(*recode.get(provisional).ok_or_else(|| {
+                        invalid("fixed-width string provisional code is out of range")
+                    })?);
+                }
+                Ok(column)
+            }
+        }
+    }
 }
 
 fn read_into(
@@ -872,14 +1082,210 @@ fn read_into(
     Ok(())
 }
 
+fn build_derived_observation_outputs(
+    prepared: PreparedOlsResultData<'_>,
+    categorical: Option<&PreparedCategoricalOlsData>,
+    fit: &CertifiedPreparedOlsFit,
+    requested: &ObservationOutputs,
+) -> Result<DerivedObservationOutputs> {
+    let any_derived = requested.xb.is_some()
+        || requested.xbd.is_some()
+        || requested.absorbed.is_some()
+        || requested.saved_channels.iter().any(Option::is_some);
+    if !any_derived {
+        return Ok(DerivedObservationOutputs {
+            xb: None,
+            xbd: None,
+            absorbed: None,
+            saved_channels: vec![None; requested.saved_channels.len()],
+        });
+    }
+    let n = prepared.sample().n_active();
+    if fit.residuals().len() != n || fit.coefficients().len() != prepared.model().coefficients.len()
+    {
+        return Err(invalid(
+            "prepared fit and derived-output model dimensions differ",
+        ));
+    }
+    let mut xb = reserved_filled(n, 0.0, "derived OLS xb output")?;
+    for fitted in fit.coefficients() {
+        match (fitted.generated_column_index, fitted.value) {
+            (Some(column), Some(coefficient)) => {
+                if !matches!(
+                    fitted.status,
+                    PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                ) {
+                    return Err(invalid(
+                        "derived OLS output received a value for a nonfitted coefficient",
+                    ));
+                }
+                for (row, value) in xb.iter_mut().enumerate() {
+                    *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
+                }
+            }
+            (None, None) => {}
+            _ => {
+                return Err(invalid(
+                    "derived OLS output coefficient identity is incomplete",
+                ))
+            }
+        }
+    }
+    if xb.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data("derived OLS xb output is not finite"));
+    }
+
+    let needs_absorbed = requested.absorbed.is_some()
+        || requested.xbd.is_some()
+        || requested.saved_channels.iter().any(Option::is_some);
+    let mut absorbed_target = if needs_absorbed {
+        Some(reserved_filled(n, 0.0, "derived OLS absorbed target")?)
+    } else {
+        None
+    };
+    if let Some(target) = absorbed_target.as_mut() {
+        for (row, value) in target.iter_mut().enumerate() {
+            *value = prepared.sample().outcome[row] - xb[row] - fit.residuals()[row];
+            if !value.is_finite() {
+                return Err(invalid_data("derived OLS absorbed target is not finite"));
+            }
+        }
+    }
+
+    let mut saved_channels = reserved_empty(
+        requested.saved_channels.len(),
+        "derived saved-output registry",
+    )?;
+    let mut recovered_absorbed = None;
+    if requested.saved_channels.iter().any(Option::is_some) {
+        let categorical = categorical.ok_or_else(|| {
+            invalid("saved fixed-effect recovery requires categorical prepared topology")
+        })?;
+        let mut mask = reserved_empty(
+            requested.saved_channels.len(),
+            "derived saved-output request mask",
+        )?;
+        for position in &requested.saved_channels {
+            push_reserved(
+                &mut mask,
+                position.is_some(),
+                "derived saved-output request mask capacity exhausted",
+            )?;
+        }
+        let recovered = categorical.recover_absorbed_effects_map(
+            absorbed_target
+                .as_deref()
+                .ok_or_else(|| invalid("saved fixed-effect recovery target is absent"))?,
+            &mask,
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )?;
+        let (absorbed_sum, channels) = recovered.into_parts();
+        recovered_absorbed = Some(absorbed_sum);
+        saved_channels = channels;
+    } else {
+        saved_channels.resize_with(requested.saved_channels.len(), || None);
+    }
+
+    let xbd = if requested.xbd.is_some() {
+        let mut values = reserved_filled(n, 0.0, "derived OLS xbd output")?;
+        for (row, value) in values.iter_mut().enumerate() {
+            *value = prepared.sample().outcome[row] - fit.residuals()[row];
+        }
+        Some(values)
+    } else {
+        None
+    };
+    let absorbed = if requested.absorbed.is_some() {
+        Some(
+            recovered_absorbed
+                .or(absorbed_target)
+                .ok_or_else(|| invalid("requested absorbed output is absent"))?,
+        )
+    } else {
+        None
+    };
+    Ok(DerivedObservationOutputs {
+        xb: requested.xb.is_some().then_some(xb),
+        xbd,
+        absorbed,
+        saved_channels,
+    })
+}
+
 fn precommit_and_store(
     action: &EstimateAction,
     shadow: &OlsShadowResult<'_>,
+    derived: &DerivedObservationOutputs,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
     validate_shadow_against_outputs(action, shadow)?;
+    validate_derived_against_outputs(action, shadow, derived)?;
     spi.check_interrupted()?;
-    store_shadow(action, shadow, spi)
+    store_shadow(action, shadow, derived, spi)
+}
+
+fn validate_derived_against_outputs(
+    action: &EstimateAction,
+    shadow: &OlsShadowResult<'_>,
+    derived: &DerivedObservationOutputs,
+) -> Result<()> {
+    let n = shadow.retained_rows.len();
+    for (position, values) in [
+        (action.outputs.xb, derived.xb.as_deref()),
+        (action.outputs.xbd, derived.xbd.as_deref()),
+        (action.outputs.absorbed, derived.absorbed.as_deref()),
+    ] {
+        if position.is_some() != values.is_some()
+            || values.is_some_and(|values| {
+                values.len() != n || values.iter().any(|value| !value.is_finite())
+            })
+        {
+            return Err(invalid(
+                "derived OLS observation output failed final preflight",
+            ));
+        }
+    }
+    if derived.saved_channels.len() != action.outputs.saved_channels.len() {
+        return Err(invalid(
+            "derived saved-output channel layout failed final preflight",
+        ));
+    }
+    for (position, values) in action
+        .outputs
+        .saved_channels
+        .iter()
+        .zip(&derived.saved_channels)
+    {
+        if position.is_some() != values.is_some()
+            || values.as_ref().is_some_and(|values| {
+                values.len() != n || values.iter().any(|value| !value.is_finite())
+            })
+        {
+            return Err(invalid(
+                "derived saved fixed-effect output failed final preflight",
+            ));
+        }
+    }
+    if let (Some(xb), Some(absorbed), Some(xbd)) = (
+        derived.xb.as_deref(),
+        derived.absorbed.as_deref(),
+        derived.xbd.as_deref(),
+    ) {
+        for row in 0..n {
+            let error = (xb[row] + absorbed[row] - xbd[row]).abs();
+            if error > 1e-9 * xbd[row].abs().max(1.0) {
+                return Err(invalid_data(
+                    "derived xb, absorbed, and xbd outputs disagree",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn validate_shadow_against_outputs(
@@ -1222,6 +1628,7 @@ fn validate_shadow_fixed_effect_row(row: &[f64]) -> Result<()> {
 fn store_shadow(
     action: &EstimateAction,
     shadow: &OlsShadowResult<'_>,
+    derived: &DerivedObservationOutputs,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
     let mut retained_cursor = 0_usize;
@@ -1237,6 +1644,25 @@ fn store_shadow(
             debug_assert_eq!(shadow.retained_rows[retained_cursor], zero_based);
             if let Some(position) = action.outputs.residual {
                 spi.store_numeric(position, observation, shadow.residuals[retained_cursor])?;
+            }
+            for (position, values) in [
+                (action.outputs.xb, derived.xb.as_deref()),
+                (action.outputs.xbd, derived.xbd.as_deref()),
+                (action.outputs.absorbed, derived.absorbed.as_deref()),
+            ] {
+                if let (Some(position), Some(values)) = (position, values) {
+                    spi.store_numeric(position, observation, values[retained_cursor])?;
+                }
+            }
+            for (position, values) in action
+                .outputs
+                .saved_channels
+                .iter()
+                .zip(&derived.saved_channels)
+            {
+                if let (Some(position), Some(values)) = (*position, values.as_ref()) {
+                    spi.store_numeric(position, observation, values[retained_cursor])?;
+                }
             }
             retained_cursor += 1;
         }
@@ -1343,7 +1769,7 @@ fn store_matrix(
 #[allow(clippy::too_many_arguments)]
 fn validate_layout(
     request: &OlsRequestV1,
-    outputs: ObservationOutputs,
+    outputs: &ObservationOutputs,
     matrices: &ResultMatrices,
     coefficient_count: usize,
     fe_rows: usize,
@@ -1352,8 +1778,17 @@ fn validate_layout(
     input_matrix_names: &[&String],
 ) -> Result<PreparedResultMatrices> {
     let nvars = spi.nvars()?;
-    let output_count =
-        1 + usize::from(outputs.residual.is_some()) + usize::from(outputs.drop_reason.is_some());
+    let output_count = 1
+        + usize::from(outputs.residual.is_some())
+        + usize::from(outputs.drop_reason.is_some())
+        + usize::from(outputs.xb.is_some())
+        + usize::from(outputs.xbd.is_some())
+        + usize::from(outputs.absorbed.is_some())
+        + outputs
+            .saved_channels
+            .iter()
+            .filter(|value| value.is_some())
+            .count();
     let expected = request
         .bindings
         .len()
@@ -1366,13 +1801,32 @@ fn validate_layout(
     }
     let mut positions = BTreeSet::new();
     for binding in &request.bindings {
-        validate_numeric_position(binding.stata_var_position, nvars, &mut positions, spi)?;
+        match binding.role {
+            OlsInputRole::NumericSource(source) if !source_requires_numeric(request, source) => {
+                validate_categorical_position(
+                    binding.stata_var_position,
+                    nvars,
+                    &mut positions,
+                    spi,
+                )?;
+            }
+            _ => {
+                validate_numeric_position(binding.stata_var_position, nvars, &mut positions, spi)?;
+            }
+        }
     }
     validate_numeric_position(outputs.sample, nvars, &mut positions, spi)?;
     if let Some(position) = outputs.residual {
         validate_numeric_position(position, nvars, &mut positions, spi)?;
     }
     if let Some(position) = outputs.drop_reason {
+        validate_numeric_position(position, nvars, &mut positions, spi)?;
+    }
+    for position in [outputs.xb, outputs.xbd, outputs.absorbed]
+        .into_iter()
+        .flatten()
+        .chain(outputs.saved_channels.iter().copied().flatten())
+    {
         validate_numeric_position(position, nvars, &mut positions, spi)?;
     }
     let nvars_u32 = u32::try_from(nvars).map_err(|_| invalid("plugin varlist exceeds u32"))?;
@@ -1536,6 +1990,37 @@ fn validate_numeric_position(
     Ok(())
 }
 
+fn validate_categorical_position(
+    position: u32,
+    nvars: usize,
+    positions: &mut BTreeSet<u32>,
+    spi: &mut dyn SpiApi,
+) -> Result<()> {
+    if position == 0
+        || usize::try_from(position).map_or(true, |value| value > nvars)
+        || !positions.insert(position)
+    {
+        return Err(invalid("OLS plugin positions must be unique and in range"));
+    }
+    if spi.variable_is_string(position)? && spi.variable_is_strl(position)? {
+        return Err(unsupported(format!(
+            "plugin varlist position {position} uses unsupported strL storage"
+        )));
+    }
+    Ok(())
+}
+
+fn source_requires_numeric(request: &OlsRequestV1, source: SourceId) -> bool {
+    request.model.terms.iter().any(|term| {
+        term.components.iter().any(|component| {
+            component.source == source && component.kind == ComponentKind::Continuous
+        })
+    }) || request
+        .absorbed_terms
+        .iter()
+        .any(|term| term.slope_sources.contains(&source))
+}
+
 fn read_table(
     spi: &mut dyn SpiApi,
     name: &str,
@@ -1683,6 +2168,22 @@ fn decode_registry(value: &str, expected: usize) -> Result<Vec<String>> {
     Ok(output)
 }
 
+fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<Option<u32>>> {
+    let values = decode_registry(value, expected)?;
+    let mut output = reserved_empty(expected, "saved-output position registry")?;
+    for value in values {
+        let position = value
+            .parse::<u32>()
+            .map_err(|_| syntax("saved-output position must be an unsigned integer"))?;
+        push_reserved(
+            &mut output,
+            (position != 0).then_some(position),
+            "saved-output position registry capacity exhausted",
+        )?;
+    }
+    Ok(output)
+}
+
 fn parse_vce(value: &str) -> Result<OlsVceKind> {
     match value.to_ascii_lowercase().as_str() {
         "iid" | "unadjusted" | "ols" => Ok(OlsVceKind::Iid),
@@ -1699,6 +2200,7 @@ fn parse_dof(value: &str) -> Result<PreparedOlsAbsorbedDofPolicy> {
         "none" => Ok(PreparedOlsAbsorbedDofPolicy::None),
         "firstpair" => Ok(PreparedOlsAbsorbedDofPolicy::FirstPair),
         "pairwise" => Ok(PreparedOlsAbsorbedDofPolicy::Pairwise),
+        "continuous" => Ok(PreparedOlsAbsorbedDofPolicy::Continuous),
         _ => Err(unsupported(format!(
             "unsupported guarded OLS DoF policy {value:?}"
         ))),
@@ -1811,9 +2313,9 @@ fn allocation(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use fereg_core::metadata::{
-        CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-        LevelState, MetadataFlag, ModelWireV2, RawTermKind, SourceEntry, TermComponent, TermId,
-        TermOrder, TimeSeriesState,
+        AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledModelSpecification, CompiledTermGraph,
+        ComponentKind, ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, ModelWireV2,
+        RawTermKind, SourceEntry, TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use fereg_core::protocol::{ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION};
     use std::collections::{BTreeMap, BTreeSet};
@@ -1829,8 +2331,10 @@ mod tests {
         nobs: usize,
         nvars: usize,
         data: BTreeMap<(u32, usize), (f64, bool)>,
+        string_data: BTreeMap<(u32, usize), Vec<u8>>,
         matrices: BTreeMap<String, Vec<Vec<f64>>>,
         string_variables: BTreeSet<u32>,
+        strl_variables: BTreeSet<u32>,
         numeric_reads: usize,
         store_calls: usize,
         fail_store_at: Option<usize>,
@@ -1853,12 +2357,23 @@ mod tests {
             Ok(self.string_variables.contains(&variable))
         }
 
+        fn variable_is_strl(&mut self, variable: u32) -> Result<bool> {
+            Ok(self.strl_variables.contains(&variable))
+        }
+
         fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)> {
             self.numeric_reads += 1;
             self.data
                 .get(&(variable, observation))
                 .copied()
                 .ok_or_else(|| invalid("test numeric cell is absent"))
+        }
+
+        fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>> {
+            self.string_data
+                .get(&(variable, observation))
+                .cloned()
+                .ok_or_else(|| invalid("test string cell is absent"))
         }
 
         fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)> {
@@ -2233,6 +2748,11 @@ mod tests {
             format!("output_sample={sample_position}"),
             format!("output_residual={residual_position}"),
             format!("output_drop_reason={reason_position}"),
+            "output_xb=0".to_owned(),
+            "output_xbd=0".to_owned(),
+            "output_absorbed=0".to_owned(),
+            "output_saved_count=0".to_owned(),
+            "output_saved_channels=.".to_owned(),
             "output_b_matrix=RB".to_owned(),
             "output_v_matrix=RV".to_owned(),
             "output_status_matrix=RSTATUS".to_owned(),
@@ -2253,8 +2773,10 @@ mod tests {
                 nobs: 6,
                 nvars: binding_count + 3,
                 data,
+                string_data: BTreeMap::new(),
                 matrices: std::mem::take(&mut matrices),
                 string_variables: BTreeSet::new(),
+                strl_variables: BTreeSet::new(),
                 numeric_reads: 0,
                 store_calls: 0,
                 fail_store_at: None,
@@ -2269,6 +2791,124 @@ mod tests {
                 )),
             },
         )
+    }
+
+    fn saved_output_fixture() -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        let x_source = SourceEntry {
+            id: SourceId::new(1).expect("x source"),
+            canonical_name: "x".to_owned(),
+        };
+        let group_source = SourceEntry {
+            id: SourceId::new(2).expect("group source"),
+            canonical_name: "g".to_owned(),
+        };
+        let wire = ModelWireV2::from_specification(&CompiledModelSpecification {
+            model: CompiledTermGraph {
+                sources: vec![x_source.clone(), group_source.clone()],
+                terms: vec![continuous_term(x_source.id)],
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("absorbed term"),
+                intercept: true,
+                categorical_sources: vec![group_source.id],
+                slope_sources: Vec::new(),
+                label: "g".to_owned(),
+                saved_name: "fe".to_owned(),
+            }],
+        })
+        .expect("saved-output wire");
+        for (name, matrix) in [
+            ("S", wire.sources.rows),
+            ("T", wire.terms.rows),
+            ("C", wire.components.rows),
+            ("A", wire.absorb_terms.rows),
+            ("AC", wire.absorb_components.rows),
+        ] {
+            spi.matrices.insert(name.to_owned(), matrix);
+        }
+        spi.matrices.insert(
+            "B".to_owned(),
+            vec![
+                vec![1.0, 1.0, 0.0],
+                vec![2.0, 2.0, 0.0],
+                vec![3.0, 3.0, 1.0],
+                vec![4.0, 3.0, 2.0],
+            ],
+        );
+        for (observation, group) in [1.0, 1.0, 2.0, 2.0, 3.0, 3.0].into_iter().enumerate() {
+            spi.data.insert((4, observation + 1), (group, false));
+        }
+        spi.nvars = 11;
+
+        replace_argument(&mut args, "source_count", "source_count=2".to_owned());
+        replace_argument(
+            &mut args,
+            "source_names",
+            format!("source_names={}", registry(&wire.source_names)),
+        );
+        replace_argument(
+            &mut args,
+            "absorb_term_count",
+            "absorb_term_count=1".to_owned(),
+        );
+        replace_argument(
+            &mut args,
+            "absorb_component_count",
+            "absorb_component_count=1".to_owned(),
+        );
+        replace_argument(
+            &mut args,
+            "absorb_labels",
+            format!("absorb_labels={}", registry(&wire.absorb_labels)),
+        );
+        replace_argument(
+            &mut args,
+            "absorb_saved_names",
+            format!("absorb_saved_names={}", registry(&wire.absorb_saved_names)),
+        );
+        replace_argument(&mut args, "binding_count", "binding_count=4".to_owned());
+        replace_argument(&mut args, "output_sample", "output_sample=5".to_owned());
+        replace_argument(&mut args, "output_residual", "output_residual=6".to_owned());
+        replace_argument(
+            &mut args,
+            "output_drop_reason",
+            "output_drop_reason=7".to_owned(),
+        );
+        replace_argument(&mut args, "output_xb", "output_xb=8".to_owned());
+        replace_argument(&mut args, "output_xbd", "output_xbd=9".to_owned());
+        replace_argument(
+            &mut args,
+            "output_absorbed",
+            "output_absorbed=10".to_owned(),
+        );
+        replace_argument(
+            &mut args,
+            "output_saved_count",
+            "output_saved_count=1".to_owned(),
+        );
+        replace_argument(
+            &mut args,
+            "output_saved_channels",
+            "output_saved_channels=2:11".to_owned(),
+        );
+        (args, spi)
+    }
+
+    fn stored_numeric(spi: &FakeSpi, variable: u32, observation: usize) -> f64 {
+        spi.stores
+            .iter()
+            .find_map(|event| match event {
+                StoreEvent::Numeric(found_variable, found_observation, value)
+                    if (*found_variable, *found_observation) == (variable, observation) =>
+                {
+                    Some(*value)
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| {
+                panic!("missing store for variable {variable}, observation {observation}")
+            })
     }
 
     fn factor_scatter_fixture() -> (Vec<String>, FakeSpi) {
@@ -2355,6 +2995,107 @@ mod tests {
                 Some(&StoreEvent::Matrix(13, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
         }
+    }
+
+    #[test]
+    fn saved_fe_and_prediction_outputs_are_native_identity_consistent() {
+        let (args, mut spi) = saved_output_fixture();
+        estimate_ols_test(&args, &mut spi).expect("saved-output estimate succeeds");
+
+        let mut saved_sum = 0.0;
+        for observation in 1..=spi.nobs {
+            let y = spi.data[&(2, observation)].0;
+            let sample = stored_numeric(&spi, 5, observation);
+            let residual = stored_numeric(&spi, 6, observation);
+            let reason = stored_numeric(&spi, 7, observation);
+            let xb = stored_numeric(&spi, 8, observation);
+            let xbd = stored_numeric(&spi, 9, observation);
+            let absorbed = stored_numeric(&spi, 10, observation);
+            let saved = stored_numeric(&spi, 11, observation);
+            assert_eq!(sample, 1.0);
+            assert_eq!(reason, 0.0);
+            assert!((saved - absorbed).abs() <= 1e-11);
+            assert!((xbd - xb - absorbed).abs() <= 1e-11);
+            assert!((y - xbd - residual).abs() <= 1e-11);
+            saved_sum += saved;
+        }
+        assert!(saved_sum.abs() <= 1e-11);
+        assert_eq!(stored_numeric(&spi, 11, 1), stored_numeric(&spi, 11, 2));
+        assert_eq!(stored_numeric(&spi, 11, 3), stored_numeric(&spi, 11, 4));
+        assert_eq!(stored_numeric(&spi, 11, 5), stored_numeric(&spi, 11, 6));
+        assert_eq!(spi.receipt_complete(), 1.0);
+        assert_eq!(
+            spi.stores.last(),
+            Some(&StoreEvent::Matrix(13, 1, RECEIPT_COMPLETE_COLUMN, 1.0)),
+        );
+    }
+
+    #[test]
+    fn saved_output_store_failures_leave_receipt_incomplete() {
+        let (args, mut successful) = saved_output_fixture();
+        estimate_ols_test(&args, &mut successful).expect("saved-output baseline succeeds");
+        let observation_stores = successful
+            .stores
+            .iter()
+            .take_while(|event| matches!(event, StoreEvent::Numeric(..)))
+            .count();
+        assert_eq!(observation_stores, 42);
+        for failing_ordinal in 1..=observation_stores {
+            let (args, mut spi) = saved_output_fixture();
+            spi.fail_store_at = Some(failing_ordinal);
+            let error = estimate_ols_test(&args, &mut spi).expect_err("store failure propagates");
+            assert_eq!(error.code, ErrorCode::Internal, "failure {failing_ordinal}");
+            assert_eq!(spi.receipt_complete(), 0.0, "failure {failing_ordinal}");
+            assert_eq!(spi.store_calls, failing_ordinal);
+        }
+    }
+
+    #[test]
+    fn fixed_width_string_cluster_is_encoded_natively_and_strl_fails_pre_read() {
+        let (args, mut spi) = fixture(OlsVceKind::Clustered);
+        spi.string_variables.insert(4);
+        for (observation, value) in ["b", "a", "b", "c", "a", "c"].into_iter().enumerate() {
+            spi.data.remove(&(4, observation + 1));
+            spi.string_data
+                .insert((4, observation + 1), value.as_bytes().to_vec());
+        }
+        estimate_ols_test(&args, &mut spi).expect("fixed-width string cluster succeeds");
+        assert_eq!(spi.numeric_reads, 18);
+        assert_eq!(spi.matrices["RREC"][0][6], 6.0);
+        assert_eq!(spi.matrices["RCLUSTER"][0][2], 3.0);
+        assert_eq!(spi.receipt_complete(), 1.0);
+
+        let (args, mut strl) = fixture(OlsVceKind::Clustered);
+        strl.string_variables.insert(4);
+        strl.strl_variables.insert(4);
+        let error = estimate_ols_test(&args, &mut strl).expect_err("strL must fail closed");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert_eq!(strl.numeric_reads, 0);
+        assert_eq!(strl.store_calls, 0);
+    }
+
+    #[test]
+    fn fixed_width_string_codes_are_byte_exact_sorted_and_missing_aware() {
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        spi.string_data = BTreeMap::from([
+            ((3, 1), b"a#b".to_vec()),
+            ((3, 2), b"a".to_vec()),
+            ((3, 3), b"".to_vec()),
+            ((3, 4), b"b".to_vec()),
+            ((3, 5), b"a#b".to_vec()),
+        ]);
+        let mut loader = OlsSourceLoader::FixedWidthString {
+            column: empty_loaded_column(5, "test string codes").expect("column"),
+            provisional_codes: HashMap::new(),
+        };
+        for observation in 1..=5 {
+            loader
+                .read_into(&mut spi, 3, observation, observation - 1)
+                .expect("string read");
+        }
+        let encoded = loader.finalize().expect("deterministic recode");
+        assert_eq!(encoded.values, vec![1.0, 0.0, 0.0, 2.0, 1.0]);
+        assert_eq!(encoded.missing, vec![false, false, true, false, false]);
     }
 
     #[test]

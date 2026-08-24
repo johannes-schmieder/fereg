@@ -117,7 +117,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             BLOCKERS,
         )
         manifest = projected_manifest(projection)
-        self.assertEqual(len(manifest["semantic_cases"]), 32)
+        self.assertEqual(len(manifest["semantic_cases"]), 40)
         self.assertFalse(manifest["benchmark_cases"])
         for case in manifest["semantic_cases"]:
             self.assertTrue(case["command"].startswith("_fereg_ols_hidden_numeric_v1 "))
@@ -153,6 +153,19 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             "absorb(firm##c.time worker)",
         )
         self.assertEqual(slope["dataset"], "ols_intercept_slope_positive_dof")
+        slope_only = next(
+            case
+            for case in manifest["semantic_cases"]
+            if case["id"] == "slope_only_multiple"
+        )
+        self.assertEqual(
+            slope_only["command"],
+            "_fereg_ols_hidden_numeric_v1 y c.x1, "
+            "absorb(firm#c.time worker#c.(time x2))",
+        )
+        self.assertEqual(
+            slope_only["dataset"], "ols_slope_only_multiple_positive_dof"
+        )
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(
@@ -166,7 +179,9 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         reordered["executable_case_ids"][0:2] = reversed(reordered["executable_case_ids"][0:2])
         mutations.append(reordered)
         blocker = copy.deepcopy(source)
-        blocker["blockers"][0]["reason"] = "changed"
+        blocker["blockers"].append(
+            {"case_id": "unweighted_no_fe", "reason": "changed"}
+        )
         mutations.append(blocker)
         tolerance = copy.deepcopy(source)
         tolerance["tolerances"]["vce_atol"] = 1e-4
@@ -216,17 +231,18 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             stata_hex_to_float("1.0")
 
     def test_hidden_adapter_never_claims_public_command_identity(self):
-        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
+        hidden = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
             encoding="utf-8"
         )
-        self.assertIn('ereturn local cmd "_fereg_ols_hidden_numeric_v1"', adapter)
-        self.assertIn('ereturn local fereg_intended_public_command "fereg"', adapter)
-        self.assertNotIn('ereturn local cmd "fereg"', adapter)
+        production = (ROOT / "stata/_fereg_ols.ado").read_text(encoding="utf-8")
+        self.assertIn('ereturn local cmd "_fereg_ols_hidden_numeric_v1"', hidden)
+        self.assertIn(
+            'ereturn local fereg_intended_public_command "fereg"', production
+        )
+        self.assertNotIn('ereturn local cmd "fereg"', hidden)
 
     def test_hidden_adapter_builds_reference_indepvars_from_native_statuses(self):
-        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
-            encoding="utf-8"
-        )
+        adapter = (ROOT / "stata/_fereg_ols.ado").read_text(encoding="utf-8")
         self.assertIn("if e(fereg_status)[`slot',2] == 2 continue", adapter)
         self.assertIn("local intended_component `\"`factor_level'bn.", adapter)
         self.assertIn("parse(\"#\")", adapter)
@@ -482,7 +498,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             _validate_warning_audit(warned)
 
     def test_post_plugin_stata_boundary_has_no_observation_scale_scan(self):
-        source = (ROOT / "stata/_fereg_estimate_ols_test.ado").read_text(
+        source = (ROOT / "stata/_fereg_estimate_ols.ado").read_text(
             encoding="utf-8"
         )
         post_plugin = source.split(
@@ -524,7 +540,11 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )[0]
         self.assertLess(
             precommit.index("validate_shadow_against_outputs(action, shadow)?"),
-            precommit.index("store_shadow(action, shadow, spi)"),
+            precommit.index("store_shadow(action, shadow, derived, spi)"),
+        )
+        self.assertLess(
+            precommit.index("validate_derived_against_outputs(action, shadow, derived)?"),
+            precommit.index("store_shadow(action, shadow, derived, spi)"),
         )
         native_validator = native.split("fn validate_shadow_against_outputs", 1)[1].split(
             "fn store_shadow", 1
@@ -535,9 +555,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )
 
     def test_hidden_adapter_uses_native_determinant_and_handles_k0(self):
-        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
-            encoding="utf-8"
-        )
+        adapter = (ROOT / "stata/_fereg_ols.ado").read_text(encoding="utf-8")
         self.assertNotIn("det(e(V))", adapter)
         self.assertIn("e(fereg_certificate)[31,2]", adapter)
         self.assertIn("if `coefficient_count' > 0", adapter)

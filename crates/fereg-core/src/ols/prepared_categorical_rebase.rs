@@ -253,7 +253,10 @@ fn final_term_kind(
         (RawTermKind::Variable, [component])
             if component.kind == ComponentKind::Continuous
                 && component.level_state == LevelState::Absent
-                && component.time_series_state == TimeSeriesState::None =>
+                && matches!(
+                    component.time_series_state,
+                    TimeSeriesState::None | TimeSeriesState::Materialized
+                ) =>
         {
             let kind = if explicitly_omitted {
                 None

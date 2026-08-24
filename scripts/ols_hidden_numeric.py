@@ -64,6 +64,11 @@ EXECUTABLE_CASE_IDS = (
     "one_fe_robust",
     "multi_fe_interactions",
     "intercept_and_slope",
+    "slope_only_multiple",
+    "string_fe",
+    "time_series_lag",
+    "time_series_lead_difference_gaps",
+    "iweight_probe",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -90,20 +95,14 @@ EXECUTABLE_CASE_IDS = (
     "nested_fe_cluster",
     "dof_none",
     "dof_firstpair",
+    "dof_continuous",
+    "saved_outputs",
+    "postestimation_test_summarize",
     "empty_sample_error",
     "one_observation_error",
 )
 
-BLOCKERS = (
-    ("slope_only_multiple", "absorbed_slope_only_multiple"),
-    ("string_fe", "string_source_ingestion"),
-    ("time_series_lag", "time_series_materialization"),
-    ("time_series_lead_difference_gaps", "time_series_materialization"),
-    ("iweight_probe", "importance_weight_semantics"),
-    ("dof_continuous", "absorbed_slope_continuous_dof"),
-    ("saved_outputs", "fixed_effect_recovery_outputs"),
-    ("postestimation_test_summarize", "public_postestimation"),
-)
+BLOCKERS: tuple[tuple[str, str], ...] = ()
 
 FIT_SCALARS = {
     "rss",

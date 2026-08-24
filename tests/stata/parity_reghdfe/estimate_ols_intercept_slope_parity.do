@@ -83,6 +83,33 @@ assert e(fereg_certificate)[31,2] == 0
 assert e(fereg_certificate)[31,2] == det(e(V))
 assert e(fereg_certificate)[32,2] == 1
 
+* Frozen dof(continuous) reference on the same positive-residual-DoF sample.
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
+    absorb(firm##c.time worker) dof(continuous)
+assert e(N) == 48
+assert e(df_a) == 27
+assert e(df_r) == 21
+assert e(rank) == 0
+assert abs(e(b)[1,2] - +1.9eaaaaa000001X+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.4ce1a54d8a2d8X-00f) <= 1e-10
+assert abs(e(rss) - +1.47ae1eb85404dX-005) <= 4e-8
+assert abs(e(rmse) - +1.65873d22b2949X-005) <= 1e-9
+assert e(dof_table)[1,1] == 8
+assert e(dof_table)[1,2] == 0
+assert e(dof_table)[1,3] == 8
+assert e(dof_table)[1,4] == 0
+assert e(dof_table)[1,5] == 0
+assert e(dof_table)[2,1] == 8
+assert e(dof_table)[2,2] == 0
+assert e(dof_table)[2,3] == 8
+assert e(dof_table)[2,4] == 1
+assert e(dof_table)[2,5] == 0
+assert e(dof_table)[3,1] == 12
+assert e(dof_table)[3,2] == 1
+assert e(dof_table)[3,3] == 11
+assert e(dof_table)[3,4] == 1
+assert e(dof_table)[3,5] == 0
+
 capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm##c.time worker) vce(robust)
 assert _rc == 498
@@ -94,12 +121,15 @@ capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
 assert _rc == 498
 capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm#c.time worker)
-assert _rc == 498
+assert _rc == 0
 capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm##c.time worker##c.x1)
-assert _rc == 498
+assert _rc == 0
 
 capture noisily fereg y c.x1, absorb(firm##c.time worker)
-assert _rc == 498
+assert _rc == 0
+assert `"`e(cmd)'"' == "fereg"
+assert e(df_a) == 26
+assert e(df_r) == 22
 
 di as result "END_FIXTURE|estimate_ols_intercept_slope_parity|rc=0"

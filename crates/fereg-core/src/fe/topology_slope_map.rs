@@ -1,4 +1,4 @@
-//! Allocation-bounded certified MAP for intercept-plus-one-slope effects.
+//! Allocation-bounded certified MAP for categorical intercept and slope effects.
 //!
 //! The finalized categorical topology remains the sole owner of compact codes
 //! and membership.  Continuous slope columns are borrowed from the prepared
@@ -28,10 +28,106 @@ impl ValidatedWeights<'_> {
     }
 }
 
+/// One borrowed absorbed-effect basis in requested term order.
+///
+/// Categorical codes and membership remain owned by the finalized topology;
+/// continuous channels remain owned by the prepared numeric sample.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CategoricalAbsorbedEffectView<'a> {
+    intercept: bool,
+    slopes: Vec<&'a [f64]>,
+}
+
+/// Certified recovery of the absorbed contribution and any requested
+/// term/channel contributions on the final compact observation axis.
+///
+/// Channels use absorbed-term order, with an intercept first when present and
+/// slopes following in their declared order. Unrequested channels retain a
+/// `None` slot so callers cannot accidentally lose wire identity.
+#[derive(Debug, PartialEq)]
+pub struct RecoveredCategoricalEffects {
+    absorbed_sum: Vec<f64>,
+    channels: Vec<Option<Vec<f64>>>,
+    iterations: usize,
+    reconstruction_relative_infinity: f64,
+}
+
+impl RecoveredCategoricalEffects {
+    #[must_use]
+    pub fn absorbed_sum(&self) -> &[f64] {
+        &self.absorbed_sum
+    }
+
+    #[must_use]
+    pub fn channels(&self) -> &[Option<Vec<f64>>] {
+        &self.channels
+    }
+
+    #[must_use]
+    pub const fn iterations(&self) -> usize {
+        self.iterations
+    }
+
+    #[must_use]
+    pub const fn reconstruction_relative_infinity(&self) -> f64 {
+        self.reconstruction_relative_infinity
+    }
+
+    #[must_use]
+    pub fn into_parts(self) -> (Vec<f64>, Vec<Option<Vec<f64>>>) {
+        (self.absorbed_sum, self.channels)
+    }
+}
+
+impl<'a> CategoricalAbsorbedEffectView<'a> {
+    pub fn new(intercept: bool, slopes: Vec<&'a [f64]>) -> Result<Self> {
+        if !intercept && slopes.is_empty() {
+            return Err(invalid_argument(
+                "categorical absorbed effect must contain an intercept or slope",
+            ));
+        }
+        Ok(Self { intercept, slopes })
+    }
+
+    #[must_use]
+    pub const fn has_intercept(&self) -> bool {
+        self.intercept
+    }
+
+    #[must_use]
+    pub fn slopes(&self) -> &[&'a [f64]] {
+        &self.slopes
+    }
+
+    #[must_use]
+    pub fn channels(&self) -> usize {
+        usize::from(self.intercept) + self.slopes.len()
+    }
+
+    fn basis_value(&self, channel: usize, row: usize, scales: &[f64]) -> f64 {
+        if self.intercept {
+            if channel == 0 {
+                1.0
+            } else {
+                self.slopes[channel - 1][row] / scales[channel]
+            }
+        } else {
+            self.slopes[channel][row] / scales[channel]
+        }
+    }
+}
+
 trait SlopeWorkspaceReservation {
     fn reserve_f64(
         &mut self,
         target: &mut Vec<f64>,
+        elements: usize,
+        label: &'static str,
+    ) -> Result<()>;
+
+    fn reserve_usize(
+        &mut self,
+        target: &mut Vec<usize>,
         elements: usize,
         label: &'static str,
     ) -> Result<()>;
@@ -50,9 +146,21 @@ impl SlopeWorkspaceReservation for SystemSlopeWorkspaceReservation {
             .try_reserve_exact(elements)
             .map_err(|_| allocation(label))
     }
+
+    fn reserve_usize(
+        &mut self,
+        target: &mut Vec<usize>,
+        elements: usize,
+        label: &'static str,
+    ) -> Result<()> {
+        target
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation(label))
+    }
 }
 
 struct SlopeWorkspace {
+    max_channels: usize,
     reference_norms: Vec<f64>,
     residual_norms: Vec<f64>,
     rhs_scales: Vec<f64>,
@@ -60,17 +168,33 @@ struct SlopeWorkspace {
     channel_scales: Vec<f64>,
     gram: Vec<f64>,
     gram_corrections: Vec<f64>,
+    factor: Vec<f64>,
     cross: Vec<f64>,
     cross_corrections: Vec<f64>,
+    factor_cross: Vec<f64>,
     coefficients: Vec<f64>,
+    permutation: Vec<usize>,
 }
 
 impl SlopeWorkspace {
-    fn new<R: SlopeWorkspaceReservation>(rhs: usize, reservation: &mut R) -> Result<Self> {
-        let two_rhs = rhs
-            .checked_mul(2)
-            .ok_or_else(|| allocation("intercept-slope MAP RHS workspace overflows"))?;
+    fn new<R: SlopeWorkspaceReservation>(
+        max_channels: usize,
+        rhs: usize,
+        reservation: &mut R,
+    ) -> Result<Self> {
+        if max_channels == 0 {
+            return Err(invalid_argument(
+                "categorical slope MAP requires at least one basis channel",
+            ));
+        }
+        let gram_elements = max_channels
+            .checked_mul(max_channels)
+            .ok_or_else(|| allocation("categorical slope MAP Gram workspace overflows"))?;
+        let rhs_elements = max_channels
+            .checked_mul(rhs)
+            .ok_or_else(|| allocation("categorical slope MAP RHS workspace overflows"))?;
         Ok(Self {
+            max_channels,
             reference_norms: reserved_zeros(
                 rhs,
                 reservation,
@@ -92,41 +216,56 @@ impl SlopeWorkspace {
                 "unable to reserve intercept-slope MAP value scales",
             )?,
             channel_scales: reserved_zeros(
-                2,
+                max_channels,
                 reservation,
-                "unable to reserve intercept-slope MAP channel scales",
+                "unable to reserve categorical slope MAP channel scales",
             )?,
             gram: reserved_zeros(
-                4,
+                gram_elements,
                 reservation,
-                "unable to reserve intercept-slope MAP Gram matrix",
+                "unable to reserve categorical slope MAP Gram matrix",
             )?,
             gram_corrections: reserved_zeros(
-                4,
+                gram_elements,
                 reservation,
-                "unable to reserve intercept-slope MAP Gram corrections",
+                "unable to reserve categorical slope MAP Gram corrections",
+            )?,
+            factor: reserved_zeros(
+                gram_elements,
+                reservation,
+                "unable to reserve categorical slope MAP factor matrix",
             )?,
             cross: reserved_zeros(
-                two_rhs,
+                rhs_elements,
                 reservation,
-                "unable to reserve intercept-slope MAP cross-products",
+                "unable to reserve categorical slope MAP cross-products",
             )?,
             cross_corrections: reserved_zeros(
-                two_rhs,
+                rhs_elements,
                 reservation,
-                "unable to reserve intercept-slope MAP cross-product corrections",
+                "unable to reserve categorical slope MAP cross-product corrections",
+            )?,
+            factor_cross: reserved_zeros(
+                rhs_elements,
+                reservation,
+                "unable to reserve categorical slope MAP factored cross-products",
             )?,
             coefficients: reserved_zeros(
-                two_rhs,
+                rhs_elements,
                 reservation,
-                "unable to reserve intercept-slope MAP coefficients",
+                "unable to reserve categorical slope MAP coefficients",
+            )?,
+            permutation: reserved_indices(
+                max_channels,
+                reservation,
+                "unable to reserve categorical slope MAP permutation",
             )?,
         })
     }
 }
 
-/// Residualize finalized categorical effects in which every term contains an
-/// intercept and the complete request contains at most one slope channel.
+/// Compatibility wrapper for the previously qualified intercept-plus-one-slope
+/// surface. New code should use `absorb_finalized_categorical_slope_map_certified`.
 pub fn absorb_finalized_categorical_intercept_slope_map_certified(
     topology: &FinalizedCategoricalTopology,
     slopes: &[Option<&[f64]>],
@@ -134,13 +273,398 @@ pub fn absorb_finalized_categorical_intercept_slope_map_certified(
     values: DenseMatrix,
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
+    let mut effects = Vec::new();
+    effects
+        .try_reserve_exact(slopes.len())
+        .map_err(|_| allocation("unable to reserve compatibility absorbed effects"))?;
+    for slope in slopes {
+        let mut channels = Vec::new();
+        channels
+            .try_reserve_exact(usize::from(slope.is_some()))
+            .map_err(|_| allocation("unable to reserve compatibility slope channels"))?;
+        if let Some(values) = slope {
+            channels.push(*values);
+        }
+        effects.push(CategoricalAbsorbedEffectView::new(true, channels)?);
+    }
+    absorb_finalized_categorical_slope_map_certified(topology, &effects, weights, values, config)
+}
+
+/// Residualize arbitrary categorical intercept, slope-only, and
+/// intercept-plus-slope effects without copying observation-scale topology or
+/// continuous source columns.
+pub fn absorb_finalized_categorical_slope_map_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemSlopeWorkspaceReservation;
-    absorb_with_reservation(topology, slopes, weights, values, config, &mut reservation)
+    absorb_with_reservation(topology, effects, weights, values, config, &mut reservation)
+}
+
+/// Recover one normalized MAP decomposition of an absorbed contribution.
+///
+/// Starting from zero and accumulating every ordered projection reproduces the
+/// same weighted-zero-mean normalization used by the pinned reference for
+/// intercept-only effects. The total absorbed contribution is always returned;
+/// observation-scale channel vectors are allocated only when requested.
+pub fn recover_finalized_categorical_effects_map_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    config: MapConfig,
+) -> Result<RecoveredCategoricalEffects> {
+    let mut reservation = SystemSlopeWorkspaceReservation;
+    recover_with_reservation(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        config,
+        &mut reservation,
+    )
+}
+
+fn recover_with_reservation<R: SlopeWorkspaceReservation>(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    config: MapConfig,
+    reservation: &mut R,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_config(config)?;
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if target.len() != nobs || effects.len() != topology.effect_to_topology().len() {
+        return Err(invalid_argument(
+            "categorical effect recovery topology, basis, and target dimensions differ",
+        ));
+    }
+    if target.is_empty() || target.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data(
+            "categorical effect recovery requires a nonempty finite target",
+        ));
+    }
+    let channel_count = effects.iter().try_fold(0_usize, |total, effect| {
+        total
+            .checked_add(effect.channels())
+            .ok_or_else(|| allocation("categorical recovery channel count overflows"))
+    })?;
+    if requested_channels.len() != channel_count || channel_count == 0 {
+        return Err(invalid_argument(
+            "categorical effect recovery requested-channel layout differs",
+        ));
+    }
+    let mut effect_offsets = Vec::new();
+    reservation.reserve_usize(
+        &mut effect_offsets,
+        effects.len() + 1,
+        "unable to reserve categorical recovery effect offsets",
+    )?;
+    if effect_offsets.capacity() < effects.len() + 1 {
+        return Err(allocation(
+            "categorical recovery effect-offset reservation was undersized",
+        ));
+    }
+    effect_offsets.push(0);
+    let mut coefficient_count = 0_usize;
+    let mut max_channels = 0_usize;
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        max_channels = max_channels.max(effect.channels());
+        coefficient_count = coefficient_count
+            .checked_add(
+                source
+                    .n_levels()
+                    .checked_mul(effect.channels())
+                    .ok_or_else(|| {
+                        allocation("categorical recovery coefficient block overflows")
+                    })?,
+            )
+            .ok_or_else(|| allocation("categorical recovery coefficient count overflows"))?;
+        effect_offsets.push(coefficient_count);
+    }
+    let mut alphas = reserved_zeros(
+        coefficient_count,
+        reservation,
+        "unable to reserve categorical recovery coefficients",
+    )?;
+    let mut residual_values = Vec::new();
+    reservation.reserve_f64(
+        &mut residual_values,
+        nobs,
+        "unable to reserve categorical recovery residual",
+    )?;
+    if residual_values.capacity() < nobs {
+        return Err(allocation(
+            "categorical recovery residual reservation was undersized",
+        ));
+    }
+    residual_values.extend_from_slice(target);
+    let mut residual = DenseMatrix::from_row_major(nobs, 1, residual_values)?;
+    let weights = validate_weights(weights, nobs)?;
+    let mut workspace = SlopeWorkspace::new(max_channels, 1, reservation)?;
+    weighted_norms(
+        &residual,
+        weights,
+        &mut workspace.reference_norms,
+        &mut workspace.value_scales,
+        &mut workspace.coefficients[..1],
+    )?;
+
+    let initial = certify(
+        topology,
+        effects,
+        weights,
+        &residual,
+        config.tolerance,
+        &mut workspace,
+    )?;
+    if initial.passed {
+        return finish_recovery(
+            topology,
+            effects,
+            target,
+            requested_channels,
+            &effect_offsets,
+            &alphas,
+            &residual,
+            0,
+            config.tolerance,
+            reservation,
+        );
+    }
+
+    for iteration in 1..=config.max_iterations {
+        for (effect_index, effect) in effects.iter().enumerate() {
+            project_effect_and_accumulate(
+                topology,
+                effect_index,
+                effect,
+                weights,
+                &mut residual,
+                &mut workspace,
+                &mut alphas,
+                effect_offsets[effect_index],
+            )?;
+        }
+        if config.symmetric && effects.len() > 1 {
+            for effect_index in (0..effects.len() - 1).rev() {
+                project_effect_and_accumulate(
+                    topology,
+                    effect_index,
+                    &effects[effect_index],
+                    weights,
+                    &mut residual,
+                    &mut workspace,
+                    &mut alphas,
+                    effect_offsets[effect_index],
+                )?;
+            }
+        }
+        if iteration % config.check_every == 0 || iteration == config.max_iterations {
+            let certificate = certify(
+                topology,
+                effects,
+                weights,
+                &residual,
+                config.tolerance,
+                &mut workspace,
+            )?;
+            if certificate.passed {
+                return finish_recovery(
+                    topology,
+                    effects,
+                    target,
+                    requested_channels,
+                    &effect_offsets,
+                    &alphas,
+                    &residual,
+                    iteration,
+                    config.tolerance,
+                    reservation,
+                );
+            }
+        }
+    }
+    Err(invalid_data(
+        "categorical effect recovery exhausted its iteration budget without certification",
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_effect_and_accumulate(
+    topology: &FinalizedCategoricalTopology,
+    effect_index: usize,
+    effect: &CategoricalAbsorbedEffectView<'_>,
+    weights: ValidatedWeights<'_>,
+    residual: &mut DenseMatrix,
+    workspace: &mut SlopeWorkspace,
+    alphas: &mut [f64],
+    effect_offset: usize,
+) -> Result<()> {
+    let source = topology.registry().source(
+        *topology
+            .effect_to_topology()
+            .get(effect_index)
+            .ok_or_else(|| invalid_argument("categorical recovery effect index is out of range"))?,
+    )?;
+    let channels = effect.channels();
+    for level in 0..source.n_levels() {
+        let members = source.members(level)?;
+        group_moments(members, effect, weights, residual, workspace)?;
+        solve_group(channels, 1, workspace)?;
+        let level_offset = effect_offset
+            .checked_add(
+                level
+                    .checked_mul(channels)
+                    .ok_or_else(|| allocation("categorical recovery level offset overflows"))?,
+            )
+            .ok_or_else(|| allocation("categorical recovery coefficient offset overflows"))?;
+        for channel in 0..channels {
+            let raw = workspace.coefficients[channel] / workspace.channel_scales[channel];
+            let destination = alphas.get_mut(level_offset + channel).ok_or_else(|| {
+                invalid_argument("categorical recovery coefficient is out of range")
+            })?;
+            *destination += raw;
+            if !destination.is_finite() {
+                return Err(invalid_data(
+                    "categorical recovery coefficient accumulation is not finite",
+                ));
+            }
+        }
+        for &row in members {
+            let mut fitted = 0.0_f64;
+            for channel in 0..channels {
+                fitted = effect
+                    .basis_value(channel, row, &workspace.channel_scales)
+                    .mul_add(workspace.coefficients[channel], fitted);
+            }
+            residual[(row, 0)] -= fitted;
+            if !residual[(row, 0)].is_finite() {
+                return Err(invalid_data(
+                    "categorical recovery projection produced a nonfinite residual",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_recovery<R: SlopeWorkspaceReservation>(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    target: &[f64],
+    requested_channels: &[bool],
+    effect_offsets: &[usize],
+    alphas: &[f64],
+    residual: &DenseMatrix,
+    iterations: usize,
+    tolerance: f64,
+    reservation: &mut R,
+) -> Result<RecoveredCategoricalEffects> {
+    let scale = target
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0_f64, f64::max);
+    let residual_max = residual
+        .as_slice()
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0_f64, f64::max);
+    let reconstruction_relative_infinity = if scale == 0.0 {
+        residual_max
+    } else {
+        residual_max / scale
+    };
+    if !reconstruction_relative_infinity.is_finite()
+        || reconstruction_relative_infinity > (tolerance * 100.0).max(1e-10)
+    {
+        return Err(invalid_data(
+            "categorical recovery target is not certified to lie in the absorbed span",
+        ));
+    }
+
+    let mut absorbed_sum = reserved_zeros(
+        target.len(),
+        reservation,
+        "unable to reserve recovered absorbed sum",
+    )?;
+    let mut channels = Vec::new();
+    channels
+        .try_reserve_exact(requested_channels.len())
+        .map_err(|_| allocation("unable to reserve recovered channel registry"))?;
+    let mut flat_channel = 0_usize;
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        let channel_count = effect.channels();
+        for channel in 0..channel_count {
+            let requested = requested_channels[flat_channel];
+            let mut contribution = if requested {
+                Some(reserved_zeros(
+                    target.len(),
+                    reservation,
+                    "unable to reserve recovered channel contribution",
+                )?)
+            } else {
+                None
+            };
+            for level in 0..source.n_levels() {
+                let alpha_index = effect_offsets[effect_index] + level * channel_count + channel;
+                let alpha = *alphas.get(alpha_index).ok_or_else(|| {
+                    invalid_argument("categorical recovery alpha index is out of range")
+                })?;
+                for &row in source.members(level)? {
+                    let basis = if effect.intercept && channel == 0 {
+                        1.0
+                    } else {
+                        let slope_index = channel - usize::from(effect.intercept);
+                        effect.slopes[slope_index][row]
+                    };
+                    let value = alpha * basis;
+                    absorbed_sum[row] += value;
+                    if let Some(values) = contribution.as_mut() {
+                        values[row] = value;
+                    }
+                }
+            }
+            channels.push(contribution);
+            flat_channel += 1;
+        }
+    }
+    for ((recovered, expected), remainder) in
+        absorbed_sum.iter().zip(target).zip(residual.as_slice())
+    {
+        let error = (*recovered + *remainder - *expected).abs();
+        if !error.is_finite() || error > (tolerance * expected.abs().max(1.0) * 256.0).max(1e-10) {
+            return Err(invalid_data(
+                "categorical recovery decomposition failed its reconstruction identity",
+            ));
+        }
+    }
+    Ok(RecoveredCategoricalEffects {
+        absorbed_sum,
+        channels,
+        iterations,
+        reconstruction_relative_infinity,
+    })
 }
 
 fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
     topology: &FinalizedCategoricalTopology,
-    slopes: &[Option<&[f64]>],
+    effects: &[CategoricalAbsorbedEffectView<'_>],
     weights: BorrowedMapWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
@@ -149,39 +673,51 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
     validate_config(config)?;
     topology.validate()?;
     let nobs = topology.retained_rows().len();
-    if values.nrows() != nobs || slopes.len() != topology.effect_to_topology().len() {
+    if values.nrows() != nobs || effects.len() != topology.effect_to_topology().len() {
         return Err(invalid_argument(
-            "intercept-slope MAP topology, slope, and value dimensions differ",
+            "categorical slope MAP topology, basis, and value dimensions differ",
         ));
     }
     if nobs == 0 || values.ncols() == 0 {
         return Err(invalid_data(
-            "intercept-slope MAP requires nonempty observation and RHS axes",
+            "categorical slope MAP requires nonempty observation and RHS axes",
         ));
     }
     if values.as_slice().iter().any(|value| !value.is_finite()) {
-        return Err(invalid_data("intercept-slope MAP values must be finite"));
+        return Err(invalid_data("categorical slope MAP values must be finite"));
     }
-    let mut slope_count = 0_usize;
-    for slope in slopes.iter().flatten() {
-        slope_count = slope_count
-            .checked_add(1)
-            .ok_or_else(|| allocation("intercept-slope MAP slope count overflows"))?;
-        if slope.len() != nobs || slope.iter().any(|value| !value.is_finite()) {
-            return Err(invalid_data(
-                "intercept-slope MAP slope values are not finite and aligned",
+    let mut max_channels = 0_usize;
+    for effect in effects {
+        if !effect.intercept && effect.slopes.is_empty() {
+            return Err(invalid_argument(
+                "categorical slope MAP effect has no basis channels",
             ));
         }
+        max_channels = max_channels.max(effect.channels());
+        for slope in &effect.slopes {
+            if slope.len() != nobs || slope.iter().any(|value| !value.is_finite()) {
+                return Err(invalid_data(
+                    "categorical slope MAP values are not finite and aligned",
+                ));
+            }
+        }
     }
-    if slope_count > 1 {
-        return Err(unsupported(
-            "intercept-slope MAP currently supports at most one slope channel",
+    if max_channels == 0 {
+        return Err(invalid_argument(
+            "categorical slope MAP request has no basis channels",
         ));
+    }
+    for effect in effects {
+        if effect.channels() > nobs {
+            return Err(invalid_data(
+                "categorical slope MAP effect has more channels than observations",
+            ));
+        }
     }
     let weights = validate_weights(weights, nobs)?;
 
     let setup_started = Instant::now();
-    let mut workspace = SlopeWorkspace::new(values.ncols(), reservation)?;
+    let mut workspace = SlopeWorkspace::new(max_channels, values.ncols(), reservation)?;
     weighted_norms(
         &values,
         weights,
@@ -194,7 +730,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
 
     let initial = certify(
         topology,
-        slopes,
+        effects,
         weights,
         &values,
         config.tolerance,
@@ -211,22 +747,22 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
     }
 
     for iteration in 1..=config.max_iterations {
-        for (effect, slope) in slopes.iter().copied().enumerate() {
+        for (effect_index, effect) in effects.iter().enumerate() {
             project_effect(
                 topology,
+                effect_index,
                 effect,
-                slope,
                 weights,
                 &mut values,
                 &mut workspace,
             )?;
         }
-        if config.symmetric && slopes.len() > 1 {
-            for (effect, slope) in slopes[..slopes.len() - 1].iter().copied().enumerate().rev() {
+        if config.symmetric && effects.len() > 1 {
+            for effect_index in (0..effects.len() - 1).rev() {
                 project_effect(
                     topology,
-                    effect,
-                    slope,
+                    effect_index,
+                    &effects[effect_index],
                     weights,
                     &mut values,
                     &mut workspace,
@@ -236,7 +772,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
             let certificate = certify(
                 topology,
-                slopes,
+                effects,
                 weights,
                 &values,
                 config.tolerance,
@@ -260,33 +796,39 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
 
 fn project_effect(
     topology: &FinalizedCategoricalTopology,
-    effect: usize,
-    slope: Option<&[f64]>,
+    effect_index: usize,
+    effect: &CategoricalAbsorbedEffectView<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut SlopeWorkspace,
 ) -> Result<()> {
-    let source =
-        topology
-            .registry()
-            .source(*topology.effect_to_topology().get(effect).ok_or_else(|| {
-                invalid_argument("intercept-slope MAP effect index is out of range")
-            })?)?;
+    let source = topology.registry().source(
+        *topology
+            .effect_to_topology()
+            .get(effect_index)
+            .ok_or_else(|| {
+                invalid_argument("categorical slope MAP effect index is out of range")
+            })?,
+    )?;
     for level in 0..source.n_levels() {
         let members = source.members(level)?;
-        group_moments(members, slope, weights, values, workspace)?;
-        solve_group(slope.is_some(), values.ncols(), workspace)?;
+        group_moments(members, effect, weights, values, workspace)?;
+        solve_group(effect.channels(), values.ncols(), workspace)?;
         for &row in members {
             for rhs in 0..values.ncols() {
-                let fitted = workspace.coefficients[rhs]
-                    + slope.map_or(0.0, |slope| {
-                        (slope[row] / workspace.channel_scales[1])
-                            * workspace.coefficients[values.ncols() + rhs]
-                    });
+                let mut fitted = 0.0_f64;
+                for channel in 0..effect.channels() {
+                    fitted = effect
+                        .basis_value(channel, row, &workspace.channel_scales)
+                        .mul_add(
+                            workspace.coefficients[channel * values.ncols() + rhs],
+                            fitted,
+                        );
+                }
                 let residual = values[(row, rhs)] - fitted;
                 if !residual.is_finite() {
                     return Err(invalid_data(
-                        "intercept-slope MAP projection produced a nonfinite residual",
+                        "categorical slope MAP projection produced a nonfinite residual",
                     ));
                 }
                 values[(row, rhs)] = residual;
@@ -298,115 +840,207 @@ fn project_effect(
 
 fn group_moments(
     members: &[usize],
-    slope: Option<&[f64]>,
+    effect: &CategoricalAbsorbedEffectView<'_>,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
     workspace: &mut SlopeWorkspace,
 ) -> Result<()> {
     if members.is_empty() {
         return Err(invalid_argument(
-            "intercept-slope MAP contains an empty final level",
+            "categorical slope MAP contains an empty final level",
         ));
     }
-    workspace.gram.fill(0.0);
-    workspace.gram_corrections.fill(0.0);
-    workspace.cross.fill(0.0);
-    workspace.cross_corrections.fill(0.0);
+    let channels = effect.channels();
+    let rhs_count = values.ncols();
+    let gram_elements = channels * channels;
+    let cross_elements = channels * rhs_count;
+    workspace.gram[..gram_elements].fill(0.0);
+    workspace.gram_corrections[..gram_elements].fill(0.0);
+    workspace.cross[..cross_elements].fill(0.0);
+    workspace.cross_corrections[..cross_elements].fill(0.0);
     workspace.value_scales.fill(0.0);
-    workspace.channel_scales[0] = 1.0;
-    workspace.channel_scales[1] = slope.map_or(1.0, |values| {
-        members
+    workspace.channel_scales[..channels].fill(0.0);
+    let slope_offset = usize::from(effect.intercept);
+    if effect.intercept {
+        workspace.channel_scales[0] = 1.0;
+    }
+    for (slope_index, slope) in effect.slopes.iter().enumerate() {
+        let channel = slope_offset + slope_index;
+        let scale = members
             .iter()
-            .map(|row| values[*row].abs())
-            .fold(0.0_f64, f64::max)
-    });
-    if slope.is_some() && workspace.channel_scales[1] == 0.0 {
-        return Err(invalid_data(
-            "intercept-slope MAP slope is zero throughout a final level",
-        ));
+            .map(|row| slope[*row].abs())
+            .fold(0.0_f64, f64::max);
+        // A zero group-specific slope contributes no local span. Keeping unit
+        // scale lets the rank-revealing solve drop it without division by zero.
+        workspace.channel_scales[channel] = if scale == 0.0 { 1.0 } else { scale };
     }
     for &row in members {
         if row >= values.nrows() {
             return Err(invalid_argument(
-                "intercept-slope MAP membership exceeds the observation axis",
+                "categorical slope MAP membership exceeds the observation axis",
             ));
         }
         for rhs in 0..values.ncols() {
             workspace.value_scales[rhs] = workspace.value_scales[rhs].max(values[(row, rhs)].abs());
         }
     }
-    let channels = 1 + usize::from(slope.is_some());
     for &row in members {
         let weight = weights.value(row);
-        let basis = [
-            1.0,
-            slope.map_or(0.0, |values| values[row] / workspace.channel_scales[1]),
-        ];
         for left in 0..channels {
+            let left_basis = effect.basis_value(left, row, &workspace.channel_scales);
             for right in 0..channels {
                 compensated_add(
-                    weight * basis[left] * basis[right],
-                    &mut workspace.gram[left * 2 + right],
-                    &mut workspace.gram_corrections[left * 2 + right],
+                    weight * left_basis * effect.basis_value(right, row, &workspace.channel_scales),
+                    &mut workspace.gram[left * channels + right],
+                    &mut workspace.gram_corrections[left * channels + right],
                 )?;
             }
-            for rhs in 0..values.ncols() {
+            for rhs in 0..rhs_count {
                 let scale = workspace.value_scales[rhs];
                 if scale != 0.0 {
                     compensated_add(
-                        weight * basis[left] * (values[(row, rhs)] / scale),
-                        &mut workspace.cross[left * values.ncols() + rhs],
-                        &mut workspace.cross_corrections[left * values.ncols() + rhs],
+                        weight * left_basis * (values[(row, rhs)] / scale),
+                        &mut workspace.cross[left * rhs_count + rhs],
+                        &mut workspace.cross_corrections[left * rhs_count + rhs],
                     )?;
                 }
             }
         }
     }
-    for index in 0..4 {
+    for index in 0..gram_elements {
         workspace.gram[index] += workspace.gram_corrections[index];
     }
-    for index in 0..channels * values.ncols() {
+    for index in 0..cross_elements {
         workspace.cross[index] += workspace.cross_corrections[index];
     }
     Ok(())
 }
 
-fn solve_group(has_slope: bool, rhs_count: usize, workspace: &mut SlopeWorkspace) -> Result<()> {
-    let g00 = workspace.gram[0];
-    if !g00.is_finite() || g00 <= 0.0 {
-        return Err(invalid_data(
-            "intercept-slope MAP group Gram intercept is invalid",
+fn solve_group(channels: usize, rhs_count: usize, workspace: &mut SlopeWorkspace) -> Result<usize> {
+    if channels == 0 || channels > workspace.max_channels {
+        return Err(invalid_argument(
+            "categorical slope MAP channel count exceeds its workspace",
         ));
     }
-    if !has_slope {
-        for rhs in 0..rhs_count {
-            workspace.coefficients[rhs] = workspace.value_scales[rhs] * workspace.cross[rhs] / g00;
+    let gram_elements = channels * channels;
+    let cross_elements = channels * rhs_count;
+    workspace.factor[..gram_elements].copy_from_slice(&workspace.gram[..gram_elements]);
+    workspace.factor_cross[..cross_elements].copy_from_slice(&workspace.cross[..cross_elements]);
+    workspace.coefficients[..cross_elements].fill(0.0);
+    for (index, destination) in workspace.permutation[..channels].iter_mut().enumerate() {
+        *destination = index;
+    }
+    let diagonal_scale = (0..channels)
+        .map(|index| workspace.factor[index * channels + index].abs())
+        .fold(0.0_f64, f64::max);
+    if !diagonal_scale.is_finite() {
+        return Err(invalid_data(
+            "categorical slope MAP Gram scale is not finite",
+        ));
+    }
+    let tolerance = f64::EPSILON * diagonal_scale.max(1.0) * (channels.max(1) as f64) * 128.0;
+    let mut rank = 0_usize;
+    for pivot_position in 0..channels {
+        let mut pivot_index = pivot_position;
+        let mut pivot_value = workspace.factor[pivot_position * channels + pivot_position].abs();
+        for candidate in pivot_position + 1..channels {
+            let value = workspace.factor[candidate * channels + candidate].abs();
+            if value > pivot_value {
+                pivot_index = candidate;
+                pivot_value = value;
+            }
         }
-        return Ok(());
-    }
-    let g01 = 0.5 * (workspace.gram[1] + workspace.gram[2]);
-    let g11 = workspace.gram[3];
-    let determinant = g00.mul_add(g11, -(g01 * g01));
-    let scale = g00.abs().max(g01.abs()).max(g11.abs()).max(1.0);
-    if !determinant.is_finite() || determinant <= f64::EPSILON * scale * scale * 32.0 {
-        return Err(invalid_data(
-            "intercept-slope MAP group basis is numerically rank deficient",
-        ));
+        if pivot_value <= tolerance {
+            break;
+        }
+        if pivot_index != pivot_position {
+            swap_symmetric(&mut workspace.factor, channels, pivot_position, pivot_index);
+            swap_rhs_rows(
+                &mut workspace.factor_cross,
+                rhs_count,
+                pivot_position,
+                pivot_index,
+            );
+            workspace.permutation.swap(pivot_position, pivot_index);
+        }
+        let pivot = workspace.factor[pivot_position * channels + pivot_position];
+        if !pivot.is_finite() || pivot.abs() <= tolerance {
+            break;
+        }
+        for row in pivot_position + 1..channels {
+            let multiplier = workspace.factor[row * channels + pivot_position] / pivot;
+            if !multiplier.is_finite() {
+                return Err(invalid_data(
+                    "categorical slope MAP elimination multiplier is not finite",
+                ));
+            }
+            workspace.factor[row * channels + pivot_position] = multiplier;
+            for column in pivot_position + 1..channels {
+                let updated = workspace.factor[row * channels + column]
+                    - multiplier * workspace.factor[pivot_position * channels + column];
+                if !updated.is_finite() {
+                    return Err(invalid_data(
+                        "categorical slope MAP factorization is not finite",
+                    ));
+                }
+                workspace.factor[row * channels + column] = updated;
+            }
+            for rhs in 0..rhs_count {
+                let updated = workspace.factor_cross[row * rhs_count + rhs]
+                    - multiplier * workspace.factor_cross[pivot_position * rhs_count + rhs];
+                if !updated.is_finite() {
+                    return Err(invalid_data(
+                        "categorical slope MAP transformed cross-product is not finite",
+                    ));
+                }
+                workspace.factor_cross[row * rhs_count + rhs] = updated;
+            }
+        }
+        rank += 1;
     }
     for rhs in 0..rhs_count {
-        let left = workspace.cross[rhs];
-        let right = workspace.cross[rhs_count + rhs];
-        let value_scale = workspace.value_scales[rhs];
-        workspace.coefficients[rhs] = value_scale * (g11 * left - g01 * right) / determinant;
-        workspace.coefficients[rhs_count + rhs] =
-            value_scale * (g00 * right - g01 * left) / determinant;
+        for row in (0..rank).rev() {
+            let mut value = workspace.factor_cross[row * rhs_count + rhs];
+            for column in row + 1..rank {
+                value -= workspace.factor[row * channels + column]
+                    * workspace.factor_cross[column * rhs_count + rhs];
+            }
+            let pivot = workspace.factor[row * channels + row];
+            let solution = value / pivot;
+            if !solution.is_finite() {
+                return Err(invalid_data(
+                    "categorical slope MAP group solution is not finite",
+                ));
+            }
+            workspace.factor_cross[row * rhs_count + rhs] = solution;
+        }
+        for position in 0..rank {
+            let channel = workspace.permutation[position];
+            workspace.coefficients[channel * rhs_count + rhs] =
+                workspace.value_scales[rhs] * workspace.factor_cross[position * rhs_count + rhs];
+        }
     }
-    Ok(())
+    Ok(rank)
+}
+
+fn swap_symmetric(matrix: &mut [f64], dimension: usize, left: usize, right: usize) {
+    for column in 0..dimension {
+        matrix.swap(left * dimension + column, right * dimension + column);
+    }
+    for row in 0..dimension {
+        matrix.swap(row * dimension + left, row * dimension + right);
+    }
+}
+
+fn swap_rhs_rows(values: &mut [f64], rhs_count: usize, left: usize, right: usize) {
+    for rhs in 0..rhs_count {
+        values.swap(left * rhs_count + rhs, right * rhs_count + rhs);
+    }
 }
 
 fn certify(
     topology: &FinalizedCategoricalTopology,
-    slopes: &[Option<&[f64]>],
+    effects: &[CategoricalAbsorbedEffectView<'_>],
     weights: ValidatedWeights<'_>,
     residuals: &DenseMatrix,
     tolerance: f64,
@@ -427,21 +1061,27 @@ fn certify(
     let mut relative_infinity = 0.0_f64;
     let mut relative_squares = 0.0_f64;
     let mut count = 0_usize;
-    for (effect, slope) in slopes.iter().copied().enumerate() {
+    for (effect_index, effect) in effects.iter().enumerate() {
         let source = topology
             .registry()
-            .source(topology.effect_to_topology()[effect])?;
+            .source(topology.effect_to_topology()[effect_index])?;
         for level in 0..source.n_levels() {
-            group_moments(source.members(level)?, slope, weights, residuals, workspace)?;
-            solve_group(slope.is_some(), residuals.ncols(), workspace)?;
-            let channels = 1 + usize::from(slope.is_some());
+            group_moments(
+                source.members(level)?,
+                effect,
+                weights,
+                residuals,
+                workspace,
+            )?;
+            solve_group(effect.channels(), residuals.ncols(), workspace)?;
+            let channels = effect.channels();
             for rhs in 0..residuals.ncols() {
                 let mut projected_square = 0.0_f64;
                 for left in 0..channels {
                     for right in 0..channels {
                         projected_square = workspace.coefficients[left * residuals.ncols() + rhs]
                             .mul_add(
-                                workspace.gram[left * 2 + right]
+                                workspace.gram[left * channels + right]
                                     * workspace.coefficients[right * residuals.ncols() + rhs],
                                 projected_square,
                             );
@@ -651,6 +1291,22 @@ fn reserved_zeros<R: SlopeWorkspaceReservation>(
     Ok(output)
 }
 
+fn reserved_indices<R: SlopeWorkspaceReservation>(
+    elements: usize,
+    reservation: &mut R,
+    label: &'static str,
+) -> Result<Vec<usize>> {
+    let mut output = Vec::new();
+    reservation.reserve_usize(&mut output, elements, label)?;
+    if output.capacity() < elements {
+        return Err(allocation(
+            "categorical slope MAP permutation reservation returned insufficient capacity",
+        ));
+    }
+    output.extend(0..elements);
+    Ok(output)
+}
+
 fn allocation(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
 }
@@ -661,10 +1317,6 @@ fn invalid_argument(message: impl Into<String>) -> FeregError {
 
 fn invalid_data(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
 }
 
 #[cfg(test)]
@@ -706,6 +1358,27 @@ mod tests {
                 target
                     .try_reserve_exact(elements)
                     .map_err(|_| allocation("test intercept-slope MAP reservation failed"))?;
+            }
+            Ok(())
+        }
+
+        fn reserve_usize(
+            &mut self,
+            target: &mut Vec<usize>,
+            elements: usize,
+            _label: &'static str,
+        ) -> Result<()> {
+            let call = self.calls;
+            self.calls += 1;
+            if self.fail_at == Some(call) {
+                return Err(allocation(
+                    "injected categorical slope MAP allocation failure",
+                ));
+            }
+            if self.undersize_at != Some(call) {
+                target
+                    .try_reserve_exact(elements)
+                    .map_err(|_| allocation("test categorical slope MAP reservation failed"))?;
             }
             Ok(())
         }
@@ -751,35 +1424,114 @@ mod tests {
     }
 
     #[test]
-    fn zero_within_level_slope_and_multiple_slope_channels_fail_closed() {
-        let group = [0, 0, 1, 1];
-        let sources = [CategoricalCodeView::new(&group, 2)];
+    fn slope_only_multiple_channels_match_their_explicit_local_span() {
+        let firm = [0, 0, 0, 1, 1, 1];
+        let worker = [0, 0, 0, 1, 1, 1];
+        let sources = [
+            CategoricalCodeView::new(&firm, 2),
+            CategoricalCodeView::new(&worker, 2),
+        ];
         let topology =
-            finalize_categorical_topology(&sources, &[&[0]], &[true; 4]).expect("topology");
-        let values = DenseMatrix::from_columns(&[vec![1.0, 2.0, 3.0, 4.0]]).expect("values");
-        let zero = [0.0; 4];
-        let error = absorb_finalized_categorical_intercept_slope_map_certified(
+            finalize_categorical_topology(&sources, &[&[0_usize][..], &[1_usize][..]], &[true; 6])
+                .expect("topology");
+        let time = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0];
+        let x2 = [1.0, 4.0, 2.0, 2.0, 1.0, 5.0];
+        let effects = vec![
+            CategoricalAbsorbedEffectView::new(false, vec![&time]).expect("firm slope"),
+            CategoricalAbsorbedEffectView::new(false, vec![&time, &x2]).expect("worker slopes"),
+        ];
+        let values =
+            DenseMatrix::from_columns(&[vec![3.0, 8.0, 8.0, 4.0, 5.0, 11.0]]).expect("values");
+        let result = absorb_finalized_categorical_slope_map_certified(
             &topology,
-            &[Some(&zero)],
-            BorrowedMapWeights::Unit,
-            values.clone(),
-            config(),
-        )
-        .expect_err("zero slope");
-        assert_eq!(error.code, ErrorCode::InvalidData);
-
-        let repeated = finalize_categorical_topology(&sources, &[&[0], &[0]], &[true; 4])
-            .expect("repeated topology");
-        let slope = [0.0, 1.0, 0.0, 1.0];
-        let error = absorb_finalized_categorical_intercept_slope_map_certified(
-            &repeated,
-            &[Some(&slope), Some(&slope)],
+            &effects,
             BorrowedMapWeights::Unit,
             values,
             config(),
         )
-        .expect_err("multiple slopes");
-        assert_eq!(error.code, ErrorCode::Unsupported);
+        .expect("multiple slope-only MAP");
+        assert!(result.report().certified());
+        assert!(result
+            .residualized()
+            .as_slice()
+            .iter()
+            .all(|value| value.abs() < 1e-9));
+    }
+
+    #[test]
+    fn three_nonorthogonal_slope_channels_preserve_the_known_complement() {
+        let group = [0_u32, 0, 0, 0];
+        let sources = [CategoricalCodeView::new(&group, 1)];
+        let topology = finalize_categorical_topology(&sources, &[&[0_usize][..]], &[true; 4])
+            .expect("topology");
+        let first = [1.0, 1.0, 0.0, 0.0];
+        let second = [0.0, 1.0, 1.0, 0.0];
+        let third = [0.0, 0.0, 1.0, 1.0];
+        let complement = [-1.0, 1.0, -1.0, 1.0];
+        let values = (0..4)
+            .map(|row| 2.0 * first[row] - 3.0 * second[row] + 0.5 * third[row] + complement[row])
+            .collect::<Vec<_>>();
+        let effects = [
+            CategoricalAbsorbedEffectView::new(false, vec![&first, &second, &third])
+                .expect("three slopes"),
+        ];
+        let result = absorb_finalized_categorical_slope_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            DenseMatrix::from_columns(&[values]).expect("values"),
+            config(),
+        )
+        .expect("three-slope MAP");
+        assert!(result.report().certified());
+        for (actual, expected) in result.residualized().as_slice().iter().zip(complement) {
+            assert!((actual - expected).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn recovery_returns_centered_crossed_effects_and_requested_channels() {
+        let worker = [0_u32, 0, 1, 1, 2, 2];
+        let firm = [0_u32, 1, 0, 1, 0, 1];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 3),
+                CategoricalCodeView::new(&firm, 2),
+            ],
+            &[&[0], &[1]],
+            &[true; 6],
+        )
+        .expect("topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let worker_effect = [-1.0, -1.0, 0.25, 0.25, 0.75, 0.75];
+        let firm_effect = [-0.5, 0.5, -0.5, 0.5, -0.5, 0.5];
+        let target = worker_effect
+            .iter()
+            .zip(firm_effect)
+            .map(|(left, right)| left + right)
+            .collect::<Vec<_>>();
+        let recovered = recover_finalized_categorical_effects_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, false],
+            config(),
+        )
+        .expect("recovery");
+        assert!(recovered.iterations() > 0);
+        assert!(recovered.reconstruction_relative_infinity() < 1e-10);
+        for (actual, expected) in recovered.absorbed_sum().iter().zip(&target) {
+            assert!((actual - expected).abs() < 1e-10);
+        }
+        let saved_worker = recovered.channels()[0].as_ref().expect("worker output");
+        for (actual, expected) in saved_worker.iter().zip(worker_effect) {
+            assert!((actual - expected).abs() < 1e-10);
+        }
+        assert!(recovered.channels()[1].is_none());
     }
 
     #[test]
@@ -792,12 +1544,14 @@ mod tests {
         )
         .expect("topology");
         let slope = [0.0, 1.0, 2.0, 0.0, 1.5, 3.0];
+        let effects =
+            [CategoricalAbsorbedEffectView::new(true, vec![&slope]).expect("slope effect")];
         let values =
             DenseMatrix::from_columns(&[vec![1.0, 2.0, 4.0, 3.0, 5.0, 8.0]]).expect("values");
         let mut successful = InjectedReservation::default();
         absorb_with_reservation(
             &topology,
-            &[Some(&slope)],
+            &effects,
             BorrowedMapWeights::Unit,
             values.clone(),
             config(),
@@ -812,7 +1566,7 @@ mod tests {
             };
             let error = absorb_with_reservation(
                 &topology,
-                &[Some(&slope)],
+                &effects,
                 BorrowedMapWeights::Unit,
                 values.clone(),
                 config(),
@@ -827,7 +1581,7 @@ mod tests {
             };
             let error = absorb_with_reservation(
                 &topology,
-                &[Some(&slope)],
+                &effects,
                 BorrowedMapWeights::Unit,
                 values.clone(),
                 config(),

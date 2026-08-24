@@ -695,7 +695,7 @@ pub(super) fn validate_fit_and_absorbed_dof_view<P: PreparedOlsInferenceView + ?
     if finite_coordinates != fit.finite_rank()
         || normalized_coordinates > 1
         || (normalized_coordinates == 1
-            && (!prepared.fit_structural_intercept() || !prepared.fit_report_intercept()))
+            && (!prepared.fit_has_absorbed_intercept() || !prepared.fit_report_intercept()))
     {
         return Err(invalid_argument(
             "prepared iid covariance-coordinate rank is inconsistent",
@@ -900,7 +900,7 @@ pub(super) fn build_residual_dof_view<P: PreparedOlsInferenceView + ?Sized>(
         ));
     }
     let ordinary_intercept_requested = prepared.fit_report_intercept();
-    let has_absorbed_intercept = prepared.fit_structural_intercept();
+    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
     // The structural constant direction is a property of the requested model
     // span, not of whichever duplicate coordinate won a numerical pivot tie.
     // Absorbed intercepts own that direction; otherwise a requested `_cons`
@@ -1262,7 +1262,7 @@ fn certify_inference<P: PreparedOlsInferenceView + ?Sized>(
     inputs: InferenceCertificateInputs,
 ) -> Result<PreparedOlsUnadjustedCertificate> {
     let ordinary_intercept_requested = prepared.fit_report_intercept();
-    let has_absorbed_intercept = prepared.fit_structural_intercept();
+    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
     let expected_finite_intercept_rank =
         usize::from(ordinary_intercept_requested && !has_absorbed_intercept);
     let expected_finite_model_dof = fit

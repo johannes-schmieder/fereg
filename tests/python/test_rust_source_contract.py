@@ -63,14 +63,17 @@ class RustSourceContractTests(unittest.TestCase):
         self.assertIn("local:\n    *;", linux)
         self.assertEqual([line.strip() for line in macos if line.strip()], ["_pginit", "_stata_call"])
 
-    def test_estimator_actions_are_disabled_in_rust_and_stata(self):
+    def test_public_ols_uses_the_guarded_spi_path_and_ppml_stays_disabled(self):
         dispatch = (PLUGIN / "dispatch.rs").read_text(encoding="utf-8")
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        estimate = (PLUGIN / "estimate.rs").read_text(encoding="utf-8")
+        fereg = (ROOT / "stata/fereg.ado").read_text(encoding="utf-8")
+        feppml = (ROOT / "stata/feppml.ado").read_text(encoding="utf-8")
+        self.assertIn('"estimate-ppml"', dispatch)
         self.assertIn("ErrorCode::Unsupported", dispatch)
-        for ado in ("fereg.ado", "feppml.ado"):
-            text = (ROOT / "stata" / ado).read_text(encoding="utf-8")
-            self.assertIn("exit 498", text)
-            self.assertNotIn("plugin call", text)
+        self.assertIn("ACTION_ESTIMATE_OLS_TEST", estimate)
+        self.assertIn("_fereg_estimate_public `0'", fereg)
+        self.assertIn("exit 498", feppml)
+        self.assertNotIn("plugin call", feppml)
 
     def test_final_native_builds_audit_then_load_before_hashing(self):
         expectations = {

@@ -360,7 +360,8 @@ confirm new variable _st_fe_string_retained
 confirm new variable _st_fe_string_reason
 
 capture noisily fereg y x z
-assert _rc == 498
+assert _rc == 0
+assert `"`e(cmd)'"' == "fereg"
 capture noisily feppml y x z
 assert _rc == 498
 

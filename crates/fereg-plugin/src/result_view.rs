@@ -5,6 +5,7 @@
 //! cluster metadata. These copyable views let one serializer borrow either path
 //! without cloning observation-scale state or changing result-wire dimensions.
 
+use fereg_core::error::Result;
 use fereg_core::{
     PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
     PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
@@ -37,6 +38,13 @@ impl<'a> PreparedOlsResultData<'a> {
         match self {
             Self::Legacy(value) => &value.sample,
             Self::Categorical(value) => value.sample(),
+        }
+    }
+
+    pub(crate) fn column_value(self, column: usize, row: usize) -> Result<f64> {
+        match self {
+            Self::Legacy(value) => value.column_value(column, row),
+            Self::Categorical(value) => value.column_value(column, row),
         }
     }
 

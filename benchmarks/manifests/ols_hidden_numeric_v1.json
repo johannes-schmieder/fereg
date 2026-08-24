@@ -6,7 +6,7 @@
   "performance": "unmeasured",
   "parent_manifest": {
     "path": "benchmarks/manifests/ols_v1.json",
-    "sha256": "9f2494d480514e854b5a7b7d43491cb2f80c23aaea500212aa28f801547c0f79"
+    "sha256": "3072035bbc79123f9a30c61f70d14de7929dc463814993ef51497afec581158e"
   },
   "comparator_receipt": {
     "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d",
@@ -28,6 +28,11 @@
     "one_fe_robust",
     "multi_fe_interactions",
     "intercept_and_slope",
+    "slope_only_multiple",
+    "string_fe",
+    "time_series_lag",
+    "time_series_lead_difference_gaps",
+    "iweight_probe",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -54,17 +59,11 @@
     "nested_fe_cluster",
     "dof_none",
     "dof_firstpair",
+    "dof_continuous",
+    "saved_outputs",
+    "postestimation_test_summarize",
     "empty_sample_error",
     "one_observation_error"
   ],
-  "blockers": [
-    {"case_id": "slope_only_multiple", "reason": "absorbed_slope_only_multiple"},
-    {"case_id": "string_fe", "reason": "string_source_ingestion"},
-    {"case_id": "time_series_lag", "reason": "time_series_materialization"},
-    {"case_id": "time_series_lead_difference_gaps", "reason": "time_series_materialization"},
-    {"case_id": "iweight_probe", "reason": "importance_weight_semantics"},
-    {"case_id": "dof_continuous", "reason": "absorbed_slope_continuous_dof"},
-    {"case_id": "saved_outputs", "reason": "fixed_effect_recovery_outputs"},
-    {"case_id": "postestimation_test_summarize", "reason": "public_postestimation"}
-  ]
+  "blockers": []
 }

@@ -728,11 +728,6 @@ fn build_fixed_effects(report: PreparedAbsorbedDofData<'_>) -> Result<(Vec<f64>,
                 let (identity, term, source) = match &effect.identity {
                     CategoricalTopologyDofEffectIdentity::Explicit { term_id, sources } => {
                         if let Some(slope_source) = effect.slope_source {
-                            if sources.len() != 1 {
-                                return Err(invalid(
-                                    "categorical absorbed slope has a non-singleton source tuple",
-                                ));
-                            }
                             (4.0, f64::from(term_id.get()), f64::from(slope_source.get()))
                         } else {
                             match sources.as_slice() {

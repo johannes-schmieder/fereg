@@ -21,10 +21,9 @@ use crate::ols::{
 
 /// Original identity of one requested categorical absorbed term.
 ///
-/// The guarded production-OLS gate currently accepts an intercept in every
-/// term and at most one continuous slope in the complete request.  Keeping the
-/// slope identity here lets sample preparation borrow the already loaded
-/// numeric source on the final row axis; no observation-scale slope copy is
+/// Intercept and slope identities are retained exactly as requested. Keeping
+/// slope identities here lets sample preparation borrow the already loaded
+/// numeric sources on the final row axis; no observation-scale slope copy is
 /// introduced by the topology layer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CategoricalAbsorbEffectIdentity {
@@ -33,7 +32,8 @@ pub struct CategoricalAbsorbEffectIdentity {
     /// Requested wire order is preserved exactly. Numerical topology code may
     /// canonicalize only a temporary index recipe.
     pub sources: Vec<SourceId>,
-    pub slope_source: Option<SourceId>,
+    pub intercept: bool,
+    pub slope_sources: Vec<SourceId>,
 }
 
 /// One original effect after binding to a prepared categorical-source table.
@@ -43,7 +43,8 @@ pub struct BoundCategoricalAbsorbEffect {
     pub label: String,
     pub sources: Vec<SourceId>,
     pub categorical_source_indices: Vec<usize>,
-    pub slope_source: Option<SourceId>,
+    pub intercept: bool,
+    pub slope_sources: Vec<SourceId>,
 }
 
 /// Metadata-only plan that separates source availability from true FE topology.
@@ -165,7 +166,12 @@ impl CategoricalAbsorbRequestPlan {
                         "unable to reserve bound categorical absorbed sources",
                     )?,
                     categorical_source_indices,
-                    slope_source: effect.slope_source,
+                    intercept: effect.intercept,
+                    slope_sources: fallible_copy_slice(
+                        &effect.slope_sources,
+                        reservation,
+                        "unable to reserve bound categorical absorbed slope sources",
+                    )?,
                 },
                 "bound categorical absorbed effect capacity exhausted",
             )?;
@@ -176,9 +182,8 @@ impl CategoricalAbsorbRequestPlan {
 
 /// Validate and split a numeric categorical absorbed request.
 ///
-/// This gate deliberately stops at one intercept-plus-slope channel in the
-/// complete request.  Slope-only effects and multiple slopes remain rejected
-/// for their separately frozen gates.
+/// Intercept-only, intercept-plus-slope, and slope-only terms share the same
+/// categorical topology. Slope columns remain borrowed numeric sources.
 pub fn plan_categorical_absorbed_request(
     request: &OlsRequestV1,
 ) -> Result<CategoricalAbsorbRequestPlan> {
@@ -254,7 +259,6 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
         request.absorbed_terms.len(),
         "unable to reserve categorical absorbed effect identities",
     )?;
-    let mut slope_count = 0_usize;
     for (term_index, term) in request.absorbed_terms.iter().enumerate() {
         let expected_id = u32::try_from(term_index + 1)
             .map_err(|_| invalid("categorical absorbed-term count exceeds u32"))?;
@@ -263,24 +267,11 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
                 "categorical absorbed-term ids must be contiguous and ordered",
             ));
         }
-        if !term.intercept || term.categorical_sources.is_empty() || !term.saved_name.is_empty() {
-            return Err(unsupported(
-                "categorical absorbed request planning requires unnamed intercept-bearing terms without saved outputs",
-            ));
-        }
-        if term.slope_sources.len() > 1
-            || (!term.slope_sources.is_empty() && term.categorical_sources.len() != 1)
+        if term.categorical_sources.is_empty()
+            || (!term.intercept && term.slope_sources.is_empty())
         {
             return Err(unsupported(
-                "categorical absorbed request planning currently supports one slope on one categorical source",
-            ));
-        }
-        slope_count = slope_count
-            .checked_add(term.slope_sources.len())
-            .ok_or_else(|| allocation("categorical absorbed slope count overflows"))?;
-        if slope_count > 1 {
-            return Err(unsupported(
-                "categorical absorbed request planning currently supports at most one slope channel",
+                "categorical absorbed request planning requires categorical terms containing an intercept or slope",
             ));
         }
         if term.label.trim().is_empty() {
@@ -313,7 +304,12 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
                     reservation,
                     "unable to reserve categorical absorbed effect sources",
                 )?,
-                slope_source: term.slope_sources.first().copied(),
+                intercept: term.intercept,
+                slope_sources: fallible_copy_slice(
+                    &term.slope_sources,
+                    reservation,
+                    "unable to reserve categorical absorbed effect slope sources",
+                )?,
             },
             "categorical absorbed effect-identity capacity exhausted",
         )?;
@@ -860,25 +856,31 @@ mod tests {
         slope.absorbed_terms[0].slope_sources.push(source(2));
         let slope_plan = plan_categorical_absorbed_request(&slope).expect("single guarded slope");
         assert_eq!(
-            slope_plan.requested_effects()[0].slope_source,
-            Some(source(2))
+            slope_plan.requested_effects()[0].slope_sources,
+            vec![source(2)]
         );
-        let mut second_slope = slope.clone();
-        second_slope.absorbed_terms[1].slope_sources.push(source(1));
+        let mut multiple_slopes = slope.clone();
+        multiple_slopes.absorbed_terms[1].intercept = false;
+        multiple_slopes.absorbed_terms[1].slope_sources = vec![source(1), source(2)];
+        let multiple_plan =
+            plan_categorical_absorbed_request(&multiple_slopes).expect("multiple slope-only terms");
         assert_eq!(
-            plan_categorical_absorbed_request(&second_slope)
-                .expect_err("second slope")
+            multiple_plan.requested_effects()[1].slope_sources,
+            vec![source(1), source(2)]
+        );
+        assert!(!multiple_plan.requested_effects()[1].intercept);
+        let mut empty = request();
+        empty.absorbed_terms[0].intercept = false;
+        assert_eq!(
+            plan_categorical_absorbed_request(&empty)
+                .expect_err("empty effect")
                 .code,
             ErrorCode::Unsupported
         );
         let mut saved = request();
         saved.absorbed_terms[0].saved_name = "alpha".to_owned();
-        assert_eq!(
-            plan_categorical_absorbed_request(&saved)
-                .expect_err("saved")
-                .code,
-            ErrorCode::Unsupported
-        );
+        let saved_plan = plan_categorical_absorbed_request(&saved).expect("saved metadata");
+        assert_eq!(saved_plan.requested_effects()[0].term_id.get(), 1);
         let mut empty_label = request();
         empty_label.absorbed_terms[0].label.clear();
         assert_eq!(

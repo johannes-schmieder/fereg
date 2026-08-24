@@ -67,6 +67,14 @@
       }
     },
     {
+      "id": "ols_slope_only_multiple_positive_dof",
+      "kind": "fixture_csv",
+      "source": {
+        "path": "tests/fixtures/ols/ols_slope_only_multiple_positive_dof.csv",
+        "sha256": "303427127f99114d274d3c4b9888a1060be41744dc2ced80108bcff99cbf0808"
+      }
+    },
+    {
       "id": "ols_missing",
       "kind": "fixture_csv",
       "source": {
@@ -165,7 +173,7 @@
     },
     {
       "id": "slope_only_multiple",
-      "dataset": "ols_core",
+      "dataset": "ols_slope_only_multiple_positive_dof",
       "command": "reghdfe y c.x1, absorb(firm#c.time worker#c.(time x2))",
       "expected": "must_succeed",
       "covers": ["models:slope_only", "models:multiple_slopes"],
@@ -448,7 +456,7 @@
     },
     {
       "id": "dof_continuous",
-      "dataset": "ols_core",
+      "dataset": "ols_intercept_slope_positive_dof",
       "command": "reghdfe y c.x1, absorb(firm##c.time worker) dof(continuous)",
       "expected": "must_succeed",
       "covers": ["inference:dof_continuous"],

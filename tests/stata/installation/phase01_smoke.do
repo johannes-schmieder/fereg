@@ -49,7 +49,9 @@ sysuse auto, clear
 local before_n = _N
 local before_k = c(k)
 capture noisily fereg price c.mpg i.foreign, absorb(rep78) vce(robust) threads(32)
-assert _rc == 498
+assert _rc == 0
+assert `"`e(cmd)'"' == "fereg"
+assert e(N) > 0
 assert _N == `before_n'
 assert c(k) == `before_k'
 

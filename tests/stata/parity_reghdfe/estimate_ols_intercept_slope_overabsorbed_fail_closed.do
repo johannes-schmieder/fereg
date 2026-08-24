@@ -47,6 +47,6 @@ local null_functions : e(functions)
 assert `"`null_scalars'`null_macros'`null_matrices'`null_functions'"' == ""
 
 capture noisily fereg y c.x1, absorb(firm##c.time worker)
-assert _rc == 498
+assert _rc == 2001
 
 di as result "END_FIXTURE|estimate_ols_intercept_slope_overabsorbed_fail_closed|rc=0"

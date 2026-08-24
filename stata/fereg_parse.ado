@@ -115,7 +115,13 @@ program define fereg_parse, rclass
 
                 /* This parser records TS work but never materializes it. */
                 local ts_state 1
-                if `"`ts_op'"' != "" local ts_state 2
+                if `"`ts_op'"' != "" {
+                    local ts_state 2
+                    /* _ms_parse_parts reports the TS operator in both op and
+                       ts_op for a continuous TS term. The component operator
+                       is empty; the TS identity lives only in its own slot. */
+                    if `component_kind' == 1 local raw_op
+                }
 
                 local ++component_rows
                 local raw_op_length = strlen(`"`raw_op'"')
@@ -238,10 +244,21 @@ program define fereg_parse, rclass
             di as error "slope-only absorbed term has no slope: `raw_absorb'"
             exit 198
         }
+        if `"`saved_name'"' != "" & `n_slopes' > 0 {
+            forvalues slope_index = 1/`n_slopes' {
+                capture confirm new variable `saved_name'_Slope`slope_index'
+                if _rc {
+                    di as error "invalid saved fixed-effect slope variable: `saved_name'_Slope`slope_index'"
+                    exit 198
+                }
+            }
+        }
         matrix `absorb_meta' = nullmat(`absorb_meta') \ ///
             (`absorb_rows', `n_categorical', `intercept', `n_slopes')
         local absorb_labels `"`absorb_labels' `raw_absorb'"'
-        local absorb_saved_names `"`absorb_saved_names' `saved_name'"'
+        local saved_token `"`saved_name'"'
+        if `"`saved_token'"' == "" local saved_token "."
+        local absorb_saved_names `"`absorb_saved_names' `saved_token'"'
         local absorb_label_piece `"`=strlen(`"`raw_absorb'"')':`raw_absorb'"'
         local absorb_saved_piece `"`=strlen(`"`saved_name'"')':`saved_name'"'
         if `"`absorb_label_registry'"' == "" {

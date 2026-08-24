@@ -1,0 +1,112 @@
+*! fereg public OLS syntax and result adapter 0.1.0 24aug2026
+program define _fereg_ols, eclass sortpreserve
+    version 18.0
+    syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
+        [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
+         KEEPsingletons RESIDuals(name) XB(name) XBD(name) D(name) NOCONStant]
+
+    local weight_option
+    if `"`weight'"' != "" {
+        local weight_variable = strtrim(subinstr(`"`exp'"', "=", "", 1))
+        if `"`weight'"' == "aweight" local weight_option "aweight(`weight_variable')"
+        else if `"`weight'"' == "fweight" local weight_option "fweight(`weight_variable')"
+        else if `"`weight'"' == "pweight" local weight_option "pweight(`weight_variable')"
+        else if `"`weight'"' == "iweight" {
+            di as error "iweights are not supported by the pinned reghdfe OLS contract"
+            exit 101
+        }
+        else {
+            di as error "hidden numeric manifest adapter received an unsupported weight"
+            exit 498
+        }
+    }
+
+    local vce_option
+    local cluster_option
+    local vce_text = lower(strtrim(`"`vce'"'))
+    if `"`vce_text'"' != "" {
+        gettoken vce_kind vce_rest : vce_text
+        if `"`vce_kind'"' == "cluster" {
+            local vce_rest = strtrim(`"`vce_rest'"')
+            if `"`vce_rest'"' == "" {
+                di as error "vce(cluster) requires at least one cluster dimension"
+                exit 198
+            }
+            local cluster_option `"cluster(`vce_rest')"'
+        }
+        else if inlist(`"`vce_kind'"', "robust", "unadjusted", "ols", "iid") & ///
+                strtrim(`"`vce_rest'"') == "" {
+            local vce_option `"vce(`vce_kind')"'
+        }
+        else {
+            di as error "hidden numeric manifest adapter received an unsupported vce()"
+            exit 498
+        }
+    }
+
+    local absorb_option
+    local dof_option
+    local singleton_option
+    local residual_option
+    local constant_option
+    local xb_option
+    local xbd_option
+    local d_option
+    if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
+    if strtrim(`"`dof'"') != "" local dof_option `"dof(`dof')"'
+    if `"`keepsingletons'"' != "" local singleton_option "keepsingletons"
+    if `"`residuals'"' != "" local residual_option `"residual(`residuals')"'
+    if `"`xb'"' != "" local xb_option `"xb(`xb')"'
+    if `"`xbd'"' != "" local xbd_option `"xbd(`xbd')"'
+    if `"`d'"' != "" local d_option `"d(`d')"'
+    if `"`noconstant'"' != "" local constant_option "noconstant"
+
+    _fereg_estimate_ols `varlist' `if' `in', ///
+        `absorb_option' `vce_option' `cluster_option' `dof_option' ///
+        `singleton_option' `residual_option' `xb_option' `xbd_option' ///
+        `d_option' `constant_option' `weight_option'
+
+    local coefficient_count = e(fereg_receipt)[1,5]
+    local posted_indepvars
+    if `coefficient_count' > 0 {
+        local posted_indepvars : colfullnames e(b)
+    }
+    local intended_indepvars
+    if `coefficient_count' > 0 {
+        forvalues slot = 1/`coefficient_count' {
+            // Pinned reghdfe's e(indepvars) excludes syntax/base coordinates,
+            // retains numerically omitted coordinates, and renders every
+            // retained factor component with Stata's nonbase `bn' marker.
+            // The posted b/V stripe remains the full omission-marked axis.
+            if e(fereg_status)[`slot',2] == 2 continue
+            local name : word `slot' of `posted_indepvars'
+            local remaining `"`name'"'
+            local intended_name
+            while `"`remaining'"' != "" {
+                gettoken component remaining : remaining, parse("#")
+                if `"`component'"' == "#" {
+                    local intended_name `"`intended_name'#"'
+                    continue
+                }
+                local intended_component `"`component'"'
+                if substr(`"`component'"', 1, 2) == "o." {
+                    local intended_component = substr(`"`component'"', 3, .)
+                }
+                else if regexm(`"`component'"', "^(-?[0-9]+)(b|bn|o)?[.](.+)$") {
+                    local factor_level = regexs(1)
+                    local factor_variable = regexs(3)
+                    local intended_component `"`factor_level'bn.`factor_variable'"'
+                }
+                local intended_name `"`intended_name'`intended_component'"'
+            }
+            local intended_indepvars `"`intended_indepvars' `intended_name'"'
+        }
+    }
+    local intended_indepvars = strtrim(`"`intended_indepvars'"')
+    ereturn scalar fereg_v_determinant = e(fereg_certificate)[31,2]
+    ereturn local indepvars `"`intended_indepvars'"'
+    ereturn local cmd "_fereg_ols"
+    ereturn local cmdline `"_fereg_ols `0'"'
+    ereturn local fereg_gate "public_ols_v1"
+    ereturn local fereg_intended_public_command "fereg"
+end

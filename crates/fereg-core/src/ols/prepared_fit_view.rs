@@ -10,7 +10,7 @@ use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::Result;
 use crate::fe::{
     absorb_borrowed_intercept_map_with_structural_constant_certified,
-    absorb_finalized_categorical_intercept_slope_map_certified,
+    absorb_finalized_categorical_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
     MapConfig,
 };
@@ -28,6 +28,8 @@ pub(crate) trait PreparedOlsFitView {
     fn fit_sample(&self) -> &PreparedNumericSample;
 
     fn fit_structural_intercept(&self) -> bool;
+
+    fn fit_has_absorbed_intercept(&self) -> bool;
 
     fn fit_report_intercept(&self) -> bool;
 
@@ -53,6 +55,10 @@ impl PreparedOlsFitView for PreparedOlsData {
     }
 
     fn fit_structural_intercept(&self) -> bool {
+        self.structural_intercept
+    }
+
+    fn fit_has_absorbed_intercept(&self) -> bool {
         self.structural_intercept
     }
 
@@ -94,6 +100,10 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         self.structural_intercept()
     }
 
+    fn fit_has_absorbed_intercept(&self) -> bool {
+        self.has_absorbed_intercept()
+    }
+
     fn fit_report_intercept(&self) -> bool {
         self.report_intercept()
     }
@@ -113,13 +123,13 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
         if self.has_absorbed_slope() {
-            let slopes = self.slope_views()?;
-            absorb_finalized_categorical_intercept_slope_map_certified(
+            let effects = self.effect_views()?;
+            absorb_finalized_categorical_slope_map_certified(
                 self.fe_topology(),
-                &slopes,
+                &effects,
                 weights,
                 values,
-                config,
+                self.slope_map_config(config),
             )
         } else {
             absorb_finalized_categorical_topology_map_certified(

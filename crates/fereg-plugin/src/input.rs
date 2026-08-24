@@ -100,7 +100,9 @@ pub trait SpiApi {
     fn nobs(&mut self) -> Result<usize>;
     fn nvars(&mut self) -> Result<usize>;
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
+    fn variable_is_strl(&mut self, variable: u32) -> Result<bool>;
     fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)>;
+    fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>>;
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;
@@ -431,6 +433,15 @@ impl PrepareActionSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
+        if request
+            .absorbed_terms
+            .iter()
+            .any(|term| !term.saved_name.is_empty())
+        {
+            return Err(unsupported(
+                "prepare-ols-test does not publish saved fixed-effect outputs",
+            ));
+        }
         request.validate_and_compile()?;
         validate_spi_layout(&request, self.diagnostics, spi)?;
         Ok(PrepareAction {
@@ -960,6 +971,10 @@ mod tests {
             Ok(self.strings.contains(&variable))
         }
 
+        fn variable_is_strl(&mut self, _variable: u32) -> Result<bool> {
+            Ok(false)
+        }
+
         fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)> {
             self.reads.push((variable, observation));
             if self.fail_read == Some((variable, observation)) {
@@ -972,6 +987,10 @@ mod tests {
                 .get(&(variable, observation))
                 .copied()
                 .ok_or_else(|| invalid("fake SPI data coordinate is absent"))
+        }
+
+        fn read_string(&mut self, _variable: u32, _observation: usize) -> Result<Vec<u8>> {
+            Err(unsupported("fake diagnostic SPI has no string cells"))
         }
 
         fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)> {

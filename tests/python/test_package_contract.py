@@ -138,11 +138,19 @@ class PackageContractTests(unittest.TestCase):
             )
             self.assertEqual(invalid_native_plugins(tracked_plugins(repository)), [placeholder])
 
-    def test_estimators_fail_closed(self):
-        for filename in ("fereg.ado", "feppml.ado"):
-            text = (ROOT / "stata" / filename).read_text(encoding="utf-8").lower()
-            self.assertIn("exit 498", text)
-            self.assertNotIn("plugin call", text)
+    def test_fereg_is_public_and_feppml_remains_fail_closed(self):
+        fereg = (ROOT / "stata/fereg.ado").read_text(encoding="utf-8").lower()
+        package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
+        self.assertIn("_fereg_estimate_public `0'", fereg)
+        self.assertIn("f _fereg_ols.ado", package)
+        self.assertIn("f _fereg_estimate_ols.ado", package)
+        self.assertNotIn("f _fereg_ols_hidden_numeric_v1.ado", package)
+        self.assertNotIn("f _fereg_estimate_ols_test.ado", package)
+        self.assertNotIn("f _fereg_prepare_ols_test.ado", package)
+
+        feppml = (ROOT / "stata/feppml.ado").read_text(encoding="utf-8").lower()
+        self.assertIn("exit 498", feppml)
+        self.assertNotIn("plugin call", feppml)
 
     def test_legacy_stata_commands_are_not_shipped(self):
         legacy = ("st" "fixest", "st" "feols", "st" "fepois")
