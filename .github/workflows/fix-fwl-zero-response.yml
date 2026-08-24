@@ -1,0 +1,93 @@
+name: Fix zero-response FWL score normalization
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fix-fwl-zero-response.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 30
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Repair exact-zero response normalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/stfixest-core/src/ols/prepared_fit.rs")
+          text = path.read_text(encoding="utf-8")
+          old = '''    let mut relative_infinity_norm = finite_score.infinity_scale / response_scale;
+    let response_square = response_scale * response_scale;
+    let mut relative_square_sum = finite_score.square_sum_scale / response_square;
+    let mut moments = finite_score.moments;
+    if !relative_infinity_norm.is_finite() || !relative_square_sum.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS finite-score response normalization is not finite",
+        ));
+    }
+'''
+          new = '''    let mut relative_infinity_norm = finite_score.infinity_scale / response_scale;
+    // Normalize the finite-coordinate two norm before squaring. Squaring
+    // `f64::MIN_POSITIVE` underflows to zero, so the algebraically equivalent
+    // direct division of two squared norms would turn an exact zero score into
+    // 0/0. A nonzero score against that scale still overflows and fails closed.
+    let finite_relative_two_norm = finite_score.square_sum_scale.sqrt() / response_scale;
+    let mut relative_square_sum = finite_relative_two_norm * finite_relative_two_norm;
+    let mut moments = finite_score.moments;
+    if !relative_infinity_norm.is_finite()
+        || !finite_relative_two_norm.is_finite()
+        || !relative_square_sum.is_finite()
+    {
+        return Err(invalid_data(
+            "prepared OLS finite-score response normalization is not finite",
+        ));
+    }
+'''
+          if text.count(old) != 1:
+              raise SystemExit("FWL response-normalization anchor is not unique")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          Path(".github/workflows/fix-fwl-zero-response.yml").unlink()
+          PY
+
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo fmt --all
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo test -p stfixest-core hidden_constant_reported_constant_and_fe_only_edges_are_explicit --no-default-features
+          cargo test -p stfixest-core invalid_configs_pweights_and_nonpositive_residual_dof_fail_closed --no-default-features
+          cargo test -p stfixest-core allocation_capacity_and_score_failures_are_fatal --no-default-features
+
+      - name: Commit repair directly to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/stfixest-core/src/ols/prepared_fit.rs
+          git add -u .github/workflows/fix-fwl-zero-response.yml
+          git commit -m "core: stabilize exact-zero FWL score normalization"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
