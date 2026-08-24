@@ -1,7 +1,7 @@
 # StFixest implementation status
 
 **Last updated:** 2026-08-24
-**Branch / baseline:** consolidated `main`; latest accepted exact-green source `dfd5ae00b8c6dff5710e220706960a4ee71de01d`, recorded by quick receipt commit `ea5fe3da12730177be47dfa500bab517f56c5bc1` and full receipt commit `11b791d13d687ca47a0c43e51850261016b907cb`
+**Branch / baseline:** consolidated `main`; latest accepted exact-green source `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`, recorded by corrected quick/full receipt-identity commit `8917e6162d17a2aeb49b2af62fe71c09d68702a2`
 **Active milestone:** reseal the frozen hidden OLS projection after exact-green closure of the 12-case FE-interaction differential
 **Release state:** development only — public estimators remain fail-closed; no production or cross-platform release claim
 
@@ -15,12 +15,12 @@ Contracts and reference documentation record requirements, not live progress.
   continuation lines were consolidated by `4bb5f1a38fca46b86cc7d52be9d8e013b173a0a4`;
   obsolete StFixest branches were then deleted.
 - Exact-SHA quick and full CI for source
-  `dfd5ae00b8c6dff5710e220706960a4ee71de01d` are green: overall,
+  `dfd5ae0935f2b5a8925de14c316d699c5fff7e66` are green: overall,
   licensed-Stata, and Rust statuses are `success`, both Stata runs returned
   zero, all 20 quick fixtures passed, and all 24 full fixtures passed. Receipts:
-  `.ci/stata/results/dfd5ae00b8c6dff5710e220706960a4ee71de01d.json`
+  `.ci/stata/results/dfd5ae0935f2b5a8925de14c316d699c5fff7e66.json`
   and
-  `.ci/stata/full-results/dfd5ae00b8c6dff5710e220706960a4ee71de01d.json`.
+  `.ci/stata/full-results/dfd5ae0935f2b5a8925de14c316d699c5fff7e66.json`.
 - Current main contains substantial hidden categorical-interaction support:
   collision-free compact tuple factorization; canonical partition reuse;
   final-sample topology; iterative singleton and frequency-weight behavior;
@@ -34,7 +34,7 @@ Contracts and reference documentation record requirements, not live progress.
   (receipt commit `0e3960a8d60442fe4b8569e1db5d2c91fc487e75`).
 - All 12 receipt-bound hidden-estimator FE-interaction differential cases are
   executable and exact-green at source
-  `dfd5ae00b8c6dff5710e220706960a4ee71de01d`. They bind final samples,
+  `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`. They bind final samples,
   singleton and frequency-weight behavior, coefficient/status layouts, iid
   and clustered covariance, absorbed and residual DoF policies, interaction
   and cluster identity, nesting, score certificates, and observation
@@ -105,7 +105,7 @@ consolidated state above and active checkpoint below control current work.
 The exact pinned offline reference environment and licensed-Stata probe are
 source-bound and successful for `e81b942c0dc0b122258489a60c956cdbe0121512`.
 All 12 executable FE-interaction differential cases are accepted at exact-green
-source `dfd5ae00b8c6dff5710e220706960a4ee71de01d`. The next formally required
+source `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`. The next formally required
 gate is to reseal the frozen 40-case hidden OLS projection or repair the first
 concrete failure that prevents resealing. No complete estimator-parity claim is
 permitted until that projection is sealed.
@@ -296,7 +296,7 @@ Historical bullets below remain useful detail but do not supersede this order.
   requested residual; all licensed hidden parity/transaction fixtures pass.
 - The hidden StFixest versus pinned-`reghdfe` differential for native numeric
   categorical FE interactions is sealed across all 12 accepted cases at
-  `dfd5ae00b8c6dff5710e220706960a4ee71de01d`. Reseal the frozen projection,
+  `dfd5ae0935f2b5a8925de14c316d699c5fff7e66`. Reseal the frozen projection,
   then continue afterward with
   independently gated string, absorbed-slope, broader ordinary-factor/time-
   series, saved-output, and postestimation work. No checkpoint may enable the
