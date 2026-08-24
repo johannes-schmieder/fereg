@@ -111,12 +111,33 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
             exit 498
         }
     }
+    local has_absorb_interaction 0
     if `n_absorb_terms' > 0 {
         forvalues row = 1/`n_absorb_terms' {
             if `absorb_terms'[`row',2] < 1 | `absorb_terms'[`row',3] != 1 | ///
                `absorb_terms'[`row',4] != 0 {
                 di as error "hidden prepared OLS supports only all-categorical intercept fixed effects"
                 exit 498
+            }
+            if `absorb_terms'[`row',2] > 1 local has_absorb_interaction 1
+        }
+    }
+    if `has_absorb_interaction' {
+        if regexm(lower(`"`indepvars'"'), "(^|[ #])ib[^ #]*[.]") {
+            di as error "hidden categorical OLS final-sample rebasing does not yet support explicit base operators"
+            exit 498
+        }
+        if `n_components' > 0 {
+            forvalues row = 1/`n_components' {
+                if `model_components'[`row',4] == 2 {
+                    local source_id = `model_components'[`row',3]
+                    local source : word `source_id' of `source_vars'
+                    local fv_base : char `source'[_fv_base]
+                    if `"`fv_base'"' != "" {
+                        di as error "hidden categorical OLS final-sample rebasing does not yet support fvset base overrides"
+                        exit 498
+                    }
+                }
             }
         }
     }
@@ -190,8 +211,8 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
 
     local include_intercept = (`"`noconstant'"' == "")
     local keep_singletons = (`"`keepsingletons'"' != "")
-    local coefficient_count = `n_terms' + `include_intercept'
-    local matrix_dimension = max(`coefficient_count', 1)
+    local coefficient_capacity = `n_terms' + `include_intercept'
+    local matrix_dimension = max(`coefficient_capacity', 1)
     local fe_rows = max(`n_absorb_terms', 1)
     local cluster_rows = max(`n_cluster_terms', 1)
     local subset_rows = max(2^`n_cluster_terms' - 1, 1)
@@ -241,7 +262,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     capture program __stfixest_estimate_plugin, plugin using(`"`plugin_file'"')
     local load_rc = _rc
     if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    local request_arguments `"ado=0.1.0-phase01;protocol_major=1;protocol_minor=1;stata=`c(stata_version)';confirm=developer-estimation-test;plugin=0.1.0;result_major=1;result_minor=0;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.1.0-phase01;protocol_major=1;protocol_minor=1;stata=`c(stata_version)';confirm=developer-estimation-test;plugin=0.1.0;result_major=1;result_minor=1;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_receipt_matrix=`receipt_shadow';"'
     local request_bundle
     local request_count 0
     while `"`request_arguments'"' != "" {
@@ -269,10 +290,25 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
         `fit_shadow' `dof_shadow' `solver_shadow' ///
         `fe_shadow' `cluster_shadow' `subset_shadow' ///
         `certificate_shadow' `receipt_shadow', ///
-        coefficients(`coefficient_count') vcecode(`vce_code') ///
+        capacity(`coefficient_capacity') vcecode(`vce_code') ///
         absorbrows(`fe_rows') clusters(`n_cluster_terms') ///
         subsets(`subset_rows') residual(`=(`"`residual'"' != "")')
 
+    local coefficient_count = r(coefficients)
+    if `coefficient_count' > 0 & `coefficient_count' < `coefficient_capacity' {
+        matrix `b_shadow' = `b_shadow'[1, 1..`coefficient_count']
+        matrix `v_shadow' = `v_shadow'[1..`coefficient_count', 1..`coefficient_count']
+        matrix `status_shadow' = `status_shadow'[1..`coefficient_count', 1..4]
+        matrix `marker_b_shadow' = `marker_b_shadow'[1, 1..`coefficient_count']
+        matrix `marker_v_shadow' = `marker_v_shadow'[1..`coefficient_count', 1..`coefficient_count']
+    }
+
+    local coefficient_names
+    if strtrim(`"`indepvars'"') != "" {
+        fvexpand `indepvars' if `sample_shadow'
+        local coefficient_names `"`r(varlist)'"'
+    }
+    local n_terms : word count `coefficient_names'
     local posted_names `"`coefficient_names'"'
     if `include_intercept' local posted_names `"`posted_names' _cons"'
     local posted_name_count : word count `posted_names'
@@ -438,7 +474,7 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
     if `"`residual'"' != "" ereturn local resid "`residual'"
     ereturn local stfixest_action_protocol "1.1"
     ereturn local stfixest_model_wire "2.1"
-    ereturn local stfixest_result_wire "1.0"
+    ereturn local stfixest_result_wire "1.1"
     ereturn local stfixest_plugin "0.1.0"
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
@@ -450,9 +486,9 @@ program define _stfixest_estimate_ols_test, eclass sortpreserve
 end
 
 
-program define _stfixest_eols_validate
+program define _stfixest_eols_validate, rclass
     version 18.0
-    syntax namelist(min=13 max=13), COEFFICIENTS(integer) VCECODE(integer) ABSORBROWS(integer) ///
+    syntax namelist(min=13 max=13), CAPACITY(integer) VCECODE(integer) ABSORBROWS(integer) ///
         CLUSTERS(integer) SUBSETS(integer) RESIDUAL(integer)
     local b : word 1 of `namelist'
     local V : word 2 of `namelist'
@@ -468,7 +504,7 @@ program define _stfixest_eols_validate
     local certificates : word 12 of `namelist'
     local receipt : word 13 of `namelist'
 
-    local physical = max(`coefficients', 1)
+    local physical = max(`capacity', 1)
     local expected_subsets = cond(`clusters' == 0, 0, `subsets')
     if rowsof(`b') != 1 | colsof(`b') != `physical' | ///
        rowsof(`V') != `physical' | colsof(`V') != `physical' | ///
@@ -486,9 +522,11 @@ program define _stfixest_eols_validate
         di as error "hidden OLS result layout failed exact structural validation"
         exit 459
     }
+    local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 0 | `receipt'[1,4] != `vcecode' | ///
-       `receipt'[1,5] != `coefficients' | ///
+       `receipt'[1,3] != 1 | `receipt'[1,4] != `vcecode' | ///
+       `coefficients' != int(`coefficients') | `coefficients' < 0 | ///
+       `coefficients' > `capacity' | ///
        `receipt'[1,7] != _N | `receipt'[1,10] != `clusters' | ///
        `receipt'[1,11] != `absorbrows' | ///
        `receipt'[1,12] != `expected_subsets' | ///
@@ -497,7 +535,8 @@ program define _stfixest_eols_validate
        `receipt'[1,6] < 0 | `receipt'[1,6] > `coefficients' | ///
        `receipt'[1,8] < 0 | `receipt'[1,8] > _N | ///
        `receipt'[1,9] < 0 | `receipt'[1,9] > `receipt'[1,8] {
-        di as error "hidden OLS receipt failed exact structural validation"
-        exit 459
+       di as error "hidden OLS receipt failed exact structural validation"
+       exit 459
     }
+    return scalar coefficients = `coefficients'
 end

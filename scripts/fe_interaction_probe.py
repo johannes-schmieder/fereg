@@ -58,6 +58,8 @@ EXPECTED_CASES = (
     "nested_simple_cluster",
     "identical_interaction_cluster",
     "unrelated_interaction_cluster",
+    "final_sample_default_factor_rebase",
+    "final_sample_default_interaction_rebase",
 )
 
 

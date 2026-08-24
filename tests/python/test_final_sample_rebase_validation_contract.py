@@ -5,49 +5,47 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/validate-final-sample-rebase.yml"
+TRANSFORM = ROOT / "ci/source-transforms/activate_final_sample_rebase.py"
+CORE = ROOT / "crates/stfixest-core/src/lib.rs"
+DATA = ROOT / "crates/stfixest-core/src/ols/prepared_categorical_data.rs"
+STATA = ROOT / "stata/_stfixest_estimate_ols_test.ado"
+PROFILES = ROOT / "ci/stata_profiles.json"
 
 
 class FinalSampleRebaseValidationContractTests(unittest.TestCase):
-    def test_validation_is_private_branch_and_mac_runner_scoped(self) -> None:
-        text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("codex/categorical-interactions", text)
-        self.assertIn("self-hosted, macOS, ARM64, stata-mp, stfixest", text)
-        self.assertIn("github.repository == 'johannes-schmieder/StFixest'", text)
-        self.assertNotIn("pull_request", text)
-        self.assertNotIn("ubuntu-latest", text)
-        self.assertNotIn("windows-latest", text)
+    def test_obsolete_branch_only_activation_path_is_removed(self) -> None:
+        self.assertFalse(WORKFLOW.exists())
+        self.assertFalse(TRANSFORM.exists())
 
-    def test_validation_applies_but_never_commits_generated_source(self) -> None:
-        text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("activate_final_sample_rebase.py", text)
-        self.assertIn('"activation_committed": False', text)
-        self.assertIn("subprocess.check_output", text)
-        self.assertIn('["git", "diff", "--name-only", "--"]', text)
-        self.assertIn("staged-validation receipt claims activation", text)
-        self.assertNotIn("git add -A", text)
-        self.assertNotIn("ols: activate final-sample", text)
-
-    def test_validation_runs_every_required_pinned_rust_gate(self) -> None:
-        text = WORKFLOW.read_text(encoding="utf-8")
-        for command in (
-            "cargo fmt --all -- --check",
-            "cargo clippy --workspace --all-targets --locked -- -D warnings",
-            "cargo test --workspace --all-targets --locked\n",
-            "cargo test --workspace --all-targets --locked --release",
-            "cargo build --workspace --locked --release",
-        ):
-            self.assertIn(command, text)
-        self.assertIn("/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot", text)
-
-    def test_validation_publishes_one_exact_sha_sealed_receipt(self) -> None:
-        text = WORKFLOW.read_text(encoding="utf-8")
+    def test_rebase_is_compiled_and_called_by_production_preparation(self) -> None:
+        core = CORE.read_text(encoding="utf-8")
+        data = DATA.read_text(encoding="utf-8")
+        self.assertIn("mod prepared_categorical_rebase;", core)
         self.assertIn(
-            ".ci/staged-validation/final-sample-rebase/$GITHUB_SHA.json", text
+            "pub use prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;",
+            core,
         )
-        self.assertIn('"tested_sha": os.environ["GITHUB_SHA"]', text)
-        self.assertIn("payload_sha256", text)
-        self.assertIn("generated_diff_sha256", text)
-        self.assertIn("[skip ci]", text)
+        self.assertIn("rebase_categorical_model(", data)
+        self.assertIn("report_plan: rebased.report_plan", data)
+        self.assertNotIn("remap_and_resolve_model(", data)
+
+    def test_stata_posts_only_the_final_logical_graph(self) -> None:
+        text = STATA.read_text(encoding="utf-8")
+        self.assertIn("local coefficient_capacity =", text)
+        self.assertIn("local coefficient_count = r(coefficients)", text)
+        self.assertIn("fvexpand `indepvars' if `sample_shadow'", text)
+        self.assertIn('ereturn local stfixest_result_wire "1.1"', text)
+
+    def test_licensed_rebase_fixture_is_in_every_qualification_profile(self) -> None:
+        import json
+
+        relative = (
+            "tests/stata/parity_reghdfe/"
+            "estimate_ols_categorical_final_sample_rebase.do"
+        )
+        profiles = json.loads(PROFILES.read_text(encoding="utf-8"))["profiles"]
+        for name in ("quick", "differential", "full"):
+            self.assertIn(relative, profiles[name]["fixtures"])
 
 
 if __name__ == "__main__":

@@ -18,6 +18,9 @@ use crate::fe::{
     FinalizedCategoricalTopology, MapConfig, SingletonMultiplicity,
 };
 use crate::metadata::SourceId;
+use crate::prepared_categorical_rebase::{
+    rebase_categorical_model, PreparedCategoricalOlsReportPlan,
+};
 use crate::topology_dof::{
     compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
@@ -45,6 +48,7 @@ pub struct PreparedCategoricalOlsData {
     structural_intercept: bool,
     report_intercept: bool,
     singletons: PreparedOlsSingletons,
+    report_plan: PreparedCategoricalOlsReportPlan,
 }
 
 impl PreparedCategoricalOlsData {
@@ -86,6 +90,11 @@ impl PreparedCategoricalOlsData {
     #[must_use]
     pub const fn singletons(&self) -> PreparedOlsSingletons {
         self.singletons
+    }
+
+    #[must_use]
+    pub const fn report_plan(&self) -> &PreparedCategoricalOlsReportPlan {
+        &self.report_plan
     }
 
     /// Evaluate one generated ordinary model column on the final compact row
@@ -232,6 +241,7 @@ impl PreparedCategoricalOlsData {
             &self.categorical_sources,
         )?;
         validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
+        validate_report_plan(&self.model, &self.report_plan)?;
         Ok(())
     }
 
@@ -308,7 +318,7 @@ impl PreparedCategoricalModelSource {
         }
     }
 
-    fn resolve_level(
+    pub(crate) fn resolve_level(
         &self,
         topology: &FinalizedCategoricalTopology,
         requested_level: f64,
@@ -466,12 +476,12 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
     let cascade_events = singleton.cascade_events;
 
     let PreparedOlsData {
-        mut model,
+        model: availability_model,
         sample,
         categorical_sources: candidate_sources,
         ..
     } = availability;
-    let final_sources = final_categorical_sources(&model, cluster_sources)?;
+    let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
     let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
     if fe_topology.retained_rows().len() != sample.n_active() {
@@ -480,10 +490,16 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
         ));
     }
     let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
-    remap_and_resolve_model(&mut model, &categorical_sources, &fe_topology)?;
+    let rebased = rebase_categorical_model(
+        &request.model,
+        &availability_model,
+        &categorical_sources,
+        &fe_topology,
+        request.include_intercept,
+    )?;
     let effect_specs = effect_specs(&bound_effects)?;
     let prepared = PreparedCategoricalOlsData {
-        model,
+        model: rebased.model,
         sample,
         categorical_sources,
         fe_topology,
@@ -495,6 +511,7 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
             num_singletons,
             cascade_events,
         },
+        report_plan: rebased.report_plan,
     };
     prepared.validate()?;
     Ok(prepared)
@@ -669,54 +686,6 @@ fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<(
     }
     sources.push(source);
     Ok(())
-}
-
-fn remap_and_resolve_model(
-    model: &mut PreparedOlsModel,
-    sources: &[PreparedCategoricalModelSource],
-    topology: &FinalizedCategoricalTopology,
-) -> Result<()> {
-    for column in &mut model.columns {
-        match &mut column.kind {
-            PreparedOlsColumnKind::Categorical {
-                source,
-                prepared_source_index,
-                categorical_source_index,
-                level_bits,
-                level_code,
-            } => {
-                let new_index = categorical_model_source_index(sources, *source)?;
-                let categorical = &sources[new_index];
-                if categorical.prepared_source_index != *prepared_source_index {
-                    return Err(invalid(
-                        "ordinary categorical source identity changed during compaction",
-                    ));
-                }
-                *categorical_source_index = new_index;
-                *level_code = categorical.resolve_level(topology, f64::from_bits(*level_bits))?;
-            }
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                for component in components {
-                    let new_index = categorical_model_source_index(sources, component.source)?;
-                    component.categorical_source_index = new_index;
-                    component.level_code = sources[new_index]
-                        .resolve_level(topology, f64::from_bits(component.level_bits))?;
-                }
-            }
-            PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
-        }
-    }
-    Ok(())
-}
-
-fn categorical_model_source_index(
-    sources: &[PreparedCategoricalModelSource],
-    source: SourceId,
-) -> Result<usize> {
-    sources
-        .iter()
-        .position(|candidate| candidate.source == source)
-        .ok_or_else(|| invalid("ordinary categorical model source is absent"))
 }
 
 fn effect_specs(
@@ -932,6 +901,34 @@ fn validate_model_recipes(
                     }
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+fn validate_report_plan(
+    model: &PreparedOlsModel,
+    report_plan: &PreparedCategoricalOlsReportPlan,
+) -> Result<()> {
+    if report_plan.public_coefficient_count() != model.coefficients.len()
+        || report_plan
+            .original_slots()
+            .windows(2)
+            .any(|pair| pair[0].get() >= pair[1].get())
+        || report_plan
+            .original_slots()
+            .last()
+            .is_some_and(|slot| slot.get() as usize > report_plan.original_coefficient_count())
+    {
+        return Err(invalid(
+            "categorical OLS final-sample report plan is inconsistent",
+        ));
+    }
+    for (index, coefficient) in model.coefficients.iter().enumerate() {
+        if coefficient.coefficient_slot.get() as usize != index + 1 {
+            return Err(invalid(
+                "categorical OLS rebased coefficient slots are not contiguous",
+            ));
         }
     }
     Ok(())

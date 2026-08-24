@@ -65,6 +65,7 @@ pub(crate) fn rebase_categorical_model(
     topology: &FinalizedCategoricalTopology,
     report_intercept: bool,
 ) -> Result<RebasedCategoricalOlsModel> {
+    validate_default_base_policy(graph)?;
     let original_coefficient_count = graph
         .terms
         .len()
@@ -158,6 +159,87 @@ pub(crate) fn rebase_categorical_model(
             original_slots,
         },
     })
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CategoricalBasePolicy {
+    source: SourceId,
+    minimum_level_bits: u64,
+    base_level_bits: Option<u64>,
+}
+
+/// The guarded metadata wire does not distinguish Stata's default minimum
+/// base from an explicit `ib<minimum>.` request. The Stata caller rejects all
+/// explicit base syntax and `fvset` overrides before dispatch; this native
+/// preflight independently rejects every graph that is observably not the
+/// default one-base/minimum-level policy.
+fn validate_default_base_policy(graph: &CompiledTermGraph) -> Result<()> {
+    let mut policies = Vec::new();
+    policies
+        .try_reserve_exact(graph.sources.len())
+        .map_err(|_| allocation("unable to reserve categorical base-policy identities"))?;
+    for term in &graph.terms {
+        for component in &term.components {
+            if component.kind != ComponentKind::Categorical
+                || component.level_state != LevelState::Present
+                || component.time_series_state != TimeSeriesState::None
+            {
+                continue;
+            }
+            let level_bits = canonical_factor_value(component.level_value).to_bits();
+            let policy = if let Some(policy) = policies
+                .iter_mut()
+                .find(|policy: &&mut CategoricalBasePolicy| policy.source == component.source)
+            {
+                policy.minimum_level_bits =
+                    minimum_level_bits(policy.minimum_level_bits, level_bits);
+                policy
+            } else {
+                if policies.len() == policies.capacity() {
+                    return Err(allocation(
+                        "categorical base-policy identity capacity exhausted",
+                    ));
+                }
+                policies.push(CategoricalBasePolicy {
+                    source: component.source,
+                    minimum_level_bits: level_bits,
+                    base_level_bits: None,
+                });
+                policies
+                    .last_mut()
+                    .ok_or_else(|| invalid("categorical base-policy identity is absent"))?
+            };
+            if component.base == MetadataFlag::True {
+                match policy.base_level_bits {
+                    None => policy.base_level_bits = Some(level_bits),
+                    Some(base) if base == level_bits => {}
+                    Some(_) => {
+                        return Err(unsupported(
+                            "categorical final-sample rebasing requires exactly one base level per source",
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    for policy in policies {
+        if policy.base_level_bits != Some(policy.minimum_level_bits) {
+            return Err(unsupported(
+                "categorical final-sample rebasing requires Stata's default minimum base policy",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn minimum_level_bits(left: u64, right: u64) -> u64 {
+    let left_value = f64::from_bits(left);
+    let right_value = f64::from_bits(right);
+    if right_value < left_value {
+        right
+    } else {
+        left
+    }
 }
 
 fn final_term_kind(
@@ -331,6 +413,9 @@ fn allocation(message: impl Into<String>) -> StFixestError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::metadata::{
+        ComponentOrder, ExpandedTerm, SourceEntry, TermComponent, TermId, TermOrder,
+    };
 
     fn slot(value: u32) -> CoefficientSlot {
         CoefficientSlot::new(value).expect("valid coefficient slot")
@@ -395,5 +480,67 @@ mod tests {
             columns: Vec::new(),
         };
         assert!(candidate_continuous_kind(&omitted, slot(1), active_source).is_err());
+    }
+
+    #[test]
+    fn default_minimum_base_policy_is_required_natively() {
+        let default = factor_graph(Some(1.0));
+        validate_default_base_policy(&default).expect("default minimum base");
+
+        let nonminimum = validate_default_base_policy(&factor_graph(Some(2.0)))
+            .expect_err("nonminimum base must fail closed");
+        assert_eq!(nonminimum.code, ErrorCode::Unsupported);
+        assert!(nonminimum.message.contains("default minimum base policy"));
+
+        let no_base = validate_default_base_policy(&factor_graph(None))
+            .expect_err("no-base syntax must fail closed");
+        assert_eq!(no_base.code, ErrorCode::Unsupported);
+        assert!(no_base.message.contains("default minimum base policy"));
+    }
+
+    fn factor_graph(base_level: Option<f64>) -> CompiledTermGraph {
+        let categorical = source(1);
+        CompiledTermGraph {
+            sources: vec![SourceEntry {
+                id: categorical,
+                canonical_name: "f".to_owned(),
+            }],
+            terms: [1.0, 2.0, 3.0]
+                .into_iter()
+                .enumerate()
+                .map(|(index, level)| {
+                    let one_based = u32::try_from(index + 1).expect("small term");
+                    let base = base_level == Some(level);
+                    ExpandedTerm {
+                        id: TermId::new(one_based).expect("term id"),
+                        order: TermOrder::new(one_based).expect("term order"),
+                        coefficient_slot: slot(one_based),
+                        raw_kind: RawTermKind::Factor,
+                        whole_column_omitted: base,
+                        canonical_token: format!("{level}.f"),
+                        components: vec![TermComponent {
+                            order: ComponentOrder::new(1).expect("component order"),
+                            source: categorical,
+                            kind: ComponentKind::Categorical,
+                            level_state: LevelState::Present,
+                            level_value: level,
+                            base: if base {
+                                MetadataFlag::True
+                            } else {
+                                MetadataFlag::False
+                            },
+                            omitted: if base {
+                                MetadataFlag::True
+                            } else {
+                                MetadataFlag::False
+                            },
+                            raw_operator: level.to_string(),
+                            time_series_state: TimeSeriesState::None,
+                            raw_time_series_operator: String::new(),
+                        }],
+                    }
+                })
+                .collect(),
+        }
     }
 }

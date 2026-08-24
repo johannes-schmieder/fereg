@@ -47,6 +47,16 @@ impl<'a> PreparedOlsResultData<'a> {
         }
     }
 
+    /// Physical coefficient capacity allocated by Stata before the native
+    /// final sample is known. Categorical preparation may report a smaller
+    /// logical graph after singleton deletion removes complete factor levels.
+    pub(crate) fn coefficient_capacity(self) -> usize {
+        match self {
+            Self::Legacy(value) => value.model.coefficients.len(),
+            Self::Categorical(value) => value.report_plan().original_coefficient_count(),
+        }
+    }
+
     fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
         match self {
             Self::Legacy(prepared) => std::ptr::eq(prepared, value),

@@ -271,7 +271,7 @@ impl EstimateActionSpec {
         let result_major = parse_u16(&values, "result_major")?;
         let result_minor = parse_u16(&values, "result_minor")?;
         if result_major != OLS_RESULT_WIRE_VERSION.major
-            || result_minor > OLS_RESULT_WIRE_VERSION.minor
+            || result_minor != OLS_RESULT_WIRE_VERSION.minor
         {
             return Err(protocol(format!(
                 "OLS result wire {result_major}.{result_minor} is incompatible with {}.{}",
@@ -860,6 +860,7 @@ fn validate_shadow_against_outputs(
     shadow: &OlsShadowResult<'_>,
 ) -> Result<()> {
     let matrix_dimension = shadow.coefficient_count.max(1);
+    let matrix_capacity = shadow.coefficient_capacity.max(1);
     if shadow.b.len() != matrix_dimension
         || shadow.covariance.len() != matrix_dimension * matrix_dimension
         || shadow.coefficient_status.len() != matrix_dimension * COEFFICIENT_STATUS_COLUMNS
@@ -876,6 +877,17 @@ fn validate_shadow_against_outputs(
         || shadow.drop_reasons.len() != shadow.receipt[6] as usize
         || shadow.retained_rows.len() != shadow.residuals.len()
         || shadow.covariance_dimension > shadow.coefficient_count
+        || shadow.coefficient_count > shadow.coefficient_capacity
+        || action.matrices.b.rows() != 1
+        || action.matrices.b.columns() != matrix_capacity
+        || action.matrices.covariance.rows() != matrix_capacity
+        || action.matrices.covariance.columns() != matrix_capacity
+        || action.matrices.coefficient_status.rows() != matrix_capacity
+        || action.matrices.coefficient_status.columns() != COEFFICIENT_STATUS_COLUMNS
+        || action.matrices.omission_b_marker.rows() != 1
+        || action.matrices.omission_b_marker.columns() != matrix_capacity
+        || action.matrices.omission_v_marker.rows() != matrix_capacity
+        || action.matrices.omission_v_marker.columns() != matrix_capacity
     {
         return Err(invalid(
             "OLS shadow result failed its final dimensional preflight",
@@ -922,8 +934,8 @@ fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>
     let logical_subsets = usize::from(action.vce == OlsVceKind::Clustered) * shadow.subset_rows;
     let expected = [
         RESULT_MAGIC,
-        1.0,
-        0.0,
+        f64::from(OLS_RESULT_WIRE_VERSION.major),
+        f64::from(OLS_RESULT_WIRE_VERSION.minor),
         action.vce.code(),
         shadow.coefficient_count as f64,
         shadow.covariance_dimension as f64,
@@ -2022,6 +2034,7 @@ mod tests {
             certificates: Vec::new(),
             receipt: Vec::new(),
             coefficient_count: 2,
+            coefficient_capacity: 2,
             covariance_dimension: 2,
             fixed_effect_rows: 0,
             cluster_rows: 0,
@@ -2524,6 +2537,18 @@ mod tests {
         assert_eq!(error.code, ErrorCode::ProtocolMismatch);
         assert_eq!(old_action_spi.numeric_reads, 0);
         assert_eq!(old_action_spi.store_calls, 0);
+
+        let (mut old_result_args, mut old_result_spi) = fixture(OlsVceKind::Iid);
+        replace_argument(
+            &mut old_result_args,
+            "result_minor",
+            "result_minor=0".to_owned(),
+        );
+        let error = estimate_ols_test(&old_result_args, &mut old_result_spi)
+            .expect_err("pre-rebase result wire rejected");
+        assert_eq!(error.code, ErrorCode::ProtocolMismatch);
+        assert_eq!(old_result_spi.numeric_reads, 0);
+        assert_eq!(old_result_spi.store_calls, 0);
 
         let (layout_args, mut layout_spi) = fixture(OlsVceKind::Iid);
         layout_spi

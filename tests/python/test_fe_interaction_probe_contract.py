@@ -30,11 +30,22 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         for token in (
             "program define __stfx_probe_cascade",
             "program define __stfx_probe_missing",
+            "program define __stfx_probe_rebase",
             "set obs 12",
             "generate long obs_id = 100 + _n",
             "generate long obs_id = 200 + _n",
         ):
             self.assertIn(token, text)
+
+    def test_probe_seals_final_sample_factor_and_interaction_rebasing(self) -> None:
+        script = SCRIPT.read_text(encoding="utf-8")
+        probe = PROBE_DO.read_text(encoding="utf-8")
+        for case in (
+            "final_sample_default_factor_rebase",
+            "final_sample_default_interaction_rebase",
+        ):
+            self.assertIn(f'"{case}"', script)
+            self.assertIn(f"__stfx_probe_emit {case}", probe)
 
     def test_failed_probe_retains_private_debug_artifacts(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8")

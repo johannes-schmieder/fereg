@@ -28,7 +28,7 @@ pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 /// Version of the guarded prepared-OLS shadow-result layout.
-pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 0);
+pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Handshake {

@@ -21,6 +21,7 @@ EXPECTED_FIXTURES = (
     "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
     "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
     "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+    "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
 )
 
 

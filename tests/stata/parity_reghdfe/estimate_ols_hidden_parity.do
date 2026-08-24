@@ -26,7 +26,7 @@ assert `"`e(indepvars)'"' == "x1 x2"
 assert `"`e(vce)'"' == "ols"
 assert `"`e(stfixest_action_protocol)'"' == "1.1"
 assert `"`e(stfixest_model_wire)'"' == "2.1"
-assert `"`e(stfixest_result_wire)'"' == "1.0"
+assert `"`e(stfixest_result_wire)'"' == "1.1"
 assert e(stfixest_receipt)[1,1] == 5354601
 assert e(stfixest_receipt)[1,4] == 1
 assert e(stfixest_receipt)[1,16] == 1

@@ -66,6 +66,13 @@ and the exact none/first-pair absorbed-DoF policies.
 cluster-aware absorbed and residual DoF, covariance, sample, and residual
 transport for simple and declared-interaction clusters.
 
+`estimate_ols_categorical_final_sample_rebase.do` binds the exact-pinned
+reference behavior when singleton deletion removes an entire ordinary factor
+level. It checks final-sample base/name rebasing for a factor main effect and a
+factor interaction, native status and transaction invariants, and fail-closed
+explicit/FV-set base policies. The independent explicit-dummy Rust oracle is
+the mathematical authority for the corresponding compact fit.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need

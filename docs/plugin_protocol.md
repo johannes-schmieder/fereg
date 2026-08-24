@@ -8,7 +8,7 @@ guarded prepared-OLS shadow-result transport. Existing diagnostic callers at
 version `1.0` remain compatible under the minor-version rule, while the hidden
 transport requires exact `1.1`. The expanded-model metadata wire is
 independently versioned at `2.1`, and the prepared-OLS result wire is separately
-versioned at `1.0`; none of these numbers is an alias for another. An action
+versioned at `1.1`; none of these numbers is an alias for another. An action
 handshake never performs a lossy model- or result-wire conversion.
 
 ## Actions
@@ -39,7 +39,7 @@ labels:
 ```text
 stfixest.action_protocol=1.1
 stfixest.model_wire=2.1
-stfixest.ols_result_wire=1.0
+stfixest.ols_result_wire=1.1
 ```
 
 The Phase 0 ado diagnostic caller may continue to send protocol 1.0 until a
@@ -181,7 +181,7 @@ is reachable through the Rust/actual-plugin harnesses and the developer-only
 read:
 
 - exact action protocol `1.1`;
-- compatible OLS result wire `1.0`;
+- compatible OLS result wire `1.1`;
 - the exact loaded plugin version;
 - `confirm=developer-estimation-test`;
 - model wire 2.1, numeric bindings, cluster metadata when requested, and exact
@@ -194,6 +194,13 @@ iid, HC1 robust, or one-/multiway clustered inference. It performs one native
 source-loading phase, prepares the authoritative sample once, and calls the
 selected certified same-call core composition. It never calls the legacy VCE,
 DoF, fit, or posting paths and never returns residualized N-by-K data to Stata.
+For categorical absorbed interactions, singleton deletion may remove complete
+ordinary factor levels. Wire 1.1 therefore reports a compact final-sample graph
+while preserving the larger candidate graph only as caller allocation
+capacity. The guarded Stata helper rejects explicit `ib...`/`ibn.` operators
+and `fvset` base overrides before dispatch because model wire 2.1 cannot
+distinguish all such policies; Rust independently requires the observable
+one-base/minimum-level graph before rebasing.
 
 After every core certificate passes, the plugin fallibly builds and validates a
 complete Rust-owned shadow result. Rust performs every N-, K-, and K²-scale
@@ -214,8 +221,12 @@ or the test harness must have precreated these 11 private result matrices:
 | `output_certificate_matrix` | Independent certificate diagnostics | `32 x 2` |
 | `output_receipt_matrix` | Wire identity, counts, flags, completion | `1 x 16` |
 
-Here `P=max(coefficient slots,1)`, `F` is the prepared absorbed-effect row
-count, and `Q` is the declared cluster-dimension count. The action also requires
+Here the caller allocates `P=max(candidate-sample coefficient slots,1)`, `F` is
+the prepared absorbed-effect row count, and `Q` is the declared cluster-dimension
+count. After final-sample categorical rebasing, the logical coefficient count
+may be smaller than `P`; Rust validates that bound and writes only the leading
+logical block. The receipt reports the logical count, and Stata shrinks the
+private matrices before naming or posting them. The action also requires
 a private full-length sample variable and permits private residual and
 drop-reason variables. All 11 matrix names, dimensions, aliases, numeric output
 positions, and the receipt's initial `COMPLETE=0` state are preflighted before

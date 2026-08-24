@@ -18,6 +18,8 @@ pub mod ppml_separation;
 mod prepared_categorical_data;
 #[path = "ols/prepared_categorical_effect.rs"]
 mod prepared_categorical_effect;
+#[path = "ols/prepared_categorical_rebase.rs"]
+mod prepared_categorical_rebase;
 #[path = "ols/prepared_categorical_singleton.rs"]
 mod prepared_categorical_singleton;
 #[path = "ols/prepared_categorical_topology.rs"]
@@ -112,6 +114,7 @@ pub use prepared_categorical_data::{
 pub use prepared_categorical_effect::{
     PreparedCategoricalEffect, PreparedCategoricalEffectRequest,
 };
+pub use prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;
 pub use prepared_categorical_singleton::prune_prepared_categorical_singletons;
 pub use prepared_categorical_topology::PreparedCategoricalFeTopology;
 pub use protocol::{

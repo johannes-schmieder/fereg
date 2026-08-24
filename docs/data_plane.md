@@ -65,12 +65,20 @@ bypasses deletion. Each deleted physical row receives reason 8 on the original
 axis. A fallible consuming compaction rebuilds the row map, outcome, every
 source, weight, and adjustment column together; final categorical sources are
 re-factorized so codes are contiguous and vanished ordinary levels resolve to
-zero recipes. The internal boundary may return an empty diagnostic sample; a
+zero recipes. The guarded categorical-interaction estimator then compacts the
+ordinary coefficient graph to levels that survive this authoritative sample,
+marks each surviving source's minimum level as the default base, and returns an
+ordered mapping to the original candidate slots. Stata re-expands canonical
+names on the native final-sample marker and posts only the logical compact
+graph. Explicit `ib...`, `ibn.`, and `fvset` base policies are rejected before
+the hidden plugin call because model wire 2.1 cannot distinguish every such
+policy; native preparation independently rejects graphs that are observably
+not the one-base/minimum-level policy. The internal boundary may return an empty diagnostic sample; a
 later estimator gate must reject insufficient samples before posting results.
 
-For numeric factor main effects, Stata remains authoritative for expanded
-levels, base selection, canonical coefficient names, and whole-column omission.
-Rust does not rediscover or change the base. Available candidate factor values
+For the preparation-only diagnostic, Stata remains authoritative for expanded
+numeric factor levels, base selection, canonical coefficient names, and
+whole-column omission, and Rust does not change that candidate graph. Available candidate factor values
 must be nonnegative integers; masked or nonfinite values follow the ordinary
 missing-regressor precedence. Rust first classifies and compacts the initial
 numeric sample after availability checks, then deterministically factorizes
@@ -200,7 +208,7 @@ diagnostic, result container, or public estimator path.
 ## Hidden prepared-OLS shadow transport
 
 The guarded `estimate-ols-test` action requires exact action protocol 1.1,
-result wire 1.0, loaded-plugin identity, and the explicit developer confirmation
+result wire 1.1, loaded-plugin identity, and the explicit developer confirmation
 before observation loading. It preflights all input matrices, the complete
 plugin varlist, three observation-output positions, 11 nonaliasing result
 matrices, and an initially incomplete receipt. Numeric variables are then read

@@ -170,7 +170,7 @@ mod tests {
         .render();
         assert!(report.contains("stfixest.action_protocol=1.1"));
         assert!(report.contains("stfixest.model_wire=2.1"));
-        assert!(report.contains("stfixest.ols_result_wire=1.0"));
+        assert!(report.contains("stfixest.ols_result_wire=1.1"));
         assert!(!report.contains("stfixest.model_protocol="));
         assert!(report.contains("stfixest.native_selftest=pass"));
     }

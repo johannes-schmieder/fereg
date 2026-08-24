@@ -457,7 +457,7 @@ residual, and reason outputs into precreated private shadows. It neither calls
 the legacy covariance source below nor recomposes a bare fit with an unrelated
 VCE.
 
-Before observation loading, exact action 1.1/result wire 1.0/plugin identity and
+Before observation loading, exact action 1.1/result wire 1.1/plugin identity and
 developer confirmation must pass and all input/output layouts must be valid.
 Before commit, all 11 matrix names and dimensions are prepared as stable
 borrowed C handles and all store-failure messages are allocated. SPI has no

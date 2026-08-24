@@ -159,7 +159,7 @@ mod tests {
         dispatch_args(&["version".to_owned()], &sink).expect("version");
         assert!(sink.displayed().contains("stfixest.action_protocol=1.1"));
         assert!(sink.displayed().contains("stfixest.model_wire=2.1"));
-        assert!(sink.displayed().contains("stfixest.ols_result_wire=1.0"));
+        assert!(sink.displayed().contains("stfixest.ols_result_wire=1.1"));
         assert!(!sink.displayed().contains("stfixest.model_protocol="));
     }
 

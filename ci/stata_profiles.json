@@ -57,7 +57,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
@@ -129,7 +130,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
@@ -175,7 +177,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
-        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do"
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do"
       ],
       "run_break_fixture": true,
       "timeout_seconds": 13800,

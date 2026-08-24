@@ -111,6 +111,20 @@ program define __stfx_probe_missing
     generate int year = real(word("2020 2020 2021 2021 2020 2020 2021 2021 2020 . 2022 2022", _n))
 end
 
+capture program drop __stfx_probe_rebase
+program define __stfx_probe_rebase
+    clear
+    set obs 10
+    generate long obs_id = _n
+    generate byte a = real(word("1 2 2 2 2 2 2 2 2 3", _n))
+    generate byte b = real(word("1 1 1 1 1 2 2 2 2 3", _n))
+    generate byte f = real(word("1 2 2 3 3 2 2 3 3 1", _n))
+    generate byte z = real(word("1 1 2 1 2 1 2 1 2 2", _n))
+    generate double x = real(word("-1.5 -1.0 -0.4 0.2 0.9 -0.8 -0.1 0.5 1.2 1.7", _n))
+    generate double y = 1.4*x + 0.7*(f == 3) - 0.3*(z == 2) + ///
+        0.2*(f == 3)*(z == 2) + 0.1*a - 0.2*b
+end
+
 file open __stfx_probe_capture using `"`capture_file'"', write text replace
 file write __stfx_probe_capture "STFIXEST_FE_INTERACTION_PROBE|schema|1" _n
 file write __stfx_probe_capture "STFIXEST_FE_INTERACTION_PROBE|manifest_sha256|`manifest_sha256'" _n
@@ -180,6 +194,16 @@ __stfx_probe_cascade
 capture noisily reghdfe y c.x, absorb(worker firm#year) vce(cluster cluster_u#cluster_v) residuals(__stfx_probe_resid)
 local rc = _rc
 __stfx_probe_emit unrelated_interaction_cluster `rc'
+
+__stfx_probe_rebase
+capture noisily reghdfe y c.x i.f, absorb(a#b) residuals(__stfx_probe_resid)
+local rc = _rc
+__stfx_probe_emit final_sample_default_factor_rebase `rc'
+
+__stfx_probe_rebase
+capture noisily reghdfe y c.x i.f##i.z, absorb(a#b) residuals(__stfx_probe_resid)
+local rc = _rc
+__stfx_probe_emit final_sample_default_interaction_rebase `rc'
 
 file write __stfx_probe_capture "END_FIXTURE|reghdfe_fe_interaction_probe|rc=0" _n
 file close __stfx_probe_capture

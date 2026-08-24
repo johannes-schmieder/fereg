@@ -10,6 +10,7 @@ use stfixest_core::ols::{
     PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
     PreparedOlsResidualDofReport, PreparedOlsRobustCertificate, PreparedOlsUnadjustedCertificate,
 };
+use stfixest_core::protocol::OLS_RESULT_WIRE_VERSION;
 use stfixest_core::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofReport};
 
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
@@ -267,6 +268,7 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) certificates: Vec<f64>,
     pub(crate) receipt: Vec<f64>,
     pub(crate) coefficient_count: usize,
+    pub(crate) coefficient_capacity: usize,
     pub(crate) covariance_dimension: usize,
     pub(crate) fixed_effect_rows: usize,
     pub(crate) cluster_rows: usize,
@@ -285,6 +287,12 @@ pub(crate) fn build_shadow_result<'a>(
     validate_alignment(prepared, clustered_prepared, &inference)?;
     let fit = inference.fit();
     let coefficient_count = prepared.model().coefficients.len();
+    let coefficient_capacity = prepared.coefficient_capacity();
+    if coefficient_count > coefficient_capacity {
+        return Err(invalid(
+            "prepared OLS logical coefficient count exceeds its caller allocation",
+        ));
+    }
     let covariance_dimension = inference.covariance_coordinates().len();
     let matrix_dimension = coefficient_count.max(1);
     let mut b = reserved_filled(matrix_dimension, 0.0, "OLS shadow coefficient vector")?;
@@ -467,6 +475,7 @@ pub(crate) fn build_shadow_result<'a>(
         certificates,
         receipt,
         coefficient_count,
+        coefficient_capacity,
         covariance_dimension,
         fixed_effect_rows,
         cluster_rows,
@@ -1069,8 +1078,8 @@ fn build_receipt(
     let logical_subset_rows = usize::from(kind == OlsVceKind::Clustered) * subset_rows;
     let values = [
         RESULT_MAGIC,
-        1.0,
-        0.0,
+        f64::from(OLS_RESULT_WIRE_VERSION.major),
+        f64::from(OLS_RESULT_WIRE_VERSION.minor),
         kind.code(),
         coefficient_count as f64,
         covariance_dimension as f64,
