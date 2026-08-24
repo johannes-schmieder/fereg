@@ -2109,12 +2109,16 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         // A coordinate certified as lying in the absorbed span has no finite
         // score equation: its normal equation is already covered by the
         // independent FE certificate. Do not divide its MAP-noise within norm
-        // into a manufactured order-one moment. Deferred/normalized constants
-        // and finite rank-deficient coordinates remain explicitly checked.
+        // into a manufactured order-one moment. A normalized absorbed intercept
+        // still keeps its raw score moment, but that moment uses the raw intercept
+        // norm instead of a numerically nonzero MAP-noise norm. Finite
+        // rank-deficient coordinates remain checked on their within scale.
         if status == PreparedOlsFitStatus::CollinearWithFixedEffects {
             continue;
         }
-        let denominator = if score_norm > 0.0 {
+        let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
+            reference_norm
+        } else if score_norm > 0.0 {
             score_norm
         } else {
             reference_norm
@@ -3467,6 +3471,31 @@ mod tests {
             weighted_mean_slice(&y, normalized_weights(&prepared).expect("weights")).expect("mean"),
             1e-10,
         );
+
+        // A structurally absorbed intercept can acquire a tiny nonzero within
+        // norm from iterative MAP roundoff. Its score remains a raw intercept
+        // moment, not a moment normalized by that numerical noise.
+        let weights = normalized_weights(&prepared).expect("weights");
+        let rhs = prepared.fit_build_rhs().expect("rhs");
+        let reference_norm =
+            weighted_matrix_column_norm(&rhs, 1, weights).expect("reference intercept norm");
+        let mut roundoff_residuals = control.residuals().to_vec();
+        for residual in &mut roundoff_residuals {
+            *residual += 1e-14;
+        }
+        let roundoff = certify_scores(
+            &prepared,
+            &roundoff_residuals,
+            weights,
+            &[reference_norm],
+            &[reference_norm * 1e-14],
+            &[PreparedOlsFitStatus::NormalizedAbsorbedIntercept],
+            1.0,
+            PreparedOlsFitConfig::default().score_tolerance,
+        )
+        .expect("roundoff score certificate");
+        assert!(roundoff.passed);
+        assert!(roundoff.relative_infinity_norm < 1e-12);
 
         let mut reservation = InjectedReservation::default();
         assert_eq!(
