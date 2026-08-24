@@ -78,7 +78,9 @@ assert e(stfixest_certificate)[1,2] == 1
 assert e(stfixest_certificate)[2,2] == 1
 assert e(stfixest_certificate)[3,2] == 1
 assert e(stfixest_certificate)[24,2] == 1
-assert e(stfixest_certificate)[31,2] > 0
+* The omitted x1 row makes the full reported 2x2 covariance singular.
+assert e(stfixest_certificate)[31,2] == 0
+assert e(stfixest_certificate)[31,2] == det(e(V))
 assert e(stfixest_certificate)[32,2] == 1
 
 capture noisily _stfixest_ols_hidden_numeric_v1 y c.x1, ///
