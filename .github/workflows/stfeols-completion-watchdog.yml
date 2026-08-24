@@ -47,14 +47,21 @@ jobs:
             exit 0
           fi
 
-          workflow=.github/workflows/stfeols-autonomous-completion-v2.yml
-          active="$(gh run list --workflow "$workflow" --limit 20 --json status \
-            --jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')"
+          active=0
+          for workflow in \
+            .github/workflows/stfeols-autonomous-completion-v2.yml \
+            .github/workflows/codex-next-stfeols-gate.yml
+          do
+            count="$(gh run list --workflow "$workflow" --limit 20 --json status \
+              --jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')"
+            active=$((active + count))
+          done
           if test "$active" -gt 0; then
             echo "active=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          workflow=.github/workflows/stfeols-autonomous-completion-v2.yml
           latest_conclusion="$(gh run list --workflow "$workflow" --limit 1 \
             --json conclusion --jq '.[0].conclusion // "none"')"
           echo "latest_conclusion=$latest_conclusion" >> "$GITHUB_OUTPUT"
