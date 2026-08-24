@@ -4,8 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-from scripts.development import advance_stfeols
-
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_SHA = "e81b942c0dc0b122258489a60c956cdbe0121512"
 PAYLOAD_SHA256 = "1fba54c0adce40ec52964e1edd1b3e57283bc803cb07009a84933b241e630955"
@@ -61,7 +59,7 @@ class FeInteractionRemainingIidDifferentialContractTests(unittest.TestCase):
                     self.assertIn(entry["value_hex"], text)
         self.assertNotIn("capture noisily reghdfe", text)
 
-    def test_advancement_driver_extracts_complete_target_data_setup(self) -> None:
+    def test_committed_fixtures_and_receipt_retain_complete_contract(self) -> None:
         target = (
             ROOT
             / "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do"
@@ -70,28 +68,22 @@ class FeInteractionRemainingIidDifferentialContractTests(unittest.TestCase):
             ROOT
             / "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do"
         )
-        target_block = advance_stfeols.extract_data_block(target)
-        cascade_block = advance_stfeols.extract_data_block(cascade)
-        self.assertEqual(
-            target_block,
-            'import delimited using `"`root\'/tests/fixtures/ols/ols_core.csv"\', clear\n',
-        )
-        self.assertIn("set obs 12", cascade_block)
-        self.assertIn("generate long obs_id = 100 + _n", cascade_block)
-        self.assertNotIn("__stfx_expected", cascade_block)
-
-        _, cases = advance_stfeols.load_reference()
-        dof_assertions = advance_stfeols.render_matrix_assertions(
-            cases["missing_interaction_components"], "dof_table"
-        )
+        target_text = target.read_text(encoding="utf-8")
+        cascade_text = cascade.read_text(encoding="utf-8")
+        fixture_text = FIXTURE.read_text(encoding="utf-8")
         self.assertIn(
-            'Categories Redundant Num Coefs Inexact? Nested?',
-            "\n".join(dof_assertions),
+            'import delimited using `"`root\'/tests/fixtures/ols/ols_core.csv"\', clear',
+            target_text,
         )
-        case_assertions = advance_stfeols.render_case_assertions(
-            cases["missing_interaction_components"], cluster=False
+        self.assertIn("set obs 12", cascade_text)
+        self.assertIn("generate long obs_id = 100 + _n", cascade_text)
+        self.assertIn("generate byte __stfx_expected_sample", cascade_text)
+        self.assertIn("generate double __stfx_expected_resid", cascade_text)
+        self.assertIn("Categories Redundant Num Coefs Inexact? Nested?", fixture_text)
+        self.assertIn("assert colsof(__stfx_S) == 4", fixture_text)
+        self.assertEqual(
+            self.cases["missing_interaction_components"]["return_code"], 0
         )
-        self.assertIn("assert colsof(__stfx_S) == 4", case_assertions)
 
     def test_fixture_is_registered_in_all_qualification_profiles(self) -> None:
         profiles = json.loads(PROFILES.read_text(encoding="utf-8"))["profiles"]

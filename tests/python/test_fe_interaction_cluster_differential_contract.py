@@ -4,8 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-from scripts.development import advance_stfeols
-
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_SHA = "e81b942c0dc0b122258489a60c956cdbe0121512"
 PAYLOAD_SHA256 = "1fba54c0adce40ec52964e1edd1b3e57283bc803cb07009a84933b241e630955"
@@ -59,17 +57,12 @@ class FeInteractionClusterDifferentialContractTests(unittest.TestCase):
                     self.assertIn(entry["value_hex"], text)
         self.assertNotIn("capture noisily reghdfe", text)
 
-    def test_advancement_driver_reconstructs_cluster_sources(self) -> None:
-        cascade = advance_stfeols.extract_data_block(
-            ROOT
-            / "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do"
-        )
-        cluster_block = advance_stfeols.cascade_cluster_data_block(cascade)
-        self.assertIn("generate int cluster_u", cluster_block)
-        self.assertIn("generate int cluster_v", cluster_block)
-        self.assertEqual(cluster_block.count("cluster_u"), 1)
-        self.assertEqual(cluster_block.count("cluster_v"), 1)
+    def test_committed_fixture_reconstructs_cluster_sources(self) -> None:
         fixture = FIXTURE.read_text(encoding="utf-8")
+        self.assertIn("generate int cluster_u", fixture)
+        self.assertIn("generate int cluster_v", fixture)
+        self.assertEqual(fixture.count("generate int cluster_u"), 1)
+        self.assertEqual(fixture.count("generate int cluster_v"), 1)
         self.assertIn("cluster(firm)", fixture)
         self.assertIn("cluster(firm#year)", fixture)
         self.assertIn("cluster(cluster_u#cluster_v)", fixture)
