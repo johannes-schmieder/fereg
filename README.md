@@ -1,81 +1,63 @@
-# StFixest — pre-estimator development snapshot
+# StFixest
 
 StFixest is a Rust-first Stata package intended to provide high-dimensional
-fixed-effect OLS/WLS (`stfeols`) and PPML (`stfepois`). The repository contains
-substantial native preprocessing and numerical-core source, but neither public
-estimator is supported yet.
+fixed-effect OLS/WLS (`stfeols`) and PPML (`stfepois`).
+
+The repository contains substantial native preparation, solver, inference,
+protocol, and validation infrastructure. It is still a development snapshot:
+`stfeols`, `stfepois`, public `estimate-ols`, and public `estimate-ppml`
+deliberately fail closed with `r(498)` and post no estimate.
+
+## Project navigation
+
+- [`AGENTS.md`](AGENTS.md) — governing implementation specification.
+- [`STATUS.md`](STATUS.md) — sole mutable progress record and exact resume point.
+- [`docs/README.md`](docs/README.md) — documentation index.
+- [`docs/development_workflow.md`](docs/development_workflow.md) — local
+  development and exact-SHA acceptance procedure.
+- [`STATA_CI_RUNNER.md`](STATA_CI_RUNNER.md) — licensed Mac runner and Stata
+  profile operation.
+- [`docs/adr/`](docs/adr/) — accepted architectural and scientific decisions.
+
+Development is consolidated on `main`. Historical feature/Codex branches and
+self-modifying development workflows are not part of the current process.
 
 ## Current boundary
 
-`stfeols` and `stfepois` deliberately fail closed with `r(498)` and post no
-estimate. A narrow licensed-Stata installation/safety suite now passes in
-native Apple-Silicon Stata on macOS. The same installation fixtures pass under
-Rosetta, which is emulated x86-64 evidence rather than native Intel-host
-certification. Reference parity, enabled estimation, clean-machine testing,
-cross-platform native validation, and performance/memory certification remain
-open. This repository must not be presented as a production release.
+The accepted hidden OLS candidate covers a bounded numeric surface and extensive
+private integration tests, including categorical absorbed-FE interactions,
+iid/HC1/clustered inference, result transport, and rollback. This evidence does
+not enable the public estimator.
 
-## Implemented development components
+The active OLS work is the option-A absorbed-slope correction documented in
+`STATUS.md` and ADR 0006: successful inference must retain positive residual
+degrees of freedom, the positive-DoF slope fixture must be recaptured and
+resealed, and the old over-absorbed fixture must remain fail-closed.
 
-- A versioned Stata/plugin protocol, typed error mapping, panic containment,
-  diagnostics, native self-tests, scoped threading, and a narrow SPI bridge.
-- Metadata-only Stata parser prototypes for factor terms, absorbed terms and
-  slopes, clusters, and candidate samples.
-- Native sample preparation, weight validation, compact factorization and
-  interaction coding, blockwise model-matrix generation, singleton pruning,
-  connected components, and memory preflight.
-- Certified MAP and modified-LSMR fixed-effect paths.
-- Stata-independent OLS/FWL, rank, covariance, DoF, and fit-statistic kernels.
-- Stata-independent PPML IRLS, certificate, covariance, and `fe`/`simplex`/`ir`/
-  `mu` separation kernels.
-- Build machinery for one self-contained plugin per platform, binary
-  dependency/export audits, mock-SPI tests, and target-native ABI harnesses.
+## Local development
 
-These claims describe source and CI-tested development components, not public
-Stata-facing estimator availability.
-
-## Development status
-
-`STATUS.md` is the sole live scientific progress record. Normal pushes to
-`main` and, during historical branch consolidation, `codex/**` run the quick
-Rust/C/source checks and a licensed Stata quick suite on a private
-repository-level Mac runner. Exact-SHA CI receipts are committed under
-`.ci/stata/`; full logs and the tested plugin are retained as Actions artifacts.
-GitHub-hosted Linux, Windows, and macOS qualification is manual rather than
-duplicated on every push. Machine setup and the remote development interface
-are documented in `STATA_CI_RUNNER.md`. Immutable scientific receipts remain
-under `build_evidence/` and `benchmarks/reports/captured/` and are not replaced
-by CI status receipts.
-
-## Local build and test
-
-The pinned Rust toolchain is 1.85.1. On the validated macOS host, put the pinned
-Rust tools and Homebrew Python ahead of the system Python:
+Use the pinned Rust toolchain and repository scripts:
 
 ```bash
-PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch64-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/run_tests.sh
-PATH="/Users/johannes/.rustup/toolchains/1.85.1-aarch64-apple-darwin/bin:/opt/homebrew/bin:$PATH" ./scripts/build_macos.sh
-./ci/run_stata_ci.sh smoke
+./scripts/run_tests.sh
+./scripts/build_macos.sh
 ./ci/run_stata_ci.sh quick
 ```
 
-Native build entry points for the remaining targets are:
+Stronger licensed profiles include:
 
 ```bash
-./scripts/build_linux.sh
+./ci/run_stata_ci.sh differential
+./ci/run_stata_ci.sh full
 ```
 
-```powershell
-./scripts/run_tests.ps1
-./scripts/build_windows.ps1
-```
-
-Each native build is designed to audit and dynamically load the final
-Rust-linked artifact before writing its checksum. Passing the script on one
-platform is not evidence for another platform or for licensed Stata.
+The Stata profiles require the licensed environment described in
+`STATA_CI_RUNNER.md`. Linux and Windows build entry points exist, but a build on
+one platform is not validation for another.
 
 ## Design rule
 
-Stata is the control plane. Rust is the data and computation plane. Each future
-estimation invocation must make one substantive plugin call and post results
-only after the native calculation and all scientific certificates succeed.
+Stata is the control plane; Rust is the data and computation plane. A future
+estimation command must make one substantive native call and publish results
+only after the calculation, scientific certificates, and transaction checks
+all succeed.
