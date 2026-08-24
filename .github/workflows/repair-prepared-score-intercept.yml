@@ -121,7 +121,7 @@ jobs:
           PY
 
           rm .github/workflows/repair-prepared-score-intercept.yml
-          cargo fmt --all -- --check
+          cargo fmt --all
 
       - name: Commit repair directly to main
         shell: bash
