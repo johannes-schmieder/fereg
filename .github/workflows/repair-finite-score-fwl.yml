@@ -1,0 +1,428 @@
+name: Repair finite FWL score certificate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/repair-finite-score-fwl.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.repository == 'johannes-schmieder/StFixest'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    timeout-minutes: 60
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply FWL score-certificate decomposition
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/stfixest-core/src/ols/prepared_fit.rs")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              if text.count(old) != 1:
+                  raise SystemExit(f"{label} anchor count={text.count(old)}")
+              text = text.replace(old, new)
+
+          replace_once(
+              '''#[derive(Debug)]
+          struct FiniteBreadDraft {
+          ''',
+              '''#[derive(Debug, Clone, Copy, Default)]
+          struct FiniteScoreDraft {
+              /// Largest finite-coordinate score after dividing out the within-X norm.
+              /// The final response scale is applied only after the returned residual is
+              /// independently certified against the FE span.
+              infinity_scale: f64,
+              square_sum_scale: f64,
+              moments: usize,
+          }
+
+          #[derive(Debug)]
+          struct FiniteBreadDraft {
+          ''',
+              "finite score struct",
+          )
+
+          replace_once(
+              '''    certificate: PreparedOlsRankCertificate,
+              bread: Option<FiniteBreadDraft>,
+          }
+          ''',
+              '''    certificate: PreparedOlsRankCertificate,
+              finite_score: FiniteScoreDraft,
+              bread: Option<FiniteBreadDraft>,
+          }
+          ''',
+              "QrFit finite score field",
+          )
+
+          replace_once(
+              '''        weights,
+                  &reference_norms,
+                  config,
+                  reservation,
+                  perturbations.finite_bread,
+              )?;
+              if perturbations.first_coefficient {
+                  let coefficient = qr
+                      .generated_coefficients
+                      .iter_mut()
+                      .flatten()
+                      .next()
+                      .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
+                  *coefficient += 0.25;
+              }
+          ''',
+              '''        weights,
+                  &reference_norms,
+                  &score_norms,
+                  config,
+                  reservation,
+                  perturbations.first_coefficient,
+                  perturbations.finite_bread,
+              )?;
+          ''',
+              "QR call and perturbation",
+          )
+
+          replace_once(
+              '''        &score_norms,
+                  &qr.generated_statuses,
+                  within_outcome_norm,
+          ''',
+              '''        &score_norms,
+                  qr.finite_score,
+                  &qr.generated_statuses,
+                  within_outcome_norm,
+          ''',
+              "score call finite draft",
+          )
+
+          replace_once(
+              '''    weights: NormalizedWeights<'_>,
+              reference_norms: &[f64],
+              config: PreparedOlsFitConfig,
+              reservation: &mut R,
+              perturb_bread: bool,
+          ) -> Result<QrFit> {
+          ''',
+              '''    weights: NormalizedWeights<'_>,
+              reference_norms: &[f64],
+              score_norms: &[f64],
+              config: PreparedOlsFitConfig,
+              reservation: &mut R,
+              perturb_first_coefficient: bool,
+              perturb_bread: bool,
+          ) -> Result<QrFit> {
+          ''',
+              "QR signature",
+          )
+
+          replace_once(
+              '''    if within.ncols() != expected_columns || reference_norms.len() != generated_columns {
+          ''',
+              '''    if within.ncols() != expected_columns
+                  || reference_norms.len() != generated_columns
+                  || score_norms.len() != generated_columns
+              {
+          ''',
+              "QR dimension validation",
+          )
+
+          replace_once(
+              '''    let standardized_gram_elements = checked_square(
+                  candidate_count,
+                  "prepared OLS standardized Gram dimensions overflow usize",
+              )?;
+          ''',
+              '''    let mut standardized_rhs = reserved_filled(
+                  reservation,
+                  candidate_count,
+                  0.0_f64,
+                  "unable to reserve prepared OLS standardized RHS cross-products",
+              )?;
+              for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+                  let matrix_column = generated
+                      .checked_add(1)
+                      .ok_or_else(|| allocation("prepared OLS standardized RHS column overflows"))?;
+                  let mut sum = 0.0_f64;
+                  let mut correction = 0.0_f64;
+                  for row in 0..nrows {
+                      compensated_add(
+                          within[(row, matrix_column)] * within[(row, 0)],
+                          &mut sum,
+                          &mut correction,
+                      )?;
+                  }
+                  standardized_rhs[position] = sum + correction;
+                  if !standardized_rhs[position].is_finite() {
+                      return Err(invalid_data(
+                          "prepared OLS standardized RHS cross-product is not finite",
+                      ));
+                  }
+              }
+
+              let standardized_gram_elements = checked_square(
+                  candidate_count,
+                  "prepared OLS standardized Gram dimensions overflow usize",
+              )?;
+          ''',
+              "standardized RHS cross-products",
+          )
+
+          replace_once(
+              '''    for &column in &candidate_columns[rank..] {
+                  generated_statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
+              }
+              for (column, status) in generated_statuses.iter().copied().enumerate() {
+          ''',
+              '''    for &column in &candidate_columns[rank..] {
+                  generated_statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
+              }
+              if perturb_first_coefficient {
+                  let coefficient = generated_coefficients
+                      .iter_mut()
+                      .flatten()
+                      .next()
+                      .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
+                  *coefficient += 0.25;
+              }
+              for (column, status) in generated_statuses.iter().copied().enumerate() {
+          ''',
+              "move coefficient perturbation",
+          )
+
+          replace_once(
+              '''    let bread = build_finite_bread_draft(
+          ''',
+              '''    let finite_score = build_finite_score_draft(
+                  &canonical_candidates,
+                  &standardized_gram,
+                  &standardized_rhs,
+                  &generated_coefficients,
+                  &generated_statuses,
+                  reference_norms,
+                  score_norms,
+              )?;
+              let bread = build_finite_bread_draft(
+          ''',
+              "finite score draft build",
+          )
+
+          replace_once(
+              '''        certificate: PreparedOlsRankCertificate {
+                      relative_threshold,
+                      maximum_dropped_trailing_norm,
+                      condition_proxy,
+                      passed: true,
+                  },
+                  bread: Some(bread),
+              })
+          }
+
+          fn build_finite_bread_draft''',
+              '''        certificate: PreparedOlsRankCertificate {
+                      relative_threshold,
+                      maximum_dropped_trailing_norm,
+                      condition_proxy,
+                      passed: true,
+                  },
+                  finite_score,
+                  bread: Some(bread),
+              })
+          }
+
+          fn build_finite_score_draft(
+              canonical_candidates: &[usize],
+              standardized_gram: &[f64],
+              standardized_rhs: &[f64],
+              generated_coefficients: &[Option<f64>],
+              generated_statuses: &[PreparedOlsFitStatus],
+              reference_norms: &[f64],
+              score_norms: &[f64],
+          ) -> Result<FiniteScoreDraft> {
+              let candidate_count = canonical_candidates.len();
+              let candidate_square = checked_square(
+                  candidate_count,
+                  "prepared OLS finite-score Gram dimensions overflow usize",
+              )?;
+              if standardized_gram.len() != candidate_square
+                  || standardized_rhs.len() != candidate_count
+                  || generated_coefficients.len() != generated_statuses.len()
+                  || reference_norms.len() != generated_statuses.len()
+                  || score_norms.len() != generated_statuses.len()
+              {
+                  return Err(invalid_argument(
+                      "prepared OLS finite-score dimensions are inconsistent",
+                  ));
+              }
+
+              let mut draft = FiniteScoreDraft::default();
+              for (left, generated) in canonical_candidates.iter().copied().enumerate() {
+                  let status = generated_statuses[generated];
+                  if !matches!(
+                      status,
+                      PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NumericallyRankDeficient
+                  ) {
+                      return Err(invalid_argument(
+                          "prepared OLS finite-score candidate has a non-finite status",
+                      ));
+                  }
+                  let reference_norm = reference_norms[generated];
+                  let score_norm = score_norms[generated];
+                  if !reference_norm.is_finite()
+                      || reference_norm <= 0.0
+                      || !score_norm.is_finite()
+                      || score_norm <= 0.0
+                  {
+                      return Err(invalid_data(
+                          "prepared OLS finite-score regressor scale is not finite and positive",
+                      ));
+                  }
+
+                  let mut fitted = 0.0_f64;
+                  let mut correction = 0.0_f64;
+                  for (right, other_generated) in canonical_candidates.iter().copied().enumerate() {
+                      if let Some(coefficient) = generated_coefficients[other_generated] {
+                          let standardized_coefficient = coefficient * reference_norms[other_generated];
+                          if !standardized_coefficient.is_finite() {
+                              return Err(invalid_data(
+                                  "prepared OLS standardized coefficient is not finite",
+                              ));
+                          }
+                          compensated_add(
+                              standardized_gram[left * candidate_count + right]
+                                  * standardized_coefficient,
+                              &mut fitted,
+                              &mut correction,
+                          )?;
+                      }
+                  }
+                  let standardized_score =
+                      (standardized_rhs[left] - (fitted + correction)).abs();
+                  let scale = standardized_score * reference_norm / score_norm;
+                  if !scale.is_finite() {
+                      return Err(invalid_data(
+                          "prepared OLS finite-score normal-equation scale is not finite",
+                      ));
+                  }
+                  draft.infinity_scale = draft.infinity_scale.max(scale);
+                  draft.square_sum_scale = scale.mul_add(scale, draft.square_sum_scale);
+                  if !draft.square_sum_scale.is_finite() {
+                      return Err(invalid_data(
+                          "prepared OLS finite-score two-norm scale is not finite",
+                      ));
+                  }
+                  draft.moments = draft
+                      .moments
+                      .checked_add(1)
+                      .ok_or_else(|| allocation("prepared OLS finite-score moment count overflows"))?;
+              }
+              Ok(draft)
+          }
+
+          fn build_finite_bread_draft''',
+              "finite score function",
+          )
+
+          replace_once(
+              '''    score_norms: &[f64],
+              statuses: &[PreparedOlsFitStatus],
+          ''',
+              '''    score_norms: &[f64],
+              finite_score: FiniteScoreDraft,
+              statuses: &[PreparedOlsFitStatus],
+          ''',
+              "certify_scores signature",
+          )
+
+          replace_once(
+              '''    let mut relative_infinity_norm = 0.0_f64;
+              let mut relative_square_sum = 0.0_f64;
+              let mut moments = 0_usize;
+          ''',
+              '''    let mut relative_infinity_norm = finite_score.infinity_scale / response_scale;
+              let response_square = response_scale * response_scale;
+              let mut relative_square_sum = finite_score.square_sum_scale / response_square;
+              let mut moments = finite_score.moments;
+              if !relative_infinity_norm.is_finite() || !relative_square_sum.is_finite() {
+                  return Err(invalid_data(
+                      "prepared OLS finite-score response normalization is not finite",
+                  ));
+              }
+          ''',
+              "certify_scores initialization",
+          )
+
+          replace_once(
+              '''        if status == PreparedOlsFitStatus::CollinearWithFixedEffects {
+                  continue;
+              }
+              let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
+          ''',
+              '''        if matches!(
+                  status,
+                  PreparedOlsFitStatus::Kept
+                      | PreparedOlsFitStatus::NumericallyRankDeficient
+                      | PreparedOlsFitStatus::CollinearWithFixedEffects
+              ) {
+                  continue;
+              }
+              let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
+          ''',
+              "skip finite scores already certified",
+          )
+
+          # The direct intercept-only unit test calls certify_scores itself.
+          needle = '''            &[reference_norm * 1e-14],
+                      &[PreparedOlsFitStatus::NormalizedAbsorbedIntercept],
+          '''
+          replacement = '''            &[reference_norm * 1e-14],
+                      FiniteScoreDraft::default(),
+                      &[PreparedOlsFitStatus::NormalizedAbsorbedIntercept],
+          '''
+          replace_once(needle, replacement, "direct score test finite draft")
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          toolchain_root="$(/opt/homebrew/bin/rustup run 1.85.1 rustc --print sysroot)"
+          export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
+          cargo fmt --all
+          cargo test -p stfixest-core prepared_fit::tests --no-default-features
+          cargo test -p stfixest-testkit --test categorical_iid_oracle --no-default-features
+
+      - name: Commit repair directly to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/repair-finite-score-fwl.yml
+          git add crates/stfixest-core/src/ols/prepared_fit.rs .github/workflows/repair-finite-score-fwl.yml
+          git commit -m "core: certify finite OLS scores in FWL space"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
