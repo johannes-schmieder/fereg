@@ -19,6 +19,11 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("f _fereg_ols.ado", package)
         self.assertIn("f _fereg_estimate_ols.ado", package)
 
+    def assert_live_estimator_dispatch(self, dispatch):
+        self.assertIn("crate::estimate::ACTION_ESTIMATE_OLS", dispatch)
+        self.assertIn('"estimate-ppml"', dispatch)
+        self.assertIn("requires a live Stata SPI session", dispatch)
+
     def test_preparation_action_is_developer_guarded_and_not_packaged(self):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(encoding="utf-8")
         package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
@@ -162,7 +167,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("categorical_interaction_fixture", plugin)
         self.assertIn("ib2.g##ib1.h", fixture)
         self.assertIn("i.g#c.x", fixture)
-        self.assertIn('\"estimate-ols\" | \"estimate-ppml\"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
     def test_numeric_fixed_effect_preparation_is_bounded_and_stays_internal(self):
@@ -195,7 +200,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("absorb(g##c.x)", fixture)
         self.assertIn("absorb(saved_fe=g)", fixture)
         self.assertIn("absorb(fe_string)", fixture)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', (
+        self.assert_live_estimator_dispatch((
             ROOT / "crates/fereg-plugin/src/dispatch.rs"
         ).read_text(encoding="utf-8"))
 
@@ -230,7 +235,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("_st_singleton_reason == 8 in 1/5", fixture)
         self.assertIn("fweight(fw)", fixture)
         self.assertIn("_st_fw_singleton_reason[2] == 8", fixture)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', (
+        self.assert_live_estimator_dispatch((
             ROOT / "crates/fereg-plugin/src/dispatch.rs"
         ).read_text(encoding="utf-8"))
         self.assert_public_fereg_is_wired()
@@ -256,7 +261,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("from_codes_with_reservation", design)
         self.assertIn("checked_members", design)
         self.assertIn("fereg.prepare_ols.n_fe_topology_sources", plugin)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assertNotIn("absorb_fixed_effects(", plugin)
         self.assert_public_fereg_is_wired()
 
@@ -285,7 +290,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("checked_intercept_term_slots", design)
         self.assertNotIn("BorrowedInterceptFeDesign", plugin)
         self.assertNotIn("absorb_fixed_effects(", plugin)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
     def test_prepared_rhs_map_check_is_opt_in_fallible_and_not_an_estimator(self):
@@ -320,7 +325,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('"run_borrowed_map=`run_borrowed_map\'"', helper)
         self.assertIn("if 0, mapcheck", fixture)
         self.assertIn("_rc == 459", fixture)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
     def test_prepared_coefficient_fit_is_certified_core_only_and_not_public(self):
@@ -356,7 +361,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, production)
         self.assertNotIn("fit_prepared_ols_coefficients_map", plugin)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
     def test_prepared_absorbed_dof_is_structural_fallible_and_not_public(self):
@@ -397,7 +402,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, production)
         self.assertIn("ols/20260821T030000Z-a5181f9", dof)
         self.assertNotIn("compute_prepared_ols_absorbed_dof", plugin)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
     def test_prepared_iid_inference_is_same_call_certified_and_not_public(self):
@@ -447,7 +452,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, production)
         self.assertNotIn("fit_prepared_ols_unadjusted_map", plugin)
         self.assertNotIn("fit_prepared_categorical_ols_unadjusted_map", plugin)
-        self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
+        self.assert_live_estimator_dispatch(dispatch)
         self.assert_public_fereg_is_wired()
 
 

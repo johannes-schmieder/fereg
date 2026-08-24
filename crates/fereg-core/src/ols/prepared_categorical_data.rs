@@ -288,11 +288,6 @@ impl PreparedCategoricalOlsData {
             ));
         }
         let _effects = self.effect_views()?;
-        if !self.structural_intercept {
-            return Err(invalid(
-                "numeric categorical OLS must retain the structural-intercept contract",
-            ));
-        }
         if self.report_intercept && !self.structural_intercept {
             return Err(invalid(
                 "reported categorical OLS intercept lacks a structural intercept",
@@ -611,12 +606,15 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
         ));
     }
     let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
+    let structural_intercept = request.absorbed_terms.is_empty()
+        || request.absorbed_terms.iter().any(|term| term.intercept);
+    let report_intercept = request.include_intercept && structural_intercept;
     let rebased = rebase_categorical_model(
         &request.model,
         &availability_model,
         &categorical_sources,
         &fe_topology,
-        request.include_intercept,
+        report_intercept,
     )?;
     let effect_specs = effect_specs(&bound_effects, &request.model)?;
     let prepared = PreparedCategoricalOlsData {
@@ -625,8 +623,8 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
         categorical_sources,
         fe_topology,
         effect_specs,
-        structural_intercept: true,
-        report_intercept: request.include_intercept,
+        structural_intercept,
+        report_intercept,
         singletons: PreparedOlsSingletons {
             kept_by_request: plan.requested_keep_singletons(),
             num_singletons,

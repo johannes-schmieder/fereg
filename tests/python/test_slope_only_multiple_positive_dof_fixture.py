@@ -44,7 +44,9 @@ class SlopeOnlyMultiplePositiveDofFixtureTests(unittest.TestCase):
         worker_categories = {row["worker"] for row in rows}
         conservative_absorbed_rank = len(firm_categories) + 2 * len(worker_categories)
         self.assertEqual(conservative_absorbed_rank, 17)
-        self.assertEqual(len(rows) - conservative_absorbed_rank - 2, 41)
+        # Pinned reghdfe reports no structural constant for an all-slope-only
+        # absorb list, so only the identified x1 direction is finite-model DoF.
+        self.assertEqual(len(rows) - conservative_absorbed_rank - 1, 42)
 
     def test_fixture_bytes_are_deliberately_bound(self) -> None:
         self.assertEqual(

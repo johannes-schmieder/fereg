@@ -7,8 +7,9 @@ use fereg_core::ols::{
     PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate,
     PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
     PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdState,
-    PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
-    PreparedOlsResidualDofReport, PreparedOlsRobustCertificate, PreparedOlsUnadjustedCertificate,
+    PreparedOlsExecutionReport, PreparedOlsFitStatistics, PreparedOlsFitStatus,
+    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport, PreparedOlsRobustCertificate,
+    PreparedOlsUnadjustedCertificate,
 };
 use fereg_core::protocol::OLS_RESULT_WIRE_VERSION;
 use fereg_core::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofReport};
@@ -23,6 +24,7 @@ pub(crate) const FE_COLUMNS: usize = 8;
 pub(crate) const CLUSTER_COLUMNS: usize = 4;
 pub(crate) const SUBSET_COLUMNS: usize = 4;
 pub(crate) const CERTIFICATE_ROWS: usize = 32;
+pub(crate) const RUNTIME_ROWS: usize = 30;
 const COVARIANCE_DETERMINANT_CERTIFICATE_ROW: usize = 30;
 const COVARIANCE_DETERMINANT_PASSED_ROW: usize = 31;
 pub(crate) const RECEIPT_COLUMNS: usize = 16;
@@ -276,6 +278,7 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) drop_reasons: &'a [fereg_core::DropReason],
     pub(crate) retained_rows: &'a [usize],
     pub(crate) residuals: &'a [f64],
+    pub(crate) execution: PreparedOlsExecutionReport,
 }
 
 pub(crate) fn build_shadow_result<'a>(
@@ -483,6 +486,7 @@ pub(crate) fn build_shadow_result<'a>(
         drop_reasons: &prepared.sample().drop_reasons,
         retained_rows: prepared.sample().retained_rows(),
         residuals: fit.residuals(),
+        execution: fit.execution(),
     })
 }
 

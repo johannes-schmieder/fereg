@@ -1,10 +1,15 @@
+use std::cell::RefCell;
+
 use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, MapConfig};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
+use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
-use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind};
+use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsExecutionMode};
+
+const TRANSPOSE_BUFFER_BYTES: usize = 1 << 20;
 
 pub(super) trait PreparedInferenceReservation {
     fn reserve<T>(
@@ -40,55 +45,126 @@ pub(super) struct PreparedOlsScoreDesignCertificate {
 
 /// Ephemeral, kept-coordinate score design. It is deliberately consumed by
 /// robust inference and is never retained in the final certified result.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub(super) struct CertifiedPreparedOlsScoreDesign {
-    pub(super) within: DenseMatrix,
+    storage: PreparedOlsScoreStorage,
+    nrows: usize,
+    finite_rank: usize,
     means: Vec<f64>,
-    finite_positions: Vec<usize>,
+    finite_row_buffer: RefCell<Vec<f64>>,
     reported_to_finite: Vec<usize>,
     normalized_intercept_position: Option<usize>,
     pub(super) certificate: PreparedOlsScoreDesignCertificate,
 }
 
+#[derive(Debug)]
+enum PreparedOlsScoreStorage {
+    Dense(DenseMatrix),
+    Scratch(PreparedOlsScratchScoreStorage),
+}
+
+#[derive(Debug)]
+struct PreparedOlsScratchScoreStorage {
+    scratch: RefCell<PreparedOlsScratch>,
+    cache: RefCell<PreparedOlsScoreRowCache>,
+}
+
+#[derive(Debug)]
+struct PreparedOlsScoreRowCache {
+    start_row: usize,
+    rows: usize,
+    values: Vec<f64>,
+}
+
 impl CertifiedPreparedOlsScoreDesign {
     pub(super) const fn nrows(&self) -> usize {
-        self.within.nrows()
+        self.nrows
     }
 
     pub(super) const fn finite_rank(&self) -> usize {
-        self.within.ncols()
+        self.finite_rank
     }
 
-    pub(super) fn finite_value(&self, row: usize, finite: usize) -> f64 {
-        self.within[(row, finite)]
+    pub(super) fn fill_finite_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+        if row >= self.nrows || output.len() != self.finite_rank {
+            return Err(invalid_argument(
+                "prepared robust finite score row dimensions are inconsistent",
+            ));
+        }
+        match &self.storage {
+            PreparedOlsScoreStorage::Dense(within) => {
+                for (column, value) in output.iter_mut().enumerate() {
+                    *value = within[(row, column)];
+                }
+            }
+            PreparedOlsScoreStorage::Scratch(scratch) => {
+                scratch.fill_row(self.nrows, self.finite_rank, row, output)?
+            }
+        }
+        Ok(())
     }
 
-    pub(super) fn reported_value(&self, row: usize, position: usize) -> Result<f64> {
-        if self.normalized_intercept_position == Some(position) {
-            return Ok(1.0);
+    pub(super) fn fill_reported_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+        if output.len() != self.reported_to_finite.len() {
+            return Err(invalid_argument(
+                "prepared robust reported score row dimensions are inconsistent",
+            ));
         }
-        let finite = *self
-            .reported_to_finite
-            .get(position)
-            .filter(|finite| **finite != usize::MAX)
-            .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
-        let value = self.finite_value(row, finite)
-            + if self.normalized_intercept_position.is_some() {
-                self.means[finite]
-            } else {
-                0.0
-            };
-        if value.is_finite() {
-            Ok(value)
-        } else {
-            Err(invalid_data(
-                "prepared robust reported score coordinate is not finite",
-            ))
+        let mut finite = self.finite_row_buffer.borrow_mut();
+        self.fill_finite_row(row, &mut finite)?;
+        for (position, value) in output.iter_mut().enumerate() {
+            if self.normalized_intercept_position == Some(position) {
+                *value = 1.0;
+                continue;
+            }
+            let finite_position = *self
+                .reported_to_finite
+                .get(position)
+                .filter(|finite| **finite != usize::MAX)
+                .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
+            *value = finite[finite_position]
+                + if self.normalized_intercept_position.is_some() {
+                    self.means[finite_position]
+                } else {
+                    0.0
+                };
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust reported score coordinate is not finite",
+                ));
+            }
         }
+        Ok(())
     }
 
     pub(super) const fn certificate(&self) -> PreparedOlsScoreDesignCertificate {
         self.certificate
+    }
+}
+
+impl PreparedOlsScratchScoreStorage {
+    fn fill_row(&self, nrows: usize, rank: usize, row: usize, output: &mut [f64]) -> Result<()> {
+        let mut cache = self.cache.borrow_mut();
+        let cache_end = cache.start_row.saturating_add(cache.rows);
+        if row < cache.start_row || row >= cache_end {
+            let capacity_rows = cache.values.len() / rank;
+            let rows = capacity_rows.min(nrows - row);
+            let elements = rows
+                .checked_mul(rank)
+                .ok_or_else(|| allocation("prepared robust score cache dimensions overflow"))?;
+            let offset = row
+                .checked_mul(rank)
+                .ok_or_else(|| allocation("prepared robust score cache offset overflows"))?;
+            self.scratch
+                .borrow_mut()
+                .read_linear(offset, &mut cache.values[..elements])?;
+            cache.start_row = row;
+            cache.rows = rows;
+        }
+        let cache_row = row - cache.start_row;
+        let start = cache_row * rank;
+        output.copy_from_slice(&cache.values[start..start + rank]);
+        Ok(())
     }
 }
 
@@ -97,7 +173,7 @@ pub(super) fn build_prepared_ols_score_design<
     R: PreparedInferenceReservation,
 >(
     prepared: &P,
-    fit: &CertifiedPreparedOlsFit,
+    fit: &mut CertifiedPreparedOlsFit,
     weights: ReferenceWeightView<'_>,
     map: MapConfig,
     tolerance: f64,
@@ -164,61 +240,32 @@ pub(super) fn build_prepared_ols_score_design<
         ));
     }
 
-    let elements = nrows
-        .checked_mul(rank)
-        .ok_or_else(|| allocation("prepared robust score design dimensions overflow usize"))?;
-    let mut raw_values = reserved_filled(
-        reservation,
-        elements,
-        0.0_f64,
-        "unable to reserve prepared robust kept score design",
-    )?;
-    for row in 0..nrows {
-        for column in 0..rank {
-            let value = prepared.fit_column_value(generated_columns[column], row)?;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust raw score design contains a nonfinite value",
-                ));
-            }
-            raw_values[row * rank + column] = value;
+    let (storage, means, scratch_peak_bytes) = match fit.execution().mode {
+        PreparedOlsExecutionMode::Fast => {
+            build_dense_score_storage(prepared, &generated_columns, weights, map, reservation)?
         }
-    }
-
-    let mut means = reserved_filled(
-        reservation,
-        rank,
-        0.0_f64,
-        "unable to reserve prepared robust score means",
-    )?;
-    for (column, mean) in means.iter_mut().enumerate() {
-        *mean = weighted_matrix_column_mean(&raw_values, nrows, rank, column, weights)?;
-    }
-
-    let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
-    let within = if rank == 0 {
-        raw
-    } else {
-        let map_weights = match &prepared.fit_sample().weights {
-            PreparedWeights::None => BorrowedMapWeights::Unit,
-            PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
-        };
-        let absorbed = prepared.fit_absorb_matrix(map_weights, raw, map)?;
-        if !absorbed.report().certified() {
-            return Err(invalid_data(
-                "prepared robust score-design absorption did not certify",
-            ));
-        }
-        absorbed.into_parts().0
+        PreparedOlsExecutionMode::Low => build_scratch_score_storage(
+            prepared,
+            &generated_columns,
+            weights,
+            map,
+            fit.execution().poolsize,
+            reservation,
+        )?,
     };
+    fit.record_additional_scratch_peak(scratch_peak_bytes);
 
     let mut certificate = certify_score_design(
-        &within,
-        &means,
-        &finite_positions,
-        normalized_intercept_position,
-        fit,
-        weights,
+        ScoreCertificateInputs {
+            storage: &storage,
+            nrows,
+            rank,
+            means: &means,
+            finite_positions: &finite_positions,
+            normalized_intercept_position,
+            fit,
+            weights,
+        },
         reservation,
     )?;
     certificate.passed = certificate.left_inverse_relative_infinity_norm <= tolerance
@@ -229,27 +276,251 @@ pub(super) fn build_prepared_ols_score_design<
             "prepared robust score-design certificate did not pass",
         ));
     }
+    let finite_row_buffer = reserved_filled(
+        reservation,
+        rank,
+        0.0_f64,
+        "unable to reserve prepared robust finite score row buffer",
+    )?;
     Ok(CertifiedPreparedOlsScoreDesign {
-        within,
+        storage,
+        nrows,
+        finite_rank: rank,
         means,
-        finite_positions,
+        finite_row_buffer: RefCell::new(finite_row_buffer),
         reported_to_finite,
         normalized_intercept_position,
         certificate,
     })
 }
 
-fn certify_score_design<R: PreparedInferenceReservation>(
-    within: &DenseMatrix,
-    means: &[f64],
-    finite_positions: &[usize],
-    normalized_intercept_position: Option<usize>,
-    fit: &CertifiedPreparedOlsFit,
+fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
+    generated_columns: &[usize],
+    weights: ReferenceWeightView<'_>,
+    map: MapConfig,
+    reservation: &mut R,
+) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
+    let nrows = prepared.fit_sample().n_active();
+    let rank = generated_columns.len();
+    let elements = nrows
+        .checked_mul(rank)
+        .ok_or_else(|| allocation("prepared robust score design dimensions overflow usize"))?;
+    let mut raw_values = reserved_filled(
+        reservation,
+        elements,
+        0.0_f64,
+        "unable to reserve prepared robust kept score design",
+    )?;
+    fill_raw_score_block(prepared, generated_columns, &mut raw_values)?;
+    let means = score_block_means(&raw_values, nrows, rank, weights, reservation)?;
+    let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
+    let within = absorb_score_block(prepared, raw, map)?;
+    Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
+}
+
+fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
+    prepared: &P,
+    generated_columns: &[usize],
+    weights: ReferenceWeightView<'_>,
+    map: MapConfig,
+    poolsize: usize,
+    reservation: &mut R,
+) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
+    let nrows = prepared.fit_sample().n_active();
+    let rank = generated_columns.len();
+    let mut means = reserved_filled(
+        reservation,
+        rank,
+        0.0_f64,
+        "unable to reserve prepared robust score means",
+    )?;
+    if rank == 0 {
+        let empty = DenseMatrix::from_row_major(nrows, 0, Vec::new())?;
+        return Ok((PreparedOlsScoreStorage::Dense(empty), means, 0));
+    }
+    let block_width = poolsize.max(1).min(rank);
+    let mut columns = PreparedOlsScratch::create(nrows, rank)?;
+    let mut column = reserved_filled(
+        reservation,
+        nrows,
+        0.0_f64,
+        "unable to reserve prepared robust scratch score column",
+    )?;
+    for start in (0..rank).step_by(block_width) {
+        let end = start.saturating_add(block_width).min(rank);
+        let block_rank = end - start;
+        let elements = nrows
+            .checked_mul(block_rank)
+            .ok_or_else(|| allocation("prepared robust scratch score block dimensions overflow"))?;
+        let mut raw_values = reserved_filled(
+            reservation,
+            elements,
+            0.0_f64,
+            "unable to reserve prepared robust scratch score block",
+        )?;
+        fill_raw_score_block(prepared, &generated_columns[start..end], &mut raw_values)?;
+        for local in 0..block_rank {
+            means[start + local] =
+                weighted_matrix_column_mean(&raw_values, nrows, block_rank, local, weights)?;
+        }
+        let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
+        let within = absorb_score_block(prepared, raw, map)?;
+        for local in 0..block_rank {
+            for row in 0..nrows {
+                column[row] = within[(row, local)];
+            }
+            columns.write_column(start + local, &column)?;
+        }
+    }
+    let (rows, cache_values) = transpose_score_scratch(&mut columns, nrows, rank, reservation)?;
+    let scratch_peak_bytes = columns
+        .bytes()
+        .checked_add(rows.bytes())
+        .ok_or_else(|| allocation("prepared robust scratch peak bytes overflow"))?;
+    Ok((
+        PreparedOlsScoreStorage::Scratch(PreparedOlsScratchScoreStorage {
+            scratch: RefCell::new(rows),
+            cache: RefCell::new(PreparedOlsScoreRowCache {
+                start_row: usize::MAX,
+                rows: 0,
+                values: cache_values,
+            }),
+        }),
+        means,
+        scratch_peak_bytes,
+    ))
+}
+
+fn fill_raw_score_block<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    generated_columns: &[usize],
+    output: &mut [f64],
+) -> Result<()> {
+    let nrows = prepared.fit_sample().n_active();
+    let rank = generated_columns.len();
+    if output.len() != nrows * rank {
+        return Err(invalid_argument(
+            "prepared robust raw score block dimensions are inconsistent",
+        ));
+    }
+    for row in 0..nrows {
+        for (column, generated) in generated_columns.iter().copied().enumerate() {
+            let value = prepared.fit_column_value(generated, row)?;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust raw score design contains a nonfinite value",
+                ));
+            }
+            output[row * rank + column] = value;
+        }
+    }
+    Ok(())
+}
+
+fn score_block_means<R: PreparedInferenceReservation>(
+    values: &[f64],
+    nrows: usize,
+    ncols: usize,
     weights: ReferenceWeightView<'_>,
     reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let mut means = reserved_filled(
+        reservation,
+        ncols,
+        0.0_f64,
+        "unable to reserve prepared robust score means",
+    )?;
+    for (column, mean) in means.iter_mut().enumerate() {
+        *mean = weighted_matrix_column_mean(values, nrows, ncols, column, weights)?;
+    }
+    Ok(means)
+}
+
+fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    raw: DenseMatrix,
+    map: MapConfig,
+) -> Result<DenseMatrix> {
+    if raw.ncols() == 0 {
+        return Ok(raw);
+    }
+    let map_weights = match &prepared.fit_sample().weights {
+        PreparedWeights::None => BorrowedMapWeights::Unit,
+        PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
+    };
+    let absorbed = prepared.fit_absorb_matrix(map_weights, raw, map)?;
+    if !absorbed.report().certified() {
+        return Err(invalid_data(
+            "prepared robust score-design absorption did not certify",
+        ));
+    }
+    Ok(absorbed.into_parts().0)
+}
+
+fn transpose_score_scratch<R: PreparedInferenceReservation>(
+    columns: &mut PreparedOlsScratch,
+    nrows: usize,
+    rank: usize,
+    reservation: &mut R,
+) -> Result<(PreparedOlsScratch, Vec<f64>)> {
+    let mut rows = PreparedOlsScratch::create(nrows, rank)?;
+    let target_elements = (TRANSPOSE_BUFFER_BYTES / 8).max(rank);
+    let tile_rows = (target_elements / rank).max(1).min(nrows);
+    let tile_elements = tile_rows
+        .checked_mul(rank)
+        .ok_or_else(|| allocation("prepared robust scratch transpose tile overflows"))?;
+    let mut tile = reserved_filled(
+        reservation,
+        tile_elements,
+        0.0_f64,
+        "unable to reserve prepared robust scratch transpose tile",
+    )?;
+    let mut column = reserved_filled(
+        reservation,
+        tile_rows,
+        0.0_f64,
+        "unable to reserve prepared robust scratch transpose column",
+    )?;
+    for start_row in (0..nrows).step_by(tile_rows) {
+        let rows_in_tile = (nrows - start_row).min(tile_rows);
+        for finite in 0..rank {
+            columns.read_column_range(finite, start_row, &mut column[..rows_in_tile])?;
+            for row in 0..rows_in_tile {
+                tile[row * rank + finite] = column[row];
+            }
+        }
+        let elements = rows_in_tile * rank;
+        rows.write_linear(start_row * rank, &tile[..elements])?;
+    }
+    Ok((rows, tile))
+}
+
+struct ScoreCertificateInputs<'a> {
+    storage: &'a PreparedOlsScoreStorage,
+    nrows: usize,
+    rank: usize,
+    means: &'a [f64],
+    finite_positions: &'a [usize],
+    normalized_intercept_position: Option<usize>,
+    fit: &'a CertifiedPreparedOlsFit,
+    weights: ReferenceWeightView<'a>,
+}
+
+fn certify_score_design<R: PreparedInferenceReservation>(
+    inputs: ScoreCertificateInputs<'_>,
+    reservation: &mut R,
 ) -> Result<PreparedOlsScoreDesignCertificate> {
-    let nrows = within.nrows();
-    let rank = within.ncols();
+    let ScoreCertificateInputs {
+        storage,
+        nrows,
+        rank,
+        means,
+        finite_positions,
+        normalized_intercept_position,
+        fit,
+        weights,
+    } = inputs;
     let dimension = fit.bread().dimension();
     let square = rank
         .checked_mul(rank)
@@ -271,11 +542,18 @@ fn certify_score_design<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust score Gram corrections",
     )?;
+    let mut score_row = reserved_filled(
+        reservation,
+        rank,
+        0.0_f64,
+        "unable to reserve prepared robust score certificate row",
+    )?;
     for row in 0..nrows {
+        fill_score_storage_row(storage, nrows, rank, row, &mut score_row)?;
         let weight = weights.value(row)?;
         for left in 0..rank {
             for right in 0..rank {
-                let term = weight * within[(row, left)] * within[(row, right)];
+                let term = weight * score_row[left] * score_row[right];
                 let position = left * rank + right;
                 compensated_add(term, &mut gram[position], &mut corrections[position])?;
             }
@@ -388,6 +666,31 @@ fn certify_score_design<R: PreparedInferenceReservation>(
         intercept_coordinate_relative_infinity_norm: intercept_error,
         passed: false,
     })
+}
+
+fn fill_score_storage_row(
+    storage: &PreparedOlsScoreStorage,
+    nrows: usize,
+    rank: usize,
+    row: usize,
+    output: &mut [f64],
+) -> Result<()> {
+    if row >= nrows || output.len() != rank {
+        return Err(invalid_argument(
+            "prepared robust score storage row dimensions are inconsistent",
+        ));
+    }
+    match storage {
+        PreparedOlsScoreStorage::Dense(within) => {
+            for (column, value) in output.iter_mut().enumerate() {
+                *value = within[(row, column)];
+            }
+        }
+        PreparedOlsScoreStorage::Scratch(scratch) => {
+            scratch.fill_row(nrows, rank, row, output)?;
+        }
+    }
+    Ok(())
 }
 
 fn weighted_matrix_column_mean(

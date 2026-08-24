@@ -636,15 +636,10 @@ fn source_index(source: SourceId) -> Result<usize> {
 fn validate_inputs(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],
-    structural_intercept: bool,
+    _structural_intercept: bool,
     cluster_dimensions: &[&[u32]],
 ) -> Result<()> {
     let nobs = topology.retained_rows().len();
-    if !structural_intercept {
-        return Err(invalid_argument(
-            "categorical absorbed-DoF requires the structural intercept contract",
-        ));
-    }
     if effect_specs.len() != topology.effect_to_topology().len() {
         return Err(invalid_argument(
             "categorical absorbed-DoF metadata and topology effect counts differ",

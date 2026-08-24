@@ -203,10 +203,22 @@ require("marksample touse" not in parse_code, "parser creates a short-lived cand
 require("fvexpand `rhs' if `touse'" in parse_code, "factor expansion does not use the caller-owned candidate marker")
 require("fvexpand" in parse_code and "_ms_parse_parts" in parse_code, "parser does not use Stata factor metadata machinery")
 
-for estimator in ("fereg.ado", "feppml.ado"):
-    text = read(f"stata/{estimator}").lower()
-    require("exit 498" in text, f"{estimator} does not fail closed")
-    require("plugin call" not in text, f"{estimator} makes a substantive plugin call before estimator implementation")
+fereg_ado = read("stata/fereg.ado").lower()
+require(
+    "_fereg_estimate_public `0'" in fereg_ado,
+    "fereg.ado does not delegate to the guarded public OLS transaction",
+)
+require(
+    "plugin call" not in fereg_ado,
+    "fereg.ado bypasses the single guarded substantive plugin boundary",
+)
+
+feppml_ado = read("stata/feppml.ado").lower()
+require("exit 498" in feppml_ado, "feppml.ado does not fail closed")
+require(
+    "plugin call" not in feppml_ado,
+    "feppml.ado makes a substantive plugin call before PPML implementation",
+)
 
 loader = read("stata/_fereg_load.ado")
 for plugin in ("fereg_windows.plugin", "fereg_linux.plugin", "fereg_macos.plugin"):

@@ -62,7 +62,7 @@ static int check_version(stata_call_function call)
 static int check_doctor(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor", "ado=0.1.0-phase01", "protocol_major=1",
+        "doctor", "ado=0.9.0", "protocol_major=1",
         "protocol_minor=0", "stata=18.0", "threads=32",
         "plugin_file=validation.plugin", "dependency_audit=target-native-pass"
     };
@@ -77,7 +77,7 @@ static int check_doctor(stata_call_function call)
 static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
-        "doctor", "ado=0.1.0-phase01", "protocol_major=99",
+        "doctor", "ado=0.9.0", "protocol_major=99",
         "protocol_minor=0", "stata=18.0"
     };
     clear_output();

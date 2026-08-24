@@ -13,6 +13,7 @@ mod prepared_inference_view;
 mod prepared_rhs;
 mod prepared_robust;
 mod prepared_scores;
+mod prepared_scratch;
 mod prepared_unadjusted;
 mod rank;
 mod vce;
@@ -50,6 +51,7 @@ pub use prepared_fit::{
     fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
     CertifiedPreparedOlsFit, PreparedOlsBread, PreparedOlsBreadCertificate,
     PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
+    PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsExecutionReport,
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
     PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };

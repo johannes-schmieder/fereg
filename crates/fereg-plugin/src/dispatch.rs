@@ -29,13 +29,13 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
             ErrorCode::Unsupported,
             "prepare-ols-test is developer-only and requires a live Stata SPI session",
         )),
-        crate::estimate::ACTION_ESTIMATE_OLS_TEST => Err(FeregError::new(
+        crate::estimate::ACTION_ESTIMATE_OLS => Err(FeregError::new(
             ErrorCode::Unsupported,
-            "estimate-ols-test is developer-only and requires a live Stata SPI session",
+            "estimate-ols requires a live Stata SPI session",
         )),
-        "estimate-ols" | "estimate-ppml" => Err(FeregError::new(
+        "estimate-ppml" => Err(FeregError::new(
             ErrorCode::Unsupported,
-            "estimator actions are intentionally disabled in the Phase 0-1 architecture build",
+            "PPML estimation is not implemented in fereg 0.9.0",
         )),
         other => Err(FeregError::new(
             ErrorCode::Syntax,
@@ -157,17 +157,17 @@ mod tests {
     fn version_is_machine_readable() {
         let sink = BufferSink::default();
         dispatch_args(&["version".to_owned()], &sink).expect("version");
-        assert!(sink.displayed().contains("fereg.action_protocol=1.1"));
+        assert!(sink.displayed().contains("fereg.action_protocol=1.2"));
         assert!(sink.displayed().contains("fereg.model_wire=2.1"));
-        assert!(sink.displayed().contains("fereg.ols_result_wire=1.1"));
+        assert!(sink.displayed().contains("fereg.ols_result_wire=1.2"));
         assert!(!sink.displayed().contains("fereg.model_protocol="));
     }
 
     #[test]
-    fn estimator_actions_fail_closed() {
+    fn estimator_actions_require_the_live_spi_boundary() {
         let sink = BufferSink::default();
         let error = dispatch_args(&["estimate-ols".to_owned()], &sink)
-            .expect_err("estimator must be disabled");
+            .expect_err("estimator must require live SPI");
         assert_eq!(error.code, ErrorCode::Unsupported);
     }
 
@@ -176,7 +176,7 @@ mod tests {
         let sink = BufferSink::default();
         let args = [
             "doctor".to_owned(),
-            "ado=0.1.0-phase01".to_owned(),
+            "ado=0.9.0".to_owned(),
             "protocol_major=99".to_owned(),
             "protocol_minor=0".to_owned(),
             "stata=18.0".to_owned(),

@@ -70,7 +70,7 @@ class RustSourceContractTests(unittest.TestCase):
         feppml = (ROOT / "stata/feppml.ado").read_text(encoding="utf-8")
         self.assertIn('"estimate-ppml"', dispatch)
         self.assertIn("ErrorCode::Unsupported", dispatch)
-        self.assertIn("ACTION_ESTIMATE_OLS_TEST", estimate)
+        self.assertIn("ACTION_ESTIMATE_OLS", estimate)
         self.assertIn("_fereg_estimate_public `0'", fereg)
         self.assertIn("exit 498", feppml)
         self.assertNotIn("plugin call", feppml)

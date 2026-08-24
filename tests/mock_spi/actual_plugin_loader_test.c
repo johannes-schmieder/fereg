@@ -16,10 +16,10 @@ static ST_int plugin_nvars = 6;
 static ST_int output_store_calls = 0;
 static ST_int fail_output_store_at = 0;
 static ST_int last_store_was_complete = 0;
-static const char *prepared_store_name_pointers[13];
-static const char *result_matrix_names[13] = {
+static const char *prepared_store_name_pointers[14];
+static const char *result_matrix_names[14] = {
     "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RSOLVER",
-    "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RREC"
+    "RFE", "RCLUSTER", "RSUBSET", "RCERT", "RRUNTIME", "RREC"
 };
 
 static ST_double result_b[1][2];
@@ -34,12 +34,13 @@ static ST_double result_fe[1][8];
 static ST_double result_cluster[1][4];
 static ST_double result_subset[1][4];
 static ST_double result_certificate[32][2];
+static ST_double result_runtime[30][2];
 static ST_double result_receipt[1][16];
 
 static ST_int result_matrix_name_index(const char *name)
 {
     ST_int index;
-    for (index = 0; index < 13; ++index) {
+    for (index = 0; index < 14; ++index) {
         if (strcmp(name, result_matrix_names[index]) == 0) return index;
     }
     return -1;
@@ -113,6 +114,9 @@ static ST_double *mock_result_matrix(char *name, ST_int *rows, ST_int *columns)
     }
     if (strcmp(name, "RCERT") == 0) {
         *rows = 32; *columns = 2; return &result_certificate[0][0];
+    }
+    if (strcmp(name, "RRUNTIME") == 0) {
+        *rows = 30; *columns = 2; return &result_runtime[0][0];
     }
     if (strcmp(name, "RREC") == 0) {
         *rows = 1; *columns = 16; return &result_receipt[0][0];
@@ -359,10 +363,10 @@ static int check_version(stata_call_function call)
     char *arguments[] = {"version"};
     clear_output();
     if (call(1, arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.plugin_version=0.1.0") == NULL ||
-        strstr(display_buffer, "fereg.action_protocol=1.1") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.9.0") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.2") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.1") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.2") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -373,7 +377,7 @@ static int check_doctor(stata_call_function call)
 {
     char *arguments[] = {
         "doctor",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -395,7 +399,7 @@ static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
         "doctor",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=99",
         "protocol_minor=0",
         "stata=18.0"
@@ -415,12 +419,12 @@ static int check_panic_boundary(stata_call_function call)
     return 0;
 }
 
-static int check_estimator_actions_disabled(stata_call_function call)
+static int check_estimator_action_routing(stata_call_function call)
 {
     char *ols[] = {"estimate-ols"};
     char *ppml[] = {"estimate-ppml"};
     clear_output();
-    if (call(1, ols) != 498 || strstr(error_buffer, "unsupported") == NULL) return 1;
+    if (call(1, ols) != 198 || strstr(error_buffer, "syntax") == NULL) return 1;
     clear_output();
     if (call(1, ppml) != 498 || strstr(error_buffer, "unsupported") == NULL) return 2;
     return 0;
@@ -430,7 +434,7 @@ static int check_prepare_ols_test(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -510,7 +514,7 @@ static int check_prepare_ols_factor(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -581,7 +585,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -680,7 +684,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -772,7 +776,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -859,7 +863,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.1.0-phase01",
+        "ado=0.9.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -957,6 +961,7 @@ static void reset_estimate_outputs(void)
     memset(result_cluster, 0, sizeof(result_cluster));
     memset(result_subset, 0, sizeof(result_subset));
     memset(result_certificate, 0, sizeof(result_certificate));
+    memset(result_runtime, 0, sizeof(result_runtime));
     memset(result_receipt, 0, sizeof(result_receipt));
     output_store_calls = 0;
     fail_output_store_at = 0;
@@ -980,15 +985,15 @@ static void reset_estimate_outputs(void)
 static ST_int call_estimate_ols_test(stata_call_function call)
 {
     char *arguments[] = {
-        "estimate-ols-test",
-        "ado=0.1.0-phase01",
+        "estimate-ols",
+        "ado=0.9.0",
         "protocol_major=1",
-        "protocol_minor=1",
+        "protocol_minor=2",
         "stata=18.0",
-        "confirm=developer-estimation-test",
-        "plugin=0.1.0",
+        "confirm=fereg-estimation",
+        "plugin=0.9.0",
         "result_major=1",
-        "result_minor=1",
+        "result_minor=2",
         "model_major=2",
         "model_minor=1",
         "source_matrix=S",
@@ -1019,6 +1024,12 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "vce=iid",
         "dof=pairwise",
         "account_cluster_nesting=0",
+        "memory=fast",
+        "poolsize=10",
+        "threads=1",
+        "deterministic=1",
+        "tolerance=1e-8",
+        "iterate=16000",
         "output_sample=4",
         "output_residual=5",
         "output_drop_reason=6",
@@ -1039,6 +1050,7 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "output_cluster_matrix=RCLUSTER",
         "output_subset_matrix=RSUBSET",
         "output_certificate_matrix=RCERT",
+        "output_runtime_matrix=RRUNTIME",
         "output_receipt_matrix=RREC"
     };
     return call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments);
@@ -1055,8 +1067,8 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 219) return 3;
-    for (name_index = 0; name_index < 13; ++name_index) {
+    if (output_store_calls != 279) return 3;
+    for (name_index = 0; name_index < 14; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
     if (!isfinite(result_b[0][0]) || !isfinite(result_b[0][1]) ||
@@ -1064,7 +1076,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 219; ++ordinal) {
+    for (ordinal = 1; ordinal <= 279; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();
@@ -1150,7 +1162,7 @@ int main(int argc, char *argv[])
         dlclose(library);
         return 40 + result;
     }
-    result = check_estimator_actions_disabled(call);
+    result = check_estimator_action_routing(call);
     if (result != 0) {
         fprintf(stderr, "disabled estimator path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);

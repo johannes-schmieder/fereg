@@ -38,8 +38,8 @@ program define fereg, rclass sortpreserve
             capture di as txt "Stata processors detected: `c(processors_mach)'"
         }
 
-        return local ado_version "0.1.0-phase01"
-        return local action_protocol "1.0"
+        return local ado_version "0.9.0"
+        return local action_protocol "1.2"
         return local model_wire "2.1"
         return local plugin_name "`plugin_name'"
         return local plugin_file `"`plugin_file'"'

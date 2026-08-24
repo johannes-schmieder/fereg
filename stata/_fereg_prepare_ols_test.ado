@@ -50,6 +50,14 @@ program define _fereg_prepare_ols_test, rclass sortpreserve
     matrix `absorb_terms' = r(absorb_terms)
     matrix `absorb_components' = r(absorb_components)
 
+    local n_absorb_intercepts 0
+    if `n_absorb_terms' > 0 {
+        forvalues row = 1/`n_absorb_terms' {
+            local n_absorb_intercepts = `n_absorb_intercepts' + ///
+                `absorb_terms'[`row',3]
+        }
+    }
+
     /* Stata's plugin varlist rejects strings before Rust can return r(498). */
     foreach source of local source_vars {
         capture confirm numeric variable `source'
@@ -136,7 +144,8 @@ program define _fereg_prepare_ols_test, rclass sortpreserve
     local output_original = 3 + `n_sources' + `has_weight'
     local output_retained = 4 + `n_sources' + `has_weight'
     local output_reason = 5 + `n_sources' + `has_weight'
-    local include_intercept = (`"`noconstant'"' == "")
+    local include_intercept = (`"`noconstant'"' == "") & ///
+        (`n_absorb_terms' == 0 | `n_absorb_intercepts' > 0)
     local keep_singletons = (`"`keepsingletons'"' != "")
     local run_borrowed_map = (`"`mapcheck'"' != "")
     local weight_variable `"`aweight'`fweight'`pweight'"'
@@ -149,7 +158,7 @@ program define _fereg_prepare_ols_test, rclass sortpreserve
     plugin call __fereg_prepare_plugin `touse' `depvar' `source_vars' `weight_variable' ///
         `originalobs' `retained' `dropreason', ///
         `"prepare-ols-test"' ///
-        `"ado=0.1.0-phase01"' ///
+        `"ado=0.9.0"' ///
         `"protocol_major=1"' ///
         `"protocol_minor=0"' ///
         `"stata=`c(stata_version)'"' ///

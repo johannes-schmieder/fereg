@@ -6,10 +6,10 @@ use fereg_testkit::run_action;
 const TIGHT: f64 = 2e-10;
 
 #[test]
-fn oracle_module_does_not_enable_public_ols_dispatch() {
+fn public_ols_dispatch_requires_the_live_stata_spi_boundary() {
     let capture = run_action(&["estimate-ols"]);
     assert_eq!(capture.return_code, 498);
-    assert!(capture.error.contains("intentionally disabled"));
+    assert!(capture.error.contains("requires a live Stata SPI session"));
 }
 
 #[test]

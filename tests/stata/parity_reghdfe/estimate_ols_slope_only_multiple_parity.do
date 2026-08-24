@@ -20,12 +20,12 @@ assert e(N) == 60
 assert e(N_full) == 60
 assert e(df_m) == 1
 assert e(df_a) == 17
-assert e(df_r) == 41
+assert e(df_r) == 42
 assert e(N_hdfe) == 2
 assert e(N_hdfe_extended) == 3
 assert e(num_singletons) == 0
 assert e(rank) == 1
-assert e(report_constant) == 1
+assert e(report_constant) == 0
 assert e(converged) == 1
 assert `"`e(absvars)'"' == "firm#c.time worker#c.(time x2)"
 assert `"`e(vce)'"' == "ols"
@@ -33,13 +33,11 @@ assert e(sample) == 1
 assert !missing(__frg_slope_only_resid)
 
 local coefficient_names : colfullnames e(b)
-assert `"`coefficient_names'"' == "x1 _cons"
+assert `"`coefficient_names'"' == "x1"
 assert e(fereg_status)[1,2] == 1
-assert e(fereg_status)[2,2] == 1
-assert abs(e(b)[1,1] - .7) <= .02
-assert abs(e(b)[1,2] - 1.5) <= .05
+assert abs(e(b)[1,1] - +1.180377d1a0380X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.68d073ede3641X-006) <= 2e-10
 assert e(V)[1,1] > 0
-assert e(V)[2,2] > 0
 assert e(rss) > 0
 assert e(rmse) > 0
 
@@ -63,19 +61,62 @@ assert e(fereg_certificate)[3,2] == 1
 assert e(fereg_certificate)[24,2] == 1
 assert e(fereg_certificate)[32,2] == 1
 
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm#c.time worker#c.(time x2)) vce(robust)
-assert _rc == 498
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1 [aw=aw], ///
+assert e(N) == 60
+assert e(df_m) == 1
+assert e(df_a) == 17
+assert e(df_r) == 42
+assert e(report_constant) == 0
+assert `"`e(vce)'"' == "robust"
+assert abs(e(b)[1,1] - +1.180377d1a0380X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.9a2a07a357b80X-006) <= 2e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1 [aw=aw], ///
     absorb(firm#c.time worker#c.(time x2))
-assert _rc == 498
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
+assert e(N) == 60
+assert e(df_m) == 1
+assert e(df_a) == 17
+assert e(df_r) == 42
+assert e(report_constant) == 0
+assert abs(e(b)[1,1] - +1.2067b846304b4X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.660980eac73b1X-006) <= 2e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
+    absorb(firm#c.time worker#c.(time x2)) vce(cluster cluster_a)
+assert e(N) == 60
+assert e(df_m) == 1
+assert e(df_a) == 17
+assert e(df_r) == 4
+assert e(report_constant) == 0
+assert `"`e(vce)'"' == "cluster"
+assert abs(e(b)[1,1] - +1.180377d1a0380X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.f5ce0195c588eX-008) <= 2e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm#c.time worker#c.(time x2)) dof(none)
-assert _rc == 498
+assert e(N) == 60
+assert e(df_m) == 1
+assert e(df_a) == 17
+assert e(df_r) == 42
+assert e(report_constant) == 0
+assert abs(e(b)[1,1] - +1.180377d1a0380X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.68d073ede3641X-006) <= 2e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
+    absorb(firm#c.time worker#c.(time x2)) dof(firstpair)
+assert e(N) == 60
+assert e(df_m) == 1
+assert e(df_a) == 17
+assert e(df_r) == 42
+assert e(report_constant) == 0
+assert abs(e(b)[1,1] - +1.180377d1a0380X-001) <= 1e-7
+assert abs(e(V)[1,1] - +1.68d073ede3641X-006) <= 2e-10
 
 capture noisily fereg y c.x1, absorb(firm#c.time worker#c.(time x2))
 assert _rc == 0
 assert `"`e(cmd)'"' == "fereg"
 assert e(N) == 60
+assert e(report_constant) == 0
 
 di as result "END_FIXTURE|estimate_ols_slope_only_multiple_parity|rc=0"

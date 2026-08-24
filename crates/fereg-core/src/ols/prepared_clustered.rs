@@ -454,7 +454,7 @@ fn compose<R: PreparedInferenceReservation>(
 
 fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
     prepared: &P,
-    fit: CertifiedPreparedOlsFit,
+    mut fit: CertifiedPreparedOlsFit,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
@@ -523,7 +523,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
 
     let mut scores = build_prepared_ols_score_design(
         ols,
-        &fit,
+        &mut fit,
         weight_view,
         config.fit.map,
         config.certificate_tolerance,
@@ -991,6 +991,12 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared clustered group influence",
     )?;
+    let mut reported_score = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered reported score row",
+    )?;
     let mut meat = reserved_filled(
         reservation,
         square,
@@ -1030,9 +1036,10 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
                 "prepared clustered observation score scale is not finite",
             ));
         }
+        scores.fill_reported_row(row, &mut reported_score)?;
         for coordinate in 0..p {
             compensated_add(
-                scale * scores.reported_value(row, coordinate)?,
+                scale * reported_score[coordinate],
                 &mut group_score[coordinate],
                 &mut group_score_correction[coordinate],
             )?;

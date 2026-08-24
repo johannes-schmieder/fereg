@@ -34,7 +34,7 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         self.assertIn("plan_categorical_absorbed_request", estimate)
         self.assertIn("plan.availability_request().validate_and_compile()", estimate)
         self.assertIn("validate_cluster_request_shape(&requested_clustered)", estimate)
-        self.assertNotIn('ACTION_ESTIMATE_OLS: &str', estimate)
+        self.assertIn('ACTION_ESTIMATE_OLS: &str = "estimate-ols"', estimate)
 
     def test_result_wire_retains_dimensions_and_interaction_identity(self):
         result = (PLUGIN / "result.rs").read_text(encoding="utf-8")
@@ -90,9 +90,9 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
         self.assertIn("local n_absorb_intercepts 0", stata)
         self.assertIn("`n_absorb_intercepts' + `n_absorb_slopes'", stata)
         self.assertNotIn("if `n_absorb_slopes' > 1", stata)
-        self.assertIn("absorbed slope is qualified only for iid inference", stata)
-        self.assertIn("absorbed slope is not yet qualified for weights", stata)
-        self.assertIn(
+        self.assertNotIn("absorbed slope is qualified only for iid inference", stata)
+        self.assertNotIn("absorbed slope is not yet qualified for weights", stata)
+        self.assertNotIn(
             "absorbed slope requires pairwise or continuous absorbed DoF", stata
         )
         self.assertNotIn("only single-source intercept fixed effects", stata)

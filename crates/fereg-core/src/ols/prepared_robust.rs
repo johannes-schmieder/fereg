@@ -328,7 +328,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
 
 fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceReservation>(
     prepared: &P,
-    fit: CertifiedPreparedOlsFit,
+    mut fit: CertifiedPreparedOlsFit,
     absorbed_dof: PreparedOlsAbsorbedDofSummary,
     config: PreparedOlsRobustConfig,
     reservation: &mut R,
@@ -373,7 +373,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
 
     let mut score_design = build_prepared_ols_score_design(
         prepared,
-        &fit,
+        &mut fit,
         weight_view,
         config.fit.map,
         config.certificate_tolerance,
@@ -590,7 +590,14 @@ fn build_covariance<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust influence row",
     )?;
+    let mut score = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve prepared robust reported score row",
+    )?;
     for row in 0..scores.nrows() {
+        scores.fill_reported_row(row, &mut score)?;
         let reference_weight = weight_view.value(row)?;
         let root_multiplier = if perturb_meat_multiplier {
             match weights.kind {
@@ -610,10 +617,9 @@ fn build_covariance<R: PreparedInferenceReservation>(
         for (left, influence_value) in influence.iter_mut().enumerate() {
             let mut product = 0.0_f64;
             let mut correction = 0.0_f64;
-            for right in 0..dimension {
+            for (right, score_value) in score.iter().copied().enumerate() {
                 compensated_add(
-                    fit.bread().values()[left * dimension + right]
-                        * scores.reported_value(row, right)?,
+                    fit.bread().values()[left * dimension + right] * score_value,
                     &mut product,
                     &mut correction,
                 )?;
@@ -720,8 +726,9 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
     for row in 0..scores.nrows() {
         let scale =
             meat_root_multiplier(weights.kind, weight_view.value(row)?)? * fit.residuals()[row];
-        for (coordinate, score_value) in score.iter_mut().enumerate() {
-            *score_value = scale * scores.reported_value(row, coordinate)?;
+        scores.fill_reported_row(row, &mut score)?;
+        for score_value in &mut score {
+            *score_value *= scale;
             if !score_value.is_finite() {
                 return Err(invalid_data(
                     "prepared robust certificate score is not finite",

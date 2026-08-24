@@ -1,7 +1,7 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use std::collections::BTreeMap;
 
-pub const ADO_VERSION: &str = "0.1.0-phase01";
+pub const ADO_VERSION: &str = "0.9.0";
 pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const MINIMUM_STATA_MAJOR: u16 = 18;
 pub const SPI_MAJOR: u16 = 3;
@@ -22,13 +22,14 @@ impl ProtocolVersion {
 
 /// Version of the small action/diagnostics handshake accepted by the plugin.
 ///
-/// Minor 1 adds the guarded prepared-OLS estimation/result transport. Older
-/// minor-0 diagnostic callers remain valid under the usual minor-version rule.
-pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
+/// Minor 2 promotes the certified prepared-OLS transport to the public `fereg`
+/// action and adds resource/timing reporting. Older diagnostic callers remain
+/// valid under the usual minor-version rule.
+pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
-/// Version of the guarded prepared-OLS shadow-result layout.
-pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
+/// Version of the public prepared-OLS shadow-result layout.
+pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Handshake {
@@ -172,7 +173,7 @@ mod tests {
 
     #[test]
     fn action_handshake_and_model_wire_are_distinct_versions() {
-        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 1));
+        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 2));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }

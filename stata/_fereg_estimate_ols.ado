@@ -8,7 +8,18 @@ program define _fereg_estimate_ols, eclass sortpreserve
          PWEIGHT(varname numeric) ABSorb(string asis) CLUster(string asis) ///
          VCE(string) DOF(string) KEEPsingletons RESIDual(name) ///
          XB(name) XBD(name) D(name) ///
+         MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
+         ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
          INJECT(string)]
+
+    local memory_mode = lower(strtrim(`"`memory'"'))
+    if `"`memory_mode'"' == "" local memory_mode "fast"
+    if !inlist(`"`memory_mode'"', "auto", "fast", "low") | ///
+       `poolsize' <= 0 | `threads' < 0 | `tolerance' <= 0 | ///
+       `tolerance' >= 1 | `iterate' <= 0 {
+        di as error "memory(), poolsize(), tolerance(), or iterate() is invalid"
+        exit 198
+    }
 
     local requested_weights = (`"`aweight'"' != "") + ///
         (`"`fweight'"' != "") + (`"`pweight'"' != "")
@@ -211,18 +222,6 @@ program define _fereg_estimate_ols, eclass sortpreserve
                 local has_absorb_interaction 1
         }
     }
-    if `n_absorb_slopes' > 0 & `"`vce_wire'"' != "iid" {
-        di as error "hidden prepared OLS absorbed slope is qualified only for iid inference"
-        exit 498
-    }
-    if `n_absorb_slopes' > 0 & `requested_weights' > 0 {
-        di as error "hidden prepared OLS absorbed slope is not yet qualified for weights"
-        exit 498
-    }
-    if `n_absorb_slopes' > 0 & !inlist(`"`dof_wire'"', "pairwise", "continuous") {
-        di as error "hidden prepared OLS absorbed slope requires pairwise or continuous absorbed DoF"
-        exit 498
-    }
     if `has_absorb_interaction' {
         if regexm(lower(`"`indepvars'"'), "(^|[ #])ib[^ #]*[.]") {
             di as error "hidden categorical OLS final-sample rebasing does not yet support explicit base operators"
@@ -310,7 +309,11 @@ program define _fereg_estimate_ols, eclass sortpreserve
         if `has_pweight' matrix `input_bindings'[`row',2] = 6
     }
 
-    local include_intercept = (`"`noconstant'"' == "")
+    // Pinned reghdfe does not synthesize a structural constant when every
+    // absorbed term is slope-only.  In that case `_cons` is absent even
+    // without an explicit noconstant option.
+    local include_intercept = (`"`noconstant'"' == "") & ///
+        (`n_absorb_terms' == 0 | `n_absorb_intercepts' > 0)
     local keep_singletons = (`"`keepsingletons'"' != "")
     local coefficient_capacity = `n_terms' + `include_intercept'
     local matrix_dimension = max(`coefficient_capacity', 1)
@@ -404,7 +407,7 @@ program define _fereg_estimate_ols, eclass sortpreserve
     tempname b_shadow v_shadow status_shadow marker_b_shadow marker_v_shadow
     tempname fit_shadow dof_shadow
     tempname solver_shadow fe_shadow cluster_shadow subset_shadow
-    tempname certificate_shadow receipt_shadow
+    tempname certificate_shadow runtime_shadow receipt_shadow
     matrix `b_shadow' = J(1, `matrix_dimension', .)
     matrix `v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `status_shadow' = J(`matrix_dimension', 4, .)
@@ -417,6 +420,7 @@ program define _fereg_estimate_ols, eclass sortpreserve
     matrix `cluster_shadow' = J(`cluster_rows', 4, .)
     matrix `subset_shadow' = J(`subset_rows', 4, .)
     matrix `certificate_shadow' = J(32, 2, .)
+    matrix `runtime_shadow' = J(30, 2, .)
     matrix `receipt_shadow' = J(1, 16, 0)
 
     tempname held_estimates
@@ -434,7 +438,8 @@ program define _fereg_estimate_ols, eclass sortpreserve
     capture program __fereg_estimate_plugin, plugin using(`"`plugin_file'"')
     local load_rc = _rc
     if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    local request_arguments `"ado=0.1.0-phase01;protocol_major=1;protocol_minor=1;stata=`c(stata_version)';confirm=developer-estimation-test;plugin=0.1.0;result_major=1;result_minor=1;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_receipt_matrix=`receipt_shadow';"'
+    local deterministic_wire = (`"`deterministic'"' != "")
+    local request_arguments `"ado=0.9.0;protocol_major=1;protocol_minor=2;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.9.0;result_major=1;result_minor=2;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
     local request_bundle
     local request_count 0
     while `"`request_arguments'"' != "" {
@@ -448,7 +453,7 @@ program define _fereg_estimate_ols, eclass sortpreserve
     local request_bundle `"`request_count':`request_bundle'"'
     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
         `weight_variable' `output_variables', ///
-        `"estimate-ols-test"' `"bundle=`request_bundle'"'
+        `"estimate-ols"' `"bundle=`request_bundle'"'
 
     if `"`inject'"' == "breakpostplugin" {
         di as result "FEREG_BREAK_ARMED"
@@ -461,7 +466,7 @@ program define _fereg_estimate_ols, eclass sortpreserve
         `status_shadow' `marker_b_shadow' `marker_v_shadow' ///
         `fit_shadow' `dof_shadow' `solver_shadow' ///
         `fe_shadow' `cluster_shadow' `subset_shadow' ///
-        `certificate_shadow' `receipt_shadow', ///
+        `certificate_shadow' `runtime_shadow' `receipt_shadow', ///
         capacity(`coefficient_capacity') vcecode(`vce_code') ///
         absorbrows(`fe_rows') clusters(`n_cluster_terms') ///
         subsets(`subset_rows') residual(`=(`"`residual'"' != "")')
@@ -601,6 +606,7 @@ program define _fereg_estimate_ols, eclass sortpreserve
     ereturn matrix fereg_cluster = `cluster_shadow', copy
     ereturn matrix fereg_subset = `subset_shadow', copy
     ereturn matrix fereg_certificate = `certificate_shadow', copy
+    ereturn matrix fereg_runtime = `runtime_shadow', copy
     ereturn matrix fereg_receipt = `receipt_shadow', copy
 
     local kept_indepvars
@@ -657,10 +663,10 @@ program define _fereg_estimate_ols, eclass sortpreserve
         ereturn local wexp "= `pweight'"
     }
     if `"`residual'"' != "" ereturn local resid "`residual'"
-    ereturn local fereg_action_protocol "1.1"
+    ereturn local fereg_action_protocol "1.2"
     ereturn local fereg_model_wire "2.1"
-    ereturn local fereg_result_wire "1.1"
-    ereturn local fereg_plugin "0.1.0"
+    ereturn local fereg_result_wire "1.2"
+    ereturn local fereg_plugin "0.9.0"
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
 
@@ -684,7 +690,7 @@ end
 
 program define _fereg_eols_validate, rclass
     version 18.0
-    syntax namelist(min=13 max=13), CAPACITY(integer) VCECODE(integer) ABSORBROWS(integer) ///
+    syntax namelist(min=14 max=14), CAPACITY(integer) VCECODE(integer) ABSORBROWS(integer) ///
         CLUSTERS(integer) SUBSETS(integer) RESIDUAL(integer)
     local b : word 1 of `namelist'
     local V : word 2 of `namelist'
@@ -698,7 +704,9 @@ program define _fereg_eols_validate, rclass
     local clusters_table : word 10 of `namelist'
     local subsets_table : word 11 of `namelist'
     local certificates : word 12 of `namelist'
-    local receipt : word 13 of `namelist'
+    local runtime : word 13 of `namelist'
+    local receipt : word 14 of `namelist'
+    tempname runtime_valid
 
     local physical = max(`capacity', 1)
     local expected_subsets = cond(`clusters' == 0, 0, `subsets')
@@ -714,13 +722,14 @@ program define _fereg_eols_validate, rclass
        rowsof(`clusters_table') != max(`clusters', 1) | colsof(`clusters_table') != 4 | ///
        rowsof(`subsets_table') != `subsets' | colsof(`subsets_table') != 4 | ///
        rowsof(`certificates') != 32 | colsof(`certificates') != 2 | ///
+       rowsof(`runtime') != 30 | colsof(`runtime') != 2 | ///
        rowsof(`receipt') != 1 | colsof(`receipt') != 16 {
         di as error "hidden OLS result layout failed exact structural validation"
         exit 459
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 1 | `receipt'[1,4] != `vcecode' | ///
+       `receipt'[1,3] != 2 | `receipt'[1,4] != `vcecode' | ///
        `coefficients' != int(`coefficients') | `coefficients' < 0 | ///
        `coefficients' > `capacity' | ///
        `receipt'[1,7] != _N | `receipt'[1,10] != `clusters' | ///
@@ -733,6 +742,44 @@ program define _fereg_eols_validate, rclass
        `receipt'[1,9] < 0 | `receipt'[1,9] > `receipt'[1,8] {
        di as error "hidden OLS receipt failed exact structural validation"
        exit 459
+    }
+    mata: __fereg_runtime_validate = st_matrix("`runtime'")
+    mata: st_numscalar("`runtime_valid'", ///
+        all(((__fereg_runtime_validate[.,1] :== 0) :| ///
+             (__fereg_runtime_validate[.,1] :== 1)) :& ///
+            (__fereg_runtime_validate[.,2] :< .) :& ///
+            ((__fereg_runtime_validate[.,1] :== 1) :| ///
+             (__fereg_runtime_validate[.,2] :== 0))))
+    mata: mata drop __fereg_runtime_validate
+    if `runtime_valid' != 1 {
+        di as error "hidden OLS runtime report failed defined/value validation"
+        exit 459
+    }
+    if `runtime'[1,1] != 1 | `runtime'[2,1] != 1 | ///
+       `runtime'[3,1] != 1 | `runtime'[4,1] != 1 | ///
+       `runtime'[5,1] != 1 | `runtime'[7,1] != 1 | ///
+       `runtime'[9,1] != 1 | `runtime'[10,1] != 1 | ///
+       `runtime'[11,1] != 1 | `runtime'[12,1] != 1 | ///
+       `runtime'[13,1] != 1 | `runtime'[18,1] != 1 | ///
+       `runtime'[19,1] != 1 | `runtime'[20,1] != 1 | ///
+       `runtime'[21,1] != 1 | `runtime'[22,1] != 1 | ///
+       `runtime'[23,1] != 1 | `runtime'[24,1] != 1 | ///
+       `runtime'[25,1] != 1 | `runtime'[28,1] != 1 | ///
+       `runtime'[29,1] != 1 | `runtime'[30,1] != 1 {
+        di as error "hidden OLS runtime report omitted a mandatory field"
+        exit 459
+    }
+    if !inlist(`runtime'[1,2], 1, 2, 3) | ///
+       !inlist(`runtime'[2,2], 1, 2) | ///
+       `runtime'[3,2] < 1 | `runtime'[3,2] != int(`runtime'[3,2]) | ///
+       `runtime'[4,2] < 0 | `runtime'[5,2] < 0 | `runtime'[9,2] < 0 | ///
+       `runtime'[13,2] < 0 | `runtime'[18,2] < 0 | ///
+       `runtime'[19,2] < 0 | `runtime'[20,2] < 0 | `runtime'[21,2] < 0 | ///
+       `runtime'[28,2] < 0 | `runtime'[28,2] != int(`runtime'[28,2]) | ///
+       `runtime'[29,2] < 1 | `runtime'[29,2] != int(`runtime'[29,2]) | ///
+       !inlist(`runtime'[30,2], 0, 1) {
+        di as error "hidden OLS runtime report failed semantic validation"
+        exit 459
     }
     return scalar coefficients = `coefficients'
 end

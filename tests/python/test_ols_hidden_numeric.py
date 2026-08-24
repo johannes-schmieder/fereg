@@ -540,11 +540,11 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )[0]
         self.assertLess(
             precommit.index("validate_shadow_against_outputs(action, shadow)?"),
-            precommit.index("store_shadow(action, shadow, derived, spi)"),
+            precommit.index("store_shadow(action, shadow, derived, &runtime, spi)"),
         )
         self.assertLess(
             precommit.index("validate_derived_against_outputs(action, shadow, derived)?"),
-            precommit.index("store_shadow(action, shadow, derived, spi)"),
+            precommit.index("store_shadow(action, shadow, derived, &runtime, spi)"),
         )
         native_validator = native.split("fn validate_shadow_against_outputs", 1)[1].split(
             "fn store_shadow", 1

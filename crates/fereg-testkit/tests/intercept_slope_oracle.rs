@@ -88,7 +88,7 @@ fn multiple_slope_only_terms_match_explicit_dummy_oracle_with_positive_dof() {
     .expect("certified positive-DoF multiple slope-only fit");
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: y.clone(),
-        regressors: vec![x1, vec![1.0; y.len()]],
+        regressors: vec![x1],
         effects: vec![
             DummyEffect::new(firm, 5, false, vec![time.clone()]).expect("firm slope-only"),
             DummyEffect::new(worker, 6, false, vec![time, x2]).expect("worker multiple slopes"),
@@ -104,8 +104,10 @@ fn multiple_slope_only_terms_match_explicit_dummy_oracle_with_positive_dof() {
     assert!(result.fit().score_certificate().passed);
     assert!(result.fit().bread().certificate().passed);
     assert!(result.certificate().passed);
-    assert_eq!(result.fit().finite_rank(), 2);
-    assert_eq!(oracle.finite_regressor_rank, 2);
+    assert!(!prepared.structural_intercept());
+    assert!(!prepared.report_intercept());
+    assert_eq!(result.fit().finite_rank(), 1);
+    assert_eq!(oracle.finite_regressor_rank, 1);
     for (production, independent) in result.fit().coefficients().iter().zip(&oracle.coefficients) {
         assert_eq!(production.status, PreparedOlsFitStatus::Kept);
         assert_close(
@@ -132,10 +134,11 @@ fn multiple_slope_only_terms_match_explicit_dummy_oracle_with_positive_dof() {
         .all(|row| !row.redundancy_exact && !row.nested));
     assert!(absorbed.is_approximate);
     let dof = result.dof();
-    assert_eq!(dof.finite_rank, 2);
+    assert_eq!(dof.finite_rank, 1);
     assert_eq!(dof.absorbed_rank, 17);
-    assert_eq!(dof.model_rank, 19);
-    assert_eq!(dof.residual_dof, 41);
+    assert_eq!(dof.model_rank, 18);
+    assert_eq!(dof.residual_dof, 42);
+    assert!(!dof.has_structural_intercept);
     assert!(dof.absorbed_rank_is_approximate);
 }
 

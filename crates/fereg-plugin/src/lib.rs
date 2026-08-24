@@ -3,6 +3,7 @@
 mod dispatch;
 mod estimate;
 mod input;
+mod instrumentation;
 mod output;
 mod result;
 mod result_view;
@@ -11,7 +12,7 @@ mod result_view;
 mod ffi;
 
 pub use dispatch::{dispatch_args, ACTION_DOCTOR, ACTION_SELFTEST, ACTION_VERSION};
-pub use estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS_TEST};
+pub use estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS};
 pub use input::{prepare_ols_test, SpiApi, ACTION_PREPARE_OLS_TEST};
 pub use output::{BufferSink, OutputSink};
 

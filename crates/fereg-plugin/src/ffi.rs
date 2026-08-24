@@ -1,14 +1,217 @@
 use crate::dispatch::dispatch_args;
-use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS_TEST};
+use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS};
 use crate::input::{prepare_ols_test, PreparedMatrixStoreName, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
 use fereg_core::error::{ErrorCode, FeregError};
+use std::alloc::{GlobalAlloc, Layout, System};
 use std::any::Any;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_int};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+struct TrackingAllocator;
+
+static ALLOCATION_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
+static ALLOCATION_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
+
+#[global_allocator]
+static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator;
+
+unsafe impl GlobalAlloc for TrackingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: the request is forwarded unchanged to the system allocator.
+        let pointer = unsafe { System.alloc(layout) };
+        if !pointer.is_null() {
+            record_allocation(layout.size());
+        }
+        pointer
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: the request is forwarded unchanged to the system allocator.
+        let pointer = unsafe { System.alloc_zeroed(layout) };
+        if !pointer.is_null() {
+            record_allocation(layout.size());
+        }
+        pointer
+    }
+
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        record_deallocation(layout.size());
+        // SAFETY: the pointer/layout pair came from the system allocator.
+        unsafe { System.dealloc(pointer, layout) };
+    }
+
+    unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: the pointer/layout pair and new size are forwarded unchanged.
+        let replacement = unsafe { System.realloc(pointer, layout, new_size) };
+        if !replacement.is_null() {
+            if new_size >= layout.size() {
+                record_allocation(new_size - layout.size());
+            } else {
+                record_deallocation(layout.size() - new_size);
+            }
+        }
+        replacement
+    }
+}
+
+fn record_allocation(bytes: usize) {
+    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    let current = ALLOCATION_CURRENT_BYTES
+        .fetch_add(bytes, Ordering::Relaxed)
+        .saturating_add(bytes);
+    ALLOCATION_PEAK_BYTES.fetch_max(current, Ordering::Relaxed);
+}
+
+fn record_deallocation(bytes: usize) {
+    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    let _ =
+        ALLOCATION_CURRENT_BYTES.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+            Some(current.saturating_sub(bytes))
+        });
+}
+
+pub(crate) fn reset_allocation_peak() {
+    let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
+    ALLOCATION_PEAK_BYTES.store(current, Ordering::Relaxed);
+}
+
+pub(crate) fn allocation_usage() -> (u64, u64) {
+    (
+        ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed),
+        ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed),
+    )
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn system_available_memory_bytes() -> Option<u64> {
+    parse_linux_memory_field("/proc/meminfo", "MemAvailable:", 1024)
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
+    let current = parse_linux_memory_field("/proc/self/status", "VmRSS:", 1024);
+    let peak = parse_linux_memory_field("/proc/self/status", "VmHWM:", 1024);
+    (current, peak)
+}
+
+#[cfg(target_os = "linux")]
+fn parse_linux_memory_field(path: &str, field: &str, multiplier: u64) -> Option<u64> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    let value = contents
+        .lines()
+        .find_map(|line| line.strip_prefix(field))?
+        .split_ascii_whitespace()
+        .next()?
+        .parse::<u64>()
+        .ok()?;
+    value.checked_mul(multiplier)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn system_available_memory_bytes() -> Option<u64> {
+    let page_size = apple_sysctl_u64(c"hw.pagesize")?;
+    let free = apple_sysctl_u64(c"vm.page_free_count")?;
+    let inactive = apple_sysctl_u64(c"vm.page_inactive_count").unwrap_or(0);
+    let speculative = apple_sysctl_u64(c"vm.page_speculative_count").unwrap_or(0);
+    free.checked_add(inactive)?
+        .checked_add(speculative)?
+        .checked_mul(page_size)
+}
+
+#[cfg(target_os = "macos")]
+fn apple_sysctl_u64(name: &CStr) -> Option<u64> {
+    let mut value = 0_u64;
+    let mut size = std::mem::size_of::<u64>();
+    // SAFETY: both output pointers are live for `size`, and no input value is supplied.
+    let result = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr(),
+            (&mut value as *mut u64).cast(),
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    (result == 0 && matches!(size, 4 | 8)).then_some(value)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
+    let mut current = std::mem::MaybeUninit::<libc::rusage_info_v0>::zeroed();
+    // SAFETY: `current` has the exact V0 layout and remains live for the call.
+    let current_result = unsafe {
+        libc::proc_pid_rusage(
+            libc::getpid(),
+            libc::RUSAGE_INFO_V0,
+            current.as_mut_ptr().cast(),
+        )
+    };
+    let current = (current_result == 0).then(|| {
+        // SAFETY: proc_pid_rusage initialized the V0 structure on success.
+        unsafe { current.assume_init().ri_resident_size }
+    });
+
+    let mut usage = std::mem::MaybeUninit::<libc::rusage>::zeroed();
+    // SAFETY: `usage` points to writable storage for an exact `rusage` value.
+    let peak_result = unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) };
+    let peak = (peak_result == 0).then(|| {
+        // SAFETY: getrusage initialized the structure on success; macOS reports bytes.
+        u64::try_from(unsafe { usage.assume_init().ru_maxrss }).ok()
+    });
+    (current, peak.flatten())
+}
+
+#[cfg(windows)]
+pub(crate) fn system_available_memory_bytes() -> Option<u64> {
+    use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+
+    let mut status = MEMORYSTATUSEX {
+        dwLength: u32::try_from(std::mem::size_of::<MEMORYSTATUSEX>()).ok()?,
+        ..Default::default()
+    };
+    // SAFETY: `status` is initialized with the required structure length.
+    (unsafe { GlobalMemoryStatusEx(&mut status) } != 0).then_some(status.ullAvailPhys)
+}
+
+#[cfg(windows)]
+pub(crate) fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
+    use windows_sys::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+    let mut counters = PROCESS_MEMORY_COUNTERS::default();
+    counters.cb = match u32::try_from(std::mem::size_of::<PROCESS_MEMORY_COUNTERS>()) {
+        Ok(value) => value,
+        Err(_) => return (None, None),
+    };
+    // SAFETY: the pseudo-handle is valid in this process and `counters` has its exact size.
+    let result =
+        unsafe { K32GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb) };
+    if result == 0 {
+        (None, None)
+    } else {
+        (
+            u64::try_from(counters.WorkingSetSize).ok(),
+            u64::try_from(counters.PeakWorkingSetSize).ok(),
+        )
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+pub(crate) const fn system_available_memory_bytes() -> Option<u64> {
+    None
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+pub(crate) const fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
+    (None, None)
+}
 
 #[cfg(not(test))]
 extern "C" {
@@ -445,7 +648,7 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
             prepare_ols_test(&args[1..], &sink, &mut session)
         } else if args
             .first()
-            .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS_TEST))
+            .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS))
         {
             let mut session = SpiSession::new()?;
             estimate_ols_test(&args[1..], &mut session)

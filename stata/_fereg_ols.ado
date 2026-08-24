@@ -3,7 +3,17 @@ program define _fereg_ols, eclass sortpreserve
     version 18.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
-         KEEPsingletons RESIDuals(name) XB(name) XBD(name) D(name) NOCONStant]
+         KEEPsingletons RESIDuals(name) XB(name) XBD(name) D(name) NOCONStant ///
+         MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
+         ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC]
+
+    local memory_mode = lower(strtrim(`"`memory'"'))
+    if `"`memory_mode'"' == "" local memory_mode "fast"
+    if !inlist(`"`memory_mode'"', "auto", "fast", "low") | `threads' < 0 | ///
+       `poolsize' <= 0 | `tolerance' <= 0 | `tolerance' >= 1 | `iterate' <= 0 {
+        di as error "memory(), poolsize(), tolerance(), or iterate() is invalid"
+        exit 198
+    }
 
     local weight_option
     if `"`weight'"' != "" {
@@ -52,6 +62,7 @@ program define _fereg_ols, eclass sortpreserve
     local xb_option
     local xbd_option
     local d_option
+    local memory_option `"memory(`memory_mode')"'
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
     if strtrim(`"`dof'"') != "" local dof_option `"dof(`dof')"'
     if `"`keepsingletons'"' != "" local singleton_option "keepsingletons"
@@ -64,7 +75,9 @@ program define _fereg_ols, eclass sortpreserve
     _fereg_estimate_ols `varlist' `if' `in', ///
         `absorb_option' `vce_option' `cluster_option' `dof_option' ///
         `singleton_option' `residual_option' `xb_option' `xbd_option' ///
-        `d_option' `constant_option' `weight_option'
+        `d_option' `constant_option' `weight_option' `memory_option' ///
+        poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
+        iterate(`iterate') `deterministic'
 
     local coefficient_count = e(fereg_receipt)[1,5]
     local posted_indepvars

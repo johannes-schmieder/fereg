@@ -1,3 +1,4 @@
+use crate::error::{ErrorCode, FeregError, Result};
 use crate::options::ThreadConfig;
 use std::ops::Range;
 
@@ -24,6 +25,26 @@ impl ThreadTeam {
     #[must_use]
     pub const fn deterministic(self) -> bool {
         self.deterministic
+    }
+
+    /// Run one native action inside an isolated Rayon team with the resolved
+    /// public thread count.  A per-action pool avoids process-global state, so
+    /// repeated Stata calls may select different thread counts safely.
+    pub fn install<T, F>(self, function: F) -> Result<T>
+    where
+        T: Send,
+        F: FnOnce() -> T + Send,
+    {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(self.threads)
+            .build()
+            .map_err(|error| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    format!("unable to construct fereg worker team: {error}"),
+                )
+            })?;
+        Ok(pool.install(function))
     }
 
     #[must_use]
@@ -114,5 +135,14 @@ mod tests {
         for (expected, (worker, _)) in result.into_iter().enumerate() {
             assert_eq!(expected, worker);
         }
+    }
+
+    #[test]
+    fn isolated_pool_uses_the_resolved_thread_count() {
+        let team = ThreadTeam::new(ThreadConfig::from_requested(2, true).expect("config"));
+        let observed = team
+            .install(rayon::current_num_threads)
+            .expect("isolated pool");
+        assert_eq!(observed, 2);
     }
 }

@@ -110,15 +110,57 @@ assert e(dof_table)[3,3] == 11
 assert e(dof_table)[3,4] == 1
 assert e(dof_table)[3,5] == 0
 
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm##c.time worker) vce(robust)
-assert _rc == 498
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1 [aw=aw], ///
+assert e(N) == 48
+assert e(df_m) == 0
+assert e(df_a) == 26
+assert e(df_r) == 22
+assert e(report_constant) == 1
+assert `"`e(vce)'"' == "robust"
+assert abs(e(b)[1,2] - +1.9eaaaaa000001X+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.3dc01dca03e5aX-00f) <= 1e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1 [aw=aw], ///
     absorb(firm##c.time worker)
-assert _rc == 498
-capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
+assert e(N) == 48
+assert e(df_m) == 0
+assert e(df_a) == 26
+assert e(df_r) == 22
+assert e(report_constant) == 1
+assert abs(e(b)[1,2] - +1.c8419b5995a3cX+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.189d8f3836644X-00f) <= 1e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
+    absorb(firm##c.time worker) vce(cluster cluster_a)
+assert e(N) == 48
+assert e(df_m) == 0
+assert e(df_a) == 19
+assert e(df_r) == 7
+assert e(report_constant) == 1
+assert `"`e(vce)'"' == "cluster"
+assert abs(e(b)[1,2] - +1.9eaaaaa000001X+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.da8326df3033eX-068) <= 1e-24
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm##c.time worker) dof(none)
-assert _rc == 498
+assert e(N) == 48
+assert e(df_m) == 0
+assert e(df_a) == 27
+assert e(df_r) == 21
+assert e(report_constant) == 1
+assert abs(e(b)[1,2] - +1.9eaaaaa000001X+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.4ce1a54d8a2d8X-00f) <= 1e-10
+
+_fereg_ols_hidden_numeric_v1 y c.x1, ///
+    absorb(firm##c.time worker) dof(firstpair)
+assert e(N) == 48
+assert e(df_m) == 0
+assert e(df_a) == 26
+assert e(df_r) == 22
+assert e(report_constant) == 1
+assert abs(e(b)[1,2] - +1.9eaaaaa000001X+002) <= 1e-7
+assert abs(e(V)[2,2] - +1.3dc01dca03e5aX-00f) <= 1e-10
 capture noisily _fereg_ols_hidden_numeric_v1 y c.x1, ///
     absorb(firm#c.time worker)
 assert _rc == 0

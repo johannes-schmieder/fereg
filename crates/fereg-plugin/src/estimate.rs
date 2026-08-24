@@ -1,10 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::time::Instant;
 
 use crate::input::{PreparedMatrixStoreName, SpiApi};
+use crate::instrumentation::{self, ResourceSnapshot};
 use crate::result::{
     build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind, CERTIFICATE_ROWS,
     CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
-    RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
+    RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS,
+    SUBSET_COLUMNS,
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
@@ -20,17 +23,21 @@ use fereg_core::ols::{
     prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
     CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
     OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsFitStatus,
-    PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
+    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
+    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
+    PreparedOlsUnadjustedConfig,
 };
 use fereg_core::prepare_categorical_ols_data;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
-use fereg_core::{MapConfig, PreparedCategoricalOlsData};
+use fereg_core::{
+    estimate_phase2_memory, plan_ols_memory, MapConfig, MemoryMode, MemoryPlan,
+    PreparedCategoricalOlsData, ThreadConfig,
+};
 
-pub const ACTION_ESTIMATE_OLS_TEST: &str = "estimate-ols-test";
-const CONFIRMATION: &str = "developer-estimation-test";
+pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
+const CONFIRMATION: &str = "fereg-estimation";
 const BINDING_ROW_WIDTH: usize = 3;
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
@@ -49,6 +56,7 @@ struct ResultMatrices {
     clusters: String,
     subsets: String,
     certificates: String,
+    runtime: String,
     receipt: String,
 }
 
@@ -66,6 +74,7 @@ struct PreparedResultMatrices {
     clusters: PreparedMatrixStoreName,
     subsets: PreparedMatrixStoreName,
     certificates: PreparedMatrixStoreName,
+    runtime: PreparedMatrixStoreName,
     receipt: PreparedMatrixStoreName,
 }
 
@@ -95,6 +104,9 @@ struct EstimateAction {
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
     account_cluster_nesting: bool,
+    fit: PreparedOlsFitConfig,
+    memory_plan: MemoryPlan,
+    requested_tolerance: f64,
     outputs: ObservationOutputs,
     matrices: PreparedResultMatrices,
 }
@@ -131,35 +143,50 @@ struct EstimateActionSpec {
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
     account_cluster_nesting: bool,
+    memory: MemoryMode,
+    poolsize: usize,
+    threads: usize,
+    deterministic: bool,
+    tolerance: f64,
+    iterate: usize,
     outputs: ObservationOutputs,
     matrices: ResultMatrices,
 }
 
+#[derive(Debug)]
+struct ActionObservation {
+    started: Instant,
+    resources_start: ResourceSnapshot,
+    preflight_seconds: f64,
+    input_load_seconds: f64,
+}
+
 pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+    let started = Instant::now();
+    let resources_start = instrumentation::begin_observation();
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
+    let preflight_seconds = started.elapsed().as_secs_f64();
     let loaded = load_ols_input(&action.request, spi)?;
+    let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
+    let observation = ActionObservation {
+        started,
+        resources_start,
+        preflight_seconds,
+        input_load_seconds,
+    };
     let categorical = action.request.absorbed_terms.iter().any(|term| {
         term.categorical_sources.len() > 1
             || !term.slope_sources.is_empty()
             || !term.saved_name.is_empty()
     });
-    let has_slope = action
-        .request
-        .absorbed_terms
-        .iter()
-        .any(|term| !term.slope_sources.is_empty());
-    if has_slope && action.vce != OlsVceKind::Iid {
-        return Err(unsupported(
-            "absorbed slopes are currently qualified only for iid inference",
-        ));
-    }
     match (action.vce, categorical) {
         (OlsVceKind::Iid, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsUnadjustedConfig::default()
                 },
@@ -177,13 +204,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::Iid(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Robust, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsRobustConfig::default()
                 },
@@ -201,7 +229,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::Robust(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Clustered, false) => {
             let request = OlsClusteredRequestV1 {
@@ -212,6 +240,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let inference = fit_prepared_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     account_cluster_nesting: action.account_cluster_nesting,
                     ..PreparedOlsClusteredConfig::default()
@@ -230,13 +259,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::Clustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Iid, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsUnadjustedConfig::default()
                 },
@@ -254,13 +284,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::CategoricalIid(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Robust, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
             let inference = fit_prepared_categorical_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsRobustConfig::default()
                 },
@@ -278,7 +309,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::CategoricalRobust(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Clustered, true) => {
             let request = OlsClusteredRequestV1 {
@@ -289,6 +320,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let inference = fit_prepared_categorical_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
+                    fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     account_cluster_nesting: action.account_cluster_nesting,
                     ..PreparedOlsClusteredConfig::default()
@@ -307,7 +339,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 CertifiedOlsInference::CategoricalClustered(&inference),
                 action.outputs.residual.is_some(),
             )?;
-            precommit_and_store(&action, &shadow, &derived, spi)
+            precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
     }
 }
@@ -319,13 +351,13 @@ impl EstimateActionSpec {
         handshake.validate()?;
         if handshake.protocol != ACTION_PROTOCOL_VERSION {
             return Err(protocol(format!(
-                "{ACTION_ESTIMATE_OLS_TEST} requires action protocol {}.{}",
+                "{ACTION_ESTIMATE_OLS} requires action protocol {}.{}",
                 ACTION_PROTOCOL_VERSION.major, ACTION_PROTOCOL_VERSION.minor,
             )));
         }
         if required(&values, "confirm")? != CONFIRMATION {
             return Err(unsupported(format!(
-                "{ACTION_ESTIMATE_OLS_TEST} requires confirm={CONFIRMATION}",
+                "{ACTION_ESTIMATE_OLS} requires confirm={CONFIRMATION}",
             )));
         }
         if required(&values, "plugin")? != PLUGIN_VERSION {
@@ -400,6 +432,12 @@ impl EstimateActionSpec {
             vce: parse_vce(required(&values, "vce")?)?,
             absorbed_dof: parse_dof(required(&values, "dof")?)?,
             account_cluster_nesting: parse_bool(&values, "account_cluster_nesting")?,
+            memory: MemoryMode::parse(required(&values, "memory")?)?,
+            poolsize: parse_positive_usize(&values, "poolsize")?,
+            threads: parse_usize(&values, "threads")?,
+            deterministic: parse_bool(&values, "deterministic")?,
+            tolerance: parse_positive_f64(&values, "tolerance")?,
+            iterate: parse_positive_usize(&values, "iterate")?,
             outputs: ObservationOutputs {
                 sample: parse_positive_u32(&values, "output_sample")?,
                 residual: (output_residual != 0).then_some(output_residual),
@@ -425,6 +463,7 @@ impl EstimateActionSpec {
                 clusters: required(&values, "output_cluster_matrix")?.to_owned(),
                 subsets: required(&values, "output_subset_matrix")?.to_owned(),
                 certificates: required(&values, "output_certificate_matrix")?.to_owned(),
+                runtime: required(&values, "output_runtime_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
         };
@@ -472,6 +511,12 @@ impl EstimateActionSpec {
             "vce",
             "dof",
             "account_cluster_nesting",
+            "memory",
+            "poolsize",
+            "threads",
+            "deterministic",
+            "tolerance",
+            "iterate",
             "output_sample",
             "output_residual",
             "output_drop_reason",
@@ -492,13 +537,14 @@ impl EstimateActionSpec {
             "output_cluster_matrix",
             "output_subset_matrix",
             "output_certificate_matrix",
+            "output_runtime_matrix",
             "output_receipt_matrix",
         ];
         for key in values.keys() {
             if !ALLOWED.contains(&key.as_str()) {
-                return Err(syntax(format!(
-                    "unknown {ACTION_ESTIMATE_OLS_TEST} field {key}",
-                )));
+                return Err(syntax(
+                    format!("unknown {ACTION_ESTIMATE_OLS} field {key}",),
+                ));
             }
         }
         Ok(())
@@ -566,15 +612,6 @@ impl EstimateActionSpec {
                 || !term.slope_sources.is_empty()
                 || !term.saved_name.is_empty()
         });
-        let has_slope = request
-            .absorbed_terms
-            .iter()
-            .any(|term| !term.slope_sources.is_empty());
-        if has_slope && self.vce != OlsVceKind::Iid {
-            return Err(unsupported(
-                "absorbed slopes are currently qualified only for iid inference",
-            ));
-        }
         let prepared_model = if categorical {
             // Validate the original tuple identities and guarded categorical
             // intercept/one-slope contract before any observation read. The
@@ -616,6 +653,38 @@ impl EstimateActionSpec {
                     .checked_add(usize::from(term.intercept) + term.slope_sources.len())
                     .ok_or_else(|| allocation("extended absorbed-effect row count overflows"))
             })?;
+        let memory_estimate = estimate_phase2_memory(
+            spi.nobs()?,
+            prepared_model.columns.len(),
+            extended_fe_rows,
+            clusters.len(),
+            self.poolsize,
+        )?;
+        let memory_plan =
+            plan_ols_memory(self.memory, memory_estimate, imposed_memory_limit_bytes()?)?;
+        let default_fit = PreparedOlsFitConfig::default();
+        let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+        let fit = PreparedOlsFitConfig {
+            map: MapConfig {
+                tolerance: self.tolerance,
+                max_iterations: self.iterate,
+                ..default_fit.map
+            },
+            execution: PreparedOlsExecutionConfig {
+                mode: match memory_plan.selected {
+                    MemoryMode::Fast => PreparedOlsExecutionMode::Fast,
+                    MemoryMode::Low => PreparedOlsExecutionMode::Low,
+                    MemoryMode::Auto => {
+                        return Err(invalid(
+                            "memory preflight returned unresolved automatic mode",
+                        ));
+                    }
+                },
+                poolsize: self.poolsize,
+                threads: thread_config,
+            },
+            ..default_fit
+        };
         if self.outputs.saved_channels.len() != extended_fe_rows {
             return Err(invalid(
                 "saved fixed-effect output layout differs from extended absorbed channels",
@@ -659,6 +728,9 @@ impl EstimateActionSpec {
             vce: self.vce,
             absorbed_dof: self.absorbed_dof,
             account_cluster_nesting: self.account_cluster_nesting,
+            fit,
+            memory_plan,
+            requested_tolerance: self.tolerance,
             outputs: self.outputs.clone(),
             matrices,
         })
@@ -688,12 +760,12 @@ fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>
 }
 
 fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
-    const MAX_FIELDS: usize = 64;
+    const MAX_FIELDS: usize = 80;
     let bytes = bundle.as_bytes();
     let (count, mut cursor) = parse_bundle_decimal(bytes, 0, "field count")?;
     if count == 0 || count > MAX_FIELDS {
         return Err(syntax(
-            "guarded OLS bundle field count must be between one and 64",
+            "guarded OLS bundle field count must be between one and 80",
         ));
     }
     let mut fields = reserved_empty(count, "guarded OLS bundle fields")?;
@@ -1221,12 +1293,129 @@ fn precommit_and_store(
     action: &EstimateAction,
     shadow: &OlsShadowResult<'_>,
     derived: &DerivedObservationOutputs,
+    observation: &ActionObservation,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
+    let expected_mode = match action.memory_plan.selected {
+        MemoryMode::Fast => PreparedOlsExecutionMode::Fast,
+        MemoryMode::Low => PreparedOlsExecutionMode::Low,
+        MemoryMode::Auto => {
+            return Err(invalid(
+                "memory preflight retained an unresolved automatic mode",
+            ));
+        }
+    };
+    if shadow.execution.mode != expected_mode
+        || shadow.execution.poolsize != action.fit.execution.poolsize
+        || shadow.execution.requested_threads
+            != action
+                .fit
+                .execution
+                .threads
+                .requested
+                .map_or(0, |value| value.get())
+        || shadow.execution.effective_threads != action.fit.execution.threads.resolved()
+        || shadow.execution.deterministic != action.fit.execution.threads.deterministic
+        || (shadow.execution.scratch_bytes > 0)
+            != (expected_mode == PreparedOlsExecutionMode::Low
+                && action.memory_plan.estimate.recommended_poolsize > 0)
+    {
+        return Err(invalid(
+            "native OLS execution report disagrees with memory preflight",
+        ));
+    }
+    let runtime = build_runtime_shadow(action, shadow, observation)?;
     validate_shadow_against_outputs(action, shadow)?;
     validate_derived_against_outputs(action, shadow, derived)?;
+    validate_defined_value_table(&runtime, "OLS runtime shadow")?;
     spi.check_interrupted()?;
-    store_shadow(action, shadow, derived, spi)
+    store_shadow(action, shadow, derived, &runtime, spi)
+}
+
+fn build_runtime_shadow(
+    action: &EstimateAction,
+    shadow: &OlsShadowResult<'_>,
+    observation: &ActionObservation,
+) -> Result<Vec<f64>> {
+    let resources = instrumentation::snapshot();
+    let total_seconds = observation.started.elapsed().as_secs_f64();
+    let native_seconds =
+        (total_seconds - observation.preflight_seconds - observation.input_load_seconds).max(0.0);
+    let allocation_peak_delta = resources
+        .allocation_peak_bytes
+        .saturating_sub(observation.resources_start.allocation_current_bytes);
+    let selected_bytes = action.memory_plan.selected_bytes();
+    let modeled_allocation_ratio =
+        (selected_bytes > 0).then_some(allocation_peak_delta as f64 / selected_bytes as f64);
+    let rss_delta = match (
+        observation.resources_start.rss_current_bytes,
+        resources.rss_current_bytes,
+    ) {
+        (Some(start), Some(end)) => Some(end as f64 - start as f64),
+        _ => None,
+    };
+    let effective_tolerance = action.fit.map.tolerance;
+    let rows = [
+        Some(memory_mode_code(action.memory_plan.requested)),
+        Some(memory_mode_code(action.memory_plan.selected)),
+        Some(action.fit.execution.poolsize as f64),
+        Some(action.memory_plan.estimate.fast_bytes as f64),
+        Some(action.memory_plan.estimate.low_bytes as f64),
+        action.memory_plan.available_bytes.map(|value| value as f64),
+        Some(action.memory_plan.safety_headroom_bytes as f64),
+        action.memory_plan.usable_bytes.map(|value| value as f64),
+        Some(shadow.execution.scratch_bytes as f64),
+        Some(observation.resources_start.allocation_current_bytes as f64),
+        Some(resources.allocation_current_bytes as f64),
+        Some(resources.allocation_peak_bytes as f64),
+        Some(allocation_peak_delta as f64),
+        observation
+            .resources_start
+            .rss_current_bytes
+            .map(|value| value as f64),
+        resources.rss_current_bytes.map(|value| value as f64),
+        observation
+            .resources_start
+            .rss_peak_bytes
+            .map(|value| value as f64),
+        resources.rss_peak_bytes.map(|value| value as f64),
+        Some(observation.preflight_seconds),
+        Some(observation.input_load_seconds),
+        Some(native_seconds),
+        Some(total_seconds),
+        Some(action.requested_tolerance),
+        Some(effective_tolerance),
+        Some(action.fit.map.max_iterations as f64),
+        Some(selected_bytes as f64),
+        modeled_allocation_ratio,
+        rss_delta,
+        Some(shadow.execution.requested_threads as f64),
+        Some(shadow.execution.effective_threads as f64),
+        Some(if shadow.execution.deterministic {
+            1.0
+        } else {
+            0.0
+        }),
+    ];
+    let mut runtime = reserved_filled(RUNTIME_ROWS * 2, 0.0, "OLS runtime shadow")?;
+    for (row, value) in rows.into_iter().enumerate() {
+        if let Some(value) = value {
+            if !value.is_finite() {
+                return Err(invalid("OLS runtime observation is nonfinite"));
+            }
+            runtime[row * 2] = 1.0;
+            runtime[row * 2 + 1] = value;
+        }
+    }
+    Ok(runtime)
+}
+
+const fn memory_mode_code(mode: MemoryMode) -> f64 {
+    match mode {
+        MemoryMode::Fast => 1.0,
+        MemoryMode::Low => 2.0,
+        MemoryMode::Auto => 3.0,
+    }
 }
 
 fn validate_derived_against_outputs(
@@ -1629,6 +1818,7 @@ fn store_shadow(
     action: &EstimateAction,
     shadow: &OlsShadowResult<'_>,
     derived: &DerivedObservationOutputs,
+    runtime: &[f64],
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
     let mut retained_cursor = 0_usize;
@@ -1737,6 +1927,7 @@ fn store_shadow(
         2,
         &shadow.certificates,
     )?;
+    store_matrix(spi, &action.matrices.runtime, RUNTIME_ROWS, 2, runtime)?;
     for column in 1..RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,
@@ -1890,6 +2081,7 @@ fn validate_layout(
             CERTIFICATE_ROWS,
             2,
         )?,
+        runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 2)?,
         receipt: PreparedMatrixStoreName::try_new(&matrices.receipt, 1, RECEIPT_COLUMNS)?,
     };
     let result_matrices = [
@@ -1937,6 +2129,7 @@ fn validate_layout(
             SUBSET_COLUMNS,
         ),
         (prepared_matrices.certificates.as_str(), CERTIFICATE_ROWS, 2),
+        (prepared_matrices.runtime.as_str(), RUNTIME_ROWS, 2),
         (prepared_matrices.receipt.as_str(), 1, RECEIPT_COLUMNS),
     ];
     let mut names = BTreeSet::new();
@@ -2220,6 +2413,43 @@ fn parse_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
         .map_err(|_| syntax(format!("field {key} must be an unsigned integer")))
 }
 
+fn parse_positive_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
+    let value = parse_usize(values, key)?;
+    if value == 0 {
+        Err(syntax(format!("field {key} must be positive")))
+    } else {
+        Ok(value)
+    }
+}
+
+fn parse_positive_f64(values: &BTreeMap<String, String>, key: &str) -> Result<f64> {
+    let value = required(values, key)?
+        .parse::<f64>()
+        .map_err(|_| syntax(format!("field {key} must be numeric")))?;
+    if value.is_finite() && value > 0.0 && value < 1.0 {
+        Ok(value)
+    } else {
+        Err(syntax(format!("field {key} must be finite and in (0,1)")))
+    }
+}
+
+fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
+    let Some(value) = std::env::var_os("FEREG_MEMORY_LIMIT_BYTES") else {
+        return Ok(instrumentation::system_available_memory_bytes());
+    };
+    let value = value
+        .to_str()
+        .ok_or_else(|| syntax("FEREG_MEMORY_LIMIT_BYTES is not UTF-8"))?;
+    let bytes = value
+        .parse::<u128>()
+        .map_err(|_| syntax("FEREG_MEMORY_LIMIT_BYTES must be an unsigned integer"))?;
+    if bytes == 0 {
+        Err(syntax("FEREG_MEMORY_LIMIT_BYTES must be positive"))
+    } else {
+        Ok(Some(bytes))
+    }
+}
+
 fn parse_u16(values: &BTreeMap<String, String>, key: &str) -> Result<u16> {
     required(values, key)?
         .parse::<u16>()
@@ -2470,7 +2700,8 @@ mod tests {
             "RCLUSTER" => 10,
             "RSUBSET" => 11,
             "RCERT" => 12,
-            "RREC" => 13,
+            "RRUNTIME" => 13,
+            "RREC" => 14,
             _ => panic!("unprepared test matrix-store name {name:?}"),
         }
     }
@@ -2587,6 +2818,14 @@ mod tests {
             drop_reasons: &[],
             retained_rows: &[],
             residuals: &[],
+            execution: fereg_core::PreparedOlsExecutionReport {
+                mode: PreparedOlsExecutionMode::Fast,
+                poolsize: 10,
+                scratch_bytes: 0,
+                requested_threads: 1,
+                effective_threads: 1,
+                deterministic: true,
+            },
         }
     }
 
@@ -2667,6 +2906,7 @@ mod tests {
             ("RCLUSTER".to_owned(), zero_matrix(1, CLUSTER_COLUMNS)),
             ("RSUBSET".to_owned(), zero_matrix(1, SUBSET_COLUMNS)),
             ("RCERT".to_owned(), zero_matrix(CERTIFICATE_ROWS, 2)),
+            ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 2)),
             ("RREC".to_owned(), zero_matrix(1, RECEIPT_COLUMNS)),
         ]);
         let mut data = BTreeMap::new();
@@ -2745,6 +2985,12 @@ mod tests {
             ),
             "dof=pairwise".to_owned(),
             format!("account_cluster_nesting={}", usize::from(clustered)),
+            "memory=fast".to_owned(),
+            "poolsize=10".to_owned(),
+            "threads=1".to_owned(),
+            "deterministic=1".to_owned(),
+            "tolerance=1e-8".to_owned(),
+            "iterate=16000".to_owned(),
             format!("output_sample={sample_position}"),
             format!("output_residual={residual_position}"),
             format!("output_drop_reason={reason_position}"),
@@ -2765,6 +3011,7 @@ mod tests {
             "output_cluster_matrix=RCLUSTER".to_owned(),
             "output_subset_matrix=RSUBSET".to_owned(),
             "output_certificate_matrix=RCERT".to_owned(),
+            "output_runtime_matrix=RRUNTIME".to_owned(),
             "output_receipt_matrix=RREC".to_owned(),
         ];
         (
@@ -2992,8 +3239,86 @@ mod tests {
                 .all(|value| value.is_finite()));
             assert_eq!(
                 spi.stores.last(),
-                Some(&StoreEvent::Matrix(13, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
+                Some(&StoreEvent::Matrix(14, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
+        }
+    }
+
+    #[test]
+    fn low_memory_execution_matches_fast_across_inference_modes() {
+        for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
+            let (fast_args, mut fast_spi) = fixture(kind);
+            estimate_ols_test(&fast_args, &mut fast_spi).expect("fast estimate succeeds");
+
+            let (mut low_args, mut low_spi) = fixture(kind);
+            replace_argument(&mut low_args, "memory", "memory=low".to_owned());
+            replace_argument(&mut low_args, "poolsize", "poolsize=1".to_owned());
+            estimate_ols_test(&low_args, &mut low_spi).expect("low estimate succeeds");
+
+            for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
+                let fast = &fast_spi.matrices[matrix];
+                let low = &low_spi.matrices[matrix];
+                assert_eq!(fast.len(), low.len(), "{matrix} row count");
+                for (fast_row, low_row) in fast.iter().zip(low) {
+                    assert_eq!(fast_row.len(), low_row.len(), "{matrix} column count");
+                    for (fast_value, low_value) in fast_row.iter().zip(low_row) {
+                        let scale = 1.0_f64.max(fast_value.abs()).max(low_value.abs());
+                        assert!(
+                            (fast_value - low_value).abs() <= 5e-11 * scale,
+                            "{matrix}: fast={fast_value}, low={low_value}"
+                        );
+                    }
+                }
+            }
+            assert_eq!(fast_spi.receipt_complete(), 1.0);
+            assert_eq!(low_spi.receipt_complete(), 1.0);
+            let fast_observations = fast_spi
+                .stores
+                .iter()
+                .take_while(|event| matches!(event, StoreEvent::Numeric(..)));
+            let low_observations = low_spi
+                .stores
+                .iter()
+                .take_while(|event| matches!(event, StoreEvent::Numeric(..)));
+            for (fast_event, low_event) in fast_observations.zip(low_observations) {
+                match (fast_event, low_event) {
+                    (
+                        StoreEvent::Numeric(fast_variable, fast_observation, fast_value),
+                        StoreEvent::Numeric(low_variable, low_observation, low_value),
+                    ) => {
+                        assert_eq!(
+                            (fast_variable, fast_observation),
+                            (low_variable, low_observation)
+                        );
+                        let scale = 1.0_f64.max(fast_value.abs()).max(low_value.abs());
+                        assert!((fast_value - low_value).abs() <= 5e-11 * scale);
+                    }
+                    _ => unreachable!("observation prefix contains only numeric stores"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn deterministic_thread_counts_preserve_scientific_results_and_are_reported() {
+        for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
+            let (single_args, mut single_spi) = fixture(kind);
+            estimate_ols_test(&single_args, &mut single_spi).expect("single-thread estimate");
+
+            let (mut parallel_args, mut parallel_spi) = fixture(kind);
+            replace_argument(&mut parallel_args, "threads", "threads=2".to_owned());
+            estimate_ols_test(&parallel_args, &mut parallel_spi).expect("parallel estimate");
+
+            for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
+                assert_eq!(
+                    single_spi.matrices[matrix], parallel_spi.matrices[matrix],
+                    "{matrix} differs by thread count"
+                );
+            }
+            assert_eq!(parallel_spi.matrices["RRUNTIME"][27], vec![1.0, 2.0]);
+            assert_eq!(parallel_spi.matrices["RRUNTIME"][28], vec![1.0, 2.0]);
+            assert_eq!(parallel_spi.matrices["RRUNTIME"][29], vec![1.0, 1.0]);
+            assert_eq!(parallel_spi.receipt_complete(), 1.0);
         }
     }
 
@@ -3026,7 +3351,7 @@ mod tests {
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(
             spi.stores.last(),
-            Some(&StoreEvent::Matrix(13, 1, RECEIPT_COMPLETE_COLUMN, 1.0)),
+            Some(&StoreEvent::Matrix(14, 1, RECEIPT_COMPLETE_COLUMN, 1.0)),
         );
     }
 
@@ -3153,6 +3478,17 @@ mod tests {
         ] {
             assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
         }
+        for runtime in [&ordinary.matrices["RRUNTIME"], &packed.matrices["RRUNTIME"]] {
+            assert_eq!(runtime[0], [1.0, 1.0]);
+            assert_eq!(runtime[1], [1.0, 1.0]);
+            assert_eq!(runtime[2], [1.0, 10.0]);
+            assert_eq!(runtime[21], [1.0, 1e-8]);
+            assert_eq!(runtime[22], [1.0, 1e-8]);
+            assert_eq!(runtime[23], [1.0, 16_000.0]);
+            assert!(runtime
+                .iter()
+                .all(|row| matches!(row[0], 0.0 | 1.0) && row[1].is_finite()));
+        }
         for row in 0..SOLVER_ROWS {
             for column in 0..SOLVER_COLUMNS {
                 if !matches!(column, 8 | 9) {
@@ -3203,7 +3539,7 @@ mod tests {
 
         let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
         let mut mixed = bundled(&args);
-        mixed.push("ado=0.1.0-phase01".to_owned());
+        mixed.push("ado=0.9.0".to_owned());
         let error = estimate_ols_test(&mixed, &mut mixed_spi)
             .expect_err("mixed bundle and argv are rejected");
         assert_eq!(error.code, ErrorCode::Syntax);
@@ -3216,7 +3552,7 @@ mod tests {
         let (args, mut successful) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
         let total_stores = successful.store_calls;
-        assert_eq!(total_stores, 222);
+        assert_eq!(total_stores, 282);
         assert_eq!(successful.stores.capacity(), 512);
 
         for failing_ordinal in 1..=total_stores {

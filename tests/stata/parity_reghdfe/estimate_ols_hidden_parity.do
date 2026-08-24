@@ -24,9 +24,9 @@ assert `"`e(model)'"' == "ols"
 assert `"`e(depvar)'"' == "y"
 assert `"`e(indepvars)'"' == "x1 x2"
 assert `"`e(vce)'"' == "ols"
-assert `"`e(fereg_action_protocol)'"' == "1.1"
+assert `"`e(fereg_action_protocol)'"' == "1.2"
 assert `"`e(fereg_model_wire)'"' == "2.1"
-assert `"`e(fereg_result_wire)'"' == "1.1"
+assert `"`e(fereg_result_wire)'"' == "1.2"
 assert e(fereg_receipt)[1,1] == 5354601
 assert e(fereg_receipt)[1,4] == 1
 assert e(fereg_receipt)[1,16] == 1
@@ -140,12 +140,12 @@ assert e(fereg_certificate)[26,2] == 1
 assert e(fereg_certificate)[27,2] == 1
 assert e(fereg_certificate)[28,2] < 0
 assert e(fereg_certificate)[29,2] == 0
-assert e(V)[1,1] == +1.0202f479f358fX-005
-assert e(V)[1,2] == -1.2c7938ea4f98dX-007
-assert e(V)[2,1] == -1.2c7938ea4f98dX-007
-assert e(V)[2,2] == +1.5ddecfdb9c14bX-009
-assert det(e(V)) == -1.b7ee8115e0f3cX-01b
-assert e(fereg_certificate)[31,2] == -1.b7ee8115e0f3cX-01b
+assert e(V)[1,1] == +1.0202f53f9fd93X-005
+assert e(V)[1,2] == -1.2c7939cef68e3X-007
+assert e(V)[2,1] == -1.2c7939cef68e3X-007
+assert e(V)[2,2] == +1.5dded0e415712X-009
+assert det(e(V)) == -1.b7ee825ec19fdX-01b
+assert e(fereg_certificate)[31,2] == -1.b7ee825ec19fdX-01b
 assert abs(e(V)[1,1] - +1.0202f4787935bX-005) <= 2e-6
 assert abs(e(V)[1,2] - -1.2c88da1cac911X-007) <= 2e-6
 assert abs(e(V)[2,2] - +1.5e0658149d738X-009) <= 2e-6
@@ -162,12 +162,12 @@ assert e(fereg_certificate)[26,2] == 1
 assert e(fereg_certificate)[27,2] == 1
 assert e(fereg_certificate)[28,2] < 0
 assert e(fereg_certificate)[29,2] == 0
-assert e(V)[1,1] == +1.337c145ab7e50X-006
-assert e(V)[1,2] == -1.6a2d71c410628X-008
-assert e(V)[2,1] == -1.6a2d71c410628X-008
-assert e(V)[2,2] == +1.aa6d2b8b31611X-00a
-assert det(e(V)) == -1.a79e7840b02b9X-01b
-assert e(fereg_certificate)[31,2] == -1.a79e7840b02b9X-01b
+assert e(V)[1,1] == +1.337c1601e503aX-006
+assert e(V)[1,2] == -1.6a2d73734b664X-008
+assert e(V)[2,1] == -1.6a2d73734b664X-008
+assert e(V)[2,2] == +1.aa6d2d3865d7aX-00a
+assert det(e(V)) == -1.a79e7644cecccX-01b
+assert e(fereg_certificate)[31,2] == -1.a79e7644cecccX-01b
 assert abs(e(V)[1,1] - +1.337c143e3831eX-006) <= 4e-6
 assert abs(e(V)[1,2] - -1.6a5e0063700aaX-008) <= 4e-6
 assert abs(e(V)[2,2] - +1.aae99ff9c51f2X-00a) <= 4e-6
