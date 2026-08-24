@@ -1,4 +1,4 @@
-name: Clarify stfeols candidate and final gates
+name: Reconcile STATUS with option A absorbed-slope decision
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  clarify:
+  reconcile:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -17,7 +17,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Patch the agent contract without retriggering the licensed driver
+      - name: Reconcile the sole mutable progress record
         shell: bash
         run: |
           set -euo pipefail
@@ -25,36 +25,159 @@ jobs:
           /usr/bin/python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('.github/stfeols_completion_prompt.md')
+          path = Path('STATUS.md')
           text = path.read_text(encoding='utf-8')
-          anchor = '''8. Never claim completion based only on unit tests. Completion must be encoded in a strict
-   machine-verifiable `ci/check_stfeols_completion.py` gate that independently checks the
-   public command, full frozen projection, exact-green licensed-Stata/Rust receipt, release
-   fail-closed boundaries for PPML, and the registered performance/RSS evidence.
+
+          # A completed option-A gate may have raced this one-shot patch. In that
+          # case leave its newer exact-green status untouched.
+          if 'signed-DoF publication was removed' in text or 'positive-DoF absorbed-slope fixture' in text:
+              Path('.github/workflows/clarify-stfeols-completion-gates.yml').unlink()
+              raise SystemExit(0)
+
+          replacements = [
+              (
+                  '**Branch / baseline:** consolidated `main`; latest accepted exact-green source `6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1`',
+                  '**Branch / baseline:** consolidated `main`; latest scientifically accepted exact-green source `f61fee923db2bd3544d457dfe50de8117d27adda`; the later signed-DoF checkpoint is superseded by option A',
+              ),
+              (
+                  '**Active milestone:** implement the remaining frozen OLS blockers in manifest order, next `slope_only_multiple`',
+                  '**Active milestone:** correct `intercept_and_slope` under option A: positive residual DoF, no signed-DoF publication; later blockers are paused',
+              ),
+          ]
+          for old, new in replacements:
+              if old in text:
+                  text = text.replace(old, new, 1)
+              elif new not in text:
+                  raise SystemExit(f'missing STATUS anchor: {old}')
+
+          signed_bullet = '''- The frozen 40-case hidden OLS partition is expanded and resealed at source
+  `6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1`: all 32 executable cases pass
+  against the pinned comparator, the eight unsupported cases remain explicit
+  blockers, and the identical staged plugin passed fake-SPI/actual-loader store
+  failure sweeps plus licensed-Stata parity, rollback, and actual-Break gates.
+  The canonical receipt is
+  `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T114506Z-6bbe04d`.
+  Its full `multi_fe_interactions` case binds the final eight-row sample,
+  ten-coordinate omission axis, `df_m=1`, `df_a=6`, `df_r=1`, exact absorbed
+  identities, reference `e(indepvars)`, iid covariance, and mandatory native
+  certificates. Its new `intercept_and_slope` case binds the sample, omission
+  axis, signed `df_r=-2`, `df_a=26`, negative pinned iid constant covariance,
+  three-row absorbed-DoF metadata including the inexact slope-count flag, and
+  all native certificates. Independent explicit-dummy evidence separately
+  establishes actual design rank 22, positive mathematical residual DoF 2,
+  residuals, and RSS `.02`.
 '''
-          replacement = '''8. Never claim completion based only on unit tests. Completion must be encoded in a strict
-   machine-verifiable `ci/check_stfeols_completion.py` gate with two explicit modes:
-   - with no `--receipt`, it is the candidate gate and must check the enabled public command,
-     40/40 frozen projection, independent oracles, rollback/Break and binary/identity gates,
-     an exact-green quick licensed-Stata/Rust receipt for the current candidate, the registered
-     performance/RSS evidence, and fail-closed PPML boundaries;
-   - with `--receipt PATH`, it is the final gate and must additionally require a successful
-     full-profile licensed-Stata/Rust receipt bound to that candidate source, allowing only
-     subsequent evidence/status commits.
-   The final full run necessarily occurs only after the candidate gate is green; do not create
-   a circular requirement that makes the no-argument candidate gate demand its future full
-   receipt.
+          option_a_bullet = '''- The later source `6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1` and its
+  `20260824T114506Z-6bbe04d` receipt are mechanically exact-green historical
+  evidence, but their signed `df_r=-2` and negative iid covariance are no
+  longer an accepted StFixest success contract. Johannes selected option A on
+  2026-08-24. The active corrective gate preserves the certified slope solver,
+  replaces the semantic case with a dedicated positive-DoF synthetic fixture,
+  removes the signed result path, and retains the old 24-row construction as a
+  separate fail-closed insufficient-observations/transaction oracle. Until
+  that gate is recaptured and exact-green, the scientifically accepted frozen
+  projection remains the 31-executable/9-blocked source `f61fee923db2bd3544d457dfe50de8117d27adda`.
 '''
-          if anchor in text:
-              text = text.replace(anchor, replacement)
-          elif replacement not in text:
-              raise SystemExit('completion-gate contract anchor is not unique')
+          if signed_bullet in text:
+              text = text.replace(signed_bullet, option_a_bullet, 1)
+          elif option_a_bullet not in text:
+              raise SystemExit('missing signed checkpoint STATUS bullet')
+
+          old_checkpoint = '''The exact pinned offline reference environment, categorical differentials,
+final-sample rebase, independent explicit-dummy oracles, full licensed-Stata
+profile, universal plugin audit/loader, and expanded frozen projection are
+source-bound and successful. The active 32-executable/8-blocked receipt is
+sealed at exact source `6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1`;
+public activation and performance claims are both false.
+
+The next formally required gate is the frozen `slope_only_multiple` case.
+It must preserve sample, weight, solver-certificate, absorbed/residual DoF,
+VCE, omission, allocation, and transaction contracts and must have an
+independent explicit-dummy oracle before it may move from blocker to
+executable. Public dispatch stays disabled.
+'''
+          new_checkpoint = '''The exact pinned offline reference environment, categorical differentials,
+final-sample rebase, independent explicit-dummy oracles, full licensed-Stata
+profile, universal plugin audit/loader, and 31-case projection remain accepted.
+The later 32-case signed-DoF receipt is historical only after Johannes selected
+option A. Public activation and performance claims remain false.
+
+The formally required gate is again `intercept_and_slope`: preserve its
+allocation-bounded certified solver, remove all signed residual-DoF/covariance
+publication, bind the same command shape to a dedicated positive-DoF synthetic
+fixture, recapture the exact pinned reference, and prove the old over-absorbed
+24-row design fails closed without a completed native/Stata transaction. Do not
+advance `slope_only_multiple` before this corrective gate is exact-green.
+'''
+          if old_checkpoint in text:
+              text = text.replace(old_checkpoint, new_checkpoint, 1)
+          elif new_checkpoint not in text:
+              raise SystemExit('missing active checkpoint STATUS anchor')
+
+          old_resume = '''Implement and qualify the frozen `slope_only_multiple` blocker. Do not advance
+to strings, time-series materialization, iweights, continuous-slope DoF, saved
+outputs, or public postestimation until that exact case is independently and
+receipt-bound green.
+'''
+          new_resume = '''Complete and qualify the option-A correction for `intercept_and_slope`.
+`SCIENTIFIC_QUESTION.md` is authoritative. Do not change later blockers,
+public dispatch, performance claims, or PPML while this correction is pending.
+'''
+          if old_resume in text:
+              text = text.replace(old_resume, new_resume, 1)
+          elif new_resume not in text:
+              raise SystemExit('missing resume STATUS anchor')
+
+          old_inventory = '''The active sealed candidate executes 32 of the frozen 40 semantic cases. These
+eight cases remain formally open:
+
+1. `slope_only_multiple` — multiple absorbed slope-only terms.
+2. `string_fe` — string-source ingestion.
+3. `time_series_lag` — Stata time-series materialization.
+4. `time_series_lead_difference_gaps` — time-series materialization across gaps.
+5. `iweight_probe` — importance-weight semantics.
+6. `dof_continuous` — absorbed continuous-slope DoF.
+7. `saved_outputs` — recovered/saved fixed-effect outputs.
+8. `postestimation_test_summarize` — public postestimation.
+'''
+          new_inventory = '''Under the accepted option-A policy, 31 of the frozen 40 semantic cases are
+currently accepted and nine remain formally open:
+
+1. `intercept_and_slope` — positive-DoF fixture and fail-closed over-absorption correction.
+2. `slope_only_multiple` — multiple absorbed slope-only terms.
+3. `string_fe` — string-source ingestion.
+4. `time_series_lag` — Stata time-series materialization.
+5. `time_series_lead_difference_gaps` — time-series materialization across gaps.
+6. `iweight_probe` — importance-weight semantics.
+7. `dof_continuous` — absorbed continuous-slope DoF.
+8. `saved_outputs` — recovered/saved fixed-effect outputs.
+9. `postestimation_test_summarize` — public postestimation.
+'''
+          if old_inventory in text:
+              text = text.replace(old_inventory, new_inventory, 1)
+          elif new_inventory not in text:
+              raise SystemExit('missing blocker inventory STATUS anchor')
+
+          old_order = '''Current order of operations: implement the remaining frozen blockers and then
+the public parser/prediction/saved-output/postestimation surface in manifest
+order, starting with `slope_only_multiple`. Historical bullets below remain
+useful detail but do not supersede this order.
+'''
+          new_order = '''Current order of operations: finish the option-A `intercept_and_slope`
+correction, then resume the remaining frozen blockers and public surface in
+manifest order. Historical bullets below do not supersede this order.
+'''
+          if old_order in text:
+              text = text.replace(old_order, new_order, 1)
+          elif new_order not in text:
+              raise SystemExit('missing next-evidence STATUS anchor')
+
           path.write_text(text, encoding='utf-8')
           Path('.github/workflows/clarify-stfeols-completion-gates.yml').unlink()
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "docs(stfeols): distinguish candidate and final gates [skip ci]"
+          git commit -m "docs(ols): reconcile live status with option A [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
