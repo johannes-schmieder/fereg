@@ -3,6 +3,8 @@ name: Dispatch option A source correction once
 on:
   issues:
     types: [opened]
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   actions: write
@@ -13,7 +15,8 @@ jobs:
   dispatch:
     if: >-
       github.repository == 'johannes-schmieder/StFixest' &&
-      github.event.issue.title == 'INTERNAL: dispatch option A source correction'
+      (github.event_name == 'schedule' ||
+       github.event.issue.title == 'INTERNAL: dispatch option A source correction')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -37,7 +40,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
           git pull --ff-only origin main
@@ -47,4 +49,4 @@ jobs:
           git add .github/workflows/dispatch-option-a-source-correction.yml
           git commit -m "ci(dev): remove one-shot option A dispatcher [skip ci]"
           git push origin HEAD:main
-          gh issue close "$ISSUE_NUMBER" --repo "$REPOSITORY" --reason completed
+          gh issue close 14 --repo "$REPOSITORY" --reason completed || true
