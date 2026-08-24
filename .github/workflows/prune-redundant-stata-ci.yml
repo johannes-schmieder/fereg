@@ -1,0 +1,61 @@
+name: Prune redundant workflow-only Stata CI runs
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/prune-redundant-stata-ci.yml"]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Cancel only workflow-infrastructure Stata runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run list --workflow stata-ci.yml --limit 100 \
+            --json databaseId,status,headSha,event \
+            --jq '.[] | select(.status == "queued" or .status == "in_progress") | [.databaseId,.headSha,.event] | @tsv' |
+          while IFS=$'\t' read -r run_id sha event; do
+            test -n "$run_id" || continue
+            git fetch origin "$sha" --quiet || continue
+            parent="$(git rev-parse "$sha^")"
+            mapfile -t paths < <(git diff --name-only "$parent" "$sha")
+            test "${#paths[@]}" -gt 0 || continue
+            workflow_only=1
+            for path in "${paths[@]}"; do
+              case "$path" in
+                .github/workflows/*|.github/stfeols_completion_prompt.md|.ci/stfeols-agent-state.json|.ci/stata/results/*|.ci/stata/latest.json)
+                  ;;
+                *)
+                  workflow_only=0
+                  break
+                  ;;
+              esac
+            done
+            if test "$workflow_only" = 1; then
+              gh run cancel "$run_id" || true
+            fi
+          done
+      - name: Remove one-shot queue pruner
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/prune-redundant-stata-ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci: remove redundant-run pruner [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
