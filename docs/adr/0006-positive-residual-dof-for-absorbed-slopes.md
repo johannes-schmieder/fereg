@@ -52,13 +52,12 @@ scientific contract.
 
 ## Consequences
 
-- `f61fee923db2bd3544d457dfe50de8117d27adda` remains the latest accepted
-  exact-green source under this policy until the option-A correction receives
-  new exact-SHA Rust and licensed-Stata evidence.
+- `e4d807239e46974b3f5da6ff71f3ec5751eee3e1` is the accepted exact-green
+  option-A source. Its exact quick and full receipts both record Rust and
+  licensed-Stata success with zero return codes.
 - The signed-DoF commits and their receipts remain immutable historical
   evidence but cannot be used as active acceptance evidence.
-- `ci/source-transforms/apply_option_a_absorbed_slope.py` is a guarded migration
-  aid, not an acceptance artifact. It must be reviewed, applied locally, tested,
-  and deleted once its coherent source correction is committed.
+- The guarded `apply_option_a_absorbed_slope.py` migration was reviewed,
+  applied, tested, and deleted. Repository checks reject its reintroduction.
 - Documentation or code that still describes signed residual DoF or negative
   iid variance as an accepted success path is superseded by this ADR.

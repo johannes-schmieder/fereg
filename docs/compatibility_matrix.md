@@ -5,11 +5,11 @@
 This is a target contract, not a public implementation claim. `fereg` still
 returns `r(498)`.
 
-The active option-A source projects 32 executable/8 blocked hidden cases and
-binds the newly resealed positive-DoF comparator. Signed-residual-DoF slope
-receipts are historical only. Acceptance still requires this source's own
-reachable exact-SHA Rust and licensed-Stata receipts; `STATUS.md` is not
-advanced by source preparation alone.
+The accepted option-A source
+`e4d807239e46974b3f5da6ff71f3ec5751eee3e1` projects 32 executable/8 blocked
+hidden cases and binds the resealed positive-DoF comparator. Its exact quick
+and full receipts are green. Signed-residual-DoF slope receipts are historical
+only.
 
 | Surface | Accepted state | Remaining gate |
 |---|---|---|

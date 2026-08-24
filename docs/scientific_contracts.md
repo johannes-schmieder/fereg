@@ -30,11 +30,11 @@ reference. The original 24-row over-absorbed case is a required
 insufficient-observations failure test.
 
 The signed result type and its receipts are historical evidence only. The
-active option-A source projects 32 executable / 8 blocked cases and binds the
-positive-DoF comparator at
+accepted option-A source `e4d807239e46974b3f5da6ff71f3ec5751eee3e1`
+projects 32 executable / 8 blocked cases and binds the positive-DoF comparator at
 `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d`.
-This source is not accepted until its own exact-SHA Rust and licensed-Stata
-receipts are reachable; `STATUS.md` records only accepted evidence.
+Its exact quick and full receipts record Rust and licensed-Stata success with
+zero return codes. `STATUS.md` records the canonical candidate identity.
 
 ## Pinned absorbed-intercept and bread contract
 
