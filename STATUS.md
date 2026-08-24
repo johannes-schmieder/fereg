@@ -2,8 +2,8 @@
 
 **Last updated:** 2026-08-24  
 **Development branch:** `main` only  
-**Latest accepted exact-green source under the current scientific policy:** `f61fee923db2bd3544d457dfe50de8117d27adda`  
-**Active milestone:** apply and qualify option A for the frozen `intercept_and_slope` case  
+**Latest accepted exact-green source under the current scientific policy:** `5a6729cbc33e90e0d7da36be70cdb503c8d4e250`
+**Active milestone:** implement the frozen `slope_only_multiple` case
 **Release state:** development only; all public estimators remain fail-closed
 
 `STATUS.md` is the sole mutable project-progress record. Governing requirements
@@ -16,13 +16,20 @@ live in `AGENTS.md`; accepted architectural and scientific decisions live under
 - Development is consolidated on `main`; do not recreate historical feature,
   recovery, or Codex branches.
 - The latest source accepted under the current option-A policy is
-  `f61fee923db2bd3544d457dfe50de8117d27adda`. Its exact full qualification
-  receipt records Rust/source success, licensed-Stata success, and 25 passing
-  full-profile fixtures:
-  `.ci/stata/full-results/f61fee923db2bd3544d457dfe50de8117d27adda.json`.
-- The accepted hidden OLS projection at that source executes 31 of the frozen
-  40 semantic cases and retains nine named blockers. Its canonical receipt is
-  `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T104412Z-f61fee9`.
+  `5a6729cbc33e90e0d7da36be70cdb503c8d4e250`. Its exact quick receipt is
+  `.ci/stata/results/5a6729cbc33e90e0d7da36be70cdb503c8d4e250.json` and its exact full receipt is
+  `.ci/stata/full-results/5a6729cbc33e90e0d7da36be70cdb503c8d4e250.json`.
+  Both record Rust/source and licensed-Stata success with zero failures. The
+  full profile passed all 26 configured fixtures plus the actual-Break gate
+  (`tests_passed=27`).
+- The accepted hidden OLS projection at that source executes 32 of the frozen
+  40 semantic cases and retains eight named blockers. Its canonical receipt is
+  `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T153712Z-5a6729c`,
+  payload SHA-256
+  `5795efa5cff4adcaa7194b48de5d8fff2d4c7f64679a066529922b6362ada8a0`,
+  file SHA-256
+  `666b8f84ea644618c393f0a4003e52545356f6ac3b649b792dca8442650c7ffc`,
+  and Git blob `3e4fe21d23ebef28a54dcb0540eb88e14f19648e` at mode `100644`.
   It records `public_activation=false` and no performance claim.
 - Native categorical absorbed-FE interactions are substantially closed:
   all 12 sealed hidden-estimator differentials are exact-green at
@@ -35,14 +42,25 @@ live in `AGENTS.md`; accepted architectural and scientific decisions live under
   that scientific policy and selected option A. Commits and receipts from that
   route, including `6bbe04d857a293f0fa1fb0f617683be9ad5b4ea1`, are historical
   evidence only and are not active acceptance evidence.
-- Option-A preparation is present on `main`: the deterministic 48-row fixture
-  `tests/fixtures/ols/ols_intercept_slope_positive_dof.csv`, its contract test,
-  and the guarded migration script
-  `ci/source-transforms/apply_option_a_absorbed_slope.py`. The migration has not
-  yet been accepted by an exact-SHA Rust/licensed-Stata receipt.
-- The original 24-row over-absorbed construction must remain a fail-closed
-  insufficient-observations test. It must never become a successful result with
-  negative variance.
+- Option A is exact-green. The signed result/statistics/covariance path and the
+  negative-iid-diagonal exception are absent. The ordinary certified iid type
+  requires `df_r > 0`. The deterministic 48-row fixture exactly duplicates the
+  original FE topology, preserves omitted `x1`, reports `df_a=26` and
+  `df_r=22`, and has positive `_cons` variance. Independent explicit-dummy
+  evidence establishes actual model rank 22, mathematical residual DoF 26,
+  residuals, and RSS `.04`.
+- The exact pinned parent receipt is
+  `benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T135913Z-830fad8`,
+  payload SHA-256
+  `9c4318e9996b41fae3de705ff97567a7be2a97136bb52a81090242fc86fb589e`
+  and file SHA-256
+  `fbb56dbd6abc23978dbf8563e6b05e57b188a8e71ef2be93e148d4beddde3f2b`.
+  Relative to the prior accepted parent, only `intercept_and_slope` changes
+  after timing fields are removed; the pinned references and all 10 benchmark
+  scientific-evidence hashes are identical.
+- The original 24-row over-absorbed construction returns `r(2001)` before any
+  native result store, requested residual, covariance/statistics publication,
+  or Stata transaction. Named and null prior estimation states are restored.
 - `stfeols`, `stfepois`, public `estimate-ols`, and public `estimate-ppml`
   remain disabled and must continue to return `r(498)` without posting an
   estimate.
@@ -82,49 +100,32 @@ outside the current OLS milestone.
   materializable and sealed.
 - The categorical interaction differential and final-sample rebase gates are
   closed as described above.
-- The current accepted frozen candidate is the 31-executable/9-blocked receipt
-  at `f61fee923db2bd3544d457dfe50de8117d27adda`.
+- The current accepted frozen candidate is the 32-executable/8-blocked receipt
+  at `5a6729cbc33e90e0d7da36be70cdb503c8d4e250`.
 
 These are development checkpoints, not public-estimator availability claims.
 
-## Active checkpoint — option A absorbed slopes
+## Active checkpoint — `slope_only_multiple`
 
-Implement the accepted decision in
-`docs/adr/0006-positive-residual-dof-for-absorbed-slopes.md`:
-
-1. Review and apply the guarded migration in
-   `ci/source-transforms/apply_option_a_absorbed_slope.py`; do not accept it
-   merely because the transform runs.
-2. Remove the superseded signed-residual-DoF result path and restore the
-   ordinary invariant `df_r > 0` for successful OLS inference.
-3. Keep the useful guarded intercept-plus-one-slope preparation, topology,
-   certified MAP, allocation, and explicit-dummy work.
-4. Bind the frozen `intercept_and_slope` command to the dedicated 48-row
-   positive-DoF fixture while leaving every unrelated semantic case unchanged.
-5. Preserve the original 24-row design as a fail-closed test with no completed
-   covariance, statistics, output variable, or Stata transaction.
-6. Recapture and reseal the exact pinned reference; then run targeted tests,
-   the full Rust/source lane, full licensed Stata, rollback/Break, loader and
-   store-failure gates, and the frozen hidden projection.
-7. Advance this file only after a reachable source SHA has exact-green evidence.
-
-Do not proceed to public activation as part of this checkpoint.
+Implement and qualify the next frozen blocker without weakening the option-A
+positive-DoF policy. The gate requires an independent explicit-dummy oracle,
+exact pinned-reference sample/status/DoF/VCE evidence, certified solver and
+allocation behavior, receipt-last native storage, licensed rollback/Break, and
+an exact-source hidden-candidate reseal. Public dispatch remains disabled.
 
 ## Current blockers — frozen manifest
 
-The accepted candidate executes 31 of 40 frozen semantic cases. The nine
+The accepted candidate executes 32 of 40 frozen semantic cases. The eight
 remaining blockers, in order, are:
 
-1. `intercept_and_slope` — option-A positive-DoF fixture, source correction,
-   pinned recapture, and exact-green reseal.
-2. `slope_only_multiple` — multiple absorbed slope-only terms.
-3. `string_fe` — string-source ingestion.
-4. `time_series_lag` — Stata time-series lag materialization.
-5. `time_series_lead_difference_gaps` — lead/difference semantics across gaps.
-6. `iweight_probe` — importance-weight semantics.
-7. `dof_continuous` — continuous-slope DoF policy and evidence.
-8. `saved_outputs` — absorbed contribution and named FE recovery.
-9. `postestimation_test_summarize` — public postestimation.
+1. `slope_only_multiple` — multiple absorbed slope-only terms.
+2. `string_fe` — string-source ingestion.
+3. `time_series_lag` — Stata time-series lag materialization.
+4. `time_series_lead_difference_gaps` — lead/difference semantics across gaps.
+5. `iweight_probe` — importance-weight semantics.
+6. `dof_continuous` — continuous-slope DoF policy and evidence.
+7. `saved_outputs` — absorbed contribution and named FE recovery.
+8. `postestimation_test_summarize` — public postestimation.
 
 Broader factor/time-series parser behavior, `xb`/`xbd`, public syntax,
 performance, low-memory execution, packaging, and platform qualification remain
@@ -132,18 +133,8 @@ activation work even after these nine cases close.
 
 ## Next evidence to record
 
-For the option-A source checkpoint, record:
-
-- the full source SHA and exact `.ci/stata/results/<SHA>.json` receipt;
-- targeted independent explicit-dummy slope results;
-- the new pinned positive-DoF reference receipt and payload/file identities;
-- exact sample, coefficient/status, residual, RSS, covariance, absorbed-DoF,
-  residual-DoF, solver-certificate, and transaction comparisons;
-- the fail-closed 24-row insufficient-observations result;
-- an updated frozen candidate receipt and external identity manifest;
-- full licensed-Stata fixture count, Rust/source outcome, plugin identity,
-  loader/store-failure sweeps, rollback/Break results, and public activation
-  remaining false.
-
-The next implementation family after an accepted option-A checkpoint is
-`slope_only_multiple`.
+For `slope_only_multiple`, record the exact source SHA, independent oracle,
+pinned comparator values, source-bound hidden receipt and plugin identity, full
+Rust/source and licensed-Stata receipts, loader/store-failure sweeps,
+rollback/Break results, and unchanged `public_activation=false` and performance
+status.
