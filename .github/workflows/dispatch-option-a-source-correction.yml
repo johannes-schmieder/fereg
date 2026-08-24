@@ -1,6 +1,9 @@
 name: Dispatch option A source correction once
 
 on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/dispatch-option-a-source-correction.yml"]
   issues:
     types: [opened]
   schedule:
@@ -15,7 +18,8 @@ jobs:
   dispatch:
     if: >-
       github.repository == 'johannes-schmieder/StFixest' &&
-      (github.event_name == 'schedule' ||
+      (github.event_name == 'push' ||
+       github.event_name == 'schedule' ||
        github.event.issue.title == 'INTERNAL: dispatch option A source correction')
     runs-on: ubuntu-latest
     timeout-minutes: 10
