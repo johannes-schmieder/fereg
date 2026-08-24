@@ -47,6 +47,13 @@ under `keepsingletons`: observations 201--208 and 212 remain, observations
 and the retained coefficient, covariance, DoF, and interaction identity match
 the sealed payload.
 
+`estimate_ols_categorical_interaction_repeated_parity.do` consumes
+`repeated_identical_interaction`. It checks that two requested `firm#year`
+terms retain their separate canonical rows while reusing one numerical
+partition: the second row contributes the identified interaction span, the
+third is structurally fully redundant, and sample, coefficients, covariance,
+and residuals remain identical to the single-interaction case.
+
 Each committed fixture consumes the sealed receipt and does not invoke `reghdfe`; this executable differential set does not close `multi_fe_interactions`.
 Python contracts independently verify the receipt seal and every oracle constant
 used by the Stata fixtures. The remaining accepted receipt cases still need
