@@ -12,7 +12,7 @@ and all future numerical estimation.
 The development build includes diagnostics, native preparation, certified
 prepared OLS inference, a hidden shadow-result transport, a developer-only
 licensed-Stata eclass transaction, and the bounded
-`_stfixest_ols_hidden_numeric_v1` manifest-projection adapter. These are not
+`_fereg_ols_hidden_numeric_v1` manifest-projection adapter. These are not
 public activation. No public command may post `e()` results until broader
 sealed parity and an independently reviewed activation gate accept the complete
 supported surface.
@@ -20,11 +20,11 @@ supported surface.
 ## Call graph
 
 ```text
-stfixest.ado
-  -> _stfixest_load.ado
-  -> plugin call __stfixest_plugin, <action> key=value ...
+fereg.ado
+  -> _fereg_load.ado
+  -> plugin call __fereg_plugin, <action> key=value ...
   -> plugin/stata_bridge.c::stata_call
-  -> stfixest-plugin::stfixest_dispatch
+  -> fereg-plugin::fereg_dispatch
        catch_unwind
        UTF-8/argument validation
        safe action dispatcher
@@ -34,16 +34,16 @@ stfixest.ado
          -> private shadow outputs with receipt COMPLETE last
   -> C display/error wrapper on Stata's calling thread
 
-_stfixest_estimate_ols_test.ado (developer-only)
+_fereg_estimate_ols_test.ado (developer-only)
   -> private result/output shadows plus held prior estimates
   -> one canonical length-framed bundle
   -> one estimate-ols-test plugin call through the graph above
   -> complete receipt/table/sample validation
   -> whole-Mata b/V copies, eclass posting, final nobreak commit
 
-_stfixest_ols_hidden_numeric_v1.ado (developer-only candidate adapter)
+_fereg_ols_hidden_numeric_v1.ado (developer-only candidate adapter)
   -> public-shaped bounded numeric syntax
-  -> exactly one _stfixest_estimate_ols_test invocation
+  -> exactly one _fereg_estimate_ols_test invocation
   -> unmistakably private e(cmd)/cmdline identity
   -> sanitized sealed comparison against the frozen reference receipt
 ```
@@ -73,7 +73,7 @@ copies so Stata neither warns about nor alters the pinned multiway CGM restored
 covariance, including the allowed final negative determinant. Seven injected
 failure stages, real scientific failure, and an actual Control-C after the sole
 plugin call restore prior named/null estimates and `e(sample)` exactly. Only a
-final `nobreak` residual rename plus unhold commits success. Public `stfeols`
+final `nobreak` residual rename plus unhold commits success. Public `fereg`
 remains `r(498)` pending broader sealed parity and activation review.
 
 The active candidate receipt binds all Stata capture, rollback, parity,
@@ -90,8 +90,8 @@ constant-size receipt/table identity checks, transaction control, and final
 
 ## Safety boundary
 
-`stfixest-core` and `stfixest-testkit` forbid unsafe Rust. Unsafe operations are
-confined to `crates/stfixest-plugin/src/ffi.rs`: reading `argc/argv`, calling
+`fereg-core` and `fereg-testkit` forbid unsafe Rust. Unsafe operations are
+confined to `crates/fereg-plugin/src/ffi.rs`: reading `argc/argv`, calling
 C display/error wrappers, and exporting a stable C ABI. The exported function
 is wrapped in `catch_unwind`; a panic becomes deterministic Stata return code
 3499 rather than unwinding through C.

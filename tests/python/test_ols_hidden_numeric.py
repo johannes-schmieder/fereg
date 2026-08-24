@@ -44,7 +44,7 @@ def internal_q_case(case_id: str) -> dict:
     one = "+1.0000000000000X+000"
     receipt = [
         {
-            "name": "stfixest_receipt",
+            "name": "fereg_receipt",
             "row": 1,
             "column": column,
             "row_name": "r1",
@@ -64,7 +64,7 @@ def internal_q_case(case_id: str) -> dict:
     certificate_values[(31, 2)] = Q_ANCHORS[case_id]["determinant"]
     certificate = [
         {
-            "name": "stfixest_certificate",
+            "name": "fereg_certificate",
             "row": row,
             "column": column,
             "row_name": f"r{row}",
@@ -95,7 +95,7 @@ def internal_q_case(case_id: str) -> dict:
             *receipt,
             *certificate,
             {
-                "name": "stfixest_status",
+                "name": "fereg_status",
                 "row": 1,
                 "column": 1,
                 "row_name": "r1",
@@ -104,7 +104,7 @@ def internal_q_case(case_id: str) -> dict:
             },
             *covariance,
         ],
-        "scalars": {"stfixest_v_determinant": Q_ANCHORS[case_id]["determinant"]},
+        "scalars": {"fereg_v_determinant": Q_ANCHORS[case_id]["determinant"]},
     }
 
 
@@ -117,11 +117,11 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             BLOCKERS,
         )
         manifest = projected_manifest(projection)
-        self.assertEqual(len(manifest["semantic_cases"]), 32)
+        self.assertEqual(len(manifest["semantic_cases"]), 31)
         self.assertFalse(manifest["benchmark_cases"])
         for case in manifest["semantic_cases"]:
-            self.assertTrue(case["command"].startswith("_stfixest_ols_hidden_numeric_v1 "))
-            self.assertNotIn("stfeols ", case["command"])
+            self.assertTrue(case["command"].startswith("_fereg_ols_hidden_numeric_v1 "))
+            self.assertNotIn("fereg ", case["command"])
         interaction = next(
             case
             for case in manifest["semantic_cases"]
@@ -129,7 +129,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )
         self.assertEqual(
             interaction["command"],
-            "_stfixest_ols_hidden_numeric_v1 y c.x1 i.industry##i.year, "
+            "_fereg_ols_hidden_numeric_v1 y c.x1 i.industry##i.year, "
             "absorb(worker firm#year)",
         )
         self.assertEqual(
@@ -142,17 +142,10 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         self.assertEqual(
             interaction["capture"]["matrices"][:3], ["b", "V", "dof_table"]
         )
-        slope = next(
-            case
-            for case in manifest["semantic_cases"]
-            if case["id"] == "intercept_and_slope"
+        self.assertNotIn(
+            "intercept_and_slope",
+            {case["id"] for case in manifest["semantic_cases"]},
         )
-        self.assertEqual(
-            slope["command"],
-            "_stfixest_ols_hidden_numeric_v1 y c.x1, "
-            "absorb(firm##c.time worker)",
-        )
-        self.assertEqual(slope["dataset"], "ols_intercept_slope_positive_dof")
 
     def test_projection_mutations_fail_closed(self):
         source = json.loads(
@@ -193,7 +186,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             next(
                 item
                 for item in determinant_mutation["matrices"]
-                if item["name"] == "stfixest_certificate"
+                if item["name"] == "fereg_certificate"
                 and item["row"] == 31
                 and item["column"] == 2
             )["value_hex"] = "+0.0000000000000X-3ff"
@@ -216,18 +209,18 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             stata_hex_to_float("1.0")
 
     def test_hidden_adapter_never_claims_public_command_identity(self):
-        adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(
+        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
             encoding="utf-8"
         )
-        self.assertIn('ereturn local cmd "_stfixest_ols_hidden_numeric_v1"', adapter)
-        self.assertIn('ereturn local stfixest_intended_public_command "stfeols"', adapter)
-        self.assertNotIn('ereturn local cmd "stfeols"', adapter)
+        self.assertIn('ereturn local cmd "_fereg_ols_hidden_numeric_v1"', adapter)
+        self.assertIn('ereturn local fereg_intended_public_command "fereg"', adapter)
+        self.assertNotIn('ereturn local cmd "fereg"', adapter)
 
     def test_hidden_adapter_builds_reference_indepvars_from_native_statuses(self):
-        adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(
+        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
             encoding="utf-8"
         )
-        self.assertIn("if e(stfixest_status)[`slot',2] == 2 continue", adapter)
+        self.assertIn("if e(fereg_status)[`slot',2] == 2 continue", adapter)
         self.assertIn("local intended_component `\"`factor_level'bn.", adapter)
         self.assertIn("parse(\"#\")", adapter)
         self.assertNotIn(
@@ -241,11 +234,11 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             wrong = directory / "not-the-loader-name.plugin"
             wrong.write_bytes(b"plugin")
             with self.assertRaisesRegex(ContractError, "must be an existing"):
-                _supplied_plugin_identity(wrong, "stfixest_macos.plugin")
-            selected = directory / "stfixest_macos.plugin"
+                _supplied_plugin_identity(wrong, "fereg_macos.plugin")
+            selected = directory / "fereg_macos.plugin"
             selected.write_bytes(b"exact-plugin-bytes")
             path, identity = _supplied_plugin_identity(
-                selected, "stfixest_macos.plugin"
+                selected, "fereg_macos.plugin"
             )
             self.assertEqual(path, selected.resolve())
             self.assertEqual(
@@ -255,7 +248,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             identity["embedded_git_commit"] = "0123456789ab"
             _validate_plugin_identity(identity)
             for key, value in (
-                ("filename", "stfixest_other.plugin"),
+                ("filename", "fereg_other.plugin"),
                 ("sha256", "0" * 63),
                 ("size_bytes", 0),
                 ("loader_policy", "implicit-dist-search"),
@@ -313,9 +306,9 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                     "-C",
                     str(repository),
                     "-c",
-                    "user.name=StFixest Test",
+                    "user.name=fereg Test",
                     "-c",
-                    "user.email=stfixest@example.invalid",
+                    "user.email=fereg@example.invalid",
                     "commit",
                     "-qm",
                     "source",
@@ -350,9 +343,9 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                     "-C",
                     str(repository),
                     "-c",
-                    "user.name=StFixest Test",
+                    "user.name=fereg Test",
                     "-c",
-                    "user.email=stfixest@example.invalid",
+                    "user.email=fereg@example.invalid",
                     "commit",
                     "-qm",
                     "seal",
@@ -421,9 +414,9 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                         "-C",
                         str(repository),
                         "-c",
-                        "user.name=StFixest Test",
+                        "user.name=fereg Test",
                         "-c",
-                        "user.email=stfixest@example.invalid",
+                        "user.email=fereg@example.invalid",
                         "commit",
                         "-qm",
                         "canonical receipt",
@@ -439,9 +432,9 @@ class HiddenNumericProjectionTests(unittest.TestCase):
                         "-C",
                         str(repository),
                         "-c",
-                        "user.name=StFixest Test",
+                        "user.name=fereg Test",
                         "-c",
-                        "user.email=stfixest@example.invalid",
+                        "user.email=fereg@example.invalid",
                         "commit",
                         "-qm",
                         "committed reseal",
@@ -471,15 +464,15 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             _validate_warning_audit(warned)
 
     def test_post_plugin_stata_boundary_has_no_observation_scale_scan(self):
-        source = (ROOT / "stata/_stfixest_estimate_ols_test.ado").read_text(
+        source = (ROOT / "stata/_fereg_estimate_ols_test.ado").read_text(
             encoding="utf-8"
         )
         post_plugin = source.split(
-            'plugin call __stfixest_estimate_plugin', 1
-        )[1].split("program define _stfixest_eols_validate", 1)[0]
+            'plugin call __fereg_estimate_plugin', 1
+        )[1].split("program define _fereg_eols_validate", 1)[0]
         for forbidden in ("count if", "capture assert", "summarize", "egen "):
             self.assertNotIn(forbidden, post_plugin.lower())
-        validator = source.split("program define _stfixest_eols_validate", 1)[1]
+        validator = source.split("program define _fereg_eols_validate", 1)[1]
         for forbidden in (
             "forvalues",
             "foreach",
@@ -502,7 +495,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             marker_section,
             r"matrix\s+`marker_[bv][^']*'\s*\[[^]]+\]\s*=",
         )
-        native = (ROOT / "crates/stfixest-plugin/src/estimate.rs").read_text(
+        native = (ROOT / "crates/fereg-plugin/src/estimate.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("OLS shadow observation outputs failed final preflight", native)
@@ -524,11 +517,11 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )
 
     def test_hidden_adapter_uses_native_determinant_and_handles_k0(self):
-        adapter = (ROOT / "stata/_stfixest_ols_hidden_numeric_v1.ado").read_text(
+        adapter = (ROOT / "stata/_fereg_ols_hidden_numeric_v1.ado").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("det(e(V))", adapter)
-        self.assertIn("e(stfixest_certificate)[31,2]", adapter)
+        self.assertIn("e(fereg_certificate)[31,2]", adapter)
         self.assertIn("if `coefficient_count' > 0", adapter)
 
 

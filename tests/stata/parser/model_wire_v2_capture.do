@@ -8,7 +8,7 @@ gen double z = (_n-12)/5
 tempvar touse
 gen byte `touse' = _n > 2
 
-stfixest_parse c.x i.g i.g#c.x i.g##c.(x z) i.g##i.h c.x#c.z, ///
+fereg_parse c.x i.g i.g#c.x i.g##c.(x z) i.g##i.h c.x#c.z, ///
     touse(`touse')
 local wire_major = r(model_wire_major)
 local wire_minor = r(model_wire_minor)
@@ -33,14 +33,14 @@ matrix list model_terms
 matrix list model_components
 di as result "WIRE_V2|sources=`n_sources'|terms=`n_terms'|components=`n_components'"
 
-stfixest_parse i.g#c.x, touse(`touse')
+fereg_parse i.g#c.x, touse(`touse')
 local direct_names `"`r(coefficient_names)'"'
 local direct_base : list posof "1b.g#c.x" in direct_names
 assert `direct_base' > 0
 matrix direct_terms = r(model_terms)
 assert direct_terms[`direct_base',6] == 0
 
-stfixest_parse i.g##c.(x z), touse(`touse')
+fereg_parse i.g##c.(x z), touse(`touse')
 local continuous_names `"`r(coefficient_names)'"'
 local co_interaction : list posof "1b.g#co.x" in continuous_names
 assert `co_interaction' > 0
@@ -48,20 +48,20 @@ matrix continuous_terms = r(model_terms)
 assert continuous_terms[`co_interaction',6] == 1
 assert strpos("`r(component_raw_operators)'", "2:co") > 0
 
-stfixest_parse i.g##i.h, touse(`touse')
+fereg_parse i.g##i.h, touse(`touse')
 assert strpos("`r(component_raw_operators)'", "2:2o") > 0
 
-stfixest_parse ibn.g, touse(`touse')
+fereg_parse ibn.g, touse(`touse')
 assert strpos("`r(coefficient_names)'", "bn.g") > 0
 
 tempvar singleton_candidate
 gen byte `singleton_candidate' = g == 3
-stfixest_parse i.g, touse(`singleton_candidate')
+fereg_parse i.g, touse(`singleton_candidate')
 assert r(n_model_terms) == 1
 assert strpos("`r(coefficient_names)'", "3.g") > 0
 assert strpos("`r(coefficient_names)'", "b.g") == 0
 
-stfixest_parse, touse(`touse') emptymodel
+fereg_parse, touse(`touse') emptymodel
 assert r(n_sources) == 0
 assert r(n_model_terms) == 0
 assert r(n_model_components) == 0
@@ -75,7 +75,7 @@ assert empty_sources[1,1] == 0 & empty_sources[1,2] == 0
 assert empty_terms[1,1] == 0 & empty_terms[1,8] == 0
 assert empty_components[1,1] == 0 & empty_components[1,13] == 0
 
-stfixest_parse, touse(`touse') emptymodel absorb(g h)
+fereg_parse, touse(`touse') emptymodel absorb(g h)
 assert r(n_absorb_terms) == 2
 assert r(n_absorb_components) == 2
 assert `"`r(absorb_label_registry)'"' == "1:g|1:h"

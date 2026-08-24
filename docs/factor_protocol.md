@@ -40,7 +40,7 @@ estimator dispatch remain unsupported by this developer action.
 
 ## Candidate marker ownership
 
-`stfixest_parse` requires `touse(varname)`. The caller creates the marker and
+`fereg_parse` requires `touse(varname)`. The caller creates the marker and
 owns its lifetime; the parser never returns a `tempvar` that disappears when
 the parser returns. The parser does not also accept `if`/`in`; the caller must
 evaluate those restrictions into the marker exactly once. Estimation commands

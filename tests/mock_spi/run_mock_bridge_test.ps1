@@ -31,7 +31,7 @@ if ($LASTEXITCODE -ne 0) { throw "bridge mock object compilation failed" }
 & cl.exe @Common /c "$Root\tests\mock_spi\dummy_dispatch.c" "/Fo$DispatchObj"
 if ($LASTEXITCODE -ne 0) { throw "dispatch mock object compilation failed" }
 
-$Plugin = Join-Path $Build "stfixest_mock_windows.plugin"
+$Plugin = Join-Path $Build "fereg_mock_windows.plugin"
 & link.exe /NOLOGO /DLL /INCREMENTAL:NO /OPT:REF /OPT:ICF `
     "/OUT:$Plugin" $StpluginObj $BridgeObj $DispatchObj
 if ($LASTEXITCODE -ne 0) { throw "Windows mock plugin link failed" }

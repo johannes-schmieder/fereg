@@ -26,9 +26,10 @@ on:
     paths-ignore:
       - ".ci/stata/latest.json"
       - ".ci/stata/results/**"
+      - ".ci/stata/full-results/**"
 
 concurrency:
-  group: stfixest-mac-${{ github.repository }}
+  group: fereg-mac-${{ github.repository }}
   cancel-in-progress: false
 
 permissions:
@@ -41,7 +42,7 @@ env:
 jobs:
   mac-ci:
     name: Mac Rust quick + Stata / ${{ inputs.profile || 'quick' }}
-    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, fereg]
     timeout-minutes: 240
     permissions:
       contents: write
@@ -61,12 +62,12 @@ jobs:
         if: ${{ always() }}
         run: ./ci/run_stata_ci.sh "$STATA_PROFILE"
 
-      - name: Run quick Rust/C/source checks on normal pushes
-        if: ${{ always() && github.event_name == 'push' }}
+      - name: Run quick Rust/C/source checks
+        if: ${{ always() }}
         run: ./ci/record_rust_quick.sh
 
       - name: Add Rust result to the exact-SHA receipt
-        if: ${{ always() && github.event_name == 'push' }}
+        if: ${{ always() }}
         run: >-
           /usr/bin/python3 ci/augment_ci_receipt.py
           .ci/stata/run/receipt.json
@@ -85,7 +86,7 @@ jobs:
     name: Publish exact-SHA receipt
     needs: mac-ci
     if: ${{ always() && needs.mac-ci.result != 'cancelled' }}
-    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, fereg]
     timeout-minutes: 10
     permissions:
       contents: write
@@ -117,7 +118,11 @@ jobs:
         run: |
           set -euo pipefail
           branch="$GITHUB_REF_NAME"
-          result_path=".ci/stata/results/$GITHUB_SHA.json"
+          if [[ "${{ inputs.profile || 'quick' }}" == "full" ]]; then
+            result_path=".ci/stata/full-results/$GITHUB_SHA.json"
+          else
+            result_path=".ci/stata/results/$GITHUB_SHA.json"
+          fi
           publish_tree=""
 
           cleanup_publish_tree() {
@@ -136,12 +141,13 @@ jobs:
             git worktree add --detach "$publish_tree" "origin/$branch"
             cd "$publish_tree"
 
-            mkdir -p .ci/stata/results
+            mkdir -p "$(dirname "$result_path")"
             cp "$RECEIPT" "$result_path"
 
             if git merge-base --is-ancestor "$GITHUB_SHA" HEAD &&
                git diff --quiet "$GITHUB_SHA..HEAD" -- . \
                  ':(exclude).ci/stata/results/**' \
+                 ':(exclude).ci/stata/full-results/**' \
                  ':(exclude).ci/stata/latest.json'; then
               cp "$RECEIPT" .ci/stata/latest.json
             fi

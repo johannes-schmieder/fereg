@@ -36,8 +36,8 @@ class ReleaseStagingTests(unittest.TestCase):
             prefix = f"{stage_release.PACKAGE_NAME}/"
             for name in stage_release.EXPECTED_PLUGINS:
                 self.assertIn(prefix + name, names)
-            self.assertIn(prefix + "stfixest.ado", names)
-            self.assertIn(prefix + "stfixest.pkg", names)
+            self.assertIn(prefix + "fereg.ado", names)
+            self.assertIn(prefix + "fereg.pkg", names)
             self.assertIn(prefix + "MANIFEST.sha256", names)
             self.assertIn(prefix + "RELEASE_MANIFEST.json", names)
 

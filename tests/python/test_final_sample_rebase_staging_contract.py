@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REBASE = ROOT / "crates/stfixest-core/src/ols/prepared_categorical_rebase.rs"
-DATA = ROOT / "crates/stfixest-core/src/ols/prepared_categorical_data.rs"
-RESULT_VIEW = ROOT / "crates/stfixest-plugin/src/result_view.rs"
+REBASE = ROOT / "crates/fereg-core/src/ols/prepared_categorical_rebase.rs"
+DATA = ROOT / "crates/fereg-core/src/ols/prepared_categorical_data.rs"
+RESULT_VIEW = ROOT / "crates/fereg-plugin/src/result_view.rs"
 
 
 class FinalSampleRebaseStagingContractTests(unittest.TestCase):
@@ -34,7 +34,7 @@ class FinalSampleRebaseStagingContractTests(unittest.TestCase):
 
     def test_staged_rebase_remains_outside_public_dispatch(self) -> None:
         text = REBASE.read_text(encoding="utf-8")
-        for token in ("estimate-ols", "stfeols", "estimate-ppml", "stfepois"):
+        for token in ("estimate-ols", "fereg", "estimate-ppml", "feppml"):
             self.assertNotIn(token, text)
         self.assertNotIn("unsafe {", text)
 

@@ -162,8 +162,8 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
             PAYLOAD_SHA256,
             CASE_ID,
             "o.x1 _cons",
-            "e(stfixest_status)[1,2] == 3",
-            "e(stfixest_status)[2,2] == 5",
+            "e(fereg_status)[1,2] == 3",
+            "e(fereg_status)[2,2] == 5",
             "+1.b99999c000000X+002",
             "+1.47ae1eb853fc5X-00a",
             "inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 24)",
@@ -171,7 +171,7 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
             "END_FIXTURE|estimate_ols_categorical_interaction_parity|rc=0",
         ):
             self.assertIn(token, text)
-        self.assertIn("_stfixest_estimate_ols_test", text)
+        self.assertIn("_fereg_estimate_ols_test", text)
         self.assertNotIn("capture noisily reghdfe", text)
 
     def test_fixture_is_in_quick_differential_and_full_profiles(self) -> None:
@@ -184,7 +184,7 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
         text = README.read_text(encoding="utf-8")
         self.assertIn(SOURCE_SHA, text)
         self.assertIn(PAYLOAD_SHA256, text)
-        self.assertIn("stfeols` remains disabled", text)
+        self.assertIn("fereg` remains disabled", text)
         self.assertIn("does not invoke `reghdfe`", text)
         self.assertIn("does not close `multi_fe_interactions`", text)
 

@@ -9,7 +9,7 @@ tempvar touse
 gen byte `touse' = 1
 local before_k = c(k)
 
-stfixest_parse c.x i.g i.g#c.x i.g##i.h, touse(`touse')
+fereg_parse c.x i.g i.g#c.x i.g##i.h, touse(`touse')
 return list
 matrix list r(model_terms)
 matrix list r(model_components)
@@ -21,7 +21,7 @@ assert strpos("`r(source_vars)'", "g") > 0
 assert strpos("`r(source_vars)'", "h") > 0
 confirm variable id x g h
 assert c(k) == `before_k'
-stfixest_parse ibn.g, touse(`touse')
+fereg_parse ibn.g, touse(`touse')
 assert strpos("`r(coefficient_names)'", "bn.g") > 0
 di as result "ordinary_factor_terms.do: PASS"
 di as result "END_FIXTURE|ordinary_factor_terms|rc=0"

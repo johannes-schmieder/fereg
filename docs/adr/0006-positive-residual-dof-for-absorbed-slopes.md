@@ -18,7 +18,7 @@ Pinned `reghdfe` reported conservative absorbed DoF large enough to produce
 
 A temporary development route introduced a separate signed residual-DoF result
 type and reproduced that output. It was useful compatibility evidence, but it
-conflicted with the registered StFixest invariant that successful OLS inference
+conflicted with the registered fereg invariant that successful OLS inference
 requires positive residual degrees of freedom and a valid variance scale.
 
 Johannes selected option A: repair the test design rather than weaken the
@@ -26,7 +26,7 @@ scientific contract.
 
 ## Decision
 
-1. Successful StFixest OLS inference requires `df_r > 0`.
+1. Successful fereg OLS inference requires `df_r > 0`.
 2. Negative iid covariance is not an eligible success result. A separate signed
    inference/result type is not part of the accepted architecture.
 3. The useful absorbed intercept-plus-one-slope engineering may remain:

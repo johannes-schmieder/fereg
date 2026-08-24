@@ -72,11 +72,11 @@ def stata_string(value: Path) -> str:
 def expected_plugin_filename() -> str:
     system = platform.system()
     if system == "Darwin":
-        return "stfixest_macos.plugin"
+        return "fereg_macos.plugin"
     if system == "Linux":
-        return "stfixest_linux.plugin"
+        return "fereg_linux.plugin"
     if system == "Windows":
-        return "stfixest_windows.plugin"
+        return "fereg_windows.plugin"
     raise ValueError(f"unsupported Stata plugin platform {system!r}")
 
 
@@ -151,7 +151,7 @@ def run_fixture(
         if plugin is None or plugin_sha256 is None:
             raise ValueError("candidate plugin path and SHA-256 must be supplied together")
         bound_plugin = validate_candidate_plugin(plugin, plugin_sha256)
-    with tempfile.TemporaryDirectory(prefix="stfixest-stata-") as temp_name:
+    with tempfile.TemporaryDirectory(prefix="fereg-stata-") as temp_name:
         run_dir = Path(temp_name)
         wrapper = run_dir / "run.do"
         status_path = run_dir / "fixture.status"
@@ -166,12 +166,12 @@ def run_fixture(
                 [
                     f"adopath ++ {stata_string(root / 'stata')}",
                     f"adopath ++ {stata_string(bound_plugin.parent)}",
-                    "capture program __stfixest_runner_provenance, plugin "
+                    "capture program __fereg_runner_provenance, plugin "
                     f"using({stata_string(bound_plugin)})",
                     "local provenance_load_rc = _rc",
                     "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                     "exit `provenance_load_rc'",
-                    "plugin call __stfixest_runner_provenance, version",
+                    "plugin call __fereg_runner_provenance, version",
                 ]
             )
         else:

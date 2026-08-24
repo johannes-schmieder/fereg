@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Freeze and verify licensed-Stata OLS reference evidence.
 
-The capture path is intentionally reference-only.  It never invokes StFixest,
+The capture path is intentionally reference-only.  It never invokes fereg,
 never searches a user's installed PLUS/PERSONAL trees, and never downloads an
 upstream dependency.  A capture starts only from clean local git checkouts at
 the exact revisions in ``references.lock.toml``.
@@ -31,11 +31,11 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "benchmarks/manifests/ols_v1.json"
 DEFAULT_LOCK = ROOT / "references.lock.toml"
-CAPTURE_PREFIX = "STFIXEST_OLS_CAPTURE|"
+CAPTURE_PREFIX = "FEREG_OLS_CAPTURE|"
 CAPTURE_SENTINEL = "END_FIXTURE|ols_v1_reference_capture|rc=0"
 LOG_SENTINEL = "END_FIXTURE|baseline_reghdfe|rc=0"
 DATASET_PREPARATION_SENTINEL = "END_FIXTURE|ols_v1_dataset_preparation|rc=0"
-RECEIPT_TYPE = "stfixest-ols-v1-reference"
+RECEIPT_TYPE = "fereg-ols-v1-reference"
 ESTIMATOR_RSS_SCOPE = "fresh_estimator_process_prepared_inputs"
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -52,13 +52,13 @@ ENVIRONMENT_FIELDS = {
     "machine_type",
 }
 ALLOWED_OUTPUTS = {
-    "sample": "__stfx_sample",
-    "residual": "__stfx_resid",
-    "xb": "__stfx_xb",
-    "xbd": "__stfx_xbd",
-    "d": "__stfx_d",
-    "fe_worker": "__stfx_fe_worker",
-    "fe_firm": "__stfx_fe_firm",
+    "sample": "__frg_sample",
+    "residual": "__frg_resid",
+    "xb": "__frg_xb",
+    "xbd": "__frg_xbd",
+    "d": "__frg_d",
+    "fe_worker": "__frg_fe_worker",
+    "fe_firm": "__frg_fe_firm",
 }
 EXPECTED_POLICIES = {"must_succeed", "must_error", "record"}
 REQUIRED_SURFACE = {
@@ -285,9 +285,9 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         "benchmark_contract",
     )
     if benchmark_contract["candidate_state"] != "disabled_fail_closed":
-        raise ContractError("benchmark_contract: candidate must remain disabled until stfeols is implemented")
-    if benchmark_contract["arms"] != {"comparator": "reghdfe", "candidate": "stfeols"}:
-        raise ContractError("benchmark_contract: comparator/candidate arms must be reghdfe and stfeols")
+        raise ContractError("benchmark_contract: candidate must remain disabled until fereg is implemented")
+    if benchmark_contract["arms"] != {"comparator": "reghdfe", "candidate": "fereg"}:
+        raise ContractError("benchmark_contract: comparator/candidate arms must be reghdfe and fereg")
     if benchmark_contract["primary_min_observations"] != 10_000_000:
         raise ContractError("benchmark_contract: primary cases require at least 10,000,000 observations")
     if benchmark_contract["thread_counts"] != [1, 8]:
@@ -421,7 +421,7 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
                 raise ContractError(f"{where}.capture.identities contains an unsupported identity")
             if "expected_sample_count" in case and (case["expected"] != "must_succeed" or not isinstance(case["expected_sample_count"], int) or case["expected_sample_count"] <= 0 or "N" not in capture_spec["scalars"] or "sample" not in capture_spec["outputs"]):
                 raise ContractError(f"{where}: expected_sample_count requires a successful N/sample capture")
-            if "residual" in capture_spec["outputs"] and "residuals(__stfx_resid)" not in command:
+            if "residual" in capture_spec["outputs"] and "residuals(__frg_resid)" not in command:
                 raise ContractError(f"{where}: residual output requires a named residuals() target")
             for output in ("fe_worker", "fe_firm"):
                 if output in capture_spec["outputs"] and ALLOWED_OUTPUTS[output] not in command:
@@ -456,8 +456,8 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
                 if arms.get("comparator") != command:
                     raise ContractError(f"{where}: comparator arm must equal the reference-only capture command")
                 candidate = arms.get("candidate")
-                if not isinstance(candidate, str) or not (candidate.startswith("stfeols ") or candidate.startswith("stfeols,")):
-                    raise ContractError(f"{where}: candidate arm must invoke stfeols directly")
+                if not isinstance(candidate, str) or not (candidate.startswith("fereg ") or candidate.startswith("fereg,")):
+                    raise ContractError(f"{where}: candidate arm must invoke fereg directly")
                 if any(token in candidate for token in ("\n", "\r", ";", "!", " do ", " run ")):
                     raise ContractError(f"{where}: candidate command contains control syntax")
                 if f"threads({thread_count})" not in candidate:
@@ -563,7 +563,7 @@ def preflight_reference_root(
     resolved_root = reference_root.resolve()
     resolved_repository = repository_root.resolve()
     if resolved_root == resolved_repository or resolved_repository in resolved_root.parents or resolved_root in resolved_repository.parents:
-        raise PreflightError("reference checkouts must be outside the StFixest repository")
+        raise PreflightError("reference checkouts must be outside the fereg repository")
 
     entries: dict[str, Mapping[str, Any]] = {}
     for name in REFERENCE_NAMES:
@@ -713,7 +713,7 @@ def _stata_quote(path: Path | str) -> str:
 
 def _emit_file_line(parts: Iterable[str]) -> str:
     joined = "|".join(parts)
-    return f'file write __stfx_capture "{joined}" _n'
+    return f'file write __frg_capture "{joined}" _n'
 
 
 def _render_matrix(case_id: str, name: str, source: str = "e", record: str = "matrix", post_id: str | None = None) -> list[str]:
@@ -723,23 +723,23 @@ def _render_matrix(case_id: str, name: str, source: str = "e", record: str = "ma
         prefix.append(post_id)
         dimensions_prefix.append(post_id)
     return [
-        f"capture matrix __stfx_matrix = {source}({name})",
+        f"capture matrix __frg_matrix = {source}({name})",
         "if _rc {",
         "    " + _emit_file_line([CAPTURE_PREFIX[:-1], "absent", case_id, record, name]),
         "}",
         "else {",
-        "    local __stfx_rows = rowsof(__stfx_matrix)",
-        "    local __stfx_cols = colsof(__stfx_matrix)",
-        f'    file write __stfx_capture "{"|".join(dimensions_prefix)}|{name}|`__stfx_rows\'|`__stfx_cols\'" _n',
-        "    if `__stfx_rows' > 0 & `__stfx_cols' > 0 {",
-        "        local __stfx_rownames : rowfullnames __stfx_matrix",
-        "        local __stfx_colnames : colfullnames __stfx_matrix",
-        "        forvalues __stfx_r = 1/`__stfx_rows' {",
-        "            local __stfx_rowname : word `__stfx_r' of `__stfx_rownames'",
-        "            forvalues __stfx_c = 1/`__stfx_cols' {",
-        "                local __stfx_colname : word `__stfx_c' of `__stfx_colnames'",
-        "                local __stfx_value : display %21x __stfx_matrix[`__stfx_r',`__stfx_c']",
-        f'                file write __stfx_capture "{"|".join(prefix)}|{name}|`__stfx_r\'|`__stfx_c\'|`__stfx_rowname\'|`__stfx_colname\'|`__stfx_value\'" _n',
+        "    local __frg_rows = rowsof(__frg_matrix)",
+        "    local __frg_cols = colsof(__frg_matrix)",
+        f'    file write __frg_capture "{"|".join(dimensions_prefix)}|{name}|`__frg_rows\'|`__frg_cols\'" _n',
+        "    if `__frg_rows' > 0 & `__frg_cols' > 0 {",
+        "        local __frg_rownames : rowfullnames __frg_matrix",
+        "        local __frg_colnames : colfullnames __frg_matrix",
+        "        forvalues __frg_r = 1/`__frg_rows' {",
+        "            local __frg_rowname : word `__frg_r' of `__frg_rownames'",
+        "            forvalues __frg_c = 1/`__frg_cols' {",
+        "                local __frg_colname : word `__frg_c' of `__frg_colnames'",
+        "                local __frg_value : display %21x __frg_matrix[`__frg_r',`__frg_c']",
+        f'                file write __frg_capture "{"|".join(prefix)}|{name}|`__frg_r\'|`__frg_c\'|`__frg_rowname\'|`__frg_colname\'|`__frg_value\'" _n',
         "            }",
         "        }",
         "    }",
@@ -769,7 +769,7 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
         lines.append(f"set processors {case['thread_count']}")
     lines.append(_emit_file_line([CAPTURE_PREFIX[:-1], "case_begin", case_id]))
     if "thread_count" in case:
-        lines.append(f'file write __stfx_capture "{CAPTURE_PREFIX}runtime_thread_count|{case_id}|`c(processors)\'" _n')
+        lines.append(f'file write __frg_capture "{CAPTURE_PREFIX}runtime_thread_count|{case_id}|`c(processors)\'" _n')
     if case.get("_fresh_warmup"):
         lines.extend(
             [
@@ -786,40 +786,40 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
                 "timer clear 99",
                 "timer on 99",
                 f"capture noisily {case['command']}",
-                "local __stfx_rc = _rc",
+                "local __frg_rc = _rc",
                 "timer off 99",
                 "quietly timer list 99",
-                "local __stfx_seconds : display %21x r(t99)",
-                f'file write __stfx_capture "{CAPTURE_PREFIX}timing|{case_id}|{repetition + 1}|{timing_kind}|`__stfx_seconds\'" _n',
+                "local __frg_seconds : display %21x r(t99)",
+                f'file write __frg_capture "{CAPTURE_PREFIX}timing|{case_id}|{repetition + 1}|{timing_kind}|`__frg_seconds\'" _n',
             ]
         )
         if repetition + 1 < total:
             lines.extend(
                 [
-                    "if `__stfx_rc' != 0 {",
-                    '    file write __stfx_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
-                    "    file close __stfx_capture",
+                    "if `__frg_rc' != 0 {",
+                    '    file write __frg_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
+                    "    file close __frg_capture",
                     "    exit 9",
                     "}",
                     "estimates clear",
                 ]
             )
-    lines.append(f'file write __stfx_capture "{CAPTURE_PREFIX}return_code|{case_id}|`__stfx_rc\'" _n')
+    lines.append(f'file write __frg_capture "{CAPTURE_PREFIX}return_code|{case_id}|`__frg_rc\'" _n')
     if "expected_sample_count" in case:
         lines.extend(
             [
-                f"if `__stfx_rc' == 0 & e(N) != {case['expected_sample_count']} {{",
-                '    file write __stfx_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
-                "    file close __stfx_capture",
+                f"if `__frg_rc' == 0 & e(N) != {case['expected_sample_count']} {{",
+                '    file write __frg_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
+                "    file close __frg_capture",
                 "    exit 9",
                 "}",
             ]
         )
 
     capture = case["capture"]
-    lines.append("if `__stfx_rc' == 0 {")
+    lines.append("if `__frg_rc' == 0 {")
     if capture.get("identities") and "sample" not in capture["outputs"]:
-        lines.append("    generate byte __stfx_sample = e(sample)")
+        lines.append("    generate byte __frg_sample = e(sample)")
     for output in capture["outputs"]:
         target = ALLOWED_OUTPUTS[output]
         if output == "sample":
@@ -830,30 +830,30 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     for name in capture["scalars"]:
         lines.extend(
             [
-                "    local __stfx_enames : e(scalars)",
-                f'    local __stfx_present : list posof "{name}" in __stfx_enames',
-                "    if `__stfx_present' == 0 {",
+                "    local __frg_enames : e(scalars)",
+                f'    local __frg_present : list posof "{name}" in __frg_enames',
+                "    if `__frg_present' == 0 {",
                 "        " + _emit_file_line([CAPTURE_PREFIX[:-1], "absent", case_id, "scalar", name]),
                 "    }",
                 "    else {",
-                f"        local __stfx_value : display %21x e({name})",
-                f'        file write __stfx_capture "{CAPTURE_PREFIX}scalar|{case_id}|{name}|`__stfx_value\'" _n',
+                f"        local __frg_value : display %21x e({name})",
+                f'        file write __frg_capture "{CAPTURE_PREFIX}scalar|{case_id}|{name}|`__frg_value\'" _n',
                 "    }",
             ]
         )
     for name in capture["macros"]:
         lines.extend(
             [
-                "    local __stfx_enames : e(macros)",
-                f'    local __stfx_present : list posof "{name}" in __stfx_enames',
-                "    if `__stfx_present' == 0 {",
+                "    local __frg_enames : e(macros)",
+                f'    local __frg_present : list posof "{name}" in __frg_enames',
+                "    if `__frg_present' == 0 {",
                 "        " + _emit_file_line([CAPTURE_PREFIX[:-1], "absent", case_id, "macro", name]),
                 "    }",
                 "    else {",
-                f"        local __stfx_text `\"`e({name})'\"'",
-                "        local __stfx_text = subinstr(`\"`__stfx_text'\"', \"%\", \"%25\", .)",
-                "        local __stfx_text = subinstr(`\"`__stfx_text'\"', \"|\", \"%7C\", .)",
-                f'        file write __stfx_capture "{CAPTURE_PREFIX}macro|{case_id}|{name}|`__stfx_text\'" _n',
+                f"        local __frg_text `\"`e({name})'\"'",
+                "        local __frg_text = subinstr(`\"`__frg_text'\"', \"%\", \"%25\", .)",
+                "        local __frg_text = subinstr(`\"`__frg_text'\"', \"|\", \"%7C\", .)",
+                f'        file write __frg_capture "{CAPTURE_PREFIX}macro|{case_id}|{name}|`__frg_text\'" _n',
                 "    }",
             ]
         )
@@ -862,32 +862,32 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     if capture["outputs"]:
         lines.extend(
             [
-                f'    file write __stfx_capture "{CAPTURE_PREFIX}observation_count|{case_id}|`=_N\'" _n',
-                "    forvalues __stfx_obs = 1/`=_N' {",
-                "        local __stfx_obs_id : display %21x obs_id[`__stfx_obs']",
+                f'    file write __frg_capture "{CAPTURE_PREFIX}observation_count|{case_id}|`=_N\'" _n',
+                "    forvalues __frg_obs = 1/`=_N' {",
+                "        local __frg_obs_id : display %21x obs_id[`__frg_obs']",
             ]
         )
         for output in capture["outputs"]:
             target = ALLOWED_OUTPUTS[output]
             lines.extend(
                 [
-                    f"        local __stfx_value : display %21x {target}[`__stfx_obs']",
-                    f'        file write __stfx_capture "{CAPTURE_PREFIX}observation|{case_id}|`__stfx_obs_id\'|{output}|`__stfx_value\'" _n',
+                    f"        local __frg_value : display %21x {target}[`__frg_obs']",
+                    f'        file write __frg_capture "{CAPTURE_PREFIX}observation|{case_id}|`__frg_obs_id\'|{output}|`__frg_value\'" _n',
                 ]
             )
         lines.append("    }")
     for identity in capture.get("identities", []):
-        condition = "__stfx_sample" if identity == "sample" else "!__stfx_sample"
+        condition = "__frg_sample" if identity == "sample" else "!__frg_sample"
         lines.extend(
             [
                 "    preserve",
                 f"    quietly keep if {condition}",
-                "    if _N == 0 local __stfx_identity empty",
+                "    if _N == 0 local __frg_identity empty",
                 "    else {",
                 "        quietly _datasignature obs_id",
-                "        local __stfx_identity `\"`r(datasignature)'\"'",
+                "        local __frg_identity `\"`r(datasignature)'\"'",
                 "    }",
-                f'    file write __stfx_capture "{CAPTURE_PREFIX}identity|{case_id}|{identity}|`=_N\'|`__stfx_identity\'" _n',
+                f'    file write __frg_capture "{CAPTURE_PREFIX}identity|{case_id}|{identity}|`=_N\'|`__frg_identity\'" _n',
                 "    restore",
             ]
         )
@@ -895,24 +895,24 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
         post_id = post["id"]
         lines.extend(
             [
-                f'    file write __stfx_capture "{CAPTURE_PREFIX}post_begin|{case_id}|{post_id}" _n',
+                f'    file write __frg_capture "{CAPTURE_PREFIX}post_begin|{case_id}|{post_id}" _n',
                 f"    capture noisily {post['command']}",
-                "    local __stfx_post_rc = _rc",
-                f'    file write __stfx_capture "{CAPTURE_PREFIX}post_return_code|{case_id}|{post_id}|`__stfx_post_rc\'" _n',
-                "    if `__stfx_post_rc' == 0 {",
+                "    local __frg_post_rc = _rc",
+                f'    file write __frg_capture "{CAPTURE_PREFIX}post_return_code|{case_id}|{post_id}|`__frg_post_rc\'" _n',
+                "    if `__frg_post_rc' == 0 {",
             ]
         )
         for name in post["scalars"]:
             lines.extend(
                 [
-                    "        local __stfx_rnames : r(scalars)",
-                    f'        local __stfx_present : list posof "{name}" in __stfx_rnames',
-                    "        if `__stfx_present' == 0 {",
+                    "        local __frg_rnames : r(scalars)",
+                    f'        local __frg_present : list posof "{name}" in __frg_rnames',
+                    "        if `__frg_present' == 0 {",
                     "            " + _emit_file_line([CAPTURE_PREFIX[:-1], "absent", case_id, f"post_scalar:{post_id}", name]),
                     "        }",
                     "        else {",
-                    f"            local __stfx_value : display %21x r({name})",
-                    f'            file write __stfx_capture "{CAPTURE_PREFIX}post_scalar|{case_id}|{post_id}|{name}|`__stfx_value\'" _n',
+                    f"            local __frg_value : display %21x r({name})",
+                    f'            file write __frg_capture "{CAPTURE_PREFIX}post_scalar|{case_id}|{post_id}|{name}|`__frg_value\'" _n',
                     "        }",
                 ]
             )
@@ -921,7 +921,7 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
         lines.extend(
             [
                 "    }",
-                f'    file write __stfx_capture "{CAPTURE_PREFIX}post_end|{case_id}|{post_id}" _n',
+                f'    file write __frg_capture "{CAPTURE_PREFIX}post_end|{case_id}|{post_id}" _n',
             ]
         )
     lines.append("}")
@@ -929,9 +929,9 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     if case["expected"] == "must_succeed":
         lines.extend(
             [
-                "if `__stfx_rc' != 0 {",
-                '    file write __stfx_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
-                "    file close __stfx_capture",
+                "if `__frg_rc' != 0 {",
+                '    file write __frg_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
+                "    file close __frg_capture",
                 "    exit 9",
                 "}",
             ]
@@ -939,9 +939,9 @@ def _render_case(case: Mapping[str, Any], dataset: Mapping[str, Any], staged: Ma
     elif case["expected"] == "must_error":
         lines.extend(
             [
-                "if `__stfx_rc' == 0 {",
-                '    file write __stfx_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
-                "    file close __stfx_capture",
+                "if `__frg_rc' == 0 {",
+                '    file write __frg_capture "END_FIXTURE|ols_v1_reference_capture|rc=9" _n',
+                "    file close __frg_capture",
                 "    exit 9",
                 "}",
             ]
@@ -961,20 +961,20 @@ def render_capture_do(
         "args capture_file manifest_sha256",
         "set more off",
         f'''if `"`manifest_sha256'"' != "{manifest_sha256}" exit 610''',
-        '''file open __stfx_capture using `"`capture_file'"', write text replace''',
+        '''file open __frg_capture using `"`capture_file'"', write text replace''',
         _emit_file_line([CAPTURE_PREFIX[:-1], "schema", "1"]),
         _emit_file_line([CAPTURE_PREFIX[:-1], "manifest_sha256", manifest_sha256]),
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|stata_version|`c(stata_version)\'" _n',
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|stata_flavor|`c(flavor)\'" _n',
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|stata_processors|`c(processors)\'" _n',
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|stata_processors_limit|`c(processors_lic)\'" _n',
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|os|`c(os)\'" _n',
-        f'file write __stfx_capture "{CAPTURE_PREFIX}environment|machine_type|`c(machine_type)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|stata_version|`c(stata_version)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|stata_flavor|`c(flavor)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|stata_processors|`c(processors)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|stata_processors_limit|`c(processors_lic)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|os|`c(os)\'" _n',
+        f'file write __frg_capture "{CAPTURE_PREFIX}environment|machine_type|`c(machine_type)\'" _n',
         "set seed 20260821",
     ]
     for case in [*manifest["semantic_cases"], *manifest["benchmark_cases"]]:
         lines.extend(_render_case(case, datasets[case["dataset"]], staged_inputs, run_dir))
-    lines.extend([f'file write __stfx_capture "{CAPTURE_SENTINEL}" _n', "file close __stfx_capture", ""])
+    lines.extend([f'file write __frg_capture "{CAPTURE_SENTINEL}" _n', "file close __frg_capture", ""])
     return "\n".join(lines)
 
 
@@ -1386,7 +1386,7 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
     """Require scientific parity/certificates before evaluating speed or RSS."""
     contract = manifest["benchmark_contract"]
     if contract["candidate_state"] != "enabled":
-        return {"status": "blocked", "reason": "candidate_stfeols_disabled", "thresholds": contract["thresholds"]}
+        return {"status": "blocked", "reason": "candidate_fereg_disabled", "thresholds": contract["thresholds"]}
     cases = manifest["benchmark_cases"]
     expected_inventory = {(case["id"], arm) for case in cases for arm in ("comparator", "candidate")}
     records: dict[tuple[str, str], Mapping[str, Any]] = {}
@@ -1543,7 +1543,7 @@ def verify_receipt(
     gate = payload.get("benchmark_gate")
     if gate != {
         "status": "blocked",
-        "reason": "candidate_stfeols_disabled",
+        "reason": "candidate_fereg_disabled",
         "thresholds": manifest["benchmark_contract"]["thresholds"],
     }:
         raise ContractError("reference-only receipt must not claim a benchmark gate pass")
@@ -1658,7 +1658,7 @@ def _run_fresh_process(
     """Run exactly one child and measure that child's lifetime peak RSS."""
     if runner is not subprocess.run:
         completed = runner(command, cwd=cwd, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        rss = getattr(completed, "stfixest_peak_rss", None)
+        rss = getattr(completed, "fereg_peak_rss", None)
         if not isinstance(rss, Mapping):
             raise ContractError("injected process runner omitted per-process RSS evidence")
         return completed, dict(rss)
@@ -1854,7 +1854,7 @@ def capture_reference(
     inputs_before = manifest_bound_inputs(manifest, root)
     identities = preflight_reference_root(reference_root, lock, root)
 
-    with tempfile.TemporaryDirectory(prefix="stfixest-ols-reference-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="fereg-ols-reference-") as temporary:
         run_dir = Path(temporary)
         reference_stage = run_dir / "references"
         reference_stage.mkdir()
@@ -1997,7 +1997,7 @@ def capture_reference(
         "benchmark_evidence": benchmark_evidence,
         "benchmark_gate": {
             "status": "blocked",
-            "reason": "candidate_stfeols_disabled",
+            "reason": "candidate_fereg_disabled",
             "thresholds": manifest["benchmark_contract"]["thresholds"],
         },
         "cases": captured_cases,

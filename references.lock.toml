@@ -6,14 +6,14 @@ policy = "Exact immutable commits and local SHA-256 hashes; no floating branch i
 manifest = "benchmarks/manifests/ols_v1.json"
 reference_root_layout = "<absolute-root>/reghdfe, <absolute-root>/ftools, and <absolute-root>/require must be clean direct-child git checkouts"
 network_policy = "offline-only; the runner never installs or fetches reference commands"
-eligibility = "exact source pins are resolved; capture still requires all three matching clean local checkouts and the disabled StFixest arm cannot claim a benchmark pass"
+eligibility = "exact source pins are resolved; capture still requires all three matching clean local checkouts and the disabled fereg arm cannot claim a benchmark pass"
 raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
 
 
 [governing_spec]
 file = "AGENTS.md"
-sha256 = "7c43ce4128a993f1613fd129133c2d5df65eef70bc33bb4ebac4e2a4b430c07a"
-source_filename = "StFixest 1.0 Rust-First Implementation Plan for Codex.md"
+sha256 = "5c59d9d0b453c9096884199f397ba5ca22086cf6d283020137692d7aa7dc57d8"
+source_filename = "fereg 1.0 Rust-First Implementation Plan for Codex.md"
 
 [[reference]]
 name = "pyfixest"
@@ -63,7 +63,7 @@ version = "2.50.0"
 license = "MIT"
 relevant_source_paths = ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"]
 relevant_test_paths = ["test/", "tests/"]
-use = "Required dependency of the pinned reghdfe capture only; never called at StFixest runtime."
+use = "Required dependency of the pinned reghdfe capture only; never called at fereg runtime."
 checkout_dir = "ftools"
 capture_ado_subdir = "src"
 required_capture_files = ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg", "src/ms_parse_vce.ado"]

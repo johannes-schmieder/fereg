@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage StFixest, run one licensed-Stata profile, and emit a receipt."""
+"""Stage fereg, run one licensed-Stata profile, and emit a receipt."""
 
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ def main() -> int:
     clear_directory(artifact_dir)
     parent = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())).resolve()
     parent.mkdir(parents=True, exist_ok=True)
-    run_root = Path(tempfile.mkdtemp(prefix="stfixest-stata-ci-", dir=parent))
+    run_root = Path(tempfile.mkdtemp(prefix="fereg-stata-ci-", dir=parent))
     staged_root = run_root / "repo"
     staged_root.mkdir()
     stage_repository(root, staged_root)
@@ -160,7 +160,7 @@ def main() -> int:
             str(staged_root),
             str(run_root),
         ]
-    elif driver == "stfixest-fixtures":
+    elif driver == "fereg-fixtures":
         profile_command = [
             sys.executable,
             str(staged_root / "ci" / "run_fixture_profile.py"),
@@ -238,7 +238,7 @@ def main() -> int:
         "--tested-sha",
         tested_sha,
         "--repository",
-        os.environ.get("GITHUB_REPOSITORY", "local/StFixest"),
+        os.environ.get("GITHUB_REPOSITORY", "local/fereg"),
         "--ref",
         os.environ.get("GITHUB_REF", "local"),
         "--run-id",

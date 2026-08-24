@@ -57,8 +57,8 @@ def make_reference_checkout(root: Path, name: str, required: list[str]) -> tuple
     checkout = root / name
     checkout.mkdir()
     git(checkout, "init", "--quiet")
-    git(checkout, "config", "user.name", "StFixest Test")
-    git(checkout, "config", "user.email", "stfixest-test@example.invalid")
+    git(checkout, "config", "user.name", "fereg Test")
+    git(checkout, "config", "user.email", "fereg-test@example.invalid")
     for relative in required:
         path = checkout / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -211,11 +211,11 @@ class OlsManifestTests(unittest.TestCase):
         staged["__generator__"] = Path("/private/tmp/generate_panel.do")
         rendered = render_capture_do(manifest, staged, Path("/private/tmp"), "a" * 64)
         self.assertIn("reghdfe y", rendered)
-        self.assertNotIn("stfeols", rendered)
-        self.assertNotIn("stfepois", rendered)
+        self.assertNotIn("fereg", rendered)
+        self.assertNotIn("feppml", rendered)
         self.assertIn("quietly _datasignature obs_id", rendered)
         self.assertNotIn("quietly datasignature obs_id", rendered)
-        self.assertEqual(rendered.strip().splitlines()[-2], f'file write __stfx_capture "{CAPTURE_SENTINEL}" _n')
+        self.assertEqual(rendered.strip().splitlines()[-2], f'file write __frg_capture "{CAPTURE_SENTINEL}" _n')
 
     def test_benchmark_dataset_generation_is_outside_estimator_process(self):
         manifest = load_manifest()
@@ -409,7 +409,7 @@ class BenchmarkGateTests(unittest.TestCase):
         manifest = load_manifest()
         result = evaluate_benchmark_gates(manifest, [])
         self.assertEqual(result["status"], "blocked")
-        self.assertEqual(result["reason"], "candidate_stfeols_disabled")
+        self.assertEqual(result["reason"], "candidate_fereg_disabled")
 
     def test_future_complete_two_arm_evidence_enforces_all_thresholds(self):
         manifest = load_manifest()
@@ -513,24 +513,24 @@ class ReceiptAndSentinelTests(unittest.TestCase):
     @staticmethod
     def minimal_capture_text(*, terminal: bool = True) -> str:
         lines = [
-            "STFIXEST_OLS_CAPTURE|schema|1",
-            "STFIXEST_OLS_CAPTURE|manifest_sha256|" + "a" * 64,
-            "STFIXEST_OLS_CAPTURE|environment|stata_version|18",
-            "STFIXEST_OLS_CAPTURE|environment|stata_flavor|MP",
-            "STFIXEST_OLS_CAPTURE|environment|stata_processors|8",
-            "STFIXEST_OLS_CAPTURE|environment|stata_processors_limit|8",
-            "STFIXEST_OLS_CAPTURE|environment|os|Unix",
-            "STFIXEST_OLS_CAPTURE|environment|machine_type|Mac",
-            "STFIXEST_OLS_CAPTURE|case_begin|semantic",
-            "STFIXEST_OLS_CAPTURE|timing|semantic|1|cold|+0000000000000X+000",
-            "STFIXEST_OLS_CAPTURE|return_code|semantic|0",
-            "STFIXEST_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
-            "STFIXEST_OLS_CAPTURE|macro|semantic|cmd|reghdfe",
-            "STFIXEST_OLS_CAPTURE|matrix_dimensions|semantic|b|1|1",
-            "STFIXEST_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000",
-            "STFIXEST_OLS_CAPTURE|observation_count|semantic|1",
-            "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000",
-            "STFIXEST_OLS_CAPTURE|case_end|semantic",
+            "FEREG_OLS_CAPTURE|schema|1",
+            "FEREG_OLS_CAPTURE|manifest_sha256|" + "a" * 64,
+            "FEREG_OLS_CAPTURE|environment|stata_version|18",
+            "FEREG_OLS_CAPTURE|environment|stata_flavor|MP",
+            "FEREG_OLS_CAPTURE|environment|stata_processors|8",
+            "FEREG_OLS_CAPTURE|environment|stata_processors_limit|8",
+            "FEREG_OLS_CAPTURE|environment|os|Unix",
+            "FEREG_OLS_CAPTURE|environment|machine_type|Mac",
+            "FEREG_OLS_CAPTURE|case_begin|semantic",
+            "FEREG_OLS_CAPTURE|timing|semantic|1|cold|+0000000000000X+000",
+            "FEREG_OLS_CAPTURE|return_code|semantic|0",
+            "FEREG_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
+            "FEREG_OLS_CAPTURE|macro|semantic|cmd|reghdfe",
+            "FEREG_OLS_CAPTURE|matrix_dimensions|semantic|b|1|1",
+            "FEREG_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000",
+            "FEREG_OLS_CAPTURE|observation_count|semantic|1",
+            "FEREG_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000",
+            "FEREG_OLS_CAPTURE|case_end|semantic",
         ]
         if terminal:
             lines.append(CAPTURE_SENTINEL)
@@ -540,7 +540,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
         parsed = parse_capture(self.minimal_capture_text(), self.minimal_capture_manifest(), "a" * 64)
         self.assertEqual(parsed.cases[0]["return_code"], 0)
         missing = self.minimal_capture_text().replace(
-            "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\n",
+            "FEREG_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\n",
             "",
         )
         with self.assertRaisesRegex(ContractError, "observation evidence"):
@@ -548,8 +548,8 @@ class ReceiptAndSentinelTests(unittest.TestCase):
 
     def test_requested_absent_and_bad_hex_are_rejected(self):
         absent = self.minimal_capture_text().replace(
-            "STFIXEST_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
-            "STFIXEST_OLS_CAPTURE|absent|semantic|scalar|N",
+            "FEREG_OLS_CAPTURE|scalar|semantic|N|+0000000000001X+000",
+            "FEREG_OLS_CAPTURE|absent|semantic|scalar|N",
         )
         with self.assertRaisesRegex(ContractError, "cannot be absent"):
             parse_capture(absent, self.minimal_capture_manifest(), "a" * 64)
@@ -559,14 +559,14 @@ class ReceiptAndSentinelTests(unittest.TestCase):
 
     def test_duplicate_observation_and_matrix_coordinates_are_rejected(self):
         duplicate_observation = self.minimal_capture_text().replace(
-            "STFIXEST_OLS_CAPTURE|case_end|semantic",
-            "STFIXEST_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\nSTFIXEST_OLS_CAPTURE|case_end|semantic",
+            "FEREG_OLS_CAPTURE|case_end|semantic",
+            "FEREG_OLS_CAPTURE|observation|semantic|+0000000000001X+000|sample|+0000000000001X+000\nFEREG_OLS_CAPTURE|case_end|semantic",
         )
         with self.assertRaisesRegex(ContractError, "observation evidence is incomplete|duplicate observation"):
             parse_capture(duplicate_observation, self.minimal_capture_manifest(), "a" * 64)
         duplicate_matrix = self.minimal_capture_text().replace(
-            "STFIXEST_OLS_CAPTURE|observation_count",
-            "STFIXEST_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000\nSTFIXEST_OLS_CAPTURE|observation_count",
+            "FEREG_OLS_CAPTURE|observation_count",
+            "FEREG_OLS_CAPTURE|matrix|semantic|b|1|1|y|x|+0000000000001X+000\nFEREG_OLS_CAPTURE|observation_count",
         )
         with self.assertRaisesRegex(ContractError, "duplicate matrix coordinate"):
             parse_capture(duplicate_matrix, self.minimal_capture_manifest(), "a" * 64)
@@ -624,7 +624,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
         lock = reference_lock("1" * 40, "2" * 40, "3" * 40)
         payload = {
             "schema_version": 1,
-            "receipt_type": "stfixest-ols-v1-reference",
+            "receipt_type": "fereg-ols-v1-reference",
             "manifest": {"id": "ols_v1", "sha256": ""},
             "inputs": {"fixture.csv": "3" * 64},
             "generated_datasets": {},
@@ -638,7 +638,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "benchmark_evidence": [],
             "benchmark_gate": {
                 "status": "blocked",
-                "reason": "candidate_stfeols_disabled",
+                "reason": "candidate_fereg_disabled",
                 "thresholds": {"geometric_mean_speedup_min": 1.5, "primary_case_time_ratio_max": 1.0, "primary_case_rss_ratio_max": 1.0},
             },
             "cases": [

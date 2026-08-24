@@ -86,7 +86,7 @@ fixture status files, and terminal PASS sentinel must agree.
   mathematical or explicit-dummy oracles.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
-- Public `stfeols`, `stfepois`, `estimate-ols`, and `estimate-ppml` remain
+- Public `fereg`, `feppml`, `estimate-ols`, and `estimate-ppml` remain
   fail-closed until their documented activation gates are exact-green.
 - Performance and memory claims require measured evidence on the frozen suite.
 

@@ -11,4 +11,4 @@ if (Get-Command cl.exe -ErrorAction SilentlyContinue) {
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --no-default-features -- -D warnings
 cargo test --workspace --all-targets --no-default-features
-cargo test -p stfixest-plugin --features ffi --lib
+cargo test -p fereg-plugin --features ffi --lib

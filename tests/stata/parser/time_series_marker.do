@@ -8,7 +8,7 @@ tsset id t
 tempvar touse
 gen byte `touse' = 1
 
-capture noisily stfixest_parse L.x F2.x, touse(`touse')
+capture noisily fereg_parse L.x F2.x, touse(`touse')
 if _rc == 0 {
     matrix M = r(model_terms)
     assert r(n_model_terms) >= 2

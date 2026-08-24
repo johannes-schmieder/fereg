@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/validate-final-sample-rebase.yml"
 TRANSFORM = ROOT / "ci/source-transforms/activate_final_sample_rebase.py"
-CORE = ROOT / "crates/stfixest-core/src/lib.rs"
-DATA = ROOT / "crates/stfixest-core/src/ols/prepared_categorical_data.rs"
-STATA = ROOT / "stata/_stfixest_estimate_ols_test.ado"
+CORE = ROOT / "crates/fereg-core/src/lib.rs"
+DATA = ROOT / "crates/fereg-core/src/ols/prepared_categorical_data.rs"
+STATA = ROOT / "stata/_fereg_estimate_ols_test.ado"
 PROFILES = ROOT / "ci/stata_profiles.json"
 
 
@@ -34,7 +34,7 @@ class FinalSampleRebaseValidationContractTests(unittest.TestCase):
         self.assertIn("local coefficient_capacity =", text)
         self.assertIn("local coefficient_count = r(coefficients)", text)
         self.assertIn("fvexpand `indepvars' if `sample_shadow'", text)
-        self.assertIn('ereturn local stfixest_result_wire "1.1"', text)
+        self.assertIn('ereturn local fereg_result_wire "1.1"', text)
 
     def test_licensed_rebase_fixture_is_in_every_qualification_profile(self) -> None:
         import json

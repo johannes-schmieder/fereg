@@ -2,9 +2,9 @@ version 18.0
 clear all
 set more off
 
-quietly findfile stfixest.ado
+quietly findfile fereg.ado
 local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
-local suffix "/stata/stfixest.ado"
+local suffix "/stata/fereg.ado"
 assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
@@ -15,18 +15,18 @@ local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix
 * This fixture consumes the committed sealed receipt; it does not invoke reghdfe.
 import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 
-generate double __stfx_expected_resid = 0
-replace __stfx_expected_resid = -1.99997ffffffb6X-005 if obs_id == 3
-replace __stfx_expected_resid = +1.99997ffffffb6X-005 if obs_id == 4
-replace __stfx_expected_resid = +1.99997ffffffb6X-005 if obs_id == 11
-replace __stfx_expected_resid = -1.99997ffffffb6X-005 if obs_id == 12
-replace __stfx_expected_resid = +1.9999bffffffe7X-005 if obs_id == 15
-replace __stfx_expected_resid = -1.9999bffffffe7X-005 if obs_id == 16
-replace __stfx_expected_resid = -1.9999c00000047X-005 if obs_id == 23
-replace __stfx_expected_resid = +1.9999c00000047X-005 if obs_id == 24
+generate double __frg_expected_resid = 0
+replace __frg_expected_resid = -1.99997ffffffb6X-005 if obs_id == 3
+replace __frg_expected_resid = +1.99997ffffffb6X-005 if obs_id == 4
+replace __frg_expected_resid = +1.99997ffffffb6X-005 if obs_id == 11
+replace __frg_expected_resid = -1.99997ffffffb6X-005 if obs_id == 12
+replace __frg_expected_resid = +1.9999bffffffe7X-005 if obs_id == 15
+replace __frg_expected_resid = -1.9999bffffffe7X-005 if obs_id == 16
+replace __frg_expected_resid = -1.9999c00000047X-005 if obs_id == 23
+replace __frg_expected_resid = +1.9999c00000047X-005 if obs_id == 24
 
-_stfixest_estimate_ols_test y c.x1, absorb(worker firm#year) ///
-    keepsingletons residual(__stfx_reference_resid)
+_fereg_estimate_ols_test y c.x1, absorb(worker firm#year) ///
+    keepsingletons residual(__frg_reference_resid)
 
 assert e(N) == 24
 assert e(N_full) == 24
@@ -45,8 +45,8 @@ assert `"`e(vce)'"' == "ols"
 
 local coefficient_names : colfullnames e(b)
 assert `"`coefficient_names'"' == "o.x1 _cons"
-assert e(stfixest_status)[1,2] == 3
-assert e(stfixest_status)[2,2] == 5
+assert e(fereg_status)[1,2] == 3
+assert e(fereg_status)[2,2] == 5
 assert e(b)[1,1] == 0
 assert e(V)[1,1] == 0
 assert e(V)[1,2] == 0
@@ -70,7 +70,7 @@ assert e(dof_table)[2,4] == 0
 assert e(dof_table)[2,5] == 0
 
 assert e(sample) == 1
-assert !missing(__stfx_reference_resid)
-assert abs(__stfx_reference_resid - __stfx_expected_resid) <= 3e-6
+assert !missing(__frg_reference_resid)
+assert abs(__frg_reference_resid - __frg_expected_resid) <= 3e-6
 
 di as result "END_FIXTURE|estimate_ols_categorical_interaction_keepsingletons_parity|rc=0"

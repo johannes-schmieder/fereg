@@ -51,7 +51,7 @@ DEFAULT_PROJECTION = ROOT / "benchmarks/manifests/ols_hidden_numeric_v1.json"
 DEFAULT_CANDIDATE_RECEIPT_IDENTITY = (
     ROOT / "benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json"
 )
-RECEIPT_TYPE = "stfixest-ols-hidden-numeric-v1-candidate"
+RECEIPT_TYPE = "fereg-ols-hidden-numeric-v1-candidate"
 TERMINAL_SENTINEL = "END_FIXTURE|ols_v1_reference_capture|rc=0"
 FORBIDDEN_WARNING = "warning: variance matrix is nonsymmetric or highly singular."
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -63,7 +63,6 @@ EXECUTABLE_CASE_IDS = (
     "unweighted_no_fe",
     "one_fe_robust",
     "multi_fe_interactions",
-    "intercept_and_slope",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -95,6 +94,7 @@ EXECUTABLE_CASE_IDS = (
 )
 
 BLOCKERS = (
+    ("intercept_and_slope", "pending_renamed_option_a_reseal"),
     ("slope_only_multiple", "absorbed_slope_only_multiple"),
     ("string_fe", "string_source_ingestion"),
     ("time_series_lag", "time_series_materialization"),
@@ -327,7 +327,7 @@ def load_candidate_receipt_identity(
     )
     if (
         identity["schema_version"] != 1
-        or identity["identity"] != "stfixest-ols-hidden-numeric-v1-canonical-receipt"
+        or identity["identity"] != "fereg-ols-hidden-numeric-v1-canonical-receipt"
         or not isinstance(identity["receipt_path"], str)
         or Path(identity["receipt_path"]).is_absolute()
         or ".." in Path(identity["receipt_path"]).parts
@@ -382,7 +382,7 @@ def _verify_reference_receipt_portable(
     path: Path, manifest: Path
 ) -> dict[str, Any]:
     """Verify frozen comparator bytes without relying on checkout mode bits."""
-    with tempfile.TemporaryDirectory(prefix="stfixest-reference-receipt-") as raw:
+    with tempfile.TemporaryDirectory(prefix="fereg-reference-receipt-") as raw:
         copy_path = Path(raw) / "receipt.json"
         shutil.copyfile(path, copy_path)
         copy_path.chmod(0o444)
@@ -397,11 +397,11 @@ def _verify_reference_receipt_portable(
 def _expected_plugin_filename() -> str:
     system = platform.system()
     if system == "Darwin":
-        return "stfixest_macos.plugin"
+        return "fereg_macos.plugin"
     if system == "Linux":
-        return "stfixest_linux.plugin"
+        return "fereg_linux.plugin"
     if system == "Windows":
-        return "stfixest_windows.plugin"
+        return "fereg_windows.plugin"
     raise ContractError(f"unsupported candidate-capture platform {system!r}")
 
 
@@ -435,9 +435,9 @@ def _validate_plugin_identity(plugin: Any) -> None:
             "embedded_git_commit",
         }
         or plugin["filename"] not in {
-            "stfixest_macos.plugin",
-            "stfixest_linux.plugin",
-            "stfixest_windows.plugin",
+            "fereg_macos.plugin",
+            "fereg_linux.plugin",
+            "fereg_windows.plugin",
         }
         or not isinstance(plugin["sha256"], str)
         or not HEX_SHA256.fullmatch(plugin["sha256"])
@@ -527,8 +527,8 @@ def load_projection(path: Path = DEFAULT_PROJECTION) -> dict[str, Any]:
         or value["mode"] != "developer_hidden_current_surface"
         or value["public_activation"] is not False
         or value["performance"] != "unmeasured"
-        or value["candidate_command"] != "_stfixest_ols_hidden_numeric_v1"
-        or value["intended_public_command"] != "stfeols"
+        or value["candidate_command"] != "_fereg_ols_hidden_numeric_v1"
+        or value["intended_public_command"] != "fereg"
     ):
         raise ContractError("projection identity/public boundary is invalid")
     if tuple(value["executable_case_ids"]) != EXECUTABLE_CASE_IDS:
@@ -592,14 +592,14 @@ def projected_manifest(projection: Mapping[str, Any]) -> dict[str, Any]:
         )
         if case["expected"] != "must_error":
             for required in (
-                "stfixest_status",
-                "stfixest_certificate",
-                "stfixest_receipt",
+                "fereg_status",
+                "fereg_certificate",
+                "fereg_receipt",
             ):
                 if required not in case["capture"]["matrices"]:
                     case["capture"]["matrices"].append(required)
-        if case["id"] in Q_ANCHORS and "stfixest_v_determinant" not in case["capture"]["scalars"]:
-            case["capture"]["scalars"].append("stfixest_v_determinant")
+        if case["id"] in Q_ANCHORS and "fereg_v_determinant" not in case["capture"]["scalars"]:
+            case["capture"]["scalars"].append("fereg_v_determinant")
         cases.append(case)
     if [case["id"] for case in cases] != [case for case in EXECUTABLE_CASE_IDS if case in selected]:
         # The executable inventory is explicit, but execution follows immutable
@@ -643,9 +643,9 @@ def _matrix_map(case: Mapping[str, Any], name: str) -> dict[tuple[int, int], Map
 def _validate_internal_candidate(case: Mapping[str, Any]) -> None:
     if case["return_code"] != 0:
         return
-    receipt = _matrix_map(case, "stfixest_receipt")
-    certificate = _matrix_map(case, "stfixest_certificate")
-    status = _matrix_map(case, "stfixest_status")
+    receipt = _matrix_map(case, "fereg_receipt")
+    certificate = _matrix_map(case, "fereg_certificate")
+    status = _matrix_map(case, "fereg_status")
     if len(receipt) != 16:
         raise ContractError(f"case {case['id']}: result receipt is absent or malformed")
     if receipt[(1, 1)]["value_hex"] != "+1.46b5490000000X+005":
@@ -668,7 +668,7 @@ def _validate_internal_candidate(case: Mapping[str, Any]) -> None:
         raise ContractError(
             f"case {case['id']}: native covariance determinant metadata is invalid"
         )
-    posted_determinant = case["scalars"].get("stfixest_v_determinant")
+    posted_determinant = case["scalars"].get("fereg_v_determinant")
     if (
         posted_determinant is not None
         and posted_determinant != certificate[(31, 2)]["value_hex"]
@@ -809,7 +809,7 @@ def _run_stata_capture(
     for dataset_id in {case["dataset"] for case in projected["semantic_cases"]}:
         staged[dataset_id] = _repository_path(datasets[dataset_id]["source"]["path"], f"dataset {dataset_id}")
     staged["__generator__"] = _repository_path(projected["capture"]["generator"]["path"], "generator")
-    with tempfile.TemporaryDirectory(prefix="stfixest-hidden-numeric-") as raw:
+    with tempfile.TemporaryDirectory(prefix="fereg-hidden-numeric-") as raw:
         run_dir = Path(raw)
         case_do = run_dir / "candidate_cases.do"
         capture_file = run_dir / "candidate.capture"
@@ -828,10 +828,10 @@ def _run_stata_capture(
             [
                 f"adopath ++ {_stata_quote(ROOT / 'stata')}",
                 f"adopath ++ {_stata_quote(staged_plugin.parent)}",
-                f"capture program __stfixest_candidate_provenance, plugin using({_stata_quote(staged_plugin)})",
+                f"capture program __fereg_candidate_provenance, plugin using({_stata_quote(staged_plugin)})",
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 exit `provenance_load_rc'",
-                "plugin call __stfixest_candidate_provenance, version",
+                "plugin call __fereg_candidate_provenance, version",
                 f"do {_stata_quote(case_do)} {_stata_quote(capture_file)} {projection_hash}",
             ]
         )
@@ -856,7 +856,7 @@ def _run_stata_capture(
         if warning_audit["forbidden_match_count"] != 0:
             raise ContractError("licensed Stata emitted the forbidden covariance warning")
         embedded_commits = re.findall(
-            r"^stfixest\.git_commit=([0-9a-f]{12})\s*$", logs, flags=re.MULTILINE
+            r"^fereg\.git_commit=([0-9a-f]{12})\s*$", logs, flags=re.MULTILINE
         )
         expected_embedded_commit = str(source_identity["commit"])[:12]
         if embedded_commits != [expected_embedded_commit]:
@@ -909,7 +909,7 @@ def _supporting_gate_evidence(plugin: Mapping[str, Any]) -> dict[str, Any]:
         "fake_spi_store_failures": {
             "status": "pass",
             "ordinals": 222,
-            "test_sha256": sha256_file(ROOT / "crates/stfixest-plugin/src/estimate.rs"),
+            "test_sha256": sha256_file(ROOT / "crates/fereg-plugin/src/estimate.rs"),
         },
         "actual_plugin_loader": {
             "status": "pass",
@@ -947,7 +947,7 @@ def _run_supporting_gates(
                 str(cargo),
                 "test",
                 "-p",
-                "stfixest-plugin",
+                "fereg-plugin",
                 "every_output_store_failure_leaves_receipt_incomplete",
             ],
         ),
@@ -1037,7 +1037,7 @@ def capture_receipt(
     if comparator_document["seal"]["payload_sha256"] != projection["comparator_receipt"]["payload_sha256"]:
         raise ContractError("comparator payload seal differs from projection")
     supplied_plugin, supplied_identity = _supplied_plugin_identity(plugin)
-    with tempfile.TemporaryDirectory(prefix="stfixest-candidate-transaction-") as raw:
+    with tempfile.TemporaryDirectory(prefix="fereg-candidate-transaction-") as raw:
         plugin_dir = Path(raw) / "candidate-plugin"
         plugin_dir.mkdir()
         staged_plugin = plugin_dir / supplied_identity["filename"]

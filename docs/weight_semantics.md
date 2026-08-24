@@ -1,7 +1,7 @@
 # OLS weight-semantics contract
 
 Weight behavior is a reference-captured scientific contract, not an inference
-from Stata's `syntax` declaration or from the native storage type. StFixest
+from Stata's `syntax` declaration or from the native storage type. fereg
 still enables no public OLS estimator. The licensed, sealed ARM64 macOS/Stata
 18 OLS reference receipt identified in `STATUS.md` now freezes the probe
 outcomes below.
@@ -24,7 +24,7 @@ bytes and exact `reghdfe` commands:
 
 `record` cases intentionally discover behavior whose success status has not yet
 been adjudicated. Their outcome becomes evidence only in a sealed receipt; it
-does not silently enable the same behavior in StFixest. `must_succeed` and
+does not silently enable the same behavior in fereg. `must_succeed` and
 `must_error` cases are harness assertions and abort the capture if violated.
 
 ## Native implementation obligations
@@ -168,7 +168,7 @@ covariance, statistics, and certificates.
 
 All three inference checkpoints remain core-only. They do not post `e(N)` or
 `e(sumweights)`, define display metadata or public probability-weight defaults,
-or become callable through the plugin or `stfeols`.
+or become callable through the plugin or `fereg`.
 
 ## Evidence and enablement gate
 
@@ -184,4 +184,4 @@ with an independent explicit-dummy/WLS oracle and an end-to-end final-sample
 identity test. The full dependency closure and licensed OLS receipt are frozen.
 Only the analytic-, frequency-, and probability-weight preparation rules
 implemented in the guarded developer action have crossed an executable
-boundary; no weight kind is enabled in `stfeols`.
+boundary; no weight kind is enabled in `fereg`.

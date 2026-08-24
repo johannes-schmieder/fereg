@@ -20,46 +20,46 @@ local reference_z = _b[z]
 local reference_vx = e(V)[1,1]
 local reference_vz = e(V)[2,2]
 
-_stfixest_estimate_ols_test y c.x c.z, absorb(firm#year) ///
-    residual(__stfx_interaction_resid)
-assert `"`e(cmd)'"' == "_stfixest_estimate_ols_test"
-assert e(stfixest_receipt)[1,16] == 1
-assert e(stfixest_receipt)[1,4] == 1
-assert e(stfixest_receipt)[1,11] == 1
-assert e(stfixest_fe)[1,1] == 3
-assert e(stfixest_fe)[1,2] == 1
-assert e(stfixest_fe)[1,3] == 0
-assert e(stfixest_fe)[1,4] == 24
-assert e(stfixest_fe)[1,6] == e(df_a)
+_fereg_estimate_ols_test y c.x c.z, absorb(firm#year) ///
+    residual(__frg_interaction_resid)
+assert `"`e(cmd)'"' == "_fereg_estimate_ols_test"
+assert e(fereg_receipt)[1,16] == 1
+assert e(fereg_receipt)[1,4] == 1
+assert e(fereg_receipt)[1,11] == 1
+assert e(fereg_fe)[1,1] == 3
+assert e(fereg_fe)[1,2] == 1
+assert e(fereg_fe)[1,3] == 0
+assert e(fereg_fe)[1,4] == 24
+assert e(fereg_fe)[1,6] == e(df_a)
 local interaction_dof_rows : rowfullnames e(dof_table)
 assert `"`interaction_dof_rows'"' == "1.firm#1.year"
 assert e(sample) == 1
-assert !missing(__stfx_interaction_resid)
+assert !missing(__frg_interaction_resid)
 assert reldif(_b[x], `reference_x') < 1e-8
 assert reldif(_b[z], `reference_z') < 1e-8
 assert reldif(e(V)[1,1], `reference_vx') < 1e-7
 assert reldif(e(V)[2,2], `reference_vz') < 1e-7
-assert e(stfixest_certificate)[32,2] == 1
+assert e(fereg_certificate)[32,2] == 1
 
-_stfixest_estimate_ols_test y c.x c.z, absorb(firm#year) ///
+_fereg_estimate_ols_test y c.x c.z, absorb(firm#year) ///
     vce(robust) noconstant
-assert e(stfixest_receipt)[1,4] == 2
-assert e(stfixest_receipt)[1,5] == 2
-assert e(stfixest_fe)[1,1] == 3
-assert e(stfixest_certificate)[24,2] == 1
-assert e(stfixest_certificate)[32,2] == 1
+assert e(fereg_receipt)[1,4] == 2
+assert e(fereg_receipt)[1,5] == 2
+assert e(fereg_fe)[1,1] == 3
+assert e(fereg_certificate)[24,2] == 1
+assert e(fereg_certificate)[32,2] == 1
 
-_stfixest_estimate_ols_test y c.x c.z, absorb(firm#year) ///
+_fereg_estimate_ols_test y c.x c.z, absorb(firm#year) ///
     cluster(cluster_a cluster_b)
-assert e(stfixest_receipt)[1,4] == 3
-assert e(stfixest_receipt)[1,10] == 2
-assert e(stfixest_cluster)[1,3] > 1
-assert e(stfixest_cluster)[2,3] > 1
-assert e(stfixest_subset)[1,1] == 1
-assert e(stfixest_subset)[2,1] == 2
-assert e(stfixest_subset)[3,1] == 3
-assert e(stfixest_certificate)[24,2] == 1
-assert e(stfixest_certificate)[32,2] == 1
+assert e(fereg_receipt)[1,4] == 3
+assert e(fereg_receipt)[1,10] == 2
+assert e(fereg_cluster)[1,3] > 1
+assert e(fereg_cluster)[2,3] > 1
+assert e(fereg_subset)[1,1] == 1
+assert e(fereg_subset)[2,1] == 2
+assert e(fereg_subset)[3,1] == 3
+assert e(fereg_certificate)[24,2] == 1
+assert e(fereg_certificate)[32,2] == 1
 assert e(N_hdfe) == 1
 assert `"`e(absvars)'"' == "firm#year"
 

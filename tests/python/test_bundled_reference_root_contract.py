@@ -94,6 +94,8 @@ class BundledReferenceRootContractTests(unittest.TestCase):
             self.assertEqual(manifest["checkout_dir"], entry["checkout_dir"])
             self.assertEqual(manifest["required_files"], entry["required_capture_sha256"])
             self.assertEqual(manifest["capture_network_policy"], "offline-only")
+            self.assertEqual(manifest["provisioning_mode"], "offline-local-reseal")
+            self.assertEqual(manifest["provisioning_repository"], "johannes-schmieder/fereg")
             self.assertEqual(manifest["bundle_sha256"], sha256_file(bundle_path))
             completed = subprocess.run(
                 ["git", "bundle", "list-heads", str(bundle_path)],
@@ -106,7 +108,7 @@ class BundledReferenceRootContractTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, component)
             self.assertEqual(
                 completed.stdout.strip(),
-                f"{commit} refs/heads/stfixest-pin-{component}",
+                f"{commit} refs/heads/fereg-pin-{component}",
             )
 
     def test_only_private_path_and_redacted_counts_are_emitted(self) -> None:
@@ -126,7 +128,7 @@ class BundledReferenceRootContractTests(unittest.TestCase):
         self.assertIn("ci/reference-bundles/stata-require/**", text)
         self.assertIn("BUNDLED_REFERENCE_OUTCOME", text)
         self.assertIn("scripts/resolve_reference_root.py", text)
-        self.assertNotIn("echo $STFIXEST_REFERENCE_ROOT", text)
+        self.assertNotIn("echo $FEREG_REFERENCE_ROOT", text)
         self.assertNotIn("cat $REFERENCE_ROOT_FILE", text)
 
 

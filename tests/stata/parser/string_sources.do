@@ -10,7 +10,7 @@ tempvar touse
 gen byte `touse' = 1
 local before_k = c(k)
 
-stfixest_parse c.x, touse(`touse') absorb(worker firm) cluster(firm#year worker)
+fereg_parse c.x, touse(`touse') absorb(worker firm) cluster(firm#year worker)
 assert r(n_absorb_terms) == 2
 assert r(n_cluster_terms) == 2
 assert strpos("`r(source_vars)'", "worker") > 0

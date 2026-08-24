@@ -26,33 +26,33 @@ from ols_reference import load_reference_lock, preflight_reference_root
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "references.lock.toml"
 REQUIRED_CHILDREN = ("reghdfe", "ftools", "require")
-MATERIALIZED_PREFIX = "stfixest-reference-materialized-"
+MATERIALIZED_PREFIX = "fereg-reference-materialized-"
 
 # Finite conventional roots only. Do not replace this with filesystem search.
 CANDIDATE_SUFFIXES = (
     "Git",
-    "Git/StFixest-references",
-    "Git/stfixest-references",
+    "Git/fereg-references",
+    "Git/fereg-references",
     "Git/references",
     "Git/References",
-    "Git/StFixest/references",
-    "Git/StFixest/docs/references",
-    "Git/stfixest/docs/references",
+    "Git/fereg/references",
+    "Git/fereg/docs/references",
+    "Git/fereg/docs/references",
     "Git/Vault/references",
     "git",
-    "git/StFixest-references",
-    "git/stfixest-references",
+    "git/fereg-references",
+    "git/fereg-references",
     "git/references",
-    "Projects/StFixest-references",
-    "Projects/stfixest-references",
+    "Projects/fereg-references",
+    "Projects/fereg-references",
     "Projects/references",
-    "src/StFixest-references",
-    "src/stfixest-references",
+    "src/fereg-references",
+    "src/fereg-references",
     "src/references",
 )
 SHARED_CANDIDATES = (
-    Path("/Users/Shared/StFixest-references"),
-    Path("/Users/Shared/stfixest-references"),
+    Path("/Users/Shared/fereg-references"),
+    Path("/Users/Shared/fereg-references"),
     Path("/Users/Shared/references"),
 )
 
@@ -109,16 +109,16 @@ REPOSITORY_CANDIDATE_SUFFIXES: Mapping[str, tuple[str, ...]] = {
 SHARED_REPOSITORY_CANDIDATES: Mapping[str, tuple[Path, ...]] = {
     "reghdfe": (
         Path("/Users/Shared/reghdfe"),
-        Path("/Users/Shared/StFixest-references/reghdfe"),
+        Path("/Users/Shared/fereg-references/reghdfe"),
     ),
     "ftools": (
         Path("/Users/Shared/ftools"),
-        Path("/Users/Shared/StFixest-references/ftools"),
+        Path("/Users/Shared/fereg-references/ftools"),
     ),
     "require": (
         Path("/Users/Shared/require"),
         Path("/Users/Shared/stata-require"),
-        Path("/Users/Shared/StFixest-references/require"),
+        Path("/Users/Shared/fereg-references/require"),
     ),
 }
 
@@ -165,8 +165,8 @@ def _deduplicate(candidates: Sequence[Path]) -> list[Path]:
 
 
 def candidate_roots() -> tuple[list[Path], bool]:
-    if "STFIXEST_REFERENCE_ROOT" in os.environ:
-        value = os.environ["STFIXEST_REFERENCE_ROOT"]
+    if "FEREG_REFERENCE_ROOT" in os.environ:
+        value = os.environ["FEREG_REFERENCE_ROOT"]
         if not value or not Path(value).expanduser().is_absolute():
             raise ResolverError("explicit_reference_root_invalid", checked=1)
         return ([Path(value).expanduser()], True)

@@ -59,7 +59,7 @@ def create(source: Path, output: Path) -> None:
     (source / "MANIFEST.sha256").write_text(manifest_text, encoding="utf-8")
     metadata = {
         "schema": 1,
-        "package": "stfixest-0.1.0-phase01",
+        "package": "fereg-0.1.0-phase01",
         "created_utc": "2026-08-20T00:00:00Z",
         "files": records,
     }

@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PLUGIN = ROOT / "crates/stfixest-plugin/src"
-STATA = ROOT / "stata/_stfixest_estimate_ols_test.ado"
+PLUGIN = ROOT / "crates/fereg-plugin/src"
+STATA = ROOT / "stata/_fereg_estimate_ols_test.ado"
 PROFILES = ROOT / "ci/stata_profiles.json"
 
 
@@ -50,10 +50,10 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
 
     def test_signed_residual_dof_publication_path_is_absent(self):
         core = (
-            ROOT / "crates/stfixest-core/src/ols/prepared_unadjusted.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
         exports = (
-            ROOT / "crates/stfixest-core/src/ols/mod.rs"
+            ROOT / "crates/fereg-core/src/ols/mod.rs"
         ).read_text(encoding="utf-8")
         result = (PLUGIN / "result.rs").read_text(encoding="utf-8")
         stata = STATA.read_text(encoding="utf-8")

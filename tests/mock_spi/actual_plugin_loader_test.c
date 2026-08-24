@@ -359,10 +359,10 @@ static int check_version(stata_call_function call)
     char *arguments[] = {"version"};
     clear_output();
     if (call(1, arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.plugin_version=0.1.0") == NULL ||
-        strstr(display_buffer, "stfixest.action_protocol=1.1") == NULL ||
-        strstr(display_buffer, "stfixest.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "stfixest.ols_result_wire=1.1") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.1.0") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.1") == NULL ||
+        strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.1") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -383,8 +383,8 @@ static int check_doctor(stata_call_function call)
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.native_selftest=pass") == NULL ||
-        strstr(display_buffer, "stfixest.ado_plugin_compatible=yes") == NULL ||
+    if (strstr(display_buffer, "fereg.native_selftest=pass") == NULL ||
+        strstr(display_buffer, "fereg.ado_plugin_compatible=yes") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -482,11 +482,11 @@ static int check_prepare_ols_test(stata_call_function call)
     plugin_data[2][4] = 4.0;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols_test=pass") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.map_checked=1") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.map_iterations=1") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.map_stop=certified") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols_test=pass") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.map_checked=1") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.map_iterations=1") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.map_stop=certified") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -562,10 +562,10 @@ static int check_prepare_ols_factor(stata_call_function call)
     plugin_data[2][4] = 3.0;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_columns=3") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_coefficient_slots=4") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_categorical_sources=1") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_columns=3") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_coefficient_slots=4") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_categorical_sources=1") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -638,9 +638,9 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
     plugin_data[3][4] = 2.0;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=2") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_columns=2") == NULL ||
-        strstr(display_buffer, "stfixest.prepare_ols.n_categorical_sources=2") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols.n_retained=2") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_columns=2") == NULL ||
+        strstr(display_buffer, "fereg.prepare_ols.n_categorical_sources=2") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -735,7 +735,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
     plugin_data[3][4] = NAN;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=1") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols.n_retained=1") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -827,7 +827,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
     plugin_data[3][4] = 4.0;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=3") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols.n_retained=3") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -914,7 +914,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
     plugin_data[3][4] = 1.4;
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.prepare_ols.n_retained=3") == NULL ||
+    if (strstr(display_buffer, "fereg.prepare_ols.n_retained=3") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -1093,7 +1093,7 @@ int main(int argc, char *argv[])
         dlclose(library);
         return 4;
     }
-    if (dlsym(library, "stfixest_dispatch") != NULL) {
+    if (dlsym(library, "fereg_dispatch") != NULL) {
         fprintf(stderr, "internal Rust dispatch leaked from exports\n");
         dlclose(library);
         return 5;

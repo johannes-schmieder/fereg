@@ -1,6 +1,6 @@
 # Licensed Stata/Rust Mac runner
 
-StFixest uses one private repository-level GitHub Actions runner on the Mac
+fereg uses one private repository-level GitHub Actions runner on the Mac
 Studio for licensed Stata/MP 18 and target-native Rust/plugin checks. Workflow
 code executes with the privileges of the logged-in macOS user.
 
@@ -103,8 +103,13 @@ macstudio-stata-mp18-stfixest
 Labels:
 
 ```text
-self-hosted, macOS, ARM64, stata, stata-mp, stata18, stfixest
+self-hosted, macOS, ARM64, stata, stata-mp, stata18, fereg
 ```
+
+The installation directory, runner name, and LaunchAgent service identifier
+retain their original `stfixest` spelling. They are host-local legacy
+identifiers only; changing them would require deregistration and service
+replacement and is not part of the repository/package rename.
 
 Manage it from the installation directory:
 

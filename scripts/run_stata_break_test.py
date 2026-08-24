@@ -15,7 +15,7 @@ from pathlib import Path
 
 from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
 
-ARMED = "STFIXEST_BREAK_ARMED"
+ARMED = "FEREG_BREAK_ARMED"
 
 
 def stata_quote(path: Path) -> str:
@@ -60,7 +60,7 @@ def main() -> None:
     root = Path(__file__).resolve().parents[1]
     fixture = root / "tests/licensed_stata/estimate_ols_eclass_break.do"
     bound_plugin = validate_candidate_plugin(args.plugin, args.plugin_sha256)
-    temporary = tempfile.TemporaryDirectory(prefix="stfixest-stata-break-")
+    temporary = tempfile.TemporaryDirectory(prefix="fereg-stata-break-")
     run_dir = Path(temporary.name)
     master, slave = pty.openpty()
 
@@ -91,12 +91,12 @@ def main() -> None:
             [
                 f"adopath ++ {stata_quote(root / 'stata')}",
                 f"adopath ++ {stata_quote(bound_plugin.parent)}",
-                "capture program __stfixest_break_provenance, plugin "
+                "capture program __fereg_break_provenance, plugin "
                 f"using({stata_quote(bound_plugin)})",
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                 "exit `provenance_load_rc'",
-                "plugin call __stfixest_break_provenance, version",
+                "plugin call __fereg_break_provenance, version",
                 f"do {stata_quote(fixture)}",
                 "",
             ]

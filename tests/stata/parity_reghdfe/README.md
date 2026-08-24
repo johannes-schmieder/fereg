@@ -1,6 +1,6 @@
 # OLS parity tests
 
-`stfeols` remains disabled. This directory contains developer-only differential
+`fereg` remains disabled. This directory contains developer-only differential
 fixtures and evidence contracts; none of them enable the public estimator.
 
 The first categorical-interaction reference gate is the successful,
@@ -13,7 +13,7 @@ source-bound receipt:
 
 `estimate_ols_categorical_interaction_parity.do` consumes the committed
 `target_default_firm_year` case from that sealed receipt. It checks the hidden
-StFixest sample after iterative singleton pruning, coefficient/status layout,
+fereg sample after iterative singleton pruning, coefficient/status layout,
 covariance, absorbed and residual degrees of freedom, interaction DoF identity,
 and observation residuals.
 
@@ -123,7 +123,7 @@ The external root must contain clean exact-commit `reghdfe/`, `ftools/`, and
 `require/` checkouts. The runner checks every locked tracked-file SHA, stages
 committed bytes, compiles the generated ftools Mata library only in the private
 stage, isolates Stata system ado paths, and executes the reference do-file. It
-never invokes StFixest. Missing or stale closure members fail before Stata
+never invokes fereg. Missing or stale closure members fail before Stata
 launches.
 
 Raw Stata logs and the machine capture stream are temporary licensed artifacts

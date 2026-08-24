@@ -1,7 +1,7 @@
 # Plugin action and result protocol
 
 The C ABI exports only Stata's required `pginit` and `stata_call`; the bridge
-forwards to Rust's `stfixest_dispatch`. Scientific logic remains in Rust.
+forwards to Rust's `fereg_dispatch`. Scientific logic remains in Rust.
 
 The action handshake, model wire, and OLS result wire are independently
 versioned. Current hidden OLS transport requires action protocol 1.1, model wire
@@ -13,7 +13,7 @@ wire versions.
 - `version`, `doctor`, and `selftest` expose bounded diagnostics and native
   smoke tests.
 - `panic-test` is guarded and exists only to prove panic containment.
-- Public `estimate-ols`, `estimate-ppml`, `stfeols`, and `stfepois` remain
+- Public `estimate-ols`, `estimate-ppml`, `fereg`, and `feppml` remain
   unsupported and return `r(498)`.
 
 ## Developer preparation action
@@ -82,7 +82,7 @@ duplicate, unknown, truncated, or mixed bundle/argv requests before SPI access.
 
 ## Hidden licensed eclass transaction
 
-`_stfixest_estimate_ols_test` is the sole ado consumer of a complete hidden
+`_fereg_estimate_ols_test` is the sole ado consumer of a complete hidden
 receipt. It:
 
 1. creates private shadows;
@@ -127,9 +127,9 @@ The ado loader selects:
 
 | Stata report | Plugin |
 |---|---|
-| Windows | `stfixest_windows.plugin` |
-| macOS / Unix with `Mac*` machine type | `stfixest_macos.plugin` |
-| other Unix | `stfixest_linux.plugin` |
+| Windows | `fereg_windows.plugin` |
+| macOS / Unix with `Mac*` machine type | `fereg_macos.plugin` |
+| other Unix | `fereg_linux.plugin` |
 | unknown | fail closed |
 
 Licensed fixtures are successful only when their final assertion emits the

@@ -1,6 +1,6 @@
 # OLS scientific core
 
-The Stata-independent OLS core is intended to back `stfeols`. Public dispatch
+The Stata-independent OLS core is intended to back `fereg`. Public dispatch
 remains disabled until the full semantic, transaction, output, performance, and
 release gates close.
 

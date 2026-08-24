@@ -9,27 +9,27 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class PreparedOlsBoundaryContractTests(unittest.TestCase):
     def test_action_is_developer_guarded_and_packaged_as_internal_helper(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(encoding="utf-8")
-        package = (ROOT / "stata/stfixest.pkg").read_text(encoding="utf-8")
-        input_source = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(encoding="utf-8")
+        package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
+        input_source = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("confirm=developer-preparation-test", helper)
         self.assertIn('const CONFIRMATION: &str = "developer-preparation-test"', input_source)
-        self.assertIn("f _stfixest_prepare_ols_test.ado", package)
+        self.assertIn("f _fereg_prepare_ols_test.ado", package)
 
     def test_spi_session_is_explicitly_thread_confined(self):
-        ffi = (ROOT / "crates/stfixest-plugin/src/ffi.rs").read_text(encoding="utf-8")
+        ffi = (ROOT / "crates/fereg-plugin/src/ffi.rs").read_text(encoding="utf-8")
         self.assertIn("struct SpiSession", ffi)
         self.assertIn("PhantomData<Rc<()>>", ffi)
-        self.assertIn("stfixest_spi_is_main_thread", ffi)
+        self.assertIn("fereg_spi_is_main_thread", ffi)
 
     def test_public_estimators_remain_fail_closed(self):
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        for filename in ("stfeols.ado", "stfepois.ado"):
+        for filename in ("fereg.ado", "feppml.ado"):
             text = (ROOT / "stata" / filename).read_text(encoding="utf-8").lower()
             self.assertIn("exit 498", text)
             self.assertNotIn("plugin call", text)
@@ -43,13 +43,13 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("assert _rc == 498", fixture)
 
     def test_analytic_weight_slice_is_explicit_and_remains_preparation_only(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -63,13 +63,13 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("_rc == 459", fixture)
 
     def test_frequency_weight_slice_is_bounded_and_remains_preparation_only(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -85,13 +85,13 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("assert _rc == 459", fixture)
 
     def test_probability_weight_slice_is_bounded_and_importance_weight_is_rejected(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -108,13 +108,13 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("assert _rc == 198", fixture)
 
     def test_numeric_factor_main_effect_slice_reuses_role_three_and_stays_internal(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -129,20 +129,20 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertNotIn("(7, 0) =>", plugin)
         self.assertIn("c.g ib2.g", fixture)
         self.assertIn("ibn.g", fixture)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
         self.assertNotIn("fvrevar", helper.lower())
 
     def test_all_categorical_interaction_slice_is_recipe_only_and_stays_internal(self):
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("PreparedOlsCategoricalComponent", core)
@@ -152,16 +152,16 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("ib2.g##ib1.h", fixture)
         self.assertIn("i.g#c.x", fixture)
         self.assertIn('\"estimate-ols\" | \"estimate-ppml\"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_numeric_fixed_effect_preparation_is_bounded_and_stays_internal(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -172,7 +172,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('"absorb_term_matrix=', helper)
         self.assertIn("PreparedOlsEffect", core)
         self.assertIn("NumericSourceUse", core)
-        sample = (ROOT / "crates/stfixest-core/src/data/sample.rs").read_text(
+        sample = (ROOT / "crates/fereg-core/src/data/sample.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("DropReason::MissingFixedEffect", sample)
@@ -185,23 +185,23 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("absorb(saved_fe=g)", fixture)
         self.assertIn("absorb(fe_string)", fixture)
         self.assertIn('"estimate-ols" | "estimate-ppml"', (
-            ROOT / "crates/stfixest-plugin/src/dispatch.rs"
+            ROOT / "crates/fereg-plugin/src/dispatch.rs"
         ).read_text(encoding="utf-8"))
 
     def test_singleton_preparation_is_fixed_point_aligned_and_not_an_estimator(self):
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        sample = (ROOT / "crates/stfixest-core/src/data/sample.rs").read_text(
+        sample = (ROOT / "crates/fereg-core/src/data/sample.rs").read_text(
             encoding="utf-8"
         )
-        singleton = (ROOT / "crates/stfixest-core/src/fe/singleton.rs").read_text(
+        singleton = (ROOT / "crates/fereg-core/src/fe/singleton.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
@@ -220,21 +220,21 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("fweight(fw)", fixture)
         self.assertIn("_st_fw_singleton_reason[2] == 8", fixture)
         self.assertIn('"estimate-ols" | "estimate-ppml"', (
-            ROOT / "crates/stfixest-plugin/src/dispatch.rs"
+            ROOT / "crates/fereg-plugin/src/dispatch.rs"
         ).read_text(encoding="utf-8"))
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_prepared_fe_topology_is_deduplicated_fallible_and_not_a_solver(self):
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        design = (ROOT / "crates/stfixest-core/src/fe/design.rs").read_text(
+        design = (ROOT / "crates/fereg-core/src/fe/design.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("PreparedOlsFeTopology", core)
@@ -244,22 +244,22 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("LevelIndex::from_codes", core)
         self.assertIn("from_codes_with_reservation", design)
         self.assertIn("checked_members", design)
-        self.assertIn("stfixest.prepare_ols.n_fe_topology_sources", plugin)
+        self.assertIn("fereg.prepare_ols.n_fe_topology_sources", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
         self.assertNotIn("absorb_fixed_effects(", plugin)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_borrowed_fe_adapter_is_intercept_only_and_does_not_invoke_a_solver(self):
-        core = (ROOT / "crates/stfixest-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        design = (ROOT / "crates/stfixest-core/src/fe/design.rs").read_text(
+        design = (ROOT / "crates/fereg-core/src/fe/design.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("BorrowedInterceptEffect", design)
@@ -275,22 +275,22 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertNotIn("BorrowedInterceptFeDesign", plugin)
         self.assertNotIn("absorb_fixed_effects(", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_prepared_rhs_map_check_is_opt_in_fallible_and_not_an_estimator(self):
-        rhs = (ROOT / "crates/stfixest-core/src/ols/prepared_rhs.rs").read_text(
+        rhs = (ROOT / "crates/fereg-core/src/ols/prepared_rhs.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        helper = (ROOT / "stata/_stfixest_prepare_ols_test.ado").read_text(
+        helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
         fixture = (ROOT / "tests/stata/installation/prepare_ols_boundary.do").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("build_prepared_ols_rhs", rhs)
@@ -310,17 +310,17 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("if 0, mapcheck", fixture)
         self.assertIn("_rc == 459", fixture)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_prepared_coefficient_fit_is_certified_core_only_and_not_public(self):
-        fit = (ROOT / "crates/stfixest-core/src/ols/prepared_fit.rs").read_text(
+        fit = (ROOT / "crates/fereg-core/src/ols/prepared_fit.rs").read_text(
             encoding="utf-8"
         )
         production = fit.split("#[cfg(test)]", maxsplit=1)[0]
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("fit_prepared_ols_coefficients_map", production)
@@ -346,17 +346,17 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, production)
         self.assertNotIn("fit_prepared_ols_coefficients_map", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_prepared_absorbed_dof_is_structural_fallible_and_not_public(self):
-        dof = (ROOT / "crates/stfixest-core/src/ols/prepared_dof.rs").read_text(
+        dof = (ROOT / "crates/fereg-core/src/ols/prepared_dof.rs").read_text(
             encoding="utf-8"
         )
         production = dof.split("#[cfg(test)]", maxsplit=1)[0]
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("PreparedOlsAbsorbedDofReport", production)
@@ -387,25 +387,25 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("ols/20260821T030000Z-a5181f9", dof)
         self.assertNotIn("compute_prepared_ols_absorbed_dof", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
     def test_prepared_iid_inference_is_same_call_certified_and_not_public(self):
         inference = (
-            ROOT / "crates/stfixest-core/src/ols/prepared_unadjusted.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
         production = inference.split(
             "\n#[cfg(test)]\nmod tests {", maxsplit=1
         )[0]
         inference_view = (
-            ROOT / "crates/stfixest-core/src/ols/prepared_inference_view.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_inference_view.rs"
         ).read_text(encoding="utf-8")
-        fit = (ROOT / "crates/stfixest-core/src/ols/prepared_fit.rs").read_text(
+        fit = (ROOT / "crates/fereg-core/src/ols/prepared_fit.rs").read_text(
             encoding="utf-8"
         )
-        plugin = (ROOT / "crates/stfixest-plugin/src/input.rs").read_text(
+        plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
             encoding="utf-8"
         )
-        dispatch = (ROOT / "crates/stfixest-plugin/src/dispatch.rs").read_text(
+        dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("fit_prepared_ols_unadjusted_map", production)
@@ -437,7 +437,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertNotIn("fit_prepared_ols_unadjusted_map", plugin)
         self.assertNotIn("fit_prepared_categorical_ols_unadjusted_map", plugin)
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
-        self.assertIn("exit 498", (ROOT / "stata/stfeols.ado").read_text(encoding="utf-8"))
+        self.assertIn("exit 498", (ROOT / "stata/fereg.ado").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

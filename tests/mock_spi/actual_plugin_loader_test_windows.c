@@ -51,10 +51,10 @@ static int check_version(stata_call_function call)
     char *arguments[] = {"version"};
     clear_output();
     if (call(1, arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.plugin_version=0.1.0") == NULL ||
-        strstr(display_buffer, "stfixest.action_protocol=1.1") == NULL ||
-        strstr(display_buffer, "stfixest.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "stfixest.ols_result_wire=1.1") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.1.0") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.1") == NULL ||
+        strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.1") == NULL ||
         error_buffer[0] != '\0') return 2;
     return 0;
 }
@@ -68,8 +68,8 @@ static int check_doctor(stata_call_function call)
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "stfixest.native_selftest=pass") == NULL ||
-        strstr(display_buffer, "stfixest.ado_plugin_compatible=yes") == NULL ||
+    if (strstr(display_buffer, "fereg.native_selftest=pass") == NULL ||
+        strstr(display_buffer, "fereg.ado_plugin_compatible=yes") == NULL ||
         error_buffer[0] != '\0') return 2;
     return 0;
 }
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
         FreeLibrary(library);
         return 4;
     }
-    if (GetProcAddress(library, "stfixest_dispatch") != NULL) {
+    if (GetProcAddress(library, "fereg_dispatch") != NULL) {
         fprintf(stderr, "internal Rust dispatch leaked from exports\n");
         FreeLibrary(library);
         return 5;

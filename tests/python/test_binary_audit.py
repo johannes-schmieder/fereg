@@ -10,7 +10,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
-    "stfixest_audit_binary", ROOT / "scripts" / "audit_binary.py"
+    "fereg_audit_binary", ROOT / "scripts" / "audit_binary.py"
 )
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -112,7 +112,7 @@ class BinaryAuditTests(unittest.TestCase):
         )
         MODULE.validate_exports(["pginit", "stata_call"], context="test")
         with self.assertRaisesRegex(RuntimeError, "unexpected public exports"):
-            MODULE.validate_exports(["pginit", "stata_call", "stfixest_dispatch"], context="test")
+            MODULE.validate_exports(["pginit", "stata_call", "fereg_dispatch"], context="test")
         with self.assertRaisesRegex(RuntimeError, "missing"):
             MODULE.validate_exports(["pginit"], context="test")
         with self.assertRaisesRegex(RuntimeError, "missing"):

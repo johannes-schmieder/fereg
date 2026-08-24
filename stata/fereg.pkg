@@ -1,0 +1,16 @@
+v 3
+p fereg Rust-first high-dimensional fixed-effect architecture package
+f fereg.ado
+f _fereg_load.ado
+f _fereg_prepare_ols_test.ado
+f feppml.ado
+f fereg_parse.ado
+f fereg_p.ado
+f fereg_estat.ado
+f fereg.sthlp
+f feppml.sthlp
+f fereg_parse.sthlp
+f fereg_postestimation.sthlp
+f fereg_windows.plugin
+f fereg_linux.plugin
+f fereg_macos.plugin

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ROOT / "crates/stfixest-core/src"
+CORE = ROOT / "crates/fereg-core/src"
 VIEW = CORE / "ols/prepared_fit_view.rs"
 LIB = CORE / "lib.rs"
 
@@ -41,9 +41,9 @@ class PreparedFitViewContractTests(unittest.TestCase):
         self.assertNotIn("unsafe {", text)
         for public_action in (
             "estimate-ols",
-            "stfeols",
+            "fereg",
             "estimate-ppml",
-            "stfepois",
+            "feppml",
         ):
             self.assertNotIn(public_action, text)
 

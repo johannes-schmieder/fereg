@@ -6,15 +6,15 @@
   "performance": "unmeasured",
   "parent_manifest": {
     "path": "benchmarks/manifests/ols_v1.json",
-    "sha256": "830fad813e1113eca4987f2af07038bfa3b9d6ee6ba576fa71ee717e5431d7b0"
+    "sha256": "9f2494d480514e854b5a7b7d43491cb2f80c23aaea500212aa28f801547c0f79"
   },
   "comparator_receipt": {
-    "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T135913Z-830fad8",
-    "file_sha256": "fbb56dbd6abc23978dbf8563e6b05e57b188a8e71ef2be93e148d4beddde3f2b",
-    "payload_sha256": "9c4318e9996b41fae3de705ff97567a7be2a97136bb52a81090242fc86fb589e"
+    "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d",
+    "file_sha256": "8ee6bba73322baefca41d064a02484fcf442e4754d11bb328c6c7c372d36e3ac",
+    "payload_sha256": "93b83a4ae7a6cfc0e6e79b37d3999647dbd6b37dff1d0ea3780a15bd644539d4"
   },
-  "candidate_command": "_stfixest_ols_hidden_numeric_v1",
-  "intended_public_command": "stfeols",
+  "candidate_command": "_fereg_ols_hidden_numeric_v1",
+  "intended_public_command": "fereg",
   "tolerances": {
     "coefficient_rtol": 1e-7,
     "coefficient_atol": 1e-10,
@@ -27,7 +27,6 @@
     "unweighted_no_fe",
     "one_fe_robust",
     "multi_fe_interactions",
-    "intercept_and_slope",
     "disconnected_no_regressors",
     "collinear_with_fe",
     "missing_and_if_in",
@@ -58,6 +57,7 @@
     "one_observation_error"
   ],
   "blockers": [
+    {"case_id": "intercept_and_slope", "reason": "pending_renamed_option_a_reseal"},
     {"case_id": "slope_only_multiple", "reason": "absorbed_slope_only_multiple"},
     {"case_id": "string_fe", "reason": "string_source_ingestion"},
     {"case_id": "time_series_lag", "reason": "time_series_materialization"},

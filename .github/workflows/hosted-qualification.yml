@@ -36,10 +36,10 @@ jobs:
           ./scripts/build_linux.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: stfixest-linux-x86_64
+          name: fereg-linux-x86_64
           path: |
-            dist/stfixest_linux.plugin
-            dist/stfixest_linux.plugin.sha256
+            dist/fereg_linux.plugin
+            dist/fereg_linux.plugin.sha256
 
   windows-plugin:
     name: Windows x86-64 plugin
@@ -60,10 +60,10 @@ jobs:
         run: ./scripts/build_windows.ps1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: stfixest-windows-x86_64
+          name: fereg-windows-x86_64
           path: |
-            dist/stfixest_windows.plugin
-            dist/stfixest_windows.plugin.sha256
+            dist/fereg_windows.plugin
+            dist/fereg_windows.plugin.sha256
 
   macos-universal-plugin:
     name: Hosted universal macOS plugin
@@ -77,7 +77,7 @@ jobs:
         run: ./scripts/build_macos.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: stfixest-macos-universal
+          name: fereg-macos-universal
           path: |
-            dist/stfixest_macos.plugin
-            dist/stfixest_macos.plugin.sha256
+            dist/fereg_macos.plugin
+            dist/fereg_macos.plugin.sha256

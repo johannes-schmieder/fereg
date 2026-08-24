@@ -11,7 +11,7 @@ local in "in 1/90"
 marksample touse, novarlist
 local before_k = c(k)
 
-stfixest_parse c.x i.g, touse(`touse')
+fereg_parse c.x i.g, touse(`touse')
 local marker "`r(touse)'"
 assert r(n_model_terms) >= 2
 assert substr("`marker'", 1, 2) == "__"

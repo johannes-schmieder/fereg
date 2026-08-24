@@ -1,2 +1,2 @@
 v 3
-p stfixest Rust-first high-dimensional fixed-effect architecture package
+p fereg Rust-first high-dimensional fixed-effect architecture package

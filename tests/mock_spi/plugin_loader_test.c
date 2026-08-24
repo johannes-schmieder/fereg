@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
         dlclose(library);
         return 7;
     }
-    if (dlsym(library, "stfixest_dispatch") != NULL) {
+    if (dlsym(library, "fereg_dispatch") != NULL) {
         fprintf(stderr, "internal Rust dispatch leaked from export map\n");
         dlclose(library);
         return 8;

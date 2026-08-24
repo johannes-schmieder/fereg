@@ -115,7 +115,7 @@ class PackageContractTests(unittest.TestCase):
             (repository / ".gitignore").write_text("/dist/*.plugin\n", encoding="utf-8")
             dist = repository / "dist"
             dist.mkdir()
-            generated = dist / "stfixest_macos.plugin"
+            generated = dist / "fereg_macos.plugin"
             generated.write_bytes(b"\xca\xfe\xba\xbe" + b"native" * 1000)
             subprocess.run(
                 ["git", "-C", str(repository), "add", ".gitignore"],
@@ -130,7 +130,7 @@ class PackageContractTests(unittest.TestCase):
                 ["git", "init", "--quiet", str(repository)],
                 check=True,
             )
-            placeholder = repository / "stfixest_linux.plugin"
+            placeholder = repository / "fereg_linux.plugin"
             placeholder.write_text("placeholder, not a native binary\n", encoding="utf-8")
             subprocess.run(
                 ["git", "-C", str(repository), "add", placeholder.name],
@@ -139,10 +139,19 @@ class PackageContractTests(unittest.TestCase):
             self.assertEqual(invalid_native_plugins(tracked_plugins(repository)), [placeholder])
 
     def test_estimators_fail_closed(self):
-        for filename in ("stfeols.ado", "stfepois.ado"):
+        for filename in ("fereg.ado", "feppml.ado"):
             text = (ROOT / "stata" / filename).read_text(encoding="utf-8").lower()
             self.assertIn("exit 498", text)
             self.assertNotIn("plugin call", text)
+
+    def test_legacy_stata_commands_are_not_shipped(self):
+        legacy = ("st" "fixest", "st" "feols", "st" "fepois")
+        shipped = {path.name for path in (ROOT / "stata").iterdir() if path.is_file()}
+        for command in legacy:
+            self.assertFalse(any(name == command or name.startswith(f"{command}.") for name in shipped))
+        package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
+        for command in legacy:
+            self.assertNotIn(command, package)
 
 
 if __name__ == "__main__":

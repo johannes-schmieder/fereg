@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "crates/stfixest-core",
-    "crates/stfixest-plugin",
-    "crates/stfixest-testkit",
+    "crates/fereg-core",
+    "crates/fereg-plugin",
+    "crates/fereg-testkit",
 ]
 resolver = "2"
 
@@ -10,7 +10,7 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
-authors = ["StFixest contributors"]
+authors = ["fereg contributors"]
 license = "MIT"
 
 [workspace.lints.rust]

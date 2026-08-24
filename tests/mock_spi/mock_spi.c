@@ -144,13 +144,13 @@ static ST_int mock_macro_use(char *name, char *buffer, ST_int length)
     return 0;
 }
 
-ST_retcode stfixest_dispatch(ST_int argc, const char *const *argv)
+ST_retcode fereg_dispatch(ST_int argc, const char *const *argv)
 {
     ST_int index;
-    stfixest_spi_display("dispatch:");
+    fereg_spi_display("dispatch:");
     for (index = 0; index < argc; ++index) {
-        stfixest_spi_display(argv[index]);
-        stfixest_spi_display(index + 1 == argc ? "\n" : ",");
+        fereg_spi_display(argv[index]);
+        fereg_spi_display(index + 1 == argc ? "\n" : ",");
     }
     return 0;
 }
@@ -170,13 +170,13 @@ static void run_worker_checks(struct worker_results *results)
 {
     ST_double value = 0.0;
     char *arguments[] = {"version"};
-    results->is_main_thread = stfixest_spi_is_main_thread();
-    results->display_rc = stfixest_spi_display("worker must not reach SPI\n");
-    results->nobs = stfixest_spi_nobs();
-    results->ifobs = stfixest_spi_ifobs(12);
-    results->is_missing = stfixest_spi_is_missing(1.0);
-    results->stop_requested = stfixest_spi_stop_requested();
-    results->vdata_rc = stfixest_spi_vdata(3, 11, &value);
+    results->is_main_thread = fereg_spi_is_main_thread();
+    results->display_rc = fereg_spi_display("worker must not reach SPI\n");
+    results->nobs = fereg_spi_nobs();
+    results->ifobs = fereg_spi_ifobs(12);
+    results->is_missing = fereg_spi_is_missing(1.0);
+    results->stop_requested = fereg_spi_stop_requested();
+    results->vdata_rc = fereg_spi_vdata(3, 11, &value);
     results->stata_call_rc = stata_call(1, arguments);
 }
 
@@ -230,12 +230,12 @@ static int check_worker_thread_refusal(void)
     }
 #endif
     if (results.is_main_thread != 0 ||
-        results.display_rc != STFIXEST_SPI_RC_UNAVAILABLE ||
-        results.nobs != STFIXEST_SPI_VALUE_UNAVAILABLE ||
+        results.display_rc != FEREG_SPI_RC_UNAVAILABLE ||
+        results.nobs != FEREG_SPI_VALUE_UNAVAILABLE ||
         results.ifobs != 0 || results.is_missing != 1 ||
         results.stop_requested != 1 ||
-        results.vdata_rc != STFIXEST_SPI_RC_UNAVAILABLE ||
-        results.stata_call_rc != STFIXEST_SPI_RC_UNAVAILABLE) {
+        results.vdata_rc != FEREG_SPI_RC_UNAVAILABLE ||
+        results.stata_call_rc != FEREG_SPI_RC_UNAVAILABLE) {
         fprintf(
             stderr,
             "worker wrapper refusal failed: %d %d %d %d %d %d %d %d\n",
@@ -261,18 +261,18 @@ static int check_worker_thread_refusal(void)
 static int check_numeric_round_trips(void)
 {
     ST_double recovered = 0.0;
-    if (stfixest_spi_vstore(3, 11, 8.5) != 0 ||
-        stfixest_spi_vdata(3, 11, &recovered) != 0 || recovered != 8.5) {
+    if (fereg_spi_vstore(3, 11, 8.5) != 0 ||
+        fereg_spi_vdata(3, 11, &recovered) != 0 || recovered != 8.5) {
         fprintf(stderr, "data round trip failed: %.17g\n", recovered);
         return 1;
     }
-    if (stfixest_spi_mat_store("mock_matrix", 2, 3, -4.75) != 0 ||
-        stfixest_spi_mat_el("mock_matrix", 2, 3, &recovered) != 0 || recovered != -4.75) {
+    if (fereg_spi_mat_store("mock_matrix", 2, 3, -4.75) != 0 ||
+        fereg_spi_mat_el("mock_matrix", 2, 3, &recovered) != 0 || recovered != -4.75) {
         fprintf(stderr, "matrix round trip failed: %.17g\n", recovered);
         return 2;
     }
-    if (stfixest_spi_scal_save("mock_scalar", 3.25) != 0 ||
-        stfixest_spi_scal_use("mock_scalar", &recovered) != 0 || recovered != 3.25) {
+    if (fereg_spi_scal_save("mock_scalar", 3.25) != 0 ||
+        fereg_spi_scal_use("mock_scalar", &recovered) != 0 || recovered != 3.25) {
         fprintf(stderr, "scalar round trip failed: %.17g\n", recovered);
         return 3;
     }
@@ -283,30 +283,30 @@ static int check_string_round_trips(void)
 {
     char buffer[128];
     memset(buffer, 0, sizeof(buffer));
-    if (stfixest_spi_sstore(4, 12, "firm alpha") != 0 ||
-        stfixest_spi_sdata(4, 12, buffer) != 0 || strcmp(buffer, "firm alpha") != 0) {
+    if (fereg_spi_sstore(4, 12, "firm alpha") != 0 ||
+        fereg_spi_sdata(4, 12, buffer) != 0 || strcmp(buffer, "firm alpha") != 0) {
         fprintf(stderr, "string round trip failed: %s\n", buffer);
         return 1;
     }
     memset(buffer, 0, sizeof(buffer));
-    if (stfixest_spi_macro_save("_mock_macro", "protocol=1.0") != 0 ||
-        stfixest_spi_macro_use("_mock_macro", buffer, (ST_int) sizeof(buffer)) != 0 ||
+    if (fereg_spi_macro_save("_mock_macro", "protocol=1.0") != 0 ||
+        fereg_spi_macro_use("_mock_macro", buffer, (ST_int) sizeof(buffer)) != 0 ||
         strcmp(buffer, "protocol=1.0") != 0) {
         fprintf(stderr, "macro round trip failed: %s\n", buffer);
         return 2;
     }
-    if (stfixest_spi_sdatalen(4, 12) != (ST_int) strlen(string_slot)) {
+    if (fereg_spi_sdatalen(4, 12) != (ST_int) strlen(string_slot)) {
         fprintf(stderr, "string length wrapper failed\n");
         return 3;
     }
     memset(buffer, 0, sizeof(buffer));
-    if (stfixest_spi_read_string(4, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
+    if (fereg_spi_read_string(4, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
         strcmp(buffer, "firm alpha") != 0) {
         fprintf(stderr, "bounded fixed-string read failed: %s\n", buffer);
         return 4;
     }
     memset(buffer, 0, sizeof(buffer));
-    if (stfixest_spi_read_string(5, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
+    if (fereg_spi_read_string(5, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
         strcmp(buffer, "firm alpha") != 0) {
         fprintf(stderr, "bounded strL read failed: %s\n", buffer);
         return 5;
@@ -349,10 +349,10 @@ int main(void)
     plugin.macuse = mock_macro_use;
     plugin.stopflag = &stop_flag;
 
-    if (stfixest_spi_is_main_thread() != 0 ||
-        stfixest_spi_display("uninitialized\n") != STFIXEST_SPI_RC_UNAVAILABLE ||
-        stfixest_spi_nobs() != STFIXEST_SPI_VALUE_UNAVAILABLE ||
-        stata_call(0, NULL) != STFIXEST_SPI_RC_UNAVAILABLE) {
+    if (fereg_spi_is_main_thread() != 0 ||
+        fereg_spi_display("uninitialized\n") != FEREG_SPI_RC_UNAVAILABLE ||
+        fereg_spi_nobs() != FEREG_SPI_VALUE_UNAVAILABLE ||
+        stata_call(0, NULL) != FEREG_SPI_RC_UNAVAILABLE) {
         fprintf(stderr, "uninitialized bridge did not fail closed\n");
         return 1;
     }
@@ -360,18 +360,18 @@ int main(void)
         fprintf(stderr, "pginit returned the wrong SPI version\n");
         return 2;
     }
-    if (_stata_ != &plugin || stfixest_spi_is_main_thread() != 0 ||
-        stfixest_spi_display("not bound\n") != STFIXEST_SPI_RC_UNAVAILABLE ||
-        stfixest_spi_nobs() != STFIXEST_SPI_VALUE_UNAVAILABLE) {
+    if (_stata_ != &plugin || fereg_spi_is_main_thread() != 0 ||
+        fereg_spi_display("not bound\n") != FEREG_SPI_RC_UNAVAILABLE ||
+        fereg_spi_nobs() != FEREG_SPI_VALUE_UNAVAILABLE) {
         fprintf(stderr, "pginit did not initialize the SPI session\n");
         return 3;
     }
-    if (stata_call(-1, NULL) != STFIXEST_SPI_RC_SYNTAX ||
-        stfixest_spi_is_main_thread() != 0) {
+    if (stata_call(-1, NULL) != FEREG_SPI_RC_SYNTAX ||
+        fereg_spi_is_main_thread() != 0) {
         fprintf(stderr, "invalid stata_call bound the bridge thread\n");
         return 4;
     }
-    if (stata_call(2, arguments) != 0 || stfixest_spi_is_main_thread() != 1) {
+    if (stata_call(2, arguments) != 0 || fereg_spi_is_main_thread() != 1) {
         fprintf(stderr, "first valid stata_call did not bind and dispatch\n");
         return 5;
     }
@@ -379,31 +379,31 @@ int main(void)
     if (rc != 0) {
         return 6 + rc;
     }
-    if (stfixest_spi_nobs() != 42 || stfixest_spi_nvars() != 7 ||
-        stfixest_spi_in1() != 5 || stfixest_spi_in2() != 40 ||
-        stfixest_spi_ifobs(12) != 1 || stfixest_spi_ifobs(13) != 0) {
+    if (fereg_spi_nobs() != 42 || fereg_spi_nvars() != 7 ||
+        fereg_spi_in1() != 5 || fereg_spi_in2() != 40 ||
+        fereg_spi_ifobs(12) != 1 || fereg_spi_ifobs(13) != 0) {
         fprintf(stderr, "dimension wrappers failed\n");
         return 10;
     }
-    if (stfixest_spi_poll() != 17 || stfixest_spi_stop_requested() != 0) {
+    if (fereg_spi_poll() != 17 || fereg_spi_stop_requested() != 0) {
         fprintf(stderr, "poll/stop wrappers failed\n");
         return 11;
     }
     stop_flag = 1;
-    if (stfixest_spi_stop_requested() != 1) {
+    if (fereg_spi_stop_requested() != 1) {
         fprintf(stderr, "stop flag transition failed\n");
         return 12;
     }
     stop_flag = 0;
-    if (!stfixest_spi_is_missing(NAN) || stfixest_spi_is_missing(1.0)) {
+    if (!fereg_spi_is_missing(NAN) || fereg_spi_is_missing(1.0)) {
         fprintf(stderr, "missing-value wrapper failed\n");
         return 13;
     }
-    if (stfixest_spi_matrix_rows("mock_matrix") != 4 ||
-        stfixest_spi_matrix_cols("mock_matrix") != 5 ||
-        stfixest_spi_var_is_string(4) != 1 ||
-        stfixest_spi_var_is_string(3) != 0 ||
-        stfixest_spi_var_is_strl(5) != 1) {
+    if (fereg_spi_matrix_rows("mock_matrix") != 4 ||
+        fereg_spi_matrix_cols("mock_matrix") != 5 ||
+        fereg_spi_var_is_string(4) != 1 ||
+        fereg_spi_var_is_string(3) != 0 ||
+        fereg_spi_var_is_strl(5) != 1) {
         fprintf(stderr, "metadata wrappers failed\n");
         return 14;
     }
@@ -411,7 +411,7 @@ int main(void)
     if (rc != 0) return 10 + rc;
     rc = check_string_round_trips();
     if (rc != 0) return 20 + rc;
-    if (stfixest_spi_display("hello\n") != 0 || stfixest_spi_error("warning\n") != 0) {
+    if (fereg_spi_display("hello\n") != 0 || fereg_spi_error("warning\n") != 0) {
         fprintf(stderr, "display/error wrappers failed\n");
         return 30;
     }
@@ -423,11 +423,11 @@ int main(void)
         fprintf(stderr, "unexpected error buffer: %s\n", error_buffer);
         return 33;
     }
-    if (stfixest_spi_vdata(3, 11, NULL) != STFIXEST_SPI_RC_SYNTAX ||
-        stfixest_spi_mat_el(NULL, 1, 1, &scalar_slot) != STFIXEST_SPI_RC_SYNTAX ||
-        stfixest_spi_macro_use("_mock_macro", NULL, 1) != STFIXEST_SPI_RC_SYNTAX ||
-        stfixest_spi_macro_use("_mock_macro", macro_slot, 0) !=
-            STFIXEST_SPI_RC_SYNTAX) {
+    if (fereg_spi_vdata(3, 11, NULL) != FEREG_SPI_RC_SYNTAX ||
+        fereg_spi_mat_el(NULL, 1, 1, &scalar_slot) != FEREG_SPI_RC_SYNTAX ||
+        fereg_spi_macro_use("_mock_macro", NULL, 1) != FEREG_SPI_RC_SYNTAX ||
+        fereg_spi_macro_use("_mock_macro", macro_slot, 0) !=
+            FEREG_SPI_RC_SYNTAX) {
         fprintf(stderr, "null-pointer guard failed\n");
         return 34;
     }

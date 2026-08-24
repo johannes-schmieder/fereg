@@ -18,7 +18,7 @@ toolchain_root="$("$rustup_bin" run "$toolchain" rustc --print sysroot)"
 export PATH="$toolchain_root/bin:/opt/homebrew/bin:$PATH"
 export CARGO_TERM_COLOR=always
 export RUST_BACKTRACE=1
-export PYTHONPYCACHEPREFIX="${RUNNER_TEMP:-/private/tmp}/stfixest-python-cache"
+export PYTHONPYCACHEPREFIX="${RUNNER_TEMP:-/private/tmp}/fereg-python-cache"
 
 cd "$repo_root"
 ./scripts/run_tests.sh

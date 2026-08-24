@@ -10,7 +10,7 @@
   scripts and CI.
 - Added Stata 18+ loader and diagnostics commands plus a metadata-only factor,
   absorb, slope, and cluster parser prototype.
-- Added explicit fail-closed `stfeols`, `stfepois`, prediction, and `estat`
+- Added explicit fail-closed `fereg`, `feppml`, prediction, and `estat`
   surfaces. No estimator is implemented or claimed in this release.
 - Added randomized factorization, tuple-interaction, thread-partition, and memory
   preflight oracles. Corrected the zero-finite-column memory edge case so low

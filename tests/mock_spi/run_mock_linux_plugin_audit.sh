@@ -13,13 +13,13 @@ CFLAGS=(-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototy
 "$CC_BIN" -shared -Wl,-z,relro,-z,now,--no-undefined \
   -Wl,--version-script="$ROOT/plugin/exports_linux.map" \
   "$BUILD/stplugin.o" "$BUILD/stata_bridge.o" "$BUILD/dummy_dispatch.o" \
-  -o "$BUILD/stfixest_mock_linux.plugin"
+  -o "$BUILD/fereg_mock_linux.plugin"
 
 "$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Werror \
   -DSYSTEM=OPUNIX -I"$ROOT/plugin" \
   "$ROOT/tests/mock_spi/plugin_loader_test.c" -ldl -o "$BUILD/plugin_loader_test"
-python3 "$ROOT/scripts/audit_binary.py" "$BUILD/stfixest_mock_linux.plugin" > "$BUILD/audit.json"
-"$BUILD/plugin_loader_test" "$BUILD/stfixest_mock_linux.plugin"
+python3 "$ROOT/scripts/audit_binary.py" "$BUILD/fereg_mock_linux.plugin" > "$BUILD/audit.json"
+"$BUILD/plugin_loader_test" "$BUILD/fereg_mock_linux.plugin"
 
 # Validate the target-native actual-Rust harness against a behaviorally faithful
 # C dispatcher so harness defects are caught even when Rust is unavailable.
@@ -27,9 +27,9 @@ python3 "$ROOT/scripts/audit_binary.py" "$BUILD/stfixest_mock_linux.plugin" > "$
 "$CC_BIN" -shared -Wl,-z,relro,-z,now,--no-undefined \
   -Wl,--version-script="$ROOT/plugin/exports_linux.map" \
   "$BUILD/stplugin.o" "$BUILD/stata_bridge.o" "$BUILD/fake_actual_dispatch.o" \
-  -o "$BUILD/stfixest_fake_actual.plugin"
+  -o "$BUILD/fereg_fake_actual.plugin"
 "$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
   -Wstrict-prototypes -Wmissing-prototypes -Werror -DSYSTEM=OPUNIX \
   -I"$ROOT/plugin" "$ROOT/tests/mock_spi/actual_plugin_loader_test.c" -ldl \
   -o "$BUILD/actual_plugin_loader_test"
-"$BUILD/actual_plugin_loader_test" "$BUILD/stfixest_fake_actual.plugin"
+"$BUILD/actual_plugin_loader_test" "$BUILD/fereg_fake_actual.plugin"

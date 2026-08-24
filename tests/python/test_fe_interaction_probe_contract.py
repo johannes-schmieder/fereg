@@ -28,9 +28,9 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         text = PROBE_DO.read_text(encoding="utf-8")
         self.assertNotIn("    input long obs_id", text)
         for token in (
-            "program define __stfx_probe_cascade",
-            "program define __stfx_probe_missing",
-            "program define __stfx_probe_rebase",
+            "program define __frg_probe_cascade",
+            "program define __frg_probe_missing",
+            "program define __frg_probe_rebase",
             "set obs 12",
             "generate long obs_id = 100 + _n",
             "generate long obs_id = 200 + _n",
@@ -45,7 +45,7 @@ class FeInteractionProbeContractTests(unittest.TestCase):
             "final_sample_default_interaction_rebase",
         ):
             self.assertIn(f'"{case}"', script)
-            self.assertIn(f"__stfx_probe_emit {case}", probe)
+            self.assertIn(f"__frg_probe_emit {case}", probe)
 
     def test_failed_probe_retains_private_debug_artifacts(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8")
@@ -60,8 +60,8 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("branches:\n      - main", text)
         self.assertNotIn("codex/categorical-interactions", text)
-        self.assertIn("self-hosted, macOS, ARM64, stata-mp, stfixest", text)
-        self.assertIn("github.repository == 'johannes-schmieder/StFixest'", text)
+        self.assertIn("self-hosted, macOS, ARM64, stata-mp, fereg", text)
+        self.assertIn("github.repository == 'johannes-schmieder/fereg'", text)
         self.assertNotIn("pull_request", text)
         self.assertNotIn("ubuntu-latest", text)
         self.assertNotIn("windows-latest", text)

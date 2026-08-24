@@ -2,9 +2,9 @@ version 18.0
 clear all
 set more off
 
-quietly findfile stfixest.ado
+quietly findfile fereg.ado
 local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
-local suffix "/stata/stfixest.ado"
+local suffix "/stata/fereg.ado"
 assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
@@ -22,20 +22,20 @@ generate int worker = real(word("1 1 1 1 2 2 2 2 3 3 3 3", _n))
 generate int firm = real(word("10 10 20 20 10 10 20 20 . 30 30 30", _n))
 generate int year = real(word("2020 2020 2021 2021 2020 2020 2021 2021 2020 . 2022 2022", _n))
 
-generate byte __stfx_expected_sample = inrange(obs_id, 201, 208) | obs_id == 212
-generate double __stfx_expected_resid = .
-replace __stfx_expected_resid = +1.2f98fe2d949feX-033 if obs_id == 201
-replace __stfx_expected_resid = +1.9999999999938X-006 if obs_id == 202
-replace __stfx_expected_resid = -1.9999999999928X-006 if obs_id == 203
-replace __stfx_expected_resid = -1.2f98fe2d949feX-033 if obs_id == 204
-replace __stfx_expected_resid = +1.9999999999928X-006 if obs_id == 205
-replace __stfx_expected_resid = -1.99999999999e9X-005 if obs_id == 206
-replace __stfx_expected_resid = -1.d843527fcabfcX-033 if obs_id == 207
-replace __stfx_expected_resid = +1.9999999999a14X-006 if obs_id == 208
-replace __stfx_expected_resid = +0.0000000000000X-3ff if obs_id == 212
+generate byte __frg_expected_sample = inrange(obs_id, 201, 208) | obs_id == 212
+generate double __frg_expected_resid = .
+replace __frg_expected_resid = +1.2f98fe2d949feX-033 if obs_id == 201
+replace __frg_expected_resid = +1.9999999999938X-006 if obs_id == 202
+replace __frg_expected_resid = -1.9999999999928X-006 if obs_id == 203
+replace __frg_expected_resid = -1.2f98fe2d949feX-033 if obs_id == 204
+replace __frg_expected_resid = +1.9999999999928X-006 if obs_id == 205
+replace __frg_expected_resid = -1.99999999999e9X-005 if obs_id == 206
+replace __frg_expected_resid = -1.d843527fcabfcX-033 if obs_id == 207
+replace __frg_expected_resid = +1.9999999999a14X-006 if obs_id == 208
+replace __frg_expected_resid = +0.0000000000000X-3ff if obs_id == 212
 
-_stfixest_estimate_ols_test y c.x, absorb(worker firm#year) ///
-    keepsingletons residual(__stfx_reference_resid)
+_fereg_estimate_ols_test y c.x, absorb(worker firm#year) ///
+    keepsingletons residual(__frg_reference_resid)
 
 assert e(N) == 9
 assert e(N_full) == 9
@@ -54,8 +54,8 @@ assert `"`e(vce)'"' == "ols"
 
 local coefficient_names : colfullnames e(b)
 assert `"`coefficient_names'"' == "x _cons"
-assert e(stfixest_status)[1,2] == 1
-assert e(stfixest_status)[2,2] == 5
+assert e(fereg_status)[1,2] == 1
+assert e(fereg_status)[2,2] == 5
 assert abs(e(b)[1,1] - +1.8ccccccccccd1X+000) <= 3e-6
 assert abs(e(b)[1,2] - +1.47db97530eca8X+002) <= 3e-6
 assert abs(e(V)[1,1] - +1.47ae147ae1493X-009) <= 3e-6
@@ -78,9 +78,9 @@ assert e(dof_table)[2,3] == 1
 assert e(dof_table)[2,4] == 0
 assert e(dof_table)[2,5] == 0
 
-assert e(sample) == __stfx_expected_sample
-assert missing(__stfx_reference_resid) if !__stfx_expected_sample
-assert !missing(__stfx_reference_resid) if __stfx_expected_sample
-assert abs(__stfx_reference_resid - __stfx_expected_resid) <= 3e-6 if __stfx_expected_sample
+assert e(sample) == __frg_expected_sample
+assert missing(__frg_reference_resid) if !__frg_expected_sample
+assert !missing(__frg_reference_resid) if __frg_expected_sample
+assert abs(__frg_reference_resid - __frg_expected_resid) <= 3e-6 if __frg_expected_sample
 
 di as result "END_FIXTURE|estimate_ols_categorical_interaction_missing_parity|rc=0"

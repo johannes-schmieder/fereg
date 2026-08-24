@@ -34,6 +34,74 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+# Historical receipts and captured evidence are immutable and may retain the
+# former package identity. Active source, build, package, CI, and test files may
+# not reintroduce it or depend on the removed development-automation package.
+legacy_identifiers = re.compile(
+    r"(?:St" r"Fixest|ST" r"FIXEST|st" r"fixest|ST" r"FEOLS|st" r"feols|ST" r"FEPOIS|st" r"fepois)"
+)
+preserved_evidence_prefixes = (
+    ".ci/stata/results/",
+    ".ci/stata/full-results/",
+    ".ci/reference-probes/",
+    ".ci/staged-validation/",
+    "build_evidence/",
+    "benchmarks/reports/captured/",
+)
+active_text_suffixes = {
+    ".ado",
+    ".c",
+    ".do",
+    ".h",
+    ".json",
+    ".lock",
+    ".pkg",
+    ".ps1",
+    ".py",
+    ".rs",
+    ".sh",
+    ".sthlp",
+    ".toc",
+    ".toml",
+    ".yaml",
+    ".yml",
+}
+tracked_files = subprocess.run(
+    ["git", "-C", str(ROOT), "ls-files", "-z"],
+    check=True,
+    stdout=subprocess.PIPE,
+).stdout.split(b"\0")
+for raw_relative in tracked_files:
+    if not raw_relative:
+        continue
+    relative = raw_relative.decode("utf-8")
+    path = ROOT / relative
+    if not path.is_file():
+        continue
+    if relative == ".ci/stata/latest.json" or relative.startswith(
+        preserved_evidence_prefixes
+    ):
+        continue
+    if path.suffix.lower() not in active_text_suffixes:
+        continue
+    require(
+        legacy_identifiers.search(relative) is None,
+        f"active path retains legacy package identity: {relative}",
+    )
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        continue
+    require(
+        legacy_identifiers.search(text) is None,
+        f"active file retains legacy package identity: {relative}",
+    )
+    require(
+        "scripts" + ".development" not in text,
+        f"active file depends on removed development automation: {relative}",
+    )
+
+
 required_files = [
     "AGENTS.md",
     "STATUS.md",
@@ -44,20 +112,29 @@ required_files = [
     "benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json",
     "benchmarks/stata/baseline_reghdfe.do",
     "scripts/ols_reference.py",
-    "crates/stfixest-core/src/lib.rs",
-    "crates/stfixest-plugin/src/ffi.rs",
+    "crates/fereg-core/src/lib.rs",
+    "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
     "plugin/stplugin.h",
     "plugin/stata_bridge.c",
     "plugin/stata_bridge.h",
-    "stata/stfixest.ado",
-    "stata/stfixest_parse.ado",
+    "stata/fereg.ado",
+    "stata/fereg_parse.ado",
     "scripts/build_linux.sh",
     "scripts/build_macos.sh",
     "scripts/build_windows.ps1",
 ]
 for item in required_files:
     read(item)
+
+require(
+    not (ROOT / "ci/source-transforms/apply_option_a_absorbed_slope.py").exists(),
+    "the applied Option A migration script must remain deleted",
+)
+require(
+    not (ROOT / "scripts/development").exists(),
+    "deleted development automation must not be restored",
+)
 
 status_files = [
     path.relative_to(ROOT).as_posix()
@@ -87,7 +164,7 @@ for heading in (
     require(heading in status, f"STATUS.md is missing required section: {heading}")
 
 agents = read("AGENTS.md")
-require("# StFixest 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
+require("# fereg 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
 require("Begin with **Phase 0 and Phase 1 only**" in agents, "AGENTS.md Phase 0-1 assignment missing")
 
 root_cargo = read("Cargo.toml")
@@ -95,28 +172,28 @@ for setting in ['lto = "fat"', "codegen-units = 1", 'panic = "unwind"', "strip =
     require(setting in root_cargo, f"release profile missing {setting}")
 require("target-cpu=native" not in root_cargo, "distributed build uses target-cpu=native")
 
-core_files = list((ROOT / "crates/stfixest-core/src").glob("*.rs"))
-require("#![forbid(unsafe_code)]" in read("crates/stfixest-core/src/lib.rs"), "safe core does not forbid unsafe code")
+core_files = list((ROOT / "crates/fereg-core/src").glob("*.rs"))
+require("#![forbid(unsafe_code)]" in read("crates/fereg-core/src/lib.rs"), "safe core does not forbid unsafe code")
 for path in core_files:
     text = path.read_text(encoding="utf-8")
     require(not re.search(r"\bunsafe\b", text), f"unsafe token found in safe core: {path.relative_to(ROOT)}")
 
-plugin_rs = list((ROOT / "crates/stfixest-plugin/src").glob("*.rs"))
+plugin_rs = list((ROOT / "crates/fereg-plugin/src").glob("*.rs"))
 for path in plugin_rs:
     text = path.read_text(encoding="utf-8")
     if re.search(r"\bunsafe\b", text):
         require(path.name == "ffi.rs", f"unsafe code escaped ffi.rs: {path.relative_to(ROOT)}")
-ffi = read("crates/stfixest-plugin/src/ffi.rs")
+ffi = read("crates/fereg-plugin/src/ffi.rs")
 require("catch_unwind" in ffi, "FFI boundary lacks catch_unwind")
-require("#[no_mangle]" in ffi and "stfixest_dispatch" in ffi, "exported Rust dispatch missing")
+require("#[no_mangle]" in ffi and "fereg_dispatch" in ffi, "exported Rust dispatch missing")
 
 bridge = read("plugin/stata_bridge.c")
 require(re.search(r"STDLL\s+stata_call\s*\(", bridge) is not None, "C bridge lacks stata_call")
-require("stfixest_dispatch" in bridge, "C bridge does not dispatch to Rust")
+require("fereg_dispatch" in bridge, "C bridge does not dispatch to Rust")
 for forbidden in ("estimate-ols", "estimate-ppml", "irls", "singleton"):
     require(forbidden not in bridge.lower(), f"scientific action {forbidden} appears in C bridge")
 
-parse_ado = read("stata/stfixest_parse.ado")
+parse_ado = read("stata/fereg_parse.ado")
 code_lines = [line for line in parse_ado.splitlines() if not line.lstrip().startswith(("*", "/*"))]
 parse_code = "\n".join(code_lines).lower()
 for forbidden in ("fvrevar ", "egen group", "tabulate, generate", "reghdfe", "ppmlhdfe", "ftools"):
@@ -126,13 +203,13 @@ require("marksample touse" not in parse_code, "parser creates a short-lived cand
 require("fvexpand `rhs' if `touse'" in parse_code, "factor expansion does not use the caller-owned candidate marker")
 require("fvexpand" in parse_code and "_ms_parse_parts" in parse_code, "parser does not use Stata factor metadata machinery")
 
-for estimator in ("stfeols.ado", "stfepois.ado"):
+for estimator in ("fereg.ado", "feppml.ado"):
     text = read(f"stata/{estimator}").lower()
     require("exit 498" in text, f"{estimator} does not fail closed")
     require("plugin call" not in text, f"{estimator} makes a substantive plugin call before estimator implementation")
 
-loader = read("stata/_stfixest_load.ado")
-for plugin in ("stfixest_windows.plugin", "stfixest_linux.plugin", "stfixest_macos.plugin"):
+loader = read("stata/_fereg_load.ado")
+for plugin in ("fereg_windows.plugin", "fereg_linux.plugin", "fereg_macos.plugin"):
     require(plugin in loader, f"platform loader missing {plugin}")
 require("version 18.0" in loader, "Stata 18 version guard missing")
 
@@ -210,7 +287,7 @@ candidate_receipt = ROOT / candidate_receipt_relative
 require(
     candidate_receipt_identity.get("schema_version") == 1
     and candidate_receipt_identity.get("identity")
-    == "stfixest-ols-hidden-numeric-v1-canonical-receipt",
+    == "fereg-ols-hidden-numeric-v1-canonical-receipt",
     "hidden numeric canonical receipt identity is stale",
 )
 require(

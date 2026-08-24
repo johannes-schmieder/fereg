@@ -77,10 +77,10 @@ class FeInteractionRemainingIidDifferentialContractTests(unittest.TestCase):
         )
         self.assertIn("set obs 12", cascade_text)
         self.assertIn("generate long obs_id = 100 + _n", cascade_text)
-        self.assertIn("generate byte __stfx_expected_sample", cascade_text)
-        self.assertIn("generate double __stfx_expected_resid", cascade_text)
+        self.assertIn("generate byte __frg_expected_sample", cascade_text)
+        self.assertIn("generate double __frg_expected_resid", cascade_text)
         self.assertIn("Categories Redundant Num Coefs Inexact? Nested?", fixture_text)
-        self.assertIn("assert colsof(__stfx_S) == 4", fixture_text)
+        self.assertIn("assert colsof(__frg_S) == 4", fixture_text)
         self.assertEqual(
             self.cases["missing_interaction_components"]["return_code"], 0
         )

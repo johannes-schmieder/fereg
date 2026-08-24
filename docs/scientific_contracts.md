@@ -1,7 +1,7 @@
 # Scientific contracts and OLS reference gate
 
 Architecture, source presence, and native unit tests are not estimator
-validation. Public `stfeols` and `stfepois` remain fail-closed.
+validation. Public `fereg` and `feppml` remain fail-closed.
 
 Accepted scientific decisions are recorded under `docs/adr/`. ADR 0006
 supersedes the temporary signed residual-DoF/negative-iid-variance
@@ -63,7 +63,7 @@ capture must:
 - exclude raw logs, local paths, usernames, license data, and unrelated files;
 - seal the canonical JSON payload and commit a read-only sanitized receipt.
 
-A reference receipt proves only reference behavior. StFixest parity requires a
+A reference receipt proves only reference behavior. fereg parity requires a
 separate source-bound differential plus independent mathematical/oracle
 evidence.
 

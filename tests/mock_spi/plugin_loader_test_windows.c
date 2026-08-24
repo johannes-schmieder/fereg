@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         FreeLibrary(library);
         return 7;
     }
-    if (GetProcAddress(library, "stfixest_dispatch") != NULL) {
+    if (GetProcAddress(library, "fereg_dispatch") != NULL) {
         fprintf(stderr, "internal Rust dispatch leaked from exports\n");
         FreeLibrary(library);
         return 8;

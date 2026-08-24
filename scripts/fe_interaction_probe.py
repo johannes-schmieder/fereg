@@ -40,7 +40,7 @@ LOCK = ROOT / "references.lock.toml"
 BASELINE = ROOT / "benchmarks/stata/baseline_reghdfe.do"
 PROBE = ROOT / "benchmarks/stata/probe_reghdfe_fe_interaction.do"
 TARGET = ROOT / "tests/fixtures/ols/ols_core.csv"
-PREFIX = "STFIXEST_FE_INTERACTION_PROBE"
+PREFIX = "FEREG_FE_INTERACTION_PROBE"
 PROBE_SENTINEL = "END_FIXTURE|reghdfe_fe_interaction_probe|rc=0"
 BASELINE_SENTINEL = "END_FIXTURE|baseline_reghdfe|rc=0"
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -273,7 +273,7 @@ def execute_probe(
     }
     identities = preflight_reference_root(reference_root, lock, ROOT)
 
-    with tempfile.TemporaryDirectory(prefix="stfixest-fe-interaction-probe-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="fereg-fe-interaction-probe-") as temporary:
         run_dir = Path(temporary)
         reference_stage = run_dir / "references"
         reference_stage.mkdir()
@@ -340,7 +340,7 @@ def execute_probe(
     capture_sha256 = sha256_file(output_dir / "capture.machine")
     payload = {
         "schema_version": 1,
-        "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+        "receipt_type": "fereg-reghdfe-fe-interaction-probe",
         "status": "success",
         "source_sha": source_sha,
         "inputs": input_hashes_before,
@@ -366,7 +366,7 @@ def execute_probe(
 def failure_document(source_sha: str, exc: BaseException) -> dict[str, Any]:
     payload = {
         "schema_version": 1,
-        "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+        "receipt_type": "fereg-reghdfe-fe-interaction-probe",
         "status": "failure",
         "source_sha": source_sha,
         "stage": "probe_execution",
@@ -400,8 +400,8 @@ def main() -> int:
         )
         return 1
     raw_reference_root = args.reference_root or (
-        Path(os.environ["STFIXEST_REFERENCE_ROOT"])
-        if os.environ.get("STFIXEST_REFERENCE_ROOT")
+        Path(os.environ["FEREG_REFERENCE_ROOT"])
+        if os.environ.get("FEREG_REFERENCE_ROOT")
         else None
     )
     if raw_reference_root is None:
@@ -409,7 +409,7 @@ def main() -> int:
             output_dir / "summary.json",
             failure_document(
                 args.source_sha,
-                ProbeError("STFIXEST_REFERENCE_ROOT is not configured on the trusted runner"),
+                ProbeError("FEREG_REFERENCE_ROOT is not configured on the trusted runner"),
             ),
         )
         print("FE_INTERACTION_PROBE status=failure kind=reference_root_unconfigured")

@@ -35,7 +35,7 @@ from resolve_reference_root import (
 
 COMPONENTS = ("reghdfe", "ftools", "require")
 BUNDLE_ROOT = ROOT / "ci/reference-bundles/stata-require"
-MATERIALIZED_PREFIX = "stfixest-bundled-reference-"
+MATERIALIZED_PREFIX = "fereg-bundled-reference-"
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -149,7 +149,8 @@ def _validate_bundle_manifest(
         "checkout_dir": entry["checkout_dir"],
         "required_files": _required_file_hashes(entry, component=component),
         "bundle_file": bundle_path.name,
-        "provisioning_repository": "johannes-schmieder/StFixest",
+        "provisioning_mode": "offline-local-reseal",
+        "provisioning_repository": "johannes-schmieder/fereg",
         "provisioning_network_policy": "network-allowed-public-source-only",
         "capture_network_policy": "offline-only",
     }
@@ -175,7 +176,7 @@ def _validate_bundle_manifest(
             component=component,
         )
     head_ref = manifest.get("bundle_head_ref")
-    if head_ref != f"refs/heads/stfixest-pin-{component}":
+    if head_ref != f"refs/heads/fereg-pin-{component}":
         raise BundledResolverError("bundle_head_identity_mismatch", component=component)
     return head_ref
 

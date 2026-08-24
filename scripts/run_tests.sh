@@ -17,7 +17,7 @@ if command -v cargo >/dev/null 2>&1; then
   cargo fmt --all -- --check
   cargo clippy --workspace --all-targets --no-default-features -- -D warnings
   cargo test --workspace --all-targets --no-default-features
-  cargo test -p stfixest-plugin --features ffi --lib
+  cargo test -p fereg-plugin --features ffi --lib
 else
   printf '%s\n' 'SKIP: Rust/Cargo not installed; see STATUS.md.'
 fi

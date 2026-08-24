@@ -12,12 +12,12 @@ import zipfile
 from pathlib import Path
 
 VERSION = "0.1.0-phase01"
-PACKAGE_NAME = f"stfixest-{VERSION}"
+PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 8, 20, 0, 0, 0)
 EXPECTED_PLUGINS = (
-    "stfixest_linux.plugin",
-    "stfixest_windows.plugin",
-    "stfixest_macos.plugin",
+    "fereg_linux.plugin",
+    "fereg_windows.plugin",
+    "fereg_macos.plugin",
 )
 
 
@@ -117,7 +117,7 @@ def write_zip(staging: Path, output: Path) -> None:
 
 def create(source: Path, plugin_directory: Path, output: Path) -> None:
     plugins = verify_plugins(plugin_directory)
-    with tempfile.TemporaryDirectory(prefix="stfixest-release-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="fereg-release-") as temporary:
         staging = Path(temporary) / PACKAGE_NAME
         staging.mkdir()
         copy_release_files(source, staging, plugins)

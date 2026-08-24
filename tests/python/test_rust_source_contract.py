@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ROOT / "crates/stfixest-core/src"
-PLUGIN = ROOT / "crates/stfixest-plugin/src"
+CORE = ROOT / "crates/fereg-core/src"
+PLUGIN = ROOT / "crates/fereg-plugin/src"
 
 
 class RustSourceContractTests(unittest.TestCase):
@@ -67,7 +67,7 @@ class RustSourceContractTests(unittest.TestCase):
         dispatch = (PLUGIN / "dispatch.rs").read_text(encoding="utf-8")
         self.assertIn('"estimate-ols" | "estimate-ppml"', dispatch)
         self.assertIn("ErrorCode::Unsupported", dispatch)
-        for ado in ("stfeols.ado", "stfepois.ado"):
+        for ado in ("fereg.ado", "feppml.ado"):
             text = (ROOT / "stata" / ado).read_text(encoding="utf-8")
             self.assertIn("exit 498", text)
             self.assertNotIn("plugin call", text)

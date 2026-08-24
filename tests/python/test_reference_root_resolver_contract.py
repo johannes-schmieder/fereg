@@ -86,13 +86,13 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
             "--materialize-parent",
         ):
             self.assertIn(token, text)
-        self.assertIn('STFIXEST_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"', text)
+        self.assertIn('FEREG_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"', text)
         self.assertIn("REFERENCE_ROOT_OUTCOME", text)
         self.assertIn("offline_reference_root_unresolved", text)
-        self.assertNotIn("echo $STFIXEST_REFERENCE_ROOT", text)
+        self.assertNotIn("echo $FEREG_REFERENCE_ROOT", text)
         self.assertNotIn("cat $REFERENCE_ROOT_FILE", text)
-        self.assertNotIn("stfixest-reference-root.path/", text)
-        self.assertNotIn("stfixest-reference-materialized/", text)
+        self.assertNotIn("fereg-reference-root.path/", text)
+        self.assertNotIn("fereg-reference-materialized/", text)
 
 
 if __name__ == "__main__":

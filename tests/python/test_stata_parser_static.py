@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PARSER = (ROOT / "stata/stfixest_parse.ado").read_text(encoding="utf-8")
+PARSER = (ROOT / "stata/fereg_parse.ado").read_text(encoding="utf-8")
 
 
 class StataParserStaticTests(unittest.TestCase):

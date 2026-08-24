@@ -25,13 +25,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: stfixest-fe-interaction-probe-${{ github.repository }}-${{ github.ref }}
+  group: fereg-fe-interaction-probe-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   probe:
-    if: github.repository == 'johannes-schmieder/StFixest'
-    runs-on: [self-hosted, macOS, ARM64, stata-mp, stfixest]
+    if: github.repository == 'johannes-schmieder/fereg'
+    runs-on: [self-hosted, macOS, ARM64, stata-mp, fereg]
     timeout-minutes: 30
     steps:
       - name: Check out exact probe source
@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
+          output="$RUNNER_TEMP/fereg-fe-interaction-probe"
           rm -rf "$output"
           mkdir -p "$output"
           OUTPUT="$output/summary.json" /usr/bin/python3 - <<'PY'
@@ -55,7 +55,7 @@ jobs:
 
           payload = {
               "schema_version": 1,
-              "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+              "receipt_type": "fereg-reghdfe-fe-interaction-probe",
               "status": "failure",
               "source_sha": os.environ["GITHUB_SHA"],
               "stage": "workflow_started",
@@ -113,8 +113,8 @@ jobs:
           PROBE_PYTHON: ${{ steps.python.outputs.bin }}
         run: |
           set -euo pipefail
-          root_file="$RUNNER_TEMP/stfixest-reference-root.path"
-          materialize_parent="$RUNNER_TEMP/stfixest-reference-materialized"
+          root_file="$RUNNER_TEMP/fereg-reference-root.path"
+          materialize_parent="$RUNNER_TEMP/fereg-reference-materialized"
           bundled_resolver="scripts/materialize_bundled_reference_root.py"
           fallback_resolver="scripts/resolve_reference_root.py"
           rm -f "$root_file"
@@ -153,14 +153,14 @@ jobs:
           STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
         run: |
           set -euo pipefail
-          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
-          export STFIXEST_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"
+          output="$RUNNER_TEMP/fereg-fe-interaction-probe"
+          export FEREG_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"
           "$PROBE_PYTHON" -m py_compile scripts/fe_interaction_probe.py scripts/ols_reference.py
           "$PROBE_PYTHON" scripts/fe_interaction_probe.py \
             --stata "$STATA_BIN" \
             --output-dir "$output" \
             --source-sha "$GITHUB_SHA"
-          unset STFIXEST_REFERENCE_ROOT
+          unset FEREG_REFERENCE_ROOT
 
       - name: Finalize missing or malformed probe status
         if: always()
@@ -172,7 +172,7 @@ jobs:
           PROBE_OUTCOME: ${{ steps.probe.outcome }}
         run: |
           set -euo pipefail
-          output="$RUNNER_TEMP/stfixest-fe-interaction-probe"
+          output="$RUNNER_TEMP/fereg-fe-interaction-probe"
           mkdir -p "$output"
           OUTPUT="$output/summary.json" /usr/bin/python3 - <<'PY'
           import hashlib
@@ -213,7 +213,7 @@ jobs:
           if reason is not None:
               payload = {
                   "schema_version": 1,
-                  "receipt_type": "stfixest-reghdfe-fe-interaction-probe",
+                  "receipt_type": "fereg-reghdfe-fe-interaction-probe",
                   "status": "failure",
                   "source_sha": os.environ["GITHUB_SHA"],
                   "stage": "workflow_finalizer",
@@ -250,7 +250,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: fe-interaction-probe-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/stfixest-fe-interaction-probe/
+          path: ${{ runner.temp }}/fereg-fe-interaction-probe/
           if-no-files-found: error
           retention-days: 30
 
@@ -258,7 +258,7 @@ jobs:
         if: always()
         shell: bash
         env:
-          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
+          SUMMARY: ${{ runner.temp }}/fereg-fe-interaction-probe/summary.json
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -325,7 +325,7 @@ jobs:
           PYTHON_OUTCOME: ${{ steps.python.outcome }}
           REFERENCE_ROOT_OUTCOME: ${{ steps.reference_root.outcome }}
           PROBE_OUTCOME: ${{ steps.probe.outcome }}
-          SUMMARY: ${{ runner.temp }}/stfixest-fe-interaction-probe/summary.json
+          SUMMARY: ${{ runner.temp }}/fereg-fe-interaction-probe/summary.json
         run: |
           set -euo pipefail
           /usr/bin/python3 - <<'PY'

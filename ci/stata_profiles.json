@@ -8,19 +8,19 @@
       "required_outputs": []
     },
     "smoke": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
-        "ci/stfixest_smoke.do"
+        "ci/fereg_smoke.do"
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "syntax": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": false,
       "fixtures": [
         "tests/stata/parser/ordinary_factor_terms.do",
@@ -35,10 +35,10 @@
       "required_outputs": []
     },
     "quick": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
-        "ci/stfixest_smoke.do",
+        "ci/fereg_smoke.do",
         "tests/stata/installation/phase01_smoke.do",
         "tests/stata/installation/reload_loop.do",
         "tests/stata/parser/ordinary_factor_terms.do",
@@ -64,12 +64,12 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "mata-unit": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
         "tests/stata/parser/model_wire_v2_capture.do",
@@ -77,38 +77,38 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "plugin-build": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
-        "ci/stfixest_smoke.do"
+        "ci/fereg_smoke.do"
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "plugin-load": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
-        "ci/stfixest_smoke.do",
+        "ci/fereg_smoke.do",
         "tests/stata/installation/phase01_smoke.do",
         "tests/stata/installation/reload_loop.do"
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "numerical-small": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
         "tests/stata/installation/prepare_ols_boundary.do",
@@ -116,12 +116,12 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "differential": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
         "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do",
@@ -139,27 +139,27 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "benchmark-small": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
         "ci/stata_benchmark_small.do"
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     },
     "full": {
-      "driver": "stfixest-fixtures",
+      "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
-        "ci/stfixest_smoke.do",
+        "ci/fereg_smoke.do",
         "tests/stata/installation/estimate_ols_eclass_transaction.do",
         "tests/stata/installation/estimate_ols_categorical_interaction.do",
         "tests/stata/installation/phase01_smoke.do",
@@ -189,8 +189,8 @@
       "run_break_fixture": true,
       "timeout_seconds": 13800,
       "required_outputs": [
-        "plugin-evidence/stfixest_macos.plugin",
-        "plugin-evidence/stfixest_macos.plugin.sha256"
+        "plugin-evidence/fereg_macos.plugin",
+        "plugin-evidence/fereg_macos.plugin.sha256"
       ]
     }
   }

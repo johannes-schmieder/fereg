@@ -2,9 +2,9 @@ version 18.0
 clear all
 set more off
 
-quietly findfile stfixest.ado
+quietly findfile fereg.ado
 local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
-local suffix "/stata/stfixest.ado"
+local suffix "/stata/fereg.ado"
 assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
@@ -15,19 +15,19 @@ local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix
 * This fixture consumes the committed sealed receipt; it does not invoke reghdfe.
 import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 
-generate byte __stfx_expected_sample = inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 24)
-generate double __stfx_expected_resid = .
-replace __stfx_expected_resid = -1.99997fffffffdX-005 if obs_id == 3
-replace __stfx_expected_resid = +1.99997fffffffdX-005 if obs_id == 4
-replace __stfx_expected_resid = +1.99997fffffffdX-005 if obs_id == 11
-replace __stfx_expected_resid = -1.99997fffffffdX-005 if obs_id == 12
-replace __stfx_expected_resid = +1.9999bfffffff3X-005 if obs_id == 15
-replace __stfx_expected_resid = -1.9999bfffffff3X-005 if obs_id == 16
-replace __stfx_expected_resid = -1.9999bffffff7fX-005 if obs_id == 23
-replace __stfx_expected_resid = +1.9999bffffff7fX-005 if obs_id == 24
+generate byte __frg_expected_sample = inlist(obs_id, 3, 4, 11, 12, 15, 16, 23, 24)
+generate double __frg_expected_resid = .
+replace __frg_expected_resid = -1.99997fffffffdX-005 if obs_id == 3
+replace __frg_expected_resid = +1.99997fffffffdX-005 if obs_id == 4
+replace __frg_expected_resid = +1.99997fffffffdX-005 if obs_id == 11
+replace __frg_expected_resid = -1.99997fffffffdX-005 if obs_id == 12
+replace __frg_expected_resid = +1.9999bfffffff3X-005 if obs_id == 15
+replace __frg_expected_resid = -1.9999bfffffff3X-005 if obs_id == 16
+replace __frg_expected_resid = -1.9999bffffff7fX-005 if obs_id == 23
+replace __frg_expected_resid = +1.9999bffffff7fX-005 if obs_id == 24
 
-_stfixest_estimate_ols_test y c.x1, absorb(worker firm#year firm#year) ///
-    residual(__stfx_reference_resid)
+_fereg_estimate_ols_test y c.x1, absorb(worker firm#year firm#year) ///
+    residual(__frg_reference_resid)
 
 assert e(N) == 8
 assert e(N_full) == 24
@@ -46,8 +46,8 @@ assert `"`e(vce)'"' == "ols"
 
 local coefficient_names : colfullnames e(b)
 assert `"`coefficient_names'"' == "o.x1 _cons"
-assert e(stfixest_status)[1,2] == 3
-assert e(stfixest_status)[2,2] == 5
+assert e(fereg_status)[1,2] == 3
+assert e(fereg_status)[2,2] == 5
 assert e(b)[1,1] == 0
 assert e(V)[1,1] == 0
 assert e(V)[1,2] == 0
@@ -75,8 +75,8 @@ assert e(dof_table)[3,3] == 0
 assert e(dof_table)[3,4] == 1
 assert e(dof_table)[3,5] == 0
 
-assert e(sample) == __stfx_expected_sample
-assert missing(__stfx_reference_resid) if !__stfx_expected_sample
-assert abs(__stfx_reference_resid - __stfx_expected_resid) <= 3e-6 if __stfx_expected_sample
+assert e(sample) == __frg_expected_sample
+assert missing(__frg_reference_resid) if !__frg_expected_sample
+assert abs(__frg_reference_resid - __frg_expected_resid) <= 3e-6 if __frg_expected_sample
 
 di as result "END_FIXTURE|estimate_ols_categorical_interaction_repeated_parity|rc=0"

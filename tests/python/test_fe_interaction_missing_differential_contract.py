@@ -171,8 +171,8 @@ class FeInteractionMissingDifferentialContractTests(unittest.TestCase):
             "e(df_m) == 1",
             "e(df_r) == 4",
             "x _cons",
-            "e(stfixest_status)[1,2] == 1",
-            "e(stfixest_status)[2,2] == 5",
+            "e(fereg_status)[1,2] == 1",
+            "e(fereg_status)[2,2] == 5",
             "+1.8ccccccccccd1X+000",
             "+1.47db97530eca8X+002",
             "+1.47ae147ae1493X-009",
@@ -180,7 +180,7 @@ class FeInteractionMissingDifferentialContractTests(unittest.TestCase):
             "e(dof_table)[2,3] == 1",
             "obs_id == 212",
             "1.worker 1.firm#1.year",
-            "missing(__stfx_reference_resid) if !__stfx_expected_sample",
+            "missing(__frg_reference_resid) if !__frg_expected_sample",
             "END_FIXTURE|estimate_ols_categorical_interaction_missing_parity|rc=0",
         ):
             self.assertIn(token, text)

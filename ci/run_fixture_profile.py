@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an isolated StFixest candidate and run selected licensed fixtures."""
+"""Build an isolated fereg candidate and run selected licensed fixtures."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def rust_environment(tested_sha: str) -> dict[str, str]:
     environment["PATH"] = f"{Path(cargo).parent}:/opt/homebrew/bin:{environment.get('PATH', '')}"
     environment["CARGO_TERM_COLOR"] = "always"
     environment["RUST_BACKTRACE"] = "1"
-    environment["STFIXEST_GIT_COMMIT"] = tested_sha[:12]
+    environment["FEREG_GIT_COMMIT"] = tested_sha[:12]
     return environment
 
 
@@ -107,10 +107,10 @@ def main() -> int:
             )
             write_json_atomic(args.summary_json, summary)
             return 1
-        plugin = args.repo_root / "dist" / "stfixest_macos.plugin"
+        plugin = args.repo_root / "dist" / "fereg_macos.plugin"
         if not plugin.is_file():
             summary["failure_kind"] = "missing_result"
-            summary["failure_detail"] = "build produced no dist/stfixest_macos.plugin"
+            summary["failure_detail"] = "build produced no dist/fereg_macos.plugin"
             write_json_atomic(args.summary_json, summary)
             return 1
         plugin_sha256 = sha256_file(plugin)
@@ -118,8 +118,8 @@ def main() -> int:
         evidence = args.run_root / "plugin-evidence"
         evidence.mkdir(parents=True, exist_ok=True)
         shutil.copy2(plugin, evidence / plugin.name)
-        (evidence / "stfixest_macos.plugin.sha256").write_text(
-            f"{plugin_sha256}  stfixest_macos.plugin\n", encoding="utf-8"
+        (evidence / "fereg_macos.plugin.sha256").write_text(
+            f"{plugin_sha256}  fereg_macos.plugin\n", encoding="utf-8"
         )
 
     fixture_summary = args.run_root / "fixture-summary.json"

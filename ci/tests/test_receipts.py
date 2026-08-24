@@ -131,7 +131,7 @@ class ReceiptTests(unittest.TestCase):
         _, receipt = self.build_receipt(
             process=self.normal_process(process_rc=1),
             status=None,
-            driver="stfixest-fixtures",
+            driver="fereg-fixtures",
             profile_summary={
                 "completed": True,
                 "status": "failure",

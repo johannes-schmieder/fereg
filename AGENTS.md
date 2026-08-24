@@ -1,14 +1,14 @@
-# StFixest 1.0 Rust-First Implementation Plan for Codex
+# fereg 1.0 Rust-First Implementation Plan for Codex
 
 ## 0. How to use this specification
 
-Use this document as the repository-level `AGENTS.md` or implementation authority for **StFixest**.
+Use this document as the repository-level `AGENTS.md` or implementation authority for **fereg**.
 
-StFixest is a new Stata package whose first stable release will provide:
+fereg is a new Stata package whose first stable release will provide:
 
-- `stfeols`: high-dimensional fixed-effect OLS/WLS.
-- `stfepois`: high-dimensional fixed-effect Poisson pseudo-maximum-likelihood.
-- `stfixest`: version, installation diagnostics, and native self-tests.
+- `fereg`: high-dimensional fixed-effect OLS/WLS.
+- `feppml`: high-dimensional fixed-effect Poisson pseudo-maximum-likelihood.
+- `fereg`: version, installation diagnostics, and native self-tests.
 
 The project has four nonnegotiable goals:
 
@@ -129,7 +129,7 @@ For each supported platform, all native code must be shipped in one self-contain
 
 - Stata’s plugin bridge.
 - The Rust FFI layer.
-- The StFixest numerical core.
+- The fereg numerical core.
 - The fixed-effect solvers.
 - The PPML engine.
 - Separation algorithms.
@@ -140,8 +140,8 @@ For each supported platform, all native code must be shipped in one self-contain
 There must be no native runtime sidecars such as:
 
 ```text
-stfixest_core.dll
-libstfixest.so
+fereg_core.dll
+libfereg.so
 libwithin.so
 libopenblas.so
 libgomp.so
@@ -180,22 +180,22 @@ If a certified result cannot be produced, return a clear error.
 Package:
 
 ```stata
-stfixest
+fereg
 ```
 
 Estimation commands:
 
 ```stata
-stfeols
-stfepois
+fereg
+feppml
 ```
 
 Utilities:
 
 ```stata
-stfixest, version
-stfixest, doctor
-stfixest, selftest
+fereg, version
+fereg, doctor
+fereg, selftest
 ```
 
 Do not shadow `reghdfe` or `ppmlhdfe` in version 1.0. Compatibility wrappers may be considered later.
@@ -205,7 +205,7 @@ Do not shadow `reghdfe` or `ppmlhdfe` in version 1.0. Compatibility wrappers may
 ### Linear estimator
 
 ```stata
-stfeols depvar [indepvars] [if] [in] [weight], ///
+fereg depvar [indepvars] [if] [in] [weight], ///
     [absorb(absvars)] ///
     [vce(vcetype) options]
 ```
@@ -213,13 +213,13 @@ stfeols depvar [indepvars] [if] [in] [weight], ///
 Examples:
 
 ```stata
-stfeols ln_wage education experience, ///
+fereg ln_wage education experience, ///
     absorb(worker firm year) ///
     vce(cluster firm)
 ```
 
 ```stata
-stfeols outcome treatment controls [aw=w], ///
+fereg outcome treatment controls [aw=w], ///
     absorb(county##c.year industry#year) ///
     vce(cluster county year)
 ```
@@ -227,7 +227,7 @@ stfeols outcome treatment controls [aw=w], ///
 ### Poisson estimator
 
 ```stata
-stfepois depvar [indepvars] [if] [in] [weight], ///
+feppml depvar [indepvars] [if] [in] [weight], ///
     [absorb(absvars)] ///
     [offset(varname) | exposure(varname)] ///
     [vce(vcetype) separation(methods) options]
@@ -236,13 +236,13 @@ stfepois depvar [indepvars] [if] [in] [weight], ///
 Example:
 
 ```stata
-stfepois trade tariff distance, ///
+feppml trade tariff distance, ///
     absorb(exporter#year importer#year pair) ///
     exposure(gdp) ///
     vce(cluster pair)
 ```
 
-## 2.3 Required `stfeols` 1.0 scope
+## 2.3 Required `fereg` 1.0 scope
 
 Version 1.0 must support:
 
@@ -282,7 +282,7 @@ Version 1.0 must support:
 - `estat summarize`.
 - Verbose and stage-timing modes.
 
-## 2.4 Required `stfepois` 1.0 scope
+## 2.4 Required `feppml` 1.0 scope
 
 Version 1.0 must support:
 
@@ -388,7 +388,7 @@ Unsupported features must error explicitly and appear in the compatibility matri
 └────────────────────────────┬─────────────────────────────┘
                              │ safe internal Rust API
 ┌────────────────────────────▼─────────────────────────────┐
-│ StFixest Rust estimation engine                          │
+│ fereg Rust estimation engine                          │
 │                                                          │
 │ loading, sample validation, factorization, singleton,    │
 │ FE solvers, OLS/WLS, PPML, separation, VCE, DoF,         │
@@ -430,7 +430,7 @@ The ado layer must:
 
 The ado layer must not call `reghdfe`, `ppmlhdfe`, or `ftools` at runtime.
 
-Parsing logic may be adapted from MIT-licensed reference code with attribution, but StFixest must be self-contained.
+Parsing logic may be adapted from MIT-licensed reference code with attribution, but fereg must be self-contained.
 
 ## 3.3 Rust data-plane responsibilities
 
@@ -521,9 +521,9 @@ macOS universal binary: x86-64 + arm64
 The installed package may therefore contain:
 
 ```text
-stfixest_windows.plugin
-stfixest_linux.plugin
-stfixest_macos.plugin
+fereg_windows.plugin
+fereg_linux.plugin
+fereg_macos.plugin
 ```
 
 Each file must contain the entire native runtime for its platform.
@@ -533,14 +533,14 @@ Each file must contain the entire native runtime for its platform.
 Preferred build:
 
 ```text
-stfixest-core       Rust library
-stfixest-plugin     Rust static library / FFI
+fereg-core       Rust library
+fereg-plugin     Rust static library / FFI
 stplugin.c          official Stata plugin source
 stata_bridge.c      minimal entry point
 
 static link
     ↓
-one stfixest_<platform>.plugin
+one fereg_<platform>.plugin
 ```
 
 The C entry point should remain minimal:
@@ -548,7 +548,7 @@ The C entry point should remain minimal:
 ```c
 STDLL stata_call(int argc, char *argv[])
 {
-    return stfixest_dispatch(argc, argv);
+    return fereg_dispatch(argc, argv);
 }
 ```
 
@@ -597,7 +597,7 @@ Do not use `target-cpu=native` for distributed binaries. Build against a conserv
 
 ## 4.5 Plugin diagnostics
 
-`stfixest, doctor` must report:
+`fereg, doctor` must report:
 
 - Ado version.
 - Plugin version.
@@ -621,7 +621,7 @@ Do not use `target-cpu=native` for distributed binaries. Build against a conserv
 # 5. Proposed repository structure
 
 ```text
-stfixest/
+fereg/
 ├── AGENTS.md
 ├── README.md
 ├── LICENSE
@@ -631,7 +631,7 @@ stfixest/
 ├── Cargo.lock
 │
 ├── crates/
-│   ├── stfixest-core/
+│   ├── fereg-core/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -700,7 +700,7 @@ stfixest/
 │   │           ├── linear.rs
 │   │           └── poisson.rs
 │   │
-│   ├── stfixest-plugin/
+│   ├── fereg-plugin/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -711,7 +711,7 @@ stfixest/
 │   │       ├── protocol.rs
 │   │       └── error_map.rs
 │   │
-│   └── stfixest-testkit/
+│   └── fereg-testkit/
 │       └── src/
 │           ├── explicit_dummy.rs
 │           ├── generators.rs
@@ -725,16 +725,16 @@ stfixest/
 │   └── Makefile
 │
 ├── stata/
-│   ├── stfixest.ado
-│   ├── stfeols.ado
-│   ├── stfepois.ado
-│   ├── stfixest_p.ado
-│   ├── stfixest_estat.ado
-│   ├── stfixest_parse.ado
-│   ├── stfixest.sthlp
-│   ├── stfeols.sthlp
-│   ├── stfepois.sthlp
-│   ├── stfixest.pkg
+│   ├── fereg.ado
+│   ├── fereg.ado
+│   ├── feppml.ado
+│   ├── fereg_p.ado
+│   ├── fereg_estat.ado
+│   ├── fereg_parse.ado
+│   ├── fereg.sthlp
+│   ├── fereg.sthlp
+│   ├── feppml.sthlp
+│   ├── fereg.pkg
 │   └── stata.toc
 │
 ├── tests/
@@ -780,7 +780,7 @@ stfixest/
     └── run_benchmarks.py
 ```
 
-Keep Stata-specific code out of `stfixest-core`. Keep estimator mathematics out of the ado and FFI layers.
+Keep Stata-specific code out of `fereg-core`. Keep estimator mathematics out of the ado and FFI layers.
 
 ---
 
@@ -828,7 +828,7 @@ Prefer to:
 - Port PPML and separation logic from pinned reference implementations.
 - Retain all required MIT notices and attribution.
 
-Do not make StFixest’s public API depend directly on unstable upstream internal types.
+Do not make fereg’s public API depend directly on unstable upstream internal types.
 
 ---
 
@@ -1230,7 +1230,7 @@ Before allocating:
 6. Record the decision and estimates.
 7. Fail before allocation if neither mode is safe.
 
-## 10.3 `stfeols` memory policy
+## 10.3 `fereg` memory policy
 
 In fast mode:
 
@@ -1251,7 +1251,7 @@ In low-memory mode:
 6. Stream transformed blocks again to compute residuals and scores.
 7. Remove scratch data.
 
-## 10.4 `stfepois` memory policy
+## 10.4 `feppml` memory policy
 
 PPML requires original finite regressors across IRLS iterations.
 
@@ -1487,7 +1487,7 @@ A failed final certificate means nonconvergence.
 
 ---
 
-# 13. `stfeols` implementation
+# 13. `fereg` implementation
 
 ## 13.1 Pipeline
 
@@ -1601,7 +1601,7 @@ Requirements:
 
 ---
 
-# 14. `stfepois` implementation
+# 14. `feppml` implementation
 
 ## 14.1 Separation is part of the estimator
 
@@ -1773,7 +1773,7 @@ struct SeparationResult {
 
 ## 15.3 Separation release gate
 
-`stfepois` must remain explicitly experimental until:
+`feppml` must remain explicitly experimental until:
 
 - Every pinned separation fixture passes.
 - The retained sample matches the reference exactly.
@@ -1839,7 +1839,7 @@ test
 
 Rust performs observation-scale calculations.
 
-## 17.2 `stfeols` prediction
+## 17.2 `fereg` prediction
 
 Support the agreed reference-compatible statistics, potentially including:
 
@@ -1852,7 +1852,7 @@ Support the agreed reference-compatible statistics, potentially including:
 
 For 10 million or more observations, avoid interpreted ado loops.
 
-## 17.3 `stfepois` prediction
+## 17.3 `feppml` prediction
 
 Support the agreed reference-compatible statistics, including those required by `margins`:
 
@@ -2024,7 +2024,7 @@ A performance comparison is valid only when both commands use:
 - The same requested outputs.
 - The same permitted thread count.
 
-Do not benchmark StFixest with full inference against a reference run using `dof(none)` or a cheaper VCE.
+Do not benchmark fereg with full inference against a reference run using `dof(none)` or a cheaper VCE.
 
 ## 20.2 Stata-side overhead gate
 
@@ -2041,7 +2041,7 @@ On large absorption-dominated benchmarks:
 - SPI input and output transfer should account for less than 20% of total runtime.
 - If the limit is not achieved, include a measured bandwidth analysis proving the SPI is the bottleneck and document the best achievable path.
 
-## 20.4 `stfeols` speed gate
+## 20.4 `fereg` speed gate
 
 For approved large benchmarks with \(N \ge 10\) million:
 
@@ -2053,7 +2053,7 @@ For approved large benchmarks with \(N \ge 10\) million:
 - Single-thread execution should show at least a 1.5× geometric-mean speedup.
 - No approved case may be more than 25% slower without a documented cause and tracked optimization issue.
 
-## 20.5 `stfepois` speed gate
+## 20.5 `feppml` speed gate
 
 For approved large PPML benchmarks:
 
@@ -2346,10 +2346,10 @@ Test on clean machines without:
 Run:
 
 ```stata
-stfixest, doctor
-stfixest, selftest
-stfeols ...
-stfepois ...
+fereg, doctor
+fereg, selftest
+fereg ...
+feppml ...
 ```
 
 ## 23.5 Binary audits
@@ -2417,9 +2417,9 @@ Fail release if forbidden dynamic dependencies appear.
 - Add local Rayon pool.
 - Build all platform plugins.
 - Implement:
-  - `stfixest, version`
-  - `stfixest, doctor`
-  - `stfixest, selftest`
+  - `fereg, version`
+  - `fereg, doctor`
+  - `fereg, selftest`
 - Implement mock SPI.
 - Add binary dependency audits.
 
@@ -2490,7 +2490,7 @@ Fail release if forbidden dynamic dependencies appear.
 
 ---
 
-## Phase 4 — Production `stfeols`
+## Phase 4 — Production `fereg`
 
 ### Tasks
 
@@ -2537,7 +2537,7 @@ Fail release if forbidden dynamic dependencies appear.
 
 ### Exit gate
 
-- `stfeols` speed gate passes.
+- `fereg` speed gate passes.
 - Memory gate passes.
 - Stata-side overhead gate passes.
 - Fast and low-memory results agree.
@@ -2571,7 +2571,7 @@ Fail release if forbidden dynamic dependencies appear.
 - Final state alignment passes.
 - Nonconvergence fails closed.
 - No per-iteration memory growth occurs.
-- `stfepois` remains marked experimental.
+- `feppml` remains marked experimental.
 
 ---
 
@@ -2616,7 +2616,7 @@ Fail release if forbidden dynamic dependencies appear.
 ### Exit gate
 
 - Postestimation tests pass.
-- `stfepois` speed gate passes.
+- `feppml` speed gate passes.
 - Memory gate passes.
 - Stata-side overhead gate passes.
 - No runtime dependency or sidecar exists.
@@ -2673,7 +2673,7 @@ Fail release if forbidden dynamic dependencies appear.
 19. Robust covariance.
 20. Multiway clustered covariance.
 21. DoF policy.
-22. First end-to-end `stfeols`.
+22. First end-to-end `fereg`.
 23. `e()` results, prediction, and FE recovery.
 24. OLS low-memory mode.
 25. OLS performance gate.
@@ -2737,7 +2737,7 @@ Codex must:
 
 ---
 
-# 27. Definition of done for StFixest 1.0
+# 27. Definition of done for fereg 1.0
 
 ## Installation
 
@@ -2747,7 +2747,7 @@ Codex must:
 - [ ] Linux x86-64 passes.
 - [ ] Intel macOS passes.
 - [ ] Apple-Silicon macOS passes.
-- [ ] `stfixest, doctor` passes on clean machines.
+- [ ] `fereg, doctor` passes on clean machines.
 - [ ] Ado/plugin mismatches are detected.
 - [ ] Binary dependency audits pass.
 
@@ -2765,7 +2765,7 @@ Codex must:
 - [ ] No residualized \(N \times K\) dataset is returned to Mata.
 - [ ] Stata-side overhead gates pass.
 
-## `stfeols`
+## `fereg`
 
 - [ ] Required categorical FE cases pass.
 - [ ] Required absorbed-slope cases pass.
@@ -2780,7 +2780,7 @@ Codex must:
 - [ ] Speed gate passes.
 - [ ] Memory gate passes.
 
-## `stfepois`
+## `feppml`
 
 - [ ] Required FE and slope cases pass.
 - [ ] Ordinary factor-variable cases pass.
@@ -2837,9 +2837,9 @@ The first deliverable must include:
 8. Rust workspace.
 9. Minimal C bridge.
 10. Self-contained plugin for each target.
-11. `stfixest, version`.
-12. `stfixest, doctor`.
-13. `stfixest, selftest`.
+11. `fereg, version`.
+12. `fereg, doctor`.
+13. `fereg, selftest`.
 14. Panic containment.
 15. Mock-SPI tests.
 16. Linux, Windows, and macOS build scripts.

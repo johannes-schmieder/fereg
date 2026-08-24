@@ -1,11 +1,11 @@
-# StFixest
+# fereg
 
-StFixest is a Rust-first Stata package intended to provide high-dimensional
-fixed-effect OLS/WLS (`stfeols`) and PPML (`stfepois`).
+fereg is a Rust-first Stata package intended to provide high-dimensional
+fixed-effect OLS/WLS (`fereg`) and PPML (`feppml`).
 
 The repository contains substantial native preparation, solver, inference,
 protocol, and validation infrastructure. It is still a development snapshot:
-`stfeols`, `stfepois`, public `estimate-ols`, and public `estimate-ppml`
+`fereg`, `feppml`, public `estimate-ols`, and public `estimate-ppml`
 deliberately fail closed with `r(498)` and post no estimate.
 
 ## Project navigation

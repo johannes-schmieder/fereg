@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "identity": "stfixest-ols-hidden-numeric-v1-canonical-receipt",
+  "identity": "fereg-ols-hidden-numeric-v1-canonical-receipt",
   "receipt_path": "benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T153712Z-5a6729c",
   "git_object_format": "sha1",
   "git_blob": "3e4fe21d23ebef28a54dcb0540eb88e14f19648e",
