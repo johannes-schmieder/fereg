@@ -1,5 +1,5 @@
 name: Preempt obsolete Mac development runs
-# option-a-preemption: 2026-08-24T12:14:00Z
+# option-a-preemption: 2026-08-24T12:40:00Z
 
 on:
   push:
