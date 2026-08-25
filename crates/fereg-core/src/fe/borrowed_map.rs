@@ -939,6 +939,10 @@ fn certified_result(
         setup_seconds,
         solve_seconds,
         fallback_used: false,
+        requested_preconditioner: None,
+        used_preconditioner: None,
+        pilot_iterations: 0,
+        pilot_contraction: 0.0,
         warnings: Vec::new(),
     };
     if !report.certified() {

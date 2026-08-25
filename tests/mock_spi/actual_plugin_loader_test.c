@@ -29,7 +29,7 @@ static ST_double result_marker_b[1][2];
 static ST_double result_marker_v[2][2];
 static ST_double result_fit[12][2];
 static ST_double result_dof[20][2];
-static ST_double result_solver[2][12];
+static ST_double result_solver[2][16];
 static ST_double result_fe[1][8];
 static ST_double result_cluster[1][4];
 static ST_double result_subset[1][4];
@@ -101,7 +101,7 @@ static ST_double *mock_result_matrix(char *name, ST_int *rows, ST_int *columns)
         *rows = 20; *columns = 2; return &result_dof[0][0];
     }
     if (strcmp(name, "RSOLVER") == 0) {
-        *rows = 2; *columns = 12; return &result_solver[0][0];
+        *rows = 2; *columns = 16; return &result_solver[0][0];
     }
     if (strcmp(name, "RFE") == 0) {
         *rows = 1; *columns = 8; return &result_fe[0][0];
@@ -364,9 +364,9 @@ static int check_version(stata_call_function call)
     clear_output();
     if (call(1, arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.9.0") == NULL ||
-        strstr(display_buffer, "fereg.action_protocol=1.2") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.3") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.2") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.3") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -988,12 +988,12 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "estimate-ols",
         "ado=0.9.0",
         "protocol_major=1",
-        "protocol_minor=2",
+        "protocol_minor=3",
         "stata=18.0",
         "confirm=fereg-estimation",
         "plugin=0.9.0",
         "result_major=1",
-        "result_minor=2",
+        "result_minor=3",
         "model_major=2",
         "model_minor=1",
         "source_matrix=S",
@@ -1025,6 +1025,8 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "dof=pairwise",
         "account_cluster_nesting=0",
         "memory=fast",
+        "solver=auto",
+        "preconditioner=auto",
         "poolsize=10",
         "threads=1",
         "deterministic=1",
@@ -1067,7 +1069,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 279) return 3;
+    if (output_store_calls != 287) return 3;
     for (name_index = 0; name_index < 14; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
@@ -1076,7 +1078,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 279; ++ordinal) {
+    for (ordinal = 1; ordinal <= 287; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();

@@ -165,9 +165,9 @@ mod tests {
             },
         }
         .render();
-        assert!(report.contains("fereg.action_protocol=1.2"));
+        assert!(report.contains("fereg.action_protocol=1.3"));
         assert!(report.contains("fereg.model_wire=2.1"));
-        assert!(report.contains("fereg.ols_result_wire=1.2"));
+        assert!(report.contains("fereg.ols_result_wire=1.3"));
         assert!(!report.contains("fereg.model_protocol="));
         assert!(report.contains("fereg.native_selftest=pass"));
     }

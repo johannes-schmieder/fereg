@@ -1,7 +1,7 @@
 action=doctor
 ado=0.9.0
 protocol_major=1
-protocol_minor=2
+protocol_minor=3
 stata=18.0
 threads=32
 plugin_file=mock.plugin

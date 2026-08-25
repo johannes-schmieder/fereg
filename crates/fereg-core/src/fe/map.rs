@@ -60,6 +60,10 @@ pub fn absorb_map(
             setup_seconds: 0.0,
             solve_seconds: started.elapsed().as_secs_f64(),
             fallback_used: false,
+            requested_preconditioner: None,
+            used_preconditioner: None,
+            pilot_iterations: 0,
+            pilot_contraction: 0.0,
             warnings: Vec::new(),
         });
     }
@@ -100,6 +104,10 @@ pub fn absorb_map(
                     setup_seconds: 0.0,
                     solve_seconds: started.elapsed().as_secs_f64(),
                     fallback_used: false,
+                    requested_preconditioner: None,
+                    used_preconditioner: None,
+                    pilot_iterations: 0,
+                    pilot_contraction: 0.0,
                     warnings: Vec::new(),
                 });
             }
@@ -116,6 +124,10 @@ pub fn absorb_map(
         setup_seconds: 0.0,
         solve_seconds: started.elapsed().as_secs_f64(),
         fallback_used: false,
+        requested_preconditioner: None,
+        used_preconditioner: None,
+        pilot_iterations: 0,
+        pilot_contraction: 0.0,
         warnings: Vec::new(),
     })
 }

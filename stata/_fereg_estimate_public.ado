@@ -22,16 +22,25 @@ program define _fereg_estimate_public, eclass sortpreserve
         exit 198
     }
     local solver_mode = lower(strtrim(`"`solver'"'))
-    if `"`solver_mode'"' == "" local solver_mode "map"
-    if `"`solver_mode'"' != "map" {
-        di as error "this release candidate supports solver(map)"
-        exit 498
+    if `"`solver_mode'"' == "" local solver_mode "auto"
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cg", "it", "squarem") {
+        di as error "solver() must be auto, map, lsmr, cg, it, or squarem"
+        exit 198
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
-    if `"`preconditioner_mode'"' == "" local preconditioner_mode "none"
-    if `"`preconditioner_mode'"' != "none" {
-        di as error "solver(map) supports preconditioner(none)"
-        exit 498
+    if `"`preconditioner_mode'"' == "" {
+        if !inlist(`"`solver_mode'"', "auto", "lsmr") local preconditioner_mode "off"
+        else local preconditioner_mode "auto"
+    }
+    if `"`preconditioner_mode'"' == "none" local preconditioner_mode "off"
+    if `"`preconditioner_mode'"' == "additive" local preconditioner_mode "schwarz"
+    if !inlist(`"`preconditioner_mode'"', "auto", "off", "diagonal", "schwarz") {
+        di as error "preconditioner() must be auto, off, diagonal, or schwarz"
+        exit 198
+    }
+    if !inlist(`"`solver_mode'"', "auto", "lsmr") & `"`preconditioner_mode'"' != "off" {
+        di as error "preconditioner() is valid only with solver(auto) or solver(lsmr)"
+        exit 198
     }
     if strtrim(`"`savefes'"') != "" {
         di as error "name saved fixed effects inside absorb(), for example absorb(fe=firm)"
@@ -57,6 +66,7 @@ program define _fereg_estimate_public, eclass sortpreserve
     _fereg_ols `varlist' `if' `in' `weight_clause', ///
         `absorb_option' `vce_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
+        solver(`solver_mode') preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
 

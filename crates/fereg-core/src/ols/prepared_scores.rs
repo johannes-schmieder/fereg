@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{BorrowedMapWeights, MapConfig};
+use crate::fe::{AbsorbConfig, BorrowedMapWeights};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::prepared_scratch::PreparedOlsScratch;
@@ -175,7 +175,7 @@ pub(super) fn build_prepared_ols_score_design<
     prepared: &P,
     fit: &mut CertifiedPreparedOlsFit,
     weights: ReferenceWeightView<'_>,
-    map: MapConfig,
+    absorb: AbsorbConfig,
     tolerance: f64,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsScoreDesign> {
@@ -250,13 +250,13 @@ pub(super) fn build_prepared_ols_score_design<
             (PreparedOlsScoreStorage::Dense(within), means, 0)
         }
         (PreparedOlsExecutionMode::Fast, None) => {
-            build_dense_score_storage(prepared, &generated_columns, weights, map, reservation)?
+            build_dense_score_storage(prepared, &generated_columns, weights, absorb, reservation)?
         }
         (PreparedOlsExecutionMode::Low, _) => build_scratch_score_storage(
             prepared,
             &generated_columns,
             weights,
-            map,
+            absorb,
             fit.execution().poolsize,
             reservation,
         )?,
@@ -306,7 +306,7 @@ fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenc
     prepared: &P,
     generated_columns: &[usize],
     weights: ReferenceWeightView<'_>,
-    map: MapConfig,
+    absorb: AbsorbConfig,
     reservation: &mut R,
 ) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
@@ -323,7 +323,7 @@ fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenc
     fill_raw_score_block(prepared, generated_columns, &mut raw_values)?;
     let means = score_block_means(&raw_values, nrows, rank, weights, reservation)?;
     let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
-    let within = absorb_score_block(prepared, raw, map)?;
+    let within = absorb_score_block(prepared, raw, absorb)?;
     Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
 }
 
@@ -331,7 +331,7 @@ fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInfere
     prepared: &P,
     generated_columns: &[usize],
     weights: ReferenceWeightView<'_>,
-    map: MapConfig,
+    absorb: AbsorbConfig,
     poolsize: usize,
     reservation: &mut R,
 ) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
@@ -373,7 +373,7 @@ fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInfere
                 weighted_matrix_column_mean(&raw_values, nrows, block_rank, local, weights)?;
         }
         let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
-        let within = absorb_score_block(prepared, raw, map)?;
+        let within = absorb_score_block(prepared, raw, absorb)?;
         for local in 0..block_rank {
             for row in 0..nrows {
                 column[row] = within[(row, local)];
@@ -448,7 +448,7 @@ fn score_block_means<R: PreparedInferenceReservation>(
 fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     raw: DenseMatrix,
-    map: MapConfig,
+    absorb: AbsorbConfig,
 ) -> Result<DenseMatrix> {
     if raw.ncols() == 0 {
         return Ok(raw);
@@ -457,7 +457,7 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     };
-    let absorbed = prepared.fit_absorb_matrix(map_weights, raw, map)?;
+    let absorbed = prepared.fit_absorb_matrix(map_weights, raw, absorb)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared robust score-design absorption did not certify",

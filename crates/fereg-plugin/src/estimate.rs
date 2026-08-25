@@ -11,7 +11,9 @@ use crate::result::{
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::fe::plan_categorical_absorbed_request;
+use fereg_core::fe::{
+    plan_categorical_absorbed_request, AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner,
+};
 use fereg_core::metadata::{
     ComponentKind, ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH,
     ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
@@ -144,6 +146,8 @@ struct EstimateActionSpec {
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
     account_cluster_nesting: bool,
     memory: MemoryMode,
+    solver: FeSolverKind,
+    preconditioner: LsmrPreconditioner,
     poolsize: usize,
     threads: usize,
     deterministic: bool,
@@ -445,6 +449,8 @@ impl EstimateActionSpec {
             absorbed_dof: parse_dof(required(&values, "dof")?)?,
             account_cluster_nesting: parse_bool(&values, "account_cluster_nesting")?,
             memory: MemoryMode::parse(required(&values, "memory")?)?,
+            solver: parse_solver(required(&values, "solver")?)?,
+            preconditioner: parse_preconditioner(required(&values, "preconditioner")?)?,
             poolsize: parse_positive_usize(&values, "poolsize")?,
             threads: parse_usize(&values, "threads")?,
             deterministic: parse_bool(&values, "deterministic")?,
@@ -524,6 +530,8 @@ impl EstimateActionSpec {
             "dof",
             "account_cluster_nesting",
             "memory",
+            "solver",
+            "preconditioner",
             "poolsize",
             "threads",
             "deterministic",
@@ -563,6 +571,13 @@ impl EstimateActionSpec {
     }
 
     fn decode_and_validate(&self, spi: &mut dyn SpiApi) -> Result<EstimateAction> {
+        if !matches!(self.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
+            && self.preconditioner != LsmrPreconditioner::Off
+        {
+            return Err(syntax(
+                "preconditioner() is valid only with solver(auto) or solver(lsmr)",
+            ));
+        }
         let wire = ModelWireV2 {
             major: self.model_major,
             minor: self.model_minor,
@@ -684,10 +699,21 @@ impl EstimateActionSpec {
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
-            map: MapConfig {
-                tolerance: self.tolerance,
-                max_iterations: self.iterate,
-                ..default_fit.map
+            absorb: AbsorbConfig {
+                solver: self.solver,
+                map: MapConfig {
+                    tolerance: self.tolerance,
+                    max_iterations: self.iterate,
+                    ..default_fit.absorb.map
+                },
+                lsmr: LsmrConfig {
+                    tolerance: self.tolerance,
+                    max_iterations: self.iterate,
+                    preconditioner: self.preconditioner,
+                    threads: thread_config,
+                    ..default_fit.absorb.lsmr
+                },
+                ..default_fit.absorb
             },
             execution: PreparedOlsExecutionConfig {
                 mode: match memory_plan.selected {
@@ -1378,7 +1404,7 @@ fn build_runtime_shadow(
         (Some(start), Some(end)) => Some(end as f64 - start as f64),
         _ => None,
     };
-    let effective_tolerance = action.fit.map.tolerance;
+    let effective_tolerance = action.fit.absorb.map.tolerance;
     let rows = [
         Some(memory_mode_code(action.memory_plan.requested)),
         Some(memory_mode_code(action.memory_plan.selected)),
@@ -1413,7 +1439,7 @@ fn build_runtime_shadow(
         Some(total_seconds),
         Some(action.requested_tolerance),
         Some(effective_tolerance),
-        Some(action.fit.map.max_iterations as f64),
+        Some(action.fit.absorb.map.max_iterations as f64),
         Some(selected_bytes as f64),
         modeled_allocation_ratio,
         rss_delta,
@@ -2428,6 +2454,30 @@ fn parse_dof(value: &str) -> Result<PreparedOlsAbsorbedDofPolicy> {
     }
 }
 
+fn parse_solver(value: &str) -> Result<FeSolverKind> {
+    match value {
+        "auto" => Ok(FeSolverKind::Auto),
+        "map" => Ok(FeSolverKind::Map),
+        "lsmr" => Ok(FeSolverKind::Lsmr),
+        "cg" => Ok(FeSolverKind::Cg),
+        "it" | "irons-tuck" => Ok(FeSolverKind::IronsTuck),
+        "squarem" => Ok(FeSolverKind::Squarem),
+        _ => Err(syntax("solver must be auto, map, lsmr, cg, it, or squarem")),
+    }
+}
+
+fn parse_preconditioner(value: &str) -> Result<LsmrPreconditioner> {
+    match value {
+        "auto" => Ok(LsmrPreconditioner::Auto),
+        "off" | "none" => Ok(LsmrPreconditioner::Off),
+        "diagonal" => Ok(LsmrPreconditioner::Diagonal),
+        "schwarz" | "additive" => Ok(LsmrPreconditioner::Schwarz),
+        _ => Err(syntax(
+            "preconditioner must be auto, off, diagonal, or schwarz",
+        )),
+    }
+}
+
 fn required<'a>(values: &'a BTreeMap<String, String>, key: &str) -> Result<&'a str> {
     values
         .get(key)
@@ -3014,6 +3064,8 @@ mod tests {
             "dof=pairwise".to_owned(),
             format!("account_cluster_nesting={}", usize::from(clustered)),
             "memory=fast".to_owned(),
+            "solver=auto".to_owned(),
+            "preconditioner=auto".to_owned(),
             "poolsize=10".to_owned(),
             "threads=1".to_owned(),
             "deterministic=1".to_owned(),
@@ -3580,7 +3632,7 @@ mod tests {
         let (args, mut successful) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
         let total_stores = successful.store_calls;
-        assert_eq!(total_stores, 282);
+        assert_eq!(total_stores, 290);
         assert_eq!(successful.stores.capacity(), 512);
 
         for failing_ordinal in 1..=total_stores {

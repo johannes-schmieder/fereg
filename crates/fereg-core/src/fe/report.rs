@@ -9,6 +9,25 @@ pub enum FeSolverKind {
     Map,
     /// Matrix-free modified LSMR with a configurable preconditioner.
     Lsmr,
+    /// Conjugate-gradient acceleration of symmetric MAP.
+    Cg,
+    /// Irons--Tuck vector extrapolation of symmetric MAP.
+    IronsTuck,
+    /// Squared extrapolation acceleration of symmetric MAP.
+    Squarem,
+}
+
+/// Preconditioner requested or used by modified LSMR.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LsmrPreconditioner {
+    /// Diagonal for small/simple designs, additive Schwarz otherwise.
+    Auto,
+    /// Identity preconditioner.
+    Off,
+    /// Jacobi/diagonal preconditioner.
+    Diagonal,
+    /// One-level additive Schwarz over factor-pair subdomains.
+    Schwarz,
 }
 
 /// Why a fixed-effect absorption run stopped.
@@ -45,6 +64,14 @@ pub struct SolveReport {
     pub solve_seconds: f64,
     /// Whether `Auto` abandoned its first choice and certified the other path.
     pub fallback_used: bool,
+    /// Requested LSMR preconditioner, or `None` for non-LSMR routes.
+    pub requested_preconditioner: Option<LsmrPreconditioner>,
+    /// Effective LSMR preconditioner, or `None` for non-LSMR routes.
+    pub used_preconditioner: Option<LsmrPreconditioner>,
+    /// Bounded automatic-routing pilot sweeps included in setup cost.
+    pub pilot_iterations: usize,
+    /// Observed pilot contraction ratio; zero means no pilot was run.
+    pub pilot_contraction: f64,
     /// Deterministic, diagnostic-only warnings from routing or preconditioning.
     pub warnings: Vec<String>,
 }

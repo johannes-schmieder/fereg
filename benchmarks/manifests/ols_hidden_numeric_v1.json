@@ -6,7 +6,7 @@
   "performance": "unmeasured",
   "parent_manifest": {
     "path": "benchmarks/manifests/ols_v1.json",
-    "sha256": "6c48a92603420013c8ea5169a3d558836b0ba6aede2aa366adea99e380614ad4"
+    "sha256": "ed590173486ca220dd8c757cc873c6a19b3e4653ba2821d7072ad5816786675e"
   },
   "comparator_receipt": {
     "path": "benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d",

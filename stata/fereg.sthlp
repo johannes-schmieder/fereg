@@ -19,7 +19,7 @@
 [{cmd:absorb(}{it:terms}{cmd:)} {cmd:vce(}{it:vcetype}{cmd:)}
 {cmd:dof(}{it:method}{cmd:)} {cmd:keepsingletons}
 {cmd:residuals(}{it:newvar}{cmd:)} {cmd:noconstant}
-{cmd:solver(map)} {cmd:preconditioner(none)}
+{cmd:solver(}{it:method}{cmd:)} {cmd:preconditioner(}{it:method}{cmd:)}
 {cmd:threads(}{it:#}{cmd:)} {cmd:memory(}{it:mode}{cmd:)}
 {cmd:poolsize(}{it:#}{cmd:)} {cmd:tolerance(}{it:#}{cmd:)}
 {cmd:iterate(}{it:#}{cmd:)} {cmd:deterministic} {cmd:timeit}
@@ -53,6 +53,15 @@ Absorbed terms use reghdfe-style notation. Examples include
 {cmd:memory(fast)} retains dense native workspaces; {cmd:memory(low)} uses
 blockwise processing and bounded temporary scratch files that are removed on
 success, error, or Break. {cmd:poolsize()} controls the low-memory block width.
+
+{pstd}
+{cmd:solver(auto)} is the default certified fast path. Explicit methods are
+{cmd:map}, modified {cmd:lsmr}, conjugate-gradient accelerated MAP {cmd:cg},
+Irons--Tuck accelerated MAP {cmd:it}, and {cmd:squarem}. LSMR accepts
+{cmd:preconditioner(auto)}, {cmd:off}, {cmd:diagonal}, or {cmd:schwarz};
+{cmd:none} and {cmd:additive} remain aliases for {cmd:off} and {cmd:schwarz}.
+Accelerated candidates are retained only when the independent FE-moment
+certificate improves on ordinary symmetric MAP sweeps.
 
 {pstd}
 {cmd:threads(0)} selects the native default. A positive value requests a local

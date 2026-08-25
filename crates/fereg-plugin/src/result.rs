@@ -1,5 +1,5 @@
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::fe::{FeSolverKind, SolveReport, SolveStopReason};
+use fereg_core::fe::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 use fereg_core::ols::{
     CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
     CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
@@ -19,7 +19,7 @@ use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 pub(crate) const FIT_ROWS: usize = 12;
 pub(crate) const DOF_ROWS: usize = 20;
 pub(crate) const SOLVER_ROWS: usize = 2;
-pub(crate) const SOLVER_COLUMNS: usize = 12;
+pub(crate) const SOLVER_COLUMNS: usize = 16;
 pub(crate) const FE_COLUMNS: usize = 8;
 pub(crate) const CLUSTER_COLUMNS: usize = 4;
 pub(crate) const SUBSET_COLUMNS: usize = 4;
@@ -686,6 +686,10 @@ fn write_solver_row(output: &mut [f64], row: usize, report: &SolveReport) -> Res
         report.solve_seconds,
         f64::from(report.fallback_used),
         report.warnings.len() as f64,
+        preconditioner_code(report.requested_preconditioner),
+        preconditioner_code(report.used_preconditioner),
+        report.pilot_iterations as f64,
+        report.pilot_contraction,
     ];
     let start = row * SOLVER_COLUMNS;
     for (index, value) in values.into_iter().enumerate() {
@@ -1169,6 +1173,19 @@ fn solver_code(value: FeSolverKind) -> f64 {
         FeSolverKind::Auto => 1.0,
         FeSolverKind::Map => 2.0,
         FeSolverKind::Lsmr => 3.0,
+        FeSolverKind::Cg => 4.0,
+        FeSolverKind::IronsTuck => 5.0,
+        FeSolverKind::Squarem => 6.0,
+    }
+}
+
+fn preconditioner_code(value: Option<LsmrPreconditioner>) -> f64 {
+    match value {
+        None => 0.0,
+        Some(LsmrPreconditioner::Auto) => 1.0,
+        Some(LsmrPreconditioner::Off) => 2.0,
+        Some(LsmrPreconditioner::Diagonal) => 3.0,
+        Some(LsmrPreconditioner::Schwarz) => 4.0,
     }
 }
 

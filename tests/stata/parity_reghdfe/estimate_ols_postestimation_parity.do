@@ -16,10 +16,10 @@ import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 fereg y c.x1 c.x2, absorb(worker firm) memory(auto) threads(2)
 assert `"`e(cmd)'"' == "fereg"
 assert `"`e(fereg_memory_mode)'"' == "auto"
-assert `"`e(fereg_solver_requested)'"' == "map"
+assert `"`e(fereg_solver_requested)'"' == "auto"
 confirm matrix e(fereg_solver)
 assert rowsof(e(fereg_solver)) == 2
-assert colsof(e(fereg_solver)) == 12
+assert colsof(e(fereg_solver)) == 16
 assert e(fereg_requested_threads) == 2
 assert e(N) == 24
 assert e(df_m) == 2

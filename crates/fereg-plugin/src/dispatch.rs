@@ -157,9 +157,9 @@ mod tests {
     fn version_is_machine_readable() {
         let sink = BufferSink::default();
         dispatch_args(&["version".to_owned()], &sink).expect("version");
-        assert!(sink.displayed().contains("fereg.action_protocol=1.2"));
+        assert!(sink.displayed().contains("fereg.action_protocol=1.3"));
         assert!(sink.displayed().contains("fereg.model_wire=2.1"));
-        assert!(sink.displayed().contains("fereg.ols_result_wire=1.2"));
+        assert!(sink.displayed().contains("fereg.ols_result_wire=1.3"));
         assert!(!sink.displayed().contains("fereg.model_protocol="));
     }
 

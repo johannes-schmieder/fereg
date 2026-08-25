@@ -2,24 +2,10 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     certify_residuals_with_reference_norms, weighted_column_norms, FeDesign, FeSolverKind,
-    SolveReport, SolveStopReason,
+    LsmrPreconditioner, SolveReport, SolveStopReason,
 };
 use crate::options::ThreadConfig;
-use rayon::ThreadPoolBuilder;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
-
-/// Preconditioner exposed by the fereg modified-LSMR adapter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LsmrPreconditioner {
-    /// Diagonal for small/simple designs, additive Schwarz otherwise.
-    Auto,
-    /// Identity preconditioner.
-    Off,
-    /// Jacobi/diagonal preconditioner.
-    Diagonal,
-    /// One-level additive Schwarz over factor-pair subdomains.
-    Schwarz,
-}
 
 /// Modified-LSMR tuning for fixed-effect absorption.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,8 +32,10 @@ impl Default for LsmrConfig {
 
 /// Residualize one or more right-hand sides with the pinned `within` modified-LSMR core.
 ///
-/// All input materialization and all output writes occur on the caller thread. The
-/// temporary Rayon pool encloses numerical work only; it never has access to Stata's SPI.
+/// All input materialization and all output writes occur on the caller thread.
+/// Numerical work uses the caller's current Rayon pool, which is the isolated
+/// action-local `ThreadTeam` in public estimation. It never has access to
+/// Stata's SPI.
 pub fn absorb_lsmr(
     design: &FeDesign,
     weights: &[f64],
@@ -89,6 +77,10 @@ pub fn absorb_lsmr(
             setup_seconds: 0.0,
             solve_seconds: 0.0,
             fallback_used: false,
+            requested_preconditioner: Some(config.preconditioner),
+            used_preconditioner: Some(resolve_preconditioner_kind(design, config.preconditioner)),
+            pilot_iterations: 0,
+            pilot_contraction: 0.0,
             warnings: Vec::new(),
         });
     }
@@ -120,51 +112,36 @@ pub fn absorb_lsmr(
         maxiter: config.max_iterations,
         local_size: config.local_size,
     };
-    let preconditioner = resolve_preconditioner(design, config.preconditioner);
-    let pool = ThreadPoolBuilder::new()
-        .num_threads(config.threads.resolved())
-        .thread_name(|index| format!("fereg-lsmr-{index}"))
-        .build()
-        .map_err(|error| {
-            FeregError::new(
-                ErrorCode::Internal,
-                format!("unable to build LSMR thread pool: {error}"),
-            )
-        })?;
-
-    let initial = pool.install(|| {
-        within::solve_batch(
-            effects.clone(),
-            &rhs_views,
-            Some(weights),
-            Some(&options),
-            preconditioner,
-        )
-    });
+    let resolved_preconditioner = resolve_preconditioner_kind(design, config.preconditioner);
+    let preconditioner = within_preconditioner(resolved_preconditioner);
+    let initial = within::solve_batch(
+        effects.clone(),
+        &rhs_views,
+        Some(weights),
+        Some(&options),
+        preconditioner,
+    );
     let (solved, preconditioner_fallback) = match initial {
         Ok(solved) => (solved, false),
         Err(error)
             if config.preconditioner == LsmrPreconditioner::Auto
                 && is_preconditioner_positivity_breakdown(&error) =>
         {
-            let solved = pool
-                .install(|| {
-                    within::solve_batch(
-                        effects,
-                        &rhs_views,
-                        Some(weights),
-                        Some(&options),
-                        PreconditionerConfig::Off,
-                    )
-                })
-                .map_err(|fallback_error| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        format!(
-                            "modified LSMR failed after unpreconditioned fallback: {fallback_error}"
-                        ),
-                    )
-                })?;
+            let solved = within::solve_batch(
+                effects,
+                &rhs_views,
+                Some(weights),
+                Some(&options),
+                PreconditionerConfig::Off,
+            )
+            .map_err(|fallback_error| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    format!(
+                        "modified LSMR failed after unpreconditioned fallback: {fallback_error}"
+                    ),
+                )
+            })?;
             (solved, true)
         }
         Err(error) => {
@@ -224,6 +201,14 @@ pub fn absorb_lsmr(
         setup_seconds: solved.time_setup,
         solve_seconds: solved.time_solve.iter().copied().sum(),
         fallback_used: preconditioner_fallback,
+        requested_preconditioner: Some(config.preconditioner),
+        used_preconditioner: Some(if preconditioner_fallback {
+            LsmrPreconditioner::Off
+        } else {
+            resolved_preconditioner
+        }),
+        pilot_iterations: 0,
+        pilot_contraction: 0.0,
         warnings,
     })
 }
@@ -236,21 +221,30 @@ fn is_preconditioner_positivity_breakdown(error: &within::WithinError) -> bool {
     )
 }
 
-fn resolve_preconditioner(
+fn resolve_preconditioner_kind(
     design: &FeDesign,
     requested: LsmrPreconditioner,
-) -> PreconditionerConfig {
+) -> LsmrPreconditioner {
     match requested {
+        LsmrPreconditioner::Off => LsmrPreconditioner::Off,
+        LsmrPreconditioner::Diagonal => LsmrPreconditioner::Diagonal,
+        LsmrPreconditioner::Schwarz => LsmrPreconditioner::Schwarz,
+        LsmrPreconditioner::Auto => {
+            if design.effects().len() >= 2 && design.total_coefficients() >= 256 {
+                LsmrPreconditioner::Schwarz
+            } else {
+                LsmrPreconditioner::Diagonal
+            }
+        }
+    }
+}
+
+fn within_preconditioner(preconditioner: LsmrPreconditioner) -> PreconditionerConfig {
+    match preconditioner {
+        LsmrPreconditioner::Auto => unreachable!("automatic preconditioner is resolved first"),
         LsmrPreconditioner::Off => PreconditionerConfig::Off,
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
         LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
-        LsmrPreconditioner::Auto => {
-            if design.effects().len() >= 2 && design.total_coefficients() >= 256 {
-                PreconditionerConfig::default()
-            } else {
-                PreconditionerConfig::Diagonal
-            }
-        }
     }
 }
 

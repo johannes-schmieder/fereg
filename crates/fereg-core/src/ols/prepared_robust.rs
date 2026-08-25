@@ -375,7 +375,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         prepared,
         &mut fit,
         weight_view,
-        config.fit.map,
+        config.fit.absorb,
         config.certificate_tolerance,
         reservation,
     )?;

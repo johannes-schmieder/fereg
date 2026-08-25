@@ -1,6 +1,6 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{BorrowedMapWeights, FeCertificate, MapConfig, SolveReport, SolveStopReason};
+use crate::fe::{AbsorbConfig, BorrowedMapWeights, FeCertificate, SolveReport, SolveStopReason};
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
@@ -14,7 +14,7 @@ use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData
 /// Numerical policy for the guarded prepared-data coefficient checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsFitConfig {
-    pub map: MapConfig,
+    pub absorb: AbsorbConfig,
     /// Multiplier on `eps * max(N, K, 1)` after finite columns are scaled by
     /// their pre-absorption weighted norms.
     pub rank_tolerance_multiplier: f64,
@@ -66,11 +66,14 @@ pub struct PreparedOlsExecutionReport {
 impl Default for PreparedOlsFitConfig {
     fn default() -> Self {
         Self {
-            map: MapConfig {
-                tolerance: 1e-10,
-                max_iterations: 20_000,
-                check_every: 1,
-                symmetric: true,
+            absorb: AbsorbConfig {
+                map: crate::fe::MapConfig {
+                    tolerance: 1e-10,
+                    max_iterations: 20_000,
+                    check_every: 1,
+                    symmetric: true,
+                },
+                ..AbsorbConfig::default()
             },
             rank_tolerance_multiplier: 128.0,
             fixed_effect_collinearity_tolerance: 1e-9,
@@ -583,7 +586,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         )?;
     }
 
-    let absorbed = prepared.fit_absorb_matrix(weights.borrowed(), raw, config.map)?;
+    let absorbed = prepared.fit_absorb_matrix(weights.borrowed(), raw, config.absorb)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -678,7 +681,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
     let residual_absorbed =
-        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.map)?;
+        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.absorb)?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS residual absorption returned an uncertified result",
@@ -859,7 +862,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
 
     let raw_outcome = prepared.fit_build_rhs_block(0, 0, true)?;
     let absorbed_outcome =
-        prepared.fit_absorb_matrix(weights.borrowed(), raw_outcome, config.map)?;
+        prepared.fit_absorb_matrix(weights.borrowed(), raw_outcome, config.absorb)?;
     if !absorbed_outcome.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory outcome absorption was not certified",
@@ -911,7 +914,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
             *reference_norm = weighted_slice_norm(&column_buffer, weights)?;
         }
         let absorbed_block =
-            prepared.fit_absorb_matrix(weights.borrowed(), raw_block, config.map)?;
+            prepared.fit_absorb_matrix(weights.borrowed(), raw_block, config.absorb)?;
         if !absorbed_block.report().certified() {
             return Err(invalid_data(
                 "prepared OLS low-memory regressor-block absorption was not certified",
@@ -1002,7 +1005,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
     }
     let residual_matrix = DenseMatrix::from_row_major(rows, 1, raw_residuals)?;
     let residual_absorbed =
-        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.map)?;
+        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.absorb)?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory residual absorption was not certified",
@@ -1067,6 +1070,8 @@ fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<(
         || !source.certified()
         || target.requested_solver != source.requested_solver
         || target.used_solver != source.used_solver
+        || target.requested_preconditioner != source.requested_preconditioner
+        || target.used_preconditioner != source.used_preconditioner
     {
         return Err(invalid_data(
             "prepared OLS low-memory solver reports are inconsistent",
@@ -1100,6 +1105,8 @@ fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<(
     target.setup_seconds += source.setup_seconds;
     target.solve_seconds += source.solve_seconds;
     target.fallback_used |= source.fallback_used;
+    target.pilot_iterations = target.pilot_iterations.max(source.pilot_iterations);
+    target.pilot_contraction = target.pilot_contraction.max(source.pilot_contraction);
     target.warnings.extend(source.warnings);
     if target.setup_seconds.is_finite() && target.solve_seconds.is_finite() {
         Ok(())
@@ -1206,10 +1213,10 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
             "prepared OLS report and structural intercept metadata are inconsistent",
         ));
     }
-    if !config.map.tolerance.is_finite()
-        || config.map.tolerance <= 0.0
-        || config.map.max_iterations == 0
-        || config.map.check_every == 0
+    if !config.absorb.map.tolerance.is_finite()
+        || config.absorb.map.tolerance <= 0.0
+        || config.absorb.map.max_iterations == 0
+        || config.absorb.map.check_every == 0
         || !config.rank_tolerance_multiplier.is_finite()
         || config.rank_tolerance_multiplier <= 0.0
         || !valid_unit_tolerance(config.fixed_effect_collinearity_tolerance)
@@ -4072,6 +4079,62 @@ mod tests {
         assert!(fit.residual_absorption_report().certified());
         assert!(fit.rank_certificate().passed);
         assert!(fit.score_certificate().passed);
+    }
+
+    #[test]
+    fn prepared_lsmr_path_matches_certified_map_fit() {
+        let group = vec![0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0];
+        let x = vec![-2.0, 1.0, -1.0, 2.0, 0.5, 3.0, -0.5, 4.0];
+        let y = x
+            .iter()
+            .zip(&group)
+            .map(|(x, group)| 1.75 * x + 2.0 * group - 0.5)
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&group),
+            true,
+            TestWeights::Unit,
+        );
+        let map = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("certified MAP fit");
+        let lsmr = fit_prepared_ols_coefficients_map(
+            &prepared,
+            PreparedOlsFitConfig {
+                absorb: AbsorbConfig {
+                    solver: crate::fe::FeSolverKind::Lsmr,
+                    lsmr: crate::fe::LsmrConfig {
+                        tolerance: 1e-10,
+                        preconditioner: crate::fe::LsmrPreconditioner::Diagonal,
+                        ..crate::fe::LsmrConfig::default()
+                    },
+                    ..PreparedOlsFitConfig::default().absorb
+                },
+                ..PreparedOlsFitConfig::default()
+            },
+        )
+        .expect("certified LSMR fit");
+        assert_eq!(
+            lsmr.absorption_report().used_solver,
+            crate::fe::FeSolverKind::Lsmr
+        );
+        assert_eq!(
+            lsmr.residual_absorption_report().used_solver,
+            crate::fe::FeSolverKind::Lsmr
+        );
+        for (map, lsmr) in map.coefficients().iter().zip(lsmr.coefficients()) {
+            assert_eq!(map.status, lsmr.status);
+            match (map.value, lsmr.value) {
+                (Some(map), Some(lsmr)) => assert_close(lsmr, map, 1e-8),
+                (None, None) => {}
+                _ => panic!("MAP and LSMR coefficient availability differs"),
+            }
+        }
+        for (map, lsmr) in map.residuals().iter().zip(lsmr.residuals()) {
+            assert_close(*lsmr, *map, 1e-8);
+        }
     }
 
     #[test]

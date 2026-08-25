@@ -4,6 +4,7 @@ program define _fereg_ols, eclass sortpreserve
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) XB(name) XBD(name) D(name) NOCONStant ///
+         SOLVer(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC]
 
@@ -63,6 +64,8 @@ program define _fereg_ols, eclass sortpreserve
     local xbd_option
     local d_option
     local memory_option `"memory(`memory_mode')"'
+    local solver_option
+    local preconditioner_option
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
     if strtrim(`"`dof'"') != "" local dof_option `"dof(`dof')"'
     if `"`keepsingletons'"' != "" local singleton_option "keepsingletons"
@@ -71,11 +74,15 @@ program define _fereg_ols, eclass sortpreserve
     if `"`xbd'"' != "" local xbd_option `"xbd(`xbd')"'
     if `"`d'"' != "" local d_option `"d(`d')"'
     if `"`noconstant'"' != "" local constant_option "noconstant"
+    if strtrim(`"`solver'"') != "" local solver_option `"solver(`solver')"'
+    if strtrim(`"`preconditioner'"') != "" ///
+        local preconditioner_option `"preconditioner(`preconditioner')"'
 
     _fereg_estimate_ols `varlist' `if' `in', ///
         `absorb_option' `vce_option' `cluster_option' `dof_option' ///
         `singleton_option' `residual_option' `xb_option' `xbd_option' ///
         `d_option' `constant_option' `weight_option' `memory_option' ///
+        `solver_option' `preconditioner_option' ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
 

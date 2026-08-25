@@ -290,8 +290,8 @@ def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
         "created_utc": FIXED_UTC,
         "source_sha": source_sha,
         "source_dirty": source_dirty,
-        "action_protocol": "1.2",
-        "ols_result_wire": "1.2",
+        "action_protocol": "1.3",
+        "ols_result_wire": "1.3",
         "model_wire": "2.1",
         "plugins": [
             {

@@ -546,7 +546,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         ols,
         &mut fit,
         weight_view,
-        config.fit.map,
+        config.fit.absorb,
         config.certificate_tolerance,
         reservation,
     )?;

@@ -1,7 +1,8 @@
 use crate::data::DenseMatrix;
 use crate::error::Result;
 use crate::fe::{
-    absorb_lsmr, absorb_map, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
+    absorb_accelerated_map, absorb_lsmr, absorb_map, FeDesign, FeSolverKind, LsmrConfig, MapConfig,
+    SolveReport,
 };
 
 /// Unified fixed-effect absorption configuration.
@@ -35,6 +36,9 @@ pub fn absorb_fixed_effects(
     match config.solver {
         FeSolverKind::Map => absorb_map(design, weights, values, config.map),
         FeSolverKind::Lsmr => absorb_lsmr(design, weights, values, config.lsmr),
+        FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
+            absorb_accelerated_map(design, weights, values, config.map, config.solver)
+        }
         FeSolverKind::Auto => absorb_auto(design, weights, values, config),
     }
 }
@@ -56,7 +60,9 @@ fn absorb_auto(
     let second = match first {
         FeSolverKind::Map => FeSolverKind::Lsmr,
         FeSolverKind::Lsmr => FeSolverKind::Map,
-        FeSolverKind::Auto => unreachable!("router never returns Auto"),
+        FeSolverKind::Auto | FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
+            unreachable!("router returns MAP or LSMR")
+        }
     };
     if let Some(original) = original {
         *values = original;
@@ -82,6 +88,9 @@ fn run(
     match solver {
         FeSolverKind::Map => absorb_map(design, weights, values, config.map),
         FeSolverKind::Lsmr => absorb_lsmr(design, weights, values, config.lsmr),
+        FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
+            absorb_accelerated_map(design, weights, values, config.map, solver)
+        }
         FeSolverKind::Auto => unreachable!("Auto is resolved before execution"),
     }
 }

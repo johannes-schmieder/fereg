@@ -77,8 +77,8 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertNotIn(prefix + "_fereg_ols_hidden_numeric_v1.ado", names)
             self.assertEqual(manifest["version"], "0.9.0")
             self.assertEqual(manifest["phase"], "release-candidate")
-            self.assertEqual(manifest["action_protocol"], "1.2")
-            self.assertEqual(manifest["ols_result_wire"], "1.2")
+            self.assertEqual(manifest["action_protocol"], "1.3")
+            self.assertEqual(manifest["ols_result_wire"], "1.3")
             self.assertEqual(manifest["model_wire"], "2.1")
             self.assertEqual(len(manifest["support_caveats"]), 3)
 

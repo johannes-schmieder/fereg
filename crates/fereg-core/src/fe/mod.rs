@@ -1,5 +1,6 @@
 //! Fixed-effect preprocessing, projection, and certification.
 
+mod accelerated_map;
 mod auto;
 mod borrowed_map;
 #[allow(unused_imports)]
@@ -26,6 +27,7 @@ mod topology_rhs;
 mod topology_slope_map;
 mod topology_source;
 
+pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub(crate) use borrowed_map::absorb_borrowed_intercept_map_with_structural_constant_certified;
 pub use borrowed_map::{
@@ -43,7 +45,7 @@ pub use design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
 };
 pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
-pub use lsmr::{absorb_lsmr, LsmrConfig, LsmrPreconditioner};
+pub use lsmr::{absorb_lsmr, LsmrConfig};
 pub use map::{absorb_map, MapConfig};
 pub use partition::CategoricalPartition;
 pub use partition_registry::CategoricalPartitionRegistry;
@@ -52,7 +54,7 @@ pub use partition_singleton::{
 };
 pub use partition_validation::validate_categorical_partition;
 pub use projection::{project_effect_in_place, ProjectionWorkspace};
-pub use report::{FeSolverKind, SolveReport, SolveStopReason};
+pub use report::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 pub use singleton::{
     prune_singletons, prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult,
 };
