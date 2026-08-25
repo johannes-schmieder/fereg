@@ -13,6 +13,11 @@ import run_stata_ci  # noqa: E402
 
 
 class SnapshotManifestTests(unittest.TestCase):
+    def test_shell_wrapper_does_not_pin_a_machine_python_path(self) -> None:
+        wrapper = (CI_DIR / "run_stata_ci.sh").read_text(encoding="utf-8")
+        self.assertNotIn("/usr/bin/python", wrapper)
+        self.assertIn("FEREG_PYTHON_BIN", wrapper)
+
     def test_declared_files_are_loaded_without_git_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
