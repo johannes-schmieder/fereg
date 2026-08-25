@@ -10,8 +10,9 @@ Native and plugin tests exercise 1, 2, 8, and 32 requested threads.
 There is no process-global Rayon pool. Per-action ownership avoids hidden state
 across repeated Stata calls and permits different thread counts in one session.
 The current estimator reuses its action-local pool across parallel preparation,
-matrix, score, and reconstruction kernels. MAP group projections retain their
-registered reduction order.
+matrix, score, and reconstruction kernels. Deterministic solver paths retain
+their registered reduction order. The default fast path may choose a different
+certified reduction or solver route.
 
 ## SPI prohibition
 
@@ -22,10 +23,12 @@ back.
 
 ## Determinism
 
-`deterministic` fixes chunk ordering and serial merge order. Tests require
-bitwise-identical scientific results across registered thread counts on one
-architecture. Cross-architecture bitwise identity is not claimed; scientific
-tolerances and exact identity/status gates still apply.
+Default mode is numerically reproducible under the registered scientific
+tolerances but does not promise bitwise identity across thread counts.
+`deterministic` fixes chunk ordering and merge order. Tests require
+same-architecture, same-thread-count bitwise reproducibility for deterministic
+routes. Cross-thread and cross-architecture bitwise identity are not claimed;
+scientific tolerances and exact sample/status/DoF gates still apply.
 
 ## Rayon decision
 

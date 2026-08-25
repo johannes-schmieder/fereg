@@ -280,7 +280,7 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         raise ContractError("benchmark_contract must be an object")
     _expect_keys(
         benchmark_contract,
-        {"candidate_state", "arms", "primary_min_observations", "thread_counts", "repetitions", "required_metadata", "scientific_gate", "thresholds"},
+        {"candidate_state", "arms", "primary_min_observations", "thread_counts", "repetitions", "required_metadata", "scientific_gate", "memory_baseline", "thresholds"},
         set(),
         "benchmark_contract",
     )
@@ -316,13 +316,20 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         "certificate_limits": {"normal_equation_inf_norm": 1e-8, "fe_orthogonality_inf_norm": 1e-8, "vce_symmetry_inf_norm": 1e-10},
     }:
         raise ContractError("benchmark_contract: scientific parity and certificate gates are not frozen")
+    if benchmark_contract["memory_baseline"] != {
+        "solver": "map",
+        "deterministic": True,
+        "source_sha": "df53822b3263d7425a9a2a42b16b58f7b306dc91",
+        "manifest": "build_evidence/local/benchmarks/map-baseline-df53822/manifest.json",
+        "applies_to": "default_solver_auto_only",
+    }:
+        raise ContractError("benchmark_contract: MAP memory baseline is not frozen")
     if benchmark_contract["thresholds"] != {
         "geometric_mean_time_ratio_max": 0.4,
         "speedup_2x_fraction_min": 0.8,
         "single_thread_speedup_min": 1.5,
         "unexplained_time_ratio_max": 1.25,
-        "rss_no_worse_fraction_min": 0.8,
-        "unexplained_rss_ratio_max": 1.25,
+        "map_baseline_rss_ratio_max": 1.30,
         "native_allocation_model_ratio_min": 0.75,
         "native_allocation_model_ratio_max": 1.25,
         "repeated_call_leak_bytes_max": 0,
@@ -1391,7 +1398,7 @@ def _scientific_mismatch(comparator: Mapping[str, Any], candidate: Mapping[str, 
 
 
 def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Require scientific parity/certificates before evaluating speed or RSS."""
+    """Require scientific parity before default-auto speed and memory gates."""
     contract = manifest["benchmark_contract"]
     if contract["candidate_state"] != "enabled":
         return {"status": "blocked", "reason": "candidate_fereg_disabled", "thresholds": contract["thresholds"]}
@@ -1444,6 +1451,7 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
             "native_allocation_model_bytes",
             "repeated_call_leak_bytes",
             "constrained_memory",
+            "map_baseline_peak_rss_bytes",
         }
         if not isinstance(memory, Mapping) or set(memory) != memory_keys:
             raise ContractError("benchmark memory evidence is incomplete or unknown")
@@ -1453,6 +1461,7 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
                 or memory["native_allocation_model_bytes"] is not None
                 or memory["repeated_call_leak_bytes"] is not None
                 or memory["constrained_memory"] is not None
+                or memory["map_baseline_peak_rss_bytes"] is not None
             ):
                 raise ContractError("comparator memory evidence contains candidate-only fields")
         else:
@@ -1465,6 +1474,11 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
                 or memory["repeated_call_leak_bytes"] < 0
             ):
                 raise ContractError("candidate allocation or leak evidence is malformed")
+            if memory["map_baseline_peak_rss_bytes"] is not None and (
+                not isinstance(memory["map_baseline_peak_rss_bytes"], int)
+                or memory["map_baseline_peak_rss_bytes"] <= 0
+            ):
+                raise ContractError("candidate MAP baseline RSS evidence is malformed")
             constrained = memory["constrained_memory"]
             if constrained is not None and constrained != {
                 "low_succeeds": True,
@@ -1477,7 +1491,8 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
 
     speedups: list[float] = []
     time_ratios: list[float] = []
-    rss_ratios: list[float] = []
+    comparator_rss_ratios: list[float] = []
+    map_baseline_rss_ratios: list[float] = []
     single_thread_speedups: list[float] = []
     constrained_memory_pass = False
     per_case: list[dict[str, Any]] = []
@@ -1495,7 +1510,10 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         comparator_time = median(run["seconds"] for run in comparator["runs"] if run["kind"] == "warm")
         candidate_time = median(run["seconds"] for run in candidate["runs"] if run["kind"] == "warm")
         time_ratio = candidate_time / comparator_time
-        rss_ratio = max(run["peak_rss"]["value"] for run in candidate["runs"]) / max(run["peak_rss"]["value"] for run in comparator["runs"])
+        candidate_peak_rss = max(run["peak_rss"]["value"] for run in candidate["runs"])
+        comparator_rss_ratio = candidate_peak_rss / max(
+            run["peak_rss"]["value"] for run in comparator["runs"]
+        )
         speedup = comparator_time / candidate_time
         memory = candidate["memory"]
         allocation_ratio = (
@@ -1504,7 +1522,17 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         )
         speedups.append(speedup)
         time_ratios.append(time_ratio)
-        rss_ratios.append(rss_ratio)
+        comparator_rss_ratios.append(comparator_rss_ratio)
+        map_baseline_peak_rss = memory["map_baseline_peak_rss_bytes"]
+        if map_baseline_peak_rss is None:
+            return {
+                "status": "fail",
+                "reason": f"map_baseline_rss_missing:{case['id']}",
+                "thresholds": thresholds,
+                "cases": per_case,
+            }
+        map_baseline_rss_ratio = candidate_peak_rss / map_baseline_peak_rss
+        map_baseline_rss_ratios.append(map_baseline_rss_ratio)
         if case["thread_count"] == 1:
             single_thread_speedups.append(speedup)
         constrained_memory_pass = constrained_memory_pass or (
@@ -1517,15 +1545,20 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
                 "thread_count": case["thread_count"],
                 "speedup": speedup,
                 "time_ratio": time_ratio,
-                "rss_ratio": rss_ratio,
+                "comparator_rss_ratio": comparator_rss_ratio,
+                "map_baseline_peak_rss_bytes": map_baseline_peak_rss,
+                "map_baseline_rss_ratio": map_baseline_rss_ratio,
                 "native_allocation_model_ratio": allocation_ratio,
                 "repeated_call_leak_bytes": memory["repeated_call_leak_bytes"],
             }
         )
         if case["primary"] and time_ratio > thresholds["unexplained_time_ratio_max"]:
             return {"status": "fail", "reason": f"unexplained_time_regression:{case['id']}", "thresholds": thresholds, "cases": per_case}
-        if case["primary"] and rss_ratio > thresholds["unexplained_rss_ratio_max"]:
-            return {"status": "fail", "reason": f"unexplained_rss_regression:{case['id']}", "thresholds": thresholds, "cases": per_case}
+        if (
+            case["primary"]
+            and map_baseline_rss_ratio > thresholds["map_baseline_rss_ratio_max"]
+        ):
+            return {"status": "fail", "reason": f"map_baseline_rss_regression:{case['id']}", "thresholds": thresholds, "cases": per_case}
         if not (
             thresholds["native_allocation_model_ratio_min"]
             <= allocation_ratio
@@ -1538,14 +1571,14 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
     geometric_mean_time_ratio = geometric_mean(time_ratios)
     geometric_mean_speedup = geometric_mean(speedups)
     speedup_2x_fraction = sum(value >= 2.0 for value in speedups) / len(speedups)
-    rss_no_worse_fraction = sum(value <= 1.0 for value in rss_ratios) / len(rss_ratios)
     single_thread_speedup = geometric_mean(single_thread_speedups)
     metrics = {
         "geometric_mean_time_ratio": geometric_mean_time_ratio,
         "geometric_mean_speedup": geometric_mean_speedup,
         "speedup_2x_fraction": speedup_2x_fraction,
         "single_thread_speedup": single_thread_speedup,
-        "rss_no_worse_fraction": rss_no_worse_fraction,
+        "maximum_map_baseline_rss_ratio": max(map_baseline_rss_ratios),
+        "geometric_mean_comparator_rss_ratio": geometric_mean(comparator_rss_ratios),
         "constrained_memory_pass": constrained_memory_pass,
     }
     if geometric_mean_time_ratio > thresholds["geometric_mean_time_ratio_max"]:
@@ -1554,8 +1587,6 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         return {"status": "fail", "reason": "speedup_2x_fraction_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
     if single_thread_speedup < thresholds["single_thread_speedup_min"]:
         return {"status": "fail", "reason": "single_thread_speedup_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
-    if rss_no_worse_fraction < thresholds["rss_no_worse_fraction_min"]:
-        return {"status": "fail", "reason": "rss_no_worse_fraction_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
     if thresholds["constrained_memory_required"] and not constrained_memory_pass:
         return {"status": "fail", "reason": "constrained_memory_case_missing", "thresholds": thresholds, **metrics, "cases": per_case}
     return {"status": "pass", "thresholds": thresholds, **metrics, "cases": per_case}

@@ -413,12 +413,14 @@ class BenchmarkGateTests(unittest.TestCase):
                                 "native_allocation_model_bytes": None,
                                 "repeated_call_leak_bytes": None,
                                 "constrained_memory": None,
+                                "map_baseline_peak_rss_bytes": None,
                             }
                             if arm == "comparator"
                             else {
                                 "native_allocation_observed_bytes": 1000,
                                 "native_allocation_model_bytes": 1000,
                                 "repeated_call_leak_bytes": 0,
+                                "map_baseline_peak_rss_bytes": 1000,
                                 "constrained_memory": (
                                     {
                                         "low_succeeds": True,
@@ -495,23 +497,22 @@ class BenchmarkGateTests(unittest.TestCase):
         result = evaluate_benchmark_gates(manifest, evidence)
         self.assertEqual(result["reason"], "constrained_memory_case_missing")
 
-    def test_rss_regression_and_nonfresh_run_block_performance_pass(self):
+    def test_map_baseline_rss_regression_and_nonfresh_run_block_performance_pass(self):
         manifest = load_manifest()
         manifest["benchmark_contract"]["candidate_state"] = "enabled"
         evidence = self.evidence(manifest)
         for record in evidence:
             if record["arm"] == "candidate":
-                for run in record["runs"]:
-                    run["peak_rss"]["value"] = 1001
+                record["memory"]["map_baseline_peak_rss_bytes"] = 500
         result = evaluate_benchmark_gates(manifest, evidence)
         self.assertEqual(result["status"], "fail")
-        self.assertIn("rss_no_worse_fraction", result["reason"])
+        self.assertIn("map_baseline_rss_regression", result["reason"])
         evidence = self.evidence(manifest)
         evidence[1]["runs"][0]["fresh_process"] = False
         with self.assertRaisesRegex(ContractError, "process-isolated"):
             evaluate_benchmark_gates(manifest, evidence)
 
-    def test_pre_estimation_high_water_cannot_mask_estimator_rss_regression(self):
+    def test_comparator_rss_cannot_substitute_for_map_baseline(self):
         manifest = load_manifest()
         manifest["benchmark_contract"]["candidate_state"] = "enabled"
         evidence = self.evidence(manifest)
@@ -521,9 +522,10 @@ class BenchmarkGateTests(unittest.TestCase):
             run["peak_rss"]["value"] = 100
         for run in candidate["runs"]:
             run["peak_rss"]["value"] = 150
+        candidate["memory"]["map_baseline_peak_rss_bytes"] = 100
         result = evaluate_benchmark_gates(manifest, evidence)
         self.assertEqual(result["status"], "fail")
-        self.assertIn("unexplained_rss_regression", result["reason"])
+        self.assertIn("map_baseline_rss_regression", result["reason"])
 
         # A comparator's larger generation/preflight high-water is ineligible
         # evidence even though substituting it would make the ratio appear safe.
@@ -666,8 +668,7 @@ class ReceiptAndSentinelTests(unittest.TestCase):
                     "speedup_2x_fraction_min": 0.8,
                     "single_thread_speedup_min": 1.5,
                     "unexplained_time_ratio_max": 1.25,
-                    "rss_no_worse_fraction_min": 0.8,
-                    "unexplained_rss_ratio_max": 1.25,
+                    "map_baseline_rss_ratio_max": 1.3,
                     "native_allocation_model_ratio_min": 0.75,
                     "native_allocation_model_ratio_max": 1.25,
                     "repeated_call_leak_bytes_max": 0,

@@ -1,13 +1,13 @@
 # fereg 0.9.0 release-candidate status
 
-**Last updated:** 2026-08-24
+**Last updated:** 2026-08-25
 **Development branch:** local `main`; no development pushes
-**Latest committed executable milestone:** `a0cc6ecb4aecc6e33bb668c9857ce920f8a5e5f9`
-**Active milestone:** deterministic packaging and cross-platform qualification
+**Latest committed executable milestone:** `df53822b3263d7425a9a2a42b16b58f7b306dc91`
+**Active milestone:** certified solver routing and development matrix
 **Release state:** public OLS candidate implemented; source qualification pending
 
 `STATUS.md` is the mutable project-progress record. The 0.9.0 qualification
-contract is ADR-0007. Historical receipts remain immutable even when they
+contract is ADR-0007 as superseded by ADR-0008. Historical receipts remain immutable even when they
 describe earlier hidden or fail-closed checkpoints.
 
 ## Current accepted state
@@ -26,7 +26,7 @@ describe earlier hidden or fail-closed checkpoints.
   reporting, and deterministic per-action Rayon pools are implemented.
 - `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
   and performance are outside this candidate.
-- Candidate identity is `0.9.0`; public estimation uses action protocol 1.2,
+- Candidate identity is `0.9.0`; the current MAP checkpoint uses action protocol 1.2,
   OLS result wire 1.2, and model wire 2.1. The reference closure is pinned to
   reghdfe 6.14.1 (`29b2b203...`), ftools 2.50.0 (`d6e24d66...`), and require
   1.3.1 (`f4760b86...`).
@@ -39,12 +39,18 @@ Apple-Silicon and Rosetta slice evidence; SCC Stata 18/19 Linux scientific,
 performance, memory, and clean-install evidence; hosted Linux/Windows build and
 mock qualification; and deterministic audited source/release archives.
 
-The governing performance and memory gates are those in ADR-0007 and
+The governing performance and memory gates are those in ADR-0008 and
 `docs/performance_contract.md`. No tag or GitHub release is part of this
 checkpoint. Windows licensed Stata and native Intel-host macOS certification
 are explicitly deferred and must remain visible caveats.
 
 ## Completed, evidence-backed baseline
+
+- Four sealed MAP cases at committed source
+  `df53822b3263d7425a9a2a42b16b58f7b306dc91` cover dense and sparse two-FE
+  designs at one and eight threads. Speedups over the pinned reference are
+  2.41x, 2.52x, 2.14x, and 2.40x. Their exact receipts are preserved under
+  `build_evidence/local/benchmarks/map-baseline-df53822/`.
 
 - At committed source `a0cc6ecb4aecc6e33bb668c9857ce920f8a5e5f9`, the isolated
   licensed Stata/MP 18 Apple-Silicon quick lane passed 30/30. Its tested plugin
@@ -65,33 +71,38 @@ are explicitly deferred and must remain visible caveats.
 
 ## Active checkpoint
 
-Finish release identity and deterministic staging, then make a coherent local
-candidate commit and rerun the exact-source local suite. After that, deploy the
-committed snapshot—not Git history—to `/projectnb/welfgr/fereg`, qualify Linux
-correctness under Stata 18 and 19, and run paired same-node performance and
-memory jobs.
+Implement ADR-0008: public solver/preconditioner syntax, action/result wire 1.3,
+prepared-data routing, accelerated MAP and preconditioned-LSMR candidates,
+bounded pilot/fallback diagnostics, and the MAP-relative memory gate. Select
+the policy on the short solver-development matrix before rerunning the full
+release-grade matrix. No development push is permitted.
 
 ## Current blockers
 
-1. Deterministic source/release ZIP staging, SBOM, dependency audit, native
+1. The current public prepared estimator is still MAP-only; action/result wire
+   1.3, solver controls, routing, accelerators, and final diagnostics are not
+   implemented.
+2. The five-family solver-development matrix has not selected or frozen the
+   default `solver(auto)` policy.
+3. Deterministic source/release ZIP staging, SBOM, dependency audit, native
    checksum inclusion, and developer-artifact exclusions are not yet green.
-2. The exact post-packaging candidate SHA has not run the licensed local full
+4. The exact post-packaging candidate SHA has not run the licensed local full
    profile, Rosetta slice lane, sanitizer/Miri/fuzz jobs where applicable, or
    repeated-call leak/store-failure matrix.
-3. SCC Stata 18/19 smoke, correctness, clean-install, scientific-parity,
+5. SCC Stata 18/19 smoke, correctness, clean-install, scientific-parity,
    performance, memory, and accounting receipts have not been accepted.
-4. The governing 10-million-observation performance and memory gates are
-   unmeasured. A local exploratory reference warmup was interrupted and is not
-   evidence.
-5. Hosted Linux build/load and Windows MSVC build/mock qualification are
+6. The governing 10-million-observation default-auto performance and revised
+   MAP-relative memory gates are unmeasured for the eventual candidate.
+7. Hosted Linux build/load and Windows MSVC build/mock qualification are
    pending. Licensed Windows Stata and native Intel-host Stata remain deferred.
-6. No exact-SHA release archives or final compatibility/evidence receipts exist
+8. No exact-SHA release archives or final compatibility/evidence receipts exist
    yet, so no push, tag, or publication is permitted.
 
 ## Next evidence to record
 
-Record a green deterministic packaging test and exact local candidate commit;
-then attach exact-SHA local quick/full, native/Rosetta, SCC Stata 18/19,
-scientific parity, performance, memory, build/mock, audit, and archive receipts.
-Only after all feasible gates pass may the complete local commit stack be
-pushed once to `origin/main` for exact-SHA hosted qualification.
+Record a green solver-development matrix and freeze the routing policy; then
+record the exact local candidate commit and attach exact-SHA local quick/full,
+native/Rosetta, SCC Stata 18/19, scientific parity, performance, memory,
+build/mock, audit, and archive receipts. Only after all feasible gates pass may
+the complete local commit stack be pushed once to `origin/main` for exact-SHA
+hosted qualification.

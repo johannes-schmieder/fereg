@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "baseline_id": "fereg-map-df53822",
+  "purpose": "pre-adr-0008-map-performance-baseline",
+  "source_sha": "df53822b3263d7425a9a2a42b16b58f7b306dc91",
+  "candidate_plugin_sha256": "ec3c4f0c71b9e0fc0581ec83fd16794ab8bf34727dee7d43c0ecc83252550ef9",
+  "candidate_solver": "map",
+  "candidate_deterministic": true,
+  "cases": [
+    {
+      "id": "bench_dense_two_fe_t1",
+      "threads": 1,
+      "receipt": "bench_dense_two_fe_t1.json",
+      "receipt_sha256": "e50a4405ddde3f1bd0f3575ee49d733edd870a15170f1101e878aae3eafd1fc6",
+      "reference_warm_median_seconds": 22.011,
+      "candidate_warm_median_seconds": 9.123,
+      "speedup": 2.412693193028609
+    },
+    {
+      "id": "bench_dense_two_fe_t8",
+      "threads": 8,
+      "receipt": "bench_dense_two_fe_t8.json",
+      "receipt_sha256": "2dc76dc1233409a88f95997506db1d40821d978452ed3c099d03b961cdef01db",
+      "reference_warm_median_seconds": 18.053,
+      "candidate_warm_median_seconds": 7.15,
+      "speedup": 2.524895104895105
+    },
+    {
+      "id": "bench_sparse_two_fe_t1",
+      "threads": 1,
+      "receipt": "bench_sparse_two_fe_t1.json",
+      "receipt_sha256": "a9e91faa9b0e03a074c9178b9ea7a88743784d592b943ff65ff484631cc6e1c9",
+      "reference_warm_median_seconds": 31.801,
+      "candidate_warm_median_seconds": 14.86,
+      "speedup": 2.1400403768506058
+    },
+    {
+      "id": "bench_sparse_two_fe_t8",
+      "threads": 8,
+      "receipt": "bench_sparse_two_fe_t8.json",
+      "receipt_sha256": "bbc026d6fc0b3d384bd9106e4822ffd7e643728da17001fc64ff53eff118b4e4",
+      "reference_warm_median_seconds": 25.807,
+      "candidate_warm_median_seconds": 10.751,
+      "speedup": 2.4004278671751464
+    }
+  ]
+}

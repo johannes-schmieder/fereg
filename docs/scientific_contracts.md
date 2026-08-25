@@ -93,10 +93,12 @@ counts. The candidate must have geometric-mean runtime no more than 40 percent
 of `reghdfe`, at least 80 percent of cases at least 2x faster, single-thread
 speed at least 1.5x, and no unexplained case more than 25 percent slower.
 
-At least 80 percent of cases must have RSS no worse than the reference, no
-unexplained case may exceed 1.25x reference RSS, measured native allocation
-must be within 25 percent of its model, repeated calls must not leak, and a
-constrained-memory case must show low mode succeeding where fast cannot.
+Default `solver(auto)` peak RSS may not exceed 1.30 times the matched frozen
+`df53822` fereg MAP baseline for any case/thread pair. Measured native
+allocation must be within 25 percent of its model, repeated calls must not
+leak, and a constrained-memory case must show low mode succeeding where fast
+cannot. Explicit solver modes retain correctness and allocation-safety gates
+without a release RSS threshold.
 
 ## Current boundary
 

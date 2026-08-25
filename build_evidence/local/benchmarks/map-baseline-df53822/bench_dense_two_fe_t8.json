@@ -1,0 +1,350 @@
+{
+  "payload": {
+    "candidate_plugin_sha256": "ec3c4f0c71b9e0fc0581ec83fd16794ab8bf34727dee7d43c0ecc83252550ef9",
+    "case_id": "bench_dense_two_fe_t8",
+    "constrained_memory_proof": null,
+    "evidence": [
+      {
+        "arm": "comparator",
+        "case_id": "bench_dense_two_fe_t8",
+        "host": {
+          "cpu_count": 24,
+          "machine": "arm64",
+          "system": "Darwin"
+        },
+        "memory": {
+          "constrained_memory": null,
+          "native_allocation_model_bytes": null,
+          "native_allocation_observed_bytes": null,
+          "repeated_call_leak_bytes": null
+        },
+        "runs": [
+          {
+            "fresh_process": true,
+            "kind": "cold",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3974840320
+            },
+            "repetition": 1,
+            "seconds": 18.235,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3631546368
+            },
+            "repetition": 2,
+            "seconds": 17.876,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3501850624
+            },
+            "repetition": 3,
+            "seconds": 18.053,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3524657152
+            },
+            "repetition": 4,
+            "seconds": 18.161,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3649716224
+            },
+            "repetition": 5,
+            "seconds": 18.177,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3627270144
+            },
+            "repetition": 6,
+            "seconds": 18.028,
+            "stata_processors": 8
+          }
+        ],
+        "sample_identity_sha256": "941d031fadb78eb74ba4973afa735ad5010e22fc893dc3d6dd428971a8610071",
+        "scientific": {
+          "certificates": {
+            "converged": true,
+            "fe_orthogonality_inf_norm": 0.0,
+            "normal_equation_inf_norm": 0.0,
+            "vce_symmetry_inf_norm": 0.0
+          },
+          "coefficient_names": [
+            "x1",
+            "x2",
+            "_cons"
+          ],
+          "coefficient_status": [
+            "kept",
+            "kept",
+            "kept"
+          ],
+          "coefficients": [
+            0.20015101007244546,
+            -0.09991722092186894,
+            0.0899254860305039
+          ],
+          "dof": {
+            "df_a": 10999.0,
+            "df_m": 2.0,
+            "df_r": 9988999.0
+          },
+          "fit": {
+            "r2": 0.04850079519588202,
+            "r2_a": 0.04745299338382403,
+            "rmse": 1.0019051914868042,
+            "rss": 10027097.169328075,
+            "tss": 10538208.669751143
+          },
+          "objective": {
+            "name": "rss",
+            "value": 10027097.169328075
+          },
+          "vce": {
+            "columns": 3,
+            "rows": 3,
+            "values": [
+              1.0060093418572295e-07,
+              -1.0431317024140207e-11,
+              -2.104513161572413e-11,
+              -1.0431317024140207e-11,
+              1.0045915949975452e-07,
+              -2.257831139222858e-14,
+              -2.104513161572413e-11,
+              -2.257831139222858e-14,
+              1.0038140567534648e-07
+            ]
+          }
+        },
+        "singleton_identity_sha256": "d3fe12252b499755a27af8b0a13ce420289f779524935d1f270b3448d5940fdf",
+        "stata": {
+          "flavor": "IC",
+          "processors_limit": "8",
+          "version": "18"
+        },
+        "thread_count": 8
+      },
+      {
+        "arm": "candidate",
+        "case_id": "bench_dense_two_fe_t8",
+        "host": {
+          "cpu_count": 24,
+          "machine": "arm64",
+          "system": "Darwin"
+        },
+        "memory": {
+          "constrained_memory": null,
+          "native_allocation_model_bytes": 1600000072,
+          "native_allocation_observed_bytes": 1280194612,
+          "repeated_call_leak_bytes": 0
+        },
+        "runs": [
+          {
+            "fresh_process": true,
+            "kind": "cold",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3177840640
+            },
+            "repetition": 1,
+            "seconds": 7.699,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3600171008
+            },
+            "repetition": 2,
+            "seconds": 7.145,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3617488896
+            },
+            "repetition": 3,
+            "seconds": 7.123,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3599925248
+            },
+            "repetition": 4,
+            "seconds": 7.178,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3602644992
+            },
+            "repetition": 5,
+            "seconds": 7.174,
+            "stata_processors": 8
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3618013184
+            },
+            "repetition": 6,
+            "seconds": 7.15,
+            "stata_processors": 8
+          }
+        ],
+        "sample_identity_sha256": "941d031fadb78eb74ba4973afa735ad5010e22fc893dc3d6dd428971a8610071",
+        "scientific": {
+          "certificates": {
+            "converged": true,
+            "fe_orthogonality_inf_norm": 1.4325110253471404e-09,
+            "normal_equation_inf_norm": 1.238092383583934e-10,
+            "vce_symmetry_inf_norm": 0.0
+          },
+          "coefficient_names": [
+            "x1",
+            "x2",
+            "_cons"
+          ],
+          "coefficient_status": [
+            "kept",
+            "kept",
+            "kept"
+          ],
+          "coefficients": [
+            0.20015101007242975,
+            -0.09991722092186006,
+            0.08992548603050389
+          ],
+          "dof": {
+            "df_a": 10999.0,
+            "df_m": 2.0,
+            "df_r": 9988999.0
+          },
+          "fit": {
+            "r2": 0.04850079519566153,
+            "r2_a": 0.04745299338360354,
+            "rmse": 1.0019051914867614,
+            "rss": 10027097.16932722,
+            "tss": 10538208.669747803
+          },
+          "objective": {
+            "name": "rss",
+            "value": 10027097.16932722
+          },
+          "vce": {
+            "columns": 3,
+            "rows": 3,
+            "values": [
+              1.0060093418571696e-07,
+              -1.0431317024137087e-11,
+              -2.1045131615722876e-11,
+              -1.0431317024137087e-11,
+              1.0045915949974517e-07,
+              -2.257831139222603e-14,
+              -2.1045131615722876e-11,
+              -2.257831139222603e-14,
+              1.0038140567533792e-07
+            ]
+          }
+        },
+        "singleton_identity_sha256": "d3fe12252b499755a27af8b0a13ce420289f779524935d1f270b3448d5940fdf",
+        "stata": {
+          "flavor": "IC",
+          "processors_limit": "8",
+          "version": "18"
+        },
+        "thread_count": 8
+      }
+    ],
+    "generated_dataset_sha256": "e028cff2750e919cf74178d36782de15e140296f9bec61c2bc8ad778530b4138",
+    "manifest": {
+      "id": "ols_v1",
+      "sha256": "6c48a92603420013c8ea5169a3d558836b0ba6aede2aa366adea99e380614ad4"
+    },
+    "receipt_type": "fereg-ols-v1-paired-case",
+    "references": {
+      "ftools": {
+        "commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+        "git_tree": "a09b13ad3a337e9635d93ce4b5a2fd0275ac79fc"
+      },
+      "reghdfe": {
+        "commit": "29b2b203f534413369d675d0c0f674d61291f536",
+        "git_tree": "6198858472637f73f65984e46f6a31a39a213651"
+      },
+      "require": {
+        "commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+        "git_tree": "950f5a8d484acbcbc621b05ee483ada0722aecbc"
+      }
+    },
+    "schema_version": 1,
+    "source_sha": "df53822b3263d7425a9a2a42b16b58f7b306dc91"
+  },
+  "seal": {
+    "algorithm": "sha256",
+    "canonicalization": "json-sort-keys-compact-ascii-v1",
+    "payload_sha256": "5b43020e0478ee6b538f041d58c9002eeb1bfcf035a21cb0d5379c8912da7520"
+  }
+}

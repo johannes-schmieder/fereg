@@ -1,0 +1,350 @@
+{
+  "payload": {
+    "candidate_plugin_sha256": "ec3c4f0c71b9e0fc0581ec83fd16794ab8bf34727dee7d43c0ecc83252550ef9",
+    "case_id": "bench_dense_two_fe_t1",
+    "constrained_memory_proof": null,
+    "evidence": [
+      {
+        "arm": "comparator",
+        "case_id": "bench_dense_two_fe_t1",
+        "host": {
+          "cpu_count": 24,
+          "machine": "arm64",
+          "system": "Darwin"
+        },
+        "memory": {
+          "constrained_memory": null,
+          "native_allocation_model_bytes": null,
+          "native_allocation_observed_bytes": null,
+          "repeated_call_leak_bytes": null
+        },
+        "runs": [
+          {
+            "fresh_process": true,
+            "kind": "cold",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3974266880
+            },
+            "repetition": 1,
+            "seconds": 22.21,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3562176512
+            },
+            "repetition": 2,
+            "seconds": 22.069,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3679830016
+            },
+            "repetition": 3,
+            "seconds": 21.966,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3540598784
+            },
+            "repetition": 4,
+            "seconds": 21.905,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3718807552
+            },
+            "repetition": 5,
+            "seconds": 22.046,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3602890752
+            },
+            "repetition": 6,
+            "seconds": 22.011,
+            "stata_processors": 1
+          }
+        ],
+        "sample_identity_sha256": "941d031fadb78eb74ba4973afa735ad5010e22fc893dc3d6dd428971a8610071",
+        "scientific": {
+          "certificates": {
+            "converged": true,
+            "fe_orthogonality_inf_norm": 0.0,
+            "normal_equation_inf_norm": 0.0,
+            "vce_symmetry_inf_norm": 0.0
+          },
+          "coefficient_names": [
+            "x1",
+            "x2",
+            "_cons"
+          ],
+          "coefficient_status": [
+            "kept",
+            "kept",
+            "kept"
+          ],
+          "coefficients": [
+            0.20015101007244543,
+            -0.09991722092186901,
+            0.08992548603050392
+          ],
+          "dof": {
+            "df_a": 10999.0,
+            "df_m": 2.0,
+            "df_r": 9988999.0
+          },
+          "fit": {
+            "r2": 0.04850079519592032,
+            "r2_a": 0.04745299338386244,
+            "rmse": 1.001905191486804,
+            "rss": 10027097.169328071,
+            "tss": 10538208.669751564
+          },
+          "objective": {
+            "name": "rss",
+            "value": 10027097.169328071
+          },
+          "vce": {
+            "columns": 3,
+            "rows": 3,
+            "values": [
+              1.0060093418572292e-07,
+              -1.0431317024140181e-11,
+              -2.104513161572412e-11,
+              -1.0431317024140181e-11,
+              1.0045915949975453e-07,
+              -2.257831139222859e-14,
+              -2.104513161572412e-11,
+              -2.257831139222859e-14,
+              1.0038140567534648e-07
+            ]
+          }
+        },
+        "singleton_identity_sha256": "d3fe12252b499755a27af8b0a13ce420289f779524935d1f270b3448d5940fdf",
+        "stata": {
+          "flavor": "IC",
+          "processors_limit": "8",
+          "version": "18"
+        },
+        "thread_count": 1
+      },
+      {
+        "arm": "candidate",
+        "case_id": "bench_dense_two_fe_t1",
+        "host": {
+          "cpu_count": 24,
+          "machine": "arm64",
+          "system": "Darwin"
+        },
+        "memory": {
+          "constrained_memory": null,
+          "native_allocation_model_bytes": 1600000072,
+          "native_allocation_observed_bytes": 1280194612,
+          "repeated_call_leak_bytes": 0
+        },
+        "runs": [
+          {
+            "fresh_process": true,
+            "kind": "cold",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3177742336
+            },
+            "repetition": 1,
+            "seconds": 9.681,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3266936832
+            },
+            "repetition": 2,
+            "seconds": 9.248,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3319037952
+            },
+            "repetition": 3,
+            "seconds": 9.09,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3320545280
+            },
+            "repetition": 4,
+            "seconds": 9.078,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3600318464
+            },
+            "repetition": 5,
+            "seconds": 9.246,
+            "stata_processors": 1
+          },
+          {
+            "fresh_process": true,
+            "kind": "warm",
+            "peak_rss": {
+              "method": "os_wait4_ru_maxrss",
+              "scope": "fresh_estimator_process_prepared_inputs",
+              "unit": "bytes",
+              "value": 3337879552
+            },
+            "repetition": 6,
+            "seconds": 9.123,
+            "stata_processors": 1
+          }
+        ],
+        "sample_identity_sha256": "941d031fadb78eb74ba4973afa735ad5010e22fc893dc3d6dd428971a8610071",
+        "scientific": {
+          "certificates": {
+            "converged": true,
+            "fe_orthogonality_inf_norm": 1.4325110253471404e-09,
+            "normal_equation_inf_norm": 1.238092383583934e-10,
+            "vce_symmetry_inf_norm": 0.0
+          },
+          "coefficient_names": [
+            "x1",
+            "x2",
+            "_cons"
+          ],
+          "coefficient_status": [
+            "kept",
+            "kept",
+            "kept"
+          ],
+          "coefficients": [
+            0.20015101007242975,
+            -0.09991722092186006,
+            0.08992548603050389
+          ],
+          "dof": {
+            "df_a": 10999.0,
+            "df_m": 2.0,
+            "df_r": 9988999.0
+          },
+          "fit": {
+            "r2": 0.04850079519566153,
+            "r2_a": 0.04745299338360354,
+            "rmse": 1.0019051914867614,
+            "rss": 10027097.16932722,
+            "tss": 10538208.669747803
+          },
+          "objective": {
+            "name": "rss",
+            "value": 10027097.16932722
+          },
+          "vce": {
+            "columns": 3,
+            "rows": 3,
+            "values": [
+              1.0060093418571696e-07,
+              -1.0431317024137087e-11,
+              -2.1045131615722876e-11,
+              -1.0431317024137087e-11,
+              1.0045915949974517e-07,
+              -2.257831139222603e-14,
+              -2.1045131615722876e-11,
+              -2.257831139222603e-14,
+              1.0038140567533792e-07
+            ]
+          }
+        },
+        "singleton_identity_sha256": "d3fe12252b499755a27af8b0a13ce420289f779524935d1f270b3448d5940fdf",
+        "stata": {
+          "flavor": "IC",
+          "processors_limit": "8",
+          "version": "18"
+        },
+        "thread_count": 1
+      }
+    ],
+    "generated_dataset_sha256": "bf79bd21a7711009d0a31e3655fb943aa467e6b6062effc4bbb6a24a3fa2dbb0",
+    "manifest": {
+      "id": "ols_v1",
+      "sha256": "6c48a92603420013c8ea5169a3d558836b0ba6aede2aa366adea99e380614ad4"
+    },
+    "receipt_type": "fereg-ols-v1-paired-case",
+    "references": {
+      "ftools": {
+        "commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+        "git_tree": "a09b13ad3a337e9635d93ce4b5a2fd0275ac79fc"
+      },
+      "reghdfe": {
+        "commit": "29b2b203f534413369d675d0c0f674d61291f536",
+        "git_tree": "6198858472637f73f65984e46f6a31a39a213651"
+      },
+      "require": {
+        "commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+        "git_tree": "950f5a8d484acbcbc621b05ee483ada0722aecbc"
+      }
+    },
+    "schema_version": 1,
+    "source_sha": "df53822b3263d7425a9a2a42b16b58f7b306dc91"
+  },
+  "seal": {
+    "algorithm": "sha256",
+    "canonicalization": "json-sort-keys-compact-ascii-v1",
+    "payload_sha256": "4487f121422709028fd5c2aaa71ecaf0cb2cc38f1afbd8100b1e0bf0f0896f7b"
+  }
+}

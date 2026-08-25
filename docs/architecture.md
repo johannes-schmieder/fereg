@@ -56,8 +56,9 @@ RSS APIs, allocator instrumentation, display/error wrappers, and the exported
 ABI. `catch_unwind` converts panics to deterministic Stata errors.
 
 Each estimation creates an isolated Rayon pool at the effective requested
-thread count. Worker threads see only Rust-owned storage. Deterministic mode is
-tested for identical scientific outputs across registered thread counts.
+thread count. Worker threads see only Rust-owned storage. Default solver routes
+must agree within registered scientific tolerances. Deterministic routes are
+tested for same-architecture, same-thread-count bitwise reproducibility.
 
 ## Artifact boundary
 

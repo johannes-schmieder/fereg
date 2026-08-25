@@ -33,7 +33,8 @@ private bounded scratch files. Scratch files:
 
 Fast and low modes share the same rank policy, certificates, inference,
 omission status, result wire, and Stata transaction. Registered tests require
-scientific identity, including deterministic results across thread counts.
+scientific identity. Deterministic routes additionally require
+same-architecture, same-thread-count bitwise reproducibility.
 
 ## Allocation discipline
 
@@ -58,8 +59,12 @@ summary without changing computation.
 Instrumentation is evidence, not a self-certifying claim. Exact-SHA
 qualification must show:
 
-- RSS no worse than reghdfe in at least 80 percent of approved cases;
-- no unexplained RSS ratio above 1.25;
+- default `solver(auto)` peak RSS no greater than 1.30 times the matched frozen
+  `df53822` fereg MAP baseline for each case and thread count;
 - measured native allocation within 25 percent of its model;
 - no repeated-call leak; and
 - a constrained case where low succeeds and fast cannot.
+
+Explicit solver modes have correctness and allocation-safety gates but no
+release RSS threshold. This permits a certified optimized route to trade
+memory for material speed without weakening preflight or cleanup behavior.

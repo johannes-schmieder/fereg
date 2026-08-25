@@ -13,6 +13,7 @@ from scripts.ols_paired import (
     candidate_memory,
     coefficient_status,
     imposed_limit_between,
+    load_map_baseline_peak_rss,
     scientific_evidence,
     stata_hex_number,
 )
@@ -158,12 +159,13 @@ class PairedEvidenceTests(unittest.TestCase):
             "matrix_dimensions": {"fereg_runtime": dimensions},
         }
         self.assertEqual(
-            candidate_memory([case]),
+            candidate_memory([case], 1200),
             {
                 "native_allocation_observed_bytes": 900,
                 "native_allocation_model_bytes": 1000,
                 "repeated_call_leak_bytes": 0,
                 "constrained_memory": None,
+                "map_baseline_peak_rss_bytes": 1200,
             },
         )
 
@@ -175,7 +177,19 @@ class PairedEvidenceTests(unittest.TestCase):
             "matrices": entries,
             "matrix_dimensions": {"fereg_runtime": dimensions},
         }
-        self.assertEqual(candidate_memory([case])["repeated_call_leak_bytes"], 1)
+        self.assertEqual(
+            candidate_memory([case], 1200)["repeated_call_leak_bytes"], 1
+        )
+
+    def test_frozen_map_receipt_supplies_matched_peak_rss(self) -> None:
+        receipt = (
+            SCRIPT.parents[1]
+            / "build_evidence/local/benchmarks/map-baseline-df53822/bench_dense_two_fe_t1.json"
+        )
+        self.assertEqual(
+            load_map_baseline_peak_rss(receipt, "bench_dense_two_fe_t1"),
+            3_600_318_464,
+        )
 
     def test_imposed_limit_admits_low_but_not_fast_after_headroom(self) -> None:
         low = 2_000_000_000

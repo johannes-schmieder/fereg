@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_solver_development_v1",
+  "status": "development_only",
+  "scientific_contract": "benchmarks/manifests/ols_v1.json",
+  "minimum_observations": 10000000,
+  "thread_counts": [1, 8],
+  "repetitions": {"cold": 1, "warm": 2},
+  "candidate_arms": [
+    {"id": "auto", "options": "solver(auto)"},
+    {"id": "map", "options": "solver(map)"},
+    {"id": "cg", "options": "solver(cg)"},
+    {"id": "it", "options": "solver(it)"},
+    {"id": "squarem", "options": "solver(squarem)"},
+    {"id": "lsmr_off", "options": "solver(lsmr) preconditioner(off)"},
+    {"id": "lsmr_diagonal", "options": "solver(lsmr) preconditioner(diagonal)"},
+    {"id": "lsmr_schwarz", "options": "solver(lsmr) preconditioner(schwarz)"},
+    {"id": "lsmr_auto", "options": "solver(lsmr) preconditioner(auto)"}
+  ],
+  "families": [
+    {
+      "id": "dense_two_fe",
+      "ols_v1_cases": ["bench_dense_two_fe_t1", "bench_dense_two_fe_t8"],
+      "gregress_diagnostic": true
+    },
+    {
+      "id": "sparse_two_fe",
+      "ols_v1_cases": ["bench_sparse_two_fe_t1", "bench_sparse_two_fe_t8"],
+      "gregress_diagnostic": true
+    },
+    {
+      "id": "absorbed_slope",
+      "ols_v1_cases": ["bench_absorbed_slope_t1", "bench_absorbed_slope_t8"],
+      "gregress_diagnostic": false
+    },
+    {
+      "id": "clustered_vce",
+      "ols_v1_cases": ["bench_clustered_vce_t1", "bench_clustered_vce_t8"],
+      "gregress_diagnostic": false
+    },
+    {
+      "id": "moderate_k",
+      "ols_v1_cases": ["bench_moderate_k_t1", "bench_moderate_k_t8"],
+      "gregress_diagnostic": false
+    }
+  ],
+  "selection_rules": {
+    "scientific_parity_required": true,
+    "setup_cost_included": true,
+    "default_auto_only_release_gated": true,
+    "development_results_do_not_qualify_release": true
+  }
+}

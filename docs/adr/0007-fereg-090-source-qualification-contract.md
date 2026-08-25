@@ -1,6 +1,6 @@
 # ADR 0007: fereg 0.9.0 source-qualification contract
 
-**Status:** Accepted  
+**Status:** Superseded by ADR 0008
 **Date:** 2026-08-24  
 **Decision owner:** Johannes Schmieder
 
@@ -69,3 +69,11 @@ release candidate.
   status requires exact-SHA local, SCC, macOS, Linux build/load, Windows
   build/mock, memory, performance, and packaging receipts.
 - If any remote qualification fails, 0.9.0 remains unqualified and untagged.
+
+## Supersession
+
+ADR 0008 preserves this ADR's scientific, runtime, platform, artifact, and Git
+requirements, but replaces its mandatory deterministic-default solver policy
+and comparator-relative RSS gates. The four completed MAP performance cases at
+source `df53822b3263d7425a9a2a42b16b58f7b306dc91` are retained as the frozen
+pre-redirection implementation baseline.

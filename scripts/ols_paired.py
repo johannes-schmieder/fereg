@@ -81,6 +81,7 @@ CANDIDATE_MATRICES = (
     "fereg_solver",
 )
 MINIMUM_HEADROOM_BYTES = 512 * 1024 * 1024
+MAP_BASELINE_SOURCE_SHA = "df53822b3263d7425a9a2a42b16b58f7b306dc91"
 
 
 def stata_hex_number(value: str) -> float:
@@ -202,7 +203,10 @@ def scientific_evidence(case: Mapping[str, Any], arm: str) -> dict[str, Any]:
     }
 
 
-def candidate_memory(cases: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def candidate_memory(
+    cases: Sequence[Mapping[str, Any]],
+    map_baseline_peak_rss_bytes: int | None,
+) -> dict[str, Any]:
     observed: list[int] = []
     modeled: set[int] = set()
     leaks: list[int] = []
@@ -226,7 +230,49 @@ def candidate_memory(cases: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         # repeated-call growth; live pre-commit state is deliberately excluded.
         "repeated_call_leak_bytes": max(leaks),
         "constrained_memory": None,
+        "map_baseline_peak_rss_bytes": map_baseline_peak_rss_bytes,
     }
+
+
+def load_map_baseline_peak_rss(path: Path, case_id: str) -> int:
+    """Read one immutable source-bound MAP receipt for the matched case."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(document, Mapping) or set(document) != {"payload", "seal"}:
+        raise ContractError("MAP baseline receipt has an invalid envelope")
+    if document["seal"] != seal_payload(document["payload"])["seal"]:
+        raise ContractError("MAP baseline receipt seal mismatch")
+    if path.stat().st_mode & 0o222:
+        raise ContractError("MAP baseline receipt must be immutable")
+    payload = document["payload"]
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get("source_sha") != MAP_BASELINE_SOURCE_SHA
+        or payload.get("case_id") != case_id
+    ):
+        raise ContractError("MAP baseline receipt source or case identity mismatch")
+    evidence = payload.get("evidence")
+    if not isinstance(evidence, list):
+        raise ContractError("MAP baseline receipt lacks estimator evidence")
+    candidates = [
+        record
+        for record in evidence
+        if isinstance(record, Mapping) and record.get("arm") == "candidate"
+    ]
+    if len(candidates) != 1:
+        raise ContractError("MAP baseline receipt lacks one candidate arm")
+    runs = candidates[0].get("runs")
+    if not isinstance(runs, list) or not runs:
+        raise ContractError("MAP baseline receipt lacks process RSS evidence")
+    rss_values = [
+        run.get("peak_rss", {}).get("value")
+        for run in runs
+        if isinstance(run, Mapping) and isinstance(run.get("peak_rss"), Mapping)
+    ]
+    if len(rss_values) != len(runs) or any(
+        not isinstance(value, int) or value <= 0 for value in rss_values
+    ):
+        raise ContractError("MAP baseline receipt has malformed process RSS evidence")
+    return max(rss_values)
 
 
 def imposed_limit_between(low_bytes: int, fast_bytes: int) -> int:
@@ -460,6 +506,7 @@ def capture_pair(
     manifest_path: Path,
     lock_path: Path,
     prove_constrained: bool = False,
+    map_baseline_receipt: Path | None = None,
 ) -> str:
     if not SOURCE_SHA.fullmatch(source_sha):
         raise ContractError("candidate source SHA must be a full lowercase commit")
@@ -471,6 +518,11 @@ def capture_pair(
     )
     if case is None:
         raise ContractError(f"unknown benchmark case {case_id!r}")
+    map_baseline_peak_rss_bytes = (
+        load_map_baseline_peak_rss(map_baseline_receipt, case_id)
+        if map_baseline_receipt is not None
+        else None
+    )
     lock = load_reference_lock(lock_path)
     identities = preflight_reference_root(reference_root, lock, candidate_root)
     work_dir.mkdir(parents=True, exist_ok=False)
@@ -617,9 +669,12 @@ def capture_pair(
                         "native_allocation_model_bytes": None,
                         "repeated_call_leak_bytes": None,
                         "constrained_memory": None,
+                        "map_baseline_peak_rss_bytes": None,
                     }
                     if arm == "comparator"
-                    else candidate_memory(captured_candidate)
+                    else candidate_memory(
+                        captured_candidate, map_baseline_peak_rss_bytes
+                    )
                 ),
             }
         )
@@ -665,6 +720,11 @@ def capture_pair(
         },
         "generated_dataset_sha256": generated_hashes[case["dataset"]],
         "constrained_memory_proof": constrained_proof,
+        "map_baseline_receipt_sha256": (
+            sha256_file(map_baseline_receipt)
+            if map_baseline_receipt is not None
+            else None
+        ),
         "evidence": records,
     }
     return write_sealed_receipt(receipt, payload)
@@ -745,6 +805,7 @@ def main() -> int:
     capture.add_argument("--source-sha", required=True)
     capture.add_argument("--work-dir", type=Path, required=True)
     capture.add_argument("--receipt", type=Path, required=True)
+    capture.add_argument("--map-baseline-receipt", type=Path)
     capture.add_argument("--prove-constrained", action="store_true")
     combine = subparsers.add_parser("combine")
     combine.add_argument("--receipt-dir", type=Path, required=True)
@@ -765,6 +826,11 @@ def main() -> int:
             manifest_path=args.manifest.resolve(),
             lock_path=args.lock.resolve(),
             prove_constrained=args.prove_constrained,
+            map_baseline_receipt=(
+                args.map_baseline_receipt.resolve()
+                if args.map_baseline_receipt is not None
+                else None
+            ),
         )
         print(f"paired case receipt PASS: {args.case_id} sha256={digest}")
     else:
