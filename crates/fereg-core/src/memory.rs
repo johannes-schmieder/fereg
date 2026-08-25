@@ -64,6 +64,24 @@ pub fn estimate_phase2_memory(
     let g = fe_dimensions as u128;
     let c = cluster_dimensions as u128;
     let pool = poolsize.min(finite_columns) as u128;
+    let fast_parallel_projection = if fe_dimensions == 0 || finite_columns == 0 {
+        0
+    } else {
+        checked_mul(
+            checked_mul(n, checked_sum(&[k, 1])?, "fast parallel FE projection")?,
+            8,
+            "fast parallel FE projection bytes",
+        )?
+    };
+    let low_parallel_projection = if fe_dimensions == 0 || finite_columns == 0 {
+        0
+    } else {
+        checked_mul(
+            checked_mul(n, checked_sum(&[pool, 1])?, "low parallel FE projection")?,
+            8,
+            "low parallel FE projection bytes",
+        )?
+    };
 
     let base = checked_sum(&[
         checked_mul(
@@ -86,6 +104,7 @@ pub fn estimate_phase2_memory(
             8,
             "cross-product bytes",
         )?,
+        fast_parallel_projection,
     ])?;
     let low = checked_sum(&[
         base,
@@ -104,6 +123,7 @@ pub fn estimate_phase2_memory(
         } else {
             LOW_MODE_TRANSPOSE_BUFFER_BYTES
         },
+        low_parallel_projection,
     ])?;
     Ok(MemoryEstimate {
         fast_bytes: fast,
@@ -186,7 +206,14 @@ mod tests {
     #[test]
     fn dense_two_fe_model_includes_loaded_numeric_staging() {
         let estimate = estimate_phase2_memory(10_000_000, 5, 3, 2, 0, 10).expect("estimate");
-        assert_eq!(estimate.fast_bytes, 1_280_000_072);
+        assert_eq!(estimate.fast_bytes, 1_600_000_072);
+        assert_eq!(estimate.low_bytes, 1_601_048_648);
+    }
+
+    #[test]
+    fn no_fe_model_does_not_reserve_group_projection_workspace() {
+        let estimate = estimate_phase2_memory(10_000_000, 5, 3, 0, 0, 10).expect("estimate");
+        assert_eq!(estimate.fast_bytes, 1_200_000_072);
     }
 
     #[test]

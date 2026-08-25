@@ -5,6 +5,9 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, MapConfig, SolveReport, SolveStopReason,
 };
+use rayon::prelude::*;
+
+const PARALLEL_PROJECTION_MIN_ROWS: usize = 262_144;
 
 /// Objective weights for the strict borrowed-intercept MAP path.
 ///
@@ -87,10 +90,31 @@ struct BorrowedMapWorkspace {
     value_scales: Vec<f64>,
     group_sums: Vec<f64>,
     group_corrections: Vec<f64>,
+    parallel_group_means: Vec<f64>,
 }
 
 impl BorrowedMapWorkspace {
-    fn new<R: WorkspaceReservation>(rhs_count: usize, reservation: &mut R) -> Result<Self> {
+    fn new<R: WorkspaceReservation>(
+        design: &BorrowedInterceptFeDesign<'_>,
+        observation_count: usize,
+        rhs_count: usize,
+        reservation: &mut R,
+    ) -> Result<Self> {
+        let parallel_group_mean_count = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
+            && rhs_count > 1
+            && rayon::current_num_threads() > 1
+        {
+            design
+                .effects()
+                .iter()
+                .map(crate::fe::BorrowedInterceptEffect::n_levels)
+                .max()
+                .unwrap_or(0)
+                .checked_mul(rhs_count)
+                .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?
+        } else {
+            0
+        };
         Ok(Self {
             reference_norms: reserved_zeros(
                 rhs_count,
@@ -122,6 +146,15 @@ impl BorrowedMapWorkspace {
                 reservation,
                 "unable to reserve borrowed MAP group corrections",
             )?,
+            parallel_group_means: if parallel_group_mean_count == 0 {
+                Vec::new()
+            } else {
+                reserved_zeros(
+                    parallel_group_mean_count,
+                    reservation,
+                    "unable to reserve borrowed MAP parallel group means",
+                )?
+            },
         })
     }
 }
@@ -195,7 +228,8 @@ fn absorb_with_reservation<R: WorkspaceReservation>(
     let weights = validate_weights(weights, values.nrows())?;
 
     let setup_started = Instant::now();
-    let mut workspace = BorrowedMapWorkspace::new(values.ncols(), reservation)?;
+    let mut workspace =
+        BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
     weighted_column_norms(
         &values,
         weights,
@@ -489,6 +523,25 @@ fn project_effect(
             "borrowed MAP effect and matrix observation counts differ",
         ));
     }
+    let parallel_mean_count = effect
+        .n_levels()
+        .checked_mul(values.ncols())
+        .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?;
+    if values.ncols() > 1
+        && rayon::current_num_threads() > 1
+        && workspace.parallel_group_means.len() >= parallel_mean_count
+    {
+        return project_effect_parallel(effect, weights, values, workspace, parallel_mean_count);
+    }
+    project_effect_serial(effect, weights, values, workspace)
+}
+
+fn project_effect_serial(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<()> {
     for level in 0..effect.n_levels() {
         let members = effect.level_index().checked_members(level)?;
         if members.is_empty() {
@@ -515,6 +568,110 @@ fn project_effect(
         }
     }
     Ok(())
+}
+
+fn project_effect_parallel(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    parallel_mean_count: usize,
+) -> Result<()> {
+    let levels = effect.n_levels();
+    let columns = values.ncols();
+    let values_read = &*values;
+    workspace.parallel_group_means[..parallel_mean_count]
+        .par_chunks_mut(levels)
+        .enumerate()
+        .try_for_each(|(rhs, means)| -> Result<()> {
+            for (level, mean) in means.iter_mut().enumerate() {
+                let members = effect.level_index().checked_members(level)?;
+                if members.is_empty() {
+                    return Err(invalid_argument(
+                        "borrowed MAP effect contains an empty final level",
+                    ));
+                }
+                *mean = group_mean_for_column(members, rhs, weights, values_read)?;
+            }
+            Ok(())
+        })?;
+
+    let means = &workspace.parallel_group_means[..parallel_mean_count];
+    let codes = effect.codes();
+    values
+        .as_mut_slice()
+        .par_chunks_mut(columns)
+        .enumerate()
+        .try_for_each(|(observation, row)| -> Result<()> {
+            let level = codes[observation] as usize;
+            if level >= levels {
+                return Err(invalid_argument(
+                    "borrowed MAP code exceeds the finalized level count",
+                ));
+            }
+            for (rhs, value) in row.iter_mut().enumerate() {
+                let residual = *value - means[rhs * levels + level];
+                if !residual.is_finite() {
+                    return Err(invalid_data(
+                        "borrowed MAP projection produced a nonfinite residual",
+                    ));
+                }
+                *value = residual;
+            }
+            Ok(())
+        })?;
+    Ok(())
+}
+
+fn group_mean_for_column(
+    members: &[usize],
+    rhs: usize,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+) -> Result<f64> {
+    let mut scale = 0.0_f64;
+    let mut weight_sum = 0.0_f64;
+    let mut weight_correction = 0.0_f64;
+    for &observation in members {
+        if observation >= values.nrows() {
+            return Err(invalid_argument(
+                "borrowed MAP membership exceeds the observation axis",
+            ));
+        }
+        compensated_add(
+            weights.normalized(observation),
+            &mut weight_sum,
+            &mut weight_correction,
+        )?;
+        scale = scale.max(values[(observation, rhs)].abs());
+    }
+    let total_weight = weight_sum + weight_correction;
+    if !total_weight.is_finite() || total_weight <= 0.0 {
+        return Err(invalid_data(
+            "borrowed MAP group weight sum is not finite and positive",
+        ));
+    }
+
+    let mut normalized_sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    if scale != 0.0 {
+        for &observation in members {
+            compensated_add(
+                weights.normalized(observation) * (values[(observation, rhs)] / scale),
+                &mut normalized_sum,
+                &mut correction,
+            )?;
+        }
+    }
+    let mean = if scale == 0.0 {
+        0.0
+    } else {
+        scale * ((normalized_sum + correction) / total_weight)
+    };
+    if !mean.is_finite() {
+        return Err(invalid_data("borrowed MAP group mean is not finite"));
+    }
+    Ok(mean)
 }
 
 fn group_means(
@@ -1009,6 +1166,100 @@ mod tests {
             )
             .expect_err("undersized structural workspace must fail closed");
             assert_eq!(error.code, ErrorCode::Allocation, "call {skip_at}");
+        }
+    }
+
+    #[test]
+    fn large_parallel_projection_is_bit_stable_and_its_workspace_fails_closed() {
+        let observations = PARALLEL_PROJECTION_MIN_ROWS;
+        let levels = 4_096;
+        let codes = (0..observations)
+            .map(|row| (row % levels) as u32)
+            .collect::<Vec<_>>();
+        let index = LevelIndex::from_codes(&codes, levels).expect("index");
+        let source = ValidatedBorrowedInterceptSource::new(&codes, levels, &index).expect("source");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![source.effect()]).expect("design");
+        let columns = (0..3)
+            .map(|column| {
+                (0..observations)
+                    .map(|row| {
+                        let centered = (row % 97) as f64 - 48.0;
+                        centered.mul_add(column as f64 + 0.5, (row % levels) as f64 / 17.0)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let weights = (0..observations)
+            .map(|row| 1.0 + (row % 11) as f64 / 13.0)
+            .collect::<Vec<_>>();
+
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    absorb_borrowed_intercept_map_certified(
+                        &design,
+                        BorrowedMapWeights::Provided(&weights),
+                        DenseMatrix::from_columns(&columns).expect("matrix"),
+                        config(),
+                    )
+                    .expect("certified projection")
+                })
+        };
+        let serial = run(1);
+        let parallel = run(4);
+        assert_eq!(serial.residualized(), parallel.residualized());
+        assert_eq!(serial.report().iterations, parallel.report().iterations);
+        assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
+        assert_eq!(serial.report().certificate, parallel.report().certificate);
+
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .expect("pool");
+        let mut successful = InjectedReservation::default();
+        pool.install(|| {
+            absorb_with_reservation(
+                &design,
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).expect("matrix"),
+                config(),
+                false,
+                &mut successful,
+            )
+            .expect("parallel reservation succeeds");
+        });
+        assert_eq!(successful.calls, 7);
+        assert_eq!(
+            successful.records.last(),
+            Some(&(
+                levels * columns.len(),
+                "unable to reserve borrowed MAP parallel group means",
+            )),
+        );
+
+        for skip in [false, true] {
+            let mut injected = InjectedReservation {
+                fail_at: (!skip).then_some(6),
+                skip_at: skip.then_some(6),
+                ..InjectedReservation::default()
+            };
+            let error = pool
+                .install(|| {
+                    absorb_with_reservation(
+                        &design,
+                        BorrowedMapWeights::Provided(&weights),
+                        DenseMatrix::from_columns(&columns).expect("matrix"),
+                        config(),
+                        false,
+                        &mut injected,
+                    )
+                })
+                .expect_err("parallel workspace allocation must fail closed");
+            assert_eq!(error.code, ErrorCode::Allocation);
         }
     }
 

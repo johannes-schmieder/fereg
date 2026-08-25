@@ -19,8 +19,11 @@ limit for constrained-memory qualification; it is not a public Stata option.
 ## Fast and low execution
 
 Fast execution holds the prepared outcome/regressor batch and in-memory score
-workspaces. Low execution generates columns blockwise and stores the prepared
-QR/score columns in private bounded scratch files. Scratch files:
+workspaces. For large multi-thread absorbed models, its preflight also reserves
+the worst-case level-by-RHS group-mean table used by deterministic parallel MAP
+projection. Low execution includes the corresponding outcome-plus-pool-width
+bound, generates columns blockwise, and stores the prepared QR/score columns in
+private bounded scratch files. Scratch files:
 
 - use unique process/sequence names in the platform temporary directory;
 - validate every dimension, offset, read, write, and finite value;
