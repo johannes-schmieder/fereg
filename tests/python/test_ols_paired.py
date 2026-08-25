@@ -7,6 +7,8 @@ import unittest
 from scripts.ols_paired import (
     CANDIDATE_LOG_SENTINEL,
     _arm_case,
+    _plugin_name_for_platform,
+    _stage_candidate,
     _write_candidate_wrapper,
     candidate_memory,
     coefficient_status,
@@ -49,6 +51,30 @@ def matrix(name: str, values: list[list[float]], names: list[str]) -> tuple[list
 
 
 class PairedEvidenceTests(unittest.TestCase):
+    def test_candidate_plugin_name_is_native_to_the_host_platform(self) -> None:
+        self.assertEqual(_plugin_name_for_platform("darwin"), "fereg_macos.plugin")
+        self.assertEqual(_plugin_name_for_platform("linux"), "fereg_linux.plugin")
+        self.assertEqual(_plugin_name_for_platform("linux2"), "fereg_linux.plugin")
+        self.assertEqual(_plugin_name_for_platform("win32"), "fereg_windows.plugin")
+        with self.assertRaisesRegex(ValueError, "unsupported paired-qualification"):
+            _plugin_name_for_platform("plan9")
+
+    def test_candidate_staging_uses_the_native_plugin_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            candidate_root = root / "source"
+            (candidate_root / "stata").mkdir(parents=True)
+            (candidate_root / "stata" / "fereg.ado").write_text(
+                "program fereg\nend\n", encoding="utf-8"
+            )
+            plugin = root / "audited-plugin"
+            plugin.write_bytes(b"plugin")
+            candidate_ado = _stage_candidate(candidate_root, plugin, root / "stage")
+            self.assertEqual(
+                sorted(path.name for path in candidate_ado.glob("fereg_*.plugin")),
+                [_plugin_name_for_platform()],
+            )
+
     def test_candidate_wrapper_preserves_the_child_return_code_numerically(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -70,6 +96,7 @@ class PairedEvidenceTests(unittest.TestCase):
             source,
         )
         self.assertIn(CANDIDATE_LOG_SENTINEL, source)
+        self.assertIn(f"capture findfile {_plugin_name_for_platform()}", source)
 
     def test_comparator_capture_uses_the_standard_fresh_process_runner(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

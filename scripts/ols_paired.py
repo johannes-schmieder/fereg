@@ -280,7 +280,8 @@ def _write_candidate_wrapper(
         target.mkdir(parents=True, exist_ok=True)
         sysdirs[name] = target
     expected_ado = str(candidate_ado / "fereg.ado").replace("\\", "/")
-    expected_plugin = str(candidate_ado / "fereg_linux.plugin").replace("\\", "/")
+    plugin_name = _plugin_name_for_platform()
+    expected_plugin = str(candidate_ado / plugin_name).replace("\\", "/")
     quote = lambda value: '"' + str(value).replace("\\", "/") + '"'
     lines = ["version 18.0", "clear all", "set more off"]
     for name, target in sysdirs.items():
@@ -292,7 +293,7 @@ def _write_candidate_wrapper(
             "if _rc exit 111",
             """local __frg_found `"`r(fn)'"'""",
             f"""if `"`__frg_found'"' != "{expected_ado}" exit 603""",
-            "capture findfile fereg_linux.plugin",
+            f"capture findfile {plugin_name}",
             "if _rc exit 111",
             """local __frg_plugin `"`r(fn)'"'""",
             f"""if `"`__frg_plugin'"' != "{expected_plugin}" exit 603""",
@@ -369,8 +370,19 @@ def _stage_candidate(candidate_root: Path, plugin: Path, destination: Path) -> P
         raise ContractError("candidate Stata source or audited plugin is absent")
     candidate_ado = destination / "stata"
     shutil.copytree(stata_source, candidate_ado)
-    shutil.copy2(plugin, candidate_ado / "fereg_linux.plugin")
+    shutil.copy2(plugin, candidate_ado / _plugin_name_for_platform())
     return candidate_ado
+
+
+def _plugin_name_for_platform(platform: str | None = None) -> str:
+    observed = sys.platform if platform is None else platform
+    if observed == "darwin":
+        return "fereg_macos.plugin"
+    if observed == "win32":
+        return "fereg_windows.plugin"
+    if observed.startswith("linux"):
+        return "fereg_linux.plugin"
+    raise ContractError(f"unsupported paired-qualification host platform: {observed}")
 
 
 def _constrained_memory_proof(
