@@ -21,9 +21,11 @@ EXCLUDED_PREFIXES = (
     "benchmarks/reports/captured/",
     "docs/references/",
     "dist/",
+    "fuzz/",
     "native-artifacts/",
     "release-artifacts/",
     "target/",
+    "tests/fuzz/",
 )
 EXCLUDED_FILES = {
     "stata/_fereg_estimate_ols_test.ado",

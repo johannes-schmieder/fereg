@@ -115,6 +115,14 @@ required_files = [
     "scripts/stage_release.py",
     "scripts/package_release.py",
     "scripts/run_dependency_audit.py",
+    "fuzz/Cargo.toml",
+    "fuzz/Cargo.lock",
+    "fuzz/fuzz_targets/raw_abi_args.rs",
+    "fuzz/fuzz_targets/key_value_protocol.rs",
+    "fuzz/fuzz_targets/model_spec_tables.rs",
+    "fuzz/fuzz_targets/factorization.rs",
+    "fuzz/fuzz_targets/interaction_tuples.rs",
+    "tests/fuzz/README.md",
     "docs/adr/0007-fereg-090-source-qualification-contract.md",
     "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
@@ -178,6 +186,23 @@ root_cargo = read("Cargo.toml")
 for setting in ['lto = "fat"', "codegen-units = 1", 'panic = "unwind"', "strip = true"]:
     require(setting in root_cargo, f"release profile missing {setting}")
 require("target-cpu=native" not in root_cargo, "distributed build uses target-cpu=native")
+
+fuzz_cargo = read("fuzz/Cargo.toml")
+for fuzz_target in (
+    "raw_abi_args",
+    "key_value_protocol",
+    "model_spec_tables",
+    "factorization",
+    "interaction_tuples",
+):
+    require(
+        f'name = "{fuzz_target}"' in fuzz_cargo,
+        f"cargo-fuzz manifest is missing target {fuzz_target}",
+    )
+require(
+    'cargo-fuzz = true' in fuzz_cargo and 'libfuzzer-sys = "0.4"' in fuzz_cargo,
+    "cargo-fuzz manifest lacks its package marker or libFuzzer runtime",
+)
 
 core_files = list((ROOT / "crates/fereg-core/src").glob("*.rs"))
 require("#![forbid(unsafe_code)]" in read("crates/fereg-core/src/lib.rs"), "safe core does not forbid unsafe code")

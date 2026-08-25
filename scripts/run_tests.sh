@@ -32,6 +32,7 @@ fi
 
 if command -v cargo >/dev/null 2>&1; then
   cargo fmt --all -- --check
+  cargo fmt --manifest-path fuzz/Cargo.toml --all -- --check
   cargo clippy --workspace --all-targets --no-default-features -- -D warnings
   cargo test --workspace --all-targets --no-default-features
   cargo test -p fereg-plugin --features ffi --lib
