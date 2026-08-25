@@ -245,6 +245,8 @@ pub(super) struct PreparedOlsFastScoreCache {
     means: Vec<f64>,
 }
 
+pub(super) const FAST_INFERENCE_REUSE_MIN_ROWS: usize = 1_000_000;
+
 impl PreparedOlsFastScoreCache {
     fn mean(&self, generated: usize) -> Option<f64> {
         self.generated_columns
@@ -502,6 +504,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = ThreadTeam::new(config.execution.threads);
+    let retain_fast_score_cache = prepared.fit_sample().n_active() >= FAST_INFERENCE_REUSE_MIN_ROWS;
     team.install(|| {
         let mut reservation = SystemFitReservation;
         match config.execution.mode {
@@ -510,7 +513,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
                 config,
                 &mut reservation,
                 FitPerturbations::default(),
-                true,
+                retain_fast_score_cache,
             ),
             PreparedOlsExecutionMode::Low => fit_with_controls_low_internal(
                 prepared,
@@ -1664,8 +1667,17 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reference_norms,
         score_norms,
     )?;
-    let within_residuals =
-        reconstruct_within_residuals(within, &candidate_columns, rank, weights, reservation)?;
+    let within_residuals = if nrows >= FAST_INFERENCE_REUSE_MIN_ROWS || cfg!(test) {
+        Some(reconstruct_within_residuals(
+            within,
+            &candidate_columns,
+            rank,
+            weights,
+            reservation,
+        )?)
+    } else {
+        None
+    };
     let bread = build_finite_bread_draft(
         prepared,
         FiniteBreadInputs {
@@ -1695,7 +1707,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         },
         finite_score,
         bread: Some(bread),
-        within_residuals: Some(within_residuals),
+        within_residuals,
     })
 }
 

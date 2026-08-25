@@ -7,7 +7,9 @@ use crate::topology_dof::CategoricalTopologyDofReport;
 use super::prepared_clustered_view::PreparedOlsClusteredView;
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
-use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
+use super::prepared_fit::{
+    fit_prepared_ols_coefficients_view_map_for_inference, FAST_INFERENCE_REUSE_MIN_ROWS,
+};
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
@@ -1008,6 +1010,9 @@ fn dense_subset_plan(
         return Err(invalid_argument(
             "prepared clustered dense subset plan is malformed",
         ));
+    }
+    if nobs < FAST_INFERENCE_REUSE_MIN_ROWS && !cfg!(test) {
+        return Ok(None);
     }
     let mut radices = [0_usize; 10];
     let mut group_slots = 1_usize;
