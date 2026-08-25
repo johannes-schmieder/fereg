@@ -6,6 +6,7 @@ import unittest
 
 from scripts.ols_paired import (
     CANDIDATE_LOG_SENTINEL,
+    _arm_case,
     _write_candidate_wrapper,
     candidate_memory,
     coefficient_status,
@@ -139,6 +140,16 @@ class PairedEvidenceTests(unittest.TestCase):
             },
         )
 
+        runtime[10][1] = 101.0
+        entries, dimensions = matrix(
+            "fereg_runtime", runtime, [str(index) for index in range(1, 31)]
+        )
+        case = {
+            "matrices": entries,
+            "matrix_dimensions": {"fereg_runtime": dimensions},
+        }
+        self.assertEqual(candidate_memory([case])["repeated_call_leak_bytes"], 1)
+
     def test_imposed_limit_admits_low_but_not_fast_after_headroom(self) -> None:
         low = 2_000_000_000
         fast = 6_000_000_000
@@ -146,6 +157,26 @@ class PairedEvidenceTests(unittest.TestCase):
         usable = available - max(512 * 1024 * 1024, available // 5)
         self.assertGreaterEqual(usable, low)
         self.assertLess(usable, fast)
+
+    def test_warm_pair_runs_two_stabilizing_actions_at_the_bound_thread_count(self) -> None:
+        case = {
+            "thread_count": 8,
+            "setup": ["set seed 1"],
+            "arms": {"candidate": "fereg y x", "comparator": "reghdfe y x"},
+            "capture": {"scalars": [], "matrices": []},
+        }
+        selected = _arm_case(case, "candidate", "warm")
+        self.assertTrue(selected["_fresh_warmup"])
+        self.assertEqual(
+            selected["setup"],
+            [
+                "set seed 1",
+                "set processors 8",
+                "capture noisily fereg y x",
+                "if _rc exit _rc",
+                "estimates clear",
+            ],
+        )
 
 
 if __name__ == "__main__":

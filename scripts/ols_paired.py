@@ -209,9 +209,9 @@ def candidate_memory(cases: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     for case in cases:
         observed.append(round(_matrix_value(case, "fereg_runtime", 13, 2)))
         modeled.add(round(_matrix_value(case, "fereg_runtime", 25, 2)))
-        start = round(_matrix_value(case, "fereg_runtime", 10, 2))
-        end = round(_matrix_value(case, "fereg_runtime", 11, 2))
-        leaks.append(max(0, end - start))
+        previous = round(_matrix_value(case, "fereg_runtime", 10, 2))
+        current = round(_matrix_value(case, "fereg_runtime", 11, 2))
+        leaks.append(abs(current - previous))
     if any(value <= 0 for value in observed) or len(modeled) != 1:
         raise ContractError("candidate allocation telemetry is absent or unstable")
     model = next(iter(modeled))
@@ -220,6 +220,10 @@ def candidate_memory(cases: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     return {
         "native_allocation_observed_bytes": max(observed),
         "native_allocation_model_bytes": model,
+        # Warm captures execute two untimed actions before the measured action.
+        # Rows 10 and 11 are the previous and current action-start baselines,
+        # after the preceding action has fully unwound. Their difference is
+        # repeated-call growth; live pre-commit state is deliberately excluded.
         "repeated_call_leak_bytes": max(leaks),
         "constrained_memory": None,
     }
@@ -248,6 +252,13 @@ def _arm_case(case: Mapping[str, Any], arm: str, kind: str) -> dict[str, Any]:
         {"cold": 1, "warm": 0} if kind == "cold" else {"cold": 0, "warm": 1}
     )
     if kind == "warm":
+        selected["setup"] = [
+            *case.get("setup", []),
+            f"set processors {case['thread_count']}",
+            f"capture noisily {selected['command']}",
+            "if _rc exit _rc",
+            "estimates clear",
+        ]
         selected["_fresh_warmup"] = True
     selected["capture"]["scalars"].append("converged")
     if arm == "candidate":

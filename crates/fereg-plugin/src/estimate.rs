@@ -161,6 +161,12 @@ struct ActionObservation {
     input_load_seconds: f64,
 }
 
+// Stata interruption polling crosses the Rust/C/SPI boundary. Polling every
+// row doubled that boundary traffic during input loading without improving
+// rollback semantics. A bounded stride keeps Break latency short while the
+// final poll below guarantees no estimation starts after an unobserved stop.
+const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
+
 pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let started = Instant::now();
     let resources_start = instrumentation::begin_observation();
@@ -183,6 +189,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     match (action.vce, categorical) {
         (OlsVceKind::Iid, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -208,6 +215,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Robust, false) => {
             let prepared = prepare_ols_data(&action.request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
@@ -237,6 +245,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 clusters: action.clusters.clone(),
             };
             let prepared = prepare_ols_clustered_data(&request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -263,6 +272,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Iid, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -288,6 +298,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Robust, true) => {
             let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_categorical_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
@@ -317,6 +328,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 clusters: action.clusters.clone(),
             };
             let prepared = prepare_categorical_ols_clustered_data(&request, &loaded)?;
+            drop(loaded);
             let inference = fit_prepared_categorical_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -653,8 +665,15 @@ impl EstimateActionSpec {
                     .checked_add(usize::from(term.intercept) + term.slope_sources.len())
                     .ok_or_else(|| allocation("extended absorbed-effect row count overflows"))
             })?;
+        let loaded_numeric_columns = request
+            .model
+            .sources
+            .len()
+            .checked_add(1)
+            .ok_or_else(|| allocation("loaded numeric-column count overflows"))?;
         let memory_estimate = estimate_phase2_memory(
             spi.nobs()?,
+            loaded_numeric_columns,
             prepared_model.columns.len(),
             extended_fe_rows,
             clusters.len(),
@@ -949,16 +968,6 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, false, "OLS candidate marker")?;
     let candidate_position = role_position(request, InputRoleTag::Candidate)?;
-    for observation in 1..=n {
-        spi.check_interrupted()?;
-        let (value, missing) = spi.read_numeric(candidate_position, observation)?;
-        if missing || !value.is_finite() || !matches!(value, 0.0 | 1.0) {
-            return Err(invalid_data(format!(
-                "candidate marker at observation {observation} must be nonmissing zero or one",
-            )));
-        }
-        candidate[observation - 1] = value == 1.0;
-    }
     let mut outcome = empty_loaded_column(n, "OLS outcome")?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
@@ -1010,12 +1019,26 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
             "OLS source-position capacity exhausted",
         )?;
     }
-    for (zero_based, retained_candidate) in candidate.iter().copied().enumerate() {
+    for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
+        if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
+            spi.check_interrupted()?;
+        }
+        let observation = zero_based + 1;
+        let (candidate_value, candidate_missing) =
+            spi.read_numeric(candidate_position, observation)?;
+        if candidate_missing
+            || !candidate_value.is_finite()
+            || !matches!(candidate_value, 0.0 | 1.0)
+        {
+            return Err(invalid_data(format!(
+                "candidate marker at observation {observation} must be nonmissing zero or one",
+            )));
+        }
+        let retained_candidate = candidate_value == 1.0;
+        *retained_slot = retained_candidate;
         if !retained_candidate {
             continue;
         }
-        spi.check_interrupted()?;
-        let observation = zero_based + 1;
         read_into(spi, outcome_position, observation, &mut outcome, zero_based)?;
         for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
             destination.read_into(spi, *position, observation, zero_based)?;
@@ -1033,6 +1056,7 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
             read_into(spi, position, observation, destination, zero_based)?;
         }
     }
+    spi.check_interrupted()?;
     let mut numeric_sources = reserved_empty(source_loaders.len(), "final OLS source table")?;
     for (source, loader) in source_loaders {
         push_reserved(
@@ -1365,8 +1389,12 @@ fn build_runtime_shadow(
         Some(action.memory_plan.safety_headroom_bytes as f64),
         action.memory_plan.usable_bytes.map(|value| value as f64),
         Some(shadow.execution.scratch_bytes as f64),
+        Some(
+            observation
+                .resources_start
+                .allocation_previous_baseline_bytes as f64,
+        ),
         Some(observation.resources_start.allocation_current_bytes as f64),
-        Some(resources.allocation_current_bytes as f64),
         Some(resources.allocation_peak_bytes as f64),
         Some(allocation_peak_delta as f64),
         observation

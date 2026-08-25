@@ -16,6 +16,7 @@ struct TrackingAllocator;
 
 static ALLOCATION_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATION_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
+static PREVIOUS_ACTION_BASELINE_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator;
@@ -75,9 +76,18 @@ fn record_deallocation(bytes: usize) {
         });
 }
 
-pub(crate) fn reset_allocation_peak() {
+pub(crate) fn begin_allocation_observation() -> (u64, u64) {
     let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
     ALLOCATION_PEAK_BYTES.store(current, Ordering::Relaxed);
+    let previous = PREVIOUS_ACTION_BASELINE_BYTES.swap(current, Ordering::Relaxed);
+    (
+        current,
+        if previous == u64::MAX {
+            current
+        } else {
+            previous
+        },
+    )
 }
 
 pub(crate) fn allocation_usage() -> (u64, u64) {

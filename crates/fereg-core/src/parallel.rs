@@ -1,6 +1,15 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::options::ThreadConfig;
 use std::ops::Range;
+use std::sync::{Arc, Mutex, OnceLock};
+
+#[derive(Debug)]
+struct CachedThreadPool {
+    threads: usize,
+    pool: Arc<rayon::ThreadPool>,
+}
+
+static THREAD_POOL: OnceLock<Mutex<Option<CachedThreadPool>>> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ThreadTeam {
@@ -27,23 +36,48 @@ impl ThreadTeam {
         self.deterministic
     }
 
-    /// Run one native action inside an isolated Rayon team with the resolved
-    /// public thread count.  A per-action pool avoids process-global state, so
-    /// repeated Stata calls may select different thread counts safely.
+    /// Run one native action with the resolved public thread count. Actions
+    /// reuse one bounded process-local pool and replace it when the requested
+    /// count changes, avoiding per-call Rayon registry retention while
+    /// preserving safe thread-count changes between Stata calls.
     pub fn install<T, F>(self, function: F) -> Result<T>
     where
         T: Send,
         F: FnOnce() -> T + Send,
     {
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(self.threads)
-            .build()
-            .map_err(|error| {
+        let cache = THREAD_POOL.get_or_init(|| Mutex::new(None));
+        let pool = {
+            let mut guard = cache.lock().map_err(|_| {
                 FeregError::new(
-                    ErrorCode::Allocation,
-                    format!("unable to construct fereg worker team: {error}"),
+                    ErrorCode::Internal,
+                    "fereg worker-team cache lock is poisoned",
                 )
             })?;
+            if guard
+                .as_ref()
+                .is_none_or(|cached| cached.threads != self.threads)
+            {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(self.threads)
+                    .build()
+                    .map_err(|error| {
+                        FeregError::new(
+                            ErrorCode::Allocation,
+                            format!("unable to construct fereg worker team: {error}"),
+                        )
+                    })?;
+                *guard = Some(CachedThreadPool {
+                    threads: self.threads,
+                    pool: Arc::new(pool),
+                });
+            }
+            Arc::clone(
+                &guard
+                    .as_ref()
+                    .expect("worker-team cache was populated above")
+                    .pool,
+            )
+        };
         Ok(pool.install(function))
     }
 
@@ -144,5 +178,18 @@ mod tests {
             .install(rayon::current_num_threads)
             .expect("isolated pool");
         assert_eq!(observed, 2);
+    }
+
+    #[test]
+    fn cached_pool_can_change_counts_and_return_to_one() {
+        for threads in [1, 3, 1] {
+            let team =
+                ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("config"));
+            assert_eq!(
+                team.install(rayon::current_num_threads)
+                    .expect("cached team"),
+                threads,
+            );
+        }
     }
 }

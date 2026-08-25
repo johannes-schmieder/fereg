@@ -670,11 +670,25 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
     let sample =
         sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
 
-    // Re-factorize on the final compact sample. This removes empty levels left
-    // by singleton deletion and gives ordinary factor recipes their final codes.
-    let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
+    // With no singleton deletion, the pruning codes already live on the final
+    // compact axis. Reusing them avoids a second observation-scale
+    // factorization. Cluster-only sources still require the complete final
+    // factorization because they were deliberately excluded from pruning.
+    let pruning_covers_final_sources = cluster_sources.iter().all(|source| {
+        pruning_categorical_sources
+            .iter()
+            .any(|candidate| candidate.source == *source)
+    });
+    let (categorical_sources, fixed_effects) = if num_singletons == 0
+        && pruning_covers_final_sources
+    {
+        (pruning_categorical_sources, pruning_fixed_effects)
+    } else {
+        let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
+        let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
+        (categorical_sources, fixed_effects)
+    };
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
-    let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
     let fe_topology =
         build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects)?;
     Ok(PreparedOlsData {

@@ -46,6 +46,7 @@ impl MemoryEstimate {
 
 pub fn estimate_phase2_memory(
     observations: usize,
+    loaded_numeric_columns: usize,
     finite_columns: usize,
     fe_dimensions: usize,
     cluster_dimensions: usize,
@@ -58,12 +59,18 @@ pub fn estimate_phase2_memory(
         ));
     }
     let n = observations as u128;
+    let loaded = loaded_numeric_columns as u128;
     let k = finite_columns as u128;
     let g = fe_dimensions as u128;
     let c = cluster_dimensions as u128;
     let pool = poolsize.min(finite_columns) as u128;
 
     let base = checked_sum(&[
+        checked_mul(
+            checked_mul(n, loaded, "loaded numeric staging")?,
+            8,
+            "loaded numeric staging bytes",
+        )?,
         checked_mul(n, 8, "outcome")?,
         checked_mul(n, 8, "weights")?,
         checked_mul(n, 8, "working vector")?,
@@ -172,20 +179,26 @@ mod tests {
 
     #[test]
     fn low_mode_is_smaller_for_wide_models() {
-        let estimate = estimate_phase2_memory(1_000_000, 100, 2, 2, 8).expect("estimate");
+        let estimate = estimate_phase2_memory(1_000_000, 5, 100, 2, 2, 8).expect("estimate");
         assert!(estimate.low_bytes < estimate.fast_bytes);
     }
 
     #[test]
+    fn dense_two_fe_model_includes_loaded_numeric_staging() {
+        let estimate = estimate_phase2_memory(10_000_000, 5, 3, 2, 0, 10).expect("estimate");
+        assert_eq!(estimate.fast_bytes, 1_280_000_072);
+    }
+
+    #[test]
     fn zero_finite_columns_need_no_pool() {
-        let estimate = estimate_phase2_memory(1_000_000, 0, 2, 2, 8).expect("estimate");
+        let estimate = estimate_phase2_memory(1_000_000, 3, 0, 2, 2, 8).expect("estimate");
         assert_eq!(estimate.recommended_poolsize, 0);
         assert_eq!(estimate.low_bytes, estimate.fast_bytes);
     }
 
     #[test]
     fn auto_selects_low_when_fast_exceeds_the_safe_budget() {
-        let estimate = estimate_phase2_memory(1_000_000, 100, 2, 0, 4).expect("estimate");
+        let estimate = estimate_phase2_memory(1_000_000, 4, 100, 2, 0, 4).expect("estimate");
         let available = estimate
             .low_bytes
             .checked_add(MINIMUM_HEADROOM_BYTES)
@@ -197,7 +210,7 @@ mod tests {
 
     #[test]
     fn explicit_fast_fails_before_allocation_when_only_low_fits() {
-        let estimate = estimate_phase2_memory(1_000_000, 100, 2, 0, 4).expect("estimate");
+        let estimate = estimate_phase2_memory(1_000_000, 4, 100, 2, 0, 4).expect("estimate");
         let available = estimate
             .low_bytes
             .checked_add(MINIMUM_HEADROOM_BYTES)
@@ -210,7 +223,7 @@ mod tests {
 
     #[test]
     fn unavailable_system_budget_keeps_requested_or_fast_auto_mode() {
-        let estimate = estimate_phase2_memory(10, 3, 1, 0, 2).expect("estimate");
+        let estimate = estimate_phase2_memory(10, 3, 3, 1, 0, 2).expect("estimate");
         assert_eq!(
             plan_ols_memory(MemoryMode::Auto, estimate, None)
                 .expect("auto")

@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncodedFactor<T> {
@@ -37,8 +38,22 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
             "unable to reserve numeric categorical factorization storage",
         )
     };
-    let mut normalized = Vec::new();
-    normalized
+    // Factor variables normally contain far fewer levels than observations.
+    // Building and sorting an observation-sized copy made that common case
+    // O(N log N) and retained an N-sized capacity after deduplication. Assign
+    // provisional codes in one hash pass, sort only the distinct levels, and
+    // deterministically remap the codes to the canonical total order.
+    let initial_levels = values.len().min(4_096);
+    let mut provisional_by_bits = HashMap::<u64, u32>::new();
+    provisional_by_bits
+        .try_reserve(initial_levels)
+        .map_err(|_| allocation())?;
+    let mut provisional_levels = Vec::new();
+    provisional_levels
+        .try_reserve_exact(initial_levels)
+        .map_err(|_| allocation())?;
+    let mut codes = Vec::new();
+    codes
         .try_reserve_exact(values.len())
         .map_err(|_| allocation())?;
     for value in values {
@@ -48,28 +63,51 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
                 "categorical numeric source contains a nonfinite value",
             ));
         }
-        normalized.push(if *value == 0.0 { 0.0 } else { *value });
+        let normalized = if *value == 0.0 { 0.0 } else { *value };
+        let bits = normalized.to_bits();
+        let code = if let Some(code) = provisional_by_bits.get(&bits) {
+            *code
+        } else {
+            let next_level = provisional_levels.len();
+            ensure_u32_levels(next_level.saturating_add(1))?;
+            provisional_by_bits
+                .try_reserve(1)
+                .map_err(|_| allocation())?;
+            provisional_levels
+                .try_reserve(1)
+                .map_err(|_| allocation())?;
+            let code = next_level as u32;
+            provisional_by_bits.insert(bits, code);
+            provisional_levels.push(normalized);
+            code
+        };
+        codes.push(code);
     }
+    drop(provisional_by_bits);
 
+    let mut order = Vec::new();
+    order
+        .try_reserve_exact(provisional_levels.len())
+        .map_err(|_| allocation())?;
+    order.extend(0..provisional_levels.len());
+    order.sort_unstable_by(|left, right| {
+        provisional_levels[*left].total_cmp(&provisional_levels[*right])
+    });
+    let mut remap = Vec::new();
+    remap
+        .try_reserve_exact(provisional_levels.len())
+        .map_err(|_| allocation())?;
+    remap.resize(provisional_levels.len(), 0_u32);
     let mut levels = Vec::new();
     levels
-        .try_reserve_exact(normalized.len())
+        .try_reserve_exact(provisional_levels.len())
         .map_err(|_| allocation())?;
-    levels.extend_from_slice(&normalized);
-    levels.sort_by(f64::total_cmp);
-    levels.dedup_by(|left, right| left.total_cmp(right).is_eq());
-    ensure_u32_levels(levels.len())?;
-    let mut codes = Vec::new();
-    codes
-        .try_reserve_exact(normalized.len())
-        .map_err(|_| allocation())?;
-    for value in &normalized {
-        codes.push(
-            levels
-                .binary_search_by(|candidate| candidate.total_cmp(value))
-                .map(|position| position as u32)
-                .expect("level was constructed from values"),
-        );
+    for (canonical, provisional) in order.into_iter().enumerate() {
+        remap[provisional] = canonical as u32;
+        levels.push(provisional_levels[provisional]);
+    }
+    for code in &mut codes {
+        *code = remap[*code as usize];
     }
     Ok(EncodedFactor { codes, levels })
 }
