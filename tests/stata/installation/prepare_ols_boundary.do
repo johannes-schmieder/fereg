@@ -360,9 +360,11 @@ confirm new variable _st_fe_string_retained
 confirm new variable _st_fe_string_reason
 
 capture noisily fereg y x z
+assert _rc == 459
+capture noisily fereg y x
 assert _rc == 0
 assert `"`e(cmd)'"' == "fereg"
-capture noisily feppml y x z
+capture noisily feppml y x
 assert _rc == 498
 
 di as result "prepare_ols_boundary.do: PASS"
