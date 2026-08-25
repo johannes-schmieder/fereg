@@ -740,7 +740,7 @@ program define _fereg_eols_validate, rclass
        rowsof(`marker_V') != `physical' | colsof(`marker_V') != `physical' | ///
        rowsof(`fit') != 12 | colsof(`fit') != 2 | ///
        rowsof(`dof') != 20 | colsof(`dof') != 2 | ///
-       rowsof(`solver') != 2 | colsof(`solver') != 12 | ///
+       rowsof(`solver') != 2 | colsof(`solver') != 16 | ///
        rowsof(`fe') != `absorbrows' | colsof(`fe') != 8 | ///
        rowsof(`clusters_table') != max(`clusters', 1) | colsof(`clusters_table') != 4 | ///
        rowsof(`subsets_table') != `subsets' | colsof(`subsets_table') != 4 | ///
@@ -752,7 +752,7 @@ program define _fereg_eols_validate, rclass
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 2 | `receipt'[1,4] != `vcecode' | ///
+       `receipt'[1,3] != 3 | `receipt'[1,4] != `vcecode' | ///
        `coefficients' != int(`coefficients') | `coefficients' < 0 | ///
        `coefficients' > `capacity' | ///
        `receipt'[1,7] != _N | `receipt'[1,10] != `clusters' | ///

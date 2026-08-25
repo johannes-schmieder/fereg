@@ -45,4 +45,30 @@ assert mreldif(r(stats), __frg_expected_stats) <= 1e-12
 capture noisily estat nonsense
 assert _rc == 321
 
+* Every public solver must return the same certified OLS result.  Exact
+* reduction-order identity is not required for accelerated/LSMR paths.
+matrix __frg_b_auto = e(b)
+matrix __frg_V_auto = e(V)
+foreach method in map cg it squarem {
+    quietly fereg y c.x1 c.x2, absorb(worker firm) ///
+        memory(fast) threads(2) solver(`method')
+    assert `"`e(fereg_solver_requested)'"' == "`method'"
+    assert mreldif(e(b), __frg_b_auto) <= 1e-7
+    assert mreldif(e(V), __frg_V_auto) <= 1e-6
+    assert e(fereg_solver)[1,4] == 2
+}
+foreach preconditioner in off diagonal schwarz auto {
+    quietly fereg y c.x1 c.x2, absorb(worker firm) ///
+        memory(fast) threads(2) solver(lsmr) ///
+        preconditioner(`preconditioner')
+    assert `"`e(fereg_solver_requested)'"' == "lsmr"
+    assert `"`e(fereg_preconditioner)'"' == "`preconditioner'"
+    assert mreldif(e(b), __frg_b_auto) <= 1e-7
+    assert mreldif(e(V), __frg_V_auto) <= 1e-6
+    assert e(fereg_solver)[1,4] == 2
+}
+capture noisily fereg y c.x1 c.x2, absorb(worker firm) ///
+    solver(map) preconditioner(diagonal)
+assert _rc == 198
+
 di as result "END_FIXTURE|estimate_ols_postestimation_parity|rc=0"

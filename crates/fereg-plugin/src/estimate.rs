@@ -1755,12 +1755,16 @@ fn validate_shadow_diagnostics(
     }
     for row in shadow.solver.chunks_exact(SOLVER_COLUMNS) {
         if row.iter().any(|value| !value.is_finite())
-            || !matches!(row[0], 1.0 | 2.0 | 3.0)
-            || !matches!(row[1], 1.0 | 2.0 | 3.0)
+            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0)
+            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0)
             || exact_usize(row[2], "OLS solver iteration count").is_err()
             || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0)
             || !matches!(row[10], 0.0 | 1.0)
             || exact_usize(row[11], "OLS solver warning count").is_err()
+            || !matches!(row[12], 0.0 | 1.0 | 2.0 | 3.0 | 4.0)
+            || !matches!(row[13], 0.0 | 1.0 | 2.0 | 3.0 | 4.0)
+            || exact_usize(row[14], "OLS solver pilot iteration count").is_err()
+            || row[15] < 0.0
         {
             return Err(invalid("OLS solver shadow metadata is invalid"));
         }
