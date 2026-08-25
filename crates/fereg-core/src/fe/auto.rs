@@ -35,7 +35,27 @@ pub fn absorb_fixed_effects(
 ) -> Result<SolveReport> {
     match config.solver {
         FeSolverKind::Map => absorb_map(design, weights, values, config.map),
-        FeSolverKind::Lsmr => absorb_lsmr(design, weights, values, config.lsmr),
+        FeSolverKind::Lsmr => {
+            let original = config.certified_fallback.then(|| values.clone());
+            let report = absorb_lsmr(design, weights, values, config.lsmr)?;
+            if report.certified() || !config.certified_fallback {
+                return Ok(report);
+            }
+            if let Some(original) = original {
+                *values = original;
+            }
+            let mut fallback = absorb_map(design, weights, values, config.map)?;
+            fallback.requested_solver = FeSolverKind::Lsmr;
+            fallback.fallback_used = true;
+            fallback.warnings.insert(
+                0,
+                format!(
+                    "explicit LSMR path did not certify after {} iterations; retried MAP",
+                    report.iterations
+                ),
+            );
+            Ok(fallback)
+        }
         FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
             absorb_accelerated_map(design, weights, values, config.map, config.solver)
         }
@@ -157,6 +177,34 @@ mod tests {
         .expect("absorb");
         assert!(report.fallback_used);
         assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+        assert!(report.certified());
+    }
+
+    #[test]
+    fn explicit_lsmr_falls_back_to_certified_map_when_budget_is_exhausted() {
+        let first = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).expect("first");
+        let second = EffectTerm::new(vec![0, 1, 1, 2, 2, 0], 3, true, vec![]).expect("second");
+        let design = FeDesign::new(6, vec![first, second]).expect("design");
+        let mut values =
+            DenseMatrix::from_columns(&[vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0]]).expect("values");
+        let report = absorb_fixed_effects(
+            &design,
+            &[1.0; 6],
+            &mut values,
+            AbsorbConfig {
+                solver: FeSolverKind::Lsmr,
+                lsmr: LsmrConfig {
+                    max_iterations: 1,
+                    tolerance: 1e-14,
+                    ..LsmrConfig::default()
+                },
+                ..AbsorbConfig::default()
+            },
+        )
+        .expect("fallback");
+        assert_eq!(report.requested_solver, FeSolverKind::Lsmr);
+        assert_eq!(report.used_solver, FeSolverKind::Map);
+        assert!(report.fallback_used);
         assert!(report.certified());
     }
 }
