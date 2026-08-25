@@ -5,7 +5,9 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::topology_dof::CategoricalTopologyDofReport;
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
+#[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
+use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
@@ -323,10 +325,26 @@ struct PreparedOlsClusteredComponents<A> {
 
 #[derive(Debug)]
 struct RawClusterCovariance {
+    dimension: usize,
     uncorrected: Vec<f64>,
+    independent_uncorrected: Vec<f64>,
     corrected: Vec<f64>,
     correction: f64,
     subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+    independent_subsets: Vec<PreparedOlsClusterSubsetCertificate>,
+}
+
+#[derive(Debug)]
+struct SubsetMeats {
+    raw: Vec<f64>,
+    influence: Vec<f64>,
+    groups: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DenseSubsetPlan {
+    radices: [usize; 10],
+    group_slots: usize,
 }
 
 #[derive(Debug)]
@@ -420,7 +438,8 @@ fn fit_clustered_view_with_reservation<
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     validate_config(prepared, config)?;
-    let fit = fit_prepared_ols_coefficients_view_map(prepared.clustered_ols(), config.fit)?;
+    let fit =
+        fit_prepared_ols_coefficients_view_map_for_inference(prepared.clustered_ols(), config.fit)?;
     compose_clustered_view(
         prepared,
         fit,
@@ -559,15 +578,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     if perturbations.correction {
         raw.correction += 0.25;
     }
-    let independent_error = certify_with_group_influences(
-        &fit,
-        &scores,
-        weight_view,
-        &dimensions,
-        &raw.uncorrected,
-        &raw.subsets,
-        reservation,
-    )?;
+    let independent_error = certify_with_group_influences(&raw)?;
     let corrected_covariance_error = certify_corrected_covariance(&raw)?;
     let (values, psd) = apply_psd_policy(
         prepared,
@@ -858,10 +869,27 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared clustered inclusion-exclusion corrections",
     )?;
+    let mut combined_influence = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered independent influence covariance",
+    )?;
+    let mut combined_influence_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered independent influence corrections",
+    )?;
     let mut subsets = reserved_empty(
         reservation,
         subset_count,
         "unable to reserve prepared clustered subset certificates",
+    )?;
+    let mut independent_subsets = reserved_empty(
+        reservation,
+        subset_count,
+        "unable to reserve prepared clustered independent subset certificates",
     )?;
     for cardinality in 1..=dimensions.len() {
         for mask in 1_usize..=subset_count {
@@ -869,25 +897,35 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
                 continue;
             }
             let sign = if cardinality % 2 == 1 { 1_i8 } else { -1_i8 };
-            let (meat, groups) =
-                subset_score_meat(fit, scores, weights, dimensions, mask, reservation)?;
+            let meats = subset_score_meats(fit, scores, weights, dimensions, mask, reservation)?;
             for position in 0..square {
                 compensated_add(
-                    f64::from(sign) * meat[position],
+                    f64::from(sign) * meats.raw[position],
                     &mut combined_meat[position],
                     &mut combined_corrections[position],
                 )?;
+                compensated_add(
+                    f64::from(sign) * meats.influence[position],
+                    &mut combined_influence[position],
+                    &mut combined_influence_corrections[position],
+                )?;
             }
+            let report = PreparedOlsClusterSubsetCertificate {
+                mask: u16::try_from(mask)
+                    .map_err(|_| allocation("prepared clustered subset mask exceeds u16"))?,
+                dimensions: cardinality,
+                sign,
+                groups: meats.groups,
+            };
             push_reserved(
                 &mut subsets,
-                PreparedOlsClusterSubsetCertificate {
-                    mask: u16::try_from(mask)
-                        .map_err(|_| allocation("prepared clustered subset mask exceeds u16"))?,
-                    dimensions: cardinality,
-                    sign,
-                    groups,
-                },
+                report,
                 "prepared clustered subset-certificate capacity exhausted",
+            )?;
+            push_reserved(
+                &mut independent_subsets,
+                report,
+                "prepared clustered independent subset-certificate capacity exhausted",
             )?;
         }
     }
@@ -899,6 +937,18 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
             ));
         }
     }
+    for (value, correction) in combined_influence
+        .iter_mut()
+        .zip(combined_influence_corrections)
+    {
+        *value += correction;
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered independent influence covariance is not finite",
+            ));
+        }
+    }
+    symmetrize(&mut combined_influence, p)?;
     let uncorrected = sandwich(fit.bread().values(), &combined_meat, p, reservation)?;
     let correction = cluster_correction(weight_report, dof)?;
     let mut corrected = reserved_filled(
@@ -917,36 +967,277 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
     }
     symmetrize(&mut corrected, p)?;
     Ok(RawClusterCovariance {
+        dimension: p,
         uncorrected,
+        independent_uncorrected: combined_influence,
         corrected,
         correction,
         subsets,
+        independent_subsets,
     })
 }
 
-fn subset_score_meat<R: PreparedInferenceReservation>(
+fn subset_score_meats<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
     scores: &CertifiedPreparedOlsScoreDesign,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     mask: usize,
     reservation: &mut R,
-) -> Result<(Vec<f64>, usize)> {
-    aggregate_subset(fit, scores, weights, dimensions, mask, false, reservation)
+) -> Result<SubsetMeats> {
+    if let Some(plan) =
+        dense_subset_plan(dimensions, mask, scores.nrows(), fit.bread().dimension())?
+    {
+        aggregate_subset_dense(fit, scores, weights, dimensions, mask, plan, reservation)
+    } else {
+        aggregate_subset_sorted(fit, scores, weights, dimensions, mask, reservation)
+    }
 }
 
-/// Aggregate either raw group scores or bread-transformed group influences.
-/// Only one row ordering and one P-vector are live for the current subset;
-/// no G-by-P table is materialized.
-fn aggregate_subset<R: PreparedInferenceReservation>(
+fn dense_subset_plan(
+    dimensions: &[&[u32]],
+    mask: usize,
+    nobs: usize,
+    score_dimension: usize,
+) -> Result<Option<DenseSubsetPlan>> {
+    if dimensions.is_empty()
+        || dimensions.len() > 10
+        || mask == 0
+        || mask >= (1_usize << dimensions.len())
+    {
+        return Err(invalid_argument(
+            "prepared clustered dense subset plan is malformed",
+        ));
+    }
+    let mut radices = [0_usize; 10];
+    let mut group_slots = 1_usize;
+    for (dimension, codes) in dimensions.iter().enumerate() {
+        if codes.len() != nobs {
+            return Err(invalid_argument(
+                "prepared clustered dense subset codes are not sample-aligned",
+            ));
+        }
+        if mask & (1_usize << dimension) == 0 {
+            continue;
+        }
+        let radix = codes
+            .iter()
+            .copied()
+            .max()
+            .and_then(|value| usize::try_from(value).ok())
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| invalid_data("prepared clustered dense subset has no groups"))?;
+        radices[dimension] = radix;
+        group_slots = group_slots
+            .checked_mul(radix)
+            .ok_or_else(|| allocation("prepared clustered dense group product overflows"))?;
+    }
+    let score_slots = group_slots
+        .checked_mul(score_dimension)
+        .ok_or_else(|| allocation("prepared clustered dense score table overflows"))?;
+    let score_bytes = score_slots
+        .checked_mul(std::mem::size_of::<f64>())
+        .and_then(|value| value.checked_mul(2))
+        .ok_or_else(|| allocation("prepared clustered dense score bytes overflow"))?;
+    let dense_bytes = score_bytes
+        .checked_add(group_slots)
+        .ok_or_else(|| allocation("prepared clustered dense scratch bytes overflow"))?;
+    let ordering_bytes = nobs
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("prepared clustered ordering bytes overflow"))?;
+    if dense_bytes > ordering_bytes.max(1 << 20) {
+        return Ok(None);
+    }
+    Ok(Some(DenseSubsetPlan {
+        radices,
+        group_slots,
+    }))
+}
+
+fn dense_subset_group(
+    dimensions: &[&[u32]],
+    mask: usize,
+    plan: DenseSubsetPlan,
+    row: usize,
+) -> Result<usize> {
+    let mut group = 0_usize;
+    for (dimension, codes) in dimensions.iter().enumerate() {
+        if mask & (1_usize << dimension) == 0 {
+            continue;
+        }
+        let code = usize::try_from(codes[row])
+            .map_err(|_| invalid_data("prepared clustered dense code exceeds usize"))?;
+        let radix = plan.radices[dimension];
+        if radix == 0 || code >= radix {
+            return Err(invalid_data(
+                "prepared clustered dense code exceeds its certified radix",
+            ));
+        }
+        group = group
+            .checked_mul(radix)
+            .and_then(|value| value.checked_add(code))
+            .ok_or_else(|| allocation("prepared clustered dense group index overflows"))?;
+    }
+    if group >= plan.group_slots {
+        return Err(invalid_data(
+            "prepared clustered dense group index exceeds its table",
+        ));
+    }
+    Ok(group)
+}
+
+fn aggregate_subset_dense<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
     scores: &CertifiedPreparedOlsScoreDesign,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     mask: usize,
-    transform_by_bread: bool,
+    plan: DenseSubsetPlan,
     reservation: &mut R,
-) -> Result<(Vec<f64>, usize)> {
+) -> Result<SubsetMeats> {
+    let nobs = scores.nrows();
+    let p = fit.bread().dimension();
+    if fit.residuals().len() != nobs || dimensions.iter().any(|codes| codes.len() != nobs) {
+        return Err(invalid_argument(
+            "prepared clustered dense scores and dimensions are not aligned",
+        ));
+    }
+    let square = checked_square(
+        p,
+        "prepared clustered dense subset meat dimensions overflow usize",
+    )?;
+    let score_slots = plan
+        .group_slots
+        .checked_mul(p)
+        .ok_or_else(|| allocation("prepared clustered dense score slots overflow"))?;
+    let mut group_scores = reserved_filled(
+        reservation,
+        score_slots,
+        0.0_f64,
+        "unable to reserve prepared clustered dense group scores",
+    )?;
+    let mut group_score_corrections = reserved_filled(
+        reservation,
+        score_slots,
+        0.0_f64,
+        "unable to reserve prepared clustered dense group score corrections",
+    )?;
+    let mut seen = reserved_filled(
+        reservation,
+        plan.group_slots,
+        0_u8,
+        "unable to reserve prepared clustered dense group presence",
+    )?;
+    let mut reported_score = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered dense reported score row",
+    )?;
+    for row in 0..nobs {
+        let group = dense_subset_group(dimensions, mask, plan, row)?;
+        seen[group] = 1;
+        let scale = weights.value(row)? * fit.residuals()[row];
+        if !scale.is_finite() {
+            return Err(invalid_data(
+                "prepared clustered dense observation score scale is not finite",
+            ));
+        }
+        scores.fill_reported_row(row, &mut reported_score)?;
+        let offset = group
+            .checked_mul(p)
+            .ok_or_else(|| allocation("prepared clustered dense score offset overflows"))?;
+        for (coordinate, score_value) in reported_score.iter().copied().enumerate() {
+            let position = offset + coordinate;
+            compensated_add(
+                scale * score_value,
+                &mut group_scores[position],
+                &mut group_score_corrections[position],
+            )?;
+        }
+    }
+    let mut raw_transformed = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered dense raw group score",
+    )?;
+    let mut influence_transformed = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered dense group influence",
+    )?;
+    let mut raw_meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered dense subset meat",
+    )?;
+    let mut raw_meat_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered dense subset meat corrections",
+    )?;
+    let mut influence_meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered dense subset influence covariance",
+    )?;
+    let mut influence_meat_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered dense subset influence corrections",
+    )?;
+    let mut groups = 0_usize;
+    for (group, present) in seen.into_iter().enumerate() {
+        if present == 0 {
+            continue;
+        }
+        let offset = group
+            .checked_mul(p)
+            .ok_or_else(|| allocation("prepared clustered dense group offset overflows"))?;
+        let end = offset
+            .checked_add(p)
+            .ok_or_else(|| allocation("prepared clustered dense group end overflows"))?;
+        finish_group_pair(
+            fit,
+            &group_scores[offset..end],
+            &group_score_corrections[offset..end],
+            &mut raw_transformed,
+            &mut influence_transformed,
+            &mut raw_meat,
+            &mut raw_meat_corrections,
+            &mut influence_meat,
+            &mut influence_meat_corrections,
+        )?;
+        groups = groups
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared clustered dense group count overflows"))?;
+    }
+    finalize_subset_meat(&mut raw_meat, raw_meat_corrections, p)?;
+    finalize_subset_meat(&mut influence_meat, influence_meat_corrections, p)?;
+    Ok(SubsetMeats {
+        raw: raw_meat,
+        influence: influence_meat,
+        groups,
+    })
+}
+
+/// Generic bounded-memory subset aggregation. One sort and score scan produces
+/// both the raw-score meat and the algebraically independent bread-transformed
+/// influence covariance.
+fn aggregate_subset_sorted<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    mask: usize,
+    reservation: &mut R,
+) -> Result<SubsetMeats> {
     let nobs = scores.nrows();
     let p = fit.bread().dimension();
     if fit.residuals().len() != nobs || dimensions.iter().any(|codes| codes.len() != nobs) {
@@ -985,7 +1276,13 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared clustered group score corrections",
     )?;
-    let mut transformed = reserved_filled(
+    let mut raw_transformed = reserved_filled(
+        reservation,
+        p,
+        0.0_f64,
+        "unable to reserve prepared clustered raw group score",
+    )?;
+    let mut influence_transformed = reserved_filled(
         reservation,
         p,
         0.0_f64,
@@ -997,17 +1294,29 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared clustered reported score row",
     )?;
-    let mut meat = reserved_filled(
+    let mut raw_meat = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered subset meat",
     )?;
-    let mut meat_corrections = reserved_filled(
+    let mut raw_meat_corrections = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered subset meat corrections",
+    )?;
+    let mut influence_meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered subset influence covariance",
+    )?;
+    let mut influence_meat_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered subset influence corrections",
     )?;
     let mut groups = 0_usize;
     let mut previous = None;
@@ -1015,14 +1324,16 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
         if previous.is_some_and(|prior| {
             compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
         }) {
-            finish_group(
+            finish_group_pair(
                 fit,
                 &group_score,
                 &group_score_correction,
-                transform_by_bread,
-                &mut transformed,
-                &mut meat,
-                &mut meat_corrections,
+                &mut raw_transformed,
+                &mut influence_transformed,
+                &mut raw_meat,
+                &mut raw_meat_corrections,
+                &mut influence_meat,
+                &mut influence_meat_corrections,
             )?;
             group_score.fill(0.0);
             group_score_correction.fill(0.0);
@@ -1047,27 +1358,85 @@ fn aggregate_subset<R: PreparedInferenceReservation>(
         previous = Some(row);
     }
     if previous.is_some() {
-        finish_group(
+        finish_group_pair(
             fit,
             &group_score,
             &group_score_correction,
-            transform_by_bread,
-            &mut transformed,
-            &mut meat,
-            &mut meat_corrections,
+            &mut raw_transformed,
+            &mut influence_transformed,
+            &mut raw_meat,
+            &mut raw_meat_corrections,
+            &mut influence_meat,
+            &mut influence_meat_corrections,
         )?;
         groups = groups
             .checked_add(1)
             .ok_or_else(|| allocation("prepared clustered subset group count overflows"))?;
     }
-    for left in 0..p {
-        for right in left..p {
-            let position = left * p + right;
-            meat[position] += meat_corrections[position];
-            meat[right * p + left] = meat[position];
+    finalize_subset_meat(&mut raw_meat, raw_meat_corrections, p)?;
+    finalize_subset_meat(&mut influence_meat, influence_meat_corrections, p)?;
+    Ok(SubsetMeats {
+        raw: raw_meat,
+        influence: influence_meat,
+        groups,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_group_pair(
+    fit: &CertifiedPreparedOlsFit,
+    score: &[f64],
+    score_corrections: &[f64],
+    raw_transformed: &mut [f64],
+    influence_transformed: &mut [f64],
+    raw_meat: &mut [f64],
+    raw_meat_corrections: &mut [f64],
+    influence_meat: &mut [f64],
+    influence_meat_corrections: &mut [f64],
+) -> Result<()> {
+    finish_group(
+        fit,
+        score,
+        score_corrections,
+        false,
+        raw_transformed,
+        raw_meat,
+        raw_meat_corrections,
+    )?;
+    finish_group(
+        fit,
+        score,
+        score_corrections,
+        true,
+        influence_transformed,
+        influence_meat,
+        influence_meat_corrections,
+    )
+}
+
+fn finalize_subset_meat(meat: &mut [f64], corrections: Vec<f64>, dimension: usize) -> Result<()> {
+    let square = checked_square(
+        dimension,
+        "prepared clustered finalized subset dimensions overflow usize",
+    )?;
+    if meat.len() != square || corrections.len() != square {
+        return Err(invalid_argument(
+            "prepared clustered finalized subset dimensions are inconsistent",
+        ));
+    }
+    for left in 0..dimension {
+        for right in left..dimension {
+            let position = left * dimension + right;
+            meat[position] += corrections[position];
+            if !meat[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared clustered finalized subset meat is not finite",
+                ));
+            }
+            meat[right * dimension + left] = meat[position];
         }
     }
-    Ok((meat, groups))
+    Ok(())
 }
 
 fn finish_group(
@@ -1190,73 +1559,19 @@ fn sandwich<R: PreparedInferenceReservation>(
     Ok(output)
 }
 
-fn certify_with_group_influences<R: PreparedInferenceReservation>(
-    fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
-    weights: ReferenceWeightView<'_>,
-    dimensions: &[&[u32]],
-    production: &[f64],
-    reports: &[PreparedOlsClusterSubsetCertificate],
-    reservation: &mut R,
-) -> Result<f64> {
-    let p = fit.bread().dimension();
+fn certify_with_group_influences(raw: &RawClusterCovariance) -> Result<f64> {
+    let p = raw.dimension;
     let square = checked_square(
         p,
         "prepared clustered independent certificate dimensions overflow usize",
     )?;
-    let subset_count = (1_usize << dimensions.len()) - 1;
-    if production.len() != square || reports.len() != subset_count {
+    if raw.uncorrected.len() != square
+        || raw.independent_uncorrected.len() != square
+        || raw.subsets.len() != raw.independent_subsets.len()
+    {
         return Err(invalid_argument(
             "prepared clustered independent certificate dimensions are inconsistent",
         ));
-    }
-    let mut independent = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared clustered independent covariance",
-    )?;
-    let mut corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared clustered independent corrections",
-    )?;
-    let mut report_position = 0_usize;
-    let mut report_error = 0.0_f64;
-    for cardinality in 1..=dimensions.len() {
-        for mask in 1..=subset_count {
-            if mask.count_ones() as usize != cardinality {
-                continue;
-            }
-            let sign = if cardinality % 2 == 1 { 1.0 } else { -1.0 };
-            let (component, groups) =
-                aggregate_subset(fit, scores, weights, dimensions, mask, true, reservation)?;
-            let expected_sign = if cardinality % 2 == 1 { 1_i8 } else { -1_i8 };
-            let report = reports.get(report_position).ok_or_else(|| {
-                invalid_argument("prepared clustered subset report position is out of range")
-            })?;
-            if report.mask
-                != u16::try_from(mask).map_err(|_| {
-                    allocation("prepared clustered subset certificate mask overflows u16")
-                })?
-                || report.dimensions != cardinality
-                || report.sign != expected_sign
-                || report.groups != groups
-            {
-                report_error = 1.0;
-            }
-            report_position = report_position
-                .checked_add(1)
-                .ok_or_else(|| allocation("prepared clustered subset report index overflows"))?;
-            for position in 0..square {
-                compensated_add(
-                    sign * component[position],
-                    &mut independent[position],
-                    &mut corrections[position],
-                )?;
-            }
-        }
     }
     let mut error = 0.0_f64;
     for row in 0..p {
@@ -1264,13 +1579,16 @@ fn certify_with_group_influences<R: PreparedInferenceReservation>(
         let mut row_scale = 1.0_f64;
         for column in 0..p {
             let position = row * p + column;
-            let expected = independent[position] + corrections[position];
-            row_error += (production[position] - expected).abs();
-            row_scale += production[position].abs().max(expected.abs());
+            let production = raw.uncorrected[position];
+            let independent = raw.independent_uncorrected[position];
+            row_error += (production - independent).abs();
+            row_scale += production.abs().max(independent.abs());
         }
         error = error.max(row_error / row_scale);
     }
-    error = error.max(report_error);
+    if raw.subsets != raw.independent_subsets {
+        error = 1.0;
+    }
     if error.is_finite() {
         Ok(error)
     } else {
@@ -2572,6 +2890,30 @@ mod tests {
                 .try_reserve_exact(requested)
                 .map_err(|_| allocation("test prepared clustered reservation failed"))
         }
+    }
+
+    #[test]
+    fn dense_subset_plan_is_mixed_radix_and_strictly_scratch_bounded() {
+        let first = [0_u32, 1, 0, 1];
+        let second = [0_u32, 0, 1, 1];
+        let dimensions = [&first[..], &second[..]];
+        let plan = dense_subset_plan(&dimensions, 0b11, 4, 2)
+            .expect("valid dense plan")
+            .expect("small dense plan is admitted");
+        assert_eq!(plan.radices[..2], [2, 2]);
+        assert_eq!(plan.group_slots, 4);
+        assert_eq!(
+            (0..4)
+                .map(|row| dense_subset_group(&dimensions, 0b11, plan, row))
+                .collect::<Result<Vec<_>>>()
+                .expect("mixed-radix groups"),
+            [0, 2, 1, 3],
+        );
+
+        let sparse_high_code = [0_u32, 1_000_000];
+        assert!(dense_subset_plan(&[&sparse_high_code], 1, 2, 32)
+            .expect("valid sparse plan")
+            .is_none());
     }
 
     #[test]

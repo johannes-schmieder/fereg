@@ -234,7 +234,24 @@ pub struct CertifiedPreparedOlsFit {
     /// so the prepared inference layer deliberately handles that case itself.
     initial_absorbed_outcome_sum_of_squares: f64,
     residuals: DenseMatrix,
+    fast_score_cache: Option<PreparedOlsFastScoreCache>,
     execution: PreparedOlsExecutionReport,
+}
+
+#[derive(Debug, PartialEq)]
+pub(super) struct PreparedOlsFastScoreCache {
+    generated_columns: Vec<usize>,
+    within: DenseMatrix,
+    means: Vec<f64>,
+}
+
+impl PreparedOlsFastScoreCache {
+    fn mean(&self, generated: usize) -> Option<f64> {
+        self.generated_columns
+            .iter()
+            .position(|candidate| *candidate == generated)
+            .and_then(|position| self.means.get(position).copied())
+    }
 }
 
 impl CertifiedPreparedOlsFit {
@@ -297,6 +314,21 @@ impl CertifiedPreparedOlsFit {
     #[must_use]
     pub const fn execution(&self) -> PreparedOlsExecutionReport {
         self.execution
+    }
+
+    pub(super) fn take_fast_score_cache(
+        &mut self,
+        generated_columns: &[usize],
+    ) -> Option<(DenseMatrix, Vec<f64>)> {
+        let cache = self.fast_score_cache.take()?;
+        if cache.generated_columns == generated_columns
+            && cache.within.ncols() == generated_columns.len()
+            && cache.means.len() == generated_columns.len()
+        {
+            Some((cache.within, cache.means))
+        } else {
+            None
+        }
     }
 
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
@@ -408,6 +440,7 @@ struct QrFit {
     certificate: PreparedOlsRankCertificate,
     finite_score: FiniteScoreDraft,
     bread: Option<FiniteBreadDraft>,
+    within_residuals: Option<Vec<f64>>,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -462,11 +495,48 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
     })?
 }
 
+pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
+    P: PreparedOlsFitView + Sync + ?Sized,
+>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+) -> Result<CertifiedPreparedOlsFit> {
+    let team = ThreadTeam::new(config.execution.threads);
+    team.install(|| {
+        let mut reservation = SystemFitReservation;
+        match config.execution.mode {
+            PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode(
+                prepared,
+                config,
+                &mut reservation,
+                FitPerturbations::default(),
+                true,
+            ),
+            PreparedOlsExecutionMode::Low => fit_with_controls_low_internal(
+                prepared,
+                config,
+                &mut reservation,
+                FitPerturbations::default(),
+            ),
+        }
+    })?
+}
+
 fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturbations: FitPerturbations,
+) -> Result<CertifiedPreparedOlsFit> {
+    fit_with_controls_internal_mode(prepared, config, reservation, perturbations, false)
+}
+
+fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturbations: FitPerturbations,
+    retain_fast_score_cache: bool,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let weights = normalized_weights(prepared)?;
@@ -479,13 +549,36 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         0.0_f64,
         "unable to reserve prepared OLS reference norms",
     )?;
-    reference_norms
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(column, norm)| -> Result<()> {
-            *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-            Ok(())
-        })?;
+    let mut reference_mean_scales = if retain_fast_score_cache {
+        reserved_filled(
+            reservation,
+            generated_columns,
+            0.0_f64,
+            "unable to reserve prepared OLS fast score mean scales",
+        )?
+    } else {
+        Vec::new()
+    };
+    if retain_fast_score_cache {
+        reference_norms
+            .par_iter_mut()
+            .zip(reference_mean_scales.par_iter_mut())
+            .enumerate()
+            .try_for_each(|(column, (norm, mean_scale))| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
+                for row in 0..raw.nrows() {
+                    *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
+                }
+                Ok(())
+            })?;
+    } else {
+        reference_norms.par_iter_mut().enumerate().try_for_each(
+            |(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
+                Ok(())
+            },
+        )?;
+    }
 
     let absorbed = prepared.fit_absorb_matrix(weights.borrowed(), raw, config.map)?;
     if !absorbed.report().certified() {
@@ -494,6 +587,17 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         ));
     }
     let (mut within, absorption_report) = absorbed.into_parts();
+    let fast_score_cache = if retain_fast_score_cache {
+        build_fast_score_cache(
+            prepared,
+            &within,
+            &reference_mean_scales,
+            weights,
+            reservation,
+        )?
+    } else {
+        None
+    };
     let within_outcome_norm = weighted_matrix_column_norm(&within, 0, weights)?;
     let normalized_initial_within_sum_of_squares =
         initial_within_sum_of_squares(prepared, &within, weights, within_outcome_norm)?;
@@ -556,6 +660,7 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         config.bread_tolerance,
         reservation,
         perturbations,
+        fast_score_cache.as_ref(),
     )?;
     let initial_absorbed_outcome_sum_of_squares =
         normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
@@ -566,8 +671,9 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
             "prepared OLS initial absorbed outcome sum of squares is invalid",
         ));
     }
+    let final_residuals = qr.within_residuals.take().unwrap_or(raw_residuals);
     let residual_matrix =
-        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, raw_residuals)?;
+        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
     let residual_absorbed =
         prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.map)?;
     if !residual_absorbed.report().certified() {
@@ -613,6 +719,7 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         residual_absorption_report,
         initial_absorbed_outcome_sum_of_squares,
         residuals,
+        fast_score_cache,
         execution: PreparedOlsExecutionReport {
             mode: PreparedOlsExecutionMode::Fast,
             poolsize: config.execution.poolsize,
@@ -626,6 +733,114 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
             deterministic: config.execution.threads.deterministic,
         },
     })
+}
+
+const MAX_FAST_SCORE_CACHE_BYTES: usize = 512 * 1024 * 1024;
+
+fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    within: &DenseMatrix,
+    reference_mean_scales: &[f64],
+    weights: NormalizedWeights<'_>,
+    reservation: &mut R,
+) -> Result<Option<PreparedOlsFastScoreCache>> {
+    let nrows = prepared.fit_sample().n_active();
+    if within.nrows() != nrows
+        || within.ncols() != prepared.fit_model().columns.len() + 1
+        || reference_mean_scales.len() != prepared.fit_model().columns.len()
+    {
+        return Err(invalid_argument(
+            "prepared OLS fast score cache dimensions are inconsistent",
+        ));
+    }
+    let mut generated_columns = reserved_empty(
+        reservation,
+        prepared.fit_model().columns.len(),
+        "unable to reserve prepared OLS fast score cache identities",
+    )?;
+    for (generated, column) in prepared.fit_model().columns.iter().enumerate() {
+        if prepared.fit_has_absorbed_intercept()
+            && matches!(column.kind, PreparedOlsColumnKind::Intercept)
+        {
+            continue;
+        }
+        push_reserved(
+            &mut generated_columns,
+            generated,
+            "prepared OLS fast score cache identity capacity exhausted",
+        )?;
+    }
+    let elements = nrows
+        .checked_mul(generated_columns.len())
+        .ok_or_else(|| allocation("prepared OLS fast score cache dimensions overflow"))?;
+    let bytes = elements
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| allocation("prepared OLS fast score cache bytes overflow"))?;
+    if bytes > MAX_FAST_SCORE_CACHE_BYTES {
+        return Ok(None);
+    }
+    let mut values = reserved_filled(
+        reservation,
+        elements,
+        0.0_f64,
+        "unable to reserve prepared OLS fast score cache values",
+    )?;
+    let mut means = reserved_filled(
+        reservation,
+        generated_columns.len(),
+        0.0_f64,
+        "unable to reserve prepared OLS fast score cache means",
+    )?;
+    let mut mean_corrections = reserved_filled(
+        reservation,
+        generated_columns.len(),
+        0.0_f64,
+        "unable to reserve prepared OLS fast score cache mean corrections",
+    )?;
+    let mut denominator = 0.0_f64;
+    let mut denominator_correction = 0.0_f64;
+    for row in 0..nrows {
+        let weight = weights.value(row)?;
+        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+        for (cached, generated) in generated_columns.iter().copied().enumerate() {
+            let value = within[(row, generated + 1)];
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS fast score cache contains a nonfinite value",
+                ));
+            }
+            values[row * generated_columns.len() + cached] = value;
+            let scale = reference_mean_scales[generated];
+            if scale > 0.0 {
+                compensated_add(
+                    weight * (prepared.fit_column_value(generated, row)? / scale),
+                    &mut means[cached],
+                    &mut mean_corrections[cached],
+                )?;
+            }
+        }
+    }
+    let denominator = denominator + denominator_correction;
+    for (cached, generated) in generated_columns.iter().copied().enumerate() {
+        let scale = reference_mean_scales[generated];
+        let mean = if scale == 0.0 {
+            0.0
+        } else {
+            scale * ((means[cached] + mean_corrections[cached]) / denominator)
+        };
+        if !mean.is_finite() || !denominator.is_finite() || denominator <= 0.0 {
+            return Err(invalid_data(
+                "prepared OLS fast score cache mean is not finite",
+            ));
+        }
+        means[cached] = mean;
+    }
+    let within = DenseMatrix::from_row_major(nrows, generated_columns.len(), values)?;
+    Ok(Some(PreparedOlsFastScoreCache {
+        generated_columns,
+        within,
+        means,
+    }))
 }
 
 fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -771,6 +986,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         config.bread_tolerance,
         reservation,
         perturbations,
+        None,
     )?;
     let initial_absorbed_outcome_sum_of_squares =
         normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
@@ -827,6 +1043,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         residual_absorption_report,
         initial_absorbed_outcome_sum_of_squares,
         residuals,
+        fast_score_cache: None,
         execution: PreparedOlsExecutionReport {
             mode: PreparedOlsExecutionMode::Low,
             poolsize: config.execution.poolsize,
@@ -1447,6 +1664,8 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reference_norms,
         score_norms,
     )?;
+    let within_residuals =
+        reconstruct_within_residuals(within, &candidate_columns, rank, weights, reservation)?;
     let bread = build_finite_bread_draft(
         prepared,
         FiniteBreadInputs {
@@ -1476,6 +1695,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         },
         finite_score,
         bread: Some(bread),
+        within_residuals: Some(within_residuals),
     })
 }
 
@@ -1936,7 +2156,79 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         },
         finite_score,
         bread: Some(bread),
+        within_residuals: None,
     })
+}
+
+fn reconstruct_within_residuals<R: FitReservation>(
+    qr: &DenseMatrix,
+    pivot_columns: &[usize],
+    rank: usize,
+    weights: NormalizedWeights<'_>,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    if rank > pivot_columns.len() || rank > qr.nrows() {
+        return Err(invalid_argument(
+            "prepared OLS residual reconstruction dimensions are inconsistent",
+        ));
+    }
+    let mut residuals = reserved_filled(
+        reservation,
+        qr.nrows(),
+        0.0_f64,
+        "unable to reserve prepared OLS reconstructed within residual",
+    )?;
+    for (row, residual) in residuals.iter_mut().enumerate().skip(rank) {
+        *residual = qr[(row, 0)];
+    }
+    for position in (0..rank).rev() {
+        let column = pivot_columns[position]
+            .checked_add(1)
+            .ok_or_else(|| allocation("prepared OLS residual reflector column overflows"))?;
+        if column >= qr.ncols() {
+            return Err(invalid_argument(
+                "prepared OLS residual reflector column is out of range",
+            ));
+        }
+        let mut norm_square = 1.0_f64;
+        let mut norm_correction = 0.0_f64;
+        let mut dot = residuals[position];
+        let mut dot_correction = 0.0_f64;
+        for row in (position + 1)..qr.nrows() {
+            let reflector = qr[(row, column)];
+            compensated_add(
+                reflector * reflector,
+                &mut norm_square,
+                &mut norm_correction,
+            )?;
+            compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
+        }
+        let tau = 2.0 / (norm_square + norm_correction);
+        let projection = tau * (dot + dot_correction);
+        if !tau.is_finite() || !projection.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS residual reflector reconstruction is not finite",
+            ));
+        }
+        residuals[position] -= projection;
+        for row in (position + 1)..qr.nrows() {
+            residuals[row] = (-projection).mul_add(qr[(row, column)], residuals[row]);
+        }
+    }
+    residuals
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(row, residual)| -> Result<()> {
+            *residual /= weights.root(row)?;
+            if residual.is_finite() {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared OLS reconstructed within residual is not finite",
+                ))
+            }
+        })?;
+    Ok(residuals)
 }
 
 fn fill_scratch_trailing_norms(
@@ -2496,6 +2788,7 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
     Ok(value as f64)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     qr: &mut QrFit,
@@ -2504,6 +2797,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     tolerance: f64,
     reservation: &mut R,
     perturbations: FitPerturbations,
+    fast_score_cache: Option<&PreparedOlsFastScoreCache>,
 ) -> Result<PreparedOlsBread> {
     if raw_residuals.len() != prepared.fit_sample().n_active() {
         return Err(invalid_argument(
@@ -2618,9 +2912,14 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             "unable to reserve prepared OLS reported-intercept means",
         )?;
         for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
-            means[position] = weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
-                prepared.fit_column_value(generated, row)
-            })?;
+            means[position] =
+                if let Some(mean) = fast_score_cache.and_then(|cache| cache.mean(generated)) {
+                    mean
+                } else {
+                    weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+                        prepared.fit_column_value(generated, row)
+                    })?
+                };
         }
 
         let raw_residual_mean = weighted_mean_slice(raw_residuals, weights)?;
@@ -4423,6 +4722,36 @@ mod tests {
             )
             .expect_err("injected allocation failure");
             assert_eq!(error.code, ErrorCode::Allocation, "failure {fail_at}");
+        }
+        let mut cached_successful = InjectedReservation::default();
+        let cached = fit_with_controls_internal_mode(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut cached_successful,
+            FitPerturbations::default(),
+            true,
+        )
+        .expect("fast inference-cache control fit");
+        assert!(cached.fast_score_cache.is_some());
+        assert!(cached_successful.calls > successful.calls);
+        for fail_at in 1..=cached_successful.calls {
+            let mut injected = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            let error = fit_with_controls_internal_mode(
+                &prepared,
+                PreparedOlsFitConfig::default(),
+                &mut injected,
+                FitPerturbations::default(),
+                true,
+            )
+            .expect_err("injected fast inference-cache allocation failure");
+            assert_eq!(
+                error.code,
+                ErrorCode::Allocation,
+                "cached failure {fail_at}"
+            );
         }
         let mut undersized = InjectedReservation {
             undersize: true,

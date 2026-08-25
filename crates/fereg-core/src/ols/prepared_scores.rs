@@ -240,11 +240,19 @@ pub(super) fn build_prepared_ols_score_design<
         ));
     }
 
-    let (storage, means, scratch_peak_bytes) = match fit.execution().mode {
-        PreparedOlsExecutionMode::Fast => {
+    let cached = if fit.execution().mode == PreparedOlsExecutionMode::Fast {
+        fit.take_fast_score_cache(&generated_columns)
+    } else {
+        None
+    };
+    let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
+        (PreparedOlsExecutionMode::Fast, Some((within, means))) => {
+            (PreparedOlsScoreStorage::Dense(within), means, 0)
+        }
+        (PreparedOlsExecutionMode::Fast, None) => {
             build_dense_score_storage(prepared, &generated_columns, weights, map, reservation)?
         }
-        PreparedOlsExecutionMode::Low => build_scratch_score_storage(
+        (PreparedOlsExecutionMode::Low, _) => build_scratch_score_storage(
             prepared,
             &generated_columns,
             weights,
