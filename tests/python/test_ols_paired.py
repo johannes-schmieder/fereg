@@ -5,6 +5,8 @@ from pathlib import Path
 import unittest
 
 from scripts.ols_paired import (
+    CANDIDATE_LOG_SENTINEL,
+    _write_candidate_wrapper,
     candidate_memory,
     coefficient_status,
     imposed_limit_between,
@@ -46,6 +48,27 @@ def matrix(name: str, values: list[list[float]], names: list[str]) -> tuple[list
 
 
 class PairedEvidenceTests(unittest.TestCase):
+    def test_candidate_wrapper_preserves_the_child_return_code_numerically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wrapper = root / "run.do"
+            _write_candidate_wrapper(
+                wrapper,
+                root / "case.do",
+                root / "capture.machine",
+                root / "candidate",
+                "0" * 64,
+                root / "sysdirs",
+            )
+            source = wrapper.read_text(encoding="utf-8")
+        self.assertNotIn("if _rc exit _rc", source)
+        self.assertIn("local __frg_case_rc = _rc", source)
+        self.assertIn(
+            "if `__frg_case_rc' != 0 exit `__frg_case_rc'",
+            source,
+        )
+        self.assertIn(CANDIDATE_LOG_SENTINEL, source)
+
     def test_comparator_capture_uses_the_standard_fresh_process_runner(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertNotIn("subprocess_run", source)
