@@ -2,12 +2,12 @@
 
 Exact commits are machine-readable in `references.lock.toml`.
 
-| Reference | Intended later use | Current package use |
+| Reference | Role | Current 0.9.0 use |
 |---|---|---|
 | PyFixest | Model matrix, OLS/PPML orchestration, result semantics, tests | Behavioral map only; no copied code |
 | within | Modified LSMR, FE operator, diagonal/Schwarz preconditioners | Exact git-revision dependency used by `fe/lsmr.rs`; fereg recomputes its own final FE certificate |
-| reghdfe | Stata syntax, FE/singleton/DoF/VCE compatibility oracle | Baseline scripts and parser cases only |
-| ppmlhdfe | PPML IRLS, separation, prediction compatibility oracle | Baseline scripts and test manifests only |
+| reghdfe | Stata syntax, FE/singleton/DoF/VCE compatibility oracle | Exact pinned reference capture and differential qualification; never called at runtime |
+| ppmlhdfe | Future PPML compatibility oracle | Frozen source reference only; PPML is outside 0.9.0 |
 | Stata SPI 3.0 | Native ABI | Official `stplugin.c/h` compiled into plugin |
 
 Later code adaptation must identify the exact upstream file/function, preserve

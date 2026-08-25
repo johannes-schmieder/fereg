@@ -1,4 +1,4 @@
-*! fereg developer-only OLS manifest adapter 0.1.0 24aug2026
+*! fereg developer-only OLS manifest adapter 0.9.0 24aug2026
 program define _fereg_ols_hidden_numeric_v1, eclass sortpreserve
     version 18.0
     _fereg_ols `0'

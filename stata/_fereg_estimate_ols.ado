@@ -1,4 +1,4 @@
-*! fereg guarded prepared OLS eclass transaction 0.1.0 24aug2026
+*! fereg guarded prepared OLS eclass transaction 0.9.0 24aug2026
 program define _fereg_estimate_ols, eclass sortpreserve
     version 18.0
     local hidden_cmdline `"_fereg_estimate_ols `0'"'

@@ -284,8 +284,8 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         set(),
         "benchmark_contract",
     )
-    if benchmark_contract["candidate_state"] != "disabled_fail_closed":
-        raise ContractError("benchmark_contract: candidate must remain disabled until fereg is implemented")
+    if benchmark_contract["candidate_state"] != "enabled":
+        raise ContractError("benchmark_contract: the public fereg candidate must be enabled")
     if benchmark_contract["arms"] != {"comparator": "reghdfe", "candidate": "fereg"}:
         raise ContractError("benchmark_contract: comparator/candidate arms must be reghdfe and fereg")
     if benchmark_contract["primary_min_observations"] != 10_000_000:
@@ -302,6 +302,7 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
         "stata",
         "thread_count",
         "scientific",
+        "memory",
     }:
         raise ContractError("benchmark_contract: required evidence metadata is incomplete")
     if benchmark_contract["scientific_gate"] != {
@@ -316,9 +317,16 @@ def validate_manifest(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
     }:
         raise ContractError("benchmark_contract: scientific parity and certificate gates are not frozen")
     if benchmark_contract["thresholds"] != {
-        "geometric_mean_speedup_min": 1.5,
-        "primary_case_time_ratio_max": 1.0,
-        "primary_case_rss_ratio_max": 1.0,
+        "geometric_mean_time_ratio_max": 0.4,
+        "speedup_2x_fraction_min": 0.8,
+        "single_thread_speedup_min": 1.5,
+        "unexplained_time_ratio_max": 1.25,
+        "rss_no_worse_fraction_min": 0.8,
+        "unexplained_rss_ratio_max": 1.25,
+        "native_allocation_model_ratio_min": 0.75,
+        "native_allocation_model_ratio_max": 1.25,
+        "repeated_call_leak_bytes_max": 0,
+        "constrained_memory_required": True,
     }:
         raise ContractError("benchmark_contract: performance thresholds are not the OLS-v1 gates")
 
@@ -1400,6 +1408,7 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         "host",
         "stata",
         "scientific",
+        "memory",
     }
     for record in evidence:
         if not isinstance(record, Mapping):
@@ -1429,14 +1438,50 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
                 isinstance(name, str) and isinstance(value, (str, int)) and value != "" for name, value in record[metadata].items()
             ):
                 raise ContractError(f"benchmark {metadata} metadata is incomplete")
+        memory = record["memory"]
+        memory_keys = {
+            "native_allocation_observed_bytes",
+            "native_allocation_model_bytes",
+            "repeated_call_leak_bytes",
+            "constrained_memory",
+        }
+        if not isinstance(memory, Mapping) or set(memory) != memory_keys:
+            raise ContractError("benchmark memory evidence is incomplete or unknown")
+        if record["arm"] == "comparator":
+            if (
+                memory["native_allocation_observed_bytes"] is not None
+                or memory["native_allocation_model_bytes"] is not None
+                or memory["repeated_call_leak_bytes"] is not None
+                or memory["constrained_memory"] is not None
+            ):
+                raise ContractError("comparator memory evidence contains candidate-only fields")
+        else:
+            if (
+                not isinstance(memory["native_allocation_observed_bytes"], int)
+                or memory["native_allocation_observed_bytes"] <= 0
+                or not isinstance(memory["native_allocation_model_bytes"], int)
+                or memory["native_allocation_model_bytes"] <= 0
+                or not isinstance(memory["repeated_call_leak_bytes"], int)
+                or memory["repeated_call_leak_bytes"] < 0
+            ):
+                raise ContractError("candidate allocation or leak evidence is malformed")
+            constrained = memory["constrained_memory"]
+            if constrained is not None and constrained != {
+                "low_succeeds": True,
+                "fast_fails": True,
+            }:
+                raise ContractError("candidate constrained-memory evidence is malformed")
         records[key] = record
     if set(records) != expected_inventory:
         raise ContractError("benchmark gate evidence is incomplete; both arms are required for every case")
 
     speedups: list[float] = []
+    time_ratios: list[float] = []
+    rss_ratios: list[float] = []
+    single_thread_speedups: list[float] = []
+    constrained_memory_pass = False
     per_case: list[dict[str, Any]] = []
-    time_limit = contract["thresholds"]["primary_case_time_ratio_max"]
-    rss_limit = contract["thresholds"]["primary_case_rss_ratio_max"]
+    thresholds = contract["thresholds"]
     for case in cases:
         comparator = records[(case["id"], "comparator")]
         candidate = records[(case["id"], "candidate")]
@@ -1452,16 +1497,68 @@ def evaluate_benchmark_gates(manifest: Mapping[str, Any], evidence: Sequence[Map
         time_ratio = candidate_time / comparator_time
         rss_ratio = max(run["peak_rss"]["value"] for run in candidate["runs"]) / max(run["peak_rss"]["value"] for run in comparator["runs"])
         speedup = comparator_time / candidate_time
+        memory = candidate["memory"]
+        allocation_ratio = (
+            memory["native_allocation_observed_bytes"]
+            / memory["native_allocation_model_bytes"]
+        )
         speedups.append(speedup)
-        per_case.append({"case_id": case["id"], "thread_count": case["thread_count"], "speedup": speedup, "time_ratio": time_ratio, "rss_ratio": rss_ratio})
-        if case["primary"] and time_ratio > time_limit:
-            return {"status": "fail", "reason": f"candidate_slower:{case['id']}", "thresholds": contract["thresholds"], "cases": per_case}
-        if case["primary"] and rss_ratio > rss_limit:
-            return {"status": "fail", "reason": f"candidate_rss_worse:{case['id']}", "thresholds": contract["thresholds"], "cases": per_case}
-    observed_geomean = geometric_mean(speedups)
-    if observed_geomean < contract["thresholds"]["geometric_mean_speedup_min"]:
-        return {"status": "fail", "reason": "geometric_mean_speedup_below_threshold", "thresholds": contract["thresholds"], "geometric_mean_speedup": observed_geomean, "cases": per_case}
-    return {"status": "pass", "thresholds": contract["thresholds"], "geometric_mean_speedup": observed_geomean, "cases": per_case}
+        time_ratios.append(time_ratio)
+        rss_ratios.append(rss_ratio)
+        if case["thread_count"] == 1:
+            single_thread_speedups.append(speedup)
+        constrained_memory_pass = constrained_memory_pass or (
+            memory["constrained_memory"]
+            == {"low_succeeds": True, "fast_fails": True}
+        )
+        per_case.append(
+            {
+                "case_id": case["id"],
+                "thread_count": case["thread_count"],
+                "speedup": speedup,
+                "time_ratio": time_ratio,
+                "rss_ratio": rss_ratio,
+                "native_allocation_model_ratio": allocation_ratio,
+                "repeated_call_leak_bytes": memory["repeated_call_leak_bytes"],
+            }
+        )
+        if case["primary"] and time_ratio > thresholds["unexplained_time_ratio_max"]:
+            return {"status": "fail", "reason": f"unexplained_time_regression:{case['id']}", "thresholds": thresholds, "cases": per_case}
+        if case["primary"] and rss_ratio > thresholds["unexplained_rss_ratio_max"]:
+            return {"status": "fail", "reason": f"unexplained_rss_regression:{case['id']}", "thresholds": thresholds, "cases": per_case}
+        if not (
+            thresholds["native_allocation_model_ratio_min"]
+            <= allocation_ratio
+            <= thresholds["native_allocation_model_ratio_max"]
+        ):
+            return {"status": "fail", "reason": f"native_allocation_model_mismatch:{case['id']}", "thresholds": thresholds, "cases": per_case}
+        if memory["repeated_call_leak_bytes"] > thresholds["repeated_call_leak_bytes_max"]:
+            return {"status": "fail", "reason": f"repeated_call_leak:{case['id']}", "thresholds": thresholds, "cases": per_case}
+
+    geometric_mean_time_ratio = geometric_mean(time_ratios)
+    geometric_mean_speedup = geometric_mean(speedups)
+    speedup_2x_fraction = sum(value >= 2.0 for value in speedups) / len(speedups)
+    rss_no_worse_fraction = sum(value <= 1.0 for value in rss_ratios) / len(rss_ratios)
+    single_thread_speedup = geometric_mean(single_thread_speedups)
+    metrics = {
+        "geometric_mean_time_ratio": geometric_mean_time_ratio,
+        "geometric_mean_speedup": geometric_mean_speedup,
+        "speedup_2x_fraction": speedup_2x_fraction,
+        "single_thread_speedup": single_thread_speedup,
+        "rss_no_worse_fraction": rss_no_worse_fraction,
+        "constrained_memory_pass": constrained_memory_pass,
+    }
+    if geometric_mean_time_ratio > thresholds["geometric_mean_time_ratio_max"]:
+        return {"status": "fail", "reason": "geometric_mean_time_ratio_above_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
+    if speedup_2x_fraction < thresholds["speedup_2x_fraction_min"]:
+        return {"status": "fail", "reason": "speedup_2x_fraction_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
+    if single_thread_speedup < thresholds["single_thread_speedup_min"]:
+        return {"status": "fail", "reason": "single_thread_speedup_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
+    if rss_no_worse_fraction < thresholds["rss_no_worse_fraction_min"]:
+        return {"status": "fail", "reason": "rss_no_worse_fraction_below_threshold", "thresholds": thresholds, **metrics, "cases": per_case}
+    if thresholds["constrained_memory_required"] and not constrained_memory_pass:
+        return {"status": "fail", "reason": "constrained_memory_case_missing", "thresholds": thresholds, **metrics, "cases": per_case}
+    return {"status": "pass", "thresholds": thresholds, **metrics, "cases": per_case}
 
 
 def verify_receipt(
@@ -1543,7 +1640,7 @@ def verify_receipt(
     gate = payload.get("benchmark_gate")
     if gate != {
         "status": "blocked",
-        "reason": "candidate_fereg_disabled",
+        "reason": "reference_only_no_candidate_arm",
         "thresholds": manifest["benchmark_contract"]["thresholds"],
     }:
         raise ContractError("reference-only receipt must not claim a benchmark gate pass")
@@ -1556,10 +1653,17 @@ def verify_receipt(
     for item in evidence:
         if not isinstance(item, Mapping):
             raise ContractError("receipt benchmark evidence must be an object")
-        _expect_keys(item, {"case_id", "arm", "thread_count", "runs", "sample_identity_sha256", "singleton_identity_sha256", "scientific_evidence_sha256", "host", "stata"}, set(), "benchmark evidence")
+        _expect_keys(item, {"case_id", "arm", "thread_count", "runs", "sample_identity_sha256", "singleton_identity_sha256", "scientific_evidence_sha256", "host", "stata", "memory"}, set(), "benchmark evidence")
         expected = benchmark_by_id[item["case_id"]]
         if item["arm"] != "comparator" or item["thread_count"] != expected["thread_count"]:
             raise ContractError("receipt benchmark arm or thread metadata is stale")
+        if item["memory"] != {
+            "native_allocation_observed_bytes": None,
+            "native_allocation_model_bytes": None,
+            "repeated_call_leak_bytes": None,
+            "constrained_memory": None,
+        }:
+            raise ContractError("reference receipt contains candidate-only memory evidence")
         if not HEX_SHA256.fullmatch(item["sample_identity_sha256"]) or not HEX_SHA256.fullmatch(item["singleton_identity_sha256"]):
             raise ContractError("receipt benchmark sample/singleton identity is invalid")
         if not HEX_SHA256.fullmatch(item["scientific_evidence_sha256"]):
@@ -1957,6 +2061,12 @@ def capture_reference(
                     "singleton_identity_sha256": merged_case["identities"]["singletons"]["sha256"],
                     "scientific_evidence_sha256": scientific_hash,
                     "runs": runs,
+                    "memory": {
+                        "native_allocation_observed_bytes": None,
+                        "native_allocation_model_bytes": None,
+                        "repeated_call_leak_bytes": None,
+                        "constrained_memory": None,
+                    },
                 }
             )
         if {dataset_id: sha256_file(path) for dataset_id, path in prepared_paths.items()} != generated_datasets:
@@ -1997,7 +2107,7 @@ def capture_reference(
         "benchmark_evidence": benchmark_evidence,
         "benchmark_gate": {
             "status": "blocked",
-            "reason": "candidate_fereg_disabled",
+            "reason": "reference_only_no_candidate_arm",
             "thresholds": manifest["benchmark_contract"]["thresholds"],
         },
         "cases": captured_cases,

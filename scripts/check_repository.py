@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static Phase 0-1 contract checks that require neither Rust nor Stata."""
+"""Static fereg 0.9.0 source-candidate checks requiring neither Rust nor Stata."""
 from __future__ import annotations
 
 import ast
@@ -112,6 +112,10 @@ required_files = [
     "benchmarks/manifests/ols_hidden_numeric_candidate_receipt_v1.json",
     "benchmarks/stata/baseline_reghdfe.do",
     "scripts/ols_reference.py",
+    "scripts/stage_release.py",
+    "scripts/package_release.py",
+    "scripts/run_dependency_audit.py",
+    "docs/adr/0007-fereg-090-source-qualification-contract.md",
     "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
@@ -165,7 +169,10 @@ for heading in (
 
 agents = read("AGENTS.md")
 require("# fereg 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
-require("Begin with **Phase 0 and Phase 1 only**" in agents, "AGENTS.md Phase 0-1 assignment missing")
+require(
+    "0.9.0" in read("docs/adr/0007-fereg-090-source-qualification-contract.md"),
+    "ADR-0007 release-candidate contract is missing",
+)
 
 root_cargo = read("Cargo.toml")
 for setting in ['lto = "fat"', "codegen-units = 1", 'panic = "unwind"', "strip = true"]:
@@ -272,6 +279,18 @@ except json.JSONDecodeError as error:
     ols_manifest = {}
 require(ols_manifest.get("manifest_id") == "ols_v1", "OLS v1 manifest identity missing")
 require(ols_manifest.get("frozen") is True, "OLS v1 manifest is not frozen")
+benchmark_contract = ols_manifest.get("benchmark_contract", {})
+require(
+    benchmark_contract.get("candidate_state") == "enabled",
+    "OLS benchmark candidate is not enabled",
+)
+require(
+    benchmark_contract.get("thresholds", {}).get(
+        "geometric_mean_time_ratio_max"
+    )
+    == 0.4,
+    "OLS benchmark does not encode the governing 2.5x geometric-mean gate",
+)
 
 try:
     candidate_receipt_identity = json.loads(

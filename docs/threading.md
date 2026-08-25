@@ -1,17 +1,17 @@
 # Threading contract
 
-## Phase 0–1 implementation
+## 0.9.0 implementation
 
-`ThreadTeam` is a local, scoped standard-library thread team. `threads(0)` uses
-`available_parallelism`; an explicit positive count is accepted and later
-capped by the amount of useful work. Ranges are contiguous, nonempty, and
-returned in worker order. The self-test exercises 1, 2, 8, and 32 requested
-threads.
+`ThreadTeam` creates an isolated Rayon pool for each native estimation action.
+`threads(0)` uses available processors; an explicit positive value requests
+that team size. Ranges are contiguous, nonempty, and returned in worker order.
+Native and plugin tests exercise 1, 2, 8, and 32 requested threads.
 
-The construction package does not use a global process pool. This avoids hidden
-state across Stata commands and prevents clashes with Stata/MP. A future
-estimator call creates one local team and should reuse it across kernels inside
-that one call.
+There is no process-global Rayon pool. Per-action ownership avoids hidden state
+across repeated Stata calls and permits different thread counts in one session.
+The current estimator reuses its action-local pool across parallel preparation,
+matrix, score, and reconstruction kernels. MAP group projections retain their
+registered reduction order.
 
 ## SPI prohibition
 
@@ -22,14 +22,14 @@ back.
 
 ## Determinism
 
-`deterministic` fixes chunk ordering and serial merge order. It does not promise
-bitwise identity across different architectures unless the later estimator's
-floating-point kernels explicitly implement that stronger contract.
+`deterministic` fixes chunk ordering and serial merge order. Tests require
+bitwise-identical scientific results across registered thread counts on one
+architecture. Cross-architecture bitwise identity is not claimed; scientific
+tolerances and exact identity/status gates still apply.
 
 ## Rayon decision
 
-The supplied plan requested a local Rayon pool. This package uses a
-dependency-free scoped team so the Phase 0–1 source can be audited offline and
-linked without a third-party crate graph. ADR-0002 records this deliberate
-implementation deviation. Before Phase 2, benchmark a local Rayon pool against
-this interface; the public contract is the team abstraction, not the backend.
+ADR 0002 recorded the earlier dependency-free construction. The 0.9.0 runtime
+uses an exact-version Rayon dependency and a local pool while preserving the
+same `ThreadTeam` abstraction. The crate and transitive dependency inventory is
+captured in Cargo.lock and the release SBOM/license notices.

@@ -6,7 +6,7 @@ policy = "Exact immutable commits and local SHA-256 hashes; no floating branch i
 manifest = "benchmarks/manifests/ols_v1.json"
 reference_root_layout = "<absolute-root>/reghdfe, <absolute-root>/ftools, and <absolute-root>/require must be clean direct-child git checkouts"
 network_policy = "offline-only; the runner never installs or fetches reference commands"
-eligibility = "exact source pins are resolved; capture still requires all three matching clean local checkouts and the disabled fereg arm cannot claim a benchmark pass"
+eligibility = "exact source pins are resolved; capture requires all three matching clean local checkouts, and candidate performance may pass only after exact scientific parity"
 raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
 
 
@@ -37,7 +37,7 @@ version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
-use = "Potential later solver adapter; not linked or copied in Phase 0-1."
+use = "Evaluated solver reference; not linked, copied, or used at runtime in 0.9.0."
 
 [[reference]]
 name = "reghdfe"

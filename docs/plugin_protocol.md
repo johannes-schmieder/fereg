@@ -1,102 +1,62 @@
 # Plugin action and result protocol
 
-The C ABI exports only Stata's required `pginit` and `stata_call`; the bridge
-forwards to Rust's `fereg_dispatch`. Scientific logic remains in Rust.
+The platform plugin exports Stata's required `pginit` and `stata_call`; the C
+bridge forwards to Rust's `fereg_dispatch`. Scientific logic and result
+validation remain in Rust.
 
-The action handshake, model wire, and OLS result wire are independently
-versioned. Current hidden OLS transport requires action protocol 1.1, model wire
-2.1, and result wire 1.1. No handshake performs a lossy conversion between
-wire versions.
+## 0.9.0 versions
 
-## Public actions
+The action handshake, model metadata, and OLS result layout are independently
+versioned:
 
-- `version`, `doctor`, and `selftest` expose bounded diagnostics and native
-  smoke tests.
-- `panic-test` is guarded and exists only to prove panic containment.
-- Public `estimate-ols`, `estimate-ppml`, `fereg`, and `feppml` remain
-  unsupported and return `r(498)`.
+| Contract | Public 0.9.0 version |
+|---|---:|
+| Action protocol | 1.2 |
+| Model wire | 2.1 |
+| OLS result wire | 1.2 |
 
-## Developer preparation action
+Public estimation requires the exact action/result versions. Diagnostic
+`doctor` and `selftest` callers retain the action protocol's same-major,
+not-newer-minor compatibility rule. ADO identity must be exactly 0.9.0. Model
+wire 2.0 remains readable only for the bounded legacy no-absorbed-metadata
+case; model wire v1, unknown majors, and newer minors are rejected.
 
-`prepare-ols-test` is a guarded integration boundary, not an estimator. It
-validates the complete request and output layout before observation reads,
-loads each bound numeric source once, applies candidate/sample/weight rules,
-performs supported singleton pruning and final compaction, rebuilds categorical
-recipes/topology, and writes only private diagnostics.
+## Actions
 
-The accepted bounded surface includes continuous regressors, numeric factor
-main effects, all-categorical numeric interactions, unit/a/f/p objectives, and
-unnamed intercept-only numeric FEs. Importance weights, strings, time-series
-materialization, general absorbed slopes, saved FEs, and public estimation are
-not enabled.
+- `version` reports plugin/ADO versions, all wire versions, ABI, source
+  commit, and build date.
+- `doctor` validates the handshake and runs the native diagnostic suite.
+- `selftest` runs bounded native tests; compatible diagnostic handshakes are
+  accepted.
+- `panic-test` is confirmation-guarded and exists only for ABI containment.
+- `estimate-ols` is the one live-SPI public estimation action used by
+  `fereg`.
+- `prepare-ols-test` and the hidden OLS adapter remain developer qualification
+  actions and are excluded from distributions.
+- `estimate-ppml` is unsupported in 0.9.0; `feppml` fails in ado before a
+  substantive plugin call.
 
-The optional hidden MAP check constructs one checked/fallibly reserved Y/X
-batch, consumes it through strict borrowed MAP, discards the numerical result,
-and writes diagnostics only after a successful final certificate.
+## Public OLS transaction
 
-## Hidden OLS result transport
+Before any observation read, Rust validates the complete request, exact
+action/model/result versions, source and output bindings, dimensions,
+nonaliasing, memory/thread options, and initially incomplete receipt. Rust then
+owns sample construction, singleton pruning, computation, inference,
+certification, saved-output preparation, and result validation.
 
-`estimate-ols-test` is developer-only. Before reads it requires:
+The caller precreates private shadows for coefficients, covariance, statuses,
+fit/DoF/solver/FE/cluster/subset/certificate tables, resource/timing
+instrumentation, `e(sample)`, optional residual/absorbed/saved-FE outputs, and
+the receipt. Every N/K/K² value and output position is checked before stores.
+SPI calls stay on the Stata thread.
 
-- exact action/model/result wire identities and loaded-plugin identity;
-- `confirm=developer-estimation-test`;
-- valid numeric bindings, candidate marker, cluster metadata, and nonaliasing
-  private output layouts;
-- an initially incomplete receipt.
-
-For accepted surfaces it prepares one authoritative sample and selects exactly
-one certified iid, HC1, or clustered composition. Categorical final-sample
-rebasing may reduce the logical coefficient graph below caller allocation
-capacity; the receipt reports the logical dimensions.
-
-The guarded intercept-plus-one-slope preparation exists, but ADR 0006 requires
-positive residual DoF. Until the option-A fixture is recaptured and exact-green,
-absorbed-slope inference remains a blocker. Signed residual DoF and negative iid
-covariance are not eligible result-wire states.
-
-The caller precreates these private matrices:
-
-| Key | Logical contents |
-|---|---|
-| `output_b_matrix` | canonical coefficients |
-| `output_v_matrix` | full covariance |
-| `output_status_matrix` | coefficient status and generated-column mapping |
-| `output_fit_matrix` | fit statistics and defined flags |
-| `output_dof_matrix` | distinct DoF values and defined flags |
-| `output_solver_matrix` | solver/certificate summary |
-| `output_fe_matrix` | absorbed-effect metadata |
-| `output_cluster_matrix` | cluster-dimension metadata |
-| `output_subset_matrix` | cluster-subset metadata |
-| `output_certificate_matrix` | independent certificates |
-| `output_receipt_matrix` | wire identity, dimensions, flags, completion |
-
-Rust validates every N/K/K² result, omission marker, matrix dimension, output
-position, and C handle before the first store. SPI has no physical rollback, so
-the contract is logical atomicity: all shadow cells are invalid unless the
-receipt's final `COMPLETE` cell is one. Completion is the final operation; no
-allocation, poll, display, computation, or store follows it.
-
-The hidden request is carried as one canonical count/byte-length framed bundle
-when Stata's option limit would be exceeded. The decoder rejects malformed,
-duplicate, unknown, truncated, or mixed bundle/argv requests before SPI access.
-
-## Hidden licensed eclass transaction
-
-`_fereg_estimate_ols_test` is the sole ado consumer of a complete hidden
-receipt. It:
-
-1. creates private shadows;
-2. holds prior named or null estimates;
-3. makes one substantive plugin call;
-4. validates receipt/table/sample identities and bounded metadata;
-5. copies complete b/V matrices without numerical alteration;
-6. posts selected private results;
-7. commits the requested residual and estimate only in the final protected
-   block.
-
-Any native error, incomplete receipt, injected store failure, validation
-failure, or Control-C must restore prior `e()`/`e(sample)` state and expose no
-requested residual.
+SPI has no physical rollback, so logical completion is receipt based. The
+`COMPLETE` cell is the final native operation; no allocation, polling,
+display, computation, or store follows it. The ado transaction validates the
+complete private receipt, posts `e()`, and commits requested output variables
+and estimates only in its final protected block. Native error, store failure,
+panic, validation failure, or Control-C restores prior `e()`/named estimates
+and exposes no requested outputs.
 
 ## Return codes
 
@@ -114,24 +74,5 @@ requested residual.
 | Native self-test failure | 3498 |
 | Internal error or caught panic | 3499 |
 
-## Current candidate boundary
-
-The active accepted hidden candidate is the 31-executable/9-blocked projection
-at `f61fee923db2bd3544d457dfe50de8117d27adda`. The later signed-slope
-32/8 receipt is historical only under ADR 0006. See `STATUS.md` for the active
-checkpoint and exact evidence paths.
-
-## Platform loader
-
-The ado loader selects:
-
-| Stata report | Plugin |
-|---|---|
-| Windows | `fereg_windows.plugin` |
-| macOS / Unix with `Mac*` machine type | `fereg_macos.plugin` |
-| other Unix | `fereg_linux.plugin` |
-| unknown | fail closed |
-
-Licensed fixtures are successful only when their final assertion emits the
-exact terminal `END_FIXTURE|<name>|rc=0` sentinel; shell status alone is not
-authoritative.
+Licensed fixtures pass only when process status, Stata return code, status
+files, and the unique terminal `END_FIXTURE|<name>|rc=0` sentinel agree.

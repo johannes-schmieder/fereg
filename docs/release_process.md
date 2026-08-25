@@ -1,25 +1,43 @@
-# Release process
+# 0.9.0 source-candidate qualification
 
-1. Freeze `AGENTS.md`, the compatibility matrix, and exact upstream commits.
-2. Run repository checks, Python oracles, strict C/mock-SPI tests, formatting,
-   clippy with warnings denied, all Rust tests, and appropriate sanitizer/Miri
-   or fuzz jobs.
-3. Build on target-native CI: manylinux 2.28 x86-64, Windows MSVC x86-64, and
-   macOS x86-64 plus arm64 slices.
-4. Audit architecture, required exports, symbol visibility, OS/runtime baseline,
-   and dynamic dependencies. Reject an external numerical/runtime side library.
-5. Dynamically load the final Rust-linked artifact on the build host. Require
-   `pginit`, version, doctor with 32 threads, protocol rejection, and panic
-   containment to pass before writing its SHA-256 file.
-6. Run clean-machine Stata 18+ installation, repeated reload, doctor, selftest,
-   parser, and fail-closed command tests on each target.
-7. For estimator releases, run the full parity, identity, property, and
-   large-scale suites and enforce the corresponding scientific phase gate.
-8. Assemble the cross-platform release only from the three checksum-verified
-   native artifacts. Produce deterministic release/source ZIPs and preserve all
-   logs, environment metadata, and benchmark reports.
-9. Update help and changelog only with features that passed their gate.
+1. Freeze the exact candidate SHA, ADR-0007 contract, compatibility matrix, and
+   pinned reference closure. Development stays on local `main`; do not push.
+2. Run repository and packaging checks, Python oracles, strict C/mock SPI,
+   formatting, Clippy with warnings denied, all Rust targets, allocation/store
+   failure injection, panic/Break/rollback, and sanitizer/Miri/fuzz jobs where
+   applicable.
+3. Run licensed Stata/MP 18 quick, differential, and full profiles on the exact
+   local source. Exercise the arm64 plugin natively and x86_64 slice under
+   Rosetta. Record native Intel-host Stata as deferred.
+4. Deploy an exact source-SHA snapshot—not Git history—to
+   `/projectnb/welfgr/fereg`. Exclude `.git`, local outputs, caches, and
+   `docs/references/`. Use run-scoped `input/logs/work/output/receipts`
+   directories, project-scoped Rust 1.85.1, Stata 18/19 modules, `-P welfgr`,
+   and no queue pin.
+5. Run compute-node smoke first, then Linux correctness and clean-install
+   profiles. Run paired fereg/reghdfe performance and memory comparisons in the
+   same node and job; require qacct, sentinels, logs, hashes, and schemas to
+   agree. Enforce ADR-0007 on approved cases of at least 10 million rows.
+6. Build/audit target-native artifacts: Linux x86-64 glibc 2.28+, Windows x64
+   MSVC, and universal macOS x86_64/arm64. Reject `target-cpu=native`,
+   unexpected dynamic dependencies, missing exports, checksum mismatches, or a
+   plugin that fails its build-host loader/mock tests.
+7. Stage deterministic source and binary archives outside the tracked tree.
+   The binary archive includes exactly one checksum-verified plugin for each
+   supported platform, production Stata files, checksums, release manifest,
+   SBOM, dependency audit, licenses/notices, and explicit Windows/native-Intel
+   caveats. Exclude developer adapters, raw logs, reference PDFs, generated
+   reference libraries, and build caches.
+8. Bind every receipt and archive to the exact candidate SHA and update
+   `STATUS.md`, compatibility matrix, and changelog. Do not tag or create a
+   GitHub release.
+9. Only when all feasible offline gates are green, push the complete local
+   stack once to `origin/main`. Run automatic exact-SHA Mac quick and manually
+   dispatch Mac full and hosted platform qualification. Remote failures require
+   a repaired, newly offline-qualified stack before another push.
+10. Declare 0.9.0 source-qualified only after exact-SHA local, SCC, Mac, Linux
+    build/load, Windows build/mock, and archive receipts are green. Keep the
+    deferred licensed-Windows and native-Intel caveats visible.
 
-A binary built with `target-cpu=native`, an unpinned reference, a missing binary
-or loader audit, or a skipped licensed-Stata smoke test is not a release
-artifact.
+Sanitized qualification receipts may be committed. Generated archives and raw
+logs remain outside the repository.

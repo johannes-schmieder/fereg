@@ -4,6 +4,9 @@
 **Date:** 2026-08-24  
 **Decision owner:** Johannes Schmieder
 
+ADR-0007 later supersedes only this ADR's activation/checkpoint statements.
+The positive-residual-DoF scientific decision remains binding for 0.9.0.
+
 ## Context
 
 The original frozen `intercept_and_slope` fixture used 24 observations with:
@@ -48,7 +51,9 @@ scientific contract.
    necessarily bind the changed fixture inventory.
 8. Independent explicit-dummy evidence remains mandatory for rank,
    collinearity, residuals, RSS, covariance, and solver certificates.
-9. Public estimators remain fail-closed until all later gates close.
+9. At this checkpoint public estimators remained fail-closed. ADR-0007 later
+   authorized public OLS activation after the frozen semantic gates closed;
+   source qualification still requires its release-level evidence.
 
 ## Consequences
 

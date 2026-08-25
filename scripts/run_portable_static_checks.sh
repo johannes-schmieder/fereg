@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$ROOT/target/portable-static-checks"
+PYTHON_BIN="${FEREG_PYTHON_BIN:-python3}"
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
 
@@ -10,11 +11,11 @@ while IFS= read -r script; do
 done < <(find "$ROOT/scripts" "$ROOT/tests/mock_spi" -type f -name '*.sh' -print | sort)
 printf '%s\n' 'portable check: shell syntax PASS'
 
-PYTHONPYCACHEPREFIX="$BUILD/pycache" python3 -m compileall -q \
+PYTHONPYCACHEPREFIX="$BUILD/pycache" "$PYTHON_BIN" -m compileall -q \
   "$ROOT/scripts" "$ROOT/tests/python"
 printf '%s\n' 'portable check: Python compile PASS'
 
-python3 - "$ROOT" <<'PY'
+"$PYTHON_BIN" - "$ROOT" <<'PY'
 from pathlib import Path
 import sys
 import tomllib

@@ -1,4 +1,4 @@
-*! fereg public OLS dispatcher 0.1.0 24aug2026
+*! fereg public OLS dispatcher 0.9.0 24aug2026
 program define _fereg_estimate_public, eclass sortpreserve
     version 18.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///

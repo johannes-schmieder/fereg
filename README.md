@@ -1,12 +1,9 @@
 # fereg
 
-fereg is a Rust-first Stata package intended to provide high-dimensional
-fixed-effect OLS/WLS (`fereg`) and PPML (`feppml`).
-
-The repository contains substantial native preparation, solver, inference,
-protocol, and validation infrastructure. It is still a development snapshot:
-`fereg`, `feppml`, public `estimate-ols`, and public `estimate-ppml`
-deliberately fail closed with `r(498)` and post no estimate.
+fereg is a Rust-first Stata package for high-dimensional fixed-effect OLS/WLS.
+The public `fereg` command is active in the untagged 0.9.0 release-candidate
+source. `feppml` remains installed but deliberately returns `r(498)`; PPML is
+outside this release-candidate scope.
 
 ## Project navigation
 
@@ -24,15 +21,18 @@ self-modifying development workflows are not part of the current process.
 
 ## Current boundary
 
-The accepted hidden OLS candidate covers a bounded numeric surface and extensive
-private integration tests, including categorical absorbed-FE interactions,
-iid/HC1/clustered inference, result transport, and rollback. This evidence does
-not enable the public estimator.
+`fereg` supports the frozen OLS 1.0 command surface: numeric and fixed-width
+string fixed effects, FE interactions and absorbed slopes, analytic/frequency/
+probability weights, singleton policies, iid/robust/multiway-cluster inference,
+DoF controls, time-series materialization, saved outputs, prediction, `test`,
+and `estat summarize`. Native computation is certificate-checked and published
+through a receipt-last Stata transaction with rollback on failure or Break.
 
-The active OLS work is the option-A absorbed-slope correction documented in
-`STATUS.md` and ADR 0006: successful inference must retain positive residual
-degrees of freedom, the positive-DoF slope fixture must be recaptured and
-resealed, and the old over-absorbed fixture must remain fail-closed.
+The implementation includes `memory(fast|low|auto)`, allocation/RSS reporting,
+bounded scratch cleanup, per-action native thread teams, and deterministic
+execution controls. Source qualification is not complete until `STATUS.md`
+records exact-SHA local, SCC/Linux, macOS, Windows build/mock, scientific,
+performance, memory, and packaging receipts.
 
 ## Local development
 
@@ -52,12 +52,14 @@ Stronger licensed profiles include:
 ```
 
 The Stata profiles require the licensed environment described in
-`STATA_CI_RUNNER.md`. Linux and Windows build entry points exist, but a build on
-one platform is not validation for another.
+`STATA_CI_RUNNER.md`. SCC/Linux qualification follows the project-scoped
+workflow in the release plan. Windows licensed Stata and native Intel-host
+macOS qualification are explicitly deferred; build/mock and Rosetta evidence
+do not imply native licensed certification.
 
 ## Design rule
 
-Stata is the control plane; Rust is the data and computation plane. A future
-estimation command must make one substantive native call and publish results
-only after the calculation, scientific certificates, and transaction checks
-all succeed.
+Stata is the control plane; Rust is the data and computation plane. Each
+estimation makes one substantive native call. Stata SPI access stays on the
+calling thread, and results become visible only after computation, scientific
+certificates, output writes, and the final receipt all succeed.

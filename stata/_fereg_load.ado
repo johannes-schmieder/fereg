@@ -1,4 +1,4 @@
-*! fereg 0.1.0 Phase 0-1 20aug2026
+*! fereg plugin loader 0.9.0 24aug2026
 program define _fereg_load, rclass
     version 18.0
     syntax , ACTION(string) [THREADS(integer 0)]

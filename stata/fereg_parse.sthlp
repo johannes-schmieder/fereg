@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.2.0 21aug2026}{...}
+{* *! version 0.9.0 24aug2026}{...}
 {title:Title}
 
 {phang}{bf:fereg_parse} {hline 2} developer model-wire v2 parser
@@ -34,7 +34,6 @@ component/time-series operator registries. The returned model wire version is
 
 {pstd}
 Model wire 2.1 adds length-framed absorbed-term labels and saved-name entries;
-an absent saved name is represented unambiguously as {cmd:0:}. The current
-developer preparation action executes only unnamed, single numeric-source,
-intercept-only absorbed terms. Other absorbed shapes remain metadata-only and
-fail closed at that action boundary.
+an absent saved name is represented unambiguously as {cmd:0:}. Public
+estimation consumes this metadata through {cmd:fereg}; direct parser use is
+intended only for diagnostics and qualification.

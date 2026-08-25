@@ -6,7 +6,7 @@
 //! absorbed-request planner to run that boundary with singleton deletion
 //! deliberately disabled, then applies the true single-source/interaction
 //! singleton fixed point exactly once and constructs the final deduplicated FE
-//! topology. Public estimator dispatch remains disabled.
+//! topology. This boundary is shared by public estimation and developer gates.
 
 use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};

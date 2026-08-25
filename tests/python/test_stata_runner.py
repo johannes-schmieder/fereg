@@ -16,37 +16,37 @@ from scripts.run_stata_tests import (
 
 class StataRunnerSentinelTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.fixture = Path("tests/stata/installation/phase01_smoke.do")
+        self.fixture = Path("tests/stata/installation/installation_smoke.do")
 
     def test_accepts_exact_terminal_success_sentinel(self):
         sentinel = expected_sentinel(self.fixture)
         self.assertIsNone(validate_fixture_log(self.fixture, f"noise\n{sentinel}\n"))
 
     def test_rejects_missing_sentinel_even_when_log_looks_successful(self):
-        error = validate_fixture_log(self.fixture, "phase01_smoke.do: PASS\n")
+        error = validate_fixture_log(self.fixture, "installation_smoke.do: PASS\n")
         self.assertIn("missing", error or "")
 
     def test_rejects_nonzero_sentinel(self):
-        error = validate_fixture_log(self.fixture, "END_FIXTURE|phase01_smoke|rc=9\n")
+        error = validate_fixture_log(self.fixture, "END_FIXTURE|installation_smoke|rc=9\n")
         self.assertIn("expected", error or "")
 
     def test_rejects_success_followed_by_failure_sentinel(self):
-        log = "END_FIXTURE|phase01_smoke|rc=0\nEND_FIXTURE|phase01_smoke|rc=9\n"
+        log = "END_FIXTURE|installation_smoke|rc=0\nEND_FIXTURE|installation_smoke|rc=9\n"
         error = validate_fixture_log(self.fixture, log)
         self.assertIn("exactly one", error or "")
 
     def test_rejects_wrong_sentinel_followed_by_expected(self):
-        log = "END_FIXTURE|other_fixture|rc=0\nEND_FIXTURE|phase01_smoke|rc=0\n"
+        log = "END_FIXTURE|other_fixture|rc=0\nEND_FIXTURE|installation_smoke|rc=0\n"
         error = validate_fixture_log(self.fixture, log)
         self.assertIn("exactly one", error or "")
 
     def test_rejects_expected_sentinel_followed_by_malformed(self):
-        log = "END_FIXTURE|phase01_smoke|rc=0\nEND_FIXTURE|phase01_smoke|success\n"
+        log = "END_FIXTURE|installation_smoke|rc=0\nEND_FIXTURE|installation_smoke|success\n"
         error = validate_fixture_log(self.fixture, log)
         self.assertIn("exactly one", error or "")
 
     def test_command_echo_does_not_count_as_sentinel_output(self):
-        log = '. di as result "END_FIXTURE|phase01_smoke|rc=0"\n'
+        log = '. di as result "END_FIXTURE|installation_smoke|rc=0"\n'
         error = validate_fixture_log(self.fixture, log)
         self.assertIn("missing", error or "")
 
@@ -72,7 +72,7 @@ class StataRunnerSentinelTests(unittest.TestCase):
     def test_zero_process_status_cannot_mask_nonzero_sentinel(self):
         def fake_runner(args, *, cwd, **kwargs):
             Path(cwd, "run.log").write_text(
-                "END_FIXTURE|phase01_smoke|rc=9\n", encoding="utf-8"
+                "END_FIXTURE|installation_smoke|rc=9\n", encoding="utf-8"
             )
             return subprocess.CompletedProcess(args, 0)
 

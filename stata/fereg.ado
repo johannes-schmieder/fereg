@@ -1,4 +1,4 @@
-*! fereg 0.1.0 guarded OLS 24aug2026
+*! fereg 0.9.0 release-candidate OLS 24aug2026
 program define fereg, rclass sortpreserve
     version 18.0
 

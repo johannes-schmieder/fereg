@@ -7,12 +7,14 @@ sessions. It does not replace the scientific specification.
 
 Use this order when sources disagree:
 
-1. `AGENTS.md` — governing implementation and release specification.
-2. Accepted decisions in `docs/adr/`.
-3. `STATUS.md` — sole mutable progress record and current resume point.
-4. Exact-SHA CI and scientific receipts under `.ci/`, `build_evidence/`, and
+1. The current user-approved release plan and ADR-0007.
+2. `AGENTS.md` — governing implementation and release specification except
+   where the later 0.9.0 plan explicitly supersedes its phase sequencing.
+3. Accepted decisions in `docs/adr/`.
+4. `STATUS.md` — sole mutable progress record and current resume point.
+5. Exact-SHA CI and scientific receipts under `.ci/`, `build_evidence/`, and
    `benchmarks/reports/captured/`.
-5. Other design documents, tests, and source comments.
+6. Other design documents, tests, and source comments.
 
 Historical commits and receipts remain evidence of what was tested, but a
 superseded scientific policy is not current acceptance evidence.
@@ -21,14 +23,14 @@ superseded scientific policy is not current acceptance evidence.
 
 - Work directly on `main`. Do not create feature, Codex, recovery, or temporary
   branches unless Johannes explicitly requests one.
-- Start by fetching `main`, inspecting recent commits, and reading `AGENTS.md`,
-  `STATUS.md`, and the relevant ADR.
-- Make small, coherent commits and push after each meaningful implementation,
-  repair, test/oracle family, CI fix, or documentation checkpoint.
+- Inspect local and remote `main`, recent commits, `AGENTS.md`, `STATUS.md`,
+  and the relevant ADR without changing the worktree.
+- Make coherent local milestone commits with targeted green evidence. Do not
+  push incremental development commits during 0.9.0 qualification.
 - Do not use tiny no-op trigger commits or self-modifying workflow controllers.
-- Do not knowingly push a deliberately failing scientific checkpoint. Ordinary
-  source pushes may use CI as an additional compiler/test environment, but
-  discovered failures must be repaired promptly.
+- Push the complete stack to `origin/main` only after the exact candidate SHA
+  passes all feasible local and SCC gates. Remote failures require a repaired,
+  newly offline-qualified stack before another release-level push.
 - Keep raw licensed logs, machine paths, credentials, license data, unrelated
   local files, and confidential data out of Git.
 
@@ -64,7 +66,7 @@ The durable workflows are:
 - `.github/workflows/hosted-qualification.yml` — manual release-oriented hosted
   qualification only.
 
-After every substantive source push:
+After the release-level source push:
 
 1. Record the complete source SHA.
 2. Read `.ci/stata/results/<FULL-SHA>.json`.
@@ -86,8 +88,9 @@ fixture status files, and terminal PASS sentinel must agree.
   mathematical or explicit-dummy oracles.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
-- Public `fereg`, `feppml`, `estimate-ols`, and `estimate-ppml` remain
-  fail-closed until their documented activation gates are exact-green.
+- Public `fereg` OLS is active in the source candidate. `feppml` and
+  `estimate-ppml` remain fail-closed; the developer actions are not
+  distribution interfaces.
 - Performance and memory claims require measured evidence on the frozen suite.
 
 ## Resume checklist
@@ -103,7 +106,7 @@ Then read:
 
 - `AGENTS.md`
 - `STATUS.md`
-- `docs/adr/0006-positive-residual-dof-for-absorbed-slopes.md`
+- `docs/adr/0007-fereg-090-source-qualification-contract.md`
 - the code, tests, manifest, and receipts named by the active checkpoint.
 
 Update `STATUS.md` only after exact-green, reachable evidence exists.

@@ -1,5 +1,5 @@
 v 3
-p fereg Rust-first high-dimensional fixed-effect architecture package
+p fereg 0.9.0 high-dimensional fixed-effect OLS/WLS release candidate
 f fereg.ado
 f _fereg_estimate_public.ado
 f _fereg_ols.ado

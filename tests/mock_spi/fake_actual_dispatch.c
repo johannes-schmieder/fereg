@@ -14,7 +14,7 @@ ST_retcode fereg_dispatch(ST_int argc, const char *const *argv)
 {
     if (argc <= 0 || argv == NULL) return 198;
     if (strcmp(argv[0], "version") == 0) {
-        fereg_spi_display("fereg.plugin_version=0.1.0\n");
+        fereg_spi_display("fereg.plugin_version=0.9.0\n");
         fereg_spi_display("fereg.action_protocol=1.1\n");
         fereg_spi_display("fereg.model_wire=2.1\n");
         fereg_spi_display("fereg.ols_result_wire=1.1\n");

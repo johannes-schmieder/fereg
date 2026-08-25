@@ -60,5 +60,5 @@ assert _rc == 498
 assert _N == `before_n'
 assert c(k) == `before_k'
 
-di as result "phase01_smoke.do: PASS"
-di as result "END_FIXTURE|phase01_smoke|rc=0"
+di as result "installation_smoke.do: PASS"
+di as result "END_FIXTURE|installation_smoke|rc=0"

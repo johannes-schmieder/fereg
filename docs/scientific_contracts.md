@@ -1,7 +1,9 @@
 # Scientific contracts and OLS reference gate
 
 Architecture, source presence, and native unit tests are not estimator
-validation. Public `fereg` and `feppml` remain fail-closed.
+validation. Public `fereg` OLS is implemented for 0.9.0 but is not
+source-qualified until the exact candidate passes ADR-0007. `feppml` remains
+fail-closed and outside the candidate.
 
 Accepted scientific decisions are recorded under `docs/adr/`. ADR 0006
 supersedes the temporary signed residual-DoF/negative-iid-variance
@@ -12,7 +14,7 @@ absorbed-slope route: successful OLS inference requires positive residual DoF.
 | Contract | Current accepted rule | Enablement requirement |
 |---|---|---|
 | Candidate and effective sample | Candidate exclusion precedes availability/domain rules; final compact rows and drop reasons remain aligned to original observations; cluster missingness precedes singleton deletion and cluster counts never define FE singletons | Exact sample and reason parity for every enabled model, weight, cluster, and output path |
-| Weights | Unweighted, aweight, fweight, and pweight objective rules are explicit; fweights use exact multiplicity; pweight iid inference is rejected in favor of robust inference; iweight remains unsupported | Independent oracle plus pinned Stata parity for every public weight kind |
+| Weights | Unweighted, aweight, fweight, and pweight objective rules are explicit; fweights use exact multiplicity; pweight iid inference is rejected in favor of robust inference; iweights reproduce the pinned `r(101)` rejection | Independent oracle plus pinned Stata parity for every public weight kind/error |
 | Singleton pruning | Queue/fixed-point pruning is authoritative after initial sample rules; frequency multiplicity and `keepsingletons` are explicit | Exact retained sample, singleton count, and failure behavior |
 | FE absorption | Successful solves require direct weighted projection certificates for every intercept and slope channel; allocation failure or nonconvergence is fatal | Independent explicit-dummy evidence and sealed estimator-level parity |
 | Finite regression | Deterministic rank-aware solve; canonical kept/base/omitted/FE-collinear/numerically-rank-deficient statuses; no unpivoted inverse | Coefficient/status/bread certificates and Stata-facing naming parity |
@@ -29,12 +31,11 @@ may be retained. The active semantic case, however, must use the deterministic
 reference. The original 24-row over-absorbed case is a required
 insufficient-observations failure test.
 
-The signed result type and its receipts are historical evidence only. The
-accepted option-A source `e4d807239e46974b3f5da6ff71f3ec5751eee3e1`
-projects 32 executable / 8 blocked cases and binds the positive-DoF comparator at
-`benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d`.
-Its exact quick and full receipts record Rust and licensed-Stata success with
-zero return codes. `STATUS.md` records the canonical candidate identity.
+The signed result type and its receipts are historical evidence only. The old
+32/40 option-A receipt remains immutable at
+`benchmarks/reports/captured/darwin-arm64/stata18/ols/20260824T161810Z-9f2494d`;
+it is not evidence for the active public candidate. `STATUS.md` records the
+current executable milestone and qualification gaps.
 
 ## Pinned absorbed-intercept and bread contract
 
@@ -85,15 +86,21 @@ certificates rather than arbitrary FE normalizations.
 
 ## Performance gate
 
-Performance is considered only after scientific parity. Primary cases require
-fresh-process measurement, one cold plus at least five warm repetitions at the
-registered thread counts, geometric-mean speedup of at least 1.5x, no primary
-case slower than the reference, and no worse primary-case peak RSS.
+Performance is considered only after scientific parity and on approved cases
+with at least 10 million observations. Fresh-process paired same-node jobs must
+record one cold plus at least five warm repetitions at registered thread
+counts. The candidate must have geometric-mean runtime no more than 40 percent
+of `reghdfe`, at least 80 percent of cases at least 2x faster, single-thread
+speed at least 1.5x, and no unexplained case more than 25 percent slower.
+
+At least 80 percent of cases must have RSS no worse than the reference, no
+unexplained case may exceed 1.25x reference RSS, measured native allocation
+must be within 25 percent of its model, repeated calls must not leak, and a
+constrained-memory case must show low mode succeeding where fast cannot.
 
 ## Current boundary
 
-The hidden transport and licensed eclass transaction are developer-only.
-Prediction, recovered/saved fixed effects, the remaining model/data surfaces,
-public postestimation, low-memory completion, performance, packaging, and
-cross-platform release validation remain open. See `STATUS.md` for the exact
-current blocker inventory.
+The OLS surface, public postestimation, saved outputs, and low-memory execution
+are implemented. Exact-SHA full scientific qualification, the governing
+performance/memory gates, deterministic packaging, and cross-platform release
+validation remain open. See `STATUS.md` for the current blocker inventory.

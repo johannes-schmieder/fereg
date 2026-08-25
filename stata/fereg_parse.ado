@@ -1,4 +1,4 @@
-*! fereg model-wire v2 metadata parser 0.2.0 21aug2026
+*! fereg model-wire v2 metadata parser 0.9.0 24aug2026
 program define fereg_parse, rclass
     version 18.0
     syntax [varlist(fv ts numeric)], ///
@@ -183,7 +183,7 @@ program define fereg_parse, rclass
         }
 
         if strpos(`"`categorical_part'"', "##") {
-            di as error "categorical ## expansion inside absorb() is not represented by this Phase 0 parser"
+            di as error "categorical ## expansion inside absorb() is unsupported; write the absorbed components explicitly"
             exit 198
         }
         local categorical_words : subinstr local categorical_part "#" " ", all

@@ -1,4 +1,4 @@
-*! fereg prediction adapter 0.1.0 24aug2026
+*! fereg prediction adapter 0.9.0 24aug2026
 program define fereg_p
     version 18.0
     if !inlist(`"`e(cmd)'"', "fereg", "_fereg_estimate_ols_test", ///

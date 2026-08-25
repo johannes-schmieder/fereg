@@ -1,127 +1,71 @@
 # OLS scientific core
 
-The Stata-independent OLS core is intended to back `fereg`. Public dispatch
-remains disabled until the full semantic, transaction, output, performance, and
-release gates close.
-
-ADR 0006 governs absorbed slopes: successful inference requires positive
-residual DoF. Any temporary signed-DoF or negative-iid-variance route is
-superseded and must not be treated as an eligible result.
+The Stata-independent OLS core backs public `fereg` 0.9.0. ADR-0006 requires
+positive residual DoF; signed DoF and negative IID variance are ineligible.
 
 ## Pipeline
 
 ```text
 validate and compact candidate data
-→ construct final FE/cluster topology
-→ prune singletons and rebase categorical recipes
-→ build or stream Y/X blocks
+→ factorize final FE/cluster topology
+→ prune singletons and rebase recipes
+→ build fast or scratch-backed low representation
 → certified FE residualization
 → rank-aware finite regression
 → reconstruct and re-absorb residuals
 → score, bread, and inverse certificates
 → centralized DoF and fit statistics
-→ iid/robust/clustered covariance
-→ requested FE recovery and predictions
-→ validate complete native result
+→ iid/robust/multiway-cluster covariance
+→ residual, absorbed, and normalized saved-FE outputs
+→ validate the complete native result
 → transactionally post in Stata
 ```
 
-Every failure is terminal for the attempted result. No recurrence or
-change-in-iterate criterion substitutes for a final FE projection certificate.
+Every failure is terminal. No change-in-iterate or recurrence stop substitutes
+for fresh projection, normal-equation, inverse, covariance, and fit
+certificates.
 
-## Prepared model and FE absorption
+## Absorption, rank, and intercept
 
-The accepted bounded preparation surface owns one authoritative compact sample,
-shared categorical encodings, final-sample factor recipes, and deduplicated FE
-topology. Repeated terms reuse topology sources and membership.
+The prepared model owns one compact sample, shared numeric/string categorical
+codes, rebased factor recipes, and deduplicated FE/cluster topology. It supports
+intercept, slope-only, intercept-plus-slope, multiple slope channels,
+disconnected components, and empty/no-regressor models.
 
-Intercept-only effects use a borrowed design without copying observation-scale
-codes or membership. Empty explicit topology is treated by prepared OLS as a
-virtual one-level structural constant and is projected by weighted global
-demeaning.
-
-A guarded categorical solver supports an intercept plus at most one continuous
-slope channel for development. It borrows the final-sample slope source, solves
-group 2-by-2 systems, rejects locally rank-deficient channels, preallocates all
-workspaces before mutation, and directly certifies both intercept and slope
-projections. This engineering does not itself enable slope inference or public
-dispatch.
-
-## Coefficients, rank, and bread
-
-The prepared fit:
-
-- materializes Y plus generated finite columns in canonical order for the
-  current fast-style checkpoint;
-- runs strict MAP before deterministic scaled column-pivoted Householder QR;
-- preserves a status for every canonical coefficient slot;
-- solves only on the identified finite subspace;
-- reconstructs a raw residual, re-absorbs it, and checks all generated-column
-  score moments;
-- independently checks finite and reported inverse identities, symmetry,
-  positive bread diagonals, and the normalized intercept formula.
-
-A structural reported `_cons` is appended after finite QR as:
+Finite regression uses deterministic scaled column-pivoted Householder QR and
+preserves a canonical status for every coefficient slot. Only the identified
+subspace is solved. The normalized reported `_cons`, when structurally
+present, is
 
 ```text
-_cons = mean_w(y) - mean_w(X) b
+mean_w(y) - mean_w(X) b
 ```
 
-It is a normalization coordinate and adds no rank. Its bread extension follows
-the pinned formula documented in `scientific_contracts.md`.
+It is a normalization coordinate, not an additional rank direction. Pure
+all-slope-only absorbed models therefore do not report a structural constant.
 
-Allocation, nonfinite input, rank ambiguity outside policy, failed MAP, failed
-score, or failed bread/intercept certificates return no fit object.
+## DoF, inference, and outputs
 
-## Degrees of freedom and inference
+Centralized DoF combines effective N, finite rank, absorbed rank, nesting, and
+the requested default/none/firstpair/continuous policy. Successful inference
+requires `df_r > 0`. IID, HC1 robust, and one-/multiway clustered paths have
+independent score, correction, subset, PSD/repair, Wald, and statistic
+certificates.
 
-Centralized DoF composes effective N, finite rank, absorbed rank, cluster
-nesting, and the requested DoF policy. Successful ordinary OLS inference
-requires:
+Rust returns complete b/V/status, fit, DoF, solver, FE, cluster, subset,
+certificate, sample, residual, absorbed, saved-FE, resource, and timing
+structures. The public ado makes one substantive plugin call and posts only
+after the receipt is complete. `predict`, `test`, and `estat summarize`
+consume the posted public result.
 
-```text
-df_r = N_effective - model_rank > 0
-```
+## Memory and evidence
 
-The iid covariance and fit statistics are published only after independent
-formula and consistency certificates. HC1 robust and one-/multiway clustered
-compositions have distinct weight, correction, nesting, subset, PSD/repair,
-Wald, and statistic certificates.
+Fast and low modes implement the same scientific contract; low uses bounded
+scratch-backed columns and scores. Checked dimensions, fallible allocation,
+cleanup, and injected failure paths are described in `memory_model.md`.
 
-For absorbed slopes, conservative reference metadata may be reported as
-inexact, but it cannot authorize a successful negative-DoF covariance. The
-active option-A gate uses a positive-DoF fixture and retains the old
-over-absorbed construction as a fail-closed test.
-
-## Native result and Stata transaction
-
-The hidden `estimate-ols-test` path remains developer-only. Rust validates the
-complete logical N/K/K² result before any store and writes only private shadow
-destinations. Receipt `COMPLETE=1` is the final native operation.
-
-The hidden ado helper holds prior estimates, makes one substantive plugin call,
-validates the complete receipt and bounded metadata, posts whole b/V matrices,
-and commits only in its final protected block. Store-failure injection and
-actual Control-C tests require prior `e()` state and requested output variables
-to remain logically unchanged on failure.
-
-## Memory boundary
-
-Current prepared fitting is a fast-style checkpoint with a resident compact
-Y/X batch and ephemeral score design where required. All large dimensions use
-checked arithmetic and fallible reservation. It is not the completed
-low-memory estimator. Blockwise generation, streaming cross-products/scores,
-scratch-file lifecycle, fast/low equivalence, and measured peak RSS remain
-separate gates.
-
-See `memory_model.md` for detailed allocation contracts.
-
-## Evidence boundary
-
-Independent explicit-dummy oracles are required alongside pinned Stata
-differentials. Exact samples, statuses, DoF policy, cluster identities, and
-failure codes are not tolerance-based. Numerical tolerances and receipt rules
-are centralized in `scientific_contracts.md`.
-
-The active accepted candidate and exact remaining blockers are recorded only in
+Independent explicit-dummy/mathematical oracles are required alongside exact
+pinned Stata differentials. Samples, statuses, errors, singleton identities,
+DoF/VCE policy, and outputs are exact; registered tolerances apply only to
+eligible numerical comparisons. Qualification state is recorded in
 `STATUS.md`.

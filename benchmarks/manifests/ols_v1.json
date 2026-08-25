@@ -9,12 +9,12 @@
     "isolation_required": true
   },
   "benchmark_contract": {
-    "candidate_state": "disabled_fail_closed",
+    "candidate_state": "enabled",
     "arms": {"comparator": "reghdfe", "candidate": "fereg"},
     "primary_min_observations": 10000000,
     "thread_counts": [1, 8],
     "repetitions": {"cold": 1, "warm": 5},
-    "required_metadata": ["sample_identity_sha256", "singleton_identity_sha256", "runs", "host", "stata", "thread_count", "scientific"],
+    "required_metadata": ["sample_identity_sha256", "singleton_identity_sha256", "runs", "host", "stata", "thread_count", "scientific", "memory"],
     "scientific_gate": {
       "required_evidence": ["coefficient_names", "coefficient_status", "coefficients", "vce", "dof", "fit", "objective", "certificates"],
       "coefficient_rtol": 1e-7,
@@ -26,9 +26,16 @@
       "certificate_limits": {"normal_equation_inf_norm": 1e-8, "fe_orthogonality_inf_norm": 1e-8, "vce_symmetry_inf_norm": 1e-10}
     },
     "thresholds": {
-      "geometric_mean_speedup_min": 1.5,
-      "primary_case_time_ratio_max": 1.0,
-      "primary_case_rss_ratio_max": 1.0
+      "geometric_mean_time_ratio_max": 0.4,
+      "speedup_2x_fraction_min": 0.8,
+      "single_thread_speedup_min": 1.5,
+      "unexplained_time_ratio_max": 1.25,
+      "rss_no_worse_fraction_min": 0.8,
+      "unexplained_rss_ratio_max": 1.25,
+      "native_allocation_model_ratio_min": 0.75,
+      "native_allocation_model_ratio_max": 1.25,
+      "repeated_call_leak_bytes_max": 0,
+      "constrained_memory_required": true
     }
   },
   "capture": {
@@ -38,7 +45,7 @@
     },
     "runner": {
       "path": "scripts/ols_reference.py",
-      "sha256": "afd556809557a8025341f60861425aed9edb9d890d53646d373f61270a71cde3"
+      "sha256": "bea260cf7cec82107f0cd6346f2cb6d3bedbec60c19a8b55a510ff17d782fcd8"
     },
     "generator": {
       "path": "benchmarks/generators/generate_panel.do",

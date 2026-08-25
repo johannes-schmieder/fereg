@@ -1,158 +1,62 @@
-# Memory model
+# 0.9.0 memory model
 
-The `estimate_phase2_memory()` function is a conservative preflight, not an
-allocator and not a proof of current or future peak RSS.
+## Modes and preflight
 
-For `N` observations, `K` finite regressors, `G` absorbed dimensions, `C`
-cluster dimensions, and pool size `P`, it includes outcome, weights, working
-vector, observation map, FE codes, cluster codes, and a `K x K` cross-product.
+`fereg` accepts `memory(fast|low|auto)`. `estimate_phase2_memory()` computes
+checked fast/low estimates from observations, finite regressors, absorbed and
+cluster dimensions, and the effective thread pool. `plan_ols_memory()` compares
+those estimates with available memory:
 
-- Fast mode additionally budgets resident raw and transformed `N x K` doubles.
-- Low-memory mode budgets raw and transformed `N x min(P,K)` blocks; when
-  `K=0`, the finite-column pool is exactly zero rather than one.
+- fast is selected only when its estimate fits;
+- low is selected only when its estimate fits;
+- auto prefers fast and falls back to low;
+- if neither fits, estimation returns the allocation error mapped to `r(909)`
+  before large working allocations.
 
-All arithmetic uses checked `u128`; overflow becomes an allocation error. The
-future estimator must add solver, FE-level, score, PPML working-array, and saved
-output allocations before treating this estimate as a user-facing preflight.
+The `FEREG_MEMORY_LIMIT_BYTES` test seam supplies a deterministic artificial
+limit for constrained-memory qualification; it is not a public Stata option.
 
-## Numeric sample-preparation allocation discipline
+## Fast and low execution
 
-Numeric preparation checks aggregate output dimensions before allocation and
-uses `try_reserve_exact` for every output vector before pushing any elements:
-the original-length reason mask, active-row map, outcome, outer regressor table,
-each compact regressor, and any supplied weight or offset/exposure column.
-Absent weights and adjustments allocate no pseudo-columns. Zero-length buffers
-take the same fallible reservation path.
+Fast execution holds the prepared outcome/regressor batch and in-memory score
+workspaces. Low execution generates columns blockwise and stores the prepared
+QR/score columns in private bounded scratch files. Scratch files:
 
-Every reservation failure maps to `ErrorCode::Allocation` and Stata return code
-909. An injected reservation gate tests every reservation point and ensures that
-no partial result is returned. The public retained-row and drop-reason accessors
-borrow existing storage and do not allocate.
+- use unique process/sequence names in the platform temporary directory;
+- validate every dimension, offset, read, write, and finite value;
+- keep bounded fallible I/O buffers rather than a second resident design;
+- are removed by `Drop` on success, ordinary error, panic unwinding, or Break
+  propagation.
 
-This proves fallible allocation behavior for this bounded numeric output only.
-It does not certify the existing Phase 2 memory estimate, observed peak RSS,
-SPI-loading buffers, factor/interaction storage, FE or cluster encodings, or any
-general solver/estimator workspace. Those remain later memory gates.
+Fast and low modes share the same rank policy, certificates, inference,
+omission status, result wire, and Stata transaction. Registered tests require
+scientific identity, including deterministic results across thread counts.
 
-## Prepared RHS and borrowed intercept MAP allocation discipline
+## Allocation discipline
 
-The guarded prepared-RHS builder checks `1 + K` and `N * (1 + K)`, fallibly
-reserves one row-major Y/X buffer, verifies its capacity, and fills it directly
-from the prepared outcome and compact model recipes. It creates no intermediate
-observation-scale continuous, categorical, interaction, omitted, or intercept
-columns. An injected reservation failure and an undersized-reservation control
-cover the sole allocation. Empty inputs take the same fallible path and remain
-valid builder output.
+Observation-scale vectors and matrices use checked arithmetic, fallible
+reservation, and explicit capacity validation before mutation. Preparation,
+factorization, topology, MAP, QR, score, VCE, result-container, and scratch
+paths have allocation/store-failure injection tests. An allocation failure
+cannot produce a complete receipt or partially committed public result.
 
-The strict borrowed MAP path adds no observation-scale FE storage, weight copy,
-or unweighted pseudo-column. It consumes that single `N x (1 + K)` matrix and
-borrows prepared codes, level membership, and any supplied weights. Its six
-O(K) buffers hold reference norms, residual norms, RHS scales, value scales,
-compensated group sums, and corrections. Every buffer uses
-`try_reserve_exact`, checks capacity before resize, and is allocated before the
-first numerical mutation. Injected failures and undersized reservations cover
-all six points and map to `ErrorCode::Allocation`/Stata 909. Projection and
-final certification allocate nothing.
+Unit weights remain structural. Categorical and FE recipes reuse compact source
+codes; interaction keys and cluster subset scores are streamed rather than
+retained as dense observation-by-arity or group-by-parameter tables.
 
-The guarded categorical intercept-plus-slope solver borrows the continuous
-slope and final topology and adds only O(K) norm/cross-product/coefficient
-buffers plus constant-size 2-by-2 Gram storage. All buffers are fallibly
-reserved before the first projection, and fail-at-every plus undersized
-reservation tests prove that iteration and certification allocate nothing.
+## Instrumentation and acceptance
 
-This is a fast-style developer-only materialization checkpoint, not a complete
-estimator memory model. It does not yet cover blockwise/low-memory RHS
-generation, general multiple-slope solvers, OLS rank/VCE workspaces, SPI result
-buffers, or measured peak RSS.
+The public result wire records requested/selected memory mode, estimated fast
+and low bytes, selected-model bytes, scratch peak bytes, allocator current and
+peak bytes, allocation delta/ratio, process RSS start/current/peak/delta where
+the OS exposes them, and action timings. `timeit` displays the registered
+summary without changing computation.
 
-## Prepared coefficient-fit allocation discipline
+Instrumentation is evidence, not a self-certifying claim. Exact-SHA
+qualification must show:
 
-The core-only prepared coefficient checkpoint consumes the same
-`N x (1 + K)` MAP batch in place for scaled column-pivoted Householder QR. It
-does not clone that batch, allocate a second model matrix, form a `K x K`
-normal equation, or construct an owned FE design. Additional fallible storage
-is O(K) for pre-absorption norms, canonical statuses and coefficients, pivot
-identities, trailing norms, triangular coefficients, kept/dropped tables, and
-separate post-initial-MAP within-column norms used by the final score gate.
-After the solve it reserves one N-vector, reconstructs raw residuals directly
-from prepared recipes, and consumes that vector as an `N x 1` strict-MAP batch.
-
-Every production vector reservation uses `try_reserve_exact`; dimensions and
-counts use checked arithmetic; capacity is verified before resize or push.
-Injected failures cover every reservation, including the within-score-norm
-table, and an undersized-reservation seam.
-No partially built `CertifiedPreparedOlsFit` is returned on allocation,
-nonfinite, rank, MAP, or score-certificate failure. Unit weights remain
-structural, and prepared weights are borrowed rather than copied.
-
-This is not the low-memory estimator gate. The deterministic QR currently
-recomputes exact trailing norms, so its work is O(NK^2), and the initial
-prepared RHS remains resident. Blocked RHS generation, large-K performance,
-result-container storage, and observed RSS still require their own preflight
-and benchmark evidence before public enablement.
-
-## Prepared HC1 robust-inference allocation discipline
-
-The core-only robust checkpoint composes fit and absorbed DoF in one call, then
-recomputes only the `q` kept finite score columns from prepared recipes. Its
-sole added observation-by-coordinate object is an ephemeral `N x q` matrix:
-it is filled from the recipes and strict MAP consumes it in place as the within
-score design. It does not materialize the full generated `N x K` design, an
-N-row constant, or an additional N-vector for weights or residuals, and it does
-not retain the score matrix in the returned certified result.
-
-All robust-only production and certificate workspaces are fallibly reserved
-with checked dimensions and verified capacity. Besides the ephemeral `N x q`
-score matrix, their asymptotic bound is `O(P^2 + q^2 + P + q)`: covariance and
-compensation, independent meat reconstruction and bread product, PSD factor,
-robust-Wald factor/solution, influence and certificate rows, score means and
-identities, standard errors, and the direct reported-coordinate lookup. The
-lookup is constructed once as a P-entry reported-position-to-finite-column map;
-production covariance therefore performs constant-time coordinate resolution
-inside its observation/coordinate loops. A separate q-entry position list is
-retained only while certifying the score design.
-
-Fail-at-every-reservation and undersize-at-every-reservation tests include the
-direct coordinate map and every other robust workspace. Allocation, capacity,
-checked-arithmetic, nonfinite, and certificate failures return no partial
-`CertifiedPreparedOlsRobust`. This is still not the end-to-end low-memory gate:
-the prepared fit retains its compact residuals and bread, and observed
-estimator RSS has not been measured.
-
-## Prepared clustered-inference allocation discipline
-
-Sample-bound cluster preparation borrows the final categorical codes for a
-single-source dimension. A declared interaction owns exactly one `u32` code per
-retained observation. Collision-safe factorization uses one temporary N-entry
-row ordering and compares compact source-code tuples in place; it retains
-neither concatenated keys nor an N-by-arity tuple table. Labels, source recipes,
-dimension metadata, interaction codes, group-presence certificates, and every
-temporary vector or string use checked sizes, `try_reserve_exact`, and explicit
-capacity guards. Failure and undersize injection cover every reservation.
-
-The clustered same-call composite uses the shared prepared-score discipline:
-an ephemeral `N x q` score design that is destroyed before return, with no
-N-row constant, raw X materialization, residual copy, or weight copy. For Q
-declared dimensions it records at most `2^Q-1` small subset certificates, with
-Q bounded to 1--10.
-Each subset is processed completely before the next: one N-entry row ordering,
-one P-entry group score and correction, one P-entry transformed influence, and
-P-by-P meat/correction storage are live for the current subset. Group scores
-are streamed in sorted order, so no G-by-P table is ever allocated. The
-independent certificate repeats the aggregation as bread-transformed group
-influences under the same one-subset-at-a-time bound rather than retaining all
-subset meats.
-
-Remaining workspaces are fallibly allocated checked `O(P^2)` covariance,
-compensation, sandwich, eigensystem, PSD-transform, standard-error, and Wald
-buffers, plus O(Q) borrowed code views and O(2^Q) subset reports. The reported-
-constant CGM branch separately holds the original raw slope block and its
-eigensystem but never an observation-scale copy. Fail-at-every-reservation,
-undersize-at-every-reservation, overflow, mutation, nonfinite, and certificate
-tests prove that no partial `CertifiedPreparedOlsClustered` escapes failure.
-
-This is a certified core allocation bound, not the end-to-end low-memory or
-observed-RSS gate. The prepared fit and final covariance remain in the returned
-artifact, the initial prepared RHS still follows the fast-style checkpoint,
-and versioned SPI result-container storage has not yet been designed or
-measured.
+- RSS no worse than reghdfe in at least 80 percent of approved cases;
+- no unexplained RSS ratio above 1.25;
+- measured native allocation within 25 percent of its model;
+- no repeated-call leak; and
+- a constrained case where low succeeds and fast cannot.

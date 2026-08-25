@@ -134,7 +134,13 @@ class OlsManifestTests(unittest.TestCase):
             self.assertEqual(set(case["arms"]), {"comparator", "candidate"})
             self.assertEqual(set(case["capture"]["identities"]), {"sample", "singletons"})
         self.assertEqual({case["thread_count"] for case in manifest["benchmark_cases"]}, {1, 8})
-        self.assertEqual(manifest["benchmark_contract"]["thresholds"]["geometric_mean_speedup_min"], 1.5)
+        self.assertEqual(manifest["benchmark_contract"]["candidate_state"], "enabled")
+        self.assertEqual(
+            manifest["benchmark_contract"]["thresholds"][
+                "geometric_mean_time_ratio_max"
+            ],
+            0.4,
+        )
         ts_commands = " ".join(case["command"] for case in manifest["semantic_cases"] if "models:time_series_operators" in case["covers"])
         self.assertIn("L.x", ts_commands)
         self.assertIn("F.x", ts_commands)
@@ -359,11 +365,11 @@ class PrivateFtoolsMlibTests(unittest.TestCase):
 
 class BenchmarkGateTests(unittest.TestCase):
     @staticmethod
-    def evidence(manifest: dict, *, candidate_time: float = 0.5) -> list[dict]:
+    def evidence(manifest: dict, *, candidate_time: float = 0.35) -> list[dict]:
         records = []
         host = {"system": "Darwin", "machine": "arm64", "cpu_count": 8}
         stata = {"version": "18", "flavor": "MP", "processors_limit": "8"}
-        for case in manifest["benchmark_cases"]:
+        for case_index, case in enumerate(manifest["benchmark_cases"]):
             for arm, seconds in (("comparator", 1.0), ("candidate", candidate_time)):
                 scientific = {
                     "coefficient_names": ["x1"],
@@ -401,23 +407,47 @@ class BenchmarkGateTests(unittest.TestCase):
                         "host": host,
                         "stata": stata,
                         "scientific": scientific,
+                        "memory": (
+                            {
+                                "native_allocation_observed_bytes": None,
+                                "native_allocation_model_bytes": None,
+                                "repeated_call_leak_bytes": None,
+                                "constrained_memory": None,
+                            }
+                            if arm == "comparator"
+                            else {
+                                "native_allocation_observed_bytes": 1000,
+                                "native_allocation_model_bytes": 1000,
+                                "repeated_call_leak_bytes": 0,
+                                "constrained_memory": (
+                                    {
+                                        "low_succeeds": True,
+                                        "fast_fails": True,
+                                    }
+                                    if case_index == 0
+                                    else None
+                                ),
+                            }
+                        ),
                     }
                 )
         return records
 
     def test_disabled_candidate_can_never_claim_a_pass(self):
         manifest = load_manifest()
+        manifest["benchmark_contract"]["candidate_state"] = "disabled"
         result = evaluate_benchmark_gates(manifest, [])
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["reason"], "candidate_fereg_disabled")
 
-    def test_future_complete_two_arm_evidence_enforces_all_thresholds(self):
+    def test_active_complete_two_arm_evidence_enforces_all_thresholds(self):
         manifest = load_manifest()
-        manifest["benchmark_contract"]["candidate_state"] = "enabled"
         self.assertEqual(evaluate_benchmark_gates(manifest, self.evidence(manifest))["status"], "pass")
         slower = evaluate_benchmark_gates(manifest, self.evidence(manifest, candidate_time=1.01))
         self.assertEqual(slower["status"], "fail")
-        self.assertTrue(slower["reason"].startswith("candidate_slower:"))
+        self.assertEqual(
+            slower["reason"], "geometric_mean_time_ratio_above_threshold"
+        )
 
     def test_future_gate_rejects_incomplete_or_identity_mismatched_evidence(self):
         manifest = load_manifest()
@@ -444,15 +474,38 @@ class BenchmarkGateTests(unittest.TestCase):
         self.assertEqual(result["status"], "fail")
         self.assertIn("certificate_failed", result["reason"])
 
+    def test_memory_model_leak_and_constrained_case_are_binding(self):
+        manifest = load_manifest()
+        evidence = self.evidence(manifest)
+        candidate = next(item for item in evidence if item["arm"] == "candidate")
+        candidate["memory"]["native_allocation_observed_bytes"] = 1300
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertIn("native_allocation_model_mismatch", result["reason"])
+
+        evidence = self.evidence(manifest)
+        candidate = next(item for item in evidence if item["arm"] == "candidate")
+        candidate["memory"]["repeated_call_leak_bytes"] = 1
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertIn("repeated_call_leak", result["reason"])
+
+        evidence = self.evidence(manifest)
+        for item in evidence:
+            if item["arm"] == "candidate":
+                item["memory"]["constrained_memory"] = None
+        result = evaluate_benchmark_gates(manifest, evidence)
+        self.assertEqual(result["reason"], "constrained_memory_case_missing")
+
     def test_rss_regression_and_nonfresh_run_block_performance_pass(self):
         manifest = load_manifest()
         manifest["benchmark_contract"]["candidate_state"] = "enabled"
         evidence = self.evidence(manifest)
-        for run in evidence[1]["runs"]:
-            run["peak_rss"]["value"] = 1001
+        for record in evidence:
+            if record["arm"] == "candidate":
+                for run in record["runs"]:
+                    run["peak_rss"]["value"] = 1001
         result = evaluate_benchmark_gates(manifest, evidence)
         self.assertEqual(result["status"], "fail")
-        self.assertIn("candidate_rss_worse", result["reason"])
+        self.assertIn("rss_no_worse_fraction", result["reason"])
         evidence = self.evidence(manifest)
         evidence[1]["runs"][0]["fresh_process"] = False
         with self.assertRaisesRegex(ContractError, "process-isolated"):
@@ -470,7 +523,7 @@ class BenchmarkGateTests(unittest.TestCase):
             run["peak_rss"]["value"] = 150
         result = evaluate_benchmark_gates(manifest, evidence)
         self.assertEqual(result["status"], "fail")
-        self.assertIn("candidate_rss_worse", result["reason"])
+        self.assertIn("unexplained_rss_regression", result["reason"])
 
         # A comparator's larger generation/preflight high-water is ineligible
         # evidence even though substituting it would make the ratio appear safe.
@@ -607,8 +660,19 @@ class ReceiptAndSentinelTests(unittest.TestCase):
         manifest = {
             "manifest_id": "ols_v1",
             "benchmark_contract": {
-                "candidate_state": "disabled_fail_closed",
-                "thresholds": {"geometric_mean_speedup_min": 1.5, "primary_case_time_ratio_max": 1.0, "primary_case_rss_ratio_max": 1.0},
+                "candidate_state": "enabled",
+                "thresholds": {
+                    "geometric_mean_time_ratio_max": 0.4,
+                    "speedup_2x_fraction_min": 0.8,
+                    "single_thread_speedup_min": 1.5,
+                    "unexplained_time_ratio_max": 1.25,
+                    "rss_no_worse_fraction_min": 0.8,
+                    "unexplained_rss_ratio_max": 1.25,
+                    "native_allocation_model_ratio_min": 0.75,
+                    "native_allocation_model_ratio_max": 1.25,
+                    "repeated_call_leak_bytes_max": 0,
+                    "constrained_memory_required": True,
+                },
             },
             "datasets": [],
             "semantic_cases": [
@@ -638,8 +702,8 @@ class ReceiptAndSentinelTests(unittest.TestCase):
             "benchmark_evidence": [],
             "benchmark_gate": {
                 "status": "blocked",
-                "reason": "candidate_fereg_disabled",
-                "thresholds": {"geometric_mean_speedup_min": 1.5, "primary_case_time_ratio_max": 1.0, "primary_case_rss_ratio_max": 1.0},
+                "reason": "reference_only_no_candidate_arm",
+                "thresholds": manifest["benchmark_contract"]["thresholds"],
             },
             "cases": [
                 {
