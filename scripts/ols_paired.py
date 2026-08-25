@@ -285,7 +285,10 @@ def _write_candidate_wrapper(
             "if _rc exit 111",
             """local __frg_plugin `"`r(fn)'"'""",
             f"""if `"`__frg_plugin'"' != "{expected_plugin}" exit 603""",
-            f"do {quote(case_do)} {quote(capture_file)} {quote(manifest_sha256)}",
+            (
+                f"capture noisily do {quote(case_do)} {quote(capture_file)} "
+                f"{quote(manifest_sha256)}"
+            ),
             "local __frg_case_rc = _rc",
             "if `__frg_case_rc' != 0 exit `__frg_case_rc'",
             f'di as result "{CANDIDATE_LOG_SENTINEL}"',

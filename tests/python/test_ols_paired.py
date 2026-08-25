@@ -62,6 +62,7 @@ class PairedEvidenceTests(unittest.TestCase):
             )
             source = wrapper.read_text(encoding="utf-8")
         self.assertNotIn("if _rc exit _rc", source)
+        self.assertIn("capture noisily do ", source)
         self.assertIn("local __frg_case_rc = _rc", source)
         self.assertIn(
             "if `__frg_case_rc' != 0 exit `__frg_case_rc'",
