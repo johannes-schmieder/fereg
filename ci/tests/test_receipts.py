@@ -21,6 +21,7 @@ class ReceiptTests(unittest.TestCase):
         driver: str = "stata-harness",
         profile_summary: dict[str, object] | None = None,
         required_outputs: list[str] | None = None,
+        output_files: list[str] | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -49,6 +50,10 @@ class ReceiptTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            for relative_name in output_files or []:
+                output_path = root / relative_name
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(b"fixture output\n")
             receipt_path = root / "receipt.json"
             command = [
                 sys.executable,
@@ -185,6 +190,41 @@ class ReceiptTests(unittest.TestCase):
             required_outputs=["output/result.txt"],
         )
         self.assertEqual(receipt["failure_kind"], "missing_result")
+
+    def test_platform_plugin_output_is_resolved_from_profile_summary(self) -> None:
+        completed, receipt = self.build_receipt(
+            process=self.normal_process(),
+            status=None,
+            driver="fereg-fixtures",
+            profile_summary={
+                "completed": True,
+                "status": "success",
+                "failure_kind": None,
+                "failure_detail": None,
+                "stata_rc": 0,
+                "stata_version": "18",
+                "stata_edition": "MP",
+                "stata_os": "Unix",
+                "stata_machine_type": "PC (64-bit x86-64)",
+                "stata_processors": 8,
+                "tests_passed": 1,
+                "tests_failed": 0,
+                "plugin_filename": "fereg_linux.plugin",
+            },
+            required_outputs=["plugin-evidence/{platform_plugin}"],
+            output_files=["plugin-evidence/fereg_linux.plugin"],
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(receipt["status"], "success")
+        self.assertEqual(
+            receipt["required_outputs"],
+            [
+                {
+                    "path": "plugin-evidence/fereg_linux.plugin",
+                    "present": True,
+                }
+            ],
+        )
 
     def test_rust_failure_makes_combined_push_receipt_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

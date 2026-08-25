@@ -13,6 +13,24 @@ import subprocess
 import sys
 
 
+def platform_plugin() -> tuple[str, str, str]:
+    if sys.platform == "darwin":
+        return (
+            "universal macOS",
+            "build_macos.sh",
+            "fereg_macos.plugin",
+        )
+    if sys.platform.startswith("linux"):
+        return (
+            "Linux x86-64",
+            "build_linux.sh",
+            "fereg_linux.plugin",
+        )
+    raise RuntimeError(
+        f"licensed fixture runner has no native build path for {sys.platform}"
+    )
+
+
 def write_json_atomic(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -32,7 +50,9 @@ def sha256_file(path: Path) -> str:
 
 def rust_environment(tested_sha: str) -> dict[str, str]:
     environment = os.environ.copy()
-    rustup = environment.get("RUSTUP_BIN", "/opt/homebrew/bin/rustup")
+    rustup = environment.get("RUSTUP_BIN") or shutil.which("rustup")
+    if rustup is None:
+        raise RuntimeError("set RUSTUP_BIN or place rustup on PATH")
     toolchain = environment.get("RUST_TOOLCHAIN", "1.85.1")
     cargo = subprocess.check_output(
         [rustup, "which", "--toolchain", toolchain, "cargo"], text=True
@@ -87,14 +107,20 @@ def main() -> int:
     if profile.get("build_plugin") is True:
         try:
             environment = rust_environment(args.tested_sha)
+            platform_label, build_name, plugin_name = platform_plugin()
         except (OSError, subprocess.CalledProcessError) as exc:
             summary["failure_kind"] = "rust_toolchain_error"
             summary["failure_detail"] = str(exc)
             write_json_atomic(args.summary_json, summary)
             return 1
-        print("==> building universal macOS plugin")
+        except RuntimeError as exc:
+            summary["failure_kind"] = "platform_error"
+            summary["failure_detail"] = str(exc)
+            write_json_atomic(args.summary_json, summary)
+            return 1
+        print(f"==> building {platform_label} plugin")
         build = subprocess.run(
-            [str(args.repo_root / "scripts" / "build_macos.sh")],
+            [str(args.repo_root / "scripts" / build_name)],
             cwd=args.repo_root,
             env=environment,
             check=False,
@@ -103,23 +129,24 @@ def main() -> int:
         if build.returncode != 0:
             summary["failure_kind"] = "plugin_build_error"
             summary["failure_detail"] = (
-                f"scripts/build_macos.sh returned {build.returncode}"
+                f"scripts/{build_name} returned {build.returncode}"
             )
             write_json_atomic(args.summary_json, summary)
             return 1
-        plugin = args.repo_root / "dist" / "fereg_macos.plugin"
+        plugin = args.repo_root / "dist" / plugin_name
         if not plugin.is_file():
             summary["failure_kind"] = "missing_result"
-            summary["failure_detail"] = "build produced no dist/fereg_macos.plugin"
+            summary["failure_detail"] = f"build produced no dist/{plugin_name}"
             write_json_atomic(args.summary_json, summary)
             return 1
         plugin_sha256 = sha256_file(plugin)
         summary["plugin_sha256"] = plugin_sha256
+        summary["plugin_filename"] = plugin_name
         evidence = args.run_root / "plugin-evidence"
         evidence.mkdir(parents=True, exist_ok=True)
         shutil.copy2(plugin, evidence / plugin.name)
-        (evidence / "fereg_macos.plugin.sha256").write_text(
-            f"{plugin_sha256}  fereg_macos.plugin\n", encoding="utf-8"
+        (evidence / f"{plugin_name}.sha256").write_text(
+            f"{plugin_sha256}  {plugin_name}\n", encoding="utf-8"
         )
 
     fixture_summary = args.run_root / "fixture-summary.json"

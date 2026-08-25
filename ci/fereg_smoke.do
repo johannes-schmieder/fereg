@@ -13,7 +13,19 @@ assert _rc == 111
 
 capture noisily fereg, version
 assert _rc == 0
-assert "`r(plugin_name)'" == "fereg_macos.plugin"
+local plugin_name "`r(plugin_name)'"
+if c(os) == "MacOSX" | (c(os) == "Unix" & strmatch(c(machine_type), "Mac*")) {
+    assert "`plugin_name'" == "fereg_macos.plugin"
+}
+else if c(os) == "Windows" {
+    assert "`plugin_name'" == "fereg_windows.plugin"
+}
+else if c(os) == "Unix" {
+    assert "`plugin_name'" == "fereg_linux.plugin"
+}
+else {
+    exit 9
+}
 
 capture noisily fereg, selftest threads(4)
 assert _rc == 0

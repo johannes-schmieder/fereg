@@ -15,8 +15,8 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "syntax": {
@@ -71,8 +71,8 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "mata-unit": {
@@ -84,8 +84,8 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "plugin-build": {
@@ -96,8 +96,8 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "plugin-load": {
@@ -110,8 +110,8 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "numerical-small": {
@@ -123,8 +123,8 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "differential": {
@@ -153,8 +153,8 @@
       ],
       "timeout_seconds": 5400,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "benchmark-small": {
@@ -165,8 +165,8 @@
       ],
       "timeout_seconds": 3600,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
     "full": {
@@ -210,8 +210,8 @@
       "run_break_fixture": true,
       "timeout_seconds": 13800,
       "required_outputs": [
-        "plugin-evidence/fereg_macos.plugin",
-        "plugin-evidence/fereg_macos.plugin.sha256"
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
       ]
     }
   }

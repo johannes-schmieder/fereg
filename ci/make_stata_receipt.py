@@ -136,6 +136,15 @@ def main() -> int:
     for relative_name in required_outputs:
         if not isinstance(relative_name, str):
             parser.error("required_outputs entries must be strings")
+        if "{platform_plugin}" in relative_name:
+            plugin_filename = evidence.get("plugin_filename")
+            if not isinstance(plugin_filename, str) or not plugin_filename:
+                parser.error(
+                    "platform plugin output requires plugin_filename evidence"
+                )
+            relative_name = relative_name.format(
+                platform_plugin=plugin_filename
+            )
         candidate = args.run_dir / relative_name
         present = candidate.is_file()
         output_checks.append({"path": relative_name, "present": present})

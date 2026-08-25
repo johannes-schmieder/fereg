@@ -32,12 +32,56 @@ def command_output(command: list[str], cwd: Path) -> str:
 
 
 def repo_root() -> Path:
+    declared_root = os.environ.get("FEREG_REPO_ROOT")
+    if declared_root:
+        root = Path(declared_root).expanduser().resolve()
+        if not (root / "ci" / "stata_profiles.json").is_file():
+            raise RuntimeError(
+                "FEREG_REPO_ROOT does not contain ci/stata_profiles.json"
+            )
+        return root
     return Path(
         command_output(["git", "rev-parse", "--show-toplevel"], Path.cwd())
     ).resolve()
 
 
-def tracked_files(root: Path) -> list[Path]:
+def declared_files(root: Path, manifest: Path) -> list[Path]:
+    root = root.resolve()
+    if not manifest.is_file():
+        raise RuntimeError(f"tracked-file manifest does not exist: {manifest}")
+    files: list[Path] = []
+    seen: set[Path] = set()
+    for line_number, name in enumerate(
+        manifest.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not name:
+            continue
+        relative = Path(name)
+        source = (root / relative).resolve()
+        if relative.is_absolute() or not source.is_relative_to(root):
+            raise RuntimeError(
+                f"unsafe path in tracked-file manifest at line {line_number}: "
+                f"{name!r}"
+            )
+        if relative in seen:
+            raise RuntimeError(
+                f"duplicate path in tracked-file manifest at line "
+                f"{line_number}: {name!r}"
+            )
+        if not source.is_file():
+            raise RuntimeError(
+                f"missing declared source file at line {line_number}: {name!r}"
+            )
+        seen.add(relative)
+        files.append(relative)
+    if not files:
+        raise RuntimeError("tracked-file manifest is empty")
+    return files
+
+
+def tracked_files(root: Path, manifest: Path | None = None) -> list[Path]:
+    if manifest is not None:
+        return declared_files(root, manifest)
     raw = subprocess.check_output(["git", "ls-files", "--cached", "-z"], cwd=root)
     files: list[Path] = []
     for name in raw.split(b"\0"):
@@ -50,8 +94,10 @@ def tracked_files(root: Path) -> list[Path]:
     return files
 
 
-def stage_repository(root: Path, destination: Path) -> None:
-    for relative in tracked_files(root):
+def stage_repository(
+    root: Path, destination: Path, manifest: Path | None = None
+) -> None:
+    for relative in tracked_files(root, manifest):
         source = root / relative
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +169,11 @@ def main() -> int:
     run_root = Path(tempfile.mkdtemp(prefix="fereg-stata-ci-", dir=parent))
     staged_root = run_root / "repo"
     staged_root.mkdir()
-    stage_repository(root, staged_root)
+    manifest_name = os.environ.get("FEREG_TRACKED_FILES_MANIFEST")
+    manifest = (
+        Path(manifest_name).expanduser().resolve() if manifest_name else None
+    )
+    stage_repository(root, staged_root, manifest)
     for directory in (
         "stata-plus",
         "stata-personal",
