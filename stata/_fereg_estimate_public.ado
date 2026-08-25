@@ -68,7 +68,7 @@ program define _fereg_estimate_public, eclass sortpreserve
     ereturn local fereg_memory_mode "`memory_mode'"
     ereturn local fereg_memory_requested "`memory_mode'"
     ereturn local fereg_memory_selected "`selected_memory'"
-    ereturn local fereg_solver "`solver_mode'"
+    ereturn local fereg_solver_requested "`solver_mode'"
     ereturn local fereg_preconditioner "`preconditioner_mode'"
     ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
     ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)

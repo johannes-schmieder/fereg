@@ -76,8 +76,10 @@ supported.
 {pstd}
 Estimation stores the usual {cmd:e(b)}, {cmd:e(V)}, {cmd:e(sample)}, sample,
 rank, DoF, fit, VCE, cluster, singleton, and absorbed-FE metadata. Additional
-{cmd:e(fereg_*)} scalars and matrices record solver certificates, requested and
-effective numerical policies, memory-plan estimates, observed native
+{cmd:e(fereg_solver)} stores the numeric solver-certificate matrix, while
+{cmd:e(fereg_solver_requested)} records the requested solver mode. Other
+{cmd:e(fereg_*)} scalars and matrices record requested and effective numerical
+policies, memory-plan estimates, observed native
 allocation, scratch use, RSS, and timing. Diagnostic invocations store loader
 and protocol information in {cmd:r()}.
 
