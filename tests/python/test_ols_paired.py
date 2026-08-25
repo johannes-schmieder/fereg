@@ -12,6 +12,8 @@ from scripts.ols_paired import (
     stata_hex_number,
 )
 
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "ols_paired.py"
+
 
 def matrix(name: str, values: list[list[float]], names: list[str]) -> tuple[list[dict], dict]:
     entries = []
@@ -44,6 +46,14 @@ def matrix(name: str, values: list[list[float]], names: list[str]) -> tuple[list
 
 
 class PairedEvidenceTests(unittest.TestCase):
+    def test_comparator_capture_uses_the_standard_fresh_process_runner(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertNotIn("subprocess_run", source)
+        self.assertIn(
+            '                    subprocess.run,\n                    "estimator",',
+            source,
+        )
+
     def test_stata_hex_decoder_handles_binary_and_hex_exponents(self) -> None:
         self.assertEqual(stata_hex_number("+1.8000000000000X+001"), 3.0)
         self.assertEqual(stata_hex_number("-1.0000000000000X-001"), -0.5)

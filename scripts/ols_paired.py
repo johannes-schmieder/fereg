@@ -518,7 +518,7 @@ def capture_pair(
                     unit_dir,
                     isolated_sysdirs,
                     manifest_hash,
-                    subprocess_run,
+                    subprocess.run,
                     "estimator",
                 )
                 if unexpected:
