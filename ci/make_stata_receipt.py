@@ -14,6 +14,16 @@ import sys
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
+def platform_plugin_filename() -> str:
+    if sys.platform == "darwin":
+        return "fereg_macos.plugin"
+    if sys.platform.startswith("linux"):
+        return "fereg_linux.plugin"
+    if sys.platform == "win32":
+        return "fereg_windows.plugin"
+    raise RuntimeError(f"unsupported receipt platform: {sys.platform}")
+
+
 def read_json(path: Path) -> dict[str, object]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -139,9 +149,10 @@ def main() -> int:
         if "{platform_plugin}" in relative_name:
             plugin_filename = evidence.get("plugin_filename")
             if not isinstance(plugin_filename, str) or not plugin_filename:
-                parser.error(
-                    "platform plugin output requires plugin_filename evidence"
-                )
+                try:
+                    plugin_filename = platform_plugin_filename()
+                except RuntimeError as exc:
+                    parser.error(str(exc))
             relative_name = relative_name.format(
                 platform_plugin=plugin_filename
             )

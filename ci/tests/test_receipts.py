@@ -191,6 +191,26 @@ class ReceiptTests(unittest.TestCase):
         )
         self.assertEqual(receipt["failure_kind"], "missing_result")
 
+    def test_failed_profile_still_resolves_platform_output_name(self) -> None:
+        completed, receipt = self.build_receipt(
+            process=self.normal_process(process_rc=1),
+            status=None,
+            driver="fereg-fixtures",
+            required_outputs=["plugin-evidence/{platform_plugin}"],
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(receipt["status"], "failure")
+        self.assertEqual(receipt["failure_kind"], "crash")
+        expected = (
+            "fereg_macos.plugin"
+            if sys.platform == "darwin"
+            else "fereg_linux.plugin"
+        )
+        self.assertEqual(
+            receipt["required_outputs"],
+            [{"path": f"plugin-evidence/{expected}", "present": False}],
+        )
+
     def test_platform_plugin_output_is_resolved_from_profile_summary(self) -> None:
         completed, receipt = self.build_receipt(
             process=self.normal_process(),

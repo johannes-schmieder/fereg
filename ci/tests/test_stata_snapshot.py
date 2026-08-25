@@ -10,9 +10,18 @@ CI_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CI_DIR))
 
 import run_stata_ci  # noqa: E402
+import supervise_stata  # noqa: E402
 
 
 class SnapshotManifestTests(unittest.TestCase):
+    def test_non_macos_lock_uses_runtime_temporary_directory(self) -> None:
+        if sys.platform == "darwin":
+            self.skipTest("Linux/SCC default exercised off macOS")
+        self.assertEqual(
+            supervise_stata.default_lock_file().parent,
+            Path(tempfile.gettempdir()),
+        )
+
     def test_shell_wrapper_does_not_pin_a_machine_python_path(self) -> None:
         wrapper = (CI_DIR / "run_stata_ci.sh").read_text(encoding="utf-8")
         self.assertNotIn("/usr/bin/python", wrapper)

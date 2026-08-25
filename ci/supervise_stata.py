@@ -12,11 +12,21 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def default_lock_file() -> Path:
+    declared = os.environ.get("FEREG_STATA_LOCK_FILE")
+    if declared:
+        return Path(declared).expanduser()
+    if sys.platform == "darwin":
+        return Path("/private/tmp/varcomp-kss-stata-ci.lock")
+    return Path(tempfile.gettempdir()) / "fereg-stata-ci.lock"
 
 
 def write_json_atomic(path: Path, payload: dict[str, object]) -> None:
@@ -52,8 +62,8 @@ def main() -> int:
     parser.add_argument(
         "--lock-file",
         type=Path,
-        default=Path("/private/tmp/varcomp-kss-stata-ci.lock"),
-        help="Shared licensed-Stata lock also used by varcomp_kss.",
+        default=default_lock_file(),
+        help="Licensed-Stata lock; override with FEREG_STATA_LOCK_FILE.",
     )
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
