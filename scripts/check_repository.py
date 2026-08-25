@@ -101,6 +101,22 @@ for raw_relative in tracked_files:
         f"active file depends on removed development automation: {relative}",
     )
 
+# Release qualification must not execute mutable third-party action tags.
+# Full commit pins make the workflow dependency closure reviewable and keep an
+# exact source SHA tied to the same action implementations when it is rerun.
+action_use = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)", re.MULTILINE)
+for workflow in sorted((ROOT / ".github/workflows").glob("*.y*ml")):
+    for reference in action_use.findall(workflow.read_text(encoding="utf-8")):
+        if reference.startswith("./"):
+            continue
+        separator = reference.rfind("@")
+        require(
+            separator > 0 and re.fullmatch(r"[0-9a-f]{40}", reference[separator + 1 :])
+            is not None,
+            "workflow action is not pinned to an immutable commit: "
+            f"{workflow.relative_to(ROOT)}: {reference}",
+        )
+
 
 required_files = [
     "AGENTS.md",
