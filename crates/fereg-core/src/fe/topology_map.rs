@@ -8,6 +8,7 @@
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::memory::FeSolverMemoryBudget;
 
 use super::{
     absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_routed_certified,
@@ -114,6 +115,7 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
     values: DenseMatrix,
     config: MapConfig,
     lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
     let nobs = topology.retained_rows().len();
@@ -140,7 +142,14 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
         &source_views,
         topology.effect_to_topology(),
     )?;
-    absorb_borrowed_intercept_auto_routed_certified(&design, weights, values, config, lsmr)
+    absorb_borrowed_intercept_auto_routed_certified(
+        &design,
+        weights,
+        values,
+        config,
+        lsmr,
+        solver_memory_budget,
+    )
 }
 
 trait TopologyMapReservation {

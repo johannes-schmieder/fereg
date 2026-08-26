@@ -60,25 +60,40 @@ the recurrence alone can never authorize publication.
 
 ## Current automatic policy
 
-`solver(auto)` implements the frozen bounded policy:
+`solver(auto)` implements the ADR-0009 policy:
 
 - one FE: direct one-pass demeaning and immediate certification;
 - multiple FEs: at most four symmetric MAP pilot sweeps;
 - return MAP if a pilot sweep certifies;
-- otherwise select LSMR only when pilot contraction is at least 0.008 and the
-  total FE coefficient count is at most 65,536;
-- use genuine CG for all other multiway cases; and
+- otherwise select direct Schwarz-preconditioned LSMR when pilot contraction is
+  at least 0.008, with internal tolerance
+  `max(1e-14, requested_tolerance * 1e-2)`;
+- use genuine CG for the remaining multiway cases or when the complete LSMR
+  execution/workspace plan does not fit; and
 - if auto-selected LSMR fails or does not certify, perform one visible fallback
-  to certified CG within the remaining iteration budget.
+  from the saved MAP-pilot state to certified CG within the remaining iteration
+  and memory budgets.
 
 The report retains requested solver `auto` and records used solver, pilot
 iterations, pilot contraction, total iterations, stop reason, setup/solve time,
-fallback, and certificate norms. The coefficient cap is a scientific guard:
-on larger weak graphs, current LSMR residual representations can pass FE
-moments while missing the frozen observation-residual parity gate. Explicit
-LSMR and its preconditioners remain available as diagnostic/escape-hatch
-choices. At 100k the registered low-mobility case selects LSMR; its 1m and 10m
-counterparts exceed the cap and select CG.
+fallback, and certificate norms. There is no FE-coefficient cap. The prepared
+categorical route passes the already finalized codes and memberships directly
+to `within`, avoiding the former observation-scale owned-code and membership
+copies. Schwarz construction and LSMR reuse those prepared structures.
+
+The frozen choice followed calibration of direct requested/tight tolerances,
+off/diagonal/Schwarz preconditioners, forced restarted CG refinements of
+4/8/16 iterations, and the prior coarse-LSMR/ordinary-CG hybrid. Direct tight
+Schwarz-LSMR was the surviving lowest-runtime arm; CG refinement is therefore
+not a production stage. The forced-refinement test path bypasses CG's initial
+certificate return and proves that the comparison arm really executes its
+registered number of restarted iterations.
+
+For an LSMR-routed residual, bounded fixtures must match the sealed 100-digit
+oracle and large fixtures must remain within the registered envelope against a
+100-times-tighter solve. Reghdfe residual distance remains a diagnostic for
+this route; sample, singleton, coefficient/status, VCE, DoF, RSS, fit, FE-score,
+and OLS-score contracts remain hard publication gates.
 
 ## Residual reuse and projection cutoff
 

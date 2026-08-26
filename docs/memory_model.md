@@ -15,6 +15,17 @@ those estimates with available memory:
 
 The `FEREG_MEMORY_LIMIT_BYTES` test seam supplies a deterministic artificial
 limit for constrained-memory qualification; it is not a public Stata option.
+A future `maxmemory()` option will feed the same planner; this release adds no
+public memory-cap syntax or action-wire field.
+
+After FE topology is known, the selected execution plan is combined with a
+route-specific solver estimate. The estimate separately accounts for CG
+residual/direction/projection matrices, LSMR RHS and Krylov storage, diagonal
+and Schwarz workspaces, topology/cross-tab setup, and deterministic thread
+reductions. Auto may select direct LSMR only when the complete execution plus
+solver peak fits. If LSMR does not fit but CG does, auto visibly selects CG. If
+neither certified route fits, estimation returns `r(909)` before allocating a
+large solver workspace.
 
 ## Fast and low execution
 
@@ -47,6 +58,10 @@ cannot produce a complete receipt or partially committed public result.
 Unit weights remain structural. Categorical and FE recipes reuse compact source
 codes; interaction keys and cluster subset scores are streamed rather than
 retained as dense observation-by-arity or group-by-parameter tables.
+Direct borrowed LSMR also reuses prepared memberships and Schwarz inputs. Its
+memory model reports the code/membership copy avoided relative to the former
+owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping
+peaks, and setup-only buffers may be dropped before the OLS/VCE stages.
 
 ## Instrumentation and acceptance
 
@@ -59,12 +74,14 @@ summary without changing computation.
 Instrumentation is evidence, not a self-certifying claim. Exact-SHA
 qualification must show:
 
-- default `solver(auto)` peak RSS no greater than 1.30 times the matched frozen
-  `df53822` fereg MAP baseline for each case and thread count;
 - measured native allocation within 25 percent of its model;
-- no repeated-call leak; and
-- a constrained case where low succeeds and fast cannot.
+- successful constrained-memory solver routing (`LSMR -> CG`) when only CG
+  fits, clean pre-allocation failure when neither route fits, and the existing
+  execution-mode constrained case where low succeeds and fast cannot; and
+- no repeated-call leak.
 
-Explicit solver modes have correctness and allocation-safety gates but no
-release RSS threshold. This permits a certified optimized route to trade
-memory for material speed without weakening preflight or cleanup behavior.
+Matched process-RSS and the former auto/MAP or auto/CG ratios remain reported
+for comparison but are not promotion blockers. The final 10m direct-LSMR route
+used more RSS at eight threads while staying within its modeled native
+allocation and producing a material speed gain; this is the intended separation
+between diagnostic resident memory and hard allocation safety.

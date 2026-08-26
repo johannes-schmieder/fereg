@@ -1,6 +1,6 @@
 # ADR 0008: certified solver routing and MAP-relative memory gate
 
-**Status:** Accepted
+**Status:** Superseded by ADR 0009
 **Date:** 2026-08-25
 **Decision owner:** Johannes Schmieder
 

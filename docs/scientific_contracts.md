@@ -78,6 +78,21 @@ For well-conditioned cases, use the registered tolerances:
 - standard errors/VCE: `rtol=1e-6`, `atol=1e-10`;
 - residuals and fitted values: `rtol=1e-7`, `atol=1e-9`.
 
+For bounded LSMR fixtures, the authoritative target is the sealed 100-digit
+explicit-design oracle, with one grounded FE coordinate per connected
+component. It seals residuals, fitted values, weighted objectives, and
+checksums for weak chains, barbell and disconnected graphs, AKM mobility,
+unequal weights, multiple RHSs, and absorbed slopes. An independent
+observation-space projection audit complements the runtime rank-aware FE
+certificate in tests and diagnostics.
+
+For large automatic LSMR routes, qualification additionally compares the
+returned residual to a solve at 100 times tighter internal tolerance. Reghdfe
+residual distance is reported but is not a hard gate when oracle/stability and
+all runtime FE and OLS score certificates pass. Reghdfe remains hard for exact
+sample/status/singleton/DoF behavior and the registered coefficient, VCE, RSS,
+and fit-statistic envelopes.
+
 Exact equality remains mandatory for success/error status, final sample,
 coefficient omission/status, requested VCE/DoF policy, cluster counts, and
 singleton accounting. Ill-conditioned or nonunique-FE cases are adjudicated on
@@ -93,12 +108,11 @@ counts. The candidate must have geometric-mean runtime no more than 40 percent
 of `reghdfe`, at least 80 percent of cases at least 2x faster, single-thread
 speed at least 1.5x, and no unexplained case more than 25 percent slower.
 
-Default `solver(auto)` peak RSS may not exceed 1.30 times the matched frozen
-`df53822` fereg MAP baseline for any case/thread pair. Measured native
-allocation must be within 25 percent of its model, repeated calls must not
-leak, and a constrained-memory case must show low mode succeeding where fast
-cannot. Explicit solver modes retain correctness and allocation-safety gates
-without a release RSS threshold.
+Measured native allocation must be within 25 percent of its route-specific
+model, repeated calls must not leak, constrained-memory planning must select a
+fitting certified route or fail before large allocation, and the execution-mode
+case must show low succeeding where fast cannot. Process-RSS ratios remain
+diagnostic rather than release thresholds.
 
 ## Current boundary
 

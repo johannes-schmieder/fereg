@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_direct_lsmr_qualification_v1",
+  "status": "candidate_frozen",
+  "qualification_eligible": true,
+  "parent_manifest": "benchmarks/manifests/ols_solver_development_v2.json",
+  "frozen_candidate": {
+    "algorithm": "direct_lsmr",
+    "internal_tolerance_rule": "requested<=1e-14 ? requested : max(1e-14,requested*1e-2)",
+    "preconditioner_rule": "auto: schwarz when effects>=2 and coefficients>=256, diagonal otherwise",
+    "pilot_sweeps": 4,
+    "pilot_min_contraction": 0.008,
+    "coefficient_cap": null,
+    "cg_refinement_iterations": 0,
+    "fallback": "certified_cg_from_saved_map_pilot"
+  },
+  "profiles": [
+    {
+      "id": "calibration_100k",
+      "scale": "n100k",
+      "cases": [
+        {"id": "standard_calibration", "design": "akm_standard", "seed": 20260828},
+        {"id": "lowmob_calibration", "design": "akm_lowmob", "seed": 20260829}
+      ],
+      "threads": [1, 8]
+    },
+    {
+      "id": "calibration_1m",
+      "scale": "n1m",
+      "cases": [
+        {"id": "standard_calibration", "design": "akm_standard", "seed": 20260828},
+        {"id": "lowmob_calibration", "design": "akm_lowmob", "seed": 20260829}
+      ],
+      "threads": [1, 8]
+    },
+    {
+      "id": "holdout_1m",
+      "scale": "n1m",
+      "cases": [
+        {"id": "standard_holdout", "design": "akm_standard", "seed": 20260930},
+        {"id": "lowmob_holdout", "design": "akm_lowmob", "seed": 20261001}
+      ],
+      "threads": [1, 8]
+    },
+    {
+      "id": "freeze_10m",
+      "scale": "n10m",
+      "cases": [
+        {"id": "standard_untouched_freeze", "design": "akm_standard", "seed": 20260828},
+        {"id": "lowmob_untouched_freeze", "design": "akm_lowmob", "seed": 20260829}
+      ],
+      "threads": [1, 8]
+    }
+  ],
+  "repetitions": {"cold": 1, "warm": 5},
+  "command": {
+    "requested_tolerance": 1e-8,
+    "scientific_tolerance": 1e-10,
+    "stability_tolerance": 1e-12,
+    "iterate": 16000
+  },
+  "accuracy": {
+    "atol": 1e-9,
+    "rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "coefficient_rtol": 1e-7,
+    "vce_atol": 1e-10,
+    "vce_rtol": 1e-6,
+    "rss_rtol": 1e-7,
+    "r2_atol": 1e-10,
+    "reghdfe_residual_role": "reported_only_for_validated_lsmr_routes"
+  },
+  "promotion": {
+    "minimum_routed_speedup": 0.10,
+    "maximum_unrouted_runtime_ratio": 1.05,
+    "maximum_modeled_allocation_relative_error": 0.25,
+    "holdout_failure_blocks_promotion": true,
+    "holdout_reselection_forbidden": true,
+    "rss_ratio_role": "diagnostic_only"
+  },
+  "comparison_arms": [
+    "direct_requested",
+    "direct_tightened_100x",
+    "direct_requested_cg4",
+    "direct_requested_cg8",
+    "direct_requested_cg16",
+    "direct_tightened_cg4",
+    "direct_tightened_cg8",
+    "direct_tightened_cg16",
+    "sqrt_lsmr_then_ordinary_cg",
+    "lsmr_off",
+    "lsmr_diagonal",
+    "lsmr_schwarz",
+    "current_cg"
+  ]
+}

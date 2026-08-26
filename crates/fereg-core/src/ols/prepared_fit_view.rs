@@ -256,6 +256,7 @@ impl PreparedOlsFitView for PreparedOlsData {
             values,
             config.map,
             config.lsmr,
+            config.solver_memory_budget,
         )
     }
 
@@ -273,6 +274,7 @@ impl PreparedOlsFitView for PreparedOlsData {
                 values,
                 config.map,
                 config.lsmr,
+                config.solver_memory_budget,
             )
         } else {
             self.fit_absorb_matrix(weights, values, config)
@@ -396,6 +398,7 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 values,
                 config.map,
                 config.lsmr,
+                config.solver_memory_budget,
             )
         }
     }

@@ -1,13 +1,15 @@
 use std::time::Instant;
 
-use super::auto::{auto_lsmr_route_at_cap, AutoLsmrRoute, AUTO_LSMR_MAX_COEFFICIENTS};
+use super::auto::{auto_lsmr_route_at_cap, direct_lsmr_tolerance, AutoLsmrRoute};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    absorb_lsmr, BorrowedInterceptFeDesign, EffectTerm, FeCertificate, FeDesign, FeSolverKind,
-    LsmrConfig, MapConfig, SolveReport, SolveStopReason,
+    BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
+    MapConfig, SolveReport, SolveStopReason,
 };
+use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
 use rayon::prelude::*;
+use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 const PARALLEL_PROJECTION_MIN_ROWS: usize = 65_536;
 const FUSED_PARALLEL_MAX_RHS: usize = 8;
@@ -73,6 +75,55 @@ trait WorkspaceReservation {
 }
 
 struct SystemWorkspaceReservation;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CgRefinementPolicy {
+    minimum_iterations: usize,
+}
+
+impl CgRefinementPolicy {
+    const ORDINARY: Self = Self {
+        minimum_iterations: 0,
+    };
+
+    #[cfg(test)]
+    const fn forced(minimum_iterations: usize) -> Self {
+        Self { minimum_iterations }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CgContinuation<'a> {
+    reference_norms: Option<&'a [f64]>,
+    refinement: CgRefinementPolicy,
+}
+
+impl CgContinuation<'_> {
+    const ORDINARY: Self = Self {
+        reference_norms: None,
+        refinement: CgRefinementPolicy::ORDINARY,
+    };
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AutoLsmrPlan {
+    config: Option<LsmrConfig>,
+    memory_budget: Option<FeSolverMemoryBudget>,
+}
+
+impl AutoLsmrPlan {
+    const DISABLED: Self = Self {
+        config: None,
+        memory_budget: None,
+    };
+
+    const fn routed(config: LsmrConfig, memory_budget: Option<FeSolverMemoryBudget>) -> Self {
+        Self {
+            config: Some(config),
+            memory_budget,
+        }
+    }
+}
 
 impl WorkspaceReservation for SystemWorkspaceReservation {
     fn reserve_f64(
@@ -251,7 +302,7 @@ pub fn absorb_borrowed_intercept_cg_certified(
         values,
         config,
         false,
-        None,
+        CgContinuation::ORDINARY,
         &mut reservation,
     )
 }
@@ -271,21 +322,22 @@ pub fn absorb_borrowed_intercept_auto_certified(
         weights,
         values,
         config,
-        None,
+        AutoLsmrPlan::DISABLED,
         false,
         &mut reservation,
     )
 }
 
 /// Prepared-data automatic policy. Categorical codes stay borrowed for the
-/// MAP pilot and CG continuation; they are copied fallibly only when the
-/// frozen pilot rule selects LSMR.
+/// MAP pilot, direct LSMR, and CG continuation. The LSMR route reuses prepared
+/// memberships and does not create an owned observation-scale code copy.
 pub(crate) fn absorb_borrowed_intercept_auto_routed_certified(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: MapConfig,
     lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_auto_with_reservation(
@@ -293,7 +345,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_routed_certified(
         weights,
         values,
         config,
-        Some(lsmr),
+        AutoLsmrPlan::routed(lsmr, solver_memory_budget),
         false,
         &mut reservation,
     )
@@ -327,7 +379,7 @@ pub(crate) fn absorb_borrowed_intercept_cg_with_structural_constant_certified(
         values,
         config,
         true,
-        None,
+        CgContinuation::ORDINARY,
         &mut reservation,
     )
 }
@@ -338,6 +390,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
     values: DenseMatrix,
     config: MapConfig,
     lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_auto_with_reservation(
@@ -345,7 +398,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
         weights,
         values,
         config,
-        Some(lsmr),
+        AutoLsmrPlan::routed(lsmr, solver_memory_budget),
         true,
         &mut reservation,
     )
@@ -361,6 +414,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_initial_with_structural_constant_ce
     values: DenseMatrix,
     config: MapConfig,
     lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     if design.effects().len() <= 1 {
@@ -379,7 +433,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_initial_with_structural_constant_ce
             weights,
             values,
             config,
-            Some(lsmr),
+            AutoLsmrPlan::routed(lsmr, solver_memory_budget),
             true,
             &mut reservation,
         )
@@ -391,7 +445,7 @@ fn absorb_auto_with_reservation<R: WorkspaceReservation>(
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: MapConfig,
-    lsmr_config: Option<LsmrConfig>,
+    lsmr_plan: AutoLsmrPlan,
     empty_design_is_structural_constant: bool,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
@@ -400,10 +454,10 @@ fn absorb_auto_with_reservation<R: WorkspaceReservation>(
         weights,
         values,
         config,
-        lsmr_config,
+        lsmr_plan,
         empty_design_is_structural_constant,
         reservation,
-        AUTO_LSMR_MAX_COEFFICIENTS,
+        usize::MAX,
     )
 }
 
@@ -413,11 +467,15 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     weights: BorrowedMapWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
-    lsmr_config: Option<LsmrConfig>,
+    lsmr_plan: AutoLsmrPlan,
     empty_design_is_structural_constant: bool,
     reservation: &mut R,
     direct_lsmr_cap: usize,
 ) -> Result<CertifiedBorrowedMap> {
+    let AutoLsmrPlan {
+        config: lsmr_config,
+        memory_budget: solver_memory_budget,
+    } = lsmr_plan;
     validate_config(config)?;
     if design.nobs() != values.nrows() {
         return Err(invalid_argument(
@@ -523,110 +581,159 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
             .checked_add(effect.n_levels())
             .ok_or_else(|| invalid_data("borrowed auto FE coefficient count overflows usize"))
     })?;
+    let level_counts = design
+        .effects()
+        .iter()
+        .map(crate::fe::BorrowedInterceptEffect::n_levels)
+        .collect::<Vec<_>>();
+    let solver_memory = if solver_memory_budget.is_some() {
+        let local_size = lsmr_config.and_then(|lsmr| lsmr.local_size);
+        Some(estimate_fe_solver_memory(
+            values.nrows(),
+            values.ncols(),
+            &level_counts,
+            lsmr_config.map_or(1, |lsmr| lsmr.threads.resolved()),
+            local_size,
+        )?)
+    } else {
+        None
+    };
+    let cg_fits = solver_memory_budget
+        .zip(solver_memory)
+        .is_none_or(|(budget, estimate)| budget.fits(estimate.cg_bytes));
     if let Some(lsmr_config) = lsmr_config {
-        match auto_lsmr_route_at_cap(contraction, total_fe_coefficients, direct_lsmr_cap) {
-            AutoLsmrRoute::Direct => {
-                match run_owned_lsmr(
-                    design,
-                    weights,
-                    &values,
-                    config.tolerance,
-                    remaining_iterations,
-                    lsmr_config,
-                ) {
-                    Ok((lsmr_values, mut report, owned_setup_seconds)) if report.certified() => {
-                        report.requested_solver = FeSolverKind::Auto;
-                        report.iterations = report.iterations.saturating_add(pilot_budget);
-                        report.pilot_iterations = pilot_budget;
-                        report.pilot_contraction = contraction;
-                        report.setup_seconds += pilot_setup_seconds + owned_setup_seconds;
-                        report.solve_seconds += pilot_seconds;
-                        return CertifiedBorrowedMap::from_certified_parts(lsmr_values, report);
-                    }
-                    Ok((_, report, _)) => {
-                        candidate_failure = Some(format!(
+        let resolved_preconditioner = resolve_borrowed_lsmr_preconditioner(
+            design.effects().len(),
+            total_fe_coefficients,
+            lsmr_config.preconditioner,
+        );
+        let lsmr_fits = solver_memory_budget
+            .zip(solver_memory)
+            .is_none_or(|(budget, estimate)| {
+                budget.fits(estimate.lsmr_bytes(resolved_preconditioner))
+            });
+        let route = auto_lsmr_route_at_cap(contraction, total_fe_coefficients, direct_lsmr_cap);
+        if route != AutoLsmrRoute::None && !lsmr_fits {
+            candidate_failure = Some(
+                "automatic LSMR route did not fit the joint execution/solver memory plan; selected CG"
+                    .to_owned(),
+            );
+        } else {
+            match route {
+                AutoLsmrRoute::Direct => {
+                    match run_borrowed_lsmr(
+                        design,
+                        weights,
+                        &values,
+                        direct_lsmr_tolerance(config.tolerance),
+                        remaining_iterations,
+                        lsmr_config,
+                    ) {
+                        Ok((lsmr_values, mut report, owned_setup_seconds))
+                            if report.certified() =>
+                        {
+                            report.requested_solver = FeSolverKind::Auto;
+                            report.iterations = report.iterations.saturating_add(pilot_budget);
+                            report.pilot_iterations = pilot_budget;
+                            report.pilot_contraction = contraction;
+                            report.setup_seconds += pilot_setup_seconds + owned_setup_seconds;
+                            report.solve_seconds += pilot_seconds;
+                            return CertifiedBorrowedMap::from_certified_parts(lsmr_values, report);
+                        }
+                        Ok((_, report, _)) => {
+                            candidate_failure = Some(format!(
                             "automatic LSMR path did not certify after {} iterations; retried CG",
                             report.iterations
                         ));
-                    }
-                    Err(error) => {
-                        candidate_failure =
-                            Some(format!("automatic LSMR path failed ({error}); retried CG"));
+                        }
+                        Err(error) => {
+                            candidate_failure =
+                                Some(format!("automatic LSMR path failed ({error}); retried CG"));
+                        }
                     }
                 }
-            }
-            AutoLsmrRoute::CgPolish => {
-                let bulk_tolerance = lsmr_cg_bulk_tolerance(config.tolerance);
-                match run_owned_lsmr(
-                    design,
-                    weights,
-                    &values,
-                    bulk_tolerance,
-                    remaining_iterations,
-                    lsmr_config,
-                ) {
-                    Ok((lsmr_values, lsmr_report, owned_setup_seconds)) => {
-                        let lsmr_iterations = lsmr_report.iterations;
-                        let lsmr_certified = lsmr_report.certified();
-                        let lsmr_setup_seconds = lsmr_report.setup_seconds;
-                        let lsmr_solve_seconds = lsmr_report.solve_seconds;
-                        let requested_preconditioner = lsmr_report.requested_preconditioner;
-                        let used_preconditioner = lsmr_report.used_preconditioner;
-                        let lsmr_fallback = lsmr_report.fallback_used;
-                        let mut lsmr_warnings = lsmr_report.warnings;
-                        let polish_config = MapConfig {
-                            max_iterations: remaining_iterations,
-                            ..config
-                        };
-                        match absorb_cg_with_reservation(
-                            design,
-                            borrowed_weights(weights),
-                            lsmr_values,
-                            polish_config,
-                            false,
-                            Some(&original_reference_norms),
-                            reservation,
-                        ) {
-                            Ok(polished) => {
-                                let (residualized, mut report) = polished.into_parts();
-                                let polish_iterations = report.iterations;
-                                report.requested_solver = FeSolverKind::Auto;
-                                report.requested_preconditioner = requested_preconditioner;
-                                report.used_preconditioner = used_preconditioner;
-                                report.pilot_iterations = pilot_budget;
-                                report.pilot_contraction = contraction;
-                                report.setup_seconds +=
-                                    pilot_setup_seconds + owned_setup_seconds + lsmr_setup_seconds;
-                                report.solve_seconds += pilot_seconds + lsmr_solve_seconds;
-                                report.fallback_used |= lsmr_fallback;
-                                report.warnings.insert(
+                AutoLsmrRoute::CgPolish => {
+                    let bulk_tolerance = lsmr_cg_bulk_tolerance(config.tolerance);
+                    match run_borrowed_lsmr(
+                        design,
+                        weights,
+                        &values,
+                        bulk_tolerance,
+                        remaining_iterations,
+                        lsmr_config,
+                    ) {
+                        Ok((lsmr_values, lsmr_report, owned_setup_seconds)) => {
+                            let lsmr_iterations = lsmr_report.iterations;
+                            let lsmr_certified = lsmr_report.certified();
+                            let lsmr_setup_seconds = lsmr_report.setup_seconds;
+                            let lsmr_solve_seconds = lsmr_report.solve_seconds;
+                            let requested_preconditioner = lsmr_report.requested_preconditioner;
+                            let used_preconditioner = lsmr_report.used_preconditioner;
+                            let lsmr_fallback = lsmr_report.fallback_used;
+                            let mut lsmr_warnings = lsmr_report.warnings;
+                            let polish_config = MapConfig {
+                                max_iterations: remaining_iterations,
+                                ..config
+                            };
+                            match absorb_cg_with_reservation(
+                                design,
+                                borrowed_weights(weights),
+                                lsmr_values,
+                                polish_config,
+                                false,
+                                CgContinuation {
+                                    reference_norms: Some(&original_reference_norms),
+                                    refinement: CgRefinementPolicy::ORDINARY,
+                                },
+                                reservation,
+                            ) {
+                                Ok(polished) => {
+                                    let (residualized, mut report) = polished.into_parts();
+                                    let polish_iterations = report.iterations;
+                                    report.requested_solver = FeSolverKind::Auto;
+                                    report.requested_preconditioner = requested_preconditioner;
+                                    report.used_preconditioner = used_preconditioner;
+                                    report.pilot_iterations = pilot_budget;
+                                    report.pilot_contraction = contraction;
+                                    report.setup_seconds += pilot_setup_seconds
+                                        + owned_setup_seconds
+                                        + lsmr_setup_seconds;
+                                    report.solve_seconds += pilot_seconds + lsmr_solve_seconds;
+                                    report.fallback_used |= lsmr_fallback;
+                                    report.warnings.insert(
                                     0,
                                     format!(
                                         "development-only LSMR-CG prototype: LSMR bulk tolerance={bulk_tolerance:e}, LSMR iterations={lsmr_iterations}, LSMR bulk-certified={lsmr_certified}, CG polish iterations={polish_iterations}"
                                     ),
                                 );
-                                report.warnings.append(&mut lsmr_warnings);
-                                return CertifiedBorrowedMap::from_certified_parts(
-                                    residualized,
-                                    report,
-                                );
-                            }
-                            Err(error) => {
-                                candidate_failure = Some(format!(
+                                    report.warnings.append(&mut lsmr_warnings);
+                                    return CertifiedBorrowedMap::from_certified_parts(
+                                        residualized,
+                                        report,
+                                    );
+                                }
+                                Err(error) => {
+                                    candidate_failure = Some(format!(
                                     "development-only LSMR-CG polish failed after LSMR used {lsmr_iterations} iterations ({error}); retried CG from the MAP pilot"
                                 ));
+                                }
                             }
                         }
-                    }
-                    Err(error) => {
-                        candidate_failure = Some(format!(
+                        Err(error) => {
+                            candidate_failure = Some(format!(
                             "development-only LSMR-CG bulk phase failed ({error}); retried CG from the MAP pilot"
                         ));
+                        }
                     }
                 }
+                AutoLsmrRoute::None => {}
             }
-            AutoLsmrRoute::None => {}
         }
+    }
+    if !cg_fits {
+        return Err(allocation(
+            "automatic FE solver memory preflight found neither LSMR nor CG able to fit the joint execution plan",
+        ));
     }
     let cg_config = MapConfig {
         max_iterations: remaining_iterations,
@@ -641,7 +748,10 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         values,
         cg_config,
         false,
-        Some(&original_reference_norms),
+        CgContinuation {
+            reference_norms: Some(&original_reference_norms),
+            refinement: CgRefinementPolicy::ORDINARY,
+        },
         reservation,
     )?;
     let marked = mark_auto(
@@ -674,7 +784,7 @@ fn lsmr_cg_bulk_tolerance(final_tolerance: f64) -> f64 {
     final_tolerance.max(final_tolerance.sqrt())
 }
 
-fn run_owned_lsmr(
+fn run_borrowed_lsmr(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
@@ -682,50 +792,193 @@ fn run_owned_lsmr(
     max_iterations: usize,
     lsmr_config: LsmrConfig,
 ) -> Result<(DenseMatrix, SolveReport, f64)> {
+    let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
+    if !tolerance.is_finite() || tolerance <= 0.0 {
+        return Err(invalid_argument(
+            "borrowed LSMR tolerance must be finite and positive",
+        ));
+    }
+    if effective_max_iterations == 0 {
+        return Err(invalid_argument(
+            "borrowed LSMR iteration budget must be positive",
+        ));
+    }
+    if lsmr_config.local_size == Some(0) {
+        return Err(invalid_argument(
+            "borrowed LSMR local reorthogonalization size must be positive",
+        ));
+    }
     let lsmr_setup_started = Instant::now();
-    let owned_design = own_borrowed_intercept_design(design)?;
-    let unit_weights;
-    let lsmr_weights = match weights.values {
-        Some(values) => values,
-        None => {
-            unit_weights = fallible_filled(
-                values.nrows(),
-                1.0,
-                "unable to reserve automatic LSMR unit weights",
-            )?;
-            unit_weights.as_slice()
-        }
-    };
     let mut lsmr_values =
         fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
+    let effects = design
+        .effects()
+        .iter()
+        .map(|effect| {
+            Effect::new(effect.codes(), true, std::iter::empty::<&[f64]>()).map_err(|error| {
+                invalid_data(format!(
+                    "unable to construct borrowed LSMR fixed-effect term: {error}"
+                ))
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let rhs = (0..lsmr_values.ncols())
+        .map(|column| lsmr_values.column(column))
+        .collect::<Result<Vec<_>>>()?;
+    let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
+    let options = LsmrOptions {
+        tol: tolerance,
+        maxiter: effective_max_iterations,
+        local_size: lsmr_config.local_size,
+    };
+    let total_coefficients = design.total_term_slots();
+    let resolved_preconditioner = resolve_borrowed_lsmr_preconditioner(
+        design.effects().len(),
+        total_coefficients,
+        lsmr_config.preconditioner,
+    );
+    let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
-    let report = absorb_lsmr(
-        &owned_design,
-        lsmr_weights,
-        &mut lsmr_values,
-        LsmrConfig {
-            tolerance,
-            max_iterations: lsmr_config.max_iterations.min(max_iterations),
-            ..lsmr_config
-        },
+    let initial = within::solve_batch(
+        effects.clone(),
+        &rhs_views,
+        weights.values,
+        Some(&options),
+        preconditioner,
+    );
+    let (solved, preconditioner_fallback) = match initial {
+        Ok(solved) => (solved, false),
+        Err(error)
+            if lsmr_config.preconditioner == LsmrPreconditioner::Auto
+                && borrowed_lsmr_preconditioner_breakdown(&error) =>
+        {
+            let solved = within::solve_batch(
+                effects,
+                &rhs_views,
+                weights.values,
+                Some(&options),
+                PreconditionerConfig::Off,
+            )
+            .map_err(|fallback_error| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    format!(
+                        "borrowed modified LSMR failed after unpreconditioned fallback: {fallback_error}"
+                    ),
+                )
+            })?;
+            (solved, true)
+        }
+        Err(error) => {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                format!("borrowed modified LSMR failed: {error}"),
+            ));
+        }
+    };
+    for column in 0..lsmr_values.ncols() {
+        for (row, value) in solved.demeaned(column).iter().copied().enumerate() {
+            lsmr_values[(row, column)] = value;
+        }
+    }
+    let mut reservation = SystemWorkspaceReservation;
+    let mut certificate_workspace = BorrowedMapWorkspace::new(
+        design,
+        lsmr_values.nrows(),
+        lsmr_values.ncols(),
+        &mut reservation,
     )?;
+    weighted_column_norms(
+        values,
+        weights,
+        &mut certificate_workspace.reference_norms,
+        &mut certificate_workspace.value_scales,
+        &mut certificate_workspace.group_sums,
+    )?;
+    let certificate = certify(
+        design,
+        weights,
+        &lsmr_values,
+        tolerance,
+        &mut certificate_workspace,
+    )?;
+    let recurrence_converged = solved.converged.iter().copied().all(|value| value);
+    let stop_reason = if certificate.passed {
+        SolveStopReason::Certified
+    } else if recurrence_converged {
+        SolveStopReason::Uncertified
+    } else {
+        SolveStopReason::MaximumIterations
+    };
+    let mut warnings = solved
+        .warnings
+        .iter()
+        .map(|warning| format!("within preconditioner: {warning:?}"))
+        .collect::<Vec<_>>();
+    if preconditioner_fallback {
+        warnings.insert(
+            0,
+            "automatic borrowed LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
+        );
+    }
+    if recurrence_converged && !certificate.passed {
+        warnings.push(
+            "borrowed LSMR recurrence claimed convergence but the recomputed FE certificate failed"
+                .to_owned(),
+        );
+    }
+    let report = SolveReport {
+        requested_solver: FeSolverKind::Lsmr,
+        used_solver: FeSolverKind::Lsmr,
+        iterations: solved.iterations.iter().copied().max().unwrap_or(0),
+        stop_reason,
+        certificate,
+        normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
+        setup_seconds: solved.time_setup,
+        solve_seconds: solved.time_solve.iter().copied().sum(),
+        fallback_used: preconditioner_fallback,
+        requested_preconditioner: Some(lsmr_config.preconditioner),
+        used_preconditioner: Some(if preconditioner_fallback {
+            LsmrPreconditioner::Off
+        } else {
+            resolved_preconditioner
+        }),
+        pilot_iterations: 0,
+        pilot_contraction: 0.0,
+        warnings,
+    };
     Ok((lsmr_values, report, owned_setup_seconds))
 }
 
-fn own_borrowed_intercept_design(design: &BorrowedInterceptFeDesign<'_>) -> Result<FeDesign> {
-    let mut effects = Vec::new();
-    effects
-        .try_reserve_exact(design.effects().len())
-        .map_err(|_| allocation("unable to reserve automatic LSMR FE effects"))?;
-    for effect in design.effects() {
-        effects.push(EffectTerm::new(
-            fallible_copy(effect.codes(), "unable to reserve automatic LSMR FE codes")?,
-            effect.n_levels(),
-            true,
-            Vec::new(),
-        )?);
+fn resolve_borrowed_lsmr_preconditioner(
+    effect_count: usize,
+    total_coefficients: usize,
+    requested: LsmrPreconditioner,
+) -> LsmrPreconditioner {
+    match requested {
+        LsmrPreconditioner::Auto if effect_count >= 2 && total_coefficients >= 256 => {
+            LsmrPreconditioner::Schwarz
+        }
+        LsmrPreconditioner::Auto => LsmrPreconditioner::Diagonal,
+        explicit => explicit,
     }
-    FeDesign::new(design.nobs(), effects)
+}
+
+fn borrowed_within_preconditioner(preconditioner: LsmrPreconditioner) -> PreconditionerConfig {
+    match preconditioner {
+        LsmrPreconditioner::Auto => unreachable!("borrowed automatic preconditioner is resolved"),
+        LsmrPreconditioner::Off => PreconditionerConfig::Off,
+        LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
+        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+    }
+}
+
+fn borrowed_lsmr_preconditioner_breakdown(error: &within::WithinError) -> bool {
+    matches!(
+        error,
+        within::WithinError::Solve(within::SolveError::InvalidInput { context, message })
+            if *context == "mlsmr" && message.contains("preconditioner not positive definite")
+    )
 }
 
 fn pilot_contraction(initial: f64, current: f64) -> Result<f64> {
@@ -771,10 +1024,19 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     mut values: DenseMatrix,
     config: MapConfig,
     empty_design_is_structural_constant: bool,
-    continuation_reference_norms: Option<&[f64]>,
+    continuation: CgContinuation<'_>,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
+    let CgContinuation {
+        reference_norms: continuation_reference_norms,
+        refinement,
+    } = continuation;
     validate_config(config)?;
+    if refinement.minimum_iterations > config.max_iterations {
+        return Err(invalid_argument(
+            "forced borrowed CG refinement exceeds its iteration budget",
+        ));
+    }
     if design.nobs() != values.nrows() {
         return Err(invalid_argument(
             "borrowed CG design and matrix observation counts differ",
@@ -885,7 +1147,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     } else {
         certify(design, weights, &values, config.tolerance, &mut workspace)?
     };
-    if initial_certificate.passed {
+    if initial_certificate.passed && refinement.minimum_iterations == 0 {
         return certified_solver_result(
             values,
             FeSolverKind::Cg,
@@ -975,7 +1237,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             // iterating, and publication still requires the final joint
             // certificate.
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            if certificate.passed {
+            if certificate.passed && iteration.saturating_sub(1) >= refinement.minimum_iterations {
                 return certified_solver_result(
                     values,
                     FeSolverKind::Cg,
@@ -1054,9 +1316,14 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         // FE-moment certificate as a second condition before publication.
         // This avoids accepting a weak-graph iterate merely because its FE
         // moments are small while keeping certification out of the hot loop.
-        if hestenes_error <= config.tolerance || iteration == config.max_iterations {
+        if (hestenes_error <= config.tolerance && iteration >= refinement.minimum_iterations)
+            || iteration == config.max_iterations
+        {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            if certificate.passed && hestenes_error <= config.tolerance {
+            if certificate.passed
+                && hestenes_error <= config.tolerance
+                && iteration >= refinement.minimum_iterations
+            {
                 return certified_solver_result(
                     values,
                     FeSolverKind::Cg,
@@ -2462,24 +2729,6 @@ fn fallible_matrix_zeros(nrows: usize, ncols: usize, label: &'static str) -> Res
     })
 }
 
-fn fallible_copy<T: Copy>(input: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(input.len())
-        .map_err(|_| allocation(label))?;
-    output.extend_from_slice(input);
-    Ok(output)
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(label))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
 fn weighted_column_norms(
     values: &DenseMatrix,
     weights: ValidatedWeights<'_>,
@@ -3360,6 +3609,7 @@ mod tests {
             DenseMatrix::from_columns(&[outcome]).expect("matrix"),
             config(),
             LsmrConfig::default(),
+            None,
         )
         .expect("routed auto");
         assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
@@ -3367,6 +3617,62 @@ mod tests {
         assert_eq!(result.report().pilot_iterations, 4);
         assert!(result.report().pilot_contraction >= 0.008);
         assert!(result.report().certified());
+    }
+
+    #[test]
+    fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fits() {
+        let workers = 160_usize;
+        let observations = workers * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut outcome = Vec::with_capacity(observations);
+        for worker in 0..workers {
+            worker_codes.extend([worker as u32, worker as u32]);
+            firm_codes.extend([worker as u32, (worker + 1) as u32]);
+            outcome.extend([(worker as f64 * 0.17).sin(), (worker as f64 * 0.11).cos()]);
+        }
+        let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, workers + 1).expect("firm index");
+        let worker = ValidatedBorrowedInterceptSource::new(&worker_codes, workers, &worker_index)
+            .expect("worker");
+        let firm = ValidatedBorrowedInterceptSource::new(&firm_codes, workers + 1, &firm_index)
+            .expect("firm");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
+                .expect("design");
+        let lsmr = LsmrConfig {
+            threads: crate::options::ThreadConfig::from_requested(1, true).expect("threads"),
+            ..LsmrConfig::default()
+        };
+        let memory =
+            estimate_fe_solver_memory(observations, 1, &[workers, workers + 1], 1, lsmr.local_size)
+                .expect("solver memory");
+        assert!(memory.cg_bytes < memory.lsmr_schwarz_bytes);
+        let run = |usable_bytes| {
+            absorb_borrowed_intercept_auto_routed_certified(
+                &design,
+                BorrowedMapWeights::Unit,
+                DenseMatrix::from_columns(std::slice::from_ref(&outcome)).expect("matrix"),
+                config(),
+                lsmr,
+                Some(FeSolverMemoryBudget {
+                    execution_bytes: 0,
+                    usable_bytes,
+                }),
+            )
+        };
+        let cg = run(memory.cg_bytes).expect("memory-routed CG");
+        assert_eq!(cg.report().used_solver, FeSolverKind::Cg);
+        assert!(cg.report().fallback_used);
+        assert!(cg
+            .report()
+            .warnings
+            .first()
+            .is_some_and(|warning| { warning.contains("joint execution/solver memory plan") }));
+
+        let error = run(memory.cg_bytes - 1).expect_err("neither route may allocate");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("neither LSMR nor CG"));
     }
 
     #[test]
@@ -3424,7 +3730,7 @@ mod tests {
                 BorrowedMapWeights::Provided(&weights),
                 raw.clone(),
                 config(),
-                Some(lsmr),
+                AutoLsmrPlan::routed(lsmr, None),
                 false,
                 &mut reservation,
                 0,
@@ -3485,6 +3791,138 @@ mod tests {
         assert_eq!(lsmr_cg_bulk_tolerance(1e-10), 1e-5);
         assert_eq!(lsmr_cg_bulk_tolerance(1.0), 1.0);
         assert_eq!(lsmr_cg_bulk_tolerance(4.0), 4.0);
+    }
+
+    #[test]
+    fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_cg() {
+        let workers = 48_usize;
+        let observations = workers * 3;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut first = Vec::with_capacity(observations);
+        let mut second = Vec::with_capacity(observations);
+        let mut raw_weights = Vec::with_capacity(observations);
+        for worker in 0..workers {
+            worker_codes.extend([worker as u32, worker as u32, worker as u32]);
+            firm_codes.extend([
+                worker as u32,
+                worker as u32,
+                ((worker + 1) % workers) as u32,
+            ]);
+            first.extend([
+                (worker as f64 * 0.17).sin(),
+                (worker as f64 * 0.11).cos(),
+                (worker as f64 * 0.07).sin(),
+            ]);
+            second.extend([
+                (worker as f64 * 0.13).cos(),
+                (worker as f64 * 0.19).sin(),
+                (worker as f64 * 0.23).cos(),
+            ]);
+            raw_weights.extend([0.25, 1.0 + (worker % 5) as f64, 3.5]);
+        }
+        let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, workers).expect("firm index");
+        let worker = ValidatedBorrowedInterceptSource::new(&worker_codes, workers, &worker_index)
+            .expect("worker");
+        let firm =
+            ValidatedBorrowedInterceptSource::new(&firm_codes, workers, &firm_index).expect("firm");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
+                .expect("design");
+        let raw = DenseMatrix::from_columns(&[first, second]).expect("matrix");
+        let weights = validate_weights(BorrowedMapWeights::Provided(&raw_weights), observations)
+            .expect("weights");
+        let requested_tolerance = 1e-8;
+        assert_eq!(direct_lsmr_tolerance(requested_tolerance), 1e-10);
+        assert_eq!(direct_lsmr_tolerance(1e-15), 1e-15);
+
+        let reference = absorb_borrowed_intercept_cg_certified(
+            &design,
+            BorrowedMapWeights::Provided(&raw_weights),
+            raw.clone(),
+            MapConfig {
+                tolerance: requested_tolerance,
+                ..config()
+            },
+        )
+        .expect("CG reference");
+
+        for preconditioner in [
+            crate::fe::LsmrPreconditioner::Off,
+            crate::fe::LsmrPreconditioner::Diagonal,
+            crate::fe::LsmrPreconditioner::Schwarz,
+        ] {
+            for tolerance in [
+                requested_tolerance,
+                direct_lsmr_tolerance(requested_tolerance),
+            ] {
+                let (candidate, report, _) = run_borrowed_lsmr(
+                    &design,
+                    weights,
+                    &raw,
+                    tolerance,
+                    16_000,
+                    LsmrConfig {
+                        tolerance,
+                        preconditioner,
+                        ..LsmrConfig::default()
+                    },
+                )
+                .expect("qualification direct LSMR arm");
+                assert!(
+                    report.certified(),
+                    "{preconditioner:?} {tolerance:e}: {report:?}"
+                );
+                assert_close(
+                    candidate.as_slice(),
+                    reference.residualized().as_slice(),
+                    2e-7,
+                );
+            }
+        }
+
+        let (direct, direct_report, _) = run_borrowed_lsmr(
+            &design,
+            weights,
+            &raw,
+            direct_lsmr_tolerance(requested_tolerance),
+            16_000,
+            LsmrConfig {
+                tolerance: direct_lsmr_tolerance(requested_tolerance),
+                preconditioner: crate::fe::LsmrPreconditioner::Schwarz,
+                ..LsmrConfig::default()
+            },
+        )
+        .expect("direct Schwarz LSMR");
+        assert!(direct_report.certified());
+        for forced_iterations in [4_usize, 8, 16] {
+            let mut reservation = SystemWorkspaceReservation;
+            let refined = absorb_cg_with_reservation(
+                &design,
+                BorrowedMapWeights::Provided(&raw_weights),
+                direct.clone(),
+                MapConfig {
+                    tolerance: requested_tolerance,
+                    max_iterations: forced_iterations,
+                    ..config()
+                },
+                false,
+                CgContinuation {
+                    reference_norms: None,
+                    refinement: CgRefinementPolicy::forced(forced_iterations),
+                },
+                &mut reservation,
+            )
+            .expect("forced restarted CG arm");
+            assert_eq!(refined.report().iterations, forced_iterations);
+            assert!(refined.report().certified());
+            assert_close(
+                refined.residualized().as_slice(),
+                reference.residualized().as_slice(),
+                2e-7,
+            );
+        }
     }
 
     fn assert_close(left: &[f64], right: &[f64], tolerance: f64) {

@@ -10,6 +10,93 @@ pub struct ExplicitDummyCertificate {
     pub relative_two_norm: f64,
 }
 
+/// Remaining observation-space FE projection computed from one global
+/// explicit-dummy QR decomposition.
+///
+/// Unlike the production `D'Wr` certificate, this diagnostic estimates the
+/// weighted norm of `P_D r` itself.  It is qualification-only: production
+/// publication rules do not call into the testkit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExplicitDummyProjectionAudit {
+    pub per_rhs_relative_two_norm: Vec<f64>,
+    pub maximum_relative_two_norm: f64,
+}
+
+/// Estimate the remaining FE projection of `residuals` in observation space.
+///
+/// The full dummy-and-slope design is materialized independently of the
+/// production operator. A column-pivoted Householder QR then applies the
+/// orthogonal projector without using the production FE moments or solver.
+pub fn fe_remaining_projection_with_reference(
+    design: &FeDesign,
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    reference: &DenseMatrix,
+) -> std::result::Result<ExplicitDummyProjectionAudit, String> {
+    if design.nobs() != residuals.nrows() || weights.len() != residuals.nrows() {
+        return Err(
+            "observation-space audit inputs have inconsistent observation counts".to_owned(),
+        );
+    }
+    if reference.nrows() != residuals.nrows() || reference.ncols() != residuals.ncols() {
+        return Err(
+            "observation-space audit reference dimensions differ from residuals".to_owned(),
+        );
+    }
+    if weights
+        .iter()
+        .any(|weight| !weight.is_finite() || *weight <= 0.0)
+        || residuals.as_slice().iter().any(|value| !value.is_finite())
+        || reference.as_slice().iter().any(|value| !value.is_finite())
+    {
+        return Err(
+            "observation-space audit inputs must be finite with positive weights".to_owned(),
+        );
+    }
+
+    let square_root_weights = weights
+        .iter()
+        .map(|weight| weight.sqrt())
+        .collect::<Vec<_>>();
+    let mut columns = Vec::new();
+    for effect in design.effects() {
+        for level in 0..effect.n_levels() {
+            for channel in 0..effect.channels() {
+                let mut column = vec![0.0_f64; design.nobs()];
+                for &observation in effect.level_index().members(level) {
+                    column[observation] =
+                        square_root_weights[observation] * effect.basis_value(channel, observation);
+                }
+                columns.push(column);
+            }
+        }
+    }
+    let mut right_hand_sides = Vec::with_capacity(residuals.ncols());
+    for rhs in 0..residuals.ncols() {
+        let reference_norm = stable_norm(
+            (0..reference.nrows()).map(|row| square_root_weights[row] * reference[(row, rhs)]),
+        );
+        let scale = reference_norm.max(f64::MIN_POSITIVE);
+        right_hand_sides.push(
+            (0..residuals.nrows())
+                .map(|row| square_root_weights[row] * residuals[(row, rhs)] / scale)
+                .collect::<Vec<_>>(),
+        );
+    }
+    let ratios = householder_projection_ratios(columns, right_hand_sides);
+    if ratios
+        .iter()
+        .any(|ratio| !ratio.is_finite() || *ratio < 0.0)
+    {
+        return Err("observation-space projection audit is not finite".to_owned());
+    }
+    let maximum = ratios.iter().copied().fold(0.0_f64, f64::max);
+    Ok(ExplicitDummyProjectionAudit {
+        per_rhs_relative_two_norm: ratios,
+        maximum_relative_two_norm: maximum,
+    })
+}
+
 /// Compute the certificate ratios from explicitly materialized local dummy
 /// blocks. This intentionally does not call the production certificate code.
 pub fn fe_projection_certificate(

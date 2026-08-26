@@ -34,8 +34,8 @@ use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 use fereg_core::{
-    estimate_phase2_memory, plan_ols_memory, MapConfig, MemoryMode, MemoryPlan,
-    PreparedCategoricalOlsData, ThreadConfig,
+    estimate_phase2_memory, plan_ols_memory, FeSolverMemoryBudget, MapConfig, MemoryMode,
+    MemoryPlan, PreparedCategoricalOlsData, ThreadConfig,
 };
 
 pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
@@ -718,6 +718,12 @@ impl EstimateActionSpec {
                     threads: thread_config,
                     ..default_fit.absorb.lsmr
                 },
+                solver_memory_budget: memory_plan.usable_bytes.map(|usable_bytes| {
+                    FeSolverMemoryBudget {
+                        execution_bytes: memory_plan.selected_bytes(),
+                        usable_bytes,
+                    }
+                }),
                 ..default_fit.absorb
             },
             execution: PreparedOlsExecutionConfig {
