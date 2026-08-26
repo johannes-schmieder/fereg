@@ -1,10 +1,10 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-25
-**Development branch:** local `main`; no development pushes
-**Current local base:** `77f5b2b81cf31c6603d3fe27a57e3610936f489c`
+**Development branch:** `main`; pushed through the verified solver candidate
+**Verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
 **Active milestone:** make default OLS consistently faster than `reghdfe` on macOS
-**Release state:** public OLS beta implemented; primary macOS solver gates green; exact-source qualification pending
+**Release state:** public OLS beta implemented; primary macOS solver gates and exact-source local full profile green; release qualification remains incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0007 and ADR-0008 remain the governing
@@ -48,15 +48,17 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
 - The normal Stata PLUS tree has the exact local comparator closure: reghdfe
   6.14.1, ftools 2.50.0 (compiled), and require 1.3.1. gtools/gregress 1.11.8
   is pinned as a diagnostic speed target with ado and macOS plugin hashes.
-- The uncommitted 0.5.0 solver checkpoint passes 293 core tests, 52 plugin
+- Committed candidate `786425f2a00049901e6a84877f486a0058aea471`
+  passes 293 core tests, 52 plugin
   tests, all Rust integration/doc tests, 258 Python tests, strict Clippy and
   formatting, repository checks, the universal macOS build/audit/actual-plugin
   ABI loader, and the licensed 32-fixture Stata surface after rebasing only the
   deterministic candidate anchors affected by the corrected CG stop. The
-  tested plugin SHA-256 is
-  `bd572488783631e962d4daa1809e9796551a36572f0b658f520c0726a7f1f567`.
-  This is local working-tree evidence, not an exact-source qualification
-  receipt.
+  exact-source local full-profile plugin SHA-256 is
+  `d7c1182e782049b541fed2f34caf720ecd82d245e4e3a1b8fb67045d260dfa85`.
+  The local full receipt records `status=success`, `stata_rc=0`, and the exact
+  candidate SHA. This is exact-source local evidence; the final immutable
+  release receipt and remaining platform/resource qualification are pending.
 
 ## 0.5.0 beta exit gate
 
@@ -159,10 +161,11 @@ path dependence.
 
 ## Current blockers
 
-1. The exact source tree still needs the complete release-qualification stack:
+1. The committed candidate still needs the remaining release-qualification stack:
    clean install, packaging/staging reproducibility, release archive hashes,
    ADR-0008 RSS/leak/constrained-memory evidence, and the final immutable
-   exact-source receipts. Local development evidence is not a release receipt.
+   release receipts. The exact-source local full profile is green but is not by
+   itself a release receipt.
 2. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
    diagnostic because its refined residual fails the independent OLS score
    certificate. Auto's four-sweep pilot passes and is the beta acceptance path;
@@ -174,8 +177,7 @@ path dependence.
    eight-case freeze manifest. The remaining 10m cases and stronger ADR-0008
    aggregate performance thresholds are still release-qualification work.
 5. Rosetta, SCC/Linux, hosted Linux/Windows, and licensed Windows evidence is
-   not refreshed for this local candidate. No push, tag, or publication is
-   permitted yet.
+   not refreshed for this candidate. No tag or publication is permitted yet.
 
 ## Development plan
 
