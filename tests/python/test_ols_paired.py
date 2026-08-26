@@ -6,6 +6,7 @@ import unittest
 
 from scripts.ols_paired import (
     CANDIDATE_LOG_SENTINEL,
+    ContractError,
     _arm_case,
     _plugin_name_for_platform,
     _stage_candidate,
@@ -190,6 +191,22 @@ class PairedEvidenceTests(unittest.TestCase):
             load_map_baseline_peak_rss(receipt, "bench_dense_two_fe_t1"),
             3_600_318_464,
         )
+
+    def test_frozen_map_receipt_uses_manifest_hash_not_checkout_permissions(self) -> None:
+        source = SCRIPT.parents[1] / "build_evidence/local/benchmarks/map-baseline-df53822"
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            receipt = target / "bench_dense_two_fe_t1.json"
+            receipt.write_bytes((source / receipt.name).read_bytes())
+            (target / "manifest.json").write_bytes((source / "manifest.json").read_bytes())
+            receipt.chmod(0o644)
+            self.assertEqual(
+                load_map_baseline_peak_rss(receipt, "bench_dense_two_fe_t1"),
+                3_600_318_464,
+            )
+            receipt.write_bytes(receipt.read_bytes() + b"\n")
+            with self.assertRaisesRegex(ContractError, "immutable checksum manifest"):
+                load_map_baseline_peak_rss(receipt, "bench_dense_two_fe_t1")
 
     def test_imposed_limit_admits_low_but_not_fast_after_headroom(self) -> None:
         low = 2_000_000_000

@@ -241,8 +241,25 @@ def load_map_baseline_peak_rss(path: Path, case_id: str) -> int:
         raise ContractError("MAP baseline receipt has an invalid envelope")
     if document["seal"] != seal_payload(document["payload"])["seal"]:
         raise ContractError("MAP baseline receipt seal mismatch")
-    if path.stat().st_mode & 0o222:
-        raise ContractError("MAP baseline receipt must be immutable")
+    manifest_path = path.parent / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, Mapping) or manifest.get("source_sha") != MAP_BASELINE_SOURCE_SHA:
+        raise ContractError("MAP baseline checksum manifest is invalid")
+    cases = manifest.get("cases")
+    if not isinstance(cases, list):
+        raise ContractError("MAP baseline checksum manifest lacks cases")
+    manifest_cases = [
+        entry
+        for entry in cases
+        if isinstance(entry, Mapping)
+        and entry.get("id") == case_id
+        and entry.get("receipt") == path.name
+    ]
+    if (
+        len(manifest_cases) != 1
+        or manifest_cases[0].get("receipt_sha256") != sha256_file(path)
+    ):
+        raise ContractError("MAP baseline receipt must match its immutable checksum manifest")
     payload = document["payload"]
     if (
         not isinstance(payload, Mapping)
