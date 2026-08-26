@@ -1,4 +1,4 @@
-# ADR 0007: fereg 0.9.0 source-qualification contract
+# ADR 0007: fereg 0.5.0 beta-qualification contract
 
 **Status:** Superseded by ADR 0008
 **Date:** 2026-08-24  
@@ -7,8 +7,8 @@
 ## Context
 
 The OLS implementation has moved from a guarded development surface to the
-public `fereg` command. The first release candidate is a source-qualified,
-untagged 0.9.0 checkpoint rather than a published GitHub prerelease. The
+public `fereg` command. The first public milestone is a source-qualified,
+candidly labeled 0.5.0 beta. The
 scientific comparator remains the isolated closure pinned in
 `references.lock.toml`:
 
@@ -18,13 +18,13 @@ scientific comparator remains the isolated closure pinned in
 
 Earlier Phase 0–1 documents used exploratory 1.2–1.5x performance language or
 an overall 1.5x geometric-mean threshold. Those values no longer govern the
-release candidate.
+beta.
 
 ## Decision
 
 1. All release-facing package, diagnostic, help, manifest, and artifact
-   identities use version 0.9.0. Public estimation uses action protocol 1.2,
-   OLS result wire 1.2, and model wire 2.1. Compatible diagnostic actions may
+   identities use version 0.5.0. Public estimation uses action protocol 1.3,
+   OLS result wire 1.3, and model wire 2.1. Compatible diagnostic actions may
    retain their narrower field sets.
 2. Public `fereg` covers the frozen OLS 1.0 surface. `feppml` remains installed
    but must return `r(498)` without posting results. PPML correctness or speed
@@ -32,7 +32,7 @@ release candidate.
 3. Qualification applies to one exact source SHA. The repository may contain
    coherent local milestone commits, but development is not pushed until the
    complete stack is release-level. No tag or GitHub release is created by the
-   0.9.0 source checkpoint.
+   0.5.0 source checkpoint.
 4. The governing performance gates, evaluated only after scientific parity,
    are:
    - geometric-mean candidate/reference runtime ratio no greater than 0.40
@@ -68,7 +68,7 @@ release candidate.
 - A green local correctness lane is necessary but insufficient. Source-qualified
   status requires exact-SHA local, SCC, macOS, Linux build/load, Windows
   build/mock, memory, performance, and packaging receipts.
-- If any remote qualification fails, 0.9.0 remains unqualified and untagged.
+- If any remote qualification fails, 0.5.0 remains unqualified and untagged.
 
 ## Supersession
 

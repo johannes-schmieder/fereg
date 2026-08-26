@@ -102,6 +102,38 @@ pub trait SpiApi {
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
     fn variable_is_strl(&mut self, variable: u32) -> Result<bool>;
     fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)>;
+    /// Read a contiguous observation range from one numeric plugin-varlist
+    /// coordinate. The default preserves the scalar SPI contract used by test
+    /// doubles; the production bridge overrides it so Rust crosses the FFI
+    /// boundary once per bounded chunk while C still invokes Stata's
+    /// authoritative `SF_vdata` and `SF_is_missing` for every cell.
+    fn read_numeric_range(
+        &mut self,
+        variable: u32,
+        first_observation: usize,
+        values: &mut [f64],
+        missing: &mut [u8],
+    ) -> Result<()> {
+        if values.len() != missing.len() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "numeric SPI range buffers have different lengths",
+            ));
+        }
+        for (offset, (value, missing_slot)) in values.iter_mut().zip(missing.iter_mut()).enumerate()
+        {
+            let observation = first_observation.checked_add(offset).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "numeric SPI range observation index overflows",
+                )
+            })?;
+            let (loaded, is_missing) = self.read_numeric(variable, observation)?;
+            *value = loaded;
+            *missing_slot = u8::from(is_missing);
+        }
+        Ok(())
+    }
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>>;
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;

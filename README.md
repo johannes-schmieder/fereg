@@ -1,9 +1,9 @@
 # fereg
 
 fereg is a Rust-first Stata package for high-dimensional fixed-effect OLS/WLS.
-The public `fereg` command is active in the untagged 0.9.0 release-candidate
-source. `feppml` remains installed but deliberately returns `r(498)`; PPML is
-outside this release-candidate scope.
+The public `fereg` command is active in the unreleased 0.5.0 beta source.
+`feppml` remains installed but deliberately returns `r(498)`; PPML is outside
+this beta scope.
 
 ## Project navigation
 

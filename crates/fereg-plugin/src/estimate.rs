@@ -102,6 +102,7 @@ struct DerivedObservationOutputs {
 #[derive(Debug)]
 struct EstimateAction {
     request: OlsRequestV1,
+    candidate_all: bool,
     clusters: Vec<OlsClusterTermV1>,
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
@@ -141,6 +142,7 @@ struct EstimateActionSpec {
     binding_matrix: String,
     binding_count: usize,
     include_intercept: bool,
+    candidate_all: bool,
     keep_singletons: bool,
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
@@ -170,6 +172,7 @@ struct ActionObservation {
 // rollback semantics. A bounded stride keeps Break latency short while the
 // final poll below guarantees no estimation starts after an unobserved stop.
 const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
+const INPUT_BULK_READ_CHUNK_ROWS: usize = 65_536;
 
 pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let started = Instant::now();
@@ -177,7 +180,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let preflight_seconds = started.elapsed().as_secs_f64();
-    let loaded = load_ols_input(&action.request, spi)?;
+    let loaded = load_ols_input(&action.request, action.candidate_all, spi)?;
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
         started,
@@ -444,6 +447,7 @@ impl EstimateActionSpec {
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
+            candidate_all: parse_bool(&values, "candidate_all")?,
             keep_singletons: parse_bool(&values, "keep_singletons")?,
             vce: parse_vce(required(&values, "vce")?)?,
             absorbed_dof: parse_dof(required(&values, "dof")?)?,
@@ -525,6 +529,7 @@ impl EstimateActionSpec {
             "binding_matrix",
             "binding_count",
             "include_intercept",
+            "candidate_all",
             "keep_singletons",
             "vce",
             "dof",
@@ -769,6 +774,7 @@ impl EstimateActionSpec {
         )?;
         Ok(EstimateAction {
             request,
+            candidate_all: self.candidate_all,
             clusters,
             vce: self.vce,
             absorbed_dof: self.absorbed_dof,
@@ -990,10 +996,18 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
     Ok(output)
 }
 
-fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<LoadedOlsInput> {
+fn load_ols_input(
+    request: &OlsRequestV1,
+    candidate_all: bool,
+    spi: &mut dyn SpiApi,
+) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
-    let mut candidate = reserved_filled(n, false, "OLS candidate marker")?;
-    let candidate_position = role_position(request, InputRoleTag::Candidate)?;
+    let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
+    let candidate_position = if candidate_all {
+        None
+    } else {
+        Some(role_position(request, InputRoleTag::Candidate)?)
+    };
     let mut outcome = empty_loaded_column(n, "OLS outcome")?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
@@ -1045,41 +1059,74 @@ fn load_ols_input(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<Loaded
             "OLS source-position capacity exhausted",
         )?;
     }
-    for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
-        if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
-            spi.check_interrupted()?;
-        }
-        let observation = zero_based + 1;
-        let (candidate_value, candidate_missing) =
-            spi.read_numeric(candidate_position, observation)?;
-        if candidate_missing
-            || !candidate_value.is_finite()
-            || !matches!(candidate_value, 0.0 | 1.0)
-        {
-            return Err(invalid_data(format!(
-                "candidate marker at observation {observation} must be nonmissing zero or one",
-            )));
-        }
-        let retained_candidate = candidate_value == 1.0;
-        *retained_slot = retained_candidate;
-        if !retained_candidate {
-            continue;
-        }
-        read_into(spi, outcome_position, observation, &mut outcome, zero_based)?;
+    let all_sources_numeric = source_loaders
+        .iter()
+        .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
+    if candidate_all && all_sources_numeric {
+        let chunk_capacity = n.clamp(1, INPUT_BULK_READ_CHUNK_ROWS);
+        let mut missing_buffer =
+            reserved_filled(chunk_capacity, 0_u8, "numeric SPI range missing buffer")?;
+        read_numeric_column_in_chunks(spi, outcome_position, &mut outcome, &mut missing_buffer)?;
         for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
-            destination.read_into(spi, *position, observation, zero_based)?;
+            let OlsSourceLoader::Numeric(destination) = destination else {
+                unreachable!("all source loaders were certified numeric");
+            };
+            read_numeric_column_in_chunks(spi, *position, destination, &mut missing_buffer)?;
         }
-        if let (Some(position), Some(destination)) = (analytic_position, analytic_weight.as_mut()) {
-            read_into(spi, position, observation, destination, zero_based)?;
+        for (position, destination) in [
+            (analytic_position, analytic_weight.as_mut()),
+            (frequency_position, frequency_weight.as_mut()),
+            (probability_position, probability_weight.as_mut()),
+        ] {
+            if let (Some(position), Some(destination)) = (position, destination) {
+                read_numeric_column_in_chunks(spi, position, destination, &mut missing_buffer)?;
+            }
         }
-        if let (Some(position), Some(destination)) = (frequency_position, frequency_weight.as_mut())
-        {
-            read_into(spi, position, observation, destination, zero_based)?;
-        }
-        if let (Some(position), Some(destination)) =
-            (probability_position, probability_weight.as_mut())
-        {
-            read_into(spi, position, observation, destination, zero_based)?;
+    } else {
+        for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
+            if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
+                spi.check_interrupted()?;
+            }
+            let observation = zero_based + 1;
+            let retained_candidate = if let Some(candidate_position) = candidate_position {
+                let (candidate_value, candidate_missing) =
+                    spi.read_numeric(candidate_position, observation)?;
+                if candidate_missing
+                    || !candidate_value.is_finite()
+                    || !matches!(candidate_value, 0.0 | 1.0)
+                {
+                    return Err(invalid_data(format!(
+                    "candidate marker at observation {observation} must be nonmissing zero or one",
+                )));
+                }
+                let retained = candidate_value == 1.0;
+                *retained_slot = retained;
+                retained
+            } else {
+                true
+            };
+            if !retained_candidate {
+                continue;
+            }
+            read_into(spi, outcome_position, observation, &mut outcome, zero_based)?;
+            for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
+                destination.read_into(spi, *position, observation, zero_based)?;
+            }
+            if let (Some(position), Some(destination)) =
+                (analytic_position, analytic_weight.as_mut())
+            {
+                read_into(spi, position, observation, destination, zero_based)?;
+            }
+            if let (Some(position), Some(destination)) =
+                (frequency_position, frequency_weight.as_mut())
+            {
+                read_into(spi, position, observation, destination, zero_based)?;
+            }
+            if let (Some(position), Some(destination)) =
+                (probability_position, probability_weight.as_mut())
+            {
+                read_into(spi, position, observation, destination, zero_based)?;
+            }
         }
     }
     spi.check_interrupted()?;
@@ -1201,6 +1248,42 @@ fn read_into(
     let (value, missing) = spi.read_numeric(position, observation)?;
     destination.values[zero_based] = value;
     destination.missing[zero_based] = missing;
+    Ok(())
+}
+
+fn read_numeric_column_in_chunks(
+    spi: &mut dyn SpiApi,
+    position: u32,
+    destination: &mut LoadedNumericColumn,
+    missing_buffer: &mut [u8],
+) -> Result<()> {
+    if destination.values.len() != destination.missing.len() || missing_buffer.is_empty() {
+        return Err(invalid(
+            "numeric SPI range destination has an invalid shape",
+        ));
+    }
+    for start in (0..destination.values.len()).step_by(missing_buffer.len()) {
+        spi.check_interrupted()?;
+        let end = start
+            .checked_add(missing_buffer.len())
+            .unwrap_or(destination.values.len())
+            .min(destination.values.len());
+        let count = end - start;
+        let statuses = &mut missing_buffer[..count];
+        statuses.fill(0);
+        spi.read_numeric_range(
+            position,
+            start + 1,
+            &mut destination.values[start..end],
+            statuses,
+        )?;
+        for (slot, status) in destination.missing[start..end]
+            .iter_mut()
+            .zip(statuses.iter().copied())
+        {
+            *slot = status == 1;
+        }
+    }
     Ok(())
 }
 
@@ -1883,11 +1966,9 @@ fn store_shadow(
     for (zero_based, reason) in shadow.drop_reasons.iter().copied().enumerate() {
         let observation = zero_based + 1;
         let retained = reason == fereg_core::DropReason::Retained;
-        spi.store_numeric(
-            action.outputs.sample,
-            observation,
-            if retained { 1.0 } else { 0.0 },
-        )?;
+        if !retained && reason != fereg_core::DropReason::ExcludedByIfIn {
+            spi.store_numeric(action.outputs.sample, observation, 0.0)?;
+        }
         if retained {
             debug_assert_eq!(shadow.retained_rows[retained_cursor], zero_based);
             if let Some(position) = action.outputs.residual {
@@ -2707,6 +2788,7 @@ mod tests {
 
         fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()> {
             self.before_store()?;
+            self.data.insert((variable, observation), (value, false));
             self.stores
                 .push(StoreEvent::Numeric(variable, observation, value));
             Ok(())
@@ -3010,6 +3092,7 @@ mod tests {
             if clustered {
                 data.insert((4, observation), (g, false));
             }
+            data.insert((sample_position, observation), (1.0, false));
         }
         let args = vec![
             format!("ado={ADO_VERSION}"),
@@ -3056,6 +3139,7 @@ mod tests {
             "binding_matrix=B".to_owned(),
             format!("binding_count={binding_count}"),
             "include_intercept=1".to_owned(),
+            "candidate_all=0".to_owned(),
             "keep_singletons=0".to_owned(),
             format!(
                 "vce={}",
@@ -3169,6 +3253,7 @@ mod tests {
         );
         for (observation, group) in [1.0, 1.0, 2.0, 2.0, 3.0, 3.0].into_iter().enumerate() {
             spi.data.insert((4, observation + 1), (group, false));
+            spi.data.insert((5, observation + 1), (1.0, false));
         }
         spi.nvars = 11;
 
@@ -3238,7 +3323,14 @@ mod tests {
                 _ => None,
             })
             .unwrap_or_else(|| {
-                panic!("missing store for variable {variable}, observation {observation}")
+                spi.data
+                    .get(&(variable, observation))
+                    .map(|(value, _)| *value)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "missing stored value for variable {variable}, observation {observation}"
+                        )
+                    })
             })
     }
 
@@ -3326,6 +3418,22 @@ mod tests {
                 Some(&StoreEvent::Matrix(14, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
         }
+    }
+
+    #[test]
+    fn complete_candidate_universe_skips_candidate_spi_reads() {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
+
+        estimate_ols_test(&args, &mut spi).expect("complete-candidate estimate succeeds");
+
+        // Six observations times outcome plus one source. The candidate
+        // coordinate remains present on the wire but is never read.
+        assert_eq!(spi.numeric_reads, 12);
+        assert_eq!(spi.matrices["RREC"][0][6], 6.0);
+        assert_eq!(spi.matrices["RREC"][0][7], 6.0);
+        assert_eq!(spi.matrices["RREC"][0][8], 6.0);
+        assert_eq!(spi.receipt_complete(), 1.0);
     }
 
     #[test]
@@ -3448,7 +3556,7 @@ mod tests {
             .iter()
             .take_while(|event| matches!(event, StoreEvent::Numeric(..)))
             .count();
-        assert_eq!(observation_stores, 42);
+        assert_eq!(observation_stores, 36);
         for failing_ordinal in 1..=observation_stores {
             let (args, mut spi) = saved_output_fixture();
             spi.fail_store_at = Some(failing_ordinal);
@@ -3623,7 +3731,7 @@ mod tests {
 
         let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
         let mut mixed = bundled(&args);
-        mixed.push("ado=0.9.0".to_owned());
+        mixed.push("ado=0.5.0".to_owned());
         let error = estimate_ols_test(&mixed, &mut mixed_spi)
             .expect_err("mixed bundle and argv are rejected");
         assert_eq!(error.code, ErrorCode::Syntax);
@@ -3636,7 +3744,7 @@ mod tests {
         let (args, mut successful) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
         let total_stores = successful.store_calls;
-        assert_eq!(total_stores, 290);
+        assert_eq!(total_stores, 284);
         assert_eq!(successful.stores.capacity(), 512);
 
         for failing_ordinal in 1..=total_stores {

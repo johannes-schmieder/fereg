@@ -1,4 +1,4 @@
-*! fereg feppml fail-closed stub 0.9.0 24aug2026
+*! fereg feppml fail-closed stub 0.5.0 24aug2026
 program define feppml, eclass sortpreserve
     version 18.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
@@ -22,8 +22,8 @@ program define feppml, eclass sortpreserve
         exit 198
     }
 
-    di as error "feppml estimation is not implemented in fereg 0.9.0"
-    di as error "PPML IRLS and separation are outside the 0.9.0 OLS release-candidate scope."
+    di as error "feppml estimation is not implemented in fereg 0.5.0"
+    di as error "PPML IRLS and separation are outside the 0.5.0 OLS beta scope."
     di as error "No partial or uncertified PPML estimate has been posted."
     exit 498
 end

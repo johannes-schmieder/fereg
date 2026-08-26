@@ -38,6 +38,9 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
             "unable to reserve numeric categorical factorization storage",
         )
     };
+    if let Some(encoded) = factorize_dense_integer_f64(values, allocation)? {
+        return Ok(encoded);
+    }
     // Factor variables normally contain far fewer levels than observations.
     // Building and sorting an observation-sized copy made that common case
     // O(N log N) and retained an N-sized capacity after deduplication. Assign
@@ -110,6 +113,93 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
         *code = remap[*code as usize];
     }
     Ok(EncodedFactor { codes, levels })
+}
+
+fn factorize_dense_integer_f64<F>(
+    values: &[f64],
+    allocation: F,
+) -> Result<Option<EncodedFactor<f64>>>
+where
+    F: Fn() -> FeregError + Copy,
+{
+    if values.is_empty() {
+        return Ok(Some(EncodedFactor {
+            codes: Vec::new(),
+            levels: Vec::new(),
+        }));
+    }
+    let mut minimum = i64::MAX;
+    let mut maximum = i64::MIN;
+    for value in values {
+        if !value.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "categorical numeric source contains a nonfinite value",
+            ));
+        }
+        let normalized = if *value == 0.0 { 0.0 } else { *value };
+        if normalized.fract() != 0.0
+            || normalized < i64::MIN as f64
+            || normalized >= i64::MAX as f64
+        {
+            return Ok(None);
+        }
+        let integer = normalized as i64;
+        minimum = minimum.min(integer);
+        maximum = maximum.max(integer);
+    }
+    let range_i128 = i128::from(maximum) - i128::from(minimum) + 1;
+    let dense_limit = values.len().saturating_mul(2).max(4_096);
+    let Ok(range) = usize::try_from(range_i128) else {
+        return Ok(None);
+    };
+    if range > dense_limit {
+        return Ok(None);
+    }
+
+    let mut canonical_by_offset = Vec::new();
+    canonical_by_offset
+        .try_reserve_exact(range)
+        .map_err(|_| allocation())?;
+    canonical_by_offset.resize(range, u32::MAX);
+    for value in values {
+        let integer = if *value == 0.0 { 0 } else { *value as i64 };
+        let offset =
+            usize::try_from(i128::from(integer) - i128::from(minimum)).map_err(|_| allocation())?;
+        canonical_by_offset[offset] = 0;
+    }
+
+    let n_levels = canonical_by_offset
+        .iter()
+        .filter(|code| **code != u32::MAX)
+        .count();
+    ensure_u32_levels(n_levels)?;
+    let mut levels = Vec::new();
+    levels
+        .try_reserve_exact(n_levels)
+        .map_err(|_| allocation())?;
+    let mut next = 0_u32;
+    for (offset, code) in canonical_by_offset.iter_mut().enumerate() {
+        if *code == u32::MAX {
+            continue;
+        }
+        *code = next;
+        let integer = i128::from(minimum) + offset as i128;
+        levels.push(integer as f64);
+        next = next.checked_add(1).ok_or_else(allocation)?;
+    }
+
+    let mut codes = Vec::new();
+    codes
+        .try_reserve_exact(values.len())
+        .map_err(|_| allocation())?;
+    for value in values {
+        let integer = if *value == 0.0 { 0 } else { *value as i64 };
+        let offset =
+            usize::try_from(i128::from(integer) - i128::from(minimum)).map_err(|_| allocation())?;
+        codes.push(canonical_by_offset[offset]);
+    }
+    Ok(Some(EncodedFactor { codes, levels }))
 }
 
 pub fn factorize_strings<S: AsRef<str>>(values: &[S]) -> Result<EncodedFactor<String>> {
@@ -192,6 +282,13 @@ mod tests {
         let encoded = factorize_f64(&[-0.0, 0.0, 2.5]).expect("factorize");
         assert_eq!(encoded.levels, vec![0.0, 2.5]);
         assert_eq!(encoded.codes, vec![0, 0, 1]);
+    }
+
+    #[test]
+    fn dense_integer_codes_are_canonical_with_gaps_and_negatives() {
+        let encoded = factorize_f64(&[2.0, -1.0, 2.0, 0.0, -1.0]).expect("factorize");
+        assert_eq!(encoded.levels, vec![-1.0, 0.0, 2.0]);
+        assert_eq!(encoded.codes, vec![2, 0, 2, 1, 0]);
     }
 
     #[test]

@@ -534,7 +534,14 @@ class HiddenNumericProjectionTests(unittest.TestCase):
         )
         self.assertIn("OLS shadow observation outputs failed final preflight", native)
         self.assertIn(".eq(shadow.retained_rows.iter().copied())", native)
-        self.assertIn("if retained { 1.0 } else { 0.0 }", native)
+        self.assertIn("generate byte `sample_shadow' = `touse'", source)
+        self.assertIn(
+            "if !retained && reason != fereg_core::DropReason::ExcludedByIfIn",
+            native,
+        )
+        self.assertIn(
+            "spi.store_numeric(action.outputs.sample, observation, 0.0)?;", native
+        )
         precommit = native.split("fn precommit_and_store", 1)[1].split(
             "fn validate_shadow_against_outputs", 1
         )[0]

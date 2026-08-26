@@ -4,20 +4,20 @@ The platform plugin exports Stata's required `pginit` and `stata_call`; the C
 bridge forwards to Rust's `fereg_dispatch`. Scientific logic and result
 validation remain in Rust.
 
-## 0.9.0 versions
+## 0.5.0 versions
 
 The action handshake, model metadata, and OLS result layout are independently
 versioned:
 
-| Contract | Public 0.9.0 version |
+| Contract | Public 0.5.0 version |
 |---|---:|
-| Action protocol | 1.2 |
+| Action protocol | 1.3 |
 | Model wire | 2.1 |
-| OLS result wire | 1.2 |
+| OLS result wire | 1.3 |
 
 Public estimation requires the exact action/result versions. Diagnostic
 `doctor` and `selftest` callers retain the action protocol's same-major,
-not-newer-minor compatibility rule. ADO identity must be exactly 0.9.0. Model
+not-newer-minor compatibility rule. ADO identity must be exactly 0.5.0. Model
 wire 2.0 remains readable only for the bounded legacy no-absorbed-metadata
 case; model wire v1, unknown majors, and newer minors are rejected.
 
@@ -33,7 +33,7 @@ case; model wire v1, unknown majors, and newer minors are rejected.
   `fereg`.
 - `prepare-ols-test` and the hidden OLS adapter remain developer qualification
   actions and are excluded from distributions.
-- `estimate-ppml` is unsupported in 0.9.0; `feppml` fails in ado before a
+- `estimate-ppml` is unsupported in 0.5.0; `feppml` fails in ado before a
   substantive plugin call.
 
 ## Public OLS transaction

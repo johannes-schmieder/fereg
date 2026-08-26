@@ -158,6 +158,48 @@ ST_int fereg_spi_vdata(ST_int variable, ST_int observation, ST_double *value)
     return SF_vdata(variable, observation, value);
 }
 
+ST_int fereg_spi_vdata_with_missing(
+    ST_int variable,
+    ST_int observation,
+    ST_double *value,
+    ST_int *missing
+)
+{
+    ST_int rc;
+    if (value == NULL || missing == NULL) return FEREG_SPI_RC_SYNTAX;
+    if (fereg_bridge_require_main_thread() != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    rc = SF_vdata(variable, observation, value);
+    if (rc != 0) return rc;
+    *missing = SF_is_missing(*value) ? 1 : 0;
+    return 0;
+}
+
+ST_int fereg_spi_vdata_range_with_missing(
+    ST_int variable,
+    ST_int first_observation,
+    ST_int count,
+    ST_double *values,
+    unsigned char *missing
+)
+{
+    ST_int index;
+    ST_int rc;
+    if (values == NULL || missing == NULL || first_observation <= 0 || count <= 0) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    if (fereg_bridge_require_main_thread() != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    for (index = 0; index < count; ++index) {
+        rc = SF_vdata(variable, first_observation + index, &values[index]);
+        if (rc != 0) return rc;
+        missing[index] = SF_is_missing(values[index]) ? 1 : 0;
+    }
+    return 0;
+}
+
 ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
 {
     if (fereg_bridge_require_main_thread() != 0) {

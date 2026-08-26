@@ -1,7 +1,7 @@
 # Scientific contracts and OLS reference gate
 
 Architecture, source presence, and native unit tests are not estimator
-validation. Public `fereg` OLS is implemented for 0.9.0 but is not
+validation. Public `fereg` OLS is implemented for 0.5.0 but is not
 source-qualified until the exact candidate passes ADR-0007. `feppml` remains
 fail-closed and outside the candidate.
 

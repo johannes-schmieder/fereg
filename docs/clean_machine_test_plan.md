@@ -2,12 +2,12 @@
 
 Start with licensed Stata and no Rust, compiler, Python, Julia, BLAS, or prior
 fereg installation. Test only the staged production files and the platform
-plugin from the audited 0.9.0 archive.
+plugin from the audited 0.5.0 archive.
 
 1. Verify `which fereg`, `which feppml`, and the platform plugin resolve only
    inside the isolated install.
 2. Run `fereg, version`, `doctor threads(1)`, `doctor threads(32)`, and
-   `selftest threads(32)`; require 0.9.0, action/result 1.2, and model 2.1.
+   `selftest threads(32)`; require 0.5.0, action/result 1.3, and model 2.1.
 3. Drop/redefine the plugin handle 100 times and rerun diagnostics to detect
    loader lifecycle defects.
 4. Run public parser/error, OLS, weight, FE/slope/string, time-series,

@@ -652,8 +652,12 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
         adjustment: AdjustmentInput::None,
     };
     let source_uses = source_uses(request, cluster_sources)?;
-    let sample =
-        prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?;
+    let sample = match prepare_full_retained_unweighted_sample(loaded)? {
+        Some(sample) => sample,
+        None => {
+            prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?
+        }
+    };
     // Cluster-only sources are deliberately absent from this pre-singleton
     // factorization. They affect availability (reason 6), never FE pruning;
     // cluster coding is created only on the final singleton fixed point below.
@@ -707,6 +711,72 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
             cascade_events,
         },
     })
+}
+
+/// Materialize the overwhelmingly common complete, unweighted sample without
+/// paying the per-row classification and per-column `push` cost. The scan is
+/// still authoritative: every candidate flag, missing mask, and finite-value
+/// condition required by the generic OLS policy is checked before this route
+/// is selected. Any exclusion or weight returns to the fully general path.
+fn prepare_full_retained_unweighted_sample(
+    loaded: &LoadedOlsInput,
+) -> Result<Option<PreparedNumericSample>> {
+    if loaded.analytic_weight.is_some()
+        || loaded.frequency_weight.is_some()
+        || loaded.probability_weight.is_some()
+        || loaded.candidate.iter().any(|candidate| !candidate)
+        || loaded.outcome.missing.iter().any(|missing| *missing)
+        || loaded.outcome.values.iter().any(|value| !value.is_finite())
+        || loaded.numeric_sources.iter().any(|(_, column)| {
+            column.missing.iter().any(|missing| *missing)
+                || column.values.iter().any(|value| !value.is_finite())
+        })
+    {
+        return Ok(None);
+    }
+
+    let n = loaded.candidate.len();
+    let mut original_row_by_active = Vec::new();
+    original_row_by_active
+        .try_reserve_exact(n)
+        .map_err(|_| allocation("unable to reserve complete-sample observation map"))?;
+    original_row_by_active.extend(0..n);
+
+    let mut outcome = Vec::new();
+    outcome
+        .try_reserve_exact(n)
+        .map_err(|_| allocation("unable to reserve complete-sample outcome"))?;
+    outcome.extend_from_slice(&loaded.outcome.values);
+
+    let mut regressors = Vec::new();
+    regressors
+        .try_reserve_exact(loaded.numeric_sources.len())
+        .map_err(|_| allocation("unable to reserve complete-sample regressor table"))?;
+    for (_, source) in &loaded.numeric_sources {
+        let mut destination = Vec::new();
+        destination
+            .try_reserve_exact(n)
+            .map_err(|_| allocation("unable to reserve complete-sample regressor column"))?;
+        destination.extend_from_slice(&source.values);
+        regressors.push(destination);
+    }
+
+    let mut drop_reasons = Vec::new();
+    drop_reasons
+        .try_reserve_exact(n)
+        .map_err(|_| allocation("unable to reserve complete-sample drop-reason mask"))?;
+    drop_reasons.resize(n, crate::data::DropReason::Retained);
+
+    Ok(Some(PreparedNumericSample {
+        n_original: n,
+        n_candidate: n,
+        original_row_by_active,
+        outcome,
+        regressors,
+        weights: PreparedWeights::None,
+        adjustment: crate::data::PreparedAdjustment::None,
+        drop_reasons,
+    }))
 }
 
 fn prune_prepared_singletons(

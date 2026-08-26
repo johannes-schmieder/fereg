@@ -231,7 +231,6 @@ extern "C" {
     fn fereg_spi_stop_requested() -> c_int;
     fn fereg_spi_nobs() -> c_int;
     fn fereg_spi_nvars() -> c_int;
-    fn fereg_spi_is_missing(value: f64) -> c_int;
     fn fereg_spi_var_is_string(variable: c_int) -> c_int;
     fn fereg_spi_var_is_strl(variable: c_int) -> c_int;
     fn fereg_spi_sdatalen(variable: c_int, observation: c_int) -> c_int;
@@ -241,7 +240,19 @@ extern "C" {
         buffer: *mut c_char,
         length: c_int,
     ) -> c_int;
-    fn fereg_spi_vdata(variable: c_int, observation: c_int, value: *mut f64) -> c_int;
+    fn fereg_spi_vdata_with_missing(
+        variable: c_int,
+        observation: c_int,
+        value: *mut f64,
+        missing: *mut c_int,
+    ) -> c_int;
+    fn fereg_spi_vdata_range_with_missing(
+        variable: c_int,
+        first_observation: c_int,
+        count: c_int,
+        values: *mut f64,
+        missing: *mut u8,
+    ) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
     fn fereg_spi_matrix_rows(name: *const c_char) -> c_int;
     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
@@ -277,10 +288,6 @@ unsafe fn fereg_spi_nvars() -> c_int {
     -1
 }
 #[cfg(test)]
-unsafe fn fereg_spi_is_missing(_value: f64) -> c_int {
-    0
-}
-#[cfg(test)]
 unsafe fn fereg_spi_var_is_string(_variable: c_int) -> c_int {
     -1
 }
@@ -302,7 +309,22 @@ unsafe fn fereg_spi_read_string(
     498
 }
 #[cfg(test)]
-unsafe fn fereg_spi_vdata(_variable: c_int, _observation: c_int, _value: *mut f64) -> c_int {
+unsafe fn fereg_spi_vdata_with_missing(
+    _variable: c_int,
+    _observation: c_int,
+    _value: *mut f64,
+    _missing: *mut c_int,
+) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn fereg_spi_vdata_range_with_missing(
+    _variable: c_int,
+    _first_observation: c_int,
+    _count: c_int,
+    _values: *mut f64,
+    _missing: *mut u8,
+) -> c_int {
     498
 }
 #[cfg(test)]
@@ -474,13 +496,14 @@ impl SpiApi for SpiSession {
         let variable = Self::position(variable, "variable position")?;
         let observation = Self::observation(observation)?;
         let mut value = 0.0_f64;
-        // SAFETY: output pointer is live; indices are checked and the session is confined.
+        let mut missing: c_int = 0;
+        // SAFETY: output pointers are live; indices are checked and the session is confined.
         Self::spi_rc(
-            unsafe { fereg_spi_vdata(variable, observation, &mut value) },
+            unsafe {
+                fereg_spi_vdata_with_missing(variable, observation, &mut value, &mut missing)
+            },
             "numeric read",
         )?;
-        // SAFETY: missing-value classification occurs on the same bound thread.
-        let missing = unsafe { fereg_spi_is_missing(value) };
         match missing {
             0 => Ok((value, false)),
             1 => Ok((value, true)),
@@ -489,6 +512,56 @@ impl SpiApi for SpiSession {
                 format!("Stata SPI returned invalid missing status {other}"),
             )),
         }
+    }
+
+    fn read_numeric_range(
+        &mut self,
+        variable: u32,
+        first_observation: usize,
+        values: &mut [f64],
+        missing: &mut [u8],
+    ) -> Result<(), FeregError> {
+        if values.len() != missing.len() || values.is_empty() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "numeric SPI range buffers must be nonempty and equally sized",
+            ));
+        }
+        let variable = Self::position(variable, "variable position")?;
+        let first_observation = Self::observation(first_observation)?;
+        let count = c_int::try_from(values.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "numeric SPI range length exceeds Stata's index width",
+            )
+        })?;
+        first_observation.checked_add(count - 1).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "numeric SPI range observation index overflows",
+            )
+        })?;
+        // SAFETY: both buffers are live for `count` elements, all integer
+        // coordinates were checked, and the SPI session is Stata-thread-bound.
+        Self::spi_rc(
+            unsafe {
+                fereg_spi_vdata_range_with_missing(
+                    variable,
+                    first_observation,
+                    count,
+                    values.as_mut_ptr(),
+                    missing.as_mut_ptr(),
+                )
+            },
+            "numeric range read",
+        )?;
+        if missing.iter().any(|status| !matches!(status, 0 | 1)) {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "Stata SPI returned an invalid range missing status",
+            ));
+        }
+        Ok(())
     }
 
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>, FeregError> {
@@ -618,22 +691,32 @@ impl SpiApi for SpiSession {
 
 impl OutputSink for SpiSink {
     fn display(&self, message: &str) {
-        let sanitized = sanitize_c_string(message);
-        // SAFETY: `sanitized` is a live NUL-terminated C string for the duration
-        // of the call. The C bridge executes this SPI call on Stata's calling
-        // thread and does not retain the pointer.
-        unsafe {
-            let _ = fereg_spi_display(sanitized.as_ptr());
+        for chunk in stata_output_chunks(message) {
+            let sanitized = sanitize_c_string(chunk);
+            // SAFETY: `sanitized` is a live NUL-terminated C string for the
+            // duration of the call. The C bridge executes this SPI call on
+            // Stata's calling thread and does not retain the pointer.
+            unsafe {
+                let _ = fereg_spi_display(sanitized.as_ptr());
+            }
         }
     }
 
     fn error(&self, message: &str) {
-        let sanitized = sanitize_c_string(message);
-        // SAFETY: same lifetime and thread argument as `display` above.
-        unsafe {
-            let _ = fereg_spi_error(sanitized.as_ptr());
+        for chunk in stata_output_chunks(message) {
+            let sanitized = sanitize_c_string(chunk);
+            // SAFETY: same lifetime and thread argument as `display` above.
+            unsafe {
+                let _ = fereg_spi_error(sanitized.as_ptr());
+            }
         }
     }
+}
+
+/// Stata's Results renderer expects one physical line per SPI output call.
+/// Keep each terminating newline attached so captured logs remain unchanged.
+fn stata_output_chunks(message: &str) -> impl Iterator<Item = &str> {
+    message.split_inclusive('\n')
 }
 
 /// Dispatch one Stata plugin action across the C ABI.
@@ -823,5 +906,13 @@ mod tests {
         }
         let unrelated = FeregError::new(ErrorCode::Internal, "unrelated");
         assert!(prepared_store_error_report(&unrelated).is_none());
+    }
+
+    #[test]
+    fn stata_output_is_split_into_physical_lines() {
+        assert_eq!(
+            stata_output_chunks("first\nsecond\nthird").collect::<Vec<_>>(),
+            vec!["first\n", "second\n", "third"],
+        );
     }
 }

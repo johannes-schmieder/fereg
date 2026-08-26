@@ -3,6 +3,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$ROOT/target/native-macos"
 DIST="$ROOT/dist"
+RUST_BUILD_ROOT="${CARGO_TARGET_DIR:-$ROOT/target}"
+export CARGO_TARGET_DIR="$RUST_BUILD_ROOT"
 mkdir -p "$BUILD" "$DIST"
 rm -f "$BUILD"/* "$DIST/fereg_macos.plugin"
 
@@ -28,7 +30,7 @@ build_slice() {
     -Wl,-dead_strip \
     -Wl,-exported_symbols_list,"$ROOT/plugin/exports_macos.txt" \
     "$BUILD/stplugin.$suffix.o" "$BUILD/stata_bridge.$suffix.o" \
-    "$ROOT/target/$rust_target/release/libfereg_plugin.a" \
+    "$RUST_BUILD_ROOT/$rust_target/release/libfereg_plugin.a" \
     -framework Security -framework CoreFoundation -framework SystemConfiguration \
     -liconv -lresolv \
     -o "$BUILD/fereg_macos.$suffix.plugin"

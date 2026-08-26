@@ -1,6 +1,6 @@
 # Threading contract
 
-## 0.9.0 implementation
+## 0.5.0 implementation
 
 `ThreadTeam` creates an isolated Rayon pool for each native estimation action.
 `threads(0)` uses available processors; an explicit positive value requests
@@ -32,7 +32,7 @@ scientific tolerances and exact sample/status/DoF gates still apply.
 
 ## Rayon decision
 
-ADR 0002 recorded the earlier dependency-free construction. The 0.9.0 runtime
+ADR 0002 recorded the earlier dependency-free construction. The 0.5.0 runtime
 uses an exact-version Rayon dependency and a local pool while preserving the
 same `ThreadTeam` abstraction. The crate and transitive dependency inventory is
 captured in Cargo.lock and the release SBOM/license notices.

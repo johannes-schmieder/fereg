@@ -1,4 +1,4 @@
-*! fereg plugin loader 0.9.0 24aug2026
+*! fereg plugin loader 0.5.0 24aug2026
 program define _fereg_load, rclass
     version 18.0
     syntax , ACTION(string) [THREADS(integer 0)]
@@ -49,7 +49,7 @@ program define _fereg_load, rclass
     }
     else if `"`action'"' == "doctor" {
         plugin call __fereg_plugin, doctor ///
-            `"ado=0.9.0"' ///
+            `"ado=0.5.0"' ///
             `"protocol_major=1"' ///
             `"protocol_minor=0"' ///
             `"stata=`c(stata_version)'"' ///
@@ -59,7 +59,7 @@ program define _fereg_load, rclass
     }
     else if `"`action'"' == "selftest" {
         plugin call __fereg_plugin, selftest ///
-            `"ado=0.9.0"' ///
+            `"ado=0.5.0"' ///
             `"protocol_major=1"' ///
             `"protocol_minor=0"' ///
             `"stata=`c(stata_version)'"' ///

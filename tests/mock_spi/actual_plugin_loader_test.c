@@ -363,7 +363,7 @@ static int check_version(stata_call_function call)
     char *arguments[] = {"version"};
     clear_output();
     if (call(1, arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.plugin_version=0.9.0") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.3") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
         strstr(display_buffer, "fereg.ols_result_wire=1.3") == NULL ||
@@ -377,7 +377,7 @@ static int check_doctor(stata_call_function call)
 {
     char *arguments[] = {
         "doctor",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -399,7 +399,7 @@ static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
         "doctor",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=99",
         "protocol_minor=0",
         "stata=18.0"
@@ -434,7 +434,7 @@ static int check_prepare_ols_test(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -469,7 +469,9 @@ static int check_prepare_ols_test(stata_call_function call)
     ST_int row;
     plugin_nvars = 6;
     for (row = 0; row < 5; ++row) {
-        plugin_data[3][row] = NAN;
+        /* The Stata transaction initializes output_sample from its candidate
+           marker; native storage only clears later exclusions. */
+        plugin_data[3][row] = 1.0;
         plugin_data[4][row] = NAN;
         plugin_data[5][row] = NAN;
     }
@@ -514,7 +516,7 @@ static int check_prepare_ols_factor(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -585,7 +587,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -684,7 +686,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -776,7 +778,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -863,7 +865,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -986,12 +988,12 @@ static ST_int call_estimate_ols_test(stata_call_function call)
 {
     char *arguments[] = {
         "estimate-ols",
-        "ado=0.9.0",
+        "ado=0.5.0",
         "protocol_major=1",
         "protocol_minor=3",
         "stata=18.0",
         "confirm=fereg-estimation",
-        "plugin=0.9.0",
+        "plugin=0.5.0",
         "result_major=1",
         "result_minor=3",
         "model_major=2",
@@ -1020,6 +1022,7 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
+        "candidate_all=0",
         "keep_singletons=0",
         "vce=iid",
         "dof=pairwise",
@@ -1069,7 +1072,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 287) return 3;
+    if (output_store_calls != 282) return 3;
     for (name_index = 0; name_index < 14; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
@@ -1078,7 +1081,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 287; ++ordinal) {
+    for (ordinal = 1; ordinal <= 282; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();

@@ -70,7 +70,11 @@ impl Default for PreparedOlsFitConfig {
                 map: crate::fe::MapConfig {
                     tolerance: 1e-10,
                     max_iterations: 20_000,
-                    check_every: 1,
+                    // Recurrence checks are cheap, but the independent FE
+                    // certificate is a full pass over every absorbed effect.
+                    // Check it periodically and always at solver exit rather
+                    // than paying that cost after every iteration.
+                    check_every: 4,
                     symmetric: true,
                 },
                 ..AbsorbConfig::default()
@@ -352,6 +356,9 @@ trait FitReservation {
 
 struct SystemFitReservation;
 
+const PARALLEL_QR_MIN_ROWS: usize = 65_536;
+const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
+
 impl FitReservation for SystemFitReservation {
     fn reserve<T>(
         &mut self,
@@ -448,9 +455,18 @@ struct QrFit {
     within_residuals: Option<Vec<f64>>,
 }
 
+#[derive(Debug)]
+struct RawMomentCache {
+    means: Vec<f64>,
+    scales: Vec<f64>,
+    norms: Vec<f64>,
+    weight_sum: f64,
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct FitPerturbations {
     first_coefficient: bool,
+    reconstructed_within_residual_constant: bool,
     final_residual_constant: bool,
     finite_bread: bool,
     reported_intercept: bool,
@@ -565,6 +581,15 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     } else {
         Vec::new()
     };
+    let raw_moments = if prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache {
+        let cache = build_raw_moment_cache(&raw, weights, reservation)?;
+        for (column, norm) in reference_norms.iter_mut().enumerate() {
+            *norm = cache.norms[column + 1];
+        }
+        Some(cache)
+    } else {
+        None
+    };
     if retain_fast_score_cache {
         reference_norms
             .par_iter_mut()
@@ -577,7 +602,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
                 }
                 Ok(())
             })?;
-    } else {
+    } else if raw_moments.is_none() {
         reference_norms.par_iter_mut().enumerate().try_for_each(
             |(column, norm)| -> Result<()> {
                 *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
@@ -585,8 +610,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             },
         )?;
     }
-
-    let absorbed = prepared.fit_absorb_matrix(weights.borrowed(), raw, config.absorb)?;
+    let absorbed = prepared.fit_absorb_initial_matrix(weights.borrowed(), raw, config.absorb)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -620,7 +644,6 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             *norm = weighted_matrix_column_norm(&within, column + 1, weights)?;
             Ok(())
         })?;
-
     let mut qr = fit_scaled_pivoted_qr(
         prepared,
         &mut within,
@@ -632,41 +655,16 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         perturbations.first_coefficient,
         perturbations.finite_bread,
     )?;
-
-    let mut raw_residuals = reserved_filled(
-        reservation,
-        prepared.fit_sample().n_active(),
-        0.0_f64,
-        "unable to reserve prepared OLS final residual",
-    )?;
-    raw_residuals
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(row, residual)| -> Result<()> {
-            let mut value = prepared.fit_sample().outcome[row];
-            for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
-                if let Some(coefficient) = coefficient {
-                    let regressor = prepared.fit_column_value(column, row)?;
-                    value = (-*coefficient).mul_add(regressor, value);
-                }
-            }
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS raw regression residual is not finite",
-                ));
-            }
-            *residual = value;
-            Ok(())
-        })?;
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         &mut qr,
-        &mut raw_residuals,
+        None,
         weights,
         config.bread_tolerance,
         reservation,
         perturbations,
         fast_score_cache.as_ref(),
+        raw_moments.as_ref(),
     )?;
     let initial_absorbed_outcome_sum_of_squares =
         normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
@@ -677,7 +675,14 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             "prepared OLS initial absorbed outcome sum of squares is invalid",
         ));
     }
-    let final_residuals = qr.within_residuals.take().unwrap_or(raw_residuals);
+    let mut final_residuals = qr.within_residuals.take().ok_or_else(|| {
+        invalid_argument("fast prepared OLS QR did not retain its within residual")
+    })?;
+    if perturbations.reconstructed_within_residual_constant {
+        for residual in &mut final_residuals {
+            *residual += 0.25;
+        }
+    }
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
     let residual_absorbed =
@@ -987,11 +992,12 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         &mut qr,
-        &mut raw_residuals,
+        Some(&mut raw_residuals),
         weights,
         config.bread_tolerance,
         reservation,
         perturbations,
+        None,
         None,
     )?;
     let initial_absorbed_outcome_sum_of_squares =
@@ -1345,7 +1351,10 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         if reference == 0.0 {
             continue;
         }
-        let within_norm = weighted_matrix_column_norm(within, column + 1, weights)?;
+        // The caller computed these norms from the untouched within matrix
+        // immediately before entering QR. Reuse that certified scale instead
+        // of rescanning every candidate column here.
+        let within_norm = score_norms[column];
         let ratio = within_norm / reference;
         if !ratio.is_finite() {
             return Err(invalid_data(
@@ -1404,7 +1413,6 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS dropped-column table",
     )?;
-
     within
         .as_mut_slice()
         .par_chunks_mut(expected_columns)
@@ -1429,7 +1437,6 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
             Ok(())
         })?;
-
     let mut standardized_rhs = reserved_filled(
         reservation,
         candidate_count,
@@ -1459,7 +1466,6 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             Ok(())
         },
     )?;
-
     let standardized_gram_elements = checked_square(
         candidate_count,
         "prepared OLS standardized Gram dimensions overflow usize",
@@ -1501,7 +1507,6 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
         }
     }
-
     fill_trailing_norms(within, &candidate_columns, 0, &mut trailing_norms)?;
     let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
     let relative_threshold = config.rank_tolerance_multiplier
@@ -1516,7 +1521,11 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let mut largest_diagonal = 0.0_f64;
     let mut smallest_diagonal = f64::INFINITY;
     while rank < nrows.min(candidate_count) {
-        fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
+        // Rank zero already has the initial trailing norms above. Later ranks
+        // require a refresh after applying the previous reflector.
+        if rank > 0 {
+            fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
+        }
         let mut pivot_position = rank;
         let mut pivot_norm = trailing_norms[rank];
         for (position, candidate_norm) in trailing_norms.iter().copied().enumerate().skip(rank + 1)
@@ -1536,7 +1545,9 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         candidate_columns.swap(rank, pivot_position);
         trailing_norms.swap(rank, pivot_position);
         let column = candidate_columns[rank] + 1;
-        let norm = stable_matrix_segment_norm(within, column, rank)?;
+        // `pivot_norm` is the stable segment norm just selected from the
+        // current trailing-norm table; do not scan the pivot column again.
+        let norm = pivot_norm;
         if norm <= absolute_threshold {
             break;
         }
@@ -1555,12 +1566,29 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             ));
         }
         within[(rank, column)] = beta;
-        for row in (rank + 1)..nrows {
-            within[(row, column)] /= denominator;
-            if !within[(row, column)].is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS QR Householder vector is not finite",
-                ));
+        if nrows >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+            within
+                .as_mut_slice()
+                .par_chunks_mut(expected_columns)
+                .skip(rank + 1)
+                .try_for_each(|row| -> Result<()> {
+                    row[column] /= denominator;
+                    if row[column].is_finite() {
+                        Ok(())
+                    } else {
+                        Err(invalid_data(
+                            "prepared OLS QR Householder vector is not finite",
+                        ))
+                    }
+                })?;
+        } else {
+            for row in (rank + 1)..nrows {
+                within[(row, column)] /= denominator;
+                if !within[(row, column)].is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS QR Householder vector is not finite",
+                    ));
+                }
             }
         }
         for &other_generated in &candidate_columns[(rank + 1)..] {
@@ -1576,7 +1604,9 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             .ok_or_else(|| allocation("prepared OLS QR rank overflows usize"))?;
     }
 
-    fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
+    if rank < candidate_count {
+        fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
+    }
     let maximum_dropped_trailing_norm = if rank == candidate_count || initial_norm == 0.0 {
         0.0
     } else {
@@ -1674,17 +1704,13 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reference_norms,
         score_norms,
     )?;
-    let within_residuals = if nrows >= FAST_INFERENCE_REUSE_MIN_ROWS || cfg!(test) {
-        Some(reconstruct_within_residuals(
-            within,
-            &candidate_columns,
-            rank,
-            weights,
-            reservation,
-        )?)
-    } else {
-        None
-    };
+    let within_residuals = Some(reconstruct_within_residuals(
+        within,
+        &candidate_columns,
+        rank,
+        weights,
+        reservation,
+    )?);
     let bread = build_finite_bread_draft(
         prepared,
         FiniteBreadInputs {
@@ -2197,8 +2223,15 @@ fn reconstruct_within_residuals<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS reconstructed within residual",
     )?;
-    for (row, residual) in residuals.iter_mut().enumerate().skip(rank) {
-        *residual = qr[(row, 0)];
+    if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        residuals[rank..]
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(offset, residual)| *residual = qr[(rank + offset, 0)]);
+    } else {
+        for (row, residual) in residuals.iter_mut().enumerate().skip(rank) {
+            *residual = qr[(row, 0)];
+        }
     }
     for position in (0..rank).rev() {
         let column = pivot_columns[position]
@@ -2213,14 +2246,21 @@ fn reconstruct_within_residuals<R: FitReservation>(
         let mut norm_correction = 0.0_f64;
         let mut dot = residuals[position];
         let mut dot_correction = 0.0_f64;
-        for row in (position + 1)..qr.nrows() {
-            let reflector = qr[(row, column)];
-            compensated_add(
-                reflector * reflector,
-                &mut norm_square,
-                &mut norm_correction,
-            )?;
-            compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
+        if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+            let (tail_norm_square, tail_dot) =
+                parallel_reflector_moments(qr, &residuals, column, position + 1)?;
+            compensated_add(tail_norm_square, &mut norm_square, &mut norm_correction)?;
+            compensated_add(tail_dot, &mut dot, &mut dot_correction)?;
+        } else {
+            for row in (position + 1)..qr.nrows() {
+                let reflector = qr[(row, column)];
+                compensated_add(
+                    reflector * reflector,
+                    &mut norm_square,
+                    &mut norm_correction,
+                )?;
+                compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
+            }
         }
         let tau = 2.0 / (norm_square + norm_correction);
         let projection = tau * (dot + dot_correction);
@@ -2230,8 +2270,18 @@ fn reconstruct_within_residuals<R: FitReservation>(
             ));
         }
         residuals[position] -= projection;
-        for row in (position + 1)..qr.nrows() {
-            residuals[row] = (-projection).mul_add(qr[(row, column)], residuals[row]);
+        if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+            residuals
+                .par_iter_mut()
+                .enumerate()
+                .skip(position + 1)
+                .for_each(|(row, residual)| {
+                    *residual = (-projection).mul_add(qr[(row, column)], *residual);
+                });
+        } else {
+            for row in (position + 1)..qr.nrows() {
+                residuals[row] = (-projection).mul_add(qr[(row, column)], residuals[row]);
+            }
         }
     }
     residuals
@@ -2811,14 +2861,18 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
 fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     qr: &mut QrFit,
-    raw_residuals: &mut [f64],
+    raw_residuals: Option<&mut [f64]>,
     weights: NormalizedWeights<'_>,
     tolerance: f64,
     reservation: &mut R,
     perturbations: FitPerturbations,
     fast_score_cache: Option<&PreparedOlsFastScoreCache>,
+    raw_moments: Option<&RawMomentCache>,
 ) -> Result<PreparedOlsBread> {
-    if raw_residuals.len() != prepared.fit_sample().n_active() {
+    if raw_residuals
+        .as_ref()
+        .is_some_and(|residuals| residuals.len() != prepared.fit_sample().n_active())
+    {
         return Err(invalid_argument(
             "prepared OLS reported-intercept residual axis is inconsistent",
         ));
@@ -2931,17 +2985,44 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             "unable to reserve prepared OLS reported-intercept means",
         )?;
         for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
-            means[position] =
-                if let Some(mean) = fast_score_cache.and_then(|cache| cache.mean(generated)) {
-                    mean
-                } else {
-                    weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
-                        prepared.fit_column_value(generated, row)
-                    })?
-                };
+            means[position] = if let Some(mean) =
+                raw_moments.and_then(|cache| cache.means.get(generated + 1))
+            {
+                *mean
+            } else if let Some(mean) = fast_score_cache.and_then(|cache| cache.mean(generated)) {
+                mean
+            } else {
+                weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+                    prepared.fit_column_value(generated, row)
+                })?
+            };
         }
 
-        let raw_residual_mean = weighted_mean_slice(raw_residuals, weights)?;
+        // Fast mode already owns the reconstructed within residual from the QR
+        // state. Derive the independent raw-residual mean directly instead of
+        // allocating and retaining a second observation-scale residual vector.
+        let raw_residual_mean = if let Some(residuals) = raw_residuals.as_deref() {
+            weighted_mean_slice(residuals, weights)?
+        } else if let Some(cache) = raw_moments {
+            cached_raw_residual_mean(prepared, qr, weights, cache)?
+        } else {
+            weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+                let mut value = prepared.fit_sample().outcome[row];
+                for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
+                    if let Some(coefficient) = coefficient {
+                        value =
+                            (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
+                    }
+                }
+                if value.is_finite() {
+                    Ok(value)
+                } else {
+                    Err(invalid_data(
+                        "prepared OLS raw regression residual is not finite",
+                    ))
+                }
+            })?
+        };
         let mut reported_intercept = raw_residual_mean;
         if perturbations.reported_intercept {
             reported_intercept += 0.25;
@@ -2951,7 +3032,11 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
                 "prepared OLS normalized reported intercept is not finite",
             ));
         }
-        let outcome_mean = weighted_mean_slice(&prepared.fit_sample().outcome, weights)?;
+        let outcome_mean = if let Some(cache) = raw_moments {
+            cache.means[0]
+        } else {
+            weighted_mean_slice(&prepared.fit_sample().outcome, weights)?
+        };
         let mut finite_mean_fit = 0.0_f64;
         let mut finite_mean_fit_correction = 0.0_f64;
         for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
@@ -2994,12 +3079,14 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             PreparedOlsFitStatus::NormalizedAbsorbedIntercept;
         qr.dropped
             .retain(|generated| *generated != intercept_generated);
-        for residual in raw_residuals.iter_mut() {
-            *residual -= reported_intercept;
-            if !residual.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS reported-intercept residual is not finite",
-                ));
+        if let Some(residuals) = raw_residuals {
+            for residual in residuals {
+                *residual -= reported_intercept;
+                if !residual.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS reported-intercept residual is not finite",
+                    ));
+                }
             }
         }
 
@@ -3237,6 +3324,175 @@ fn weighted_mean_slice(values: &[f64], weights: NormalizedWeights<'_>) -> Result
     })
 }
 
+fn build_raw_moment_cache<R: FitReservation>(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    reservation: &mut R,
+) -> Result<RawMomentCache> {
+    if raw.nrows() == 0 || raw.ncols() == 0 {
+        return Err(invalid_argument(
+            "prepared OLS raw-moment cache requires a nonempty matrix",
+        ));
+    }
+    let mut scales = reserved_filled(
+        reservation,
+        raw.ncols(),
+        0.0_f64,
+        "unable to reserve prepared OLS raw-moment scales",
+    )?;
+    let mut means = reserved_filled(
+        reservation,
+        raw.ncols(),
+        0.0_f64,
+        "unable to reserve prepared OLS raw-moment means",
+    )?;
+    let mut norms = reserved_filled(
+        reservation,
+        raw.ncols(),
+        0.0_f64,
+        "unable to reserve prepared OLS raw-moment norms",
+    )?;
+    let mut denominator = 0.0_f64;
+    let mut denominator_correction = 0.0_f64;
+    if weights.values.is_none() {
+        denominator = raw.nrows() as f64;
+    } else {
+        for row in 0..raw.nrows() {
+            compensated_add(
+                weights.value(row)?,
+                &mut denominator,
+                &mut denominator_correction,
+            )?;
+        }
+    }
+    let weight_sum = denominator + denominator_correction;
+    if !weight_sum.is_finite() || weight_sum <= 0.0 {
+        return Err(invalid_data(
+            "prepared OLS raw-moment weight sum is invalid",
+        ));
+    }
+    scales
+        .par_iter_mut()
+        .zip(means.par_iter_mut())
+        .zip(norms.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(column, ((scale, mean), norm))| -> Result<()> {
+            let mut norm_scale = 0.0_f64;
+            let mut norm_sum = 1.0_f64;
+            for row in 0..raw.nrows() {
+                let value = raw[(row, column)];
+                if !value.is_finite() {
+                    return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+                }
+                *scale = scale.max(value.abs());
+                update_scaled_sum_of_squares(
+                    weights.root(row)? * value,
+                    &mut norm_scale,
+                    &mut norm_sum,
+                )?;
+            }
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            if *scale != 0.0 {
+                for row in 0..raw.nrows() {
+                    compensated_add(
+                        weights.value(row)? * (raw[(row, column)] / *scale),
+                        &mut sum,
+                        &mut correction,
+                    )?;
+                }
+            }
+            *mean = if *scale == 0.0 {
+                0.0
+            } else {
+                *scale * ((sum + correction) / weight_sum)
+            };
+            if !mean.is_finite() {
+                return Err(invalid_data("prepared OLS raw-moment mean is not finite"));
+            }
+            *norm = checked_norm(norm_scale, norm_sum)?;
+            Ok(())
+        })?;
+    Ok(RawMomentCache {
+        means,
+        scales,
+        norms,
+        weight_sum,
+    })
+}
+
+fn cached_raw_residual_mean<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    qr: &QrFit,
+    weights: NormalizedWeights<'_>,
+    cache: &RawMomentCache,
+) -> Result<f64> {
+    let generated = prepared.fit_model().columns.len();
+    if cache.means.len() != generated + 1
+        || cache.scales.len() != generated + 1
+        || cache.norms.len() != generated + 1
+    {
+        return Err(invalid_argument(
+            "prepared OLS raw-moment cache dimensions are inconsistent",
+        ));
+    }
+    let mut scale = cache.scales[0];
+    for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
+        if let Some(coefficient) = coefficient {
+            scale += coefficient.abs() * cache.scales[column + 1];
+        }
+    }
+    if !scale.is_finite() {
+        return weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+            raw_residual_at(prepared, qr, row)
+        });
+    }
+    if scale == 0.0 {
+        return Ok(0.0);
+    }
+    let mut sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    for row in 0..prepared.fit_sample().n_active() {
+        compensated_add(
+            weights.value(row)? * (raw_residual_at(prepared, qr, row)? / scale),
+            &mut sum,
+            &mut correction,
+        )?;
+    }
+    let mean = scale * ((sum + correction) / cache.weight_sum);
+    if mean.is_finite() {
+        Ok(mean)
+    } else {
+        Err(invalid_data(
+            "prepared OLS cached raw-residual mean is not finite",
+        ))
+    }
+}
+
+fn raw_residual_at<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    qr: &QrFit,
+    row: usize,
+) -> Result<f64> {
+    let mut value = *prepared
+        .fit_sample()
+        .outcome
+        .get(row)
+        .ok_or_else(|| invalid_argument("prepared OLS raw-residual row is out of range"))?;
+    for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
+        if let Some(coefficient) = coefficient {
+            value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
+        }
+    }
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(invalid_data(
+            "prepared OLS raw regression residual is not finite",
+        ))
+    }
+}
+
 fn weighted_mean_by<F>(nrows: usize, weights: NormalizedWeights<'_>, mut value: F) -> Result<f64>
 where
     F: FnMut(usize) -> Result<f64>,
@@ -3338,12 +3594,25 @@ fn fill_trailing_norms(
             "prepared OLS QR trailing-norm dimensions are inconsistent",
         ));
     }
-    for (position, generated_column) in columns.iter().copied().enumerate() {
-        output[position] = if position < start_row {
-            0.0
-        } else {
-            stable_matrix_segment_norm(matrix, generated_column + 1, start_row)?
-        };
+    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        output.par_iter_mut().enumerate().try_for_each(
+            |(position, destination)| -> Result<()> {
+                *destination = if position < start_row {
+                    0.0
+                } else {
+                    stable_matrix_segment_norm(matrix, columns[position] + 1, start_row)?
+                };
+                Ok(())
+            },
+        )?;
+    } else {
+        for (position, generated_column) in columns.iter().copied().enumerate() {
+            output[position] = if position < start_row {
+                0.0
+            } else {
+                stable_matrix_segment_norm(matrix, generated_column + 1, start_row)?
+            };
+        }
     }
     Ok(())
 }
@@ -3374,9 +3643,15 @@ fn apply_householder(
     tau: f64,
 ) -> Result<()> {
     let mut projection = matrix[(start_row, target_column)];
-    for row in (start_row + 1)..matrix.nrows() {
-        projection =
-            matrix[(row, reflector_column)].mul_add(matrix[(row, target_column)], projection);
+    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        let tail =
+            parallel_matrix_column_dot(matrix, reflector_column, target_column, start_row + 1)?;
+        projection += tail;
+    } else {
+        for row in (start_row + 1)..matrix.nrows() {
+            projection =
+                matrix[(row, reflector_column)].mul_add(matrix[(row, target_column)], projection);
+        }
     }
     projection *= tau;
     if !projection.is_finite() {
@@ -3388,17 +3663,127 @@ fn apply_householder(
             "prepared OLS QR transformed value is not finite",
         ));
     }
-    for row in (start_row + 1)..matrix.nrows() {
-        let updated =
-            (-matrix[(row, reflector_column)]).mul_add(projection, matrix[(row, target_column)]);
-        if !updated.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS QR transformed value is not finite",
-            ));
+    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        let ncols = matrix.ncols();
+        matrix
+            .as_mut_slice()
+            .par_chunks_mut(ncols)
+            .skip(start_row + 1)
+            .try_for_each(|row| -> Result<()> {
+                let updated = (-row[reflector_column]).mul_add(projection, row[target_column]);
+                if !updated.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS QR transformed value is not finite",
+                    ));
+                }
+                row[target_column] = updated;
+                Ok(())
+            })?;
+    } else {
+        for row in (start_row + 1)..matrix.nrows() {
+            let updated = (-matrix[(row, reflector_column)])
+                .mul_add(projection, matrix[(row, target_column)]);
+            if !updated.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS QR transformed value is not finite",
+                ));
+            }
+            matrix[(row, target_column)] = updated;
         }
-        matrix[(row, target_column)] = updated;
     }
     Ok(())
+}
+
+fn parallel_matrix_column_dot(
+    matrix: &DenseMatrix,
+    left_column: usize,
+    right_column: usize,
+    start_row: usize,
+) -> Result<f64> {
+    if left_column >= matrix.ncols() || right_column >= matrix.ncols() || start_row > matrix.nrows()
+    {
+        return Err(invalid_argument(
+            "prepared OLS parallel dot dimensions are inconsistent",
+        ));
+    }
+    let rows = matrix.nrows() - start_row;
+    let chunks = rows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
+    let mut partials = Vec::new();
+    partials
+        .try_reserve_exact(chunks)
+        .map_err(|_| allocation("unable to reserve parallel QR dot partials"))?;
+    partials.resize(chunks, 0.0_f64);
+    partials
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
+            let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(matrix.nrows());
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for row in start..end {
+                compensated_add(
+                    matrix[(row, left_column)] * matrix[(row, right_column)],
+                    &mut sum,
+                    &mut correction,
+                )?;
+            }
+            *partial = sum + correction;
+            Ok(())
+        })?;
+    let mut sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    for partial in partials {
+        compensated_add(partial, &mut sum, &mut correction)?;
+    }
+    Ok(sum + correction)
+}
+
+fn parallel_reflector_moments(
+    qr: &DenseMatrix,
+    residuals: &[f64],
+    reflector_column: usize,
+    start_row: usize,
+) -> Result<(f64, f64)> {
+    if reflector_column >= qr.ncols() || residuals.len() != qr.nrows() || start_row > qr.nrows() {
+        return Err(invalid_argument(
+            "prepared OLS parallel reflector dimensions are inconsistent",
+        ));
+    }
+    let rows = qr.nrows() - start_row;
+    let chunks = rows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
+    let mut partials = Vec::new();
+    partials
+        .try_reserve_exact(chunks)
+        .map_err(|_| allocation("unable to reserve parallel reflector partials"))?;
+    partials.resize(chunks, (0.0_f64, 0.0_f64));
+    partials
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
+            let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(qr.nrows());
+            let mut norm = 0.0_f64;
+            let mut norm_correction = 0.0_f64;
+            let mut dot = 0.0_f64;
+            let mut dot_correction = 0.0_f64;
+            for row in start..end {
+                let reflector = qr[(row, reflector_column)];
+                compensated_add(reflector * reflector, &mut norm, &mut norm_correction)?;
+                compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
+            }
+            *partial = (norm + norm_correction, dot + dot_correction);
+            Ok(())
+        })?;
+    let mut norm = 0.0_f64;
+    let mut norm_correction = 0.0_f64;
+    let mut dot = 0.0_f64;
+    let mut dot_correction = 0.0_f64;
+    for (partial_norm, partial_dot) in partials {
+        compensated_add(partial_norm, &mut norm, &mut norm_correction)?;
+        compensated_add(partial_dot, &mut dot, &mut dot_correction)?;
+    }
+    Ok((norm + norm_correction, dot + dot_correction))
 }
 
 fn weighted_matrix_column_norm(
@@ -3481,6 +3866,45 @@ fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
 }
 
 fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
+    if values.len() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        let chunks = values.len().div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
+        let mut scales = Vec::new();
+        scales
+            .try_reserve_exact(chunks)
+            .map_err(|_| allocation("unable to reserve parallel norm scales"))?;
+        scales.resize(chunks, 0.0_f64);
+        let mut sums = Vec::new();
+        sums.try_reserve_exact(chunks)
+            .map_err(|_| allocation("unable to reserve parallel norm sums"))?;
+        sums.resize(chunks, 1.0_f64);
+        scales
+            .par_iter_mut()
+            .zip(sums.par_iter_mut())
+            .enumerate()
+            .try_for_each(|(chunk, (scale, sum))| -> Result<()> {
+                let start = chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
+                let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(values.len());
+                for (offset, value) in values[start..end].iter().copied().enumerate() {
+                    update_scaled_sum_of_squares(
+                        weights.root(start + offset)? * value,
+                        scale,
+                        sum,
+                    )?;
+                }
+                Ok(())
+            })?;
+        let mut scale = 0.0_f64;
+        let mut scaled_square_sum = 1.0_f64;
+        for (chunk_scale, chunk_sum) in scales.into_iter().zip(sums) {
+            merge_scaled_sum_of_squares(
+                chunk_scale,
+                chunk_sum,
+                &mut scale,
+                &mut scaled_square_sum,
+            )?;
+        }
+        return checked_norm(scale, scaled_square_sum);
+    }
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
     for (row, value) in values.iter().copied().enumerate() {
@@ -3491,6 +3915,37 @@ fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result
         )?;
     }
     checked_norm(scale, scaled_square_sum)
+}
+
+fn merge_scaled_sum_of_squares(
+    source_scale: f64,
+    source_sum: f64,
+    target_scale: &mut f64,
+    target_sum: &mut f64,
+) -> Result<()> {
+    if !source_scale.is_finite() || !source_sum.is_finite() || source_sum < 0.0 {
+        return Err(invalid_data(
+            "prepared OLS parallel norm partial is invalid",
+        ));
+    }
+    if source_scale == 0.0 {
+        return Ok(());
+    }
+    if *target_scale < source_scale {
+        let ratio = *target_scale / source_scale;
+        *target_sum = source_sum + *target_sum * ratio * ratio;
+        *target_scale = source_scale;
+    } else {
+        let ratio = source_scale / *target_scale;
+        *target_sum += source_sum * ratio * ratio;
+    }
+    if target_scale.is_finite() && target_sum.is_finite() {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "prepared OLS parallel norm accumulation is invalid",
+        ))
+    }
 }
 
 fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, sum: &mut f64) -> Result<()> {
@@ -4134,6 +4589,51 @@ mod tests {
         }
         for (map, lsmr) in map.residuals().iter().zip(lsmr.residuals()) {
             assert_close(*lsmr, *map, 1e-8);
+        }
+    }
+
+    #[test]
+    fn reconstructed_within_residual_is_reused_and_refined_only_when_needed() {
+        let group = (0..48).map(|row| (row / 6) as f64).collect::<Vec<_>>();
+        let x = (0..48)
+            .map(|row| (row % 11) as f64 - 5.0)
+            .collect::<Vec<_>>();
+        let y = x
+            .iter()
+            .zip(&group)
+            .enumerate()
+            .map(|(row, (x, group))| 1.75 * x + 0.6 * group + 0.03 * (row as f64).sin())
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&group),
+            true,
+            TestWeights::Unit,
+        );
+
+        let ordinary =
+            fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+                .expect("ordinary reconstructed-residual fit");
+        assert!(ordinary.residual_absorption_report().certified());
+        assert_eq!(ordinary.residual_absorption_report().iterations, 0);
+
+        let mut reservation = InjectedReservation::default();
+        let refined = fit_with_controls_internal(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut reservation,
+            FitPerturbations {
+                reconstructed_within_residual_constant: true,
+                ..FitPerturbations::default()
+            },
+        )
+        .expect("perturbed reconstructed residual is refined");
+        assert!(refined.residual_absorption_report().certified());
+        assert!(refined.residual_absorption_report().iterations > 0);
+        for (ordinary, refined) in ordinary.residuals().iter().zip(refined.residuals()) {
+            assert_close(*refined, *ordinary, 1e-10);
         }
     }
 
@@ -4808,7 +5308,7 @@ mod tests {
         )
         .expect("fast inference-cache control fit");
         assert!(cached.fast_score_cache.is_some());
-        assert!(cached_successful.calls > successful.calls);
+        assert!(cached_successful.calls >= 9);
         for fail_at in 1..=cached_successful.calls {
             let mut injected = InjectedReservation {
                 fail_at: Some(fail_at),

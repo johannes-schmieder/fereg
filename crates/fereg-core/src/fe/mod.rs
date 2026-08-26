@@ -29,9 +29,16 @@ mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
-pub(crate) use borrowed_map::absorb_borrowed_intercept_map_with_structural_constant_certified;
 pub use borrowed_map::{
+    absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_cg_certified,
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+};
+pub(crate) use borrowed_map::{
+    absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
+    absorb_borrowed_intercept_auto_routed_certified,
+    absorb_borrowed_intercept_auto_with_structural_constant_certified,
+    absorb_borrowed_intercept_cg_with_structural_constant_certified,
+    absorb_borrowed_intercept_map_with_structural_constant_certified,
 };
 pub use categorical_request::{
     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
@@ -62,7 +69,12 @@ pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{
     finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
-pub use topology_map::absorb_finalized_categorical_topology_map_certified;
+pub(crate) use topology_map::absorb_finalized_categorical_topology_auto_routed_certified;
+pub use topology_map::{
+    absorb_finalized_categorical_topology_auto_certified,
+    absorb_finalized_categorical_topology_cg_certified,
+    absorb_finalized_categorical_topology_map_certified,
+};
 pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_rhs::{
     compact_categorical_rhs, CandidateCategoricalWeights, CompactedCategoricalRhs,

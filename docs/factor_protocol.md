@@ -2,7 +2,7 @@
 
 ## Version and ownership
 
-Model wire 2.1 is independent of action protocol 1.2 and OLS result wire 1.2.
+Model wire 2.1 is independent of action protocol 1.3 and OLS result wire 1.3.
 Model wire v1, unknown majors, and newer minors are rejected. Version 2.0 is
 accepted only for the compatible diagnostic shape with empty absorbed tables
 and registries; it cannot claim absorbed metadata.
@@ -47,7 +47,7 @@ Each term has a descriptive label and optional saved-name registry entry.
 String registries use byte-length framing, so empty entries remain explicit as
 `0:`. Duplicate source references are valid and bind to one shared source.
 
-## Executable 0.9.0 surface
+## Executable 0.5.0 surface
 
 Public estimation consumes continuous terms, factors, ordinary interactions,
 numeric/string/interacted absorbed effects, intercept and slope channels,

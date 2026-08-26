@@ -1,7 +1,7 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use std::collections::BTreeMap;
 
-pub const ADO_VERSION: &str = "0.9.0";
+pub const ADO_VERSION: &str = "0.5.0";
 pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const MINIMUM_STATA_MAJOR: u16 = 18;
 pub const SPI_MAJOR: u16 = 3;

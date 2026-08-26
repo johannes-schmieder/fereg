@@ -2,7 +2,7 @@
 
 The data plane turns a validated Stata request and candidate marker into one
 authoritative compact sample, model graph, certified estimate, and complete
-private result. Public estimator dispatch is active for `fereg` 0.9.0.
+private result. Public estimator dispatch is active for `fereg` 0.5.0.
 
 ## Preparation order
 

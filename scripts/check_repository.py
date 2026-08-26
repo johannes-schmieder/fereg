@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static fereg 0.9.0 source-candidate checks requiring neither Rust nor Stata."""
+"""Static fereg 0.5.0 beta checks requiring neither Rust nor Stata."""
 from __future__ import annotations
 
 import ast
@@ -40,6 +40,7 @@ def sha256(path: Path) -> str:
 legacy_identifiers = re.compile(
     r"(?:St" r"Fixest|ST" r"FIXEST|st" r"fixest|ST" r"FEOLS|st" r"feols|ST" r"FEPOIS|st" r"fepois)"
 )
+superseded_version = "0" + ".9.0"
 preserved_evidence_prefixes = (
     ".ci/stata/results/",
     ".ci/stata/full-results/",
@@ -51,10 +52,12 @@ preserved_evidence_prefixes = (
 active_text_suffixes = {
     ".ado",
     ".c",
+    ".csv",
     ".do",
     ".h",
     ".json",
     ".lock",
+    ".md",
     ".pkg",
     ".ps1",
     ".py",
@@ -92,9 +95,19 @@ for raw_relative in tracked_files:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         continue
+    if relative != "STATA_CI_RUNNER.md":
+        require(
+            legacy_identifiers.search(text) is None,
+            f"active file retains legacy package identity: {relative}",
+        )
+    if relative not in {"Cargo.lock", "fuzz/Cargo.lock"}:
+        require(
+            superseded_version not in text,
+            f"active file retains superseded product version: {relative}",
+        )
     require(
-        legacy_identifiers.search(text) is None,
-        f"active file retains legacy package identity: {relative}",
+        re.search(r"(?:^|[-_/])090(?:[-_./]|$)", relative) is None,
+        f"active path retains superseded product version: {relative}",
     )
     require(
         "scripts" + ".development" not in text,
@@ -139,7 +152,7 @@ required_files = [
     "fuzz/fuzz_targets/factorization.rs",
     "fuzz/fuzz_targets/interaction_tuples.rs",
     "tests/fuzz/README.md",
-    "docs/adr/0007-fereg-090-source-qualification-contract.md",
+    "docs/adr/0007-fereg-050-beta-qualification-contract.md",
     "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
@@ -183,19 +196,19 @@ require(
 )
 status = read("STATUS.md")
 for heading in (
-    "## Milestone exit criteria",
+    "## 0.5.0 beta exit gate",
     "## Completed, evidence-backed baseline",
     "## Active checkpoint",
     "## Current blockers",
-    "## Next evidence to record",
+    "## Development plan",
 ):
     require(heading in status, f"STATUS.md is missing required section: {heading}")
 
 agents = read("AGENTS.md")
 require("# fereg 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
 require(
-    "0.9.0" in read("docs/adr/0007-fereg-090-source-qualification-contract.md"),
-    "ADR-0007 release-candidate contract is missing",
+    "0.5.0" in read("docs/adr/0007-fereg-050-beta-qualification-contract.md"),
+    "ADR-0007 beta contract is missing",
 )
 
 root_cargo = read("Cargo.toml")

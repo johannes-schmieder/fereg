@@ -35,7 +35,7 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
         )),
         "estimate-ppml" => Err(FeregError::new(
             ErrorCode::Unsupported,
-            "PPML estimation is not implemented in fereg 0.9.0",
+            "PPML estimation is not implemented in fereg 0.5.0",
         )),
         other => Err(FeregError::new(
             ErrorCode::Syntax,
@@ -176,7 +176,7 @@ mod tests {
         let sink = BufferSink::default();
         let args = [
             "doctor".to_owned(),
-            "ado=0.9.0".to_owned(),
+            "ado=0.5.0".to_owned(),
             "protocol_major=99".to_owned(),
             "protocol_minor=0".to_owned(),
             "stata=18.0".to_owned(),

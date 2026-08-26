@@ -44,7 +44,7 @@ mod tests {
     fn doctor_runs_with_32_requested_threads() {
         let capture = run_action(&[
             "doctor",
-            "ado=0.9.0",
+            "ado=0.5.0",
             "protocol_major=1",
             "protocol_minor=0",
             "stata=18.0",

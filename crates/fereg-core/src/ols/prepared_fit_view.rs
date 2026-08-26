@@ -9,8 +9,13 @@
 use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
+    absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
+    absorb_borrowed_intercept_auto_with_structural_constant_certified,
+    absorb_borrowed_intercept_cg_with_structural_constant_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     absorb_finalized_categorical_slope_map_certified,
+    absorb_finalized_categorical_topology_auto_routed_certified,
+    absorb_finalized_categorical_topology_cg_certified,
     absorb_finalized_categorical_topology_map_certified, absorb_fixed_effects,
     borrow_categorical_topology_design, AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap,
     EffectTerm, FeDesign, FeSolverKind, MapConfig,
@@ -115,22 +120,30 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
-    fn fit_absorb_matrix(
+    fn fit_absorb_cg(
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        if matches!(config.solver, FeSolverKind::Auto | FeSolverKind::Map) {
-            let map = self.fit_absorb_map(weights, values, config.map)?;
-            if config.solver == FeSolverKind::Map {
-                return Ok(map);
-            }
-            let (residualized, mut report) = map.into_parts();
-            report.requested_solver = FeSolverKind::Auto;
-            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
-        }
+        self.fit_absorb_owned_matrix(weights, values, config)
+    }
 
+    fn fit_absorb_auto(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.fit_absorb_owned_matrix(weights, values, config)
+    }
+
+    fn fit_absorb_owned_matrix(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
         let design = self.fit_owned_fe_design()?;
         let mut residualized = values;
         let unit_weights;
@@ -147,6 +160,33 @@ pub(crate) trait PreparedOlsFitView: Sync {
         };
         let report = absorb_fixed_effects(&design, weights, &mut residualized, config)?;
         CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    }
+
+    fn fit_absorb_matrix(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if config.solver == FeSolverKind::Auto {
+            return self.fit_absorb_auto(weights, values, config);
+        }
+        if config.solver == FeSolverKind::Map {
+            return self.fit_absorb_map(weights, values, config.map);
+        }
+        if config.solver == FeSolverKind::Cg {
+            return self.fit_absorb_cg(weights, values, config);
+        }
+        self.fit_absorb_owned_matrix(weights, values, config)
+    }
+
+    fn fit_absorb_initial_matrix(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.fit_absorb_matrix(weights, values, config)
     }
 }
 
@@ -189,6 +229,54 @@ impl PreparedOlsFitView for PreparedOlsData {
         absorb_borrowed_intercept_map_with_structural_constant_certified(
             &design, weights, values, config,
         )
+    }
+
+    fn fit_absorb_cg(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        let design = self.borrowed_intercept_fe_design()?;
+        absorb_borrowed_intercept_cg_with_structural_constant_certified(
+            &design, weights, values, config.map,
+        )
+    }
+
+    fn fit_absorb_auto(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        let design = self.borrowed_intercept_fe_design()?;
+        absorb_borrowed_intercept_auto_with_structural_constant_certified(
+            &design,
+            weights,
+            values,
+            config.map,
+            config.lsmr,
+        )
+    }
+
+    fn fit_absorb_initial_matrix(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if config.solver == FeSolverKind::Auto {
+            let design = self.borrowed_intercept_fe_design()?;
+            absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
+                &design,
+                weights,
+                values,
+                config.map,
+                config.lsmr,
+            )
+        } else {
+            self.fit_absorb_matrix(weights, values, config)
+        }
     }
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {
@@ -271,6 +359,43 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 weights,
                 values,
                 config,
+            )
+        }
+    }
+
+    fn fit_absorb_cg(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if self.has_absorbed_slope() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else {
+            absorb_finalized_categorical_topology_cg_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.map,
+            )
+        }
+    }
+
+    fn fit_absorb_auto(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if self.has_absorbed_slope() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else {
+            absorb_finalized_categorical_topology_auto_routed_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.map,
+                config.lsmr,
             )
         }
     }

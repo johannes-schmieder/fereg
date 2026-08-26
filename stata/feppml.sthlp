@@ -1,15 +1,15 @@
 {smcl}
-{* *! version 0.9.0 24aug2026}{...}
+{* *! version 0.5.0 24aug2026}{...}
 {vieweralsosee "fereg" "help fereg"}{...}
 {title:Title}
 
 {phang}{bf:feppml} {hline 2} planned Rust-first fixed-effect PPML command
 
-{title:Release-candidate status}
+{title:Beta status}
 
 {pstd}
 The command name and preliminary syntax are installed, but PPML is outside the
-0.9.0 OLS release-candidate scope. Every invocation returns {cmd:r(498)}
+0.5.0 OLS beta scope. Every invocation returns {cmd:r(498)}
 without posting {cmd:e()} results. No partial or uncertified PPML estimate is
 published.
 

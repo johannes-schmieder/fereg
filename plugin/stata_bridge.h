@@ -51,6 +51,19 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata(
     ST_int observation,
     ST_double *value
 );
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_with_missing(
+    ST_int variable,
+    ST_int observation,
+    ST_double *value,
+    ST_int *missing
+);
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_range_with_missing(
+    ST_int variable,
+    ST_int first_observation,
+    ST_int count,
+    ST_double *values,
+    unsigned char *missing
+);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore(
     ST_int variable,
     ST_int observation,

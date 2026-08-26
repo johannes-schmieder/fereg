@@ -5,6 +5,7 @@ use crate::fe::{
     CertifiedBorrowedMap, MapConfig,
 };
 use crate::metadata::SourceId;
+use rayon::prelude::*;
 
 use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
 
@@ -93,14 +94,17 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     }
     data.resize(elements, 0.0);
 
-    for (row, destination) in data.chunks_exact_mut(ncols).enumerate() {
-        destination[0] = prepared.sample.outcome[row];
-        for generated_column in 0..prepared.model.columns.len() {
-            let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
-            destination[rhs_column] = prepared.column_value(generated_column, row)?;
-        }
-    }
-    if data.iter().any(|value| !value.is_finite()) {
+    data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
+        |(row, destination)| -> Result<()> {
+            destination[0] = prepared.sample.outcome[row];
+            for generated_column in 0..prepared.model.columns.len() {
+                let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
+                destination[rhs_column] = prepared.column_value(generated_column, row)?;
+            }
+            Ok(())
+        },
+    )?;
+    if data.par_iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
             "prepared OLS RHS construction produced a nonfinite value",
         ));

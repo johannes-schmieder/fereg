@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.9.0 24aug2026}{...}
+{* *! version 0.5.0 24aug2026}{...}
 {title:Title}
 
 {phang}{bf:fereg postestimation} {hline 2} prediction, tests, and summaries

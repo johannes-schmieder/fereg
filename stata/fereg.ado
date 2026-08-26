@@ -1,5 +1,5 @@
-*! fereg 0.9.0 release-candidate OLS 24aug2026
-program define fereg, rclass sortpreserve
+*! fereg 0.5.0 beta OLS 25aug2026
+program define fereg, rclass
     version 18.0
 
     if substr(strtrim(`"`0'"'), 1, 1) == "," {
@@ -38,7 +38,7 @@ program define fereg, rclass sortpreserve
             capture di as txt "Stata processors detected: `c(processors_mach)'"
         }
 
-        return local ado_version "0.9.0"
+        return local ado_version "0.5.0"
         return local action_protocol "1.3"
         return local model_wire "2.1"
         return local plugin_name "`plugin_name'"
@@ -47,5 +47,7 @@ program define fereg, rclass sortpreserve
         exit
     }
 
+    local display_results = c(noisily)
     _fereg_estimate_public `0'
+    if `display_results' ereturn display
 end

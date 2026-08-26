@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.9.0 24aug2026}{...}
+{* *! version 0.5.0 24aug2026}{...}
 {title:Title}
 
 {phang}{bf:fereg_parse} {hline 2} developer model-wire v2 parser

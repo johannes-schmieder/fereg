@@ -9,7 +9,7 @@ Use this order when sources disagree:
 
 1. The current user-approved release plan and ADR-0007.
 2. `AGENTS.md` — governing implementation and release specification except
-   where the later 0.9.0 plan explicitly supersedes its phase sequencing.
+   where the later 0.5.0 plan explicitly supersedes its phase sequencing.
 3. Accepted decisions in `docs/adr/`.
 4. `STATUS.md` — sole mutable progress record and current resume point.
 5. Exact-SHA CI and scientific receipts under `.ci/`, `build_evidence/`, and
@@ -26,7 +26,7 @@ superseded scientific policy is not current acceptance evidence.
 - Inspect local and remote `main`, recent commits, `AGENTS.md`, `STATUS.md`,
   and the relevant ADR without changing the worktree.
 - Make coherent local milestone commits with targeted green evidence. Do not
-  push incremental development commits during 0.9.0 qualification.
+  push incremental development commits during 0.5.0 qualification.
 - Do not use tiny no-op trigger commits or self-modifying workflow controllers.
 - Push the complete stack to `origin/main` only after the exact candidate SHA
   passes all feasible local and SCC gates. Remote failures require a repaired,
@@ -88,7 +88,7 @@ fixture status files, and terminal PASS sentinel must agree.
   mathematical or explicit-dummy oracles.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
-- Public `fereg` OLS is active in the source candidate. `feppml` and
+- Public `fereg` OLS is active in the beta source. `feppml` and
   `estimate-ppml` remain fail-closed; the developer actions are not
   distribution interfaces.
 - Performance and memory claims require measured evidence on the frozen suite.
@@ -106,7 +106,7 @@ Then read:
 
 - `AGENTS.md`
 - `STATUS.md`
-- `docs/adr/0007-fereg-090-source-qualification-contract.md`
+- `docs/adr/0007-fereg-050-beta-qualification-contract.md`
 - the code, tests, manifest, and receipts named by the active checkpoint.
 
 Update `STATUS.md` only after exact-green, reachable evidence exists.

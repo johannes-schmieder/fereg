@@ -1,6 +1,6 @@
 # OLS scientific core
 
-The Stata-independent OLS core backs public `fereg` 0.9.0. ADR-0006 requires
+The Stata-independent OLS core backs public `fereg` 0.5.0. ADR-0006 requires
 positive residual DoF; signed DoF and negative IID variance are ineligible.
 
 ## Pipeline

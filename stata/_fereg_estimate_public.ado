@@ -1,5 +1,5 @@
-*! fereg public OLS dispatcher 0.9.0 24aug2026
-program define _fereg_estimate_public, eclass sortpreserve
+*! fereg public OLS dispatcher 0.5.0 24aug2026
+program define _fereg_estimate_public, eclass
     version 18.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
@@ -46,29 +46,97 @@ program define _fereg_estimate_public, eclass sortpreserve
         di as error "name saved fixed effects inside absorb(), for example absorb(fe=firm)"
         exit 198
     }
+    if `"`weight'"' == "iweight" {
+        di as error "iweights are not supported by the pinned reghdfe OLS contract"
+        exit 101
+    }
 
     local absorb_option
     local vce_option
+    local cluster_option
     local dof_option
     local singleton_option
     local residual_option
     local constant_option
-    local weight_clause
+    local weight_option
     local memory_option `"memory(`memory_mode')"'
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
-    if strtrim(`"`vce'"') != "" local vce_option `"vce(`vce')"'
+    local vce_text = lower(strtrim(`"`vce'"'))
+    if `"`vce_text'"' != "" {
+        gettoken vce_kind vce_rest : vce_text
+        if `"`vce_kind'"' == "cluster" {
+            local vce_rest = strtrim(`"`vce_rest'"')
+            if `"`vce_rest'"' == "" {
+                di as error "vce(cluster) requires at least one cluster dimension"
+                exit 198
+            }
+            local cluster_option `"cluster(`vce_rest')"'
+        }
+        else if inlist(`"`vce_kind'"', "robust", "unadjusted", "ols", "iid") & ///
+                strtrim(`"`vce_rest'"') == "" {
+            local vce_option `"vce(`vce_kind')"'
+        }
+        else {
+            di as error "hidden numeric manifest adapter received an unsupported vce()"
+            exit 498
+        }
+    }
     if strtrim(`"`dof'"') != "" local dof_option `"dof(`dof')"'
     if `"`keepsingletons'"' != "" local singleton_option "keepsingletons"
-    if `"`residuals'"' != "" local residual_option `"residuals(`residuals')"'
+    if `"`residuals'"' != "" local residual_option `"residual(`residuals')"'
     if `"`noconstant'"' != "" local constant_option "noconstant"
-    if `"`weight'"' != "" local weight_clause `"[`weight'`exp']"'
+    if `"`weight'"' != "" {
+        local weight_variable = strtrim(subinstr(`"`exp'"', "=", "", 1))
+        if `"`weight'"' == "aweight" local weight_option "aweight(`weight_variable')"
+        else if `"`weight'"' == "fweight" local weight_option "fweight(`weight_variable')"
+        else if `"`weight'"' == "pweight" local weight_option "pweight(`weight_variable')"
+    }
 
-    _fereg_ols `varlist' `if' `in' `weight_clause', ///
-        `absorb_option' `vce_option' `dof_option' `singleton_option' ///
+    _fereg_estimate_ols `varlist' `if' `in', ///
+        `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
+        `weight_option' ///
         solver(`solver_mode') preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
+
+    // Preserve the public coefficient-axis adapter without paying for a
+    // second full syntax/parser program invocation on every estimate.
+    local coefficient_count = e(fereg_receipt)[1,5]
+    local posted_indepvars
+    if `coefficient_count' > 0 local posted_indepvars : colfullnames e(b)
+    local intended_indepvars
+    if `coefficient_count' > 0 {
+        forvalues slot = 1/`coefficient_count' {
+            if e(fereg_status)[`slot',2] == 2 continue
+            local name : word `slot' of `posted_indepvars'
+            local remaining `"`name'"'
+            local intended_name
+            while `"`remaining'"' != "" {
+                gettoken component remaining : remaining, parse("#")
+                if `"`component'"' == "#" {
+                    local intended_name `"`intended_name'#"'
+                    continue
+                }
+                local intended_component `"`component'"'
+                if substr(`"`component'"', 1, 2) == "o." {
+                    local intended_component = substr(`"`component'"', 3, .)
+                }
+                else if regexm(`"`component'"', "^(-?[0-9]+)(b|bn|o)?[.](.+)$") {
+                    local factor_level = regexs(1)
+                    local factor_variable = regexs(3)
+                    local intended_component `"`factor_level'bn.`factor_variable'"'
+                }
+                local intended_name `"`intended_name'`intended_component'"'
+            }
+            local intended_indepvars `"`intended_indepvars' `intended_name'"'
+        }
+    }
+    local intended_indepvars = strtrim(`"`intended_indepvars'"')
+    ereturn scalar fereg_v_determinant = e(fereg_certificate)[31,2]
+    ereturn local indepvars `"`intended_indepvars'"'
+    ereturn local fereg_gate "public_ols_v1"
+    ereturn local fereg_intended_public_command "fereg"
 
     ereturn local cmd "fereg"
     ereturn local cmdline `"fereg `0'"'
@@ -100,7 +168,6 @@ program define _fereg_estimate_public, eclass sortpreserve
         ereturn scalar fereg_rss_bytes = el(e(fereg_runtime), 15, 2)
     if el(e(fereg_runtime), 17, 1) == 1 ///
         ereturn scalar fereg_peak_rss_bytes = el(e(fereg_runtime), 17, 2)
-    ereturn display
     if `"`timeit'"' != "" {
         di as txt "fereg timing (seconds): preflight=" ///
             as result %9.4f el(e(fereg_runtime), 18, 2) ///

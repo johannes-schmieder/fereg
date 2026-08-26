@@ -75,8 +75,8 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + "DEPENDENCY_AUDIT.json", names)
             self.assertNotIn(prefix + "_fereg_estimate_ols_test.ado", names)
             self.assertNotIn(prefix + "_fereg_ols_hidden_numeric_v1.ado", names)
-            self.assertEqual(manifest["version"], "0.9.0")
-            self.assertEqual(manifest["phase"], "release-candidate")
+            self.assertEqual(manifest["version"], "0.5.0")
+            self.assertEqual(manifest["phase"], "beta")
             self.assertEqual(manifest["action_protocol"], "1.3")
             self.assertEqual(manifest["ols_result_wire"], "1.3")
             self.assertEqual(manifest["model_wire"], "2.1")
@@ -123,7 +123,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 )
             )
             self.assertFalse(any(name.endswith(".pdf") for name in names))
-            self.assertEqual(source_manifest["version"], "0.9.0")
+            self.assertEqual(source_manifest["version"], "0.5.0")
 
     def test_checksum_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:

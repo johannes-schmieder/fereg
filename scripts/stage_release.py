@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage the deterministic, audited fereg 0.9.0 binary distribution."""
+"""Stage the deterministic, audited fereg 0.5.0 beta distribution."""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-VERSION = "0.9.0"
+VERSION = "0.5.0"
 PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 8, 24, 0, 0, 0)
 FIXED_UTC = "2026-08-24T00:00:00Z"
@@ -286,7 +286,7 @@ def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
         "schema": 2,
         "package": PACKAGE_NAME,
         "version": VERSION,
-        "phase": "release-candidate",
+        "phase": "beta",
         "created_utc": FIXED_UTC,
         "source_sha": source_sha,
         "source_dirty": source_dirty,

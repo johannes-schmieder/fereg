@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.9.0 24aug2026}{...}
+{* *! version 0.5.0 24aug2026}{...}
 {vieweralsosee "fereg" "help fereg"}{...}
 {vieweralsosee "feppml" "help feppml"}{...}
 {title:Title}
@@ -96,6 +96,6 @@ and protocol information in {cmd:r()}.
 
 {pstd}Stata 18 or newer and exactly one platform plugin on the ado-path:
 {cmd:fereg_windows.plugin}, {cmd:fereg_linux.plugin}, or the universal
-{cmd:fereg_macos.plugin}. This is the untagged 0.9.0 release-candidate source;
+{cmd:fereg_macos.plugin}. This is the unreleased 0.5.0 beta source;
 see {cmd:STATUS.md} in the source distribution for qualified-platform receipts
 and deferred native-Intel/Windows licensed-Stata caveats.

@@ -1,4 +1,4 @@
-# 0.9.0 memory model
+# 0.5.0 memory model
 
 ## Modes and preflight
 

@@ -1,12 +1,12 @@
-# fereg 0.9.0 compatibility matrix
+# fereg 0.5.0 compatibility matrix
 
 ## OLS 1.0 public surface
 
 The implementation surface below is active in public `fereg`. Qualification
-claims remain pending until the exact 0.9.0 candidate SHA passes the gates in
+claims remain pending until the exact 0.5.0 candidate SHA passes the gates in
 ADR-0007 and `STATUS.md`.
 
-| Surface | Implemented 0.9.0 behavior | Qualification still required |
+| Surface | Implemented 0.5.0 behavior | Qualification still required |
 |---|---|---|
 | Samples | Missingness, `if`/`in`, zero/invalid weights, singleton fixed point, `keepsingletons`, empty/one-row errors, and exact `e(sample)` identity | Exact-SHA local full and SCC Stata 18/19 parity |
 | Regressors | Continuous terms, factors, interactions, collinearity/omission status, lag/lead/difference operators, and no-regressor models | Full frozen differential and independent-oracle receipts |
@@ -20,11 +20,11 @@ ADR-0007 and `STATUS.md`.
 `feppml` is installed only as a fail-closed `r(498)` stub and is outside the
 OLS candidate. IV/GMM, group outcomes with individual FEs, HAC/Driscoll–Kraay,
 other GLMs, GPU execution, and undocumented compatibility modes are not part of
-0.9.0.
+0.5.0.
 
 ## Platform qualification
 
-| Stata | OS / architecture | Artifact | 0.9.0 qualification target |
+| Stata | OS / architecture | Artifact | 0.5.0 qualification target |
 |---|---|---|---|
 | 18 and 19 | Linux x86-64, glibc 2.28+ | `fereg_linux.plugin` | SCC licensed correctness, clean install, scientific parity, performance, memory, build/load, and audit |
 | 18+ | Windows x86-64 | `fereg_windows.plugin` | Hosted MSVC build, static CRT/export/dependency audit, and mock-SPI qualification; licensed Windows Stata deferred |

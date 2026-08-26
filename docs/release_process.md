@@ -1,6 +1,6 @@
-# 0.9.0 source-candidate qualification
+# 0.5.0 beta qualification
 
-1. Freeze the exact candidate SHA, ADR-0007 contract, compatibility matrix, and
+1. Freeze the exact beta SHA, ADR-0007 contract, compatibility matrix, and
    pinned reference closure. Development stays on local `main`; do not push.
 2. Run repository and packaging checks, Python oracles, strict C/mock SPI,
    formatting, Clippy with warnings denied, all Rust targets, allocation/store
@@ -28,14 +28,14 @@
    SBOM, dependency audit, licenses/notices, and explicit Windows/native-Intel
    caveats. Exclude developer adapters, raw logs, reference PDFs, generated
    reference libraries, and build caches.
-8. Bind every receipt and archive to the exact candidate SHA and update
+8. Bind every receipt and archive to the exact beta SHA and update
    `STATUS.md`, compatibility matrix, and changelog. Do not tag or create a
    GitHub release.
 9. Only when all feasible offline gates are green, push the complete local
    stack once to `origin/main`. Run automatic exact-SHA Mac quick and manually
    dispatch Mac full and hosted platform qualification. Remote failures require
    a repaired, newly offline-qualified stack before another push.
-10. Declare 0.9.0 source-qualified only after exact-SHA local, SCC, Mac, Linux
+10. Declare 0.5.0 source-qualified only after exact-SHA local, SCC, Mac, Linux
     build/load, Windows build/mock, and archive receipts are green. Keep the
     deferred licensed-Windows and native-Intel caveats visible.
 

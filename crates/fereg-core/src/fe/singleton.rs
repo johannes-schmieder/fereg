@@ -166,6 +166,18 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
         }
     }
 
+    // The common balanced-panel path is already a singleton fixed point.
+    // The complete count scan above is the certificate; if no level has unit
+    // multiplicity, avoid reserving an observation-sized dropped-row vector
+    // and the deletion queue merely to return them empty.
+    if !counts.iter().copied().any(is_singleton) {
+        return Ok(SingletonResult {
+            active,
+            dropped_observations: Vec::new(),
+            cascade_events: 0,
+        });
+    }
+
     let queued_len = counts_len;
     let mut queued = reserved_filled(
         reservation,

@@ -1,4 +1,4 @@
-*! fereg developer-only numeric-factor OLS preparation boundary 0.9.0 24aug2026
+*! fereg developer-only numeric-factor OLS preparation boundary 0.5.0 24aug2026
 program define _fereg_prepare_ols_test, rclass sortpreserve
     version 18.0
     syntax varlist(fv numeric min=1) [if] [in], ///
@@ -158,7 +158,7 @@ program define _fereg_prepare_ols_test, rclass sortpreserve
     plugin call __fereg_prepare_plugin `touse' `depvar' `source_vars' `weight_variable' ///
         `originalobs' `retained' `dropreason', ///
         `"prepare-ols-test"' ///
-        `"ado=0.9.0"' ///
+        `"ado=0.5.0"' ///
         `"protocol_major=1"' ///
         `"protocol_minor=0"' ///
         `"stata=`c(stata_version)'"' ///

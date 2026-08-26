@@ -5,7 +5,7 @@
 **Decision owner:** Johannes Schmieder
 
 ADR-0007 later supersedes only this ADR's activation/checkpoint statements.
-The positive-residual-DoF scientific decision remains binding for 0.9.0.
+The positive-residual-DoF scientific decision remains binding for 0.5.0.
 
 ## Context
 

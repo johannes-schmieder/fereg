@@ -15,7 +15,8 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         )
         package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
         self.assertIn("_fereg_estimate_public `0'", fereg)
-        self.assertIn("_fereg_ols `varlist'", public)
+        self.assertIn("_fereg_estimate_ols `varlist'", public)
+        self.assertNotIn("_fereg_ols `varlist'", public)
         self.assertIn("f _fereg_ols.ado", package)
         self.assertIn("f _fereg_estimate_ols.ado", package)
 

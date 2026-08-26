@@ -10,9 +10,10 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
 use super::{
-    absorb_borrowed_intercept_map_certified, borrow_categorical_topology_design,
-    BorrowedMapWeights, CategoricalCodeView, CertifiedBorrowedMap, FinalizedCategoricalTopology,
-    MapConfig,
+    absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_routed_certified,
+    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_map_certified,
+    borrow_categorical_topology_design, BorrowedMapWeights, CategoricalCodeView,
+    CertifiedBorrowedMap, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
 };
 
 /// Residualize `values` against all finalized categorical effects in requested
@@ -31,6 +32,115 @@ pub fn absorb_finalized_categorical_topology_map_certified(
         config,
         &mut reservation,
     )
+}
+
+/// Residualize against finalized categorical effects with genuine CG while
+/// retaining the same borrowed topology and independent final certificate.
+pub fn absorb_finalized_categorical_topology_cg_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and CG values have different observation counts",
+        ));
+    }
+
+    let mut source_views: Vec<CategoricalCodeView<'_>> = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| allocation("unable to reserve finalized categorical CG source views"))?;
+    for source in topology.compacted_sources() {
+        push_reserved(
+            &mut source_views,
+            source.view(),
+            "finalized categorical CG source-view capacity exhausted",
+        )?;
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_cg_certified(&design, weights, values, config)
+}
+
+/// Apply the four-sweep MAP/CG automatic policy without copying finalized
+/// categorical observation codes.
+pub fn absorb_finalized_categorical_topology_auto_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and auto values have different observation counts",
+        ));
+    }
+
+    let mut source_views: Vec<CategoricalCodeView<'_>> = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| allocation("unable to reserve finalized categorical auto source views"))?;
+    for source in topology.compacted_sources() {
+        push_reserved(
+            &mut source_views,
+            source.view(),
+            "finalized categorical auto source-view capacity exhausted",
+        )?;
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_auto_certified(&design, weights, values, config)
+}
+
+/// Apply the frozen MAP-pilot/CG/LSMR policy while keeping finalized
+/// categorical codes borrowed unless LSMR is actually selected.
+pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    lsmr: LsmrConfig,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and auto values have different observation counts",
+        ));
+    }
+
+    let mut source_views: Vec<CategoricalCodeView<'_>> = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| allocation("unable to reserve finalized categorical auto source views"))?;
+    for source in topology.compacted_sources() {
+        push_reserved(
+            &mut source_views,
+            source.view(),
+            "finalized categorical auto source-view capacity exhausted",
+        )?;
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_auto_routed_certified(&design, weights, values, config, lsmr)
 }
 
 trait TopologyMapReservation {
