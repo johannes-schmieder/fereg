@@ -12,10 +12,80 @@ use crate::memory::FeSolverMemoryBudget;
 
 use super::{
     absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_routed_certified,
-    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_map_certified,
-    borrow_categorical_topology_design, BorrowedMapWeights, CategoricalCodeView,
-    CertifiedBorrowedMap, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
+    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_cg_retaining_certified,
+    absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
+    absorb_borrowed_intercept_map_certified, borrow_categorical_topology_design,
+    BorrowedMapWeights, CategoricalCodeView, CertifiedBorrowedMap, FinalizedCategoricalTopology,
+    LsmrConfig, MapConfig,
 };
+
+pub(crate) fn absorb_finalized_categorical_topology_irons_tuck_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and Irons-Tuck values have different observation counts",
+        ));
+    }
+    let mut source_views = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| {
+            allocation("unable to reserve finalized categorical Irons-Tuck source views")
+        })?;
+    for source in topology.compacted_sources() {
+        source_views.push(source.view());
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_irons_tuck_certified(
+        &design,
+        weights,
+        values,
+        config,
+        retain_coefficients,
+    )
+}
+
+pub(crate) fn absorb_finalized_categorical_topology_lsmr_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: LsmrConfig,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and LSMR values have different observation counts",
+        ));
+    }
+    let mut source_views = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| allocation("unable to reserve finalized categorical LSMR source views"))?;
+    for source in topology.compacted_sources() {
+        source_views.push(source.view());
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_lsmr_certified(&design, weights, values, config, retain_coefficients)
+}
 
 /// Residualize `values` against all finalized categorical effects in requested
 /// term order and independently certify the returned residuals.
@@ -43,6 +113,27 @@ pub fn absorb_finalized_categorical_topology_cg_certified(
     values: DenseMatrix,
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
+    absorb_finalized_categorical_topology_cg_with_retention(
+        topology, weights, values, config, false,
+    )
+}
+
+pub(crate) fn absorb_finalized_categorical_topology_cg_retaining_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    absorb_finalized_categorical_topology_cg_with_retention(topology, weights, values, config, true)
+}
+
+fn absorb_finalized_categorical_topology_cg_with_retention(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
     let nobs = topology.retained_rows().len();
     if values.nrows() != nobs {
@@ -68,7 +159,11 @@ pub fn absorb_finalized_categorical_topology_cg_certified(
         &source_views,
         topology.effect_to_topology(),
     )?;
-    absorb_borrowed_intercept_cg_certified(&design, weights, values, config)
+    if retain_coefficients {
+        absorb_borrowed_intercept_cg_retaining_certified(&design, weights, values, config)
+    } else {
+        absorb_borrowed_intercept_cg_certified(&design, weights, values, config)
+    }
 }
 
 /// Apply the four-sweep MAP/CG automatic policy without copying finalized
@@ -116,6 +211,7 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
     config: MapConfig,
     lsmr: LsmrConfig,
     solver_memory_budget: Option<FeSolverMemoryBudget>,
+    retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
     let nobs = topology.retained_rows().len();
@@ -149,6 +245,7 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
         config,
         lsmr,
         solver_memory_budget,
+        retain_coefficients,
     )
 }
 

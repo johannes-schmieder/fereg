@@ -5,7 +5,7 @@
 **Verified candidate plugin:** `2f3ff78a7e154eab72651adc24b3c0519cc4d1d4cd6cd6ed08288564ff25f16e`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Earlier verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
-**Active milestone:** qualify CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
+**Active milestone:** qualify low-overhead saved fixed-effect recovery and CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -60,6 +60,38 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   jointly before selection. Pilot iterations, contraction, selected solver,
   iteration count, fallback, native time, and effective thread count are
   reported.
+- Fast-mode saved fixed effects no longer rerun observation-space MAP. LSMR and
+  CMG retain their coefficient solutions, CG propagates compact coefficient
+  states through its recurrence, Irons--Tuck mirrors accepted extrapolations in
+  coefficient space, and auto combines its four-sweep MAP pilot with the
+  selected continuation. MAP and SQUAREM use one strict one-RHS LSMR recovery
+  because measured per-sweep coefficient recording was slower; slopes and
+  low-memory execution use the same bounded fallback. Every route still applies
+  connected-component normalization plus independent reconstruction and FE
+  moment certificates at the unchanged publication tolerance.
+- Warm alternating-order local Stata/MP medians for the saved-output checkpoint
+  are shown below. The 300,000-row runs use nine pairs; the 30,000-row CG/IT
+  runs use nine pairs, MAP five, and SQUAREM three. Absolute overhead is small
+  for retained paths; MAP remains the candid exception even with its best
+  tested fallback.
+
+  | Solver | Rows | No saved FE | Saved FE | Delta |
+  |---|---:|---:|---:|---:|
+  | auto | 300,000 | 0.321 s | 0.377 s | +0.056 s |
+  | LSMR | 300,000 | 0.354 s | 0.365 s | +0.011 s |
+  | CMG | 300,000 | 0.287 s | 0.331 s | +0.044 s |
+  | CG | 30,000 | 0.093 s | 0.100 s | +0.007 s |
+  | Irons--Tuck | 30,000 | 0.295 s | 0.310 s | +0.015 s |
+  | MAP | 30,000 | 0.817 s | 1.184 s | +0.367 s |
+  | SQUAREM | 30,000 | 2.553 s | 2.950 s | +0.397 s |
+
+  The original `tests/manual/simple_AKM.do` reproducer now completes; its
+  30,000-row saved AUTO and CMG runs were 0.129 s and 0.066 s. The expanded
+  saved-output parity fixture passes MAP, CG, IT, SQUAREM, LSMR, and CMG with
+  matching coefficients/RSS and explicit FE-channel reconstruction identities.
+  The complete local entry point passes repository checks, 269 Python tests,
+  strict formatting/Clippy, 310 core tests, 52 FFI plugin tests, integration
+  oracles, mock SPI, and portable static checks.
 - `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
   and performance are outside the 0.5.0 beta.
 - The reference closure remains pinned to reghdfe 6.14.1 (`29b2b203...`),

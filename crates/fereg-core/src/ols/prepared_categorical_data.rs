@@ -15,10 +15,12 @@ use crate::fe::{
     absorb_finalized_categorical_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
+    recover_finalized_categorical_effects_from_coefficients_certified,
+    recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_map_certified, BorrowedMapWeights,
     BoundCategoricalAbsorbEffect, CategoricalAbsorbedEffectView, CategoricalCodeView,
-    CertifiedBorrowedMap, FinalizedCategoricalTopology, MapConfig, RecoveredCategoricalEffects,
-    SingletonMultiplicity,
+    CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
+    RecoveredCategoricalEffects, SingletonMultiplicity,
 };
 use crate::metadata::SourceId;
 use crate::prepared_categorical_rebase::{
@@ -252,6 +254,58 @@ impl PreparedCategoricalOlsData {
             requested_channels,
             categorical_slope_map_config(config),
         )
+    }
+
+    /// Recover saved FE channels without repeating observation-space MAP.
+    /// Retained fit coefficients are the zero-extra-solve path; otherwise one
+    /// coefficient-producing LSMR solve is used. Strict MAP remains the final
+    /// certified fallback for numerical or preconditioner failures.
+    pub fn recover_absorbed_effects_fast(
+        &self,
+        target: &[f64],
+        requested_channels: &[bool],
+        retained: Option<&FeCoefficientBatch>,
+        lsmr: LsmrConfig,
+        map: MapConfig,
+    ) -> Result<RecoveredCategoricalEffects> {
+        self.validate()?;
+        let effects = self.effect_views()?;
+        let weights = match &self.sample.weights {
+            PreparedWeights::None => BorrowedMapWeights::Unit,
+            PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
+        };
+        if let Some(coefficients) = retained {
+            if let Ok(recovered) = recover_finalized_categorical_effects_from_coefficients_certified(
+                &self.fe_topology,
+                &effects,
+                weights,
+                target,
+                requested_channels,
+                coefficients,
+                map.tolerance,
+            ) {
+                return Ok(recovered);
+            }
+        }
+        match recover_finalized_categorical_effects_lsmr_certified(
+            &self.fe_topology,
+            &effects,
+            weights,
+            target,
+            requested_channels,
+            lsmr,
+            map.tolerance,
+        ) {
+            Ok(recovered) => Ok(recovered),
+            Err(_) => recover_finalized_categorical_effects_map_certified(
+                &self.fe_topology,
+                &effects,
+                weights,
+                target,
+                requested_channels,
+                categorical_slope_map_config(map),
+            ),
+        }
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.

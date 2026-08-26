@@ -2,7 +2,7 @@ use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, FeCertificate,
-    FeSolverKind, SolveReport, SolveStopReason,
+    FeCoefficientBatch, FeSolverKind, SolveReport, SolveStopReason,
 };
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
@@ -244,6 +244,7 @@ pub struct CertifiedPreparedOlsFit {
     /// so the prepared inference layer deliberately handles that case itself.
     initial_absorbed_outcome_sum_of_squares: f64,
     residuals: DenseMatrix,
+    recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
     execution: PreparedOlsExecutionReport,
 }
@@ -321,6 +322,13 @@ impl CertifiedPreparedOlsFit {
     #[must_use]
     pub fn residuals(&self) -> &[f64] {
         self.residuals.as_slice()
+    }
+
+    /// Combined coefficient-space absorbed contribution, when the selected
+    /// solver retained every required RHS and residual-polish correction.
+    #[must_use]
+    pub const fn recovered_fe_coefficients(&self) -> Option<&FeCoefficientBatch> {
+        self.recovered_fe_coefficients.as_ref()
     }
 
     #[must_use]
@@ -562,6 +570,7 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
                 map: config.absorb.map,
                 threads: config.execution.threads,
                 batch_size: config.execution.poolsize,
+                retain_coefficients: config.absorb.retain_coefficients,
             },
         )
         .map(Some)
@@ -592,6 +601,74 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
     perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
     fit_with_controls_internal_mode(prepared, config, reservation, perturbations, false)
+}
+
+fn combine_recovered_fe_coefficients<R: FitReservation>(
+    initial: Option<FeCoefficientBatch>,
+    residual: Option<FeCoefficientBatch>,
+    residual_iterations: usize,
+    generated_coefficients: &[Option<f64>],
+    reservation: &mut R,
+) -> Result<Option<FeCoefficientBatch>> {
+    let Some(initial) = initial else {
+        return Ok(None);
+    };
+    if initial.rhs_count() != generated_coefficients.len() + 1 {
+        return Err(invalid_argument(
+            "initial FE coefficient batch and generated OLS columns differ",
+        ));
+    }
+    let initial_outcome = initial.rhs(0)?;
+    let mut combined = reserved_empty(
+        reservation,
+        initial_outcome.len(),
+        "unable to reserve combined FE coefficient product",
+    )?;
+    combined.extend_from_slice(initial_outcome);
+    for (generated, coefficient) in generated_coefficients.iter().copied().enumerate() {
+        let Some(coefficient) = coefficient else {
+            continue;
+        };
+        for (destination, source) in combined.iter_mut().zip(initial.rhs(generated + 1)?) {
+            *destination = (-coefficient).mul_add(*source, *destination);
+            if !destination.is_finite() {
+                return Err(invalid_data("combined initial FE coefficient is nonfinite"));
+            }
+        }
+    }
+    if let Some(residual) = residual {
+        if residual.rhs_count() != 1
+            || residual.effect_channels() != initial.effect_channels()
+            || residual.level_counts() != initial.level_counts()
+        {
+            return Err(invalid_argument(
+                "residual FE coefficient correction layout differs from the initial solve",
+            ));
+        }
+        for (destination, correction) in combined.iter_mut().zip(residual.rhs(0)?) {
+            *destination += correction;
+            if !destination.is_finite() {
+                return Err(invalid_data(
+                    "combined residual FE coefficient correction is nonfinite",
+                ));
+            }
+        }
+    } else if residual_iterations != 0 {
+        return Ok(None);
+    }
+    let mut effect_channels = reserved_empty(
+        reservation,
+        initial.effect_channels().len(),
+        "unable to reserve combined FE channel layout",
+    )?;
+    effect_channels.extend_from_slice(initial.effect_channels());
+    let mut level_counts = reserved_empty(
+        reservation,
+        initial.level_counts().len(),
+        "unable to reserve combined FE level layout",
+    )?;
+    level_counts.extend_from_slice(initial.level_counts());
+    FeCoefficientBatch::from_values(effect_channels, level_counts, 1, combined).map(Some)
 }
 
 fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -665,7 +742,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             "prepared OLS initial absorption returned an uncertified result",
         ));
     }
-    let (mut within, absorption_report) = absorbed.into_parts();
+    let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
     let fast_score_cache = if retain_fast_score_cache {
         build_fast_score_cache(
             prepared,
@@ -747,7 +824,8 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             "prepared OLS residual absorption returned an uncertified result",
         ));
     }
-    let (mut residuals, residual_absorption_report) = residual_absorbed.into_parts();
+    let (mut residuals, residual_absorption_report, residual_fe_coefficients) =
+        residual_absorbed.into_full_parts();
     if perturbations.final_residual_constant {
         for row in 0..residuals.nrows() {
             residuals[(row, 0)] += 0.25;
@@ -770,6 +848,13 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         ));
     }
 
+    let recovered_fe_coefficients = combine_recovered_fe_coefficients(
+        initial_fe_coefficients,
+        residual_fe_coefficients,
+        residual_absorption_report.iterations,
+        &qr.generated_coefficients,
+        reservation,
+    )?;
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
     qr.kept.sort_unstable();
     qr.dropped.sort_unstable();
@@ -785,6 +870,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         residual_absorption_report,
         initial_absorbed_outcome_sum_of_squares,
         residuals,
+        recovered_fe_coefficients,
         fast_score_cache,
         execution: PreparedOlsExecutionReport {
             mode: PreparedOlsExecutionMode::Fast,
@@ -1129,6 +1215,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         residual_absorption_report,
         initial_absorbed_outcome_sum_of_squares,
         residuals,
+        recovered_fe_coefficients: None,
         fast_score_cache: None,
         execution: PreparedOlsExecutionReport {
             mode: PreparedOlsExecutionMode::Low,

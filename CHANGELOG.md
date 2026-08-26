@@ -56,6 +56,15 @@
   the FE-moment and observation-space reconstruction certificates before the
   recovery loop stops. The previous moment-only stop could reject a valid
   recovered target with `r(459)` even though additional MAP sweeps certified it.
+- Removed the full observation-space MAP recovery rerun from saved fixed-effect
+  output. Fast-mode LSMR and CMG fits now retain their solved FE coefficients;
+  CG propagates compact FE coefficients through its recurrence; Irons--Tuck
+  propagates the same extrapolation in coefficient space; and automatic routing
+  combines its MAP-pilot coefficients with the selected LSMR or CG continuation.
+  MAP, SQUAREM, slope-bearing routes, and low-memory execution use one strict
+  coefficient-producing LSMR recovery solve, with certified MAP only as a
+  fail-closed fallback. Recovered channels retain the established component
+  normalization and are independently reconstruction- and moment-certified.
 - Identified the beta consistently as 0.5.0 and added deterministic
   source/release staging, checksum, dependency, SBOM/license, and platform-
   caveat requirements.

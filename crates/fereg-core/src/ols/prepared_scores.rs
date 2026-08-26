@@ -260,6 +260,7 @@ pub(super) fn build_prepared_ols_score_design<
                     fit.execution().deterministic,
                 )?,
                 batch_size: fit.execution().poolsize.max(1),
+                retain_coefficients: false,
             },
         )?)
     } else {

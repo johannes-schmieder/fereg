@@ -96,4 +96,25 @@ assert abs(__frg_xbd - __frg_xb - __frg_d) <= 1e-10
 assert abs(__frg_d - __frg_fe_worker - __frg_fe_firm) <= 1e-10
 assert abs(__frg_predict_resid - __frg_resid) <= 1e-12
 
+* Every explicit solver must publish the same certified normalized FE channels.
+clonevar __frg_base_worker = __frg_fe_worker
+clonevar __frg_base_firm = __frg_fe_firm
+scalar __frg_base_b = _b[x1]
+scalar __frg_base_rss = e(rss)
+foreach solver in map cg it squarem lsmr cmg {
+    capture drop __frg_route_*
+    fereg y c.x1, ///
+        absorb(__frg_route_worker=worker __frg_route_firm=firm) ///
+        residuals(__frg_route_resid) solver(`solver') memory(fast)
+    assert reldif(_b[x1], __frg_base_b) <= 1e-10
+    assert reldif(e(rss), __frg_base_rss) <= 1e-10
+    predict double __frg_route_xb, xb
+    predict double __frg_route_d, d
+    assert abs(y - __frg_route_xb - __frg_route_d - __frg_route_resid) <= 1e-10
+    assert abs(__frg_route_d - __frg_route_worker - __frg_route_firm) <= 1e-10
+    assert abs(__frg_route_worker - __frg_base_worker) <= 1e-7
+    assert abs(__frg_route_firm - __frg_base_firm) <= 1e-7
+}
+drop __frg_route_* __frg_base_worker __frg_base_firm
+
 di as result "END_FIXTURE|estimate_ols_saved_outputs_parity|rc=0"

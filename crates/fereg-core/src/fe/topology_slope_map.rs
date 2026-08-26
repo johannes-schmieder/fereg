@@ -11,9 +11,11 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
 use super::{
-    BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate, FeSolverKind,
-    FinalizedCategoricalTopology, MapConfig, SolveReport, SolveStopReason,
+    connected_components_all, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate,
+    FeCoefficientBatch, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
+    MapConfig, SolveReport, SolveStopReason,
 };
+use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 #[derive(Debug, Clone, Copy)]
 struct ValidatedWeights<'a> {
@@ -327,6 +329,567 @@ pub fn recover_finalized_categorical_effects_map_certified(
         requested_channels,
         config,
         &mut reservation,
+    )
+}
+
+/// Recover normalized categorical effects from a coefficient product retained
+/// by the estimator. This path performs no iterative solve: it normalizes the
+/// solver's null-space representative, scatters requested channels, and
+/// independently certifies reconstruction and FE orthogonality.
+pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    coefficients: &FeCoefficientBatch,
+    tolerance: f64,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    validate_coefficient_layout(topology, effects, coefficients)?;
+    if coefficients.rhs_count() != 1 {
+        return Err(invalid_argument(
+            "categorical recovery requires exactly one combined coefficient RHS",
+        ));
+    }
+    let weights = validate_weights(weights, target.len())?;
+    let mut normalized = coefficients.rhs(0)?.to_vec();
+    normalize_intercept_components(topology, effects, weights, &mut normalized)?;
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        &normalized,
+        0,
+        tolerance,
+    )
+}
+
+/// Recover effects with one coefficient-producing modified-LSMR solve.
+///
+/// This is the bounded fallback for observation-space MAP/CG/extrapolation
+/// routes and for low-memory fits that deliberately do not retain all initial
+/// RHS coefficient vectors.
+pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    config: LsmrConfig,
+    publication_tolerance: f64,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    if !config.tolerance.is_finite()
+        || config.tolerance <= 0.0
+        || config.max_iterations == 0
+        || config.local_size == Some(0)
+        || !publication_tolerance.is_finite()
+        || publication_tolerance <= 0.0
+    {
+        return Err(invalid_argument(
+            "categorical recovery LSMR policy is invalid",
+        ));
+    }
+    let source_table = topology_source_table(topology)?;
+    let mut within_effects = Vec::new();
+    within_effects
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve categorical recovery LSMR effects"))?;
+    let mut effect_channels = Vec::new();
+    let mut level_counts = Vec::new();
+    effect_channels
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve categorical recovery channel layout"))?;
+    level_counts
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve categorical recovery level layout"))?;
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        let codes = source.codes(&source_table)?;
+        within_effects.push(
+            Effect::new(
+                codes,
+                effect.has_intercept(),
+                effect.slopes().iter().copied(),
+            )
+            .map_err(|error| {
+                invalid_data(format!(
+                    "unable to construct categorical recovery LSMR effect: {error}"
+                ))
+            })?,
+        );
+        effect_channels.push(effect.channels());
+        level_counts.push(source.n_levels());
+    }
+    let options = LsmrOptions {
+        tol: config.tolerance,
+        maxiter: config.max_iterations,
+        local_size: config.local_size,
+    };
+    let coefficient_count = effect_channels.iter().zip(&level_counts).try_fold(
+        0_usize,
+        |total, (&channels, &levels)| {
+            total
+                .checked_add(channels.checked_mul(levels).ok_or_else(|| {
+                    allocation("categorical recovery LSMR coefficient width overflows")
+                })?)
+                .ok_or_else(|| allocation("categorical recovery LSMR coefficient count overflows"))
+        },
+    )?;
+    let preconditioner =
+        recovery_preconditioner(config.preconditioner, effects.len(), coefficient_count);
+    let weight_values = match weights {
+        BorrowedMapWeights::Unit => None,
+        BorrowedMapWeights::Provided(values) => Some(values),
+    };
+    let initial = within::solve(
+        within_effects.clone(),
+        target,
+        weight_values,
+        Some(&options),
+        preconditioner,
+    );
+    let solved = match initial {
+        Ok(solved) => solved,
+        Err(error)
+            if config.preconditioner == LsmrPreconditioner::Auto
+                && recovery_preconditioner_breakdown(&error) =>
+        {
+            within::solve(
+                within_effects,
+                target,
+                weight_values,
+                Some(&options),
+                PreconditionerConfig::Off,
+            )
+            .map_err(|fallback_error| {
+                invalid_data(format!(
+                    "categorical recovery LSMR failed after unpreconditioned fallback: {fallback_error}"
+                ))
+            })?
+        }
+        Err(error) => {
+            return Err(invalid_data(format!(
+                "categorical recovery LSMR failed: {error}"
+            )))
+        }
+    };
+    if !solved.converged {
+        return Err(invalid_data(format!(
+            "categorical recovery LSMR exhausted its iteration budget after {} iterations",
+            solved.iterations
+        )));
+    }
+    let residual = DenseMatrix::from_row_major(target.len(), 1, solved.demeaned)?;
+    let validated_weights = validate_weights(weights, target.len())?;
+    let mut reservation = SystemSlopeWorkspaceReservation;
+    let mut workspace = SlopeWorkspace::new(
+        effects
+            .iter()
+            .map(CategoricalAbsorbedEffectView::channels)
+            .max()
+            .unwrap_or(1),
+        1,
+        &mut reservation,
+    )?;
+    weighted_norms(
+        &DenseMatrix::from_row_major(target.len(), 1, target.to_vec())?,
+        validated_weights,
+        &mut workspace.reference_norms,
+        &mut workspace.value_scales,
+        &mut workspace.coefficients[..1],
+    )?;
+    let certificate = certify(
+        topology,
+        effects,
+        validated_weights,
+        &residual,
+        publication_tolerance,
+        &mut workspace,
+    )?;
+    if !certificate.passed {
+        return Err(invalid_data(
+            "categorical recovery LSMR returned an uncertified residual",
+        ));
+    }
+    let coefficients = FeCoefficientBatch::from_values(effect_channels, level_counts, 1, solved.x)?;
+    let mut normalized = coefficients.rhs(0)?.to_vec();
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        validated_weights,
+        target,
+        requested_channels,
+        &normalized,
+        solved.iterations,
+        publication_tolerance,
+    )
+}
+
+fn validate_recovery_inputs(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    target: &[f64],
+    requested_channels: &[bool],
+) -> Result<()> {
+    topology.validate()?;
+    if target.len() != topology.retained_rows().len()
+        || effects.len() != topology.effect_to_topology().len()
+        || target.is_empty()
+        || target.iter().any(|value| !value.is_finite())
+    {
+        return Err(invalid_argument(
+            "categorical recovery inputs are not finite and aligned",
+        ));
+    }
+    let channels = effects.iter().try_fold(0_usize, |total, effect| {
+        total
+            .checked_add(effect.channels())
+            .ok_or_else(|| allocation("categorical recovery channel count overflows"))
+    })?;
+    if channels == 0 || requested_channels.len() != channels {
+        return Err(invalid_argument(
+            "categorical recovery requested-channel layout differs",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_coefficient_layout(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    coefficients: &FeCoefficientBatch,
+) -> Result<()> {
+    let channels = effects
+        .iter()
+        .map(CategoricalAbsorbedEffectView::channels)
+        .collect::<Vec<_>>();
+    let levels = topology
+        .effect_to_topology()
+        .iter()
+        .map(|source| {
+            topology
+                .registry()
+                .source(*source)
+                .map(|source| source.n_levels())
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if coefficients.effect_channels() != channels || coefficients.level_counts() != levels {
+        return Err(invalid_argument(
+            "categorical recovery coefficient layout differs from the finalized effects",
+        ));
+    }
+    Ok(())
+}
+
+fn topology_source_table(
+    topology: &FinalizedCategoricalTopology,
+) -> Result<Vec<super::CategoricalCodeView<'_>>> {
+    let mut source_table = Vec::new();
+    source_table
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| allocation("unable to reserve categorical recovery source views"))?;
+    for source in topology.compacted_sources() {
+        source_table.push(source.view());
+    }
+    Ok(source_table)
+}
+
+fn normalize_intercept_components(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: ValidatedWeights<'_>,
+    coefficients: &mut [f64],
+) -> Result<()> {
+    let intercept_effects = effects
+        .iter()
+        .enumerate()
+        .filter_map(|(index, effect)| effect.has_intercept().then_some(index))
+        .collect::<Vec<_>>();
+    if intercept_effects.len() <= 1 {
+        return Ok(());
+    }
+    let source_table = topology_source_table(topology)?;
+    let mut codes = Vec::with_capacity(intercept_effects.len());
+    let mut levels = Vec::with_capacity(intercept_effects.len());
+    for &effect_index in &intercept_effects {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        codes.push(source.codes(&source_table)?);
+        levels.push(source.n_levels());
+    }
+    let components = connected_components_all(&codes, &levels)?;
+    let mut component_weights = vec![0.0_f64; components.n_components];
+    let anchor_components = &components.component_by_effect_level[0];
+    for (level, &component) in anchor_components.iter().enumerate() {
+        if component == usize::MAX {
+            continue;
+        }
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[intercept_effects[0]])?;
+        let members = source.members(level)?;
+        if weights.values.is_none() {
+            component_weights[component] += members.len() as f64;
+        } else {
+            for &row in members {
+                component_weights[component] += weights.value(row);
+            }
+        }
+    }
+    let effect_offsets = channel_major_effect_offsets(topology, effects)?;
+    let mut anchor_adjustments = vec![0.0_f64; components.n_components];
+    for (local_effect, &effect_index) in intercept_effects.iter().enumerate().skip(1) {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        let mut numerators = vec![0.0_f64; components.n_components];
+        for level in 0..source.n_levels() {
+            let component = components.component_by_effect_level[local_effect][level];
+            if component == usize::MAX {
+                continue;
+            }
+            let coefficient = coefficients[effect_offsets[effect_index] + level];
+            let members = source.members(level)?;
+            if weights.values.is_none() {
+                numerators[component] += members.len() as f64 * coefficient;
+            } else {
+                for &row in members {
+                    numerators[component] += weights.value(row) * coefficient;
+                }
+            }
+        }
+        let means = numerators
+            .iter()
+            .zip(&component_weights)
+            .map(|(&numerator, &weight)| {
+                if weight > 0.0 {
+                    numerator / weight
+                } else {
+                    0.0
+                }
+            })
+            .collect::<Vec<_>>();
+        for level in 0..source.n_levels() {
+            let component = components.component_by_effect_level[local_effect][level];
+            if component != usize::MAX {
+                coefficients[effect_offsets[effect_index] + level] -= means[component];
+            }
+        }
+        for (adjustment, mean) in anchor_adjustments.iter_mut().zip(means) {
+            *adjustment += mean;
+        }
+    }
+    let anchor_effect = intercept_effects[0];
+    let anchor_source = topology
+        .registry()
+        .source(topology.effect_to_topology()[anchor_effect])?;
+    for level in 0..anchor_source.n_levels() {
+        let component = components.component_by_effect_level[0][level];
+        if component != usize::MAX {
+            coefficients[effect_offsets[anchor_effect] + level] += anchor_adjustments[component];
+        }
+    }
+    if coefficients.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data(
+            "categorical recovery normalization produced a nonfinite coefficient",
+        ));
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_channel_major_recovery(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: ValidatedWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    coefficients: &[f64],
+    iterations: usize,
+    tolerance: f64,
+) -> Result<RecoveredCategoricalEffects> {
+    let effect_offsets = channel_major_effect_offsets(topology, effects)?;
+    if coefficients.len() != effect_offsets.last().copied().unwrap_or(0) {
+        return Err(invalid_argument(
+            "categorical recovery coefficient count is inconsistent",
+        ));
+    }
+    let mut absorbed_sum = vec![0.0_f64; target.len()];
+    let mut channels = Vec::new();
+    channels
+        .try_reserve_exact(requested_channels.len())
+        .map_err(|_| allocation("unable to reserve recovered channel registry"))?;
+    let mut flat_channel = 0_usize;
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        for channel in 0..effect.channels() {
+            let mut contribution =
+                requested_channels[flat_channel].then(|| vec![0.0_f64; target.len()]);
+            for level in 0..source.n_levels() {
+                let alpha = coefficients
+                    [effect_offsets[effect_index] + channel * source.n_levels() + level];
+                for &row in source.members(level)? {
+                    let basis = if effect.has_intercept() && channel == 0 {
+                        1.0
+                    } else {
+                        let slope_index = channel - usize::from(effect.has_intercept());
+                        effect.slopes()[slope_index][row]
+                    };
+                    let value = alpha * basis;
+                    absorbed_sum[row] += value;
+                    if let Some(output) = contribution.as_mut() {
+                        output[row] = value;
+                    }
+                }
+            }
+            channels.push(contribution);
+            flat_channel += 1;
+        }
+    }
+    let mut reservation = SystemSlopeWorkspaceReservation;
+    let mut workspace = SlopeWorkspace::new(
+        effects
+            .iter()
+            .map(CategoricalAbsorbedEffectView::channels)
+            .max()
+            .unwrap_or(1),
+        1,
+        &mut reservation,
+    )?;
+    workspace.value_scales[0] = 0.0;
+    workspace.coefficients[0] = 1.0;
+    let mut target_infinity = 0.0_f64;
+    let mut residual_infinity = 0.0_f64;
+    let mut residual_values = Vec::new();
+    residual_values
+        .try_reserve_exact(target.len())
+        .map_err(|_| allocation("unable to reserve categorical recovery residual"))?;
+    for (row, (&expected, &actual)) in target.iter().zip(&absorbed_sum).enumerate() {
+        let remainder = expected - actual;
+        if !remainder.is_finite() {
+            return Err(invalid_data(
+                "categorical recovery coefficient product produced a nonfinite residual",
+            ));
+        }
+        residual_values.push(remainder);
+        target_infinity = target_infinity.max(expected.abs());
+        residual_infinity = residual_infinity.max(remainder.abs());
+        let weighted_target = weights.value(row).sqrt() * expected;
+        if !weighted_target.is_finite() {
+            return Err(invalid_data(
+                "categorical recovery weighted target is nonfinite",
+            ));
+        }
+        update_scaled_sum(
+            weighted_target,
+            &mut workspace.value_scales[0],
+            &mut workspace.coefficients[0],
+        );
+    }
+    workspace.reference_norms[0] = if workspace.value_scales[0] == 0.0 {
+        0.0
+    } else {
+        workspace.value_scales[0] * workspace.coefficients[0].sqrt()
+    };
+    if !workspace.reference_norms[0].is_finite() {
+        return Err(invalid_data(
+            "categorical recovery weighted target norm is nonfinite",
+        ));
+    }
+    let residual = DenseMatrix::from_row_major(target.len(), 1, residual_values)?;
+    let reconstruction_relative_infinity = if target_infinity == 0.0 {
+        residual_infinity
+    } else {
+        residual_infinity / target_infinity
+    };
+    if !reconstruction_relative_infinity.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery reconstruction ratio is not finite",
+        ));
+    }
+    if reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance) {
+        return Err(invalid_data(format!(
+            "categorical recovery coefficient product failed reconstruction: relative infinity residual {reconstruction_relative_infinity:.6e}"
+        )));
+    }
+    let certificate = certify(
+        topology,
+        effects,
+        weights,
+        &residual,
+        tolerance,
+        &mut workspace,
+    )?;
+    if !certificate.passed {
+        return Err(invalid_data(
+            "categorical recovery coefficient product failed its FE certificate",
+        ));
+    }
+    Ok(RecoveredCategoricalEffects {
+        absorbed_sum,
+        channels,
+        iterations,
+        reconstruction_relative_infinity,
+    })
+}
+
+fn channel_major_effect_offsets(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+) -> Result<Vec<usize>> {
+    let mut offsets = Vec::with_capacity(effects.len() + 1);
+    offsets.push(0);
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let levels = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?
+            .n_levels();
+        let width = levels
+            .checked_mul(effect.channels())
+            .ok_or_else(|| allocation("categorical recovery coefficient width overflows"))?;
+        offsets.push(
+            offsets
+                .last()
+                .copied()
+                .unwrap_or(0_usize)
+                .checked_add(width)
+                .ok_or_else(|| allocation("categorical recovery coefficient offset overflows"))?,
+        );
+    }
+    Ok(offsets)
+}
+
+fn recovery_preconditioner(
+    requested: LsmrPreconditioner,
+    effects: usize,
+    coefficients: usize,
+) -> PreconditionerConfig {
+    match requested {
+        LsmrPreconditioner::Off => PreconditionerConfig::Off,
+        LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
+        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+        LsmrPreconditioner::Auto if effects >= 2 && coefficients >= 256 => {
+            PreconditionerConfig::default()
+        }
+        LsmrPreconditioner::Auto => PreconditionerConfig::Diagonal,
+    }
+}
+
+fn recovery_preconditioner_breakdown(error: &within::WithinError) -> bool {
+    matches!(
+        error,
+        within::WithinError::Solve(within::SolveError::InvalidInput { context, message })
+            if *context == "mlsmr" && message.contains("preconditioner not positive definite")
     )
 }
 
@@ -1585,6 +2148,115 @@ mod tests {
             assert!((actual - expected).abs() < 1e-10);
         }
         assert!(recovered.channels()[1].is_none());
+    }
+
+    #[test]
+    fn coefficient_lsmr_recovery_matches_map_normalization() {
+        let worker = [0_u32, 0, 1, 1, 2, 2];
+        let firm = [0_u32, 1, 0, 1, 0, 1];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 3),
+                CategoricalCodeView::new(&firm, 2),
+            ],
+            &[&[0], &[1]],
+            &[true; 6],
+        )
+        .expect("topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let target = [-1.5, -0.5, -0.25, 0.75, 0.25, 1.25];
+        let map = recover_finalized_categorical_effects_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            config(),
+        )
+        .expect("MAP recovery");
+        let lsmr = recover_finalized_categorical_effects_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..LsmrConfig::default()
+            },
+            1e-12,
+        )
+        .expect("LSMR recovery");
+        for (left, right) in lsmr.absorbed_sum().iter().zip(map.absorbed_sum()) {
+            assert!((left - right).abs() < 1e-10);
+        }
+        for channel in 0..2 {
+            for (left, right) in lsmr.channels()[channel]
+                .as_ref()
+                .expect("LSMR channel")
+                .iter()
+                .zip(map.channels()[channel].as_ref().expect("MAP channel"))
+            {
+                assert!((left - right).abs() < 1e-10, "{left} != {right}");
+            }
+        }
+    }
+
+    #[test]
+    fn coefficient_lsmr_recovery_normalizes_disconnected_components() {
+        let worker = [0_u32, 1, 2, 3];
+        let firm = [0_u32, 0, 1, 1];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 4),
+                CategoricalCodeView::new(&firm, 2),
+            ],
+            &[&[0], &[1]],
+            &[true; 4],
+        )
+        .expect("disconnected topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let target = [1.0, 3.0, 10.0, 14.0];
+        let map = recover_finalized_categorical_effects_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            config(),
+        )
+        .expect("disconnected MAP recovery");
+        let lsmr = recover_finalized_categorical_effects_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..LsmrConfig::default()
+            },
+            1e-12,
+        )
+        .expect("disconnected LSMR recovery");
+        for channel in 0..2 {
+            for (left, right) in lsmr.channels()[channel]
+                .as_ref()
+                .expect("LSMR channel")
+                .iter()
+                .zip(map.channels()[channel].as_ref().expect("MAP channel"))
+            {
+                assert!((left - right).abs() < 1e-10, "{left} != {right}");
+            }
+        }
     }
 
     #[test]

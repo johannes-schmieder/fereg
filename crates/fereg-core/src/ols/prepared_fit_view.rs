@@ -12,10 +12,14 @@ use crate::fe::{
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
+    absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     absorb_finalized_categorical_slope_map_certified,
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_certified,
+    absorb_finalized_categorical_topology_cg_retaining_certified,
+    absorb_finalized_categorical_topology_irons_tuck_certified,
+    absorb_finalized_categorical_topology_lsmr_certified,
     absorb_finalized_categorical_topology_map_certified, absorb_fixed_effects,
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
     BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
@@ -118,7 +122,17 @@ pub(crate) trait PreparedOlsFitView: Sync {
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
+        _retain_coefficients: bool,
     ) -> Result<CertifiedBorrowedMap>;
+
+    fn fit_absorb_lsmr(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.fit_absorb_owned_matrix(weights, values, config)
+    }
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
@@ -138,6 +152,15 @@ pub(crate) trait PreparedOlsFitView: Sync {
     }
 
     fn fit_absorb_cg(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.fit_absorb_owned_matrix(weights, values, config)
+    }
+
+    fn fit_absorb_irons_tuck(
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
@@ -189,10 +212,16 @@ pub(crate) trait PreparedOlsFitView: Sync {
             return self.fit_absorb_auto(weights, values, config);
         }
         if config.solver == FeSolverKind::Map {
-            return self.fit_absorb_map(weights, values, config.map);
+            return self.fit_absorb_map(weights, values, config.map, config.retain_coefficients);
+        }
+        if config.solver == FeSolverKind::Lsmr {
+            return self.fit_absorb_lsmr(weights, values, config);
         }
         if config.solver == FeSolverKind::Cg {
             return self.fit_absorb_cg(weights, values, config);
+        }
+        if config.solver == FeSolverKind::IronsTuck {
+            return self.fit_absorb_irons_tuck(weights, values, config);
         }
         if config.solver == FeSolverKind::Cmg {
             let batch_size = values.ncols().max(1);
@@ -203,6 +232,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
                     map: config.map,
                     threads,
                     batch_size,
+                    retain_coefficients: config.retain_coefficients,
                 },
             )?;
             return session.absorb(values);
@@ -254,6 +284,7 @@ impl PreparedOlsFitView for PreparedOlsData {
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
+        _retain_coefficients: bool,
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.borrowed_intercept_fe_design()?;
         absorb_borrowed_intercept_map_with_structural_constant_certified(
@@ -271,6 +302,26 @@ impl PreparedOlsFitView for PreparedOlsData {
         absorb_borrowed_intercept_cg_with_structural_constant_certified(
             &design, weights, values, config.map,
         )
+    }
+
+    fn fit_absorb_irons_tuck(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        let design = self.borrowed_intercept_fe_design()?;
+        if design.effects().is_empty() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else {
+            absorb_borrowed_intercept_irons_tuck_certified(
+                &design,
+                weights,
+                values,
+                config.map,
+                config.retain_coefficients,
+            )
+        }
     }
 
     fn fit_absorb_auto(
@@ -379,6 +430,7 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
+        _retain_coefficients: bool,
     ) -> Result<CertifiedBorrowedMap> {
         if self.has_absorbed_slope() {
             let effects = self.effect_views()?;
@@ -399,7 +451,7 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         }
     }
 
-    fn fit_absorb_cg(
+    fn fit_absorb_lsmr(
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
@@ -408,11 +460,56 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         if self.has_absorbed_slope() {
             self.fit_absorb_owned_matrix(weights, values, config)
         } else {
+            absorb_finalized_categorical_topology_lsmr_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.lsmr,
+                config.retain_coefficients,
+            )
+        }
+    }
+
+    fn fit_absorb_cg(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if self.has_absorbed_slope() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else if config.retain_coefficients {
+            absorb_finalized_categorical_topology_cg_retaining_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.map,
+            )
+        } else {
             absorb_finalized_categorical_topology_cg_certified(
                 self.fe_topology(),
                 weights,
                 values,
                 config.map,
+            )
+        }
+    }
+
+    fn fit_absorb_irons_tuck(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if self.has_absorbed_slope() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else {
+            absorb_finalized_categorical_topology_irons_tuck_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.map,
+                config.retain_coefficients,
             )
         }
     }
@@ -433,6 +530,7 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 config.map,
                 config.lsmr,
                 config.solver_memory_budget,
+                config.retain_coefficients,
             )
         }
     }

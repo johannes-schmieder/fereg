@@ -31,6 +31,374 @@ pub enum BorrowedMapWeights<'a> {
 pub struct CertifiedBorrowedMap {
     residualized: DenseMatrix,
     report: SolveReport,
+    coefficients: Option<FeCoefficientBatch>,
+}
+
+/// Optional coefficient-space product of one certified absorption.
+///
+/// Values are RHS-major. Within each RHS, effects are term-major and channels
+/// are channel-major within an effect: `effect_offset + channel * levels + level`.
+/// This matches `within::BatchSolveResult::x` and lets prepared OLS combine the
+/// already-computed FE solutions after the finite coefficients are known.
+#[derive(Debug, PartialEq)]
+pub struct FeCoefficientBatch {
+    values: Vec<f64>,
+    effect_channels: Vec<usize>,
+    level_counts: Vec<usize>,
+    effect_offsets: Vec<usize>,
+    coefficients_per_rhs: usize,
+    rhs_count: usize,
+}
+
+impl FeCoefficientBatch {
+    pub(crate) fn zeros(
+        effect_channels: Vec<usize>,
+        level_counts: Vec<usize>,
+        rhs_count: usize,
+    ) -> Result<Self> {
+        let coefficients_per_rhs = coefficient_count(&effect_channels, &level_counts)?;
+        let elements = coefficients_per_rhs
+            .checked_mul(rhs_count)
+            .ok_or_else(|| allocation("FE coefficient batch dimensions overflow"))?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation("unable to reserve FE coefficient batch"))?;
+        values.resize(elements, 0.0);
+        Self::from_values(effect_channels, level_counts, rhs_count, values)
+    }
+
+    pub(crate) fn from_values(
+        effect_channels: Vec<usize>,
+        level_counts: Vec<usize>,
+        rhs_count: usize,
+        values: Vec<f64>,
+    ) -> Result<Self> {
+        if rhs_count == 0 || effect_channels.len() != level_counts.len() {
+            return Err(invalid_argument(
+                "FE coefficient batch layout dimensions are inconsistent",
+            ));
+        }
+        let coefficients_per_rhs = coefficient_count(&effect_channels, &level_counts)?;
+        if values.len() != coefficients_per_rhs.saturating_mul(rhs_count)
+            || values.iter().any(|value| !value.is_finite())
+        {
+            return Err(invalid_data(
+                "FE coefficient batch values are not finite and aligned",
+            ));
+        }
+        let mut effect_offsets = Vec::new();
+        effect_offsets
+            .try_reserve_exact(effect_channels.len() + 1)
+            .map_err(|_| allocation("unable to reserve FE coefficient effect offsets"))?;
+        effect_offsets.push(0);
+        for (&channels, &levels) in effect_channels.iter().zip(&level_counts) {
+            let width = channels
+                .checked_mul(levels)
+                .ok_or_else(|| allocation("FE coefficient effect width overflows"))?;
+            effect_offsets.push(
+                effect_offsets
+                    .last()
+                    .copied()
+                    .unwrap_or(0_usize)
+                    .checked_add(width)
+                    .ok_or_else(|| allocation("FE coefficient offset overflows"))?,
+            );
+        }
+        Ok(Self {
+            values,
+            effect_channels,
+            level_counts,
+            effect_offsets,
+            coefficients_per_rhs,
+            rhs_count,
+        })
+    }
+
+    pub(crate) fn intercept_zeros(
+        design: &BorrowedInterceptFeDesign<'_>,
+        rhs_count: usize,
+    ) -> Result<Self> {
+        let mut effect_channels = Vec::new();
+        effect_channels
+            .try_reserve_exact(design.effects().len())
+            .map_err(|_| allocation("unable to reserve intercept FE channel layout"))?;
+        effect_channels.resize(design.effects().len(), 1);
+        let mut level_counts = Vec::new();
+        level_counts
+            .try_reserve_exact(design.effects().len())
+            .map_err(|_| allocation("unable to reserve intercept FE level layout"))?;
+        for effect in design.effects() {
+            level_counts.push(effect.n_levels());
+        }
+        Self::zeros(effect_channels, level_counts, rhs_count)
+    }
+
+    pub(crate) fn rhs(&self, rhs: usize) -> Result<&[f64]> {
+        if rhs >= self.rhs_count {
+            return Err(invalid_argument("FE coefficient RHS is out of range"));
+        }
+        let start = rhs * self.coefficients_per_rhs;
+        Ok(&self.values[start..start + self.coefficients_per_rhs])
+    }
+
+    pub(crate) fn add_intercept(
+        &mut self,
+        effect: usize,
+        level: usize,
+        rhs: usize,
+        value: f64,
+    ) -> Result<()> {
+        if !value.is_finite()
+            || self.effect_channels.get(effect) != Some(&1)
+            || level >= self.level_counts.get(effect).copied().unwrap_or(0)
+            || rhs >= self.rhs_count
+        {
+            return Err(invalid_argument(
+                "intercept FE coefficient update is not finite and aligned",
+            ));
+        }
+        let index = rhs * self.coefficients_per_rhs + self.effect_offsets[effect] + level;
+        self.values[index] += value;
+        if !self.values[index].is_finite() {
+            return Err(invalid_data("intercept FE coefficient update is nonfinite"));
+        }
+        Ok(())
+    }
+
+    fn add_intercept_level(&mut self, effect: usize, level: usize, means: &[f64]) -> Result<()> {
+        if self.effect_channels.get(effect) != Some(&1)
+            || level >= self.level_counts.get(effect).copied().unwrap_or(0)
+            || means.len() != self.rhs_count
+        {
+            return Err(invalid_argument(
+                "intercept FE level update is not finite and aligned",
+            ));
+        }
+        let effect_offset = self.effect_offsets[effect] + level;
+        for (rhs, &mean) in means.iter().enumerate() {
+            if !mean.is_finite() {
+                return Err(invalid_argument(
+                    "intercept FE level update is not finite and aligned",
+                ));
+            }
+            let index = rhs * self.coefficients_per_rhs + effect_offset;
+            self.values[index] += mean;
+            if !self.values[index].is_finite() {
+                return Err(invalid_data("intercept FE coefficient update is nonfinite"));
+            }
+        }
+        Ok(())
+    }
+
+    fn add_intercept_level_major(
+        &mut self,
+        effect: usize,
+        means: &[f64],
+        levels: usize,
+    ) -> Result<()> {
+        if self.effect_channels.get(effect) != Some(&1)
+            || self.level_counts.get(effect).copied() != Some(levels)
+            || means.len() != levels.saturating_mul(self.rhs_count)
+        {
+            return Err(invalid_argument(
+                "intercept FE group means are not finite and aligned",
+            ));
+        }
+        let effect_offset = self.effect_offsets[effect];
+        for level in 0..levels {
+            for rhs in 0..self.rhs_count {
+                let index = rhs * self.coefficients_per_rhs + effect_offset + level;
+                let mean = means[level * self.rhs_count + rhs];
+                if !mean.is_finite() {
+                    return Err(invalid_argument(
+                        "intercept FE group means are not finite and aligned",
+                    ));
+                }
+                self.values[index] += mean;
+                if !self.values[index].is_finite() {
+                    return Err(invalid_data("intercept FE coefficient update is nonfinite"));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn add_assign(&mut self, other: &Self, scale: f64) -> Result<()> {
+        if !scale.is_finite()
+            || self.effect_channels != other.effect_channels
+            || self.level_counts != other.level_counts
+            || self.rhs_count != other.rhs_count
+        {
+            return Err(invalid_argument(
+                "FE coefficient batches cannot be combined",
+            ));
+        }
+        for (destination, source) in self.values.iter_mut().zip(&other.values) {
+            *destination = scale.mul_add(*source, *destination);
+            if !destination.is_finite() {
+                return Err(invalid_data("combined FE coefficient is nonfinite"));
+            }
+        }
+        Ok(())
+    }
+
+    fn try_clone(&self) -> Result<Self> {
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(self.values.len())
+            .map_err(|_| allocation("unable to clone FE coefficient batch"))?;
+        values.extend_from_slice(&self.values);
+        let mut effect_channels = Vec::new();
+        effect_channels
+            .try_reserve_exact(self.effect_channels.len())
+            .map_err(|_| allocation("unable to clone FE coefficient channel layout"))?;
+        effect_channels.extend_from_slice(&self.effect_channels);
+        let mut level_counts = Vec::new();
+        level_counts
+            .try_reserve_exact(self.level_counts.len())
+            .map_err(|_| allocation("unable to clone FE coefficient level layout"))?;
+        level_counts.extend_from_slice(&self.level_counts);
+        Self::from_values(effect_channels, level_counts, self.rhs_count, values)
+    }
+
+    fn fill_zero(&mut self) {
+        self.values.fill(0.0);
+    }
+
+    fn zero_rhs(&mut self, rhs: usize) -> Result<()> {
+        let start = rhs
+            .checked_mul(self.coefficients_per_rhs)
+            .ok_or_else(|| invalid_argument("FE coefficient RHS offset overflows"))?;
+        let values = self
+            .values
+            .get_mut(start..start + self.coefficients_per_rhs)
+            .ok_or_else(|| invalid_argument("FE coefficient RHS is out of range"))?;
+        values.fill(0.0);
+        Ok(())
+    }
+
+    fn add_scaled_rhs(&mut self, other: &Self, scales: &[f64], global_scale: f64) -> Result<()> {
+        self.validate_binary_layout(other, scales)?;
+        if !global_scale.is_finite() {
+            return Err(invalid_data("FE coefficient global scale is nonfinite"));
+        }
+        for (rhs, &scale) in scales.iter().enumerate() {
+            if !scale.is_finite() {
+                return Err(invalid_data("FE coefficient scale is nonfinite"));
+            }
+            let scale = global_scale * scale;
+            let start = rhs * self.coefficients_per_rhs;
+            for coefficient in 0..self.coefficients_per_rhs {
+                let index = start + coefficient;
+                self.values[index] = scale.mul_add(other.values[index], self.values[index]);
+                if !self.values[index].is_finite() {
+                    return Err(invalid_data("scaled FE coefficient update is nonfinite"));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn assign_sum_scaled_rhs(&mut self, residual: &Self, scales: &[f64]) -> Result<()> {
+        self.validate_binary_layout(residual, scales)?;
+        for (rhs, &scale) in scales.iter().enumerate() {
+            if !scale.is_finite() {
+                return Err(invalid_data("FE coefficient scale is nonfinite"));
+            }
+            let start = rhs * self.coefficients_per_rhs;
+            for coefficient in 0..self.coefficients_per_rhs {
+                let index = start + coefficient;
+                self.values[index] = scale.mul_add(self.values[index], residual.values[index]);
+                if !self.values[index].is_finite() {
+                    return Err(invalid_data("CG FE direction update is nonfinite"));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_binary_layout(&self, other: &Self, scales: &[f64]) -> Result<()> {
+        if !self.same_layout(other) || scales.len() != self.rhs_count {
+            return Err(invalid_argument(
+                "FE coefficient recurrence layouts are inconsistent",
+            ));
+        }
+        Ok(())
+    }
+
+    fn same_layout(&self, other: &Self) -> bool {
+        self.effect_channels == other.effect_channels
+            && self.level_counts == other.level_counts
+            && self.rhs_count == other.rhs_count
+    }
+
+    fn extrapolate_irons_tuck(x0: &Self, x1: &Self, x2: &Self, alpha: f64) -> Result<Self> {
+        if !x0.same_layout(x1) || !x0.same_layout(x2) {
+            return Err(invalid_argument(
+                "Irons-Tuck FE coefficient layouts are inconsistent",
+            ));
+        }
+        if !alpha.is_finite() {
+            return Err(invalid_data("Irons-Tuck FE coefficient scale is nonfinite"));
+        }
+        let mut candidate = x0.try_clone()?;
+        for index in 0..candidate.values.len() {
+            let a = x0.values[index];
+            let b = x1.values[index];
+            let c = x2.values[index];
+            let d1 = b - a;
+            let d2 = c - 2.0 * b + a;
+            candidate.values[index] = alpha.mul_add(2.0 * d1, a).mul_add(1.0, alpha * alpha * d2);
+            if !candidate.values[index].is_finite() {
+                return Err(invalid_data(
+                    "Irons-Tuck FE coefficient extrapolation is nonfinite",
+                ));
+            }
+        }
+        Ok(candidate)
+    }
+
+    pub(crate) fn effect_channels(&self) -> &[usize] {
+        &self.effect_channels
+    }
+
+    pub(crate) fn level_counts(&self) -> &[usize] {
+        &self.level_counts
+    }
+
+    #[cfg(test)]
+    pub(crate) fn effect_offsets(&self) -> &[usize] {
+        &self.effect_offsets
+    }
+
+    pub(crate) const fn coefficients_per_rhs(&self) -> usize {
+        self.coefficients_per_rhs
+    }
+
+    pub(crate) const fn rhs_count(&self) -> usize {
+        self.rhs_count
+    }
+}
+
+fn coefficient_count(effect_channels: &[usize], level_counts: &[usize]) -> Result<usize> {
+    effect_channels
+        .iter()
+        .zip(level_counts)
+        .try_fold(0_usize, |total, (&channels, &levels)| {
+            if channels == 0 || levels == 0 {
+                return Err(invalid_argument(
+                    "FE coefficient effects require positive channel and level counts",
+                ));
+            }
+            total
+                .checked_add(
+                    channels
+                        .checked_mul(levels)
+                        .ok_or_else(|| allocation("FE coefficient effect width overflows"))?,
+                )
+                .ok_or_else(|| allocation("FE coefficient count overflows"))
+        })
 }
 
 impl CertifiedBorrowedMap {
@@ -49,6 +417,10 @@ impl CertifiedBorrowedMap {
         (self.residualized, self.report)
     }
 
+    pub(crate) fn into_full_parts(self) -> (DenseMatrix, SolveReport, Option<FeCoefficientBatch>) {
+        (self.residualized, self.report, self.coefficients)
+    }
+
     pub(crate) fn from_certified_parts(
         residualized: DenseMatrix,
         report: SolveReport,
@@ -61,6 +433,27 @@ impl CertifiedBorrowedMap {
         Ok(Self {
             residualized,
             report,
+            coefficients: None,
+        })
+    }
+
+    pub(crate) fn from_certified_parts_with_coefficients(
+        residualized: DenseMatrix,
+        report: SolveReport,
+        coefficients: FeCoefficientBatch,
+    ) -> Result<Self> {
+        if !report.certified()
+            || coefficients.rhs_count() != residualized.ncols()
+            || coefficients.coefficients_per_rhs() == 0
+        {
+            return Err(invalid_data(
+                "borrowed absorption coefficient product is not certified and aligned",
+            ));
+        }
+        Ok(Self {
+            residualized,
+            report,
+            coefficients: Some(coefficients),
         })
     }
 }
@@ -96,13 +489,21 @@ impl CgRefinementPolicy {
 struct CgContinuation<'a> {
     reference_norms: Option<&'a [f64]>,
     refinement: CgRefinementPolicy,
+    retain_coefficients: bool,
 }
 
 impl CgContinuation<'_> {
     const ORDINARY: Self = Self {
         reference_norms: None,
         refinement: CgRefinementPolicy::ORDINARY,
+        retain_coefficients: false,
     };
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AutoRunOptions {
+    empty_design_is_structural_constant: bool,
+    retain_coefficients: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -307,6 +708,264 @@ pub fn absorb_borrowed_intercept_cg_certified(
     )
 }
 
+pub(crate) fn absorb_borrowed_intercept_cg_retaining_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_cg_with_reservation(
+        design,
+        weights,
+        values,
+        config,
+        false,
+        CgContinuation {
+            retain_coefficients: true,
+            ..CgContinuation::ORDINARY
+        },
+        &mut reservation,
+    )
+}
+
+/// Residualize through modified LSMR and optionally retain the coefficient
+/// solutions that produced the certified observation-space residuals.
+pub(crate) fn absorb_borrowed_intercept_lsmr_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: LsmrConfig,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    let validated = validate_weights(weights, values.nrows())?;
+    let (residualized, report, _, coefficients) = run_borrowed_lsmr(
+        design,
+        validated,
+        &values,
+        config.tolerance,
+        config.max_iterations,
+        config,
+        retain_coefficients,
+    )?;
+    if let Some(coefficients) = coefficients {
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            residualized,
+            report,
+            coefficients,
+        )
+    } else {
+        CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    }
+}
+
+/// Residualize with safeguarded Irons-Tuck extrapolation while optionally
+/// carrying the same linear combinations through compact FE coefficient
+/// space. This avoids a second recovery solve for explicit `solver(it)`.
+pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    mut values: DenseMatrix,
+    config: MapConfig,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    validate_config(config)?;
+    if design.nobs() != values.nrows()
+        || values.nrows() == 0
+        || values.ncols() == 0
+        || design.effects().is_empty()
+    {
+        return Err(invalid_argument(
+            "borrowed Irons-Tuck inputs are empty or dimensionally inconsistent",
+        ));
+    }
+    if values.as_slice().iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data("borrowed Irons-Tuck values must be finite"));
+    }
+    let weights = validate_weights(weights, values.nrows())?;
+    let setup_started = Instant::now();
+    let mut reservation = SystemWorkspaceReservation;
+    let mut workspace =
+        BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), &mut reservation)?;
+    weighted_column_norms(
+        &values,
+        weights,
+        &mut workspace.reference_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+    )?;
+    let setup_seconds = setup_started.elapsed().as_secs_f64();
+    let solve_started = Instant::now();
+    let initial_certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+    let mut coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
+    if initial_certificate.passed {
+        let result = certified_solver_result(
+            values,
+            FeSolverKind::IronsTuck,
+            SolveStopReason::Certified,
+            0,
+            initial_certificate,
+            0.0,
+            setup_seconds,
+            solve_started.elapsed().as_secs_f64(),
+        )?;
+        return attach_optional_coefficients(result, coefficients);
+    }
+
+    let mut iterations = 0_usize;
+    while iterations < config.max_iterations {
+        let x0 = fallible_matrix_copy(&values, "unable to reserve Irons-Tuck x0")?;
+        let c0 = coefficients
+            .as_ref()
+            .map(FeCoefficientBatch::try_clone)
+            .transpose()?;
+        borrowed_residual_sweep_recording(
+            design,
+            weights,
+            &mut values,
+            &mut workspace,
+            coefficients.as_mut(),
+            config.symmetric,
+        )?;
+        iterations += 1;
+        let mut certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+        if certificate.passed {
+            if iterations < config.max_iterations {
+                borrowed_residual_sweep_recording(
+                    design,
+                    weights,
+                    &mut values,
+                    &mut workspace,
+                    coefficients.as_mut(),
+                    config.symmetric,
+                )?;
+                iterations += 1;
+                certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+            }
+            if !certificate.passed {
+                continue;
+            }
+            let normal_equation_residual = certificate.relative_two_norm;
+            let result = certified_solver_result(
+                values,
+                FeSolverKind::IronsTuck,
+                SolveStopReason::Certified,
+                iterations,
+                certificate,
+                normal_equation_residual,
+                setup_seconds,
+                solve_started.elapsed().as_secs_f64(),
+            )?;
+            return attach_optional_coefficients(result, coefficients);
+        }
+        if iterations == config.max_iterations {
+            break;
+        }
+
+        let x1 = fallible_matrix_copy(&values, "unable to reserve Irons-Tuck x1")?;
+        let c1 = coefficients
+            .as_ref()
+            .map(FeCoefficientBatch::try_clone)
+            .transpose()?;
+        borrowed_residual_sweep_recording(
+            design,
+            weights,
+            &mut values,
+            &mut workspace,
+            coefficients.as_mut(),
+            config.symmetric,
+        )?;
+        iterations += 1;
+        let mut baseline = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+        if baseline.passed {
+            if iterations < config.max_iterations {
+                borrowed_residual_sweep_recording(
+                    design,
+                    weights,
+                    &mut values,
+                    &mut workspace,
+                    coefficients.as_mut(),
+                    config.symmetric,
+                )?;
+                iterations += 1;
+                baseline = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+            }
+            if !baseline.passed {
+                continue;
+            }
+            let normal_equation_residual = baseline.relative_two_norm;
+            let result = certified_solver_result(
+                values,
+                FeSolverKind::IronsTuck,
+                SolveStopReason::Certified,
+                iterations,
+                baseline,
+                normal_equation_residual,
+                setup_seconds,
+                solve_started.elapsed().as_secs_f64(),
+            )?;
+            return attach_optional_coefficients(result, coefficients);
+        }
+
+        if let Some((candidate, alpha)) = borrowed_irons_tuck_candidate(&x0, &x1, &values)? {
+            let mut candidate_certificate = certify(
+                design,
+                weights,
+                &candidate,
+                config.tolerance,
+                &mut workspace,
+            )?;
+            if candidate_certificate.relative_two_norm < baseline.relative_two_norm {
+                let candidate_coefficients = match (c0.as_ref(), c1.as_ref(), coefficients.as_ref())
+                {
+                    (Some(c0), Some(c1), Some(c2)) => Some(
+                        FeCoefficientBatch::extrapolate_irons_tuck(c0, c1, c2, alpha)?,
+                    ),
+                    _ => None,
+                };
+                values = candidate;
+                coefficients = candidate_coefficients;
+                if candidate_certificate.passed {
+                    if iterations < config.max_iterations {
+                        borrowed_residual_sweep_recording(
+                            design,
+                            weights,
+                            &mut values,
+                            &mut workspace,
+                            coefficients.as_mut(),
+                            config.symmetric,
+                        )?;
+                        iterations += 1;
+                        candidate_certificate =
+                            certify(design, weights, &values, config.tolerance, &mut workspace)?;
+                    }
+                    if !candidate_certificate.passed {
+                        continue;
+                    }
+                    let normal_equation_residual = candidate_certificate.relative_two_norm;
+                    let result = certified_solver_result(
+                        values,
+                        FeSolverKind::IronsTuck,
+                        SolveStopReason::Certified,
+                        iterations,
+                        candidate_certificate,
+                        normal_equation_residual,
+                        setup_seconds,
+                        solve_started.elapsed().as_secs_f64(),
+                    )?;
+                    return attach_optional_coefficients(result, coefficients);
+                }
+            }
+        }
+    }
+
+    Err(invalid_data(
+        "borrowed Irons-Tuck exhausted its iteration budget without certification",
+    ))
+}
+
 /// Automatic borrowed-intercept policy: direct one-pass MAP for one effect;
 /// otherwise run at most four symmetric MAP pilot sweeps and continue with
 /// genuine CG unless the pilot already certifies.
@@ -323,7 +982,10 @@ pub fn absorb_borrowed_intercept_auto_certified(
         values,
         config,
         AutoLsmrPlan::DISABLED,
-        false,
+        AutoRunOptions {
+            empty_design_is_structural_constant: false,
+            retain_coefficients: false,
+        },
         &mut reservation,
     )
 }
@@ -338,6 +1000,7 @@ pub(crate) fn absorb_borrowed_intercept_auto_routed_certified(
     config: MapConfig,
     lsmr: LsmrConfig,
     solver_memory_budget: Option<FeSolverMemoryBudget>,
+    retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_auto_with_reservation(
@@ -346,7 +1009,10 @@ pub(crate) fn absorb_borrowed_intercept_auto_routed_certified(
         values,
         config,
         AutoLsmrPlan::routed(lsmr, solver_memory_budget),
-        false,
+        AutoRunOptions {
+            empty_design_is_structural_constant: false,
+            retain_coefficients,
+        },
         &mut reservation,
     )
 }
@@ -405,6 +1071,7 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
         CgContinuation {
             reference_norms: Some(reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
+            retain_coefficients: false,
         },
         &mut reservation,
     )
@@ -425,7 +1092,10 @@ pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
         values,
         config,
         AutoLsmrPlan::routed(lsmr, solver_memory_budget),
-        true,
+        AutoRunOptions {
+            empty_design_is_structural_constant: true,
+            retain_coefficients: false,
+        },
         &mut reservation,
     )
 }
@@ -460,7 +1130,10 @@ pub(crate) fn absorb_borrowed_intercept_auto_initial_with_structural_constant_ce
             values,
             config,
             AutoLsmrPlan::routed(lsmr, solver_memory_budget),
-            true,
+            AutoRunOptions {
+                empty_design_is_structural_constant: true,
+                retain_coefficients: false,
+            },
             &mut reservation,
         )
     }
@@ -472,7 +1145,7 @@ fn absorb_auto_with_reservation<R: WorkspaceReservation>(
     values: DenseMatrix,
     config: MapConfig,
     lsmr_plan: AutoLsmrPlan,
-    empty_design_is_structural_constant: bool,
+    options: AutoRunOptions,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     absorb_auto_with_reservation_at_lsmr_cap(
@@ -481,7 +1154,8 @@ fn absorb_auto_with_reservation<R: WorkspaceReservation>(
         values,
         config,
         lsmr_plan,
-        empty_design_is_structural_constant,
+        options.empty_design_is_structural_constant,
+        options.retain_coefficients,
         reservation,
         usize::MAX,
     )
@@ -495,6 +1169,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     config: MapConfig,
     lsmr_plan: AutoLsmrPlan,
     empty_design_is_structural_constant: bool,
+    retain_coefficients: bool,
     reservation: &mut R,
     direct_lsmr_cap: usize,
 ) -> Result<CertifiedBorrowedMap> {
@@ -533,6 +1208,9 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
+    let mut retained_coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
     weighted_column_norms(
         &values,
         weights,
@@ -553,6 +1231,16 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
             pilot_setup_seconds,
             0.0,
         )?;
+        let result = if let Some(coefficients) = retained_coefficients {
+            let (residualized, report) = result.into_parts();
+            CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                residualized,
+                report,
+                coefficients,
+            )?
+        } else {
+            result
+        };
         return mark_auto(result, 0, 0.0, 0.0, 0.0);
     }
 
@@ -561,11 +1249,27 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     let pilot_started = Instant::now();
     let mut final_pilot_certificate = initial_certificate;
     for pilot_iteration in 1..=pilot_budget {
-        for effect in design.effects() {
-            project_effect(effect, weights, &mut values, &mut workspace)?;
+        for (effect_index, effect) in design.effects().iter().enumerate() {
+            project_effect_recording(
+                effect,
+                weights,
+                &mut values,
+                &mut workspace,
+                retained_coefficients
+                    .as_mut()
+                    .map(|coefficients| (coefficients, effect_index)),
+            )?;
         }
-        for effect in design.effects().iter().rev().skip(1) {
-            project_effect(effect, weights, &mut values, &mut workspace)?;
+        for effect_index in (0..design.effects().len() - 1).rev() {
+            project_effect_recording(
+                &design.effects()[effect_index],
+                weights,
+                &mut values,
+                &mut workspace,
+                retained_coefficients
+                    .as_mut()
+                    .map(|coefficients| (coefficients, effect_index)),
+            )?;
         }
         final_pilot_certificate =
             certify(design, weights, &values, config.tolerance, &mut workspace)?;
@@ -583,6 +1287,16 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                 pilot_setup_seconds,
                 pilot_seconds,
             )?;
+            let result = if let Some(coefficients) = retained_coefficients {
+                let (residualized, report) = result.into_parts();
+                CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                    residualized,
+                    report,
+                    coefficients,
+                )?
+            } else {
+                result
+            };
             return mark_auto(result, pilot_iteration, contraction, 0.0, 0.0);
         }
     }
@@ -624,9 +1338,23 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     } else {
         None
     };
-    let cg_fits = solver_memory_budget
-        .zip(solver_memory)
-        .is_none_or(|(budget, estimate)| budget.fits(estimate.cg_bytes));
+    let cg_fits = if let (Some(budget), Some(estimate)) = (solver_memory_budget, solver_memory) {
+        let coefficient_bytes = if retain_coefficients {
+            estimate
+                .coefficient_batch_bytes
+                .checked_mul(5)
+                .ok_or_else(|| allocation("automatic CG retained coefficient memory overflows"))?
+        } else {
+            0
+        };
+        let required = estimate
+            .cg_bytes
+            .checked_add(coefficient_bytes)
+            .ok_or_else(|| allocation("automatic CG workspace memory overflows"))?;
+        budget.fits(required)
+    } else {
+        true
+    };
     if let Some(lsmr_config) = lsmr_config {
         let resolved_preconditioner = resolve_borrowed_lsmr_preconditioner(
             design.effects().len(),
@@ -654,8 +1382,9 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                         direct_lsmr_tolerance(config.tolerance),
                         remaining_iterations,
                         lsmr_config,
+                        retain_coefficients,
                     ) {
-                        Ok((lsmr_values, mut report, owned_setup_seconds))
+                        Ok((lsmr_values, mut report, owned_setup_seconds, lsmr_coefficients))
                             if report.certified() =>
                         {
                             report.requested_solver = FeSolverKind::Auto;
@@ -664,9 +1393,22 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                             report.pilot_contraction = contraction;
                             report.setup_seconds += pilot_setup_seconds + owned_setup_seconds;
                             report.solve_seconds += pilot_seconds;
-                            return CertifiedBorrowedMap::from_certified_parts(lsmr_values, report);
+                            if let (Some(pilot), Some(lsmr)) =
+                                (retained_coefficients.as_mut(), lsmr_coefficients.as_ref())
+                            {
+                                pilot.add_assign(lsmr, 1.0)?;
+                            }
+                            return if let Some(coefficients) = retained_coefficients {
+                                CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                                    lsmr_values,
+                                    report,
+                                    coefficients,
+                                )
+                            } else {
+                                CertifiedBorrowedMap::from_certified_parts(lsmr_values, report)
+                            };
                         }
-                        Ok((_, report, _)) => {
+                        Ok((_, report, _, _)) => {
                             candidate_failure = Some(format!(
                             "automatic LSMR path did not certify after {} iterations; retried CG",
                             report.iterations
@@ -687,8 +1429,9 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                         bulk_tolerance,
                         remaining_iterations,
                         lsmr_config,
+                        false,
                     ) {
-                        Ok((lsmr_values, lsmr_report, owned_setup_seconds)) => {
+                        Ok((lsmr_values, lsmr_report, owned_setup_seconds, _)) => {
                             let lsmr_iterations = lsmr_report.iterations;
                             let lsmr_certified = lsmr_report.certified();
                             let lsmr_setup_seconds = lsmr_report.setup_seconds;
@@ -710,6 +1453,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                                 CgContinuation {
                                     reference_norms: Some(&original_reference_norms),
                                     refinement: CgRefinementPolicy::ORDINARY,
+                                    retain_coefficients: false,
                                 },
                                 reservation,
                             ) {
@@ -777,9 +1521,26 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         CgContinuation {
             reference_norms: Some(&original_reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
+            retain_coefficients,
         },
         reservation,
     )?;
+    let cg = if retain_coefficients {
+        let (residualized, report, cg_coefficients) = cg.into_full_parts();
+        match (retained_coefficients, cg_coefficients) {
+            (Some(mut pilot), Some(cg_coefficients)) => {
+                pilot.add_assign(&cg_coefficients, 1.0)?;
+                CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                    residualized,
+                    report,
+                    pilot,
+                )?
+            }
+            _ => CertifiedBorrowedMap::from_certified_parts(residualized, report)?,
+        }
+    } else {
+        cg
+    };
     let marked = mark_auto(
         cg,
         pilot_budget,
@@ -788,10 +1549,18 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         pilot_seconds,
     )?;
     if let Some(warning) = candidate_failure {
-        let (residualized, mut report) = marked.into_parts();
+        let (residualized, mut report, coefficients) = marked.into_full_parts();
         report.fallback_used = true;
         report.warnings.insert(0, warning);
-        return CertifiedBorrowedMap::from_certified_parts(residualized, report);
+        return if let Some(coefficients) = coefficients {
+            CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                residualized,
+                report,
+                coefficients,
+            )
+        } else {
+            CertifiedBorrowedMap::from_certified_parts(residualized, report)
+        };
     }
     Ok(marked)
 }
@@ -817,7 +1586,8 @@ fn run_borrowed_lsmr(
     tolerance: f64,
     max_iterations: usize,
     lsmr_config: LsmrConfig,
-) -> Result<(DenseMatrix, SolveReport, f64)> {
+    retain_coefficients: bool,
+) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
     if !tolerance.is_finite() || tolerance <= 0.0 {
         return Err(invalid_argument(
@@ -973,7 +1743,21 @@ fn run_borrowed_lsmr(
         pilot_contraction: 0.0,
         warnings,
     };
-    Ok((lsmr_values, report, owned_setup_seconds))
+    let coefficients = if retain_coefficients && report.certified() {
+        Some(FeCoefficientBatch::from_values(
+            vec![1; design.effects().len()],
+            design
+                .effects()
+                .iter()
+                .map(crate::fe::BorrowedInterceptEffect::n_levels)
+                .collect(),
+            lsmr_values.ncols(),
+            solved.x,
+        )?)
+    } else {
+        None
+    };
+    Ok((lsmr_values, report, owned_setup_seconds, coefficients))
 }
 
 fn resolve_borrowed_lsmr_preconditioner(
@@ -1035,13 +1819,37 @@ fn mark_auto(
     additional_setup_seconds: f64,
     additional_solve_seconds: f64,
 ) -> Result<CertifiedBorrowedMap> {
-    let (residualized, mut report) = result.into_parts();
+    let (residualized, mut report, coefficients) = result.into_full_parts();
     report.requested_solver = FeSolverKind::Auto;
     report.pilot_iterations = pilot_iterations;
     report.pilot_contraction = contraction;
     report.setup_seconds += additional_setup_seconds;
     report.solve_seconds += additional_solve_seconds;
-    CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    if let Some(coefficients) = coefficients {
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            residualized,
+            report,
+            coefficients,
+        )
+    } else {
+        CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    }
+}
+
+fn attach_optional_coefficients(
+    result: CertifiedBorrowedMap,
+    coefficients: Option<FeCoefficientBatch>,
+) -> Result<CertifiedBorrowedMap> {
+    if let Some(coefficients) = coefficients {
+        let (residualized, report) = result.into_parts();
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            residualized,
+            report,
+            coefficients,
+        )
+    } else {
+        Ok(result)
+    }
 }
 
 fn absorb_cg_with_reservation<R: WorkspaceReservation>(
@@ -1056,6 +1864,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let CgContinuation {
         reference_norms: continuation_reference_norms,
         refinement,
+        retain_coefficients,
     } = continuation;
     validate_config(config)?;
     if refinement.minimum_iterations > config.max_iterations {
@@ -1168,13 +1977,17 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         );
     }
 
+    let mut solution_coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
+
     let initial_certificate = if design.effects().is_empty() {
         certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?
     } else {
         certify(design, weights, &values, config.tolerance, &mut workspace)?
     };
     if initial_certificate.passed && refinement.minimum_iterations == 0 {
-        return certified_solver_result(
+        let result = certified_solver_result(
             values,
             FeSolverKind::Cg,
             SolveStopReason::Certified,
@@ -1183,7 +1996,8 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             0.0,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
-        );
+        )?;
+        return attach_optional_coefficients(result, solution_coefficients);
     }
 
     if design.effects().is_empty() {
@@ -1212,14 +2026,31 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         values.ncols(),
         "unable to reserve borrowed CG residual matrix",
     )?;
-    borrowed_symmetric_projection_into(design, weights, &values, &mut residual, &mut workspace)?;
+    let mut residual_coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
+    borrowed_symmetric_projection_into_recording(
+        design,
+        weights,
+        &values,
+        &mut residual,
+        &mut workspace,
+        residual_coefficients.as_mut(),
+    )?;
     let mut direction =
         fallible_matrix_copy(&residual, "unable to reserve borrowed CG direction matrix")?;
+    let mut direction_coefficients = residual_coefficients
+        .as_ref()
+        .map(FeCoefficientBatch::try_clone)
+        .transpose()?;
     let mut projection = fallible_matrix_zeros(
         values.nrows(),
         values.ncols(),
         "unable to reserve borrowed CG projection matrix",
     )?;
+    let mut projection_coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
     weighted_dot_columns_into(
         &residual,
         &residual,
@@ -1233,12 +2064,16 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let mut hestenes_error = 1.0_f64;
 
     for iteration in 1..=config.max_iterations {
-        borrowed_symmetric_projection_into(
+        if let Some(coefficients) = projection_coefficients.as_mut() {
+            coefficients.fill_zero();
+        }
+        borrowed_symmetric_projection_into_recording(
             design,
             weights,
             &direction,
             &mut projection,
             &mut workspace,
+            projection_coefficients.as_mut(),
         )?;
         weighted_dot_columns_into(
             &direction,
@@ -1264,7 +2099,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             // certificate.
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
             if certificate.passed && iteration.saturating_sub(1) >= refinement.minimum_iterations {
-                return certified_solver_result(
+                let result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
                     SolveStopReason::Certified,
@@ -1273,7 +2108,8 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     recurrence_residual,
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
-                );
+                )?;
+                return attach_optional_coefficients(result, solution_coefficients);
             }
             let mut recovered = false;
             for rhs in 0..residual_square.len() {
@@ -1299,6 +2135,9 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                         for row in 0..values.nrows() {
                             direction[(row, rhs)] = 0.0;
                         }
+                        if let Some(coefficients) = direction_coefficients.as_mut() {
+                            coefficients.zero_rhs(rhs)?;
+                        }
                         alpha[rhs] = 0.0;
                         recovered = true;
                         continue;
@@ -1306,6 +2145,12 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     for row in 0..values.nrows() {
                         residual[(row, rhs)] = 0.0;
                         direction[(row, rhs)] = 0.0;
+                    }
+                    if let Some(coefficients) = residual_coefficients.as_mut() {
+                        coefficients.zero_rhs(rhs)?;
+                    }
+                    if let Some(coefficients) = direction_coefficients.as_mut() {
+                        coefficients.zero_rhs(rhs)?;
                     }
                     residual_square[rhs] = 0.0;
                     alpha[rhs] = 0.0;
@@ -1327,6 +2172,20 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &projection,
             &alpha,
         )?;
+        if let (
+            Some(solution),
+            Some(residual_coefficients),
+            Some(direction_coefficients),
+            Some(projection_coefficients),
+        ) = (
+            solution_coefficients.as_mut(),
+            residual_coefficients.as_mut(),
+            direction_coefficients.as_ref(),
+            projection_coefficients.as_ref(),
+        ) {
+            solution.add_scaled_rhs(direction_coefficients, &alpha, 1.0)?;
+            residual_coefficients.add_scaled_rhs(projection_coefficients, &alpha, -1.0)?;
+        }
         weighted_dot_columns_into(
             &residual,
             &residual,
@@ -1350,7 +2209,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                 && hestenes_error <= config.tolerance
                 && iteration >= refinement.minimum_iterations
             {
-                return certified_solver_result(
+                let result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
                     SolveStopReason::Certified,
@@ -1359,7 +2218,8 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     recurrence_residual,
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
-                );
+                )?;
+                return attach_optional_coefficients(result, solution_coefficients);
             }
         }
 
@@ -1370,6 +2230,12 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             "borrowed CG residual denominator is nonfinite or nonpositive",
         )?;
         cg_update_direction(&mut direction, &residual, &beta)?;
+        if let (Some(direction_coefficients), Some(residual_coefficients)) = (
+            direction_coefficients.as_mut(),
+            residual_coefficients.as_ref(),
+        ) {
+            direction_coefficients.assign_sum_scaled_rhs(residual_coefficients, &beta)?;
+        }
         residual_square.copy_from_slice(&next_residual_square);
     }
 
@@ -1763,6 +2629,16 @@ fn project_effect(
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<()> {
+    project_effect_recording(effect, weights, values, workspace, None)
+}
+
+fn project_effect_recording(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
+) -> Result<()> {
     if effect.codes().len() != values.nrows() {
         return Err(invalid_argument(
             "borrowed MAP effect and matrix observation counts differ",
@@ -1776,9 +2652,16 @@ fn project_effect(
         && rayon::current_num_threads() > 1
         && workspace.parallel_group_means.len() >= parallel_mean_count
     {
-        return project_effect_parallel(effect, weights, values, workspace, parallel_mean_count);
+        return project_effect_parallel(
+            effect,
+            weights,
+            values,
+            workspace,
+            parallel_mean_count,
+            coefficients,
+        );
     }
-    project_effect_serial(effect, weights, values, workspace)
+    project_effect_serial(effect, weights, values, workspace, coefficients)
 }
 
 fn project_effect_serial(
@@ -1786,6 +2669,7 @@ fn project_effect_serial(
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
+    mut coefficients: Option<(&mut FeCoefficientBatch, usize)>,
 ) -> Result<()> {
     for level in 0..effect.n_levels() {
         let members = effect.level_index().checked_members(level)?;
@@ -1795,6 +2679,13 @@ fn project_effect_serial(
             ));
         }
         group_means(members, weights, values, workspace)?;
+        if let Some((batch, effect_index)) = coefficients.as_mut() {
+            batch.add_intercept_level(
+                *effect_index,
+                level,
+                &workspace.group_sums[..values.ncols()],
+            )?;
+        }
         for &observation in members {
             if observation >= values.nrows() {
                 return Err(invalid_argument(
@@ -1821,6 +2712,7 @@ fn project_effect_parallel(
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
+    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
@@ -1831,6 +2723,7 @@ fn project_effect_parallel(
             values,
             workspace,
             parallel_mean_count,
+            coefficients,
         );
     }
     workspace.parallel_group_weights[..levels]
@@ -1866,6 +2759,9 @@ fn project_effect_parallel(
         })?;
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
+    if let Some((batch, effect_index)) = coefficients {
+        record_parallel_group_means(batch, effect_index, means, levels, columns)?;
+    }
     let codes = effect.codes();
     values
         .as_mut_slice()
@@ -1898,6 +2794,7 @@ fn project_effect_parallel_fused(
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
+    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
@@ -1985,6 +2882,9 @@ fn project_effect_parallel_fused(
         })?;
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
+    if let Some((batch, effect_index)) = coefficients {
+        record_parallel_group_means(batch, effect_index, means, levels, columns)?;
+    }
     let codes = effect.codes();
     values
         .as_mut_slice()
@@ -2009,6 +2909,21 @@ fn project_effect_parallel_fused(
             Ok(())
         })?;
     Ok(())
+}
+
+fn record_parallel_group_means(
+    batch: &mut FeCoefficientBatch,
+    effect: usize,
+    means: &[f64],
+    levels: usize,
+    columns: usize,
+) -> Result<()> {
+    if means.len() != levels.saturating_mul(columns) || batch.rhs_count() != columns {
+        return Err(invalid_argument(
+            "parallel MAP coefficient means are not aligned",
+        ));
+    }
+    batch.add_intercept_level_major(effect, means, levels)
 }
 
 fn group_weight_sum(members: &[usize], weights: ValidatedWeights<'_>, nrows: usize) -> Result<f64> {
@@ -2398,12 +3313,13 @@ fn certify_one_effect_parallel(
     })
 }
 
-fn borrowed_symmetric_projection_into(
+fn borrowed_symmetric_projection_into_recording(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     input: &DenseMatrix,
     residual: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
+    mut coefficients: Option<&mut FeCoefficientBatch>,
 ) -> Result<()> {
     if residual.nrows() != input.nrows() || residual.ncols() != input.ncols() {
         return Err(invalid_argument(
@@ -2411,12 +3327,28 @@ fn borrowed_symmetric_projection_into(
         ));
     }
     residual.as_mut_slice().copy_from_slice(input.as_slice());
-    for effect in design.effects() {
-        project_effect(effect, weights, residual, workspace)?;
+    for (effect_index, effect) in design.effects().iter().enumerate() {
+        project_effect_recording(
+            effect,
+            weights,
+            residual,
+            workspace,
+            coefficients
+                .as_deref_mut()
+                .map(|coefficients| (coefficients, effect_index)),
+        )?;
     }
     if design.effects().len() > 1 {
-        for effect in design.effects().iter().rev().skip(1) {
-            project_effect(effect, weights, residual, workspace)?;
+        for effect_index in (0..design.effects().len() - 1).rev() {
+            project_effect_recording(
+                &design.effects()[effect_index],
+                weights,
+                residual,
+                workspace,
+                coefficients
+                    .as_deref_mut()
+                    .map(|coefficients| (coefficients, effect_index)),
+            )?;
         }
     }
     for (output, original) in residual.as_mut_slice().iter_mut().zip(input.as_slice()) {
@@ -2428,6 +3360,90 @@ fn borrowed_symmetric_projection_into(
         }
     }
     Ok(())
+}
+
+fn borrowed_residual_sweep_recording(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    mut coefficients: Option<&mut FeCoefficientBatch>,
+    symmetric: bool,
+) -> Result<()> {
+    for (effect_index, effect) in design.effects().iter().enumerate() {
+        project_effect_recording(
+            effect,
+            weights,
+            values,
+            workspace,
+            coefficients
+                .as_deref_mut()
+                .map(|coefficients| (coefficients, effect_index)),
+        )?;
+    }
+    if symmetric && design.effects().len() > 1 {
+        for effect_index in (0..design.effects().len() - 1).rev() {
+            project_effect_recording(
+                &design.effects()[effect_index],
+                weights,
+                values,
+                workspace,
+                coefficients
+                    .as_deref_mut()
+                    .map(|coefficients| (coefficients, effect_index)),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn borrowed_irons_tuck_candidate(
+    x0: &DenseMatrix,
+    x1: &DenseMatrix,
+    x2: &DenseMatrix,
+) -> Result<Option<(DenseMatrix, f64)>> {
+    if x0.nrows() != x1.nrows()
+        || x0.ncols() != x1.ncols()
+        || x0.nrows() != x2.nrows()
+        || x0.ncols() != x2.ncols()
+    {
+        return Err(invalid_argument(
+            "borrowed Irons-Tuck states have inconsistent dimensions",
+        ));
+    }
+    let mut d1d1 = 0.0_f64;
+    let mut d1d2 = 0.0_f64;
+    let mut d2d2 = 0.0_f64;
+    for ((a, b), c) in x0.as_slice().iter().zip(x1.as_slice()).zip(x2.as_slice()) {
+        let d1 = b - a;
+        let d2 = c - 2.0 * b + a;
+        d1d1 = d1.mul_add(d1, d1d1);
+        d1d2 = d1.mul_add(d2, d1d2);
+        d2d2 = d2.mul_add(d2, d2d2);
+    }
+    if !d2d2.is_finite() || d2d2 <= f64::EPSILON * d1d1.max(1.0) {
+        return Ok(None);
+    }
+    let alpha = (-d1d2 / d2d2).clamp(-8.0, 8.0);
+    if !alpha.is_finite() {
+        return Ok(None);
+    }
+    let mut candidate = fallible_matrix_copy(x0, "unable to reserve Irons-Tuck candidate")?;
+    for (((output, a), b), c) in candidate
+        .as_mut_slice()
+        .iter_mut()
+        .zip(x0.as_slice())
+        .zip(x1.as_slice())
+        .zip(x2.as_slice())
+    {
+        let d1 = b - a;
+        let d2 = c - 2.0 * b + a;
+        *output = a + 2.0 * alpha * d1 + alpha * alpha * d2;
+        if !output.is_finite() {
+            return Ok(None);
+        }
+    }
+    Ok(Some((candidate, alpha)))
 }
 
 fn weighted_dot_columns_into(
@@ -2891,6 +3907,7 @@ fn certified_solver_result(
     Ok(CertifiedBorrowedMap {
         residualized,
         report,
+        coefficients: None,
     })
 }
 
@@ -3486,6 +4503,29 @@ mod tests {
             map.residualized().as_slice(),
             2e-10,
         );
+
+        let input = DenseMatrix::from_columns(&columns).expect("matrix");
+        let retained = absorb_borrowed_intercept_cg_retaining_certified(
+            &design,
+            BorrowedMapWeights::Provided(&weights),
+            input.clone(),
+            config(),
+        )
+        .expect("retaining CG");
+        let (residualized, report, coefficients) = retained.into_full_parts();
+        assert!(report.certified());
+        let coefficients = coefficients.expect("CG coefficient product");
+        for rhs_index in 0..input.ncols() {
+            let rhs = coefficients.rhs(rhs_index).expect("coefficient RHS");
+            for row in 0..input.nrows() {
+                let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
+                    + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
+                assert!(
+                    (fitted - (input[(row, rhs_index)] - residualized[(row, rhs_index)])).abs()
+                        <= 2e-10
+                );
+            }
+        }
     }
 
     #[test]
@@ -3538,6 +4578,55 @@ mod tests {
         )
         .expect_err("iteration exhaustion");
         assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn borrowed_irons_tuck_retains_a_reconstructing_coefficient_product() {
+        let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
+        let firm_codes = [0_u32, 1, 1, 2, 2, 0, 0, 2, 2, 0, 1, 2];
+        let worker_index = LevelIndex::from_codes(&worker_codes, 4).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, 3).expect("firm index");
+        let worker =
+            ValidatedBorrowedInterceptSource::new(&worker_codes, 4, &worker_index).expect("worker");
+        let firm =
+            ValidatedBorrowedInterceptSource::new(&firm_codes, 3, &firm_index).expect("firm");
+        let design = BorrowedInterceptFeDesign::new(
+            worker_codes.len(),
+            vec![worker.effect(), firm.effect()],
+        )
+        .expect("design");
+        let input = DenseMatrix::from_columns(&[
+            (0..worker_codes.len())
+                .map(|row| (row as f64 * 0.37).sin())
+                .collect(),
+            (0..worker_codes.len())
+                .map(|row| (row as f64 * 0.19).cos())
+                .collect(),
+        ])
+        .expect("matrix");
+        let result = absorb_borrowed_intercept_irons_tuck_certified(
+            &design,
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            config(),
+            true,
+        )
+        .expect("retaining Irons-Tuck");
+        let (residualized, report, coefficients) = result.into_full_parts();
+        assert!(report.certified());
+        assert_eq!(report.used_solver, FeSolverKind::IronsTuck);
+        let coefficients = coefficients.expect("Irons-Tuck coefficient product");
+        for rhs_index in 0..input.ncols() {
+            let rhs = coefficients.rhs(rhs_index).expect("coefficient RHS");
+            for row in 0..input.nrows() {
+                let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
+                    + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
+                assert!(
+                    (fitted - (input[(row, rhs_index)] - residualized[(row, rhs_index)])).abs()
+                        <= 2e-10
+                );
+            }
+        }
     }
 
     #[test]
@@ -3629,13 +4718,15 @@ mod tests {
             vec![worker.effect(), firm.effect()],
         )
         .expect("design");
+        let input = DenseMatrix::from_columns(&[outcome]).expect("matrix");
         let result = absorb_borrowed_intercept_auto_routed_certified(
             &design,
             BorrowedMapWeights::Unit,
-            DenseMatrix::from_columns(&[outcome]).expect("matrix"),
+            input.clone(),
             config(),
             LsmrConfig::default(),
             None,
+            true,
         )
         .expect("routed auto");
         assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
@@ -3643,6 +4734,14 @@ mod tests {
         assert_eq!(result.report().pilot_iterations, 4);
         assert!(result.report().pilot_contraction >= 0.008);
         assert!(result.report().certified());
+        let (residualized, _, coefficients) = result.into_full_parts();
+        let coefficients = coefficients.expect("retained AUTO coefficient product");
+        let rhs = coefficients.rhs(0).expect("coefficient RHS");
+        for row in 0..input.nrows() {
+            let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
+                + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
+            assert!((fitted - (input[(row, 0)] - residualized[(row, 0)])).abs() <= 1e-9);
+        }
     }
 
     #[test]
@@ -3685,6 +4784,7 @@ mod tests {
                     execution_bytes: 0,
                     usable_bytes,
                 }),
+                false,
             )
         };
         let cg = run(memory.cg_bytes).expect("memory-routed CG");
@@ -3757,6 +4857,7 @@ mod tests {
                 raw.clone(),
                 config(),
                 AutoLsmrPlan::routed(lsmr, None),
+                false,
                 false,
                 &mut reservation,
                 0,
@@ -3883,7 +4984,7 @@ mod tests {
                 requested_tolerance,
                 direct_lsmr_tolerance(requested_tolerance),
             ] {
-                let (candidate, report, _) = run_borrowed_lsmr(
+                let (candidate, report, _, _) = run_borrowed_lsmr(
                     &design,
                     weights,
                     &raw,
@@ -3894,6 +4995,7 @@ mod tests {
                         preconditioner,
                         ..LsmrConfig::default()
                     },
+                    false,
                 )
                 .expect("qualification direct LSMR arm");
                 assert!(
@@ -3908,7 +5010,7 @@ mod tests {
             }
         }
 
-        let (direct, direct_report, _) = run_borrowed_lsmr(
+        let (direct, direct_report, _, _) = run_borrowed_lsmr(
             &design,
             weights,
             &raw,
@@ -3919,6 +5021,7 @@ mod tests {
                 preconditioner: crate::fe::LsmrPreconditioner::Schwarz,
                 ..LsmrConfig::default()
             },
+            false,
         )
         .expect("direct Schwarz LSMR");
         assert!(direct_report.certified());
@@ -3937,6 +5040,7 @@ mod tests {
                 CgContinuation {
                     reference_norms: None,
                     refinement: CgRefinementPolicy::forced(forced_iterations),
+                    retain_coefficients: false,
                 },
                 &mut reservation,
             )

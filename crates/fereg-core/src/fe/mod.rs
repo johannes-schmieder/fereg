@@ -33,12 +33,15 @@ pub use auto::{absorb_fixed_effects, AbsorbConfig};
 pub use borrowed_map::{
     absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_cg_certified,
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
+    FeCoefficientBatch,
 };
 pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_routed_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
+    absorb_borrowed_intercept_cg_retaining_certified,
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
+    absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
 };
 pub use categorical_request::{
@@ -48,6 +51,7 @@ pub use categorical_request::{
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{CmgAbsorber, CmgConfig};
+pub(crate) use components::connected_components_all;
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;
 pub use design::{
@@ -71,11 +75,16 @@ pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{
     finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
-pub(crate) use topology_map::absorb_finalized_categorical_topology_auto_routed_certified;
 pub use topology_map::{
     absorb_finalized_categorical_topology_auto_certified,
     absorb_finalized_categorical_topology_cg_certified,
     absorb_finalized_categorical_topology_map_certified,
+};
+pub(crate) use topology_map::{
+    absorb_finalized_categorical_topology_auto_routed_certified,
+    absorb_finalized_categorical_topology_cg_retaining_certified,
+    absorb_finalized_categorical_topology_irons_tuck_certified,
+    absorb_finalized_categorical_topology_lsmr_certified,
 };
 pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_rhs::{
@@ -86,5 +95,9 @@ pub use topology_slope_map::{
     absorb_finalized_categorical_slope_map_certified,
     recover_finalized_categorical_effects_map_certified, CategoricalAbsorbedEffectView,
     RecoveredCategoricalEffects,
+};
+pub(crate) use topology_slope_map::{
+    recover_finalized_categorical_effects_from_coefficients_certified,
+    recover_finalized_categorical_effects_lsmr_certified,
 };
 pub use topology_source::CategoricalTopologySource;

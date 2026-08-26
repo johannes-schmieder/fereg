@@ -52,8 +52,9 @@ pub use fe::{
     CategoricalPartition, CategoricalPartitionRegistry, CategoricalPartitionSingletonResult,
     CategoricalTopologyRegistry, CategoricalTopologySource, CertifiedBorrowedMap,
     CompactedCategoricalSource, ComponentInfo, EffectTerm, EncodedInteraction, FeCertificate,
-    FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
-    MapConfig, SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
+    FeCoefficientBatch, FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig,
+    LsmrPreconditioner, MapConfig, SingletonMultiplicity, SingletonResult, SolveReport,
+    SolveStopReason,
 };
 pub use memory::{
     estimate_fe_solver_memory, estimate_phase2_memory, plan_ols_memory, FeSolverMemoryBudget,

@@ -75,6 +75,9 @@ pub struct AbsorbConfig {
     /// Internal joint execution-plus-solver workspace budget. This is populated
     /// by the existing memory-limit seam and is not public estimator syntax.
     pub solver_memory_budget: Option<FeSolverMemoryBudget>,
+    /// Retain coefficient-space solver products for zero-extra-solve saved-FE
+    /// recovery. Callers enable this only when saved channels are requested.
+    pub retain_coefficients: bool,
 }
 
 impl Default for AbsorbConfig {
@@ -85,6 +88,7 @@ impl Default for AbsorbConfig {
             lsmr: LsmrConfig::default(),
             certified_fallback: true,
             solver_memory_budget: None,
+            retain_coefficients: false,
         }
     }
 }

@@ -211,6 +211,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -237,6 +238,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -268,6 +270,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -294,6 +297,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(&prepared),
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -320,6 +324,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(&prepared),
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -351,6 +356,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(prepared.ols()),
                 inference.fit(),
                 &action.outputs,
+                action.fit,
             )?;
             let shadow = build_shadow_result(
                 result_data,
@@ -724,6 +730,8 @@ impl EstimateActionSpec {
                         usable_bytes,
                     }
                 }),
+                retain_coefficients: self.outputs.saved_channels.iter().any(Option::is_some)
+                    && memory_plan.selected == MemoryMode::Fast,
                 ..default_fit.absorb
             },
             execution: PreparedOlsExecutionConfig {
@@ -1298,6 +1306,7 @@ fn build_derived_observation_outputs(
     categorical: Option<&PreparedCategoricalOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
+    fit_config: PreparedOlsFitConfig,
 ) -> Result<DerivedObservationOutputs> {
     let any_derived = requested.xb.is_some()
         || requested.xbd.is_some()
@@ -1383,11 +1392,17 @@ fn build_derived_observation_outputs(
                 "derived saved-output request mask capacity exhausted",
             )?;
         }
-        let recovered = categorical.recover_absorbed_effects_map(
+        let recovered = categorical.recover_absorbed_effects_fast(
             absorbed_target
                 .as_deref()
                 .ok_or_else(|| invalid("saved fixed-effect recovery target is absent"))?,
             &mask,
+            fit.recovered_fe_coefficients(),
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..fit_config.absorb.lsmr
+            },
             MapConfig {
                 tolerance: 1e-12,
                 max_iterations: 20_000,

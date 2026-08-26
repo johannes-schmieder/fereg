@@ -36,6 +36,8 @@ pub struct FeSolverMemoryBudget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FeSolverMemoryEstimate {
     pub cg_bytes: u128,
+    /// One compact RHS-major intercept coefficient batch.
+    pub coefficient_batch_bytes: u128,
     pub lsmr_off_bytes: u128,
     pub lsmr_diagonal_bytes: u128,
     pub lsmr_schwarz_bytes: u128,
@@ -245,6 +247,11 @@ pub fn estimate_fe_solver_memory(
         "solver thread-reduction bytes",
     )?;
     let scalar_rhs_bytes = checked_mul(rhs, 8 * 16, "CG scalar RHS workspace")?;
+    let coefficient_batch_bytes = checked_mul(
+        checked_mul(levels, rhs, "FE retained coefficient axis")?,
+        8,
+        "FE retained coefficient bytes",
+    )?;
     let cg_bytes = checked_sum(&[
         cg_matrix_bytes,
         group_workspace_bytes,
@@ -308,6 +315,7 @@ pub fn estimate_fe_solver_memory(
     ])?;
     Ok(FeSolverMemoryEstimate {
         cg_bytes,
+        coefficient_batch_bytes,
         lsmr_off_bytes,
         lsmr_diagonal_bytes,
         lsmr_schwarz_bytes,

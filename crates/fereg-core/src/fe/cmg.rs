@@ -20,7 +20,8 @@ use super::{
     absorb_borrowed_intercept_map_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     borrowed_map::polish_borrowed_intercept_cg_with_reference_norms_certified,
-    BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap, FeSolverKind, MapConfig,
+    BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap, FeCoefficientBatch,
+    FeSolverKind, MapConfig,
 };
 
 const MAX_NUISANCE_COLUMNS: usize = 64;
@@ -33,6 +34,7 @@ pub(crate) struct CmgConfig {
     pub map: MapConfig,
     pub threads: ThreadConfig,
     pub batch_size: usize,
+    pub retain_coefficients: bool,
 }
 
 impl CmgConfig {
@@ -164,10 +166,18 @@ impl<'a> CmgAbsorber<'a> {
                     self.config.map,
                 )?
             };
-            let (residualized, mut report) = direct.into_parts();
+            let (residualized, mut report, coefficients) = direct.into_full_parts();
             report.requested_solver = FeSolverKind::Cmg;
             report.setup_seconds += setup_seconds;
-            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
+            return if let Some(coefficients) = coefficients {
+                CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                    residualized,
+                    report,
+                    coefficients,
+                )
+            } else {
+                CertifiedBorrowedMap::from_certified_parts(residualized, report)
+            };
         }
 
         if let CmgRoute::Failed(message) = &self.route {
@@ -206,7 +216,7 @@ impl<'a> CmgAbsorber<'a> {
         let bulk_seconds = solve_started.elapsed().as_secs_f64();
 
         match bulk {
-            Ok(mut metrics) => {
+            Ok((mut metrics, coefficients)) => {
                 metrics.include_from(setup_metrics);
                 let polished = polish_borrowed_intercept_cg_with_reference_norms_certified(
                     &self.design,
@@ -228,6 +238,15 @@ impl<'a> CmgAbsorber<'a> {
                     report.warnings.push(format!(
                         "CMG bulk projection required {polish_iterations} certified CG polishing iterations"
                     ));
+                }
+                if polish_iterations == 0 {
+                    if let Some(coefficients) = coefficients {
+                        return CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                            residualized,
+                            report,
+                            coefficients,
+                        );
+                    }
                 }
                 CertifiedBorrowedMap::from_certified_parts(residualized, report)
             }
@@ -262,13 +281,27 @@ impl GraphCmg {
         weight_scale: f64,
         values: &mut DenseMatrix,
         config: CmgConfig,
-    ) -> Result<CmgSolveMetrics> {
+    ) -> Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)> {
         let mut metrics = CmgSolveMetrics::default();
-        let core_metrics =
-            self.project_core_matrix(design, weights, weight_scale, values, config)?;
+        let mut coefficients = config
+            .retain_coefficients
+            .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+            .transpose()?;
+        let core_metrics = self.project_core_matrix(
+            design,
+            weights,
+            weight_scale,
+            values,
+            CoreProjectionRequest {
+                config,
+                coefficients: coefficients.as_mut(),
+                destination_rhs_start: 0,
+                coefficient_scale: 1.0,
+            },
+        )?;
         metrics.include_from(core_metrics);
         if self.nuisance.is_empty() || self.nuisance_factor.rank == 0 {
-            return Ok(metrics);
+            return Ok((metrics, coefficients));
         }
 
         let columns = values.ncols();
@@ -290,6 +323,18 @@ impl GraphCmg {
                 )?;
                 gamma.push(self.nuisance_factor.solve(&moments)?);
             }
+            if let Some(batch) = coefficients.as_mut() {
+                for (local, nuisance_coefficients) in gamma.iter().enumerate() {
+                    for (index, nuisance_column) in self.nuisance.iter().enumerate() {
+                        batch.add_intercept(
+                            nuisance_column.effect,
+                            nuisance_column.level as usize,
+                            start + local,
+                            nuisance_coefficients[index],
+                        )?;
+                    }
+                }
+            }
             let mut correction = DenseMatrix::zeros(values.nrows(), width)?;
             for row in 0..values.nrows() {
                 for (local, coefficients) in gamma.iter().enumerate() {
@@ -297,8 +342,18 @@ impl GraphCmg {
                         nuisance_value(design, &self.nuisance, coefficients, row)?;
                 }
             }
-            let correction_metrics =
-                self.project_core_matrix(design, weights, weight_scale, &mut correction, config)?;
+            let correction_metrics = self.project_core_matrix(
+                design,
+                weights,
+                weight_scale,
+                &mut correction,
+                CoreProjectionRequest {
+                    config,
+                    coefficients: coefficients.as_mut(),
+                    destination_rhs_start: start,
+                    coefficient_scale: -1.0,
+                },
+            )?;
             metrics.include_from(correction_metrics);
             for row in 0..values.nrows() {
                 for local in 0..width {
@@ -312,7 +367,7 @@ impl GraphCmg {
                 }
             }
         }
-        Ok(metrics)
+        Ok((metrics, coefficients))
     }
 
     fn project_core_matrix(
@@ -321,8 +376,14 @@ impl GraphCmg {
         weights: BorrowedMapWeights<'_>,
         weight_scale: f64,
         values: &mut DenseMatrix,
-        config: CmgConfig,
+        request: CoreProjectionRequest<'_>,
     ) -> Result<CmgSolveMetrics> {
+        let CoreProjectionRequest {
+            config,
+            mut coefficients,
+            destination_rhs_start,
+            coefficient_scale,
+        } = request;
         let mut metrics = CmgSolveMetrics::default();
         for start in (0..values.ncols()).step_by(config.batch_size) {
             let end = start.saturating_add(config.batch_size).min(values.ncols());
@@ -345,6 +406,16 @@ impl GraphCmg {
                 .map_err(cmg_error)?;
             for (local, solution) in solved.results().iter().enumerate() {
                 metrics.include(solution.iterations(), solution.backward_error());
+                if let Some(batch) = coefficients.as_deref_mut() {
+                    record_core_solution(
+                        design,
+                        self.core_effects,
+                        batch,
+                        destination_rhs_start + start + local,
+                        coefficient_scale,
+                        solution.solution(),
+                    )?;
+                }
                 subtract_core_fit(
                     design,
                     self.core_effects,
@@ -356,6 +427,37 @@ impl GraphCmg {
         }
         Ok(metrics)
     }
+}
+
+struct CoreProjectionRequest<'a> {
+    config: CmgConfig,
+    coefficients: Option<&'a mut FeCoefficientBatch>,
+    destination_rhs_start: usize,
+    coefficient_scale: f64,
+}
+
+fn record_core_solution(
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    coefficients: &mut FeCoefficientBatch,
+    rhs: usize,
+    scale: f64,
+    solution: &[f64],
+) -> Result<()> {
+    let left_levels = design.effects()[core[0]].n_levels();
+    let right_levels = design.effects()[core[1]].n_levels();
+    if solution.len() != left_levels.saturating_add(right_levels) || !scale.is_finite() {
+        return Err(invalid_argument(
+            "CMG solution and retained coefficient dimensions are inconsistent",
+        ));
+    }
+    for (level, value) in solution[..left_levels].iter().copied().enumerate() {
+        coefficients.add_intercept(core[0], level, rhs, scale * value)?;
+    }
+    for (level, value) in solution[left_levels..].iter().copied().enumerate() {
+        coefficients.add_intercept(core[1], level, rhs, -scale * value)?;
+    }
+    Ok(())
 }
 
 impl CmgSolveMetrics {
@@ -1062,6 +1164,7 @@ mod tests {
             },
             threads: ThreadConfig::from_requested(1, true).expect("threads"),
             batch_size,
+            retain_coefficients: false,
         }
     }
 
@@ -1082,6 +1185,33 @@ mod tests {
             .map(|(left, right)| (left - right).abs())
             .fold(0.0_f64, f64::max);
         assert!(maximum <= tolerance, "maximum difference {maximum:e}");
+    }
+
+    fn assert_coefficients_reconstruct(
+        input: &DenseMatrix,
+        residualized: &DenseMatrix,
+        effects: &[&[u32]],
+        coefficients: &FeCoefficientBatch,
+        tolerance: f64,
+    ) {
+        for rhs in 0..input.ncols() {
+            let coefficient_rhs = coefficients.rhs(rhs).expect("coefficient RHS");
+            for row in 0..input.nrows() {
+                let fitted = effects
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, codes)| {
+                        coefficient_rhs[coefficients.effect_offsets()[effect] + codes[row] as usize]
+                    })
+                    .sum::<f64>();
+                let expected = input[(row, rhs)] - residualized[(row, rhs)];
+                assert!(
+                    (fitted - expected).abs() <= tolerance,
+                    "retained CMG coefficients differ by {:e}",
+                    (fitted - expected).abs()
+                );
+            }
+        }
     }
 
     #[test]
@@ -1251,14 +1381,28 @@ mod tests {
             config(2).map,
         )
         .expect("CG reference");
-        let mut session =
-            CmgAbsorber::build(make_design(), BorrowedMapWeights::Unit, config(2), false)
-                .expect("CMG setup");
-        let result = session.absorb(values).expect("CMG projection");
-        let (result_values, report) = result.into_parts();
+        let mut retaining_config = config(2);
+        retaining_config.retain_coefficients = true;
+        let mut session = CmgAbsorber::build(
+            make_design(),
+            BorrowedMapWeights::Unit,
+            retaining_config,
+            false,
+        )
+        .expect("CMG setup");
+        let result = session.absorb(values.clone()).expect("CMG projection");
+        let (result_values, report, coefficients) = result.into_full_parts();
         let (reference_values, _) = reference.into_parts();
         assert!(report.certified());
         assert_matrix_close(&result_values, &reference_values, 5e-9);
+        let coefficients = coefficients.expect("certified CMG coefficient product");
+        assert_coefficients_reconstruct(
+            &values,
+            &result_values,
+            &[&worker, &firm, &year],
+            &coefficients,
+            5e-9,
+        );
     }
 
     #[test]

@@ -52,13 +52,29 @@ pub fn connected_components(
     level_counts: &[usize],
     active: &[bool],
 ) -> Result<ComponentInfo> {
+    connected_components_inner(codes_by_effect, level_counts, active.len(), Some(active))
+}
+
+pub(crate) fn connected_components_all(
+    codes_by_effect: &[&[u32]],
+    level_counts: &[usize],
+) -> Result<ComponentInfo> {
+    let nobs = codes_by_effect.first().map_or(0, |codes| codes.len());
+    connected_components_inner(codes_by_effect, level_counts, nobs, None)
+}
+
+fn connected_components_inner(
+    codes_by_effect: &[&[u32]],
+    level_counts: &[usize],
+    nobs: usize,
+    active: Option<&[bool]>,
+) -> Result<ComponentInfo> {
     if codes_by_effect.len() != level_counts.len() {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
             "component effect and level-count tables have different lengths",
         ));
     }
-    let nobs = active.len();
     if codes_by_effect.iter().any(|codes| codes.len() != nobs) {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -73,8 +89,8 @@ pub fn connected_components(
     }
     let mut union_find = UnionFind::new(offsets[level_counts.len()]);
     let mut observed = vec![false; offsets[level_counts.len()]];
-    for (observation, is_active) in active.iter().copied().enumerate() {
-        if !is_active || codes_by_effect.is_empty() {
+    for observation in 0..nobs {
+        if active.is_some_and(|active| !active[observation]) || codes_by_effect.is_empty() {
             continue;
         }
         let first = offsets[0] + codes_by_effect[0][observation] as usize;

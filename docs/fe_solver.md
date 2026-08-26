@@ -89,6 +89,36 @@ not a production stage. The forced-refinement test path bypasses CG's initial
 certificate return and proves that the comparison arm really executes its
 registered number of restarted iterations.
 
+## Saved fixed-effect recovery
+
+Saving absorbed effects is treated as an optional solver product, not as a
+second estimation problem. In `memory(fast)`, categorical intercept routes use
+the cheapest coefficient-space product available:
+
+- LSMR retains the coefficient vectors it already solved for.
+- CMG converts its exposed worker--firm PCG potentials to effect coefficients
+  and combines them with the nuisance-effect Schur solution. A nonzero CG
+  polish invalidates that product and deliberately triggers the fallback.
+- CG carries compact FE coefficient vectors through the same alpha/beta
+  recurrence as its observation-space directions.
+- Irons--Tuck applies every accepted extrapolation to the parallel compact
+  coefficient states.
+- `solver(auto)` records its four-sweep MAP pilot and adds the coefficient
+  product of the selected LSMR or CG continuation.
+
+Unaccelerated MAP would have to write a level-by-RHS coefficient state on every
+projection in hundreds of sweeps on weak graphs; measurement showed that this
+costs more than a separate one-RHS solve. MAP therefore uses one strict
+coefficient-producing LSMR recovery solve. SQUAREM uses the same bounded path,
+as do slope-bearing effects and `memory(low)`, where retaining the full initial
+RHS coefficient batch would contradict the memory policy. A certified MAP
+recovery remains the final fail-closed fallback if LSMR fails.
+
+Every retained or recovered coefficient product is normalized by connected
+component, scattered only for requested channels, checked against the absorbed
+target in observation space, and independently subjected to the unchanged FE
+moment certificate. Solver retention never relaxes the publication tolerance.
+
 For an LSMR-routed residual, bounded fixtures must match the sealed 100-digit
 oracle and large fixtures must remain within the registered envelope against a
 100-times-tighter solve. Reghdfe residual distance remains a diagnostic for
