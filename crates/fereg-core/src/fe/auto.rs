@@ -15,9 +15,45 @@ pub(crate) const AUTO_LSMR_MIN_PILOT_CONTRACTION: f64 = 0.008;
 /// setup-cost evidence supports automatic LSMR routing.
 pub(crate) const AUTO_LSMR_MAX_COEFFICIENTS: usize = 65_536;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AutoLsmrRoute {
+    None,
+    Direct,
+    CgPolish,
+}
+
 pub(crate) fn auto_selects_lsmr(pilot_contraction: f64, total_fe_coefficients: usize) -> bool {
-    pilot_contraction >= AUTO_LSMR_MIN_PILOT_CONTRACTION
-        && total_fe_coefficients <= AUTO_LSMR_MAX_COEFFICIENTS
+    auto_lsmr_route(pilot_contraction, total_fe_coefficients) == AutoLsmrRoute::Direct
+}
+
+pub(crate) fn auto_lsmr_route(
+    pilot_contraction: f64,
+    total_fe_coefficients: usize,
+) -> AutoLsmrRoute {
+    auto_lsmr_route_at_cap(
+        pilot_contraction,
+        total_fe_coefficients,
+        AUTO_LSMR_MAX_COEFFICIENTS,
+    )
+}
+
+/// Development-only large-axis route: use LSMR as a bulk reducer, then let
+/// comparator-equivalent CG polish and certify the observation residual.
+///
+/// The explicit cap argument lets focused tests exercise both sides of the
+/// route on a bounded graph. Runtime callers always pass the frozen cap.
+pub(crate) fn auto_lsmr_route_at_cap(
+    pilot_contraction: f64,
+    total_fe_coefficients: usize,
+    direct_lsmr_cap: usize,
+) -> AutoLsmrRoute {
+    if pilot_contraction < AUTO_LSMR_MIN_PILOT_CONTRACTION {
+        AutoLsmrRoute::None
+    } else if total_fe_coefficients <= direct_lsmr_cap {
+        AutoLsmrRoute::Direct
+    } else {
+        AutoLsmrRoute::CgPolish
+    }
 }
 
 /// Unified fixed-effect absorption configuration.
@@ -214,6 +250,24 @@ mod tests {
             AUTO_LSMR_MAX_COEFFICIENTS,
         ));
         assert!(!auto_selects_lsmr(1.0, AUTO_LSMR_MAX_COEFFICIENTS + 1,));
+        assert_eq!(
+            auto_lsmr_route(
+                AUTO_LSMR_MIN_PILOT_CONTRACTION - f64::EPSILON,
+                AUTO_LSMR_MAX_COEFFICIENTS + 1,
+            ),
+            AutoLsmrRoute::None,
+        );
+        assert_eq!(
+            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION, AUTO_LSMR_MAX_COEFFICIENTS,),
+            AutoLsmrRoute::Direct,
+        );
+        assert_eq!(
+            auto_lsmr_route(
+                AUTO_LSMR_MIN_PILOT_CONTRACTION,
+                AUTO_LSMR_MAX_COEFFICIENTS + 1,
+            ),
+            AutoLsmrRoute::CgPolish,
+        );
     }
 
     #[test]
