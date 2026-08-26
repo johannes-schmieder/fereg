@@ -1,14 +1,14 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-25
-**Development branch:** `main`; pushed through the verified solver candidate
-**Verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
-**Active milestone:** make default OLS consistently faster than `reghdfe` on macOS
-**Release state:** public OLS beta implemented; primary macOS solver gates and exact-source local full profile green; release qualification remains incomplete
+**Last updated:** 2026-08-26
+**Development branch:** `codex/direct-lsmr-certification`, isolated from dirty `main`
+**Verified candidate plugin:** `2f3ff78a7e154eab72651adc24b3c0519cc4d1d4cd6cd6ed08288564ff25f16e`
+**Active milestone:** integrate the qualified direct Schwarz-LSMR automatic route
+**Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
-a candidly labeled 0.5.0 beta. ADR-0007 and ADR-0008 remain the governing
-scientific, solver, evidence, and safety contracts. Historical receipts remain
+a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
+and RSS rule while preserving its scientific and safety contracts. Historical receipts remain
 immutable even when they describe earlier hidden or fail-closed checkpoints.
 
 ## Current accepted state
@@ -34,13 +34,16 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   fails closed. CG now requires both reghdfe's Hestenes energy stop and the
   independent FE certificate; neither recurrence nor certificate substitutes
   for the other on the comparator-equivalent path.
-- The frozen automatic policy is implemented: one FE uses direct one-pass
+- The qualified automatic policy is implemented: one FE uses direct one-pass
   demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
-  if certified. Otherwise auto selects LSMR only when pilot contraction is at
-  least 0.008 and total FE coefficients are at most 65,536; all other cases
-  continue with genuine CG. An auto LSMR failure has one visible fallback to
-  certified CG. Pilot iterations, contraction, selected solver, iteration
-  count, fallback, native time, and effective thread count are reported.
+  if certified. Otherwise a pilot contraction of at least 0.008 selects direct
+  Schwarz-LSMR at two decimal orders tighter than the requested tolerance;
+  there is no coefficient cap. All other cases continue with genuine CG. An
+  auto LSMR failure has one visible fallback from the saved pilot state to
+  certified CG. The execution and route-specific solver workspaces must fit
+  jointly before selection. Pilot iterations, contraction, selected solver,
+  iteration count, fallback, native time, and effective thread count are
+  reported.
 - `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
   and performance are outside the 0.5.0 beta.
 - The reference closure remains pinned to reghdfe 6.14.1 (`29b2b203...`),
@@ -59,6 +62,14 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   The local full receipt records `status=success`, `stata_rc=0`, and the exact
   candidate SHA. This is exact-source local evidence; the final immutable
   release receipt and remaining platform/resource qualification are pending.
+- The isolated ADR-0009 candidate adds a sealed 100-digit weak-graph oracle,
+  an independent observation-space projection audit, direct/forced-refinement
+  comparison arms, route-specific memory planning, and borrowed Schwarz-LSMR
+  topology reuse. Its final universal macOS plugin passed the fresh-seed 1m
+  holdout, untouched 10m freeze, all 32 licensed Stata fixtures, 269 Python
+  tests, strict Rust/FFI/all-target suites, mock SPI, binary audit/loader, and
+  deterministic packaging checks. The evidence summary is
+  `benchmarks/expected/direct_lsmr_qualification_v1.json`.
 
 ## 0.5.0 beta exit gate
 
@@ -73,7 +84,7 @@ include dense and sparse two-way FEs, a worker-firm mobility design, absorbed
 slopes, clustered inference, moderate regressor counts, and one- and
 eight-thread runs where meaningful. Default `solver(auto)` must be faster than
 `reghdfe` in every registered standard case, not merely faster on average. The
-stronger ADR-0008 performance targets remain development goals and any case
+stronger ADR-0009 performance targets remain development goals and any case
 that does not meet them must be reported candidly. The selected route and any
 fallback must be visible in diagnostics and backed by the same final scientific
 certificates.
@@ -110,62 +121,46 @@ macOS speed and correctness gate.
   useful historical evidence, but they do not qualify the current public
   source.
 
-## Active checkpoint: freeze the green macOS solver candidate
+## Active checkpoint: direct Schwarz-LSMR qualified for auto
 
-The comparator-equivalent MAP/CG milestone and the bounded auto policy are now
-scientifically green and faster than reghdfe on the registered development
-matrix. The deterministic AKM harness derives generated fixtures from
-`tests/manual/simple_AKM.do` without modifying that playground, hashes each
-dataset, separates parity preflights from timing, and reports cold/warm
-medians, MAD, dependency and plugin identities, scientific outputs, solver
-routing, pilot diagnostics, fallback, native time, and gregress distance.
+Calibration evaluated requested and 100-times-tighter direct LSMR,
+off/diagonal/Schwarz preconditioners, forced restarted CG correction at 4/8/16
+iterations, and the prior coarse-LSMR/ordinary-CG hybrid. The frozen survivor
+is direct Schwarz-LSMR at `max(1e-14, tolerance * 1e-2)`, without CG refinement.
+The selection, tolerance, preconditioner, pilot threshold, and diagnostics were
+frozen before fresh-seed holdouts.
 
-The exact-plugin 100,000-row phase matrix produced 148 certified timing
-records and ten passing parity preflights. Only explicit IT failed, on the
-high-mobility case at both thread counts; both failures returned `r(459)` and
-published no estimate. Auto was faster than reghdfe in every registered case:
+The full 100,000-row matrix produced 148 timing records and ten green
+scientific preflights. Only explicit IT failed on the high-mobility case at one
+and eight threads; both returned `r(459)` and published no estimate.
 
-| Case | Threads | reghdfe | fereg auto | auto/reghdfe | Used solver |
-|---|---:|---:|---:|---:|---:|
-| one FE | 1 | 0.044 s | 0.039 s | 0.886 | MAP |
-| one FE | 8 | 0.029 s | 0.028 s | 0.966 | MAP |
-| IID two FE | 1/8 | 0.269/0.210 s | 0.109/0.071 s | 0.405/0.338 | CG |
-| high-mobility AKM | 1/8 | 0.256/0.191 s | 0.112/0.070 s | 0.438/0.366 | CG |
-| standard AKM | 1/8 | 0.261/0.164 s | 0.159/0.087 s | 0.609/0.530 | CG |
-| low-mobility AKM | 1/8 | 0.459/0.234 s | 0.130/0.080 s | 0.283/0.342 | LSMR |
+The final-hash one-million-row holdout and untouched ten-million-row freeze
+passed every hard scientific, stability, runtime, native-allocation, and leak
+gate:
 
-The selected one-million-row acceptance milestone has 24 successful timed
-runs and eight passing preflights. Auto is faster in every case. Ratios are
-0.951/0.930 for one FE, 0.472/0.333 for IID, 0.651/0.481 for standard AKM,
-and 0.717/0.532 for low mobility at one/eight threads. The 1m low-mobility
-coefficient count exceeds the frozen LSMR cap, so auto correctly uses CG.
+| Case | Threads | 1m candidate/old CG | 10m candidate/old CG | Auto route |
+|---|---:|---:|---:|---:|
+| standard AKM | 1 | 0.986 | 0.973 | CG |
+| standard AKM | 8 | 1.033 | 0.996 | CG |
+| low-mobility AKM | 1 | 0.262 | 0.231 | direct Schwarz-LSMR |
+| low-mobility AKM | 8 | 0.344 | 0.493 | direct Schwarz-LSMR |
 
-The selected ten-million-row freeze has 12 successful timed arms, four passing
-preflights, one cold and five warm runs per arm, and no failures:
+At 10m, routed allocation-model errors were 0.4 percent and 20.3 percent at
+one/eight threads. Repeated-call leak gates passed. The reghdfe residual
+distance was 1.68e-6/1.73e-6 and is report-only under ADR 0009; the independent
+100-times-tighter stability distance was 1.19e-7 against a 5.33e-7 envelope,
+and all FE/OLS score certificates and comparator RSS/fit contracts passed.
 
-| Case | Threads | reghdfe median | fereg auto median | auto/reghdfe | gregress CG |
-|---|---:|---:|---:|---:|---:|
-| one FE | 8 | 1.968 s | 1.773 s | 0.901 | 0.752 s |
-| standard AKM | 1 | 28.986 s | 20.061 s | 0.692 | 7.286 s |
-| standard AKM | 8 | 17.682 s | 7.521 s | 0.425 | 7.007 s |
-| low-mobility AKM | 8 | 37.011 s | 13.254 s | 0.358 | 30.341 s |
-
-The initial 10m low-mobility candidate matched coefficients, VCE, DoF, sample,
-RSS, and fit but missed the frozen residual gate. The cause was algorithmic:
-CG returned when the FE certificate passed before reghdfe's Hestenes energy
-criterion. Requiring both reduced the maximum residual gap from 1.405e-6 to
-2.844e-7, below the roughly 5.33e-7 frozen global gate, and improved rather
-than harmed the measured auto runtime margin against reghdfe. Tightening
-tolerance alone and removing the four-sweep pilot did not solve the weak-graph
-path dependence.
+The joint memory planner selects CG when direct LSMR does not fit and CG does,
+and fails with `r(909)` before large allocations when neither route fits. The
+old process-RSS ratio remains diagnostic; it is deliberately not a promotion
+blocker when modeled allocation, cleanup, and science pass.
 
 ## Current blockers
 
-1. The committed candidate still needs the remaining release-qualification stack:
-   clean install, packaging/staging reproducibility, release archive hashes,
-   ADR-0008 RSS/leak/constrained-memory evidence, and the final immutable
-   release receipts. The exact-source local full profile is green but is not by
-   itself a release receipt.
+1. The ADR-0009 candidate is isolated and uncommitted. It still needs review,
+   integration onto the intended release branch, a clean exact-commit rebuild,
+   and immutable release receipts.
 2. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
    diagnostic because its refined residual fails the independent OLS score
    certificate. Auto's four-sweep pilot passes and is the beta acceptance path;
@@ -173,25 +168,26 @@ path dependence.
    raw-start score interaction is repaired.
 3. Explicit IT remains quarantined after the two registered high-mobility
    `r(459)` failures. It may not influence auto or publish uncertified output.
-4. The current 10m freeze is deliberately selected rather than the full
-   eight-case freeze manifest. The remaining 10m cases and stronger ADR-0008
-   aggregate performance thresholds are still release-qualification work.
+4. The direct-LSMR qualification covers the registered standard and
+   low-mobility 1m/10m cases. The broader slopes, clustered inference, and
+   moderate-K release matrix still must be rerun on the eventual integration
+   commit even though the existing full Rust/Stata surface is green.
 5. Rosetta, SCC/Linux, hosted Linux/Windows, and licensed Windows evidence is
    not refreshed for this candidate. No tag or publication is permitted yet.
 
 ## Development plan
 
-1. Freeze the current auto thresholds, Hestenes-plus-certificate rule,
-   deterministic reduction order, and candidate anchors; make no further
-   solver tuning without restarting quick/matrix/milestone evidence.
-2. Add a regression fixture for the 10m-style weak-graph stop using a bounded
-   synthetic analogue, including the requirement that recurrence and FE/score
-   certificates all pass. Keep the full generated 10m case in qualification.
+1. Review and integrate the frozen ADR-0009 implementation without changing
+   its algorithm, tolerance, preconditioner, pilot threshold, or diagnostics.
+   Any solver tuning requires new calibration and new holdout seeds.
+2. Preserve the sealed Decimal fixtures, observation-space audit, large-case
+   tighter-solve stability check, and full generated 10m case in qualification.
 3. Diagnose explicit raw-start CG's low-mobility score failure separately from
    auto. Any repair must preserve the four-sweep auto results and cannot weaken
    FE or score certificates.
-4. Run the remaining ADR-0008 RSS, leak, constrained-memory, and approved 10m
-   cases, then complete deterministic package/clean-install/binary checks.
-5. Materialize immutable exact-source licensed receipts only after the complete
-   candidate passes. Then commit and push the whole verified stack together.
+4. Run the broader release matrix on the integration commit, then complete
+   clean-install, cross-platform, and final archive checks. Treat process RSS
+   as diagnostic and route-specific modeled allocation/leak/preflight as hard.
+5. Materialize immutable exact-commit licensed receipts only after that stack
+   passes. Then push the complete verified checkpoint together.
 6. Resume PPML development only after the OLS beta checkpoint is complete.

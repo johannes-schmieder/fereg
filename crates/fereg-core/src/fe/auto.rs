@@ -4,6 +4,7 @@ use crate::fe::{
     absorb_accelerated_map, absorb_lsmr, absorb_map, certify_residuals_with_reference_norms,
     weighted_column_norms, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
 };
+use crate::memory::FeSolverMemoryBudget;
 
 /// Frozen automatic-routing threshold selected from the registered AKM matrix.
 ///
@@ -11,13 +12,56 @@ use crate::fe::{
 /// MAP sweeps divided by its initial value. Values at or above 0.8% identify
 /// the slow-mixing graphs where the bounded LSMR setup cost paid for itself.
 pub(crate) const AUTO_LSMR_MIN_PILOT_CONTRACTION: f64 = 0.008;
-/// Largest FE coefficient axis on which the registered residual-parity and
-/// setup-cost evidence supports automatic LSMR routing.
-pub(crate) const AUTO_LSMR_MAX_COEFFICIENTS: usize = 65_536;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AutoLsmrRoute {
+    None,
+    Direct,
+    CgPolish,
+}
 
 pub(crate) fn auto_selects_lsmr(pilot_contraction: f64, total_fe_coefficients: usize) -> bool {
-    pilot_contraction >= AUTO_LSMR_MIN_PILOT_CONTRACTION
-        && total_fe_coefficients <= AUTO_LSMR_MAX_COEFFICIENTS
+    auto_lsmr_route(pilot_contraction, total_fe_coefficients) == AutoLsmrRoute::Direct
+}
+
+pub(crate) fn auto_lsmr_route(
+    pilot_contraction: f64,
+    _total_fe_coefficients: usize,
+) -> AutoLsmrRoute {
+    if pilot_contraction < AUTO_LSMR_MIN_PILOT_CONTRACTION {
+        AutoLsmrRoute::None
+    } else {
+        AutoLsmrRoute::Direct
+    }
+}
+
+/// Frozen safety rule selected on calibration cases: direct LSMR solves two
+/// decimal orders tighter than the requested publication tolerance, bounded
+/// at `1e-14` so ordinary requests do not chase sub-roundoff recurrence noise.
+pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
+    if requested_tolerance <= 1e-14 {
+        requested_tolerance
+    } else {
+        (requested_tolerance * 1e-2).max(1e-14)
+    }
+}
+
+/// Qualification-only comparison route: use LSMR as a bulk reducer, then let
+/// comparator-equivalent CG polish and certify the observation residual.
+///
+/// The explicit cap argument lets focused tests exercise both sides of the
+/// route on a bounded graph. Runtime callers always pass the frozen cap.
+pub(crate) fn auto_lsmr_route_at_cap(
+    pilot_contraction: f64,
+    total_fe_coefficients: usize,
+    direct_lsmr_cap: usize,
+) -> AutoLsmrRoute {
+    if pilot_contraction < AUTO_LSMR_MIN_PILOT_CONTRACTION {
+        AutoLsmrRoute::None
+    } else if total_fe_coefficients <= direct_lsmr_cap {
+        AutoLsmrRoute::Direct
+    } else {
+        AutoLsmrRoute::CgPolish
+    }
 }
 
 /// Unified fixed-effect absorption configuration.
@@ -28,6 +72,9 @@ pub struct AbsorbConfig {
     pub lsmr: LsmrConfig,
     /// Whether `Auto` may retry the other certified solver after a failed certificate.
     pub certified_fallback: bool,
+    /// Internal joint execution-plus-solver workspace budget. This is populated
+    /// by the existing memory-limit seam and is not public estimator syntax.
+    pub solver_memory_budget: Option<FeSolverMemoryBudget>,
 }
 
 impl Default for AbsorbConfig {
@@ -37,6 +84,7 @@ impl Default for AbsorbConfig {
             map: MapConfig::default(),
             lsmr: LsmrConfig::default(),
             certified_fallback: true,
+            solver_memory_budget: None,
         }
     }
 }
@@ -133,7 +181,7 @@ fn absorb_auto(
         let mut lsmr_values =
             fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
         let lsmr_config = LsmrConfig {
-            tolerance: config.map.tolerance,
+            tolerance: direct_lsmr_tolerance(config.map.tolerance),
             max_iterations: config.lsmr.max_iterations.min(remaining_iterations),
             ..config.lsmr
         };
@@ -207,13 +255,26 @@ mod tests {
     fn auto_lsmr_threshold_is_frozen_and_inclusive() {
         assert!(!auto_selects_lsmr(
             AUTO_LSMR_MIN_PILOT_CONTRACTION - f64::EPSILON,
-            AUTO_LSMR_MAX_COEFFICIENTS,
+            65_536,
         ));
-        assert!(auto_selects_lsmr(
-            AUTO_LSMR_MIN_PILOT_CONTRACTION,
-            AUTO_LSMR_MAX_COEFFICIENTS,
-        ));
-        assert!(!auto_selects_lsmr(1.0, AUTO_LSMR_MAX_COEFFICIENTS + 1,));
+        assert!(auto_selects_lsmr(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_536,));
+        assert!(auto_selects_lsmr(1.0, 10_000_000));
+        assert_eq!(
+            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION - f64::EPSILON, 65_537,),
+            AutoLsmrRoute::None,
+        );
+        assert_eq!(
+            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_536,),
+            AutoLsmrRoute::Direct,
+        );
+        assert_eq!(
+            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_537,),
+            AutoLsmrRoute::Direct,
+        );
+        assert_eq!(
+            auto_lsmr_route_at_cap(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_537, 65_536,),
+            AutoLsmrRoute::CgPolish,
+        );
     }
 
     #[test]

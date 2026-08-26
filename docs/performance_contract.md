@@ -30,15 +30,15 @@ The governing runtime gates apply to default `solver(auto)`:
 
 The governing memory gates are:
 
-- default `solver(auto)` peak RSS no greater than 1.30 times the matched frozen
-  `df53822` fereg MAP baseline for every case/thread pair;
 - observed native allocation within 25 percent of the registered model;
-- no repeated-call leak; and
-- a constrained-memory case where `memory(low)` succeeds while
-  `memory(fast)` fails preflight.
+- clean constrained-memory solver fallback or pre-allocation failure;
+- a constrained execution-mode case where `memory(low)` succeeds while
+  `memory(fast)` fails preflight; and
+- no repeated-call leak.
 
-Explicit solver modes are subject to correctness and allocation-safety checks,
-not the candidate RSS threshold. Solver development first uses the five-family
+Process-RSS and old comparator/MAP ratios remain diagnostic, including cases
+where a faster certified route deliberately spends more resident memory.
+Solver development first uses the five-family
 dense/sparse/slope/cluster/moderate-K matrix with shortened repetition counts;
 the frozen release-grade matrix is rerun after `solver(auto)` routing is fixed.
 
@@ -74,14 +74,14 @@ require their scheduler/accounting receipts. Exploratory Phase 0–1 thresholds
 are superseded by ADR 0007; the solver and memory policy is superseded by ADR
 0008.
 
-## Current local development evidence
+## Current direct-LSMR qualification evidence
 
-The uncommitted 0.5.0 candidate identified in `STATUS.md` clears the primary
-macOS solver-development gates: every registered 100k auto case is faster than
-reghdfe, all eight selected 1m auto cases are faster, and the four-case 10m
-freeze subset has 12 timed arms, four passing preflights, five warm runs per
-arm, and no failures. The 10m auto/reghdfe ratios are 0.901 for one FE at eight
-threads, 0.692/0.425 for standard AKM at one/eight threads, and 0.358 for
-low-mobility AKM at eight threads. This does not yet satisfy the stronger full
-ADR-0008 aggregate, RSS, leak, constrained-memory, packaging, or exact-source
-receipt gates.
+ADR 0009 freezes direct Schwarz-LSMR for slow-mixing automatic routes. The
+complete 100k matrix has 148 timing records and ten green preflights; only two
+quarantined explicit-IT diagnostics fail closed. Fresh-seed 1m and untouched
+10m holdouts pass the independent stability, hard scientific, runtime,
+allocation-model, and leak gates. At 10m, routed low mobility reduced warm
+runtime by 76.9 percent at one thread and 50.7 percent at eight threads against
+the exact pre-change CG plugin. Unrouted standard cases did not regress. The
+final plugin and receipt hashes are sealed in
+`benchmarks/expected/direct_lsmr_qualification_v1.json`.

@@ -23,6 +23,17 @@
   symmetric MAP pilot sweeps, early certified MAP completion, LSMR only for a
   frozen strong-contraction/small-coefficient region, and genuine CG otherwise.
   Auto-selected LSMR has at most one visible fallback to certified CG.
+- Qualified direct Schwarz-preconditioned LSMR for slow-mixing automatic
+  routes, tightened its internal tolerance by two decimal orders, removed the
+  65,536-coefficient cap, and retained one visible certified-CG fallback from
+  the saved MAP pilot. Added a sealed 100-digit weak-graph oracle,
+  observation-space projection audit, 100-times-tighter large-case stability
+  checks, and qualification-only forced restarted-CG comparison arms.
+- Added joint execution/solver memory planning for CG, LSMR, Schwarz, RHS,
+  topology, and thread-reduction workspaces. Automatic routing now chooses CG
+  if LSMR does not fit and fails before large allocation if neither route fits;
+  native model accuracy and leak/preflight checks replace process-RSS ratios as
+  hard solver-promotion gates. No public `maxmemory()` syntax was added.
 - Added the deterministic AKM benchmark generator and quick/matrix/milestone/
   freeze runner with reghdfe 6.14.1 scientific preflights, gregress 1.11.8
   diagnostics, dataset/dependency hashes, cold/warm dispersion, native timing,

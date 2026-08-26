@@ -23,12 +23,20 @@ tight oracle; gregress remains diagnostic-only. Generated JSON is exploratory
 and belongs under `benchmarks/reports/` or an external work directory, never in
 the frozen expected/receipt surface without an explicit qualification step.
 
-The current frozen development policy is direct MAP for one FE, an at-most
-four-sweep MAP pilot for multiway designs, LSMR only when pilot contraction is
-at least 0.008 and total FE coefficients do not exceed 65,536, and genuine CG
-otherwise. Auto-selected LSMR has one visible certified-CG fallback. CG must
-meet both the comparator-equivalent Hestenes energy stop and the independent
-FE certificate.
+The current frozen policy is direct MAP for one FE and an at-most four-sweep
+MAP pilot for multiway designs. A pilot contraction of at least 0.008 routes to
+direct Schwarz-LSMR at two decimal orders tighter than the requested tolerance;
+there is no coefficient cap. Other cases use genuine CG. Auto-selected LSMR
+has one visible certified-CG fallback from the saved pilot state. CG must meet
+both the comparator-equivalent Hestenes energy stop and the independent FE
+certificate.
+
+`weak_graph_decimal_oracle_v1.json` and its flat CSV projection are generated
+at 100-digit precision by `scripts/weak_graph_decimal_oracle.py`. They provide
+the path-neutral bounded residual/fitted/objective oracle for direct-LSMR
+qualification. `direct_lsmr_qualification_v1.json` seals the selected policy,
+final plugin, and external calibration/holdout/freeze receipt hashes without
+committing local datasets or raw licensed logs.
 
 The local plugin checkpoint recorded in `STATUS.md` completed the full 100k
 matrix with 148 successful timing records and only the two registered

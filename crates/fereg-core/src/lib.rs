@@ -55,7 +55,10 @@ pub use fe::{
     FeDesign, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
     MapConfig, SingletonMultiplicity, SingletonResult, SolveReport, SolveStopReason,
 };
-pub use memory::{estimate_phase2_memory, plan_ols_memory, MemoryEstimate, MemoryPlan};
+pub use memory::{
+    estimate_fe_solver_memory, estimate_phase2_memory, plan_ols_memory, FeSolverMemoryBudget,
+    FeSolverMemoryEstimate, MemoryEstimate, MemoryPlan,
+};
 pub use metadata::{
     AbsorbComponent, AbsorbComponentRole, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
     CompiledModelSpecification, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,

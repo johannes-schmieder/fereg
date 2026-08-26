@@ -2,7 +2,9 @@ use fereg_core::{
     absorb_lsmr, absorb_map, certify_residuals, DenseMatrix, EffectTerm, FeDesign, LsmrConfig,
     LsmrPreconditioner, MapConfig, SolveStopReason, ThreadConfig,
 };
-use fereg_testkit::explicit_dummy::fe_projection_certificate;
+use fereg_testkit::explicit_dummy::{
+    fe_projection_certificate, fe_remaining_projection_with_reference,
+};
 
 #[test]
 fn nearly_collinear_channel_counterexample_is_rejected() {
@@ -90,6 +92,61 @@ fn certificate_is_invariant_to_equivalent_channel_bases() {
     for value in &values[1..] {
         assert!((value - values[0]).abs() < 2e-12, "{values:?}");
     }
+}
+
+#[test]
+fn observation_space_audit_detects_a_projection_hidden_by_small_raw_moments() {
+    let observations = 64_usize;
+    let first = (0..observations)
+        .map(|row| (row / 2) as u32)
+        .collect::<Vec<_>>();
+    let second = (0..observations)
+        .map(|row| ((row / 2) + (row % 2)) as u32)
+        .collect::<Vec<_>>();
+    let design = FeDesign::new(
+        observations,
+        vec![
+            EffectTerm::new(first, 32, true, Vec::new()).expect("first effect"),
+            EffectTerm::new(second, 33, true, Vec::new()).expect("second effect"),
+        ],
+    )
+    .expect("weak design");
+    let reference = DenseMatrix::from_columns(&[(0..observations)
+        .map(|row| ((row * 17 + 3) % 29) as f64 - 14.0)
+        .collect::<Vec<_>>()])
+    .expect("reference");
+    let mut residual = reference.clone();
+    let report = absorb_lsmr(
+        &design,
+        &vec![1.0; observations],
+        &mut residual,
+        LsmrConfig {
+            tolerance: 1e-12,
+            preconditioner: LsmrPreconditioner::Schwarz,
+            ..LsmrConfig::default()
+        },
+    )
+    .expect("LSMR");
+    assert!(report.certified());
+    let audit = fe_remaining_projection_with_reference(
+        &design,
+        &vec![1.0; observations],
+        &residual,
+        &reference,
+    )
+    .expect("observation-space audit");
+    assert!(audit.maximum_relative_two_norm <= 1e-10, "{audit:?}");
+
+    let visibly_nonorthogonal =
+        DenseMatrix::from_columns(&[vec![1e-4; observations]]).expect("nonorthogonal residual");
+    let rejected = fe_remaining_projection_with_reference(
+        &design,
+        &vec![1.0; observations],
+        &visibly_nonorthogonal,
+        &reference,
+    )
+    .expect("rejected audit");
+    assert!(rejected.maximum_relative_two_norm > 1e-6, "{rejected:?}");
 }
 
 #[test]

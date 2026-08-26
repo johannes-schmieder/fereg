@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::fe::LsmrPreconditioner;
 use crate::options::MemoryMode;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
@@ -19,6 +20,52 @@ pub struct MemoryPlan {
     pub available_bytes: Option<u128>,
     pub safety_headroom_bytes: u128,
     pub usable_bytes: Option<u128>,
+}
+
+/// Solver workspace available after the selected execution plan is charged.
+///
+/// This is an internal planning seam, not the deferred public `maxmemory()`
+/// option.  A future user cap can populate the same structure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FeSolverMemoryBudget {
+    pub execution_bytes: u128,
+    pub usable_bytes: u128,
+}
+
+/// Route-specific peak workspace model for one FE absorption call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FeSolverMemoryEstimate {
+    pub cg_bytes: u128,
+    pub lsmr_off_bytes: u128,
+    pub lsmr_diagonal_bytes: u128,
+    pub lsmr_schwarz_bytes: u128,
+    pub rhs_copy_bytes: u128,
+    pub krylov_bytes: u128,
+    pub topology_bytes: u128,
+    pub thread_reduction_bytes: u128,
+    /// Observation-scale code and membership bytes avoided by the borrowed
+    /// direct-LSMR route, retained as a diagnostic for the buffer experiment.
+    pub borrowed_code_copy_avoided_bytes: u128,
+}
+
+impl FeSolverMemoryEstimate {
+    #[must_use]
+    pub const fn lsmr_bytes(self, preconditioner: LsmrPreconditioner) -> u128 {
+        match preconditioner {
+            LsmrPreconditioner::Off => self.lsmr_off_bytes,
+            LsmrPreconditioner::Diagonal => self.lsmr_diagonal_bytes,
+            LsmrPreconditioner::Schwarz | LsmrPreconditioner::Auto => self.lsmr_schwarz_bytes,
+        }
+    }
+}
+
+impl FeSolverMemoryBudget {
+    #[must_use]
+    pub fn fits(self, solver_workspace_bytes: u128) -> bool {
+        self.execution_bytes
+            .checked_add(solver_workspace_bytes)
+            .is_some_and(|total| total <= self.usable_bytes)
+    }
 }
 
 impl MemoryPlan {
@@ -132,6 +179,146 @@ pub fn estimate_phase2_memory(
     })
 }
 
+/// Estimate the complete incremental solver workspace after topology is known.
+///
+/// The model deliberately separates CG, LSMR recurrence, Schwarz topology,
+/// RHS copies, and thread reductions.  It assumes prepared categorical codes
+/// and memberships remain borrowed.  Arithmetic is checked so a malformed or
+/// adversarial dimension fails before allocation.
+pub fn estimate_fe_solver_memory(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+) -> Result<FeSolverMemoryEstimate> {
+    if observations == 0 || rhs_columns == 0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate requires nonempty observation and RHS axes",
+        ));
+    }
+    if effect_level_counts.is_empty() || effect_level_counts.contains(&0) {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate requires positive effect level counts",
+        ));
+    }
+    if threads == 0 || local_reorthogonalization_size == Some(0) {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "FE solver memory estimate has an invalid thread or reorthogonalization count",
+        ));
+    }
+
+    let n = observations as u128;
+    let rhs = rhs_columns as u128;
+    let effects = effect_level_counts.len() as u128;
+    let levels = effect_level_counts
+        .iter()
+        .try_fold(0_u128, |total, value| {
+            total.checked_add(*value as u128).ok_or_else(|| {
+                FeregError::new(ErrorCode::Allocation, "FE solver level count overflows")
+            })
+        })?;
+    let maximum_levels = effect_level_counts.iter().copied().max().unwrap_or(0) as u128;
+    let matrix_bytes = checked_mul(
+        checked_mul(n, rhs, "FE solver observation-RHS axis")?,
+        8,
+        "FE solver observation-RHS bytes",
+    )?;
+    let rhs_copy_bytes = matrix_bytes;
+    let cg_matrix_bytes = checked_mul(matrix_bytes, 3, "CG residual/direction/projection bytes")?;
+    let group_workspace_bytes = checked_mul(
+        checked_mul(maximum_levels, rhs, "CG group workspace")?,
+        16,
+        "CG group sums and corrections",
+    )?;
+    let dot_chunks = observations.div_ceil(32_768) as u128;
+    let thread_reduction_bytes = checked_mul(
+        checked_mul(
+            dot_chunks.max(threads as u128),
+            rhs,
+            "solver thread reductions",
+        )?,
+        8,
+        "solver thread-reduction bytes",
+    )?;
+    let scalar_rhs_bytes = checked_mul(rhs, 8 * 16, "CG scalar RHS workspace")?;
+    let cg_bytes = checked_sum(&[
+        cg_matrix_bytes,
+        group_workspace_bytes,
+        thread_reduction_bytes,
+        scalar_rhs_bytes,
+    ])?;
+
+    // Modified LSMR processes batch columns with shared observation-space
+    // recurrence storage. The execution plan already owns the returned dense
+    // candidate, so the incremental peak charges one RHS materialization and
+    // one shared recurrence/history block rather than K copies of both.
+    let recurrence_vectors = local_reorthogonalization_size
+        .unwrap_or(0)
+        .checked_add(4)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "LSMR history count overflows"))?
+        as u128;
+    let krylov_bytes = checked_mul(
+        checked_mul(n, recurrence_vectors, "LSMR shared Krylov axis")?,
+        8,
+        "LSMR shared Krylov bytes",
+    )?;
+    let lsmr_common = checked_sum(&[
+        rhs_copy_bytes,
+        krylov_bytes,
+        thread_reduction_bytes,
+        checked_mul(levels, 16, "LSMR coefficient workspace")?,
+    ])?;
+    let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal preconditioner")?;
+    let topology_bytes = checked_sum(&[
+        checked_mul(n, effects, "Schwarz observation-effect topology")?,
+        checked_mul(levels, 48, "Schwarz level topology")?,
+        checked_mul(n, 24, "Schwarz cross-tab edge workspace")?,
+    ])?;
+    let lsmr_off_bytes = lsmr_common;
+    let lsmr_diagonal_bytes = checked_sum(&[lsmr_common, diagonal_bytes])?;
+    // Schwarz cross-tabs are constructed during setup and released or reused
+    // before the Krylov solve reaches its peak. Model the larger stage plus
+    // the small persistent level factor, not the impossible sum of both peaks.
+    let schwarz_setup_peak = checked_sum(&[rhs_copy_bytes, topology_bytes, diagonal_bytes])?;
+    let schwarz_solve_peak = checked_sum(&[lsmr_common, diagonal_bytes])?;
+    let lsmr_schwarz_bytes = schwarz_setup_peak
+        .max(schwarz_solve_peak)
+        .checked_add(checked_mul(levels, 8, "persistent Schwarz level factor")?)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "Schwarz peak estimate overflows"))?;
+    let borrowed_code_copy_avoided_bytes = checked_sum(&[
+        checked_mul(
+            checked_mul(n, effects, "avoided FE codes")?,
+            4,
+            "avoided FE code bytes",
+        )?,
+        checked_mul(
+            checked_mul(n, effects, "avoided FE memberships")?,
+            std::mem::size_of::<usize>() as u128,
+            "avoided FE membership bytes",
+        )?,
+        checked_mul(
+            levels,
+            std::mem::size_of::<usize>() as u128,
+            "avoided FE offset bytes",
+        )?,
+    ])?;
+    Ok(FeSolverMemoryEstimate {
+        cg_bytes,
+        lsmr_off_bytes,
+        lsmr_diagonal_bytes,
+        lsmr_schwarz_bytes,
+        rhs_copy_bytes,
+        krylov_bytes,
+        topology_bytes,
+        thread_reduction_bytes,
+        borrowed_code_copy_avoided_bytes,
+    })
+}
+
 pub fn plan_ols_memory(
     requested: MemoryMode,
     estimate: MemoryEstimate,
@@ -233,6 +420,38 @@ mod tests {
         let plan = plan_ols_memory(MemoryMode::Auto, estimate, Some(available)).expect("plan");
         assert_eq!(plan.selected, MemoryMode::Low);
         assert_eq!(plan.selected_bytes(), estimate.low_bytes);
+    }
+
+    #[test]
+    fn solver_memory_model_is_route_specific_monotone_and_borrowed() {
+        let estimate = estimate_fe_solver_memory(1_000_000, 4, &[250_000, 80_000], 8, Some(4))
+            .expect("solver estimate");
+        assert!(estimate.cg_bytes > 0);
+        assert!(estimate.lsmr_off_bytes < estimate.lsmr_diagonal_bytes);
+        assert!(estimate.lsmr_diagonal_bytes < estimate.lsmr_schwarz_bytes);
+        assert!(estimate.rhs_copy_bytes > 0);
+        assert!(estimate.krylov_bytes > estimate.rhs_copy_bytes);
+        assert!(estimate.topology_bytes > 0);
+        assert!(estimate.thread_reduction_bytes > 0);
+        assert!(estimate.borrowed_code_copy_avoided_bytes > 0);
+    }
+
+    #[test]
+    fn joint_budget_selects_only_complete_solver_plans() {
+        let estimate = estimate_fe_solver_memory(100_000, 2, &[10_000, 4_000], 4, Some(4))
+            .expect("solver estimate");
+        let execution_bytes = 400_000_000_u128;
+        let budget = FeSolverMemoryBudget {
+            execution_bytes,
+            usable_bytes: execution_bytes + estimate.cg_bytes,
+        };
+        assert!(budget.fits(estimate.cg_bytes));
+        assert!(!budget.fits(estimate.lsmr_schwarz_bytes));
+        assert!(!FeSolverMemoryBudget {
+            execution_bytes: u128::MAX,
+            usable_bytes: u128::MAX,
+        }
+        .fits(1));
     }
 
     #[test]
