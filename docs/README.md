@@ -3,6 +3,12 @@
 ## Start here
 
 - [`../README.md`](../README.md) — repository boundary and common commands.
+- [`user_guide.md`](user_guide.md) — complete public syntax, absorbed-term
+  notation, inference, saved outputs, and benchmark guidance.
+- [`../stata/fereg.sthlp`](../stata/fereg.sthlp) — installed help with twelve
+  self-contained examples.
+- [`../stata/fereg_postestimation.sthlp`](../stata/fereg_postestimation.sthlp)
+  — prediction, `test`, and `estat summarize`.
 - [`../AGENTS.md`](../AGENTS.md) — governing implementation specification.
 - [`../STATUS.md`](../STATUS.md) — sole mutable development status and resume
   point.
@@ -34,6 +40,6 @@
 - [`upstream_map.md`](upstream_map.md)
 - [`stata_parser_review.md`](stata_parser_review.md)
 
-`STATUS.md` records current progress. The documents in this directory describe
-contracts and design; they should not contain competing live milestone or
-handover state.
+`STATUS.md` records current progress. The user guide and Stata help describe the
+public command. The remaining documents in this directory describe contracts
+and design; they should not contain competing live milestone or handover state.

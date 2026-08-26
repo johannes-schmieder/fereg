@@ -23,8 +23,8 @@ program define _fereg_estimate_public, eclass
     }
     local solver_mode = lower(strtrim(`"`solver'"'))
     if `"`solver_mode'"' == "" local solver_mode "auto"
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cg", "it", "squarem") {
-        di as error "solver() must be auto, map, lsmr, cg, it, or squarem"
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "cg", "it", "squarem") {
+        di as error "solver() must be auto, map, lsmr, cmg, cg, it, or squarem"
         exit 198
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))

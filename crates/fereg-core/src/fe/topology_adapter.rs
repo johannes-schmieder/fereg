@@ -22,7 +22,7 @@ use super::{CategoricalCodeView, CategoricalTopologyRegistry};
 pub fn borrow_categorical_topology_design<'a>(
     nobs: usize,
     registry: &'a CategoricalTopologyRegistry,
-    source_table: &'a [CategoricalCodeView<'a>],
+    source_table: &[CategoricalCodeView<'a>],
     effect_to_topology: &[usize],
 ) -> Result<BorrowedInterceptFeDesign<'a>> {
     let mut reservation = SystemTopologyAdapterReservation;
@@ -62,7 +62,7 @@ impl TopologyAdapterReservation for SystemTopologyAdapterReservation {
 fn borrow_categorical_topology_design_with_reservation<'a, R: TopologyAdapterReservation>(
     nobs: usize,
     registry: &'a CategoricalTopologyRegistry,
-    source_table: &'a [CategoricalCodeView<'a>],
+    source_table: &[CategoricalCodeView<'a>],
     effect_to_topology: &[usize],
     reservation: &mut R,
 ) -> Result<BorrowedInterceptFeDesign<'a>> {

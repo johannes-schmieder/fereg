@@ -57,6 +57,14 @@ foreach method in map cg it squarem {
     assert mreldif(e(V), __frg_V_auto) <= 1e-6
     assert e(fereg_solver)[1,4] == 2
 }
+quietly fereg y c.x1 c.x2, absorb(worker firm) ///
+    memory(fast) threads(2) solver(cmg)
+assert `"`e(fereg_solver_requested)'"' == "cmg"
+assert e(fereg_solver)[1,1] == 7
+assert e(fereg_solver)[1,2] == 7
+assert mreldif(e(b), __frg_b_auto) <= 1e-7
+assert mreldif(e(V), __frg_V_auto) <= 1e-6
+assert e(fereg_solver)[1,4] == 2
 foreach preconditioner in off diagonal schwarz auto {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(lsmr) ///

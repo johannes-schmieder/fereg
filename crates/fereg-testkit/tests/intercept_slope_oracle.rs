@@ -2,16 +2,38 @@ use fereg_core::CategoricalTopologyDofPolicy;
 use fereg_core::{
     fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
     AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
-    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsFitStatus,
-    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
 };
 
 const TOLERANCE: f64 = 2e-8;
+
+#[test]
+fn cmg_rejects_absorbed_slopes_before_estimation() {
+    let (base_y, base_x1, base_firm, base_time, base_worker) = overabsorbed_case();
+    let mut y = base_y.clone();
+    let mut x1 = base_x1.clone();
+    let mut firm = base_firm.clone();
+    let mut time = base_time.clone();
+    let mut worker = base_worker.clone();
+    y.extend_from_slice(&base_y);
+    x1.extend_from_slice(&base_x1);
+    firm.extend_from_slice(&base_firm);
+    time.extend_from_slice(&base_time);
+    worker.extend_from_slice(&base_worker);
+    let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
+    let mut config = PreparedOlsUnadjustedConfig::default();
+    config.fit.absorb.solver = FeSolverKind::Cmg;
+    let error = fit_prepared_categorical_ols_unadjusted_map(&prepared, config)
+        .expect_err("CMG slope eligibility");
+    assert_eq!(error.code, ErrorCode::Unsupported);
+    assert!(error.message.contains("absorbed slopes are unsupported"));
+}
 
 #[test]
 fn slope_only_plus_intercept_case_matches_explicit_dummy_oracle() {

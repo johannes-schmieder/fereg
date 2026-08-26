@@ -122,6 +122,10 @@ pub fn absorb_fixed_effects(
         FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
             absorb_accelerated_map(design, weights, values, config.map, config.solver)
         }
+        FeSolverKind::Cmg => Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "solver(cmg) requires a prepared intercept-only categorical topology",
+        )),
         FeSolverKind::Auto => absorb_auto(design, weights, values, config),
     }
 }

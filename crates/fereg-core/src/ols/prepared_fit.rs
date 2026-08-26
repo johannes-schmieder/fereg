@@ -1,6 +1,9 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{AbsorbConfig, BorrowedMapWeights, FeCertificate, SolveReport, SolveStopReason};
+use crate::fe::{
+    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, FeCertificate,
+    FeSolverKind, SolveReport, SolveStopReason,
+};
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
@@ -544,6 +547,44 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     })?
 }
 
+fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
+    prepared: &'a P,
+    weights: BorrowedMapWeights<'a>,
+    config: PreparedOlsFitConfig,
+) -> Result<Option<CmgAbsorber<'a>>> {
+    if config.absorb.solver != FeSolverKind::Cmg {
+        return Ok(None);
+    }
+    prepared
+        .fit_build_cmg_absorber(
+            weights,
+            CmgConfig {
+                map: config.absorb.map,
+                threads: config.execution.threads,
+                batch_size: config.execution.poolsize,
+            },
+        )
+        .map(Some)
+}
+
+fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: AbsorbConfig,
+    cmg: &mut Option<CmgAbsorber<'_>>,
+    initial: bool,
+) -> Result<CertifiedBorrowedMap> {
+    if let Some(session) = cmg.as_mut() {
+        return session.absorb(values);
+    }
+    if initial {
+        prepared.fit_absorb_initial_matrix(weights, values, config)
+    } else {
+        prepared.fit_absorb_matrix(weights, values, config)
+    }
+}
+
 fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     config: PreparedOlsFitConfig,
@@ -562,6 +603,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let weights = normalized_weights(prepared)?;
+    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
 
     let raw = prepared.fit_build_rhs()?;
     let generated_columns = prepared.fit_model().columns.len();
@@ -610,7 +652,14 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             },
         )?;
     }
-    let absorbed = prepared.fit_absorb_initial_matrix(weights.borrowed(), raw, config.absorb)?;
+    let absorbed = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        raw,
+        config.absorb,
+        &mut cmg,
+        true,
+    )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -685,8 +734,14 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     }
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
-    let residual_absorbed =
-        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.absorb)?;
+    let residual_absorbed = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        residual_matrix,
+        config.absorb,
+        &mut cmg,
+        false,
+    )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS residual absorption returned an uncertified result",
@@ -862,12 +917,19 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let weights = normalized_weights(prepared)?;
+    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
 
     let raw_outcome = prepared.fit_build_rhs_block(0, 0, true)?;
-    let absorbed_outcome =
-        prepared.fit_absorb_matrix(weights.borrowed(), raw_outcome, config.absorb)?;
+    let absorbed_outcome = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        raw_outcome,
+        config.absorb,
+        &mut cmg,
+        false,
+    )?;
     if !absorbed_outcome.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory outcome absorption was not certified",
@@ -918,8 +980,14 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
             }
             *reference_norm = weighted_slice_norm(&column_buffer, weights)?;
         }
-        let absorbed_block =
-            prepared.fit_absorb_matrix(weights.borrowed(), raw_block, config.absorb)?;
+        let absorbed_block = absorb_fit_matrix(
+            prepared,
+            weights.borrowed(),
+            raw_block,
+            config.absorb,
+            &mut cmg,
+            false,
+        )?;
         if !absorbed_block.report().certified() {
             return Err(invalid_data(
                 "prepared OLS low-memory regressor-block absorption was not certified",
@@ -1010,8 +1078,14 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         ));
     }
     let residual_matrix = DenseMatrix::from_row_major(rows, 1, raw_residuals)?;
-    let residual_absorbed =
-        prepared.fit_absorb_matrix(weights.borrowed(), residual_matrix, config.absorb)?;
+    let residual_absorbed = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        residual_matrix,
+        config.absorb,
+        &mut cmg,
+        false,
+    )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory residual absorption was not certified",
@@ -1072,16 +1146,26 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
 }
 
 fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
+    let cmg_fallback_mix = target.requested_solver == FeSolverKind::Cmg
+        && source.requested_solver == FeSolverKind::Cmg
+        && matches!(target.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg)
+        && matches!(source.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg);
     if !target.certified()
         || !source.certified()
         || target.requested_solver != source.requested_solver
-        || target.used_solver != source.used_solver
+        || (target.used_solver != source.used_solver && !cmg_fallback_mix)
         || target.requested_preconditioner != source.requested_preconditioner
         || target.used_preconditioner != source.used_preconditioner
     {
         return Err(invalid_data(
             "prepared OLS low-memory solver reports are inconsistent",
         ));
+    }
+    if cmg_fallback_mix
+        && (target.used_solver == FeSolverKind::Cg || source.used_solver == FeSolverKind::Cg)
+    {
+        target.used_solver = FeSolverKind::Cg;
+        target.fallback_used = true;
     }
     target.iterations = target.iterations.max(source.iterations);
     target.stop_reason = match (target.stop_reason, source.stop_reason) {

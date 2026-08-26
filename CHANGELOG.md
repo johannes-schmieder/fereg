@@ -2,8 +2,8 @@
 
 ## 0.5.0 beta — unreleased
 
-- Activated public `fereg` OLS/WLS with action protocol 1.3, OLS result wire
-  1.3, and model wire 2.1 while retaining receipt-last atomic publication and
+- Activated public `fereg` OLS/WLS with action protocol 1.4, OLS result wire
+  1.4, and model wire 2.1 while retaining receipt-last atomic publication and
   rollback on error, panic, store failure, or Break.
 - Completed the frozen OLS 1.0 surface: ordinary factors/interactions,
   numeric/string/interacted fixed effects, absorbed slopes, singleton and DoF
@@ -38,6 +38,14 @@
   freeze runner with reghdfe 6.14.1 scientific preflights, gregress 1.11.8
   diagnostics, dataset/dependency hashes, cold/warm dispersion, native timing,
   and explicit recording of failed exploratory arms.
+- Added the explicit local-prototype `solver(cmg)` path for sparse AKM models:
+  one reusable worker--firm CMG hierarchy, batched PCG right-hand sides, a
+  rank-revealing Schur layer for up to 64 nuisance FE columns, and unchanged
+  observation-space certification with short CG polishing or visible fallback.
+- Reworked the public README and Stata help into a complete user-facing guide,
+  with explicit absorbed-term grammar, option defaults, weight and
+  postestimation semantics, twelve self-contained examples, and a reproducible
+  comparison against reghdfe and Stata 19 HDFE areg.
 - Reused the QR-reconstructed within residual, refined it only when its fresh
   FE certificate fails, reduced redundant sample transport and moment scans,
   and selected a 65,536-row parallel projection cutoff from matched one-/eight-

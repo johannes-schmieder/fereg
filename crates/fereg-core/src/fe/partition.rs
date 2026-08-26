@@ -80,7 +80,7 @@ impl CategoricalPartition {
     /// Borrow the authoritative code slice and revalidate all source-table
     /// identities and dimensions. Single-source output aliases the raw source;
     /// interaction output aliases this partition's sole owned N-vector.
-    pub fn codes<'a>(&'a self, sources: &'a [CategoricalCodeView<'a>]) -> Result<&'a [u32]> {
+    pub fn codes<'a>(&'a self, sources: &[CategoricalCodeView<'a>]) -> Result<&'a [u32]> {
         match &self.key {
             CategoricalPartitionKey::Single(index) => {
                 let source = checked_source(sources, *index, "single categorical partition")?;
@@ -262,7 +262,7 @@ fn validate_source(source: CategoricalCodeView<'_>, label: &str) -> Result<()> {
 }
 
 fn checked_source<'a>(
-    sources: &'a [CategoricalCodeView<'a>],
+    sources: &[CategoricalCodeView<'a>],
     index: usize,
     label: &str,
 ) -> Result<CategoricalCodeView<'a>> {

@@ -1,0 +1,1318 @@
+//! Certified CMG-PCG absorption for sparse AKM-style categorical designs.
+//!
+//! Two high-cardinality intercept effects define a weighted bipartite graph.
+//! Additional small intercept effects are eliminated through a dense Schur
+//! complement. One graph hierarchy and workspace pool are retained for the
+//! complete prepared OLS fit, including low-memory blocks and residual polish.
+
+use std::time::Instant;
+
+use cmg::{
+    CmgOptions, CmgPreconditioner, Laplacian, ParallelExecutor, ParallelOptions, ParallelPcgPolicy,
+    ParallelPcgSolver, ParallelPcgWorkspace, PcgOptions,
+};
+
+use crate::data::DenseMatrix;
+use crate::error::{ErrorCode, FeregError, Result};
+use crate::options::ThreadConfig;
+
+use super::{
+    absorb_borrowed_intercept_map_certified,
+    absorb_borrowed_intercept_map_with_structural_constant_certified,
+    borrowed_map::polish_borrowed_intercept_cg_with_reference_norms_certified,
+    BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap, FeSolverKind, MapConfig,
+};
+
+const MAX_NUISANCE_COLUMNS: usize = 64;
+const PCG_TOLERANCE_MULTIPLIER: f64 = 0.1;
+const PCG_TOLERANCE_FLOOR: f64 = 32.0 * f64::EPSILON;
+
+/// Internal execution policy for one prepared CMG absorption session.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CmgConfig {
+    pub map: MapConfig,
+    pub threads: ThreadConfig,
+    pub batch_size: usize,
+}
+
+impl CmgConfig {
+    fn pcg_options(self) -> PcgOptions {
+        PcgOptions {
+            relative_tolerance: (self.map.tolerance * PCG_TOLERANCE_MULTIPLIER)
+                .max(PCG_TOLERANCE_FLOOR),
+            max_iterations: self.map.max_iterations,
+            ..PcgOptions::default()
+        }
+    }
+}
+
+/// Fit-lifetime CMG state. The borrowed design owns only small term views;
+/// observation codes and membership remain in prepared data.
+pub(crate) struct CmgAbsorber<'a> {
+    design: BorrowedInterceptFeDesign<'a>,
+    weights: BorrowedMapWeights<'a>,
+    weight_scale: f64,
+    config: CmgConfig,
+    route: CmgRoute,
+    pending_setup_seconds: f64,
+    pending_setup_metrics: CmgSolveMetrics,
+    structural_constant_if_empty: bool,
+}
+
+enum CmgRoute {
+    Direct,
+    Graph(GraphCmg),
+    Failed(String),
+}
+
+struct GraphCmg {
+    core_effects: [usize; 2],
+    nuisance: Vec<NuisanceColumn>,
+    nuisance_factor: PivotedPsdFactor,
+    solver: ParallelPcgSolver,
+    workspace: ParallelPcgWorkspace,
+    setup_iterations: usize,
+    setup_backward_error: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct NuisanceColumn {
+    effect: usize,
+    level: u32,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct CmgSolveMetrics {
+    iterations: usize,
+    backward_error: f64,
+}
+
+impl CmgSolveMetrics {
+    fn include(&mut self, iterations: usize, backward_error: f64) {
+        self.iterations = self.iterations.max(iterations);
+        self.backward_error = self.backward_error.max(backward_error);
+    }
+}
+
+impl<'a> CmgAbsorber<'a> {
+    pub(crate) fn build(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+    ) -> Result<Self> {
+        validate_config(config)?;
+        let weight_scale = validate_weights(weights, design.nobs())?;
+        let setup_started = Instant::now();
+        let route = if design.effects().len() < 2 {
+            CmgRoute::Direct
+        } else {
+            validate_nuisance_limit(&design)?;
+            match build_graph_route(&design, weights, weight_scale, config) {
+                Ok(graph) => CmgRoute::Graph(graph),
+                Err(error) => CmgRoute::Failed(error.to_string()),
+            }
+        };
+        let pending_setup_metrics = match &route {
+            CmgRoute::Graph(graph) => CmgSolveMetrics {
+                iterations: graph.setup_iterations,
+                backward_error: graph.setup_backward_error,
+            },
+            CmgRoute::Direct | CmgRoute::Failed(_) => CmgSolveMetrics::default(),
+        };
+        Ok(Self {
+            design,
+            weights,
+            weight_scale,
+            config,
+            route,
+            pending_setup_seconds: setup_started.elapsed().as_secs_f64(),
+            pending_setup_metrics,
+            structural_constant_if_empty,
+        })
+    }
+
+    /// Residualize one owned matrix. Failure never exposes a partially updated
+    /// matrix to the caller; a valid partial CMG projection can still seed the
+    /// existing certified CG fallback.
+    pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
+        if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+            return Err(invalid_argument(
+                "CMG design and matrix dimensions are inconsistent",
+            ));
+        }
+        if values.as_slice().iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data("CMG input values must be finite"));
+        }
+        let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
+        let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+        let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
+
+        if matches!(&self.route, CmgRoute::Direct) {
+            let direct = if self.structural_constant_if_empty {
+                absorb_borrowed_intercept_map_with_structural_constant_certified(
+                    &self.design,
+                    self.weights,
+                    values,
+                    self.config.map,
+                )?
+            } else {
+                absorb_borrowed_intercept_map_certified(
+                    &self.design,
+                    self.weights,
+                    values,
+                    self.config.map,
+                )?
+            };
+            let (residualized, mut report) = direct.into_parts();
+            report.requested_solver = FeSolverKind::Cmg;
+            report.setup_seconds += setup_seconds;
+            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
+        }
+
+        if let CmgRoute::Failed(message) = &self.route {
+            let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                &self.design,
+                self.weights,
+                values,
+                self.config.map,
+                &reference_norms,
+            )?;
+            let (residualized, mut report) = fallback.into_parts();
+            report.requested_solver = FeSolverKind::Cmg;
+            report.used_solver = FeSolverKind::Cg;
+            report.fallback_used = true;
+            report.setup_seconds += setup_seconds;
+            report.warnings.insert(
+                0,
+                format!("CMG setup failed ({message}); certified with CG"),
+            );
+            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
+        }
+
+        let solve_started = Instant::now();
+        let mut candidate = values;
+        let bulk = match &mut self.route {
+            CmgRoute::Graph(graph) => graph.project_matrix(
+                &self.design,
+                self.weights,
+                self.weight_scale,
+                &mut candidate,
+                self.config,
+            ),
+            CmgRoute::Direct => unreachable!("direct CMG route returned above"),
+            CmgRoute::Failed(_) => unreachable!("failed CMG route returned above"),
+        };
+        let bulk_seconds = solve_started.elapsed().as_secs_f64();
+
+        match bulk {
+            Ok(mut metrics) => {
+                metrics.include_from(setup_metrics);
+                let polished = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                    &self.design,
+                    self.weights,
+                    candidate,
+                    self.config.map,
+                    &reference_norms,
+                )?;
+                let (residualized, mut report) = polished.into_parts();
+                let polish_iterations = report.iterations;
+                report.requested_solver = FeSolverKind::Cmg;
+                report.used_solver = FeSolverKind::Cmg;
+                report.iterations = metrics.iterations.saturating_add(polish_iterations);
+                report.normal_equation_residual =
+                    metrics.backward_error.max(report.normal_equation_residual);
+                report.setup_seconds = setup_seconds;
+                report.solve_seconds += bulk_seconds;
+                if polish_iterations > 0 {
+                    report.warnings.push(format!(
+                        "CMG bulk projection required {polish_iterations} certified CG polishing iterations"
+                    ));
+                }
+                CertifiedBorrowedMap::from_certified_parts(residualized, report)
+            }
+            Err(error) => {
+                let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                    &self.design,
+                    self.weights,
+                    candidate,
+                    self.config.map,
+                    &reference_norms,
+                )?;
+                let (residualized, mut report) = fallback.into_parts();
+                report.requested_solver = FeSolverKind::Cmg;
+                report.used_solver = FeSolverKind::Cg;
+                report.fallback_used = true;
+                report.setup_seconds += setup_seconds;
+                report.solve_seconds += bulk_seconds;
+                report
+                    .warnings
+                    .insert(0, format!("CMG path failed ({error}); certified with CG"));
+                CertifiedBorrowedMap::from_certified_parts(residualized, report)
+            }
+        }
+    }
+}
+
+impl GraphCmg {
+    fn project_matrix(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        weight_scale: f64,
+        values: &mut DenseMatrix,
+        config: CmgConfig,
+    ) -> Result<CmgSolveMetrics> {
+        let mut metrics = CmgSolveMetrics::default();
+        let core_metrics =
+            self.project_core_matrix(design, weights, weight_scale, values, config)?;
+        metrics.include_from(core_metrics);
+        if self.nuisance.is_empty() || self.nuisance_factor.rank == 0 {
+            return Ok(metrics);
+        }
+
+        let columns = values.ncols();
+        for start in (0..columns).step_by(config.batch_size) {
+            let end = start.saturating_add(config.batch_size).min(columns);
+            let width = end - start;
+            let mut gamma = Vec::new();
+            gamma
+                .try_reserve_exact(width)
+                .map_err(|_| allocation("unable to reserve CMG nuisance coefficients"))?;
+            for column in start..end {
+                let moments = nuisance_moments(
+                    design,
+                    &self.nuisance,
+                    weights,
+                    weight_scale,
+                    values,
+                    column,
+                )?;
+                gamma.push(self.nuisance_factor.solve(&moments)?);
+            }
+            let mut correction = DenseMatrix::zeros(values.nrows(), width)?;
+            for row in 0..values.nrows() {
+                for (local, coefficients) in gamma.iter().enumerate() {
+                    correction[(row, local)] =
+                        nuisance_value(design, &self.nuisance, coefficients, row)?;
+                }
+            }
+            let correction_metrics =
+                self.project_core_matrix(design, weights, weight_scale, &mut correction, config)?;
+            metrics.include_from(correction_metrics);
+            for row in 0..values.nrows() {
+                for local in 0..width {
+                    let updated = values[(row, start + local)] - correction[(row, local)];
+                    if !updated.is_finite() {
+                        return Err(invalid_data(
+                            "CMG nuisance projection produced a nonfinite residual",
+                        ));
+                    }
+                    values[(row, start + local)] = updated;
+                }
+            }
+        }
+        Ok(metrics)
+    }
+
+    fn project_core_matrix(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        weight_scale: f64,
+        values: &mut DenseMatrix,
+        config: CmgConfig,
+    ) -> Result<CmgSolveMetrics> {
+        let mut metrics = CmgSolveMetrics::default();
+        for start in (0..values.ncols()).step_by(config.batch_size) {
+            let end = start.saturating_add(config.batch_size).min(values.ncols());
+            let right_hand_sides = build_value_rhs_batch(
+                design,
+                self.core_effects,
+                weights,
+                weight_scale,
+                values,
+                start,
+                end,
+            )?;
+            let solved = self
+                .solver
+                .solve_batch_with_workspace(
+                    &right_hand_sides,
+                    config.pcg_options(),
+                    &mut self.workspace,
+                )
+                .map_err(cmg_error)?;
+            for (local, solution) in solved.results().iter().enumerate() {
+                metrics.include(solution.iterations(), solution.backward_error());
+                subtract_core_fit(
+                    design,
+                    self.core_effects,
+                    values,
+                    start + local,
+                    solution.solution(),
+                )?;
+            }
+        }
+        Ok(metrics)
+    }
+}
+
+impl CmgSolveMetrics {
+    fn include_from(&mut self, other: Self) {
+        self.include(other.iterations, other.backward_error);
+    }
+}
+
+fn build_graph_route(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    config: CmgConfig,
+) -> Result<GraphCmg> {
+    let mut effect_order: Vec<usize> = (0..design.effects().len()).collect();
+    effect_order.sort_by(|left, right| {
+        design.effects()[*right]
+            .n_levels()
+            .cmp(&design.effects()[*left].n_levels())
+            .then_with(|| left.cmp(right))
+    });
+    let core_effects = [effect_order[0], effect_order[1]];
+    let nuisance = build_nuisance_columns(design, &effect_order[2..])?;
+
+    let left_levels = design.effects()[core_effects[0]].n_levels();
+    let right_levels = design.effects()[core_effects[1]].n_levels();
+    let vertices = left_levels
+        .checked_add(right_levels)
+        .ok_or_else(|| allocation("CMG graph vertex count overflows"))?;
+    let parallel = ParallelOptions {
+        threads: config.threads.resolved(),
+        ..ParallelOptions::default()
+    };
+    let executor = ParallelExecutor::new(parallel).map_err(cmg_error)?;
+    let left_codes = design.effects()[core_effects[0]].codes();
+    let right_codes = design.effects()[core_effects[1]].codes();
+    let edges = (0..design.nobs()).map(|row| {
+        (
+            left_codes[row] as usize,
+            left_levels + right_codes[row] as usize,
+            normalized_weight(weights, weight_scale, row),
+        )
+    });
+    let graph =
+        Laplacian::from_edges_with_executor(vertices, edges, &executor).map_err(cmg_error)?;
+    let preconditioner =
+        CmgPreconditioner::build_with_executor(&graph, CmgOptions::default(), &executor)
+            .map_err(cmg_error)?;
+    let solver = ParallelPcgSolver::from_preconditioner(
+        preconditioner,
+        executor,
+        ParallelPcgPolicy::default(),
+    )
+    .map_err(cmg_error)?;
+    let workspace = solver.workspace();
+    let mut route = GraphCmg {
+        core_effects,
+        nuisance,
+        nuisance_factor: PivotedPsdFactor::empty(),
+        solver,
+        workspace,
+        setup_iterations: 0,
+        setup_backward_error: 0.0,
+    };
+    let (factor, metrics) =
+        build_nuisance_factor(design, weights, weight_scale, &mut route, config)?;
+    route.nuisance_factor = factor;
+    route.setup_iterations = metrics.iterations;
+    route.setup_backward_error = metrics.backward_error;
+    Ok(route)
+}
+
+fn build_nuisance_columns(
+    design: &BorrowedInterceptFeDesign<'_>,
+    effect_order: &[usize],
+) -> Result<Vec<NuisanceColumn>> {
+    let count = effect_order.iter().try_fold(0_usize, |total, effect| {
+        total
+            .checked_add(design.effects()[*effect].n_levels().saturating_sub(1))
+            .ok_or_else(|| allocation("CMG nuisance dimension overflows"))
+    })?;
+    if count > MAX_NUISANCE_COLUMNS {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            format!(
+                "solver(cmg) supports at most {MAX_NUISANCE_COLUMNS} non-base levels across additional absorbed effects; found {count}"
+            ),
+        ));
+    }
+    let mut columns = Vec::new();
+    columns
+        .try_reserve_exact(count)
+        .map_err(|_| allocation("unable to reserve CMG nuisance column map"))?;
+    for effect in effect_order {
+        for level in 1..design.effects()[*effect].n_levels() {
+            columns.push(NuisanceColumn {
+                effect: *effect,
+                level: u32::try_from(level)
+                    .map_err(|_| allocation("CMG nuisance level exceeds u32"))?,
+            });
+        }
+    }
+    Ok(columns)
+}
+
+fn validate_nuisance_limit(design: &BorrowedInterceptFeDesign<'_>) -> Result<()> {
+    let mut effect_order: Vec<usize> = (0..design.effects().len()).collect();
+    effect_order.sort_by(|left, right| {
+        design.effects()[*right]
+            .n_levels()
+            .cmp(&design.effects()[*left].n_levels())
+            .then_with(|| left.cmp(right))
+    });
+    build_nuisance_columns(design, &effect_order[2..]).map(|_| ())
+}
+
+fn build_nuisance_factor(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    graph: &mut GraphCmg,
+    config: CmgConfig,
+) -> Result<(PivotedPsdFactor, CmgSolveMetrics)> {
+    let dimension = graph.nuisance.len();
+    if dimension == 0 {
+        return Ok((PivotedPsdFactor::empty(), CmgSolveMetrics::default()));
+    }
+    let square = dimension
+        .checked_mul(dimension)
+        .ok_or_else(|| allocation("CMG nuisance Schur dimensions overflow"))?;
+    let mut schur = zero_vec(square, "unable to reserve CMG nuisance Schur matrix")?;
+    let mut corrections = zero_vec(square, "unable to reserve CMG nuisance Schur corrections")?;
+    let mut metrics = CmgSolveMetrics::default();
+
+    for start in (0..dimension).step_by(config.batch_size) {
+        let end = start.saturating_add(config.batch_size).min(dimension);
+        let right_hand_sides = build_nuisance_rhs_batch(
+            design,
+            graph.core_effects,
+            &graph.nuisance,
+            weights,
+            weight_scale,
+            start,
+            end,
+        )?;
+        let solved = graph
+            .solver
+            .solve_batch_with_workspace(
+                &right_hand_sides,
+                config.pcg_options(),
+                &mut graph.workspace,
+            )
+            .map_err(cmg_error)?;
+        for (local, solution) in solved.results().iter().enumerate() {
+            metrics.include(solution.iterations(), solution.backward_error());
+            let column = start + local;
+            accumulate_schur_column(
+                design,
+                graph.core_effects,
+                &graph.nuisance,
+                weights,
+                weight_scale,
+                column,
+                solution.solution(),
+                &mut schur,
+                &mut corrections,
+            )?;
+        }
+    }
+    for left in 0..dimension {
+        for right in left..dimension {
+            let forward = schur[left * dimension + right] + corrections[left * dimension + right];
+            let reverse = schur[right * dimension + left] + corrections[right * dimension + left];
+            let symmetric = 0.5 * (forward + reverse);
+            if !symmetric.is_finite() {
+                return Err(invalid_data("CMG nuisance Schur matrix is nonfinite"));
+            }
+            schur[left * dimension + right] = symmetric;
+            schur[right * dimension + left] = symmetric;
+        }
+    }
+    Ok((
+        PivotedPsdFactor::factor(schur, dimension, config.map.tolerance)?,
+        metrics,
+    ))
+}
+
+fn build_value_rhs_batch(
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    values: &DenseMatrix,
+    start: usize,
+    end: usize,
+) -> Result<Vec<Vec<f64>>> {
+    let vertices = core_vertices(design, core)?;
+    let mut batch = zero_matrix_vectors(end - start, vertices, "unable to reserve CMG RHS batch")?;
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..values.nrows() {
+        let weight = normalized_weight(weights, weight_scale, row);
+        for (local, column) in (start..end).enumerate() {
+            let contribution = weight * values[(row, column)];
+            batch[local][left[row] as usize] += contribution;
+            batch[local][right_offset + right[row] as usize] -= contribution;
+        }
+    }
+    validate_finite_vectors(&batch, "CMG RHS accumulation is nonfinite")?;
+    Ok(batch)
+}
+
+fn build_nuisance_rhs_batch(
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    nuisance: &[NuisanceColumn],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    start: usize,
+    end: usize,
+) -> Result<Vec<Vec<f64>>> {
+    let vertices = core_vertices(design, core)?;
+    let mut batch = zero_matrix_vectors(
+        end - start,
+        vertices,
+        "unable to reserve CMG nuisance RHS batch",
+    )?;
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..design.nobs() {
+        let weight = normalized_weight(weights, weight_scale, row);
+        for (local, column) in nuisance[start..end].iter().enumerate() {
+            if design.effects()[column.effect].codes()[row] == column.level {
+                batch[local][left[row] as usize] += weight;
+                batch[local][right_offset + right[row] as usize] -= weight;
+            }
+        }
+    }
+    validate_finite_vectors(&batch, "CMG nuisance RHS accumulation is nonfinite")?;
+    Ok(batch)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn accumulate_schur_column(
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    nuisance: &[NuisanceColumn],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    column: usize,
+    solution: &[f64],
+    schur: &mut [f64],
+    corrections: &mut [f64],
+) -> Result<()> {
+    let dimension = nuisance.len();
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..design.nobs() {
+        let indicator =
+            if design.effects()[nuisance[column].effect].codes()[row] == nuisance[column].level {
+                1.0
+            } else {
+                0.0
+            };
+        let within = indicator
+            - (solution[left[row] as usize] - solution[right_offset + right[row] as usize]);
+        let weighted = normalized_weight(weights, weight_scale, row) * within;
+        if !weighted.is_finite() {
+            return Err(invalid_data("CMG nuisance Schur contribution is nonfinite"));
+        }
+        for (other, nuisance_column) in nuisance.iter().enumerate() {
+            if design.effects()[nuisance_column.effect].codes()[row] == nuisance_column.level {
+                compensated_add(
+                    weighted,
+                    &mut schur[other * dimension + column],
+                    &mut corrections[other * dimension + column],
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn nuisance_moments(
+    design: &BorrowedInterceptFeDesign<'_>,
+    nuisance: &[NuisanceColumn],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    values: &DenseMatrix,
+    column: usize,
+) -> Result<Vec<f64>> {
+    let mut moments = zero_vec(
+        nuisance.len(),
+        "unable to reserve CMG nuisance moment vector",
+    )?;
+    let mut corrections = zero_vec(
+        nuisance.len(),
+        "unable to reserve CMG nuisance moment corrections",
+    )?;
+    for row in 0..values.nrows() {
+        let weighted = normalized_weight(weights, weight_scale, row) * values[(row, column)];
+        for (index, nuisance_column) in nuisance.iter().enumerate() {
+            if design.effects()[nuisance_column.effect].codes()[row] == nuisance_column.level {
+                compensated_add(weighted, &mut moments[index], &mut corrections[index])?;
+            }
+        }
+    }
+    for (moment, correction) in moments.iter_mut().zip(corrections) {
+        *moment += correction;
+        if !moment.is_finite() {
+            return Err(invalid_data("CMG nuisance moment is nonfinite"));
+        }
+    }
+    Ok(moments)
+}
+
+fn nuisance_value(
+    design: &BorrowedInterceptFeDesign<'_>,
+    nuisance: &[NuisanceColumn],
+    coefficients: &[f64],
+    row: usize,
+) -> Result<f64> {
+    if coefficients.len() != nuisance.len() {
+        return Err(invalid_argument(
+            "CMG nuisance coefficient dimensions are inconsistent",
+        ));
+    }
+    let mut value = 0.0;
+    for (index, column) in nuisance.iter().enumerate() {
+        if design.effects()[column.effect].codes()[row] == column.level {
+            value += coefficients[index];
+        }
+    }
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(invalid_data("CMG nuisance fitted value is nonfinite"))
+    }
+}
+
+fn subtract_core_fit(
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    values: &mut DenseMatrix,
+    column: usize,
+    solution: &[f64],
+) -> Result<()> {
+    let vertices = core_vertices(design, core)?;
+    if solution.len() != vertices {
+        return Err(invalid_argument(
+            "CMG solution and graph dimensions are inconsistent",
+        ));
+    }
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..values.nrows() {
+        let fitted = solution[left[row] as usize] - solution[right_offset + right[row] as usize];
+        let residual = values[(row, column)] - fitted;
+        if !residual.is_finite() {
+            return Err(invalid_data("CMG projection produced a nonfinite residual"));
+        }
+        values[(row, column)] = residual;
+    }
+    Ok(())
+}
+
+fn core_vertices(design: &BorrowedInterceptFeDesign<'_>, core: [usize; 2]) -> Result<usize> {
+    design.effects()[core[0]]
+        .n_levels()
+        .checked_add(design.effects()[core[1]].n_levels())
+        .ok_or_else(|| allocation("CMG core vertex count overflows"))
+}
+
+fn validate_config(config: CmgConfig) -> Result<()> {
+    if config.batch_size == 0
+        || !config.map.tolerance.is_finite()
+        || config.map.tolerance <= 0.0
+        || config.map.tolerance >= 1.0
+        || config.map.max_iterations == 0
+    {
+        return Err(invalid_argument("CMG numerical policy is invalid"));
+    }
+    Ok(())
+}
+
+fn validate_weights(weights: BorrowedMapWeights<'_>, nobs: usize) -> Result<f64> {
+    match weights {
+        BorrowedMapWeights::Unit => Ok(1.0),
+        BorrowedMapWeights::Provided(values) => {
+            if values.len() != nobs {
+                return Err(invalid_argument("CMG weight and observation counts differ"));
+            }
+            if values
+                .iter()
+                .any(|weight| !weight.is_finite() || *weight <= 0.0)
+            {
+                return Err(invalid_data("CMG weights must be finite and positive"));
+            }
+            let scale = values.iter().copied().fold(0.0_f64, f64::max);
+            if !scale.is_finite()
+                || scale <= 0.0
+                || values.iter().any(|weight| *weight / scale == 0.0)
+            {
+                return Err(invalid_data("CMG weight normalization failed"));
+            }
+            Ok(scale)
+        }
+    }
+}
+
+fn normalized_weight(weights: BorrowedMapWeights<'_>, scale: f64, row: usize) -> f64 {
+    match weights {
+        BorrowedMapWeights::Unit => 1.0,
+        BorrowedMapWeights::Provided(values) => values[row] / scale,
+    }
+}
+
+fn weighted_column_norms(
+    values: &DenseMatrix,
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+) -> Result<Vec<f64>> {
+    let mut scales = zero_vec(values.ncols(), "unable to reserve CMG column scales")?;
+    for row in 0..values.nrows() {
+        for column in 0..values.ncols() {
+            scales[column] = scales[column].max(values[(row, column)].abs());
+        }
+    }
+    let mut sums = zero_vec(values.ncols(), "unable to reserve CMG column norm sums")?;
+    let mut corrections = zero_vec(
+        values.ncols(),
+        "unable to reserve CMG column norm corrections",
+    )?;
+    for row in 0..values.nrows() {
+        let weight = normalized_weight(weights, weight_scale, row);
+        for column in 0..values.ncols() {
+            if scales[column] != 0.0 {
+                let scaled = values[(row, column)] / scales[column];
+                compensated_add(
+                    weight * scaled * scaled,
+                    &mut sums[column],
+                    &mut corrections[column],
+                )?;
+            }
+        }
+    }
+    for column in 0..values.ncols() {
+        sums[column] = scales[column] * (sums[column] + corrections[column]).sqrt();
+        if !sums[column].is_finite() {
+            return Err(invalid_data("CMG reference norm is nonfinite"));
+        }
+    }
+    Ok(sums)
+}
+
+struct PivotedPsdFactor {
+    dimension: usize,
+    rank: usize,
+    permutation: Vec<usize>,
+    scales: Vec<f64>,
+    lower: Vec<f64>,
+}
+
+impl PivotedPsdFactor {
+    fn empty() -> Self {
+        Self {
+            dimension: 0,
+            rank: 0,
+            permutation: Vec::new(),
+            scales: Vec::new(),
+            lower: Vec::new(),
+        }
+    }
+
+    fn factor(mut gram: Vec<f64>, dimension: usize, tolerance: f64) -> Result<Self> {
+        if gram.len() != dimension.saturating_mul(dimension) {
+            return Err(invalid_argument(
+                "CMG nuisance factor dimensions are inconsistent",
+            ));
+        }
+        let mut scales = zero_vec(dimension, "unable to reserve CMG nuisance scales")?;
+        for index in 0..dimension {
+            let diagonal = gram[index * dimension + index];
+            if !diagonal.is_finite() {
+                return Err(invalid_data("CMG nuisance diagonal is nonfinite"));
+            }
+            scales[index] = diagonal.max(0.0).sqrt();
+        }
+        for row in 0..dimension {
+            for column in 0..dimension {
+                gram[row * dimension + column] = if scales[row] == 0.0 || scales[column] == 0.0 {
+                    0.0
+                } else {
+                    gram[row * dimension + column] / (scales[row] * scales[column])
+                };
+            }
+        }
+        let mut permutation: Vec<usize> = (0..dimension).collect();
+        let mut lower = zero_vec(
+            dimension.saturating_mul(dimension),
+            "unable to reserve CMG nuisance factor",
+        )?;
+        let initial_pivot = (0..dimension)
+            .map(|index| gram[index * dimension + index])
+            .fold(0.0_f64, f64::max);
+        let threshold = initial_pivot * tolerance.max(f64::EPSILON);
+        let mut rank = 0;
+        for step in 0..dimension {
+            let mut pivot = step;
+            let mut pivot_value = gram[step * dimension + step];
+            for candidate in (step + 1)..dimension {
+                let value = gram[candidate * dimension + candidate];
+                if value > pivot_value {
+                    pivot = candidate;
+                    pivot_value = value;
+                }
+            }
+            if pivot_value < -threshold {
+                return Err(invalid_data(
+                    "CMG nuisance Schur complement is materially indefinite",
+                ));
+            }
+            if pivot_value <= threshold {
+                break;
+            }
+            if pivot != step {
+                swap_symmetric(&mut gram, dimension, step, pivot);
+                permutation.swap(step, pivot);
+                for column in 0..step {
+                    lower.swap(step * dimension + column, pivot * dimension + column);
+                }
+            }
+            let diagonal = gram[step * dimension + step].sqrt();
+            if !diagonal.is_finite() || diagonal <= 0.0 {
+                return Err(invalid_data("CMG nuisance factor pivot is invalid"));
+            }
+            lower[step * dimension + step] = diagonal;
+            for row in (step + 1)..dimension {
+                lower[row * dimension + step] = gram[row * dimension + step] / diagonal;
+            }
+            for row in (step + 1)..dimension {
+                for column in row..dimension {
+                    let updated = gram[column * dimension + row]
+                        - lower[row * dimension + step] * lower[column * dimension + step];
+                    gram[column * dimension + row] = updated;
+                    gram[row * dimension + column] = updated;
+                }
+            }
+            rank += 1;
+        }
+        Ok(Self {
+            dimension,
+            rank,
+            permutation,
+            scales,
+            lower,
+        })
+    }
+
+    fn solve(&self, rhs: &[f64]) -> Result<Vec<f64>> {
+        if rhs.len() != self.dimension {
+            return Err(invalid_argument(
+                "CMG nuisance solve dimensions are inconsistent",
+            ));
+        }
+        let mut output = zero_vec(self.dimension, "unable to reserve CMG nuisance solution")?;
+        if self.rank == 0 {
+            return Ok(output);
+        }
+        let mut work = zero_vec(self.rank, "unable to reserve CMG nuisance solve work")?;
+        for row in 0..self.rank {
+            let original = self.permutation[row];
+            let scale = self.scales[original];
+            if scale == 0.0 {
+                return Err(invalid_data(
+                    "CMG retained nuisance direction has zero scale",
+                ));
+            }
+            let mut value = rhs[original] / scale;
+            for (column, work_value) in work[..row].iter().copied().enumerate() {
+                value -= self.lower[row * self.dimension + column] * work_value;
+            }
+            work[row] = value / self.lower[row * self.dimension + row];
+        }
+        for row in (0..self.rank).rev() {
+            let mut value = work[row];
+            for (column, work_value) in work
+                .iter()
+                .copied()
+                .enumerate()
+                .take(self.rank)
+                .skip(row + 1)
+            {
+                value -= self.lower[column * self.dimension + row] * work_value;
+            }
+            work[row] = value / self.lower[row * self.dimension + row];
+        }
+        for (position, work_value) in work.iter().copied().enumerate().take(self.rank) {
+            let original = self.permutation[position];
+            output[original] = work_value / self.scales[original];
+            if !output[original].is_finite() {
+                return Err(invalid_data("CMG nuisance solution is nonfinite"));
+            }
+        }
+        Ok(output)
+    }
+}
+
+fn swap_symmetric(matrix: &mut [f64], dimension: usize, left: usize, right: usize) {
+    if left == right {
+        return;
+    }
+    for column in 0..dimension {
+        matrix.swap(left * dimension + column, right * dimension + column);
+    }
+    for row in 0..dimension {
+        matrix.swap(row * dimension + left, row * dimension + right);
+    }
+}
+
+fn zero_vec(elements: usize, label: &'static str) -> Result<Vec<f64>> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(elements)
+        .map_err(|_| allocation(label))?;
+    if values.capacity() < elements {
+        return Err(allocation(label));
+    }
+    values.resize(elements, 0.0);
+    Ok(values)
+}
+
+fn zero_matrix_vectors(rows: usize, columns: usize, label: &'static str) -> Result<Vec<Vec<f64>>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(rows)
+        .map_err(|_| allocation(label))?;
+    for _ in 0..rows {
+        output.push(zero_vec(columns, label)?);
+    }
+    Ok(output)
+}
+
+fn validate_finite_vectors(values: &[Vec<f64>], message: &'static str) -> Result<()> {
+    if values
+        .iter()
+        .flat_map(|value| value.iter())
+        .any(|value| !value.is_finite())
+    {
+        Err(invalid_data(message))
+    } else {
+        Ok(())
+    }
+}
+
+fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+    let updated = *sum + value;
+    let adjustment = if sum.abs() >= value.abs() {
+        (*sum - updated) + value
+    } else {
+        (value - updated) + *sum
+    };
+    *sum = updated;
+    *correction += adjustment;
+    if sum.is_finite() && correction.is_finite() {
+        Ok(())
+    } else {
+        Err(invalid_data("CMG compensated accumulation is nonfinite"))
+    }
+}
+
+fn cmg_error(error: cmg::CmgError) -> FeregError {
+    FeregError::new(ErrorCode::InvalidData, format!("CMG: {error}"))
+}
+
+fn invalid_argument(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn invalid_data(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::InvalidData, message)
+}
+
+fn allocation(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fe::{absorb_borrowed_intercept_cg_certified, BorrowedInterceptEffect, LevelIndex};
+
+    fn config(batch_size: usize) -> CmgConfig {
+        CmgConfig {
+            map: MapConfig {
+                tolerance: 1e-10,
+                max_iterations: 2_000,
+                check_every: 2,
+                symmetric: true,
+            },
+            threads: ThreadConfig::from_requested(1, true).expect("threads"),
+            batch_size,
+        }
+    }
+
+    fn effect<'a>(
+        codes: &'a [u32],
+        levels: usize,
+        index: &'a LevelIndex,
+    ) -> BorrowedInterceptEffect<'a> {
+        BorrowedInterceptEffect::new(codes, levels, index).expect("borrowed effect")
+    }
+
+    fn assert_matrix_close(left: &DenseMatrix, right: &DenseMatrix, tolerance: f64) {
+        assert_eq!((left.nrows(), left.ncols()), (right.nrows(), right.ncols()));
+        let maximum = left
+            .as_slice()
+            .iter()
+            .zip(right.as_slice())
+            .map(|(left, right)| (left - right).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(maximum <= tolerance, "maximum difference {maximum:e}");
+    }
+
+    #[test]
+    fn weighted_two_way_projection_agrees_with_certified_cg() {
+        let worker = [0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
+        let firm = [0, 1, 0, 2, 1, 2, 2, 1, 0, 0, 1, 2];
+        let worker_index = LevelIndex::from_codes(&worker, 3).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 3).expect("firm index");
+        let design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 3, &worker_index),
+                effect(&firm, 3, &firm_index),
+            ],
+        )
+        .expect("design");
+        let reference_design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 3, &worker_index),
+                effect(&firm, 3, &firm_index),
+            ],
+        )
+        .expect("reference design");
+        let weights = [1.0, 1.5, 0.8, 2.0, 1.2, 0.7, 1.8, 1.1, 0.9, 1.4, 1.6, 1.3];
+        let values = DenseMatrix::from_columns(&[
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.37).sin())
+                .collect(),
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.23).cos())
+                .collect(),
+        ])
+        .expect("values");
+        let reference = absorb_borrowed_intercept_cg_certified(
+            &reference_design,
+            BorrowedMapWeights::Provided(&weights),
+            values.clone(),
+            config(2).map,
+        )
+        .expect("CG reference");
+        let mut session = CmgAbsorber::build(
+            design,
+            BorrowedMapWeights::Provided(&weights),
+            config(2),
+            false,
+        )
+        .expect("CMG setup");
+        let result = session.absorb(values).expect("CMG projection");
+        let (result_values, report) = result.into_parts();
+        let (reference_values, _) = reference.into_parts();
+        assert_eq!(report.requested_solver, FeSolverKind::Cmg);
+        assert_eq!(report.used_solver, FeSolverKind::Cmg);
+        assert!(report.certified());
+        assert_matrix_close(&result_values, &reference_values, 5e-9);
+    }
+
+    #[test]
+    fn duplicate_matches_and_disconnected_components_are_supported() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
+        let firm = [0, 0, 1, 1, 2, 2, 3, 3, 1, 0, 3, 2];
+        let worker_index = LevelIndex::from_codes(&worker, 4).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 4).expect("firm index");
+        let design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 4, &worker_index),
+                effect(&firm, 4, &firm_index),
+            ],
+        )
+        .expect("design");
+        let values =
+            DenseMatrix::from_columns(&[(0..worker.len()).map(|row| row as f64 - 3.0).collect()])
+                .expect("values");
+        let mut session = CmgAbsorber::build(design, BorrowedMapWeights::Unit, config(1), false)
+            .expect("CMG setup");
+        let result = session.absorb(values).expect("CMG projection");
+        assert!(result.report().certified());
+        assert_eq!(result.report().used_solver, FeSolverKind::Cmg);
+    }
+
+    #[test]
+    fn multiple_rhs_calls_reuse_one_hierarchy() {
+        let worker = [0, 0, 1, 1, 2, 2, 0, 1, 2];
+        let firm = [0, 1, 0, 1, 1, 2, 2, 2, 0];
+        let worker_index = LevelIndex::from_codes(&worker, 3).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 3).expect("firm index");
+        let design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 3, &worker_index),
+                effect(&firm, 3, &firm_index),
+            ],
+        )
+        .expect("design");
+        let mut session = CmgAbsorber::build(design, BorrowedMapWeights::Unit, config(2), false)
+            .expect("CMG setup");
+        let first = session
+            .absorb(
+                DenseMatrix::from_columns(&[vec![1.0, 0.2, -0.4, 1.3, 2.1, -0.7, 0.9, 1.7, -1.2]])
+                    .expect("first values"),
+            )
+            .expect("first projection");
+        let second = session
+            .absorb(
+                DenseMatrix::from_columns(&[vec![-0.5, 0.1, 0.6, -1.0, 0.8, 1.4, -0.2, 0.7, 1.1]])
+                    .expect("second values"),
+            )
+            .expect("second projection");
+        assert!(first.report().setup_seconds >= 0.0);
+        assert_eq!(second.report().setup_seconds, 0.0);
+        assert!(first.report().certified() && second.report().certified());
+    }
+
+    #[test]
+    fn one_effect_uses_exact_direct_projection_but_retains_cmg_request() {
+        let group = [0, 0, 1, 1, 2, 2];
+        let index = LevelIndex::from_codes(&group, 3).expect("group index");
+        let design = BorrowedInterceptFeDesign::new(group.len(), vec![effect(&group, 3, &index)])
+            .expect("design");
+        let mut session = CmgAbsorber::build(design, BorrowedMapWeights::Unit, config(2), false)
+            .expect("direct setup");
+        let result = session
+            .absorb(
+                DenseMatrix::from_columns(&[vec![1.0, 3.0, 2.0, 6.0, -1.0, 5.0]]).expect("values"),
+            )
+            .expect("direct projection");
+        let (values, report) = result.into_parts();
+        assert_eq!(report.requested_solver, FeSolverKind::Cmg);
+        assert_eq!(report.used_solver, FeSolverKind::Map);
+        assert!(report.certified());
+        assert_eq!(values.as_slice(), &[-1.0, 1.0, -2.0, 2.0, -3.0, 3.0]);
+    }
+
+    #[test]
+    fn absorbed_nuisance_effect_agrees_with_full_multi_effect_cg() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 0, 1, 2, 3, 4];
+        let firm = [0, 1, 0, 2, 1, 3, 2, 3, 0, 1, 2, 3, 0, 1, 2];
+        let year = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2];
+        let wi = LevelIndex::from_codes(&worker, 5).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, 4).expect("firm index");
+        let yi = LevelIndex::from_codes(&year, 3).expect("year index");
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(
+                worker.len(),
+                vec![
+                    effect(&worker, 5, &wi),
+                    effect(&firm, 4, &fi),
+                    effect(&year, 3, &yi),
+                ],
+            )
+            .expect("design")
+        };
+        let values = DenseMatrix::from_columns(&[
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.41).sin() + row as f64 * 0.03)
+                .collect(),
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.17).cos())
+                .collect(),
+        ])
+        .expect("values");
+        let reference = absorb_borrowed_intercept_cg_certified(
+            &make_design(),
+            BorrowedMapWeights::Unit,
+            values.clone(),
+            config(2).map,
+        )
+        .expect("CG reference");
+        let mut session =
+            CmgAbsorber::build(make_design(), BorrowedMapWeights::Unit, config(2), false)
+                .expect("CMG setup");
+        let result = session.absorb(values).expect("CMG projection");
+        let (result_values, report) = result.into_parts();
+        let (reference_values, _) = reference.into_parts();
+        assert!(report.certified());
+        assert_matrix_close(&result_values, &reference_values, 5e-9);
+    }
+
+    #[test]
+    fn nested_rank_deficient_nuisance_effect_is_handled() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
+        let firm = [0, 1, 0, 2, 1, 2, 0, 1, 2, 2, 0, 1];
+        let nested = [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1];
+        let wi = LevelIndex::from_codes(&worker, 4).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, 3).expect("firm index");
+        let ni = LevelIndex::from_codes(&nested, 2).expect("nested index");
+        let design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 4, &wi),
+                effect(&firm, 3, &fi),
+                effect(&nested, 2, &ni),
+            ],
+        )
+        .expect("design");
+        let values = DenseMatrix::from_columns(&[(0..worker.len())
+            .map(|row| (row as f64 * 0.29).sin())
+            .collect()])
+        .expect("values");
+        let mut session = CmgAbsorber::build(design, BorrowedMapWeights::Unit, config(1), false)
+            .expect("CMG setup");
+        let result = session.absorb(values).expect("CMG projection");
+        assert!(result.report().certified());
+    }
+
+    #[test]
+    fn more_than_sixty_four_nuisance_columns_are_rejected() {
+        let rows = 134;
+        let worker: Vec<u32> = (0..rows).map(|row| (row % 67) as u32).collect();
+        let firm: Vec<u32> = (0..rows)
+            .map(|row| ((row + row / 67) % 67) as u32)
+            .collect();
+        let nuisance: Vec<u32> = (0..rows).map(|row| (row % 66) as u32).collect();
+        let wi = LevelIndex::from_codes(&worker, 67).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, 67).expect("firm index");
+        let ni = LevelIndex::from_codes(&nuisance, 66).expect("nuisance index");
+        let design = BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&worker, 67, &wi),
+                effect(&firm, 67, &fi),
+                effect(&nuisance, 66, &ni),
+            ],
+        )
+        .expect("design");
+        let error = match CmgAbsorber::build(design, BorrowedMapWeights::Unit, config(1), false) {
+            Ok(_) => panic!("nuisance limit was not enforced"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(error.message.contains("at most 64"));
+    }
+}

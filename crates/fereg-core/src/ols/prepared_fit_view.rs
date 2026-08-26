@@ -17,9 +17,11 @@ use crate::fe::{
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_certified,
     absorb_finalized_categorical_topology_map_certified, absorb_fixed_effects,
-    borrow_categorical_topology_design, AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap,
-    EffectTerm, FeDesign, FeSolverKind, MapConfig,
+    borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
+    BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
+    FeSolverKind, MapConfig,
 };
+use crate::options::ThreadConfig;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
 
@@ -120,6 +122,21 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
+    fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>>;
+
+    fn fit_build_cmg_absorber<'a>(
+        &'a self,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+    ) -> Result<CmgAbsorber<'a>> {
+        CmgAbsorber::build(
+            self.fit_borrowed_cmg_design()?,
+            weights,
+            config,
+            self.fit_structural_intercept(),
+        )
+    }
+
     fn fit_absorb_cg(
         &self,
         weights: BorrowedMapWeights<'_>,
@@ -176,6 +193,19 @@ pub(crate) trait PreparedOlsFitView: Sync {
         }
         if config.solver == FeSolverKind::Cg {
             return self.fit_absorb_cg(weights, values, config);
+        }
+        if config.solver == FeSolverKind::Cmg {
+            let batch_size = values.ncols().max(1);
+            let threads = ThreadConfig::from_requested(rayon::current_num_threads(), false)?;
+            let mut session = self.fit_build_cmg_absorber(
+                weights,
+                CmgConfig {
+                    map: config.map,
+                    threads,
+                    batch_size,
+                },
+            )?;
+            return session.absorb(values);
         }
         self.fit_absorb_owned_matrix(weights, values, config)
     }
@@ -308,6 +338,10 @@ impl PreparedOlsFitView for PreparedOlsData {
             )?);
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
+    }
+
+    fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
+        self.borrowed_intercept_fe_design()
     }
 }
 
@@ -451,6 +485,33 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
             )?);
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
+    }
+
+    fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
+        if self
+            .effect_specs()
+            .iter()
+            .any(|effect| !effect.intercept || !effect.slopes.is_empty())
+        {
+            return Err(FeregError::new(
+                ErrorCode::Unsupported,
+                "solver(cmg) supports only categorical intercept-only absorbed effects; absorbed slopes are unsupported",
+            ));
+        }
+        let topology = self.fe_topology();
+        let mut source_table = Vec::new();
+        source_table
+            .try_reserve_exact(topology.compacted_sources().len())
+            .map_err(|_| allocation("unable to reserve CMG categorical source views"))?;
+        for source in topology.compacted_sources() {
+            source_table.push(source.view());
+        }
+        borrow_categorical_topology_design(
+            self.fit_sample().n_active(),
+            topology.registry(),
+            &source_table,
+            topology.effect_to_topology(),
+        )
     }
 }
 

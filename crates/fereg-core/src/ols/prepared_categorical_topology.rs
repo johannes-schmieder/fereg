@@ -60,7 +60,7 @@ impl PreparedCategoricalFeTopology {
 
     pub fn borrowed_design<'a>(
         &'a self,
-        source_table: &'a [CategoricalCodeView<'a>],
+        source_table: &[CategoricalCodeView<'a>],
     ) -> Result<BorrowedInterceptFeDesign<'a>> {
         borrow_categorical_topology_design(
             self.nobs,

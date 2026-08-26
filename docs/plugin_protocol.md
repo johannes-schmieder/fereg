@@ -11,9 +11,9 @@ versioned:
 
 | Contract | Public 0.5.0 version |
 |---|---:|
-| Action protocol | 1.3 |
+| Action protocol | 1.4 |
 | Model wire | 2.1 |
-| OLS result wire | 1.3 |
+| OLS result wire | 1.4 |
 
 Public estimation requires the exact action/result versions. Diagnostic
 `doctor` and `selftest` callers retain the action protocol's same-major,

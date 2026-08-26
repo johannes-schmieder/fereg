@@ -384,6 +384,32 @@ pub(crate) fn absorb_borrowed_intercept_cg_with_structural_constant_certified(
     )
 }
 
+/// Certify a candidate residual against the original right-hand-side norms and
+/// use the existing CG implementation only for any remaining FE component.
+/// This is the polishing boundary used by coefficient-space solvers such as
+/// CMG, whose bulk solve happens outside the observation-space CG recurrence.
+pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    reference_norms: &[f64],
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_cg_with_reservation(
+        design,
+        weights,
+        values,
+        config,
+        false,
+        CgContinuation {
+            reference_norms: Some(reference_norms),
+            refinement: CgRefinementPolicy::ORDINARY,
+        },
+        &mut reservation,
+    )
+}
+
 pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,

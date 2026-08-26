@@ -259,6 +259,15 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
 }
 
 impl<'a> BorrowedInterceptEffect<'a> {
+    #[cfg(test)]
+    pub(crate) fn new(
+        codes: &'a [u32],
+        n_levels: usize,
+        level_index: &'a LevelIndex,
+    ) -> Result<Self> {
+        Ok(ValidatedBorrowedInterceptSource::new(codes, n_levels, level_index)?.effect())
+    }
+
     #[must_use]
     pub const fn codes(&self) -> &'a [u32] {
         self.codes

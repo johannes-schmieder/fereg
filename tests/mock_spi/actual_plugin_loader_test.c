@@ -364,9 +364,9 @@ static int check_version(stata_call_function call)
     clear_output();
     if (call(1, arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
-        strstr(display_buffer, "fereg.action_protocol=1.3") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.4") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.3") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.4") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -990,12 +990,12 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "estimate-ols",
         "ado=0.5.0",
         "protocol_major=1",
-        "protocol_minor=3",
+        "protocol_minor=4",
         "stata=18.0",
         "confirm=fereg-estimation",
         "plugin=0.5.0",
         "result_major=1",
-        "result_minor=3",
+        "result_minor=4",
         "model_major=2",
         "model_minor=1",
         "source_matrix=S",

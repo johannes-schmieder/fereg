@@ -1,9 +1,11 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-26
-**Development branch:** `codex/direct-lsmr-certification`, isolated from dirty `main`
+**Development branch:** `main`; qualified direct Schwarz-LSMR is integrated and the explicit CMG prototype is present for experimental qualification
 **Verified candidate plugin:** `2f3ff78a7e154eab72651adc24b3c0519cc4d1d4cd6cd6ed08288564ff25f16e`
-**Active milestone:** integrate the qualified direct Schwarz-LSMR automatic route
+**Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
+**Earlier verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
+**Active milestone:** qualify CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -18,6 +20,15 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   interacted FEs, lag/lead/difference materialization, iweights, continuous
   DoF, saved outputs, prediction, `test`, and `estat summarize` are no longer
   blockers.
+- The README, user guide, compatibility matrix, and installed help now describe
+  the implemented public surface rather than the broader 1.0 target. The help
+  contains twelve marked, self-contained examples. Examples 1--11 render and
+  execute under local licensed Stata/MP 18. The fereg/reghdfe portion of the
+  250,000-row benchmark passes sample, coefficient, and RSS assertions and its
+  three repeated timing runs. The Stata 19 `areg, absorb(worker firm)
+  dfabsorb` arm follows the official Stata 19 syntax but was not executed on
+  this Stata 18 host; it is documentation validation, not qualification
+  evidence.
 - The Stata public path retains one substantive plugin call. Rust owns sample
   construction and computation; SPI access stays on the Stata thread; the
   completion receipt is stored last; and failure/Break tests require rollback
@@ -25,7 +36,7 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
 - `memory(fast|low|auto)`, scratch-backed low-memory execution, allocation
   preflight, bounded cleanup, allocation/RSS reporting, `timeit`, thread
   reporting, and deterministic per-action Rayon pools are implemented.
-- Public solver controls and action/result wire 1.3 are implemented. Explicit
+- Public solver controls and action/result wire 1.4 are implemented. Explicit
   MAP, genuine batched weighted CG over the symmetric-Kaczmarz operator,
   IT/SQUAREM diagnostics, and LSMR paths expose diagnostics and require an
   independent final certificate. Categorical CG borrows the prepared topology;
@@ -34,6 +45,11 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   fails closed. CG now requires both reghdfe's Hestenes energy stop and the
   independent FE certificate; neither recurrence nor certificate substitutes
   for the other on the comparator-equivalent path.
+- Explicit `solver(cmg)` is implemented as an experimental GPL-3.0-only prototype for
+  sparse AKM designs. It reuses one graph hierarchy per fit, supports up to 64
+  nuisance non-base absorbed-intercept columns, and retains certified CG
+  polishing/fallback. It is not selected by `solver(auto)` and has not entered
+  release qualification.
 - The qualified automatic policy is implemented: one FE uses direct one-pass
   demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
   if certified. Otherwise a pilot contraction of at least 0.008 selects direct
@@ -62,7 +78,7 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   The local full receipt records `status=success`, `stata_rc=0`, and the exact
   candidate SHA. This is exact-source local evidence; the final immutable
   release receipt and remaining platform/resource qualification are pending.
-- The isolated ADR-0009 candidate adds a sealed 100-digit weak-graph oracle,
+- The integrated ADR-0009 implementation adds a sealed 100-digit weak-graph oracle,
   an independent observation-space projection audit, direct/forced-refinement
   comparison arms, route-specific memory planning, and borrowed Schwarz-LSMR
   topology reuse. Its final universal macOS plugin passed the fresh-seed 1m
@@ -70,6 +86,11 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   tests, strict Rust/FFI/all-target suites, mock SPI, binary audit/loader, and
   deterministic packaging checks. The evidence summary is
   `benchmarks/expected/direct_lsmr_qualification_v1.json`.
+- A 200,000-row registered-style AKM probe found explicit CMG 48 percent faster
+  than direct Schwarz-LSMR at one thread and 30 percent faster at eight threads,
+  with identical samples and coefficient differences below `1e-14`. A two-period
+  variant favored LSMR because Schwarz converged in one iteration, so CMG remains
+  explicit pending a topology-sensitive qualification matrix.
 
 ## 0.5.0 beta exit gate
 
@@ -158,9 +179,9 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Current blockers
 
-1. The ADR-0009 candidate is isolated and uncommitted. It still needs review,
-   integration onto the intended release branch, a clean exact-commit rebuild,
-   and immutable release receipts.
+1. The integrated ADR-0009 route still needs a clean exact-commit rebuild, CI,
+   the broader release matrix, and immutable release receipts. CMG is a separate
+   experimental route and may not alter auto without its own frozen qualification.
 2. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
    diagnostic because its refined residual fails the independent OLS score
    certificate. Auto's four-sweep pilot passes and is the beta acceptance path;
@@ -177,9 +198,10 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Development plan
 
-1. Review and integrate the frozen ADR-0009 implementation without changing
-   its algorithm, tolerance, preconditioner, pilot threshold, or diagnostics.
-   Any solver tuning requires new calibration and new holdout seeds.
+1. Preserve the frozen ADR-0009 algorithm, tolerance, preconditioner, pilot
+   threshold, and diagnostics. Qualify CMG separately across periods, mobility,
+   connectedness, problem size, RHS count, and thread count before considering
+   any automatic route.
 2. Preserve the sealed Decimal fixtures, observation-space audit, large-case
    tighter-solve stability check, and full generated 10m case in qualification.
 3. Diagnose explicit raw-start CG's low-mobility score failure separately from

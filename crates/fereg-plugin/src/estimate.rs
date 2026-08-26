@@ -1844,8 +1844,8 @@ fn validate_shadow_diagnostics(
     }
     for row in shadow.solver.chunks_exact(SOLVER_COLUMNS) {
         if row.iter().any(|value| !value.is_finite())
-            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0)
-            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0)
+            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0)
+            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0)
             || exact_usize(row[2], "OLS solver iteration count").is_err()
             || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0)
             || !matches!(row[10], 0.0 | 1.0)
@@ -2550,10 +2550,13 @@ fn parse_solver(value: &str) -> Result<FeSolverKind> {
         "auto" => Ok(FeSolverKind::Auto),
         "map" => Ok(FeSolverKind::Map),
         "lsmr" => Ok(FeSolverKind::Lsmr),
+        "cmg" => Ok(FeSolverKind::Cmg),
         "cg" => Ok(FeSolverKind::Cg),
         "it" | "irons-tuck" => Ok(FeSolverKind::IronsTuck),
         "squarem" => Ok(FeSolverKind::Squarem),
-        _ => Err(syntax("solver must be auto, map, lsmr, cg, it, or squarem")),
+        _ => Err(syntax(
+            "solver must be auto, map, lsmr, cmg, cg, it, or squarem",
+        )),
     }
 }
 

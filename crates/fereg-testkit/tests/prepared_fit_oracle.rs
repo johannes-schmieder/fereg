@@ -1,10 +1,11 @@
 use fereg_core::{
     fit_prepared_ols_coefficients_map, fit_prepared_ols_unadjusted_map, prepare_ols_data,
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
-    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind,
-    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
+    TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -12,6 +13,50 @@ use fereg_testkit::explicit_ols::{
 
 const COEFFICIENT_TOLERANCE: f64 = 2e-8;
 const RESIDUAL_TOLERANCE: f64 = 2e-8;
+
+#[test]
+fn cmg_two_way_prepared_fit_matches_certified_cg() {
+    let worker = vec![0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
+    let firm = vec![0, 1, 0, 2, 1, 2, 2, 1, 0, 0, 1, 2];
+    let x = (0..worker.len())
+        .map(|row| (row as f64 * 0.31).sin() + row as f64 * 0.04)
+        .collect::<Vec<_>>();
+    let outcome = (0..worker.len())
+        .map(|row| {
+            1.4 * x[row]
+                + [0.3, -0.6, 0.9][worker[row] as usize]
+                + [-0.2, 0.5, 0.8][firm[row] as usize]
+                + (row as f64 * 0.19).cos() * 0.05
+        })
+        .collect::<Vec<_>>();
+    let prepared = prepare_case(
+        &outcome,
+        &[x],
+        &[worker, firm],
+        &[0, 1],
+        true,
+        CaseWeights::Unit,
+    );
+    let mut cg_config = PreparedOlsFitConfig::default();
+    cg_config.absorb.solver = FeSolverKind::Cg;
+    let cg = fit_prepared_ols_coefficients_map(&prepared, cg_config).expect("CG fit");
+    let mut cmg_config = PreparedOlsFitConfig::default();
+    cmg_config.absorb.solver = FeSolverKind::Cmg;
+    cmg_config.execution.poolsize = 1;
+    let cmg = fit_prepared_ols_coefficients_map(&prepared, cmg_config).expect("CMG fit");
+    assert_eq!(cmg.absorption_report().requested_solver, FeSolverKind::Cmg);
+    assert_eq!(cmg.absorption_report().used_solver, FeSolverKind::Cmg);
+    assert_eq!(cmg.finite_rank(), cg.finite_rank());
+    assert_slice_close(cmg.residuals(), cg.residuals(), RESIDUAL_TOLERANCE);
+    for (cmg, cg) in cmg.coefficients().iter().zip(cg.coefficients()) {
+        assert_eq!(cmg.status, cg.status);
+        match (cmg.value, cg.value) {
+            (Some(cmg), Some(cg)) => assert_close(cmg, cg, COEFFICIENT_TOLERANCE),
+            (None, None) => {}
+            values => panic!("CMG/CG coefficient availability differs: {values:?}"),
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 enum CaseWeights<'a> {

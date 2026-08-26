@@ -9,6 +9,8 @@ pub enum FeSolverKind {
     Map,
     /// Matrix-free modified LSMR with a configurable preconditioner.
     Lsmr,
+    /// Combinatorial-multigrid-preconditioned graph PCG for sparse AKM designs.
+    Cmg,
     /// Conjugate-gradient acceleration of symmetric MAP.
     Cg,
     /// Irons--Tuck vector extrapolation of symmetric MAP.

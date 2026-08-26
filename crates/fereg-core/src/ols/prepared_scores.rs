@@ -2,7 +2,8 @@ use std::cell::RefCell;
 
 use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{AbsorbConfig, BorrowedMapWeights};
+use crate::fe::{AbsorbConfig, BorrowedMapWeights, CmgAbsorber, CmgConfig, FeSolverKind};
+use crate::options::ThreadConfig;
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::prepared_scratch::PreparedOlsScratch;
@@ -245,19 +246,44 @@ pub(super) fn build_prepared_ols_score_design<
     } else {
         None
     };
+    let map_weights = match &prepared.fit_sample().weights {
+        PreparedWeights::None => BorrowedMapWeights::Unit,
+        PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
+    };
+    let mut cmg = if absorb.solver == FeSolverKind::Cmg && cached.is_none() {
+        Some(prepared.fit_build_cmg_absorber(
+            map_weights,
+            CmgConfig {
+                map: absorb.map,
+                threads: ThreadConfig::from_requested(
+                    fit.execution().effective_threads,
+                    fit.execution().deterministic,
+                )?,
+                batch_size: fit.execution().poolsize.max(1),
+            },
+        )?)
+    } else {
+        None
+    };
     let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
         (PreparedOlsExecutionMode::Fast, Some((within, means))) => {
             (PreparedOlsScoreStorage::Dense(within), means, 0)
         }
-        (PreparedOlsExecutionMode::Fast, None) => {
-            build_dense_score_storage(prepared, &generated_columns, weights, absorb, reservation)?
-        }
+        (PreparedOlsExecutionMode::Fast, None) => build_dense_score_storage(
+            prepared,
+            &generated_columns,
+            weights,
+            absorb,
+            &mut cmg,
+            reservation,
+        )?,
         (PreparedOlsExecutionMode::Low, _) => build_scratch_score_storage(
             prepared,
             &generated_columns,
             weights,
             absorb,
             fit.execution().poolsize,
+            &mut cmg,
             reservation,
         )?,
     };
@@ -307,6 +333,7 @@ fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenc
     generated_columns: &[usize],
     weights: ReferenceWeightView<'_>,
     absorb: AbsorbConfig,
+    cmg: &mut Option<CmgAbsorber<'_>>,
     reservation: &mut R,
 ) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
@@ -323,7 +350,7 @@ fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenc
     fill_raw_score_block(prepared, generated_columns, &mut raw_values)?;
     let means = score_block_means(&raw_values, nrows, rank, weights, reservation)?;
     let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
-    let within = absorb_score_block(prepared, raw, absorb)?;
+    let within = absorb_score_block(prepared, raw, absorb, cmg)?;
     Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
 }
 
@@ -333,6 +360,7 @@ fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInfere
     weights: ReferenceWeightView<'_>,
     absorb: AbsorbConfig,
     poolsize: usize,
+    cmg: &mut Option<CmgAbsorber<'_>>,
     reservation: &mut R,
 ) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
@@ -373,7 +401,7 @@ fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInfere
                 weighted_matrix_column_mean(&raw_values, nrows, block_rank, local, weights)?;
         }
         let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
-        let within = absorb_score_block(prepared, raw, absorb)?;
+        let within = absorb_score_block(prepared, raw, absorb, cmg)?;
         for local in 0..block_rank {
             for row in 0..nrows {
                 column[row] = within[(row, local)];
@@ -449,6 +477,7 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     raw: DenseMatrix,
     absorb: AbsorbConfig,
+    cmg: &mut Option<CmgAbsorber<'_>>,
 ) -> Result<DenseMatrix> {
     if raw.ncols() == 0 {
         return Ok(raw);
@@ -457,7 +486,11 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     };
-    let absorbed = prepared.fit_absorb_matrix(map_weights, raw, absorb)?;
+    let absorbed = if let Some(session) = cmg.as_mut() {
+        session.absorb(raw)?
+    } else {
+        prepared.fit_absorb_matrix(map_weights, raw, absorb)?
+    };
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared robust score-design absorption did not certify",

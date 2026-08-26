@@ -3,6 +3,7 @@
 mod accelerated_map;
 mod auto;
 mod borrowed_map;
+mod cmg;
 #[allow(unused_imports)]
 #[rustfmt::skip]
 mod categorical_request;
@@ -46,6 +47,7 @@ pub use categorical_request::{
 };
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
+pub(crate) use cmg::{CmgAbsorber, CmgConfig};
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;
 pub use design::{

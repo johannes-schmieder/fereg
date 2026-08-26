@@ -84,7 +84,7 @@ impl CategoricalTopologySource {
     }
 
     /// Borrow the authoritative or owned compact code vector.
-    pub fn codes<'a>(&'a self, sources: &'a [CategoricalCodeView<'a>]) -> Result<&'a [u32]> {
+    pub fn codes<'a>(&'a self, sources: &[CategoricalCodeView<'a>]) -> Result<&'a [u32]> {
         self.partition.codes(sources)
     }
 
@@ -92,7 +92,7 @@ impl CategoricalTopologySource {
     /// and full observation coverage before constructing solver views.
     pub(crate) fn validated_borrowed<'a>(
         &'a self,
-        sources: &'a [CategoricalCodeView<'a>],
+        sources: &[CategoricalCodeView<'a>],
     ) -> Result<ValidatedBorrowedInterceptSource<'a>> {
         validate_categorical_partition(&self.partition, sources)?;
         let codes = self.partition.codes(sources)?;
