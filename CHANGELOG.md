@@ -52,6 +52,10 @@
   thread profiling. Added fused small-batch projection, reusable CG projection
   storage, deterministic fixed-chunk parallel dot products, and reuse of
   unchanged setup norms during the initial certificate.
+- Fixed saved fixed-effect recovery on weak multiway graphs by requiring both
+  the FE-moment and observation-space reconstruction certificates before the
+  recovery loop stops. The previous moment-only stop could reject a valid
+  recovered target with `r(459)` even though additional MAP sweeps certified it.
 - Identified the beta consistently as 0.5.0 and added deterministic
   source/release staging, checksum, dependency, SBOM/license, and platform-
   caveat requirements.

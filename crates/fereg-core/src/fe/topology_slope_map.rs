@@ -429,7 +429,10 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
         config.tolerance,
         &mut workspace,
     )?;
-    if initial.passed {
+    // A small FE moment only shows that the remainder is nearly orthogonal to
+    // each effect. Weak graphs can reach that condition before the remainder
+    // is small enough to certify that the target lies in the absorbed span.
+    if initial.passed && recovery_reconstruction_passed(target, &residual, config.tolerance)? {
         return finish_recovery(
             topology,
             effects,
@@ -480,7 +483,23 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                 config.tolerance,
                 &mut workspace,
             )?;
-            if certificate.passed {
+            if certificate.passed
+                && recovery_reconstruction_passed(target, &residual, config.tolerance)?
+            {
+                return finish_recovery(
+                    topology,
+                    effects,
+                    target,
+                    requested_channels,
+                    &effect_offsets,
+                    &alphas,
+                    &residual,
+                    iteration,
+                    config.tolerance,
+                    reservation,
+                );
+            }
+            if certificate.passed && iteration == config.max_iterations {
                 return finish_recovery(
                     topology,
                     effects,
@@ -573,26 +592,12 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
     tolerance: f64,
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
-    let scale = target
-        .iter()
-        .map(|value| value.abs())
-        .fold(0.0_f64, f64::max);
-    let residual_max = residual
-        .as_slice()
-        .iter()
-        .map(|value| value.abs())
-        .fold(0.0_f64, f64::max);
-    let reconstruction_relative_infinity = if scale == 0.0 {
-        residual_max
-    } else {
-        residual_max / scale
-    };
-    if !reconstruction_relative_infinity.is_finite()
-        || reconstruction_relative_infinity > (tolerance * 100.0).max(1e-10)
-    {
-        return Err(invalid_data(
-            "categorical recovery target is not certified to lie in the absorbed span",
-        ));
+    let reconstruction_relative_infinity =
+        recovery_reconstruction_relative_infinity(target, residual)?;
+    if reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance) {
+        return Err(invalid_data(format!(
+            "categorical recovery target is not certified to lie in the absorbed span: relative infinity residual {reconstruction_relative_infinity:.6e}",
+        )));
     }
 
     let mut absorbed_sum = reserved_zeros(
@@ -660,6 +665,50 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         iterations,
         reconstruction_relative_infinity,
     })
+}
+
+fn recovery_reconstruction_passed(
+    target: &[f64],
+    residual: &DenseMatrix,
+    tolerance: f64,
+) -> Result<bool> {
+    Ok(recovery_reconstruction_relative_infinity(target, residual)?
+        <= recovery_reconstruction_threshold(tolerance))
+}
+
+fn recovery_reconstruction_relative_infinity(
+    target: &[f64],
+    residual: &DenseMatrix,
+) -> Result<f64> {
+    if residual.ncols() != 1 || residual.nrows() != target.len() {
+        return Err(invalid_argument(
+            "categorical recovery reconstruction dimensions differ",
+        ));
+    }
+    let scale = target
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0_f64, f64::max);
+    let residual_max = residual
+        .as_slice()
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0_f64, f64::max);
+    let relative = if scale == 0.0 {
+        residual_max
+    } else {
+        residual_max / scale
+    };
+    if !relative.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery reconstruction ratio is not finite",
+        ));
+    }
+    Ok(relative)
+}
+
+fn recovery_reconstruction_threshold(tolerance: f64) -> f64 {
+    (tolerance * 100.0).max(1e-10)
 }
 
 fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
@@ -1536,6 +1585,55 @@ mod tests {
             assert!((actual - expected).abs() < 1e-10);
         }
         assert!(recovered.channels()[1].is_none());
+    }
+
+    #[test]
+    fn recovery_waits_for_reconstruction_after_an_early_moment_certificate() {
+        const GROUPS: usize = 72;
+        let observations = GROUPS * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut target = Vec::with_capacity(observations);
+        for firm in 0..GROUPS {
+            for worker in [firm, (firm + 1) % GROUPS] {
+                worker_codes.push(worker as u32);
+                firm_codes.push(firm as u32);
+                let worker_effect =
+                    0.35 * (std::f64::consts::TAU * worker as f64 / GROUPS as f64).cos();
+                let firm_effect = (std::f64::consts::TAU * firm as f64 / GROUPS as f64).sin();
+                target.push(2.0 + worker_effect + firm_effect);
+            }
+        }
+        let sources = [
+            CategoricalCodeView::new(&worker_codes, GROUPS),
+            CategoricalCodeView::new(&firm_codes, GROUPS),
+        ];
+        let retained = vec![true; observations];
+        let topology =
+            finalize_categorical_topology(&sources, &[&[0_usize][..], &[1_usize][..]], &retained)
+                .expect("weak AKM-cycle topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker effect"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm effect"),
+        ];
+        let recovered = recover_finalized_categorical_effects_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )
+        .expect("weak AKM-cycle recovery");
+        assert!(recovered.reconstruction_relative_infinity() <= 1e-10);
+        for (actual, expected) in recovered.absorbed_sum().iter().zip(target) {
+            assert!((actual - expected).abs() <= 1e-9);
+        }
     }
 
     #[test]

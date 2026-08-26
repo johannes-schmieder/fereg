@@ -59,21 +59,23 @@ quietly fereg lnwage experience exp2, absorb(what2=workerid fhat2=firmid) solver
 timer off 2
 quietly timer list
 local runtime = r(t2)
-eststo fereg
-estadd scalar runtime = `runtime', replace : fereg
+eststo fereg_auto
+estadd scalar runtime = `runtime', replace : fereg_auto
 
 timer on 3
-quietly fereg lnwage experience exp2, absorb(what2=workerid fhat2=firmid) solver(CMG)
+quietly fereg lnwage experience exp2, ///
+    absorb(what_cmg=workerid fhat_cmg=firmid) solver(CMG)
 timer off 3
 quietly timer list
 local runtime = r(t3)
-eststo fereg
-estadd scalar runtime = `runtime', replace : fereg
+eststo fereg_cmg
+estadd scalar runtime = `runtime', replace : fereg_cmg
 
 
 
 timer on 4
-quietly greg lnwage experience exp2, absorb(what3=workerid fhat3=firmid)
+quietly greg lnwage experience exp2, ///
+    absorb(workerid firmid) alphas(what3 fhat3)
 timer off 4
 quietly timer list
 local runtime = r(t4)
@@ -81,7 +83,7 @@ eststo greg
 estadd scalar runtime = `runtime', replace : greg
 
 timer on 5
-quietly areg lnwage experience exp2, absorb(what4=workerid fhat4=firmid)
+quietly areg lnwage experience exp2, absorb(workerid firmid)
 timer off 5
 quietly timer list
 local runtime = r(t5)
