@@ -14,9 +14,9 @@ use super::{
     absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_routed_certified,
     absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_cg_retaining_certified,
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
-    absorb_borrowed_intercept_map_certified, borrow_categorical_topology_design,
-    BorrowedMapWeights, CategoricalCodeView, CertifiedBorrowedMap, FinalizedCategoricalTopology,
-    LsmrConfig, MapConfig,
+    absorb_borrowed_intercept_map_certified, absorb_borrowed_intercept_map_retaining_certified,
+    borrow_categorical_topology_design, BorrowedMapWeights, CategoricalCodeView,
+    CertifiedBorrowedMap, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
 };
 
 pub(crate) fn absorb_finalized_categorical_topology_irons_tuck_certified(
@@ -101,6 +101,24 @@ pub fn absorb_finalized_categorical_topology_map_certified(
         weights,
         values,
         config,
+        false,
+        &mut reservation,
+    )
+}
+
+pub(crate) fn absorb_finalized_categorical_topology_map_retaining_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemTopologyMapReservation;
+    absorb_finalized_categorical_topology_map_with_reservation(
+        topology,
+        weights,
+        values,
+        config,
+        true,
         &mut reservation,
     )
 }
@@ -278,6 +296,7 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: MapConfig,
+    retain_coefficients: bool,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
@@ -307,7 +326,11 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
         &source_views,
         topology.effect_to_topology(),
     )?;
-    absorb_borrowed_intercept_map_certified(&design, weights, values, config)
+    if retain_coefficients {
+        absorb_borrowed_intercept_map_retaining_certified(&design, weights, values, config)
+    } else {
+        absorb_borrowed_intercept_map_certified(&design, weights, values, config)
+    }
 }
 
 fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
@@ -479,6 +502,47 @@ mod tests {
     }
 
     #[test]
+    fn retaining_map_coefficients_reconstruct_every_rhs() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0, 1, 1, 2, 2, 3, 3, 0];
+        let sources = [
+            CategoricalCodeView::new(&worker, 4),
+            CategoricalCodeView::new(&firm, 4),
+        ];
+        let topology =
+            finalize_categorical_topology(&sources, &[&[0_usize][..], &[1_usize][..]], &[true; 8])
+                .expect("crossed topology");
+        let columns = [
+            vec![1.0, 3.0, 2.0, 6.0, 4.0, 8.0, 5.0, 9.0],
+            vec![2.0, 1.0, 4.0, 3.0, 8.0, 5.0, 7.0, 6.0],
+        ];
+        let result = absorb_finalized_categorical_topology_map_retaining_certified(
+            &topology,
+            BorrowedMapWeights::Unit,
+            matrix(&columns),
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )
+        .expect("retaining MAP");
+        let (residualized, report, coefficients) = result.into_full_parts();
+        assert!(report.certified());
+        let coefficients = coefficients.expect("retained coefficient batch");
+        for (rhs, original) in columns.iter().enumerate() {
+            let alpha = coefficients.rhs(rhs).expect("coefficient RHS");
+            for row in 0..original.len() {
+                let reconstructed = residualized[(row, rhs)]
+                    + alpha[worker[row] as usize]
+                    + alpha[4 + firm[row] as usize];
+                assert!((reconstructed - original[row]).abs() <= 1e-10);
+            }
+        }
+    }
+
+    #[test]
     fn empty_effect_table_preserves_values_under_generic_map_contract() {
         let raw = [0, 1, 0];
         let sources = [CategoricalCodeView::new(&raw, 2)];
@@ -532,6 +596,7 @@ mod tests {
             BorrowedMapWeights::Unit,
             values.clone(),
             MapConfig::default(),
+            false,
             &mut failed,
         )
         .expect_err("injected allocation failure");
@@ -547,6 +612,7 @@ mod tests {
             BorrowedMapWeights::Unit,
             values,
             MapConfig::default(),
+            false,
             &mut undersized,
         )
         .expect_err("capacity guard");

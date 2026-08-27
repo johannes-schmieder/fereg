@@ -58,6 +58,13 @@ potential. Publication requires both Hestenes convergence and the joint fresh
 FE certificate. A certificate alone cannot terminate an ordinary CG path, and
 the recurrence alone can never authorize publication.
 
+Coefficient recovery uses the same recurrence but adds a stricter terminal
+condition: `max(abs(target - D alpha)) / max(abs(target)) <= 1e-10` (or the
+tolerance-derived stricter value). If the ordinary Hestenes condition fires
+first, recovery continues from the current CG state; it does not throw that
+work away and start a second solver. This additional scan and stop rule are
+used only for saved-effect recovery and do not change ordinary CG estimation.
+
 ## Current automatic policy
 
 `solver(auto)` implements the ADR-0009 policy:
@@ -105,14 +112,21 @@ the cheapest coefficient-space product available:
   coefficient states.
 - `solver(auto)` records its four-sweep MAP pilot and adds the coefficient
   product of the selected LSMR or CG continuation.
+- unaccelerated intercept-only MAP records the group coefficients from its
+  original batched `y`/`X` sweeps, then forms
+  `alpha_y - sum_j beta_j alpha_Xj` after the finite coefficients are known.
 
-Unaccelerated MAP would have to write a level-by-RHS coefficient state on every
-projection in hundreds of sweeps on weak graphs; measurement showed that this
-costs more than a separate one-RHS solve. MAP therefore uses one strict
-coefficient-producing LSMR recovery solve. SQUAREM uses the same bounded path,
-as do slope-bearing effects and `memory(low)`, where retaining the full initial
-RHS coefficient batch would contradict the memory policy. A certified MAP
-recovery remains the final fail-closed fallback if LSMR fails.
+This MAP coefficient accumulation removes the recovery solve completely and
+was the fastest certified route at both the 30,000- and 300,000-row AKM
+checkpoints. The updates are cache-local and parallel for large level tables.
+Routes without a retained product, including `memory(low)` and SQUAREM, first
+run one reconstruction-aware CG recovery capped at 256 iterations. If that
+does not certify, intercept-only recovery performs four forward-Kaczmarz
+sweeps with exact steepest-descent line searches while accumulating level
+coefficients, then runs coefficient-producing LSMR only on the remaining
+target. One-effect intercept recovery is direct. Slope-bearing recovery uses
+strict coefficient-producing LSMR. Certified symmetric MAP remains the final
+fail-closed fallback if the bounded coefficient solvers fail.
 
 Every retained or recovered coefficient product is normalized by connected
 component, scattered only for requested channels, checked against the absorbed

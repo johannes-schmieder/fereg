@@ -8,7 +8,7 @@ adopath + /Users/johannes/Git/fereg/dist
 global GTOOLS_BETA = "I KNOW WHAT I AM DOING"
 
 * Size
-local scale = 10
+local scale = 1
 local Nworkers = `scale'*10000
 local Nfirms   = `scale'*500
 local T        = 3
@@ -70,8 +70,6 @@ quietly timer list
 local runtime = r(t3)
 eststo fereg_cmg
 estadd scalar runtime = `runtime', replace : fereg_cmg
-
-
 
 timer on 4
 quietly greg lnwage experience exp2, ///

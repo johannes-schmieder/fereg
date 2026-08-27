@@ -15,9 +15,11 @@ use crate::fe::{
     absorb_finalized_categorical_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
+    recover_finalized_categorical_effects_cg_certified,
     recover_finalized_categorical_effects_from_coefficients_certified,
     recover_finalized_categorical_effects_lsmr_certified,
-    recover_finalized_categorical_effects_map_certified, BorrowedMapWeights,
+    recover_finalized_categorical_effects_map_certified,
+    recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
     BoundCategoricalAbsorbEffect, CategoricalAbsorbedEffectView, CategoricalCodeView,
     CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
     RecoveredCategoricalEffects, SingletonMultiplicity,
@@ -39,6 +41,7 @@ use super::{
 };
 
 const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
+const CATEGORICAL_RECOVERY_CG_ITERATION_CAP: usize = 256;
 
 /// Complete native preparation result for numeric categorical absorbed
 /// effects, including interactions and arbitrary ordered absorbed slopes.
@@ -256,10 +259,11 @@ impl PreparedCategoricalOlsData {
         )
     }
 
-    /// Recover saved FE channels without repeating observation-space MAP.
-    /// Retained fit coefficients are the zero-extra-solve path; otherwise one
-    /// coefficient-producing LSMR solve is used. Strict MAP remains the final
-    /// certified fallback for numerical or preconditioner failures.
+    /// Recover saved FE channels without repeating symmetric observation-space
+    /// MAP. Retained fit coefficients are the zero-extra-solve path.
+    /// Intercept-only fallback first uses reconstruction-aware CG, then a
+    /// deterministic four-sweep SD-Kaczmarz pilot plus LSMR remainder solve;
+    /// slopes use strict LSMR. Strict MAP remains the final certified fallback.
     pub fn recover_absorbed_effects_fast(
         &self,
         target: &[f64],
@@ -283,6 +287,39 @@ impl PreparedCategoricalOlsData {
                 requested_channels,
                 coefficients,
                 map.tolerance,
+            ) {
+                return Ok(recovered);
+            }
+        }
+        if effects
+            .iter()
+            .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
+        {
+            if effects.len() > 1 {
+                if let Ok(recovered) = recover_finalized_categorical_effects_cg_certified(
+                    &self.fe_topology,
+                    &effects,
+                    weights,
+                    target,
+                    requested_channels,
+                    MapConfig {
+                        max_iterations: map
+                            .max_iterations
+                            .min(CATEGORICAL_RECOVERY_CG_ITERATION_CAP),
+                        ..categorical_slope_map_config(map)
+                    },
+                ) {
+                    return Ok(recovered);
+                }
+            }
+            if let Ok(recovered) = recover_finalized_categorical_effects_sd_lsmr_certified(
+                &self.fe_topology,
+                &effects,
+                weights,
+                target,
+                requested_channels,
+                lsmr,
+                categorical_slope_map_config(map),
             ) {
                 return Ok(recovered);
             }

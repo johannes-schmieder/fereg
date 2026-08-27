@@ -14,6 +14,9 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 const PARALLEL_PROJECTION_MIN_ROWS: usize = 65_536;
 const FUSED_PARALLEL_MAX_RHS: usize = 8;
 const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
+pub(crate) const SD_RECOVERY_PILOT_SWEEPS: usize = 4;
+pub(crate) const SD_RECOVERY_CONTINUATION_CAP: usize = 4;
+const SD_RECOVERY_LSMR_TOLERANCE_CAP: f64 = 1e-4;
 
 /// Objective weights for the strict borrowed-intercept MAP path.
 ///
@@ -48,6 +51,20 @@ pub struct FeCoefficientBatch {
     effect_offsets: Vec<usize>,
     coefficients_per_rhs: usize,
     rhs_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BorrowedInterceptRecoveryMethod {
+    Direct,
+    SteepestDescent,
+    HybridLsmr,
+}
+
+#[derive(Debug)]
+pub(crate) struct BorrowedInterceptRecoveryCoefficients {
+    pub(crate) coefficients: FeCoefficientBatch,
+    pub(crate) iterations: usize,
+    pub(crate) method: BorrowedInterceptRecoveryMethod,
 }
 
 impl FeCoefficientBatch {
@@ -206,17 +223,48 @@ impl FeCoefficientBatch {
             ));
         }
         let effect_offset = self.effect_offsets[effect];
-        for level in 0..levels {
-            for rhs in 0..self.rhs_count {
-                let index = rhs * self.coefficients_per_rhs + effect_offset + level;
+        if levels.saturating_mul(self.rhs_count) >= PARALLEL_PROJECTION_MIN_ROWS
+            && self.rhs_count > 1
+            && rayon::current_num_threads() > 1
+        {
+            let coefficients_per_rhs = self.coefficients_per_rhs;
+            let rhs_count = self.rhs_count;
+            self.values
+                .par_chunks_mut(coefficients_per_rhs)
+                .take(rhs_count)
+                .enumerate()
+                .try_for_each(|(rhs, rhs_values)| -> Result<()> {
+                    let destination = &mut rhs_values[effect_offset..effect_offset + levels];
+                    for (level, value) in destination.iter_mut().enumerate() {
+                        let mean = means[level * rhs_count + rhs];
+                        if !mean.is_finite() {
+                            return Err(invalid_argument(
+                                "intercept FE group means are not finite and aligned",
+                            ));
+                        }
+                        *value += mean;
+                        if !value.is_finite() {
+                            return Err(invalid_data(
+                                "intercept FE coefficient update is nonfinite",
+                            ));
+                        }
+                    }
+                    Ok(())
+                })?;
+            return Ok(());
+        }
+        for rhs in 0..self.rhs_count {
+            let start = rhs * self.coefficients_per_rhs + effect_offset;
+            let destination = &mut self.values[start..start + levels];
+            for (level, value) in destination.iter_mut().enumerate() {
                 let mean = means[level * self.rhs_count + rhs];
                 if !mean.is_finite() {
                     return Err(invalid_argument(
                         "intercept FE group means are not finite and aligned",
                     ));
                 }
-                self.values[index] += mean;
-                if !self.values[index].is_finite() {
+                *value += mean;
+                if !value.is_finite() {
                     return Err(invalid_data("intercept FE coefficient update is nonfinite"));
                 }
             }
@@ -490,6 +538,7 @@ struct CgContinuation<'a> {
     reference_norms: Option<&'a [f64]>,
     refinement: CgRefinementPolicy,
     retain_coefficients: bool,
+    reconstruction_tolerance: Option<f64>,
 }
 
 impl CgContinuation<'_> {
@@ -497,6 +546,7 @@ impl CgContinuation<'_> {
         reference_norms: None,
         refinement: CgRefinementPolicy::ORDINARY,
         retain_coefficients: false,
+        reconstruction_tolerance: None,
     };
 }
 
@@ -687,6 +737,25 @@ pub fn absorb_borrowed_intercept_map_certified(
     absorb_with_reservation(design, weights, values, config, false, &mut reservation)
 }
 
+pub(crate) fn absorb_borrowed_intercept_map_retaining_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_with_reservation_mode(
+        design,
+        weights,
+        values,
+        config,
+        false,
+        false,
+        true,
+        &mut reservation,
+    )
+}
+
 /// Residualize with batched weighted conjugate gradients over the borrowed
 /// symmetric-Kaczmarz projection operator. No observation-scale categorical
 /// codes or unit-weight vector are copied.
@@ -729,6 +798,38 @@ pub(crate) fn absorb_borrowed_intercept_cg_retaining_certified(
     )
 }
 
+/// Recover an intercept-only coefficient product with CG and continue the
+/// existing recurrence until the observation-space reconstruction is strict
+/// enough for categorical publication. Ordinary absorption intentionally does
+/// not pay for this stronger coefficient-recovery condition.
+pub(crate) fn absorb_borrowed_intercept_cg_recovery_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    reconstruction_tolerance: f64,
+) -> Result<CertifiedBorrowedMap> {
+    if !reconstruction_tolerance.is_finite() || reconstruction_tolerance <= 0.0 {
+        return Err(invalid_argument(
+            "borrowed CG recovery tolerance must be finite and positive",
+        ));
+    }
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_cg_with_reservation(
+        design,
+        weights,
+        values,
+        config,
+        false,
+        CgContinuation {
+            retain_coefficients: true,
+            reconstruction_tolerance: Some(reconstruction_tolerance),
+            ..CgContinuation::ORDINARY
+        },
+        &mut reservation,
+    )
+}
+
 /// Residualize through modified LSMR and optionally retain the coefficient
 /// solutions that produced the certified observation-space residuals.
 pub(crate) fn absorb_borrowed_intercept_lsmr_certified(
@@ -757,6 +858,391 @@ pub(crate) fn absorb_borrowed_intercept_lsmr_certified(
     } else {
         CertifiedBorrowedMap::from_certified_parts(residualized, report)
     }
+}
+
+/// Recover one intercept-only FE coefficient vector with a deterministic
+/// forward-Kaczmarz/steepest-descent pilot. Fast-converging designs continue
+/// the same recurrence; slow designs pass the already-reduced remainder to
+/// modified LSMR and add its coefficient correction.
+pub(crate) fn recover_borrowed_intercept_sd_lsmr_coefficients(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    map: MapConfig,
+    lsmr: LsmrConfig,
+    reconstruction_tolerance: f64,
+) -> Result<BorrowedInterceptRecoveryCoefficients> {
+    validate_config(map)?;
+    if !lsmr.tolerance.is_finite()
+        || lsmr.tolerance <= 0.0
+        || lsmr.max_iterations == 0
+        || lsmr.local_size == Some(0)
+        || !reconstruction_tolerance.is_finite()
+        || reconstruction_tolerance <= 0.0
+    {
+        return Err(invalid_argument(
+            "borrowed intercept recovery policy is invalid",
+        ));
+    }
+    if design.nobs() != target.len()
+        || target.is_empty()
+        || design.effects().is_empty()
+        || target.iter().any(|value| !value.is_finite())
+    {
+        return Err(invalid_data(
+            "borrowed intercept recovery inputs are not finite and aligned",
+        ));
+    }
+
+    let weights = validate_weights(weights, target.len())?;
+    let mut reservation = SystemWorkspaceReservation;
+    let mut residual =
+        fallible_matrix_zeros(target.len(), 1, "unable to reserve SD recovery residual")?;
+    residual.as_mut_slice().copy_from_slice(target);
+    let mut direction =
+        fallible_matrix_zeros(target.len(), 1, "unable to reserve SD recovery direction")?;
+    let mut workspace = BorrowedMapWorkspace::new(design, target.len(), 1, &mut reservation)?;
+    weighted_column_norms(
+        &residual,
+        weights,
+        &mut workspace.reference_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+    )?;
+    let mut coefficients = FeCoefficientBatch::intercept_zeros(design, 1)?;
+    if workspace.reference_norms[0] == 0.0 {
+        return Ok(BorrowedInterceptRecoveryCoefficients {
+            coefficients,
+            iterations: 0,
+            method: BorrowedInterceptRecoveryMethod::Direct,
+        });
+    }
+    let mut increment = FeCoefficientBatch::intercept_zeros(design, 1)?;
+    let mut dot = [0.0_f64; 1];
+    let mut dot_correction = [0.0_f64; 1];
+
+    if design.effects().len() == 1 {
+        borrowed_residual_sweep_recording(
+            design,
+            weights,
+            &mut residual,
+            &mut workspace,
+            Some(&mut coefficients),
+            false,
+        )?;
+        return Ok(BorrowedInterceptRecoveryCoefficients {
+            coefficients,
+            iterations: 1,
+            method: BorrowedInterceptRecoveryMethod::Direct,
+        });
+    }
+
+    let pilot_limit = map.max_iterations.min(SD_RECOVERY_PILOT_SWEEPS);
+    let mut iterations = 0_usize;
+    while iterations < pilot_limit {
+        sd_recovery_step(
+            design,
+            weights,
+            &mut residual,
+            &mut direction,
+            &mut workspace,
+            &mut coefficients,
+            &mut increment,
+            &mut dot,
+            &mut dot_correction,
+        )?;
+        iterations += 1;
+        if sd_recovery_residual_certified(
+            design,
+            weights,
+            target,
+            &residual,
+            map.tolerance,
+            reconstruction_tolerance,
+            &mut workspace,
+        )? {
+            return Ok(BorrowedInterceptRecoveryCoefficients {
+                coefficients,
+                iterations,
+                method: BorrowedInterceptRecoveryMethod::SteepestDescent,
+            });
+        }
+    }
+
+    let current_reconstruction = relative_reconstruction_residual(target, residual.as_slice())?;
+    let predicted_iterations = predicted_sd_recovery_iterations(
+        current_reconstruction,
+        reconstruction_tolerance,
+        iterations,
+    );
+    let continuation_limit = map.max_iterations.min(SD_RECOVERY_CONTINUATION_CAP);
+    if predicted_iterations.is_some_and(|predicted| predicted <= continuation_limit) {
+        while iterations < continuation_limit {
+            sd_recovery_step(
+                design,
+                weights,
+                &mut residual,
+                &mut direction,
+                &mut workspace,
+                &mut coefficients,
+                &mut increment,
+                &mut dot,
+                &mut dot_correction,
+            )?;
+            iterations += 1;
+            if sd_recovery_residual_certified(
+                design,
+                weights,
+                target,
+                &residual,
+                map.tolerance,
+                reconstruction_tolerance,
+                &mut workspace,
+            )? {
+                return Ok(BorrowedInterceptRecoveryCoefficients {
+                    coefficients,
+                    iterations,
+                    method: BorrowedInterceptRecoveryMethod::SteepestDescent,
+                });
+            }
+        }
+    }
+
+    weighted_column_norms(
+        &residual,
+        weights,
+        &mut workspace.residual_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+    )?;
+    let contraction = workspace.residual_norms[0] / workspace.reference_norms[0];
+    if !contraction.is_finite() || contraction <= 0.0 {
+        return Err(invalid_data(
+            "SD recovery pilot produced an invalid residual contraction",
+        ));
+    }
+    let scaled_lsmr_tolerance = (map.tolerance / contraction)
+        .max(lsmr.tolerance)
+        .min(SD_RECOVERY_LSMR_TOLERANCE_CAP);
+    let (lsmr_residual, report, _, correction) = run_borrowed_lsmr(
+        design,
+        weights,
+        &residual,
+        scaled_lsmr_tolerance,
+        lsmr.max_iterations,
+        LsmrConfig {
+            tolerance: scaled_lsmr_tolerance,
+            ..lsmr
+        },
+        true,
+    )?;
+    drop(lsmr_residual);
+    if !report.certified() {
+        return Err(invalid_data(
+            "hybrid recovery LSMR correction did not certify its remainder",
+        ));
+    }
+    coefficients.add_assign(
+        &correction.ok_or_else(|| {
+            invalid_data("hybrid recovery LSMR correction did not retain coefficients")
+        })?,
+        1.0,
+    )?;
+    Ok(BorrowedInterceptRecoveryCoefficients {
+        coefficients,
+        iterations: iterations.saturating_add(report.iterations),
+        method: BorrowedInterceptRecoveryMethod::HybridLsmr,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn sd_recovery_step(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    residual: &mut DenseMatrix,
+    direction: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: &mut FeCoefficientBatch,
+    increment: &mut FeCoefficientBatch,
+    dot: &mut [f64; 1],
+    dot_correction: &mut [f64; 1],
+) -> Result<()> {
+    direction
+        .as_mut_slice()
+        .copy_from_slice(residual.as_slice());
+    increment.fill_zero();
+    borrowed_residual_sweep_recording(
+        design,
+        weights,
+        direction,
+        workspace,
+        Some(increment),
+        false,
+    )?;
+    for (projected, &original) in direction.as_mut_slice().iter_mut().zip(residual.as_slice()) {
+        *projected = original - *projected;
+        if !projected.is_finite() {
+            return Err(invalid_data(
+                "SD recovery direction contains a nonfinite value",
+            ));
+        }
+    }
+    weighted_dot_columns_into(
+        residual,
+        direction,
+        weights,
+        dot,
+        dot_correction,
+        &mut workspace.parallel_dot_sums,
+    )?;
+    let numerator = dot[0];
+    weighted_dot_columns_into(
+        direction,
+        direction,
+        weights,
+        dot,
+        dot_correction,
+        &mut workspace.parallel_dot_sums,
+    )?;
+    let denominator = dot[0];
+    if !numerator.is_finite() || !denominator.is_finite() || numerator <= 0.0 || denominator <= 0.0
+    {
+        return Err(invalid_data(
+            "SD recovery line search lost positive finite curvature",
+        ));
+    }
+    let step = numerator / denominator;
+    if !step.is_finite() || step <= 0.0 {
+        return Err(invalid_data(
+            "SD recovery line-search step is not finite and positive",
+        ));
+    }
+    for (value, &projected) in residual.as_mut_slice().iter_mut().zip(direction.as_slice()) {
+        *value = (-step).mul_add(projected, *value);
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "SD recovery update produced a nonfinite residual",
+            ));
+        }
+    }
+    coefficients.add_assign(increment, step)
+}
+
+fn sd_recovery_residual_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    target: &[f64],
+    residual: &DenseMatrix,
+    tolerance: f64,
+    reconstruction_tolerance: f64,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<bool> {
+    if relative_reconstruction_residual(target, residual.as_slice())? > reconstruction_tolerance {
+        return Ok(false);
+    }
+    Ok(certify(design, weights, residual, tolerance, workspace)?.passed)
+}
+
+fn relative_reconstruction_residual(target: &[f64], residual: &[f64]) -> Result<f64> {
+    if target.len() != residual.len() {
+        return Err(invalid_argument(
+            "SD recovery target and residual dimensions differ",
+        ));
+    }
+    let mut target_infinity = 0.0_f64;
+    let mut residual_infinity = 0.0_f64;
+    for (&expected, &remainder) in target.iter().zip(residual) {
+        target_infinity = target_infinity.max(expected.abs());
+        residual_infinity = residual_infinity.max(remainder.abs());
+    }
+    let relative = if target_infinity == 0.0 {
+        residual_infinity
+    } else {
+        residual_infinity / target_infinity
+    };
+    if relative.is_finite() {
+        Ok(relative)
+    } else {
+        Err(invalid_data(
+            "SD recovery reconstruction ratio is not finite",
+        ))
+    }
+}
+
+fn matrix_infinity_norm(values: &DenseMatrix) -> Result<f64> {
+    let maximum = if values.as_slice().len() >= PARALLEL_PROJECTION_MIN_ROWS
+        && rayon::current_num_threads() > 1
+    {
+        values
+            .as_slice()
+            .par_iter()
+            .map(|value| value.abs())
+            .reduce(|| 0.0_f64, f64::max)
+    } else {
+        values
+            .as_slice()
+            .iter()
+            .fold(0.0_f64, |maximum, value| maximum.max(value.abs()))
+    };
+    if maximum.is_finite() {
+        Ok(maximum)
+    } else {
+        Err(invalid_data(
+            "borrowed CG recovery infinity norm is not finite",
+        ))
+    }
+}
+
+fn relative_reconstruction_infinity_norm(
+    residual: &DenseMatrix,
+    target_infinity: f64,
+) -> Result<f64> {
+    if !target_infinity.is_finite() || target_infinity < 0.0 {
+        return Err(invalid_argument(
+            "borrowed CG recovery target scale is invalid",
+        ));
+    }
+    let residual_infinity = matrix_infinity_norm(residual)?;
+    let relative = if target_infinity == 0.0 {
+        residual_infinity
+    } else {
+        residual_infinity / target_infinity
+    };
+    if relative.is_finite() {
+        Ok(relative)
+    } else {
+        Err(invalid_data(
+            "borrowed CG recovery reconstruction ratio is not finite",
+        ))
+    }
+}
+
+fn predicted_sd_recovery_iterations(
+    current_relative: f64,
+    target_relative: f64,
+    completed_iterations: usize,
+) -> Option<usize> {
+    if completed_iterations == 0
+        || !current_relative.is_finite()
+        || current_relative <= 0.0
+        || current_relative >= 1.0
+        || !target_relative.is_finite()
+        || target_relative <= 0.0
+    {
+        return None;
+    }
+    if current_relative <= target_relative {
+        return Some(completed_iterations);
+    }
+    let per_iteration = current_relative.powf(1.0 / completed_iterations as f64);
+    if !per_iteration.is_finite() || per_iteration <= 0.0 || per_iteration >= 1.0 {
+        return None;
+    }
+    let remaining = (target_relative / current_relative).ln() / per_iteration.ln();
+    if !remaining.is_finite() || remaining < 0.0 || remaining > usize::MAX as f64 {
+        return None;
+    }
+    Some(completed_iterations.saturating_add(remaining.ceil() as usize))
 }
 
 /// Residualize with safeguarded Irons-Tuck extrapolation while optionally
@@ -1072,6 +1558,7 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
             reference_norms: Some(reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
             retain_coefficients: false,
+            reconstruction_tolerance: None,
         },
         &mut reservation,
     )
@@ -1454,6 +1941,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                                     reference_norms: Some(&original_reference_norms),
                                     refinement: CgRefinementPolicy::ORDINARY,
                                     retain_coefficients: false,
+                                    reconstruction_tolerance: None,
                                 },
                                 reservation,
                             ) {
@@ -1522,6 +2010,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
             reference_norms: Some(&original_reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
             retain_coefficients,
+            reconstruction_tolerance: None,
         },
         reservation,
     )?;
@@ -1865,6 +2354,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         reference_norms: continuation_reference_norms,
         refinement,
         retain_coefficients,
+        reconstruction_tolerance,
     } = continuation;
     validate_config(config)?;
     if refinement.minimum_iterations > config.max_iterations {
@@ -1898,6 +2388,14 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         &mut workspace.group_sums,
     )?;
     let rhs_count = values.ncols();
+    if reconstruction_tolerance.is_some() && rhs_count != 1 {
+        return Err(invalid_argument(
+            "borrowed CG recovery reconstruction checks require one RHS",
+        ));
+    }
+    let reconstruction_scale = reconstruction_tolerance
+        .map(|_| matrix_infinity_norm(&values))
+        .transpose()?;
     let mut improvement_potential = reserved_zeros(
         rhs_count,
         reservation,
@@ -1986,7 +2484,19 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     } else {
         certify(design, weights, &values, config.tolerance, &mut workspace)?
     };
-    if initial_certificate.passed && refinement.minimum_iterations == 0 {
+    let initial_reconstruction_passed = match reconstruction_tolerance {
+        Some(tolerance) => {
+            relative_reconstruction_infinity_norm(
+                &values,
+                reconstruction_scale.expect("reconstruction scale exists with a tolerance"),
+            )? <= tolerance
+        }
+        None => true,
+    };
+    if initial_certificate.passed
+        && initial_reconstruction_passed
+        && refinement.minimum_iterations == 0
+    {
         let result = certified_solver_result(
             values,
             FeSolverKind::Cg,
@@ -2062,6 +2572,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     initial_residual_square.copy_from_slice(&residual_square);
     let mut recurrence_residual = 1.0_f64;
     let mut hestenes_error = 1.0_f64;
+    let mut reconstruction_check_active = false;
 
     for iteration in 1..=config.max_iterations {
         if let Some(coefficients) = projection_coefficients.as_mut() {
@@ -2098,7 +2609,19 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             // iterating, and publication still requires the final joint
             // certificate.
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            if certificate.passed && iteration.saturating_sub(1) >= refinement.minimum_iterations {
+            let reconstruction_passed = match reconstruction_tolerance {
+                Some(tolerance) => {
+                    relative_reconstruction_infinity_norm(
+                        &values,
+                        reconstruction_scale.expect("reconstruction scale exists with a tolerance"),
+                    )? <= tolerance
+                }
+                None => true,
+            };
+            if certificate.passed
+                && reconstruction_passed
+                && iteration.saturating_sub(1) >= refinement.minimum_iterations
+            {
                 let result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
@@ -2201,14 +2724,30 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         // FE-moment certificate as a second condition before publication.
         // This avoids accepting a weak-graph iterate merely because its FE
         // moments are small while keeping certification out of the hot loop.
-        if (hestenes_error <= config.tolerance && iteration >= refinement.minimum_iterations)
-            || iteration == config.max_iterations
+        let ordinary_ready =
+            hestenes_error <= config.tolerance && iteration >= refinement.minimum_iterations;
+        reconstruction_check_active |= reconstruction_tolerance.is_some() && ordinary_ready;
+        let reconstruction_relative = if reconstruction_check_active
+            || (reconstruction_tolerance.is_some() && iteration == config.max_iterations)
         {
+            Some(relative_reconstruction_infinity_norm(
+                &values,
+                reconstruction_scale.expect("reconstruction scale exists with a tolerance"),
+            )?)
+        } else {
+            None
+        };
+        let reconstruction_passed = reconstruction_tolerance.is_none_or(|tolerance| {
+            reconstruction_relative.is_some_and(|relative| relative <= tolerance)
+        });
+        let recurrence_ready = if reconstruction_tolerance.is_some() {
+            reconstruction_passed && iteration >= refinement.minimum_iterations
+        } else {
+            ordinary_ready
+        };
+        if recurrence_ready || iteration == config.max_iterations {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
-            if certificate.passed
-                && hestenes_error <= config.tolerance
-                && iteration >= refinement.minimum_iterations
-            {
+            if certificate.passed && recurrence_ready {
                 let result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
@@ -2260,6 +2799,7 @@ fn absorb_with_reservation<R: WorkspaceReservation>(
         config,
         empty_design_is_structural_constant,
         false,
+        false,
         reservation,
     )
 }
@@ -2279,6 +2819,7 @@ fn absorb_initial_with_reservation<R: WorkspaceReservation>(
         config,
         empty_design_is_structural_constant,
         true,
+        false,
         reservation,
     )
 }
@@ -2291,6 +2832,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     config: MapConfig,
     empty_design_is_structural_constant: bool,
     skip_initial_one_effect_certificate: bool,
+    retain_coefficients: bool,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(config)?;
@@ -2321,16 +2863,20 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     )?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
+    let mut coefficients = retain_coefficients
+        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .transpose()?;
 
     if design.effects().is_empty() && !empty_design_is_structural_constant {
-        return certified_result(
+        let result = certified_result(
             values,
             SolveStopReason::NoFixedEffects,
             0,
             zero_certificate(),
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
-        );
+        )?;
+        return attach_optional_coefficients(result, coefficients);
     }
 
     if !skip_initial_one_effect_certificate {
@@ -2340,14 +2886,15 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
         };
         if initial_certificate.passed {
-            return certified_result(
+            let result = certified_result(
                 values,
                 SolveStopReason::Certified,
                 0,
                 initial_certificate,
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
-            );
+            )?;
+            return attach_optional_coefficients(result, coefficients);
         }
     }
 
@@ -2360,25 +2907,26 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                 "borrowed MAP structural-constant projection failed certification",
             ));
         }
-        return certified_result(
+        let result = certified_result(
             values,
             SolveStopReason::Certified,
             1,
             certificate,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
-        );
+        )?;
+        return attach_optional_coefficients(result, coefficients);
     }
 
     for iteration in 1..=config.max_iterations {
-        for effect in design.effects() {
-            project_effect(effect, weights, &mut values, &mut workspace)?;
-        }
-        if config.symmetric && design.effects().len() > 1 {
-            for effect in design.effects().iter().rev().skip(1) {
-                project_effect(effect, weights, &mut values, &mut workspace)?;
-            }
-        }
+        borrowed_residual_sweep_recording(
+            design,
+            weights,
+            &mut values,
+            &mut workspace,
+            coefficients.as_mut(),
+            config.symmetric,
+        )?;
         // One intercept effect is removed exactly by its first projection, so
         // certify immediately instead of waiting for the periodic multiway
         // cadence. Multiway designs retain periodic plus final certification.
@@ -2388,14 +2936,15 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
         {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
             if certificate.passed {
-                return certified_result(
+                let result = certified_result(
                     values,
                     SolveStopReason::Certified,
                     iteration,
                     certificate,
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
-                );
+                )?;
+                return attach_optional_coefficients(result, coefficients);
             }
         }
     }
@@ -2621,15 +3170,6 @@ fn certify_structural_constant_with_current_norms(
         relative_two_norm,
         passed: relative_infinity_norm <= tolerance,
     })
-}
-
-fn project_effect(
-    effect: &crate::fe::BorrowedInterceptEffect<'_>,
-    weights: ValidatedWeights<'_>,
-    values: &mut DenseMatrix,
-    workspace: &mut BorrowedMapWorkspace,
-) -> Result<()> {
-    project_effect_recording(effect, weights, values, workspace, None)
 }
 
 fn project_effect_recording(
@@ -5041,6 +5581,7 @@ mod tests {
                     reference_norms: None,
                     refinement: CgRefinementPolicy::forced(forced_iterations),
                     retain_coefficients: false,
+                    reconstruction_tolerance: None,
                 },
                 &mut reservation,
             )

@@ -11,7 +11,9 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
 use super::{
-    connected_components_all, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate,
+    absorb_borrowed_intercept_cg_recovery_certified, borrow_categorical_topology_design,
+    connected_components_all, recover_borrowed_intercept_sd_lsmr_coefficients,
+    BorrowedInterceptRecoveryMethod, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate,
     FeCoefficientBatch, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
@@ -52,6 +54,18 @@ pub struct RecoveredCategoricalEffects {
     channels: Vec<Option<Vec<f64>>>,
     iterations: usize,
     reconstruction_relative_infinity: f64,
+    recovery_method: CategoricalRecoveryMethod,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CategoricalRecoveryMethod {
+    RetainedCoefficients,
+    Direct,
+    SteepestDescent,
+    HybridLsmr,
+    Cg,
+    Lsmr,
+    Map,
 }
 
 impl RecoveredCategoricalEffects {
@@ -73,6 +87,11 @@ impl RecoveredCategoricalEffects {
     #[must_use]
     pub const fn reconstruction_relative_infinity(&self) -> f64 {
         self.reconstruction_relative_infinity
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn recovery_method(&self) -> CategoricalRecoveryMethod {
+        self.recovery_method
     }
 
     #[must_use]
@@ -364,6 +383,7 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
         &normalized,
         0,
         tolerance,
+        CategoricalRecoveryMethod::RetainedCoefficients,
     )
 }
 
@@ -529,6 +549,124 @@ pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
         &normalized,
         solved.iterations,
         publication_tolerance,
+        CategoricalRecoveryMethod::Lsmr,
+    )
+}
+
+/// Recover intercept-only effects through the production SD-Kaczmarz pilot
+/// and remainder-LSMR hybrid. Component normalization and publication checks
+/// remain topology-owned and are recomputed from the combined coefficients.
+pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    lsmr: LsmrConfig,
+    map: MapConfig,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    if effects
+        .iter()
+        .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+    {
+        return Err(invalid_argument(
+            "SD-Kaczmarz fast recovery requires intercept-only effects",
+        ));
+    }
+    let source_table = topology_source_table(topology)?;
+    let design = borrow_categorical_topology_design(
+        target.len(),
+        topology.registry(),
+        &source_table,
+        topology.effect_to_topology(),
+    )?;
+    let recovered = recover_borrowed_intercept_sd_lsmr_coefficients(
+        &design,
+        weights,
+        target,
+        map,
+        lsmr,
+        recovery_reconstruction_threshold(map.tolerance),
+    )?;
+    let validated_weights = validate_weights(weights, target.len())?;
+    let mut normalized = recovered.coefficients.rhs(0)?.to_vec();
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    let method = match recovered.method {
+        BorrowedInterceptRecoveryMethod::Direct => CategoricalRecoveryMethod::Direct,
+        BorrowedInterceptRecoveryMethod::SteepestDescent => {
+            CategoricalRecoveryMethod::SteepestDescent
+        }
+        BorrowedInterceptRecoveryMethod::HybridLsmr => CategoricalRecoveryMethod::HybridLsmr,
+    };
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        validated_weights,
+        target,
+        requested_channels,
+        &normalized,
+        recovered.iterations,
+        map.tolerance,
+        method,
+    )
+}
+
+/// Recover intercept-only effects with the optimized borrowed one-RHS CG
+/// recurrence and retain the coefficient product it already computes.
+pub(crate) fn recover_finalized_categorical_effects_cg_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    map: MapConfig,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    if effects
+        .iter()
+        .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+    {
+        return Err(invalid_argument(
+            "CG fast recovery requires intercept-only effects",
+        ));
+    }
+    let source_table = topology_source_table(topology)?;
+    let design = borrow_categorical_topology_design(
+        target.len(),
+        topology.registry(),
+        &source_table,
+        topology.effect_to_topology(),
+    )?;
+    let mut target_values = Vec::new();
+    target_values
+        .try_reserve_exact(target.len())
+        .map_err(|_| allocation("unable to reserve CG recovery target"))?;
+    target_values.extend_from_slice(target);
+    let recovered = absorb_borrowed_intercept_cg_recovery_certified(
+        &design,
+        weights,
+        DenseMatrix::from_row_major(target.len(), 1, target_values)?,
+        map,
+        recovery_reconstruction_threshold(map.tolerance),
+    )?;
+    let (_, report, coefficients) = recovered.into_full_parts();
+    let coefficients = coefficients.ok_or_else(|| {
+        invalid_data("CG recovery did not retain its certified coefficient product")
+    })?;
+    let validated_weights = validate_weights(weights, target.len())?;
+    let mut normalized = coefficients.rhs(0)?.to_vec();
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        validated_weights,
+        target,
+        requested_channels,
+        &normalized,
+        report.iterations,
+        map.tolerance,
+        CategoricalRecoveryMethod::Cg,
     )
 }
 
@@ -715,6 +853,7 @@ fn finish_channel_major_recovery(
     coefficients: &[f64],
     iterations: usize,
     tolerance: f64,
+    recovery_method: CategoricalRecoveryMethod,
 ) -> Result<RecoveredCategoricalEffects> {
     let effect_offsets = channel_major_effect_offsets(topology, effects)?;
     if coefficients.len() != effect_offsets.last().copied().unwrap_or(0) {
@@ -840,6 +979,7 @@ fn finish_channel_major_recovery(
         channels,
         iterations,
         reconstruction_relative_infinity,
+        recovery_method,
     })
 }
 
@@ -1227,6 +1367,7 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         channels,
         iterations,
         reconstruction_relative_infinity,
+        recovery_method: CategoricalRecoveryMethod::Map,
     })
 }
 
@@ -2207,6 +2348,173 @@ mod tests {
     }
 
     #[test]
+    fn four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr() {
+        let worker = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0_u32, 1, 1, 2, 2, 3, 3, 0];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 4),
+                CategoricalCodeView::new(&firm, 4),
+            ],
+            &[&[0], &[1]],
+            &[true; 8],
+        )
+        .expect("topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let target = [-1.5, -0.5, -0.25, 0.75, 0.25, 1.25, 1.5, -1.5];
+        let lsmr_config = LsmrConfig {
+            tolerance: 1e-12,
+            max_iterations: 20_000,
+            ..LsmrConfig::default()
+        };
+        let hybrid = recover_finalized_categorical_effects_sd_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            lsmr_config,
+            MapConfig {
+                tolerance: 1e-12,
+                ..config()
+            },
+        )
+        .expect("SD recovery");
+        let lsmr = recover_finalized_categorical_effects_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            lsmr_config,
+            1e-12,
+        )
+        .expect("LSMR recovery");
+        assert_eq!(
+            hybrid.recovery_method(),
+            CategoricalRecoveryMethod::HybridLsmr
+        );
+        assert!(hybrid.reconstruction_relative_infinity() <= 1e-10);
+        for (actual, expected) in hybrid.absorbed_sum().iter().zip(lsmr.absorbed_sum()) {
+            assert!((actual - expected).abs() <= 1e-10);
+        }
+        for channel in 0..2 {
+            for (actual, expected) in hybrid.channels()[channel]
+                .as_ref()
+                .expect("hybrid channel")
+                .iter()
+                .zip(lsmr.channels()[channel].as_ref().expect("LSMR channel"))
+            {
+                assert!((actual - expected).abs() <= 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn borrowed_cg_recovery_matches_strict_lsmr_coefficients() {
+        let worker = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0_u32, 1, 1, 2, 2, 3, 3, 0];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 4),
+                CategoricalCodeView::new(&firm, 4),
+            ],
+            &[&[0], &[1]],
+            &[true; 8],
+        )
+        .expect("topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let target = [-1.5, -0.5, -0.25, 0.75, 0.25, 1.25, 1.5, -1.5];
+        let cg = recover_finalized_categorical_effects_cg_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )
+        .expect("CG recovery");
+        let lsmr = recover_finalized_categorical_effects_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..LsmrConfig::default()
+            },
+            1e-12,
+        )
+        .expect("LSMR recovery");
+        assert_eq!(cg.recovery_method(), CategoricalRecoveryMethod::Cg);
+        for (actual, expected) in cg.absorbed_sum().iter().zip(lsmr.absorbed_sum()) {
+            assert!((actual - expected).abs() <= 1e-10);
+        }
+        for channel in 0..2 {
+            for (actual, expected) in cg.channels()[channel]
+                .as_ref()
+                .expect("CG channel")
+                .iter()
+                .zip(lsmr.channels()[channel].as_ref().expect("LSMR channel"))
+            {
+                assert!((actual - expected).abs() <= 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights() {
+        let group = [0_u32, 0, 1, 1, 2, 2];
+        let topology = finalize_categorical_topology(
+            &[CategoricalCodeView::new(&group, 3)],
+            &[&[0]],
+            &[true; 6],
+        )
+        .expect("topology");
+        let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("group")];
+        let target = [-2.0, -2.0, 0.5, 0.5, 1.5, 1.5];
+        let weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0];
+        let recovered = recover_finalized_categorical_effects_sd_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Provided(&weights),
+            &target,
+            &[true],
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..LsmrConfig::default()
+            },
+            MapConfig {
+                tolerance: 1e-12,
+                ..config()
+            },
+        )
+        .expect("direct recovery");
+        assert_eq!(
+            recovered.recovery_method(),
+            CategoricalRecoveryMethod::Direct
+        );
+        assert_eq!(recovered.iterations(), 1);
+        for (actual, expected) in recovered.absorbed_sum().iter().zip(target) {
+            assert!((actual - expected).abs() <= 1e-12);
+        }
+    }
+
+    #[test]
     fn coefficient_lsmr_recovery_normalizes_disconnected_components() {
         let worker = [0_u32, 1, 2, 3];
         let firm = [0_u32, 0, 1, 1];
@@ -2302,6 +2610,113 @@ mod tests {
             },
         )
         .expect("weak AKM-cycle recovery");
+        assert!(recovered.reconstruction_relative_infinity() <= 1e-10);
+        for (actual, expected) in recovered.absorbed_sum().iter().zip(target) {
+            assert!((actual - expected).abs() <= 1e-9);
+        }
+    }
+
+    #[test]
+    fn weak_cycle_uses_the_hybrid_remainder_solve_and_certifies() {
+        const GROUPS: usize = 72;
+        let observations = GROUPS * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut target = Vec::with_capacity(observations);
+        for firm in 0..GROUPS {
+            for worker in [firm, (firm + 1) % GROUPS] {
+                worker_codes.push(worker as u32);
+                firm_codes.push(firm as u32);
+                target.push(
+                    0.35 * (std::f64::consts::TAU * worker as f64 / GROUPS as f64).cos()
+                        + (std::f64::consts::TAU * firm as f64 / GROUPS as f64).sin(),
+                );
+            }
+        }
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker_codes, GROUPS),
+                CategoricalCodeView::new(&firm_codes, GROUPS),
+            ],
+            &[&[0], &[1]],
+            &vec![true; observations],
+        )
+        .expect("weak topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let recovered = recover_finalized_categorical_effects_sd_lsmr_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            LsmrConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                ..LsmrConfig::default()
+            },
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )
+        .expect("hybrid weak-cycle recovery");
+        assert_eq!(
+            recovered.recovery_method(),
+            CategoricalRecoveryMethod::HybridLsmr
+        );
+        assert!(recovered.reconstruction_relative_infinity() <= 1e-10);
+    }
+
+    #[test]
+    fn weak_cycle_cg_continues_to_the_reconstruction_certificate() {
+        const GROUPS: usize = 72;
+        let observations = GROUPS * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut target = Vec::with_capacity(observations);
+        for firm in 0..GROUPS {
+            for worker in [firm, (firm + 1) % GROUPS] {
+                worker_codes.push(worker as u32);
+                firm_codes.push(firm as u32);
+                target.push(
+                    0.35 * (std::f64::consts::TAU * worker as f64 / GROUPS as f64).cos()
+                        + (std::f64::consts::TAU * firm as f64 / GROUPS as f64).sin(),
+                );
+            }
+        }
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker_codes, GROUPS),
+                CategoricalCodeView::new(&firm_codes, GROUPS),
+            ],
+            &[&[0], &[1]],
+            &vec![true; observations],
+        )
+        .expect("weak topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let recovered = recover_finalized_categorical_effects_cg_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 20_000,
+                check_every: 1,
+                symmetric: true,
+            },
+        )
+        .expect("strict CG recovery");
+        assert_eq!(recovered.recovery_method(), CategoricalRecoveryMethod::Cg);
         assert!(recovered.reconstruction_relative_infinity() <= 1e-10);
         for (actual, expected) in recovered.absorbed_sum().iter().zip(target) {
             assert!((actual - expected).abs() <= 1e-9);

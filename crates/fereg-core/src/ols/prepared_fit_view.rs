@@ -20,7 +20,8 @@ use crate::fe::{
     absorb_finalized_categorical_topology_cg_retaining_certified,
     absorb_finalized_categorical_topology_irons_tuck_certified,
     absorb_finalized_categorical_topology_lsmr_certified,
-    absorb_finalized_categorical_topology_map_certified, absorb_fixed_effects,
+    absorb_finalized_categorical_topology_map_certified,
+    absorb_finalized_categorical_topology_map_retaining_certified, absorb_fixed_effects,
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
     BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
     FeSolverKind, MapConfig,
@@ -122,7 +123,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
-        _retain_coefficients: bool,
+        retain_coefficients: bool,
     ) -> Result<CertifiedBorrowedMap>;
 
     fn fit_absorb_lsmr(
@@ -430,7 +431,7 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
-        _retain_coefficients: bool,
+        retain_coefficients: bool,
     ) -> Result<CertifiedBorrowedMap> {
         if self.has_absorbed_slope() {
             let effects = self.effect_views()?;
@@ -440,6 +441,13 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 weights,
                 values,
                 self.slope_map_config(config),
+            )
+        } else if retain_coefficients {
+            absorb_finalized_categorical_topology_map_retaining_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config,
             )
         } else {
             absorb_finalized_categorical_topology_map_certified(

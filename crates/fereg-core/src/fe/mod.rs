@@ -39,10 +39,13 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_routed_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
+    absorb_borrowed_intercept_cg_recovery_certified,
     absorb_borrowed_intercept_cg_retaining_certified,
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
+    absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
+    recover_borrowed_intercept_sd_lsmr_coefficients, BorrowedInterceptRecoveryMethod,
 };
 pub use categorical_request::{
     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
@@ -85,6 +88,7 @@ pub(crate) use topology_map::{
     absorb_finalized_categorical_topology_cg_retaining_certified,
     absorb_finalized_categorical_topology_irons_tuck_certified,
     absorb_finalized_categorical_topology_lsmr_certified,
+    absorb_finalized_categorical_topology_map_retaining_certified,
 };
 pub use topology_registry::CategoricalTopologyRegistry;
 pub use topology_rhs::{
@@ -97,7 +101,9 @@ pub use topology_slope_map::{
     RecoveredCategoricalEffects,
 };
 pub(crate) use topology_slope_map::{
+    recover_finalized_categorical_effects_cg_certified,
     recover_finalized_categorical_effects_from_coefficients_certified,
     recover_finalized_categorical_effects_lsmr_certified,
+    recover_finalized_categorical_effects_sd_lsmr_certified,
 };
 pub use topology_source::CategoricalTopologySource;

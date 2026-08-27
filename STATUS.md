@@ -1,8 +1,8 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-26
-**Development branch:** `main`; qualified direct Schwarz-LSMR is integrated and the explicit CMG prototype is present for experimental qualification
-**Verified candidate plugin:** `2f3ff78a7e154eab72651adc24b3c0519cc4d1d4cd6cd6ed08288564ff25f16e`
+**Development branch:** `main`; low-overhead certified saved-FE recovery is integrated alongside qualified direct Schwarz-LSMR and explicit experimental CMG
+**Verified candidate plugin:** `add052171b4d4238db1bbd11f1095c7ecc88bf15cf9220e92a04ea33c529808e`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Earlier verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
 **Active milestone:** qualify low-overhead saved fixed-effect recovery and CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
@@ -63,14 +63,17 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
 - Fast-mode saved fixed effects no longer rerun observation-space MAP. LSMR and
   CMG retain their coefficient solutions, CG propagates compact coefficient
   states through its recurrence, Irons--Tuck mirrors accepted extrapolations in
-  coefficient space, and auto combines its four-sweep MAP pilot with the
-  selected continuation. MAP and SQUAREM use one strict one-RHS LSMR recovery
-  because measured per-sweep coefficient recording was slower; slopes and
-  low-memory execution use the same bounded fallback. Every route still applies
-  connected-component normalization plus independent reconstruction and FE
-  moment certificates at the unchanged publication tolerance.
-- Warm alternating-order local Stata/MP medians for the saved-output checkpoint
-  are shown below. The 300,000-row runs use nine pairs; the 30,000-row CG/IT
+  coefficient space, auto combines its four-sweep MAP pilot with the selected
+  continuation, and intercept-only MAP now records coefficients during its
+  original batched `y`/`X` sweeps. MAP therefore has no recovery solve in the
+  normal fast saved-output path. Routes without a retained product use bounded
+  reconstruction-aware CG, then a four-sweep forward-Kaczmarz/steepest-descent
+  pilot plus LSMR on the remainder; slopes use strict LSMR. Every route still
+  applies connected-component normalization plus independent reconstruction
+  and FE-moment certificates at the unchanged publication tolerance.
+- Warm local Stata/MP timing checkpoints for saved output are shown below.
+  Unless specifically noted after the table, they are alternating-order
+  medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT
   runs use nine pairs, MAP five, and SQUAREM three. Absolute overhead is small
   for retained paths; MAP remains the candid exception even with its best
   tested fallback.
@@ -82,15 +85,22 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   | CMG | 300,000 | 0.287 s | 0.331 s | +0.044 s |
   | CG | 30,000 | 0.093 s | 0.100 s | +0.007 s |
   | Irons--Tuck | 30,000 | 0.295 s | 0.310 s | +0.015 s |
-  | MAP | 30,000 | 0.817 s | 1.184 s | +0.367 s |
+  | MAP | 30,000 | 0.844 s | 0.891 s | +0.048 s |
+  | MAP | 300,000 | 2.983 s | 3.616 s | +0.633 s |
   | SQUAREM | 30,000 | 2.553 s | 2.950 s | +0.397 s |
 
-  The original `tests/manual/simple_AKM.do` reproducer now completes; its
-  30,000-row saved AUTO and CMG runs were 0.129 s and 0.066 s. The expanded
+  The new MAP rows are paired warm means (11 pairs at 30,000 rows and nine
+  alternating-order pairs at 300,000 rows); the earlier solver rows retain
+  their registered medians. At the original 30,000-row reproducer scale, saved
+  MAP output adds 5.6 percent rather than the previous 44.9 percent. At 300,000
+  rows the measured 21.2 percent includes coefficient accumulation, strict
+  normalization/certification, and writing two observation-scale Stata
+  variables. The original `tests/manual/simple_AKM.do` reproducer's saved AUTO
+  and CMG runs were 0.129 s and 0.066 s. The expanded
   saved-output parity fixture passes MAP, CG, IT, SQUAREM, LSMR, and CMG with
   matching coefficients/RSS and explicit FE-channel reconstruction identities.
   The complete local entry point passes repository checks, 269 Python tests,
-  strict formatting/Clippy, 310 core tests, 52 FFI plugin tests, integration
+  strict formatting/Clippy, 316 core tests, 52 FFI plugin tests, integration
   oracles, mock SPI, and portable static checks.
 - `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
   and performance are outside the 0.5.0 beta.

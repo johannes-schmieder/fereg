@@ -61,10 +61,14 @@
   CG propagates compact FE coefficients through its recurrence; Irons--Tuck
   propagates the same extrapolation in coefficient space; and automatic routing
   combines its MAP-pilot coefficients with the selected LSMR or CG continuation.
-  MAP, SQUAREM, slope-bearing routes, and low-memory execution use one strict
-  coefficient-producing LSMR recovery solve, with certified MAP only as a
-  fail-closed fallback. Recovered channels retain the established component
-  normalization and are independently reconstruction- and moment-certified.
+  Fast intercept-only MAP now accumulates its level coefficients during the
+  original batched residualization and forms the post-fit absorbed product with
+  no recovery solve. Routes without a retained product use reconstruction-aware
+  CG with a bounded iteration budget, followed by a four-sweep forward-
+  Kaczmarz/steepest-descent pilot and an LSMR remainder solve. Slope recovery
+  uses strict LSMR, and certified MAP remains the fail-closed final fallback.
+  Every route retains the established component normalization plus independent
+  observation-space reconstruction and FE-moment certificates.
 - Identified the beta consistently as 0.5.0 and added deterministic
   source/release staging, checksum, dependency, SBOM/license, and platform-
   caveat requirements.
