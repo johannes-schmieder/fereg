@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "route_id": "cmg_auto_route_v1",
+  "frozen_on": "2026-08-27",
+  "cmg_commit": "ce126358a82cc1a461cfe7b9f9318b4c3c1c1316",
+  "fereg_calibration_base": "68e7ac3",
+  "scope": "Conservative first production route; explicit solver(cmg) retains the 64-column nuisance capability.",
+  "rule": {
+    "minimum_observations_per_high_level": 8,
+    "minimum_high_to_second_level_ratio": 10,
+    "maximum_nuisance_nonbase_columns": 0,
+    "absorbed_slopes_allowed": false
+  },
+  "observed_guardrails_at_n100k": {
+    "short_panel_rejection": "T=2 was up to 13.1x slower; T=3 and T=5 cells were mixed or too close to freeze.",
+    "nuisance_rejection": "At T=10, 32 and 64 nuisance columns were 2.58x to 4.98x slower; 8 columns was not a stable win at eight threads.",
+    "balanced_core_rejection": "At a 5:1 core-cardinality ratio, T=10 CMG ranged from 1.01x to 1.17x slower in the guardrail cells.",
+    "selected_region": "At T=10 or T=20 with 20:1 or 100:1 core cardinalities and no nuisance block, CMG won all calibrated unit/weighted and narrow/wide guardrail cells admitted by the rule."
+  },
+  "qualification_status": "route_frozen; full cross-platform release qualification remains separate"
+}

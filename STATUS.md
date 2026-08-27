@@ -1,11 +1,11 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-26
-**Development branch:** `main`; low-overhead certified saved-FE recovery is integrated alongside qualified direct Schwarz-LSMR and explicit experimental CMG
-**Verified candidate plugin:** `7d740de3eab5e8d62974400fd788d316079ee7a168025b059399c82425e58131`
+**Last updated:** 2026-08-27
+**Development branch:** `main`; low-overhead certified saved-FE recovery and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
+**Verified candidate plugin:** `c0f8802201356e4c12bb41b5ad281b79824587358966ac53847524b2e2f3f23e`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** qualify low-overhead saved fixed-effect recovery and CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
+**Active milestone:** freeze the integrated saved-FE/CMG candidate, then complete the broader and cross-platform beta qualification without weakening the certified ADR-0009 fallback
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -45,11 +45,17 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   fails closed. CG now requires both reghdfe's Hestenes energy stop and the
   independent FE certificate; neither recurrence nor certificate substitutes
   for the other on the comparator-equivalent path.
-- Explicit `solver(cmg)` is implemented as an experimental GPL-3.0-only prototype for
-  sparse AKM designs. It reuses one graph hierarchy per fit, supports up to 64
+- Explicit `solver(cmg)` reuses one graph hierarchy per fit, supports up to 64
   nuisance non-base absorbed-intercept columns, and retains certified CG
-  polishing/fallback. It is not selected by `solver(auto)` and has not entered
-  release qualification.
+  polishing/fallback. ADR-0010 now selects CMG before the MAP pilot for the
+  frozen favorable intercept-only topology: no nuisance columns, at least
+  eight observations per highest-cardinality level, and a core cardinality
+  ratio of at least 10:1. Fast and low modes share the route; setup/memory
+  failure returns visibly to the existing auto policy, and solve failure uses
+  certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
+  tolerance to satisfy the OLS score certificate without a separate post-QR
+  correction. The GPL-3.0-only dependency remains a release-distribution
+  blocker.
 - The qualified automatic policy is implemented: one FE uses direct one-pass
   demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
   if certified. Otherwise a pilot contraction of at least 0.008 selects direct
@@ -134,11 +140,12 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   tests, strict Rust/FFI/all-target suites, mock SPI, binary audit/loader, and
   deterministic packaging checks. The evidence summary is
   `benchmarks/expected/direct_lsmr_qualification_v1.json`.
-- A 200,000-row registered-style AKM probe found explicit CMG 48 percent faster
-  than direct Schwarz-LSMR at one thread and 30 percent faster at eight threads,
-  with identical samples and coefficient differences below `1e-14`. A two-period
-  variant favored LSMR because Schwarz converged in one iteration, so CMG remains
-  explicit pending a topology-sensitive qualification matrix.
+- The ADR-0010 100,000-row crossover and guardrail calibration rejected short,
+  nuisance-heavy, and nearly balanced graphs and froze only the robust region.
+  The permanent manifest/analyzer enforce a five-percent per-selected-cell
+  slowdown ceiling and a faster selected aggregate. The upstream CMG pin now
+  exposes conservative pre-build and exact retained-memory reports consumed by
+  fereg's joint memory planner.
 
 ## 0.5.0 beta exit gate
 
@@ -227,9 +234,9 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Current blockers
 
-1. The integrated ADR-0009 route still needs a clean exact-commit rebuild, CI,
-   the broader release matrix, and immutable release receipts. CMG is a separate
-   experimental route and may not alter auto without its own frozen qualification.
+1. The integrated ADR-0009/ADR-0010 route still needs a clean exact-commit
+   rebuild, CI, fresh 1m/10m CMG holdouts, the broader release matrix, and
+   immutable release receipts.
 2. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
    diagnostic because its refined residual fails the independent OLS score
    certificate. Auto's four-sweep pilot passes and is the beta acceptance path;
@@ -246,10 +253,9 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Development plan
 
-1. Preserve the frozen ADR-0009 algorithm, tolerance, preconditioner, pilot
-   threshold, and diagnostics. Qualify CMG separately across periods, mobility,
-   connectedness, problem size, RHS count, and thread count before considering
-   any automatic route.
+1. Preserve the frozen ADR-0009 fallback and ADR-0010 topology tree. Run the
+   permanent CMG matrix and analyzer on fresh 1m holdouts and selected 10m
+   freeze cases before expanding the route or making release claims.
 2. Preserve the sealed Decimal fixtures, observation-space audit, large-case
    tighter-solve stability check, and full generated 10m case in qualification.
 3. Diagnose explicit raw-start CG's low-mobility score failure separately from

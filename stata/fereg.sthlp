@@ -178,21 +178,30 @@ residual degrees of freedom.
 
 {pstd}
 {cmd:solver(auto)} is the default. It uses direct one-pass demeaning for one
-fixed effect and a bounded pilot for multiple effects, then selects a certified
-MAP, CG, or LSMR route. Auto-selected LSMR may make at most one recorded
+fixed effect. Before the bounded multi-effect pilot, categorical intercept-only
+designs select CMG when they have no nuisance Schur columns, at least eight
+observations per largest-effect level, and at least a 10:1 core level-count
+ratio. Other designs select a certified MAP, CG, or LSMR route after the pilot.
+Auto-selected LSMR may make at most one recorded
 fallback to certified CG. The result matrix records the selected method,
 pilot, iterations, fallback, and final certificate.
 
 {pstd}
 Explicit methods are unaccelerated symmetric {cmd:map}, conjugate-gradient
 accelerated MAP {cmd:cg}, Irons--Tuck {cmd:it}, {cmd:squarem}, and modified
-{cmd:lsmr}. Prototype {cmd:cmg} constructs one worker--firm graph for the two
+{cmd:lsmr}. {cmd:cmg} constructs one worker--firm graph for the two
 largest categorical intercept effects and uses CMG-preconditioned PCG for all
 right-hand sides. Additional absorbed intercept effects are supported when
 their combined non-base dimension is at most 64. Absorbed slopes are not
 supported by {cmd:cmg}. A failed CMG construction or solve falls back visibly
 to certified CG; a successful bulk solve is polished by CG when needed. All
 explicit methods fail closed on a failed independent fixed-effect certificate.
+
+{pstd}
+The automatic CMG route is available in both memory modes, includes hierarchy
+setup in timing and memory preflight, and records requested {cmd:auto} with
+used solver code 7. Unsupported or failed setup returns to the existing auto
+route; a failed CMG solve uses certified CG for the remaining fit work.
 
 {pstd}
 {cmd:preconditioner()} is valid only with {cmd:solver(auto)} or

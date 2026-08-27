@@ -1,8 +1,9 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, FeCertificate,
-    FeCoefficientBatch, FeSolverKind, SolveReport, SolveStopReason,
+    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig,
+    CmgTopologyProfile, FeCertificate, FeCoefficientBatch, FeSolverKind, SolveReport,
+    SolveStopReason,
 };
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
@@ -555,25 +556,59 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     })?
 }
 
+struct FitCmgAbsorber<'a> {
+    session: Option<CmgAbsorber<'a>>,
+    auto_setup_warning: Option<String>,
+}
+
 fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     prepared: &'a P,
     weights: BorrowedMapWeights<'a>,
     config: PreparedOlsFitConfig,
-) -> Result<Option<CmgAbsorber<'a>>> {
-    if config.absorb.solver != FeSolverKind::Cmg {
-        return Ok(None);
+) -> Result<FitCmgAbsorber<'a>> {
+    if config.absorb.solver != FeSolverKind::Cmg
+        && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
+    {
+        return Ok(FitCmgAbsorber {
+            session: None,
+            auto_setup_warning: None,
+        });
     }
-    prepared
-        .fit_build_cmg_absorber(
-            weights,
-            CmgConfig {
-                map: config.absorb.map,
-                threads: config.execution.threads,
-                batch_size: config.execution.poolsize,
-                retain_coefficients: config.absorb.retain_coefficients,
-            },
-        )
-        .map(Some)
+    let design = prepared.fit_borrowed_cmg_design()?;
+    let profile = CmgTopologyProfile::analyze(&design)?;
+    if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
+        return Ok(FitCmgAbsorber {
+            session: None,
+            auto_setup_warning: None,
+        });
+    }
+    let cmg_config = CmgConfig {
+        map: config.absorb.map,
+        threads: config.execution.threads,
+        batch_size: config.execution.poolsize,
+        retain_coefficients: config.absorb.retain_coefficients,
+        requested_solver: config.absorb.solver,
+        solver_memory_budget: config.absorb.solver_memory_budget,
+    };
+    match CmgAbsorber::build_profiled(
+        design,
+        weights,
+        cmg_config,
+        prepared.fit_structural_intercept(),
+        profile,
+    ) {
+        Ok(session) => Ok(FitCmgAbsorber {
+            session: Some(session),
+            auto_setup_warning: None,
+        }),
+        Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitCmgAbsorber {
+            session: None,
+            auto_setup_warning: Some(format!(
+                "automatic CMG setup was unavailable ({error}); used the existing certified auto route"
+            )),
+        }),
+        Err(error) => Err(error),
+    }
 }
 
 fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
@@ -581,16 +616,36 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: AbsorbConfig,
-    cmg: &mut Option<CmgAbsorber<'_>>,
+    cmg: &mut FitCmgAbsorber<'_>,
     initial: bool,
+    final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
-    if let Some(session) = cmg.as_mut() {
-        return session.absorb(values);
+    if let Some(session) = cmg.session.as_mut() {
+        return if final_residual {
+            session.absorb_final_residual(values)
+        } else {
+            session.absorb(values)
+        };
     }
-    if initial {
+    let absorbed = if initial {
         prepared.fit_absorb_initial_matrix(weights, values, config)
     } else {
         prepared.fit_absorb_matrix(weights, values, config)
+    }?;
+    let Some(warning) = cmg.auto_setup_warning.take() else {
+        return Ok(absorbed);
+    };
+    let (residualized, mut report, coefficients) = absorbed.into_full_parts();
+    report.fallback_used = true;
+    report.warnings.insert(0, warning);
+    if let Some(coefficients) = coefficients {
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            residualized,
+            report,
+            coefficients,
+        )
+    } else {
+        CertifiedBorrowedMap::from_certified_parts(residualized, report)
     }
 }
 
@@ -736,6 +791,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         config.absorb,
         &mut cmg,
         true,
+        false,
     )?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -818,6 +874,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         config.absorb,
         &mut cmg,
         false,
+        true,
     )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
@@ -1015,6 +1072,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         config.absorb,
         &mut cmg,
         false,
+        false,
     )?;
     if !absorbed_outcome.report().certified() {
         return Err(invalid_data(
@@ -1072,6 +1130,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
             raw_block,
             config.absorb,
             &mut cmg,
+            false,
             false,
         )?;
         if !absorbed_block.report().certified() {
@@ -1171,6 +1230,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         config.absorb,
         &mut cmg,
         false,
+        true,
     )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(

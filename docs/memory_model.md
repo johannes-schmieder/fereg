@@ -27,6 +27,16 @@ solver peak fits. If LSMR does not fit but CG does, auto visibly selects CG. If
 neither certified route fits, estimation returns `r(909)` before allocating a
 large solver workspace.
 
+Topology-selected CMG uses the same joint budget. Before hierarchy
+construction, fereg consumes CMG's upstream checked conservative estimate for
+the graph, hierarchy, parallel plan, and reusable workspace pool, then adds
+fereg's simultaneous graph RHS/solution vectors, nuisance Schur storage, and
+retained coefficient product. After construction it consumes CMG's exact
+retained-memory report and rechecks the hierarchy, plan, workspace pool, and
+nuisance factor against the joint budget. A selected CMG route that does not
+fit returns to the existing auto policy before graph allocation; an explicit
+route can use certified CG only when that fallback also fits.
+
 ## Fast and low execution
 
 Fast execution holds the prepared outcome/regressor batch and in-memory score

@@ -250,8 +250,17 @@ pub(super) fn build_prepared_ols_score_design<
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     };
-    let mut cmg = if absorb.solver == FeSolverKind::Cmg && cached.is_none() {
-        Some(prepared.fit_build_cmg_absorber(
+    let score_cmg_solver = if absorb.solver == FeSolverKind::Cmg {
+        Some(FeSolverKind::Cmg)
+    } else if absorb.solver == FeSolverKind::Auto
+        && fit.absorption_report().used_solver == FeSolverKind::Cmg
+    {
+        Some(FeSolverKind::Auto)
+    } else {
+        None
+    };
+    let mut cmg = if let (Some(requested_solver), true) = (score_cmg_solver, cached.is_none()) {
+        let built = prepared.fit_build_cmg_absorber(
             map_weights,
             CmgConfig {
                 map: absorb.map,
@@ -261,8 +270,15 @@ pub(super) fn build_prepared_ols_score_design<
                 )?,
                 batch_size: fit.execution().poolsize.max(1),
                 retain_coefficients: false,
+                requested_solver,
+                solver_memory_budget: absorb.solver_memory_budget,
             },
-        )?)
+        );
+        match built {
+            Ok(session) => Some(session),
+            Err(_) if requested_solver == FeSolverKind::Auto => None,
+            Err(error) => return Err(error),
+        }
     } else {
         None
     };

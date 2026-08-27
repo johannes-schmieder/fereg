@@ -42,12 +42,12 @@ use = "Evaluated solver reference; not linked, copied, or used at runtime in 0.5
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "1a82ab2b35494327531facf7abe274646b3f0f2d"
+commit = "ce126358a82cc1a461cfe7b9f9318b4c3c1c1316"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
 relevant_test_paths = ["tests/", "src/**/tests/"]
-use = "Exact runtime dependency for the local solver(cmg) prototype, compiled with the parallel feature; the prototype artifact is not staged for release."
+use = "Exact runtime dependency for solver(cmg), including additive checked memory accounting and retained setup optimizations; compiled with the parallel feature."
 
 [[reference]]
 name = "reghdfe"

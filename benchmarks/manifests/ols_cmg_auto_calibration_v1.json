@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_cmg_auto_calibration_v1",
+  "status": "development_and_route_freeze",
+  "setup_cost_included": true,
+  "scientific_certificate_required": true,
+  "axes": {
+    "observations": [100000, 1000000, 10000000],
+    "periods": [2, 3, 5, 10, 20],
+    "mobility": [0.01, 0.02, 0.05, 0.15, 0.5],
+    "threads": [1, 8],
+    "rhs_width": [3, 11],
+    "weights": ["unit", "heterogeneous_analytic"],
+    "components": ["connected", "disconnected"],
+    "high_to_second_level_ratio": [5, 20, 100],
+    "nuisance_nonbase_columns": [0, 8, 32, 64],
+    "memory_mode": ["fast", "low"]
+  },
+  "arms": [
+    {"id": "lsmr_schwarz", "solver": "lsmr", "preconditioner": "schwarz"},
+    {"id": "cmg", "solver": "cmg", "preconditioner": "none"},
+    {"id": "auto", "solver": "auto", "preconditioner": "auto"}
+  ],
+  "measurement": {
+    "tolerance": 1e-8,
+    "cold_repetitions": 1,
+    "warm_repetitions": 5,
+    "statistic": "median_total_wall_seconds",
+    "include_setup": true
+  },
+  "frozen_selection_rule": {
+    "minimum_observations_per_high_level": 8,
+    "minimum_high_to_second_level_ratio": 10,
+    "maximum_nuisance_nonbase_columns": 0,
+    "absorbed_slopes_allowed": false
+  },
+  "acceptance": {
+    "maximum_selected_case_slowdown_fraction": 0.05,
+    "selected_aggregate_must_be_faster": true,
+    "saved_output_overhead_seconds": 0.05,
+    "saved_output_overhead_fraction": 0.05
+  }
+}

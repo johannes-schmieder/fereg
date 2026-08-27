@@ -3,9 +3,9 @@ use fereg_core::{
     AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder,
     ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
     OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsExecutionMode,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -55,6 +55,85 @@ fn cmg_two_way_prepared_fit_matches_certified_cg() {
             (None, None) => {}
             values => panic!("CMG/CG coefficient availability differs: {values:?}"),
         }
+    }
+}
+
+#[test]
+fn favorable_auto_topology_uses_cmg_without_a_map_pilot_in_fast_and_low_modes() {
+    let periods = 8;
+    let workers = 100;
+    let firms = 10;
+    let rows = periods * workers;
+    let worker = (0..rows)
+        .map(|row| (row / periods) as u32)
+        .collect::<Vec<_>>();
+    let firm = (0..rows)
+        .map(|row| ((row / periods + row % periods) % firms) as u32)
+        .collect::<Vec<_>>();
+    let x = (0..rows)
+        .map(|row| ((row * 37 + 11) % 997) as f64 / 97.0 - 5.0)
+        .collect::<Vec<_>>();
+    let outcome = (0..rows)
+        .map(|row| {
+            0.7 * x[row]
+                + (worker[row] as f64 * 0.13).sin()
+                + (firm[row] as f64 * 0.29).cos()
+                + (((row * 53 + 7) % 101) as f64 - 50.0) * 0.001
+        })
+        .collect::<Vec<_>>();
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome: outcome.clone(),
+        regressors: vec![x.clone()],
+        effects: vec![
+            DummyEffect::new(worker.clone(), workers, true, Vec::new()).expect("worker dummies"),
+            DummyEffect::new(firm.clone(), firms, true, Vec::new()).expect("firm dummies"),
+        ],
+        weights: OracleWeights::Unit,
+        clusters: Vec::new(),
+    })
+    .expect("explicit-dummy CMG oracle");
+    let prepared = prepare_case(
+        &outcome,
+        &[x],
+        &[worker, firm],
+        &[0, 1],
+        true,
+        CaseWeights::Unit,
+    );
+
+    for mode in [
+        PreparedOlsExecutionMode::Fast,
+        PreparedOlsExecutionMode::Low,
+    ] {
+        let mut auto_config = PreparedOlsFitConfig::default();
+        auto_config.execution.mode = mode;
+        auto_config.execution.poolsize = 1;
+        let auto = fit_prepared_ols_coefficients_map(&prepared, auto_config).expect("auto CMG fit");
+        assert_eq!(
+            auto.absorption_report().requested_solver,
+            FeSolverKind::Auto
+        );
+        assert_eq!(
+            auto.absorption_report().used_solver,
+            FeSolverKind::Cmg,
+            "{:?}",
+            auto.absorption_report()
+        );
+        assert_eq!(auto.absorption_report().pilot_iterations, 0);
+        assert!(auto.residual_absorption_report().certified());
+        assert_eq!(
+            auto.residual_absorption_report().requested_solver,
+            FeSolverKind::Auto
+        );
+        assert_eq!(auto.residual_absorption_report().pilot_iterations, 0);
+        assert_slice_close(auto.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
+        assert_close(
+            auto.coefficients()[0]
+                .value
+                .expect("automatic CMG coefficient"),
+            oracle.coefficients[0].expect("explicit-dummy coefficient"),
+            COEFFICIENT_TOLERANCE,
+        );
     }
 }
 

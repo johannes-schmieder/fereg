@@ -16,7 +16,7 @@ ADR-0007 and `STATUS.md`.
 | Postestimation | `predict` for `xb`, absorbed contribution, `xbd`, and residuals; `test`; `estat summarize` | Public clean-install and rollback/Break repetition |
 | Native transport | One substantive plugin call, Stata-thread-only SPI, receipt-last completion, rollback, panic and Break containment | Exact packaged-plugin tests on every supported build target |
 | Memory/threading | `memory(fast|low|auto)`, bounded scratch cleanup, allocation/RSS/time reporting, deterministic per-action thread pools | Leak, modeled-allocation, constrained-memory, and SCC RSS gates |
-| CMG prototype | Explicit `solver(cmg)` for two large categorical intercept effects plus at most 64 non-base nuisance-FE columns; certified CG polishing/fallback; solver code 7 | Large AKM speed/RSS evidence, non-macOS builds, and any automatic routing claim |
+| CMG graph route | Explicit `solver(cmg)` supports two large categorical intercept effects plus at most 64 non-base nuisance-FE columns. `solver(auto)` selects CMG before its MAP pilot only for the frozen no-nuisance, 8-observations-per-high-level, 10:1-cardinality topology in fast and low modes. Setup and solve fallback remain certified and visible; used solver code is 7. | Full 1m/10m route freeze, non-macOS builds, cross-platform memory/performance receipts, and license-compatible distribution decision |
 
 `feppml` is installed only as a fail-closed `r(498)` stub and is outside the
 OLS candidate. IV/GMM, group outcomes with individual FEs, HAC/Driscoll–Kraay,

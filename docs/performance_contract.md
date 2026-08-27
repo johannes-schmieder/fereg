@@ -65,6 +65,15 @@ because the beta scientific and runtime contract is defined against reghdfe.
 Normal PLUS installations may be used for daily development, but qualification
 continues to stage the exact reference closure in isolation.
 
+CMG automatic routing has an additional route-local gate defined by
+`benchmarks/manifests/ols_cmg_auto_calibration_v1.json`: hierarchy setup is
+included; no selected cell may be more than five percent slower than explicit
+Schwarz-LSMR; and the selected aggregate must be faster. The matrix crosses
+panel length, mobility, threads, RHS width, weights, connectedness, core
+cardinality ratio, nuisance dimension, and fast/low memory mode at 100k, with
+fresh 1m and selected 10m holdouts. Saved-output overhead remains bounded by
+the larger of 0.05 seconds or five percent.
+
 The release-grade freeze uses at least five warm runs after one cold run.
 Quick, matrix, and milestone development profiles use their registered shorter
 warm cadence and cannot substitute for freeze or exact-source qualification.

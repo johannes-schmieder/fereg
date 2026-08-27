@@ -1813,6 +1813,41 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
     )
 }
 
+/// Check an unchanged candidate against the same independent borrowed FE
+/// certificate used at solver entry. This performs no projection or solver
+/// iteration and is used when a caller expects a residual to already lie in
+/// the within space.
+pub(crate) fn certify_borrowed_intercept_candidate(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: &DenseMatrix,
+    config: MapConfig,
+) -> Result<FeCertificate> {
+    validate_config(config)?;
+    if design.nobs() != values.nrows() || values.nrows() == 0 || values.ncols() == 0 {
+        return Err(invalid_argument(
+            "borrowed certificate design and matrix dimensions are inconsistent",
+        ));
+    }
+    if values.as_slice().iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data(
+            "borrowed certificate candidate contains a nonfinite value",
+        ));
+    }
+    let weights = validate_weights(weights, values.nrows())?;
+    let mut reservation = SystemWorkspaceReservation;
+    let mut workspace =
+        BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), &mut reservation)?;
+    weighted_column_norms(
+        values,
+        weights,
+        &mut workspace.reference_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+    )?;
+    certify_initial(design, weights, values, config.tolerance, &mut workspace)
+}
+
 pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,

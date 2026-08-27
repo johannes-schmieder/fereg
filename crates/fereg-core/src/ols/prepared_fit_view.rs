@@ -137,6 +137,10 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
+    fn fit_supports_cmg_auto(&self) -> bool {
+        true
+    }
+
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>>;
 
     fn fit_build_cmg_absorber<'a>(
@@ -234,6 +238,8 @@ pub(crate) trait PreparedOlsFitView: Sync {
                     threads,
                     batch_size,
                     retain_coefficients: config.retain_coefficients,
+                    requested_solver: FeSolverKind::Cmg,
+                    solver_memory_budget: config.solver_memory_budget,
                 },
             )?;
             return session.absorb(values);
@@ -416,6 +422,12 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
 
     fn fit_report_intercept(&self) -> bool {
         self.report_intercept()
+    }
+
+    fn fit_supports_cmg_auto(&self) -> bool {
+        self.effect_specs()
+            .iter()
+            .all(|effect| effect.intercept && effect.slopes.is_empty())
     }
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {

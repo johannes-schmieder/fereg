@@ -42,6 +42,16 @@
   one reusable worker--firm CMG hierarchy, batched PCG right-hand sides, a
   rank-revealing Schur layer for up to 64 nuisance FE columns, and unchanged
   observation-space certification with short CG polishing or visible fallback.
+- Promoted CMG into `solver(auto)` for a frozen conservative AKM topology:
+  intercept-only two-way graphs with no nuisance Schur block, at least eight
+  observations per highest-cardinality level, and a core level-count ratio of
+  at least 10:1. Selection occurs before the MAP pilot and reuses one hierarchy
+  in fast and low modes. Added upstream conservative/exact CMG memory
+  accounting, joint preflight, visible setup/solve fallback, a direct final-
+  residual certificate that avoids near-zero PCG work, permanent calibration
+  and slowdown gates, and Rust/Stata route-boundary tests. The graph PCG solve
+  runs at one-hundredth of the public FE tolerance so the downstream OLS score
+  certificate passes without a separate post-QR correction.
 - Reworked the public README and Stata help into a complete user-facing guide,
   with explicit absorbed-term grammar, option defaults, weight and
   postestimation semantics, twelve self-contained examples, and a reproducible

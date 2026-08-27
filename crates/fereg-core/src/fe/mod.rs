@@ -45,7 +45,8 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
-    recover_borrowed_intercept_sd_lsmr_coefficients, BorrowedInterceptRecoveryMethod,
+    certify_borrowed_intercept_candidate, recover_borrowed_intercept_sd_lsmr_coefficients,
+    BorrowedInterceptRecoveryMethod,
 };
 pub use categorical_request::{
     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
@@ -53,7 +54,7 @@ pub use categorical_request::{
 };
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
-pub(crate) use cmg::{CmgAbsorber, CmgConfig};
+pub(crate) use cmg::{CmgAbsorber, CmgConfig, CmgTopologyProfile};
 pub(crate) use components::connected_components_all;
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;

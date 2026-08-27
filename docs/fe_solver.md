@@ -69,6 +69,10 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 `solver(auto)` implements the ADR-0009 policy:
 
+- categorical intercept-only graphs first select CMG, without a MAP pilot,
+  when there are no nuisance Schur columns, at least eight observations per
+  highest-cardinality level, and at least a 10:1 level-count ratio between the
+  two core effects;
 - one FE: direct one-pass demeaning and immediate certification;
 - multiple FEs: at most four symmetric MAP pilot sweeps;
 - return MAP if a pilot sweep certifies;
@@ -80,6 +84,17 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 - if auto-selected LSMR fails or does not certify, perform one visible fallback
   from the saved MAP-pilot state to certified CG within the remaining iteration
   and memory budgets.
+
+The CMG selector is frozen by ADR 0010 and applies in fast and low execution.
+It is deliberately narrower than explicit `solver(cmg)`, which continues to
+support up to 64 non-base nuisance columns. One hierarchy and workspace pool
+are retained across outcome/regressor blocks. Final OLS residuals normally
+already satisfy the FE certificate, so they skip graph PCG; the normal
+certified CMG path runs only when correction is required. The graph PCG systems
+use one-hundredth of the requested FE tolerance because their projection feeds
+the more sensitive OLS score certificate. CMG setup failure returns to the
+existing auto policy with a warning; a solve failure marks the fit-lifetime
+route failed and uses certified CG thereafter.
 
 The report retains requested solver `auto` and records used solver, pilot
 iterations, pilot contraction, total iterations, stop reason, setup/solve time,

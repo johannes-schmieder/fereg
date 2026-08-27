@@ -36,6 +36,38 @@ fn cmg_rejects_absorbed_slopes_before_estimation() {
 }
 
 #[test]
+fn auto_never_routes_absorbed_slopes_to_cmg() {
+    let (base_y, base_x1, base_firm, base_time, base_worker) = overabsorbed_case();
+    let mut y = base_y.clone();
+    let mut x1 = base_x1.clone();
+    let mut firm = base_firm.clone();
+    let mut time = base_time.clone();
+    let mut worker = base_worker.clone();
+    for _ in 0..9 {
+        y.extend_from_slice(&base_y);
+        x1.extend_from_slice(&base_x1);
+        firm.extend_from_slice(&base_firm);
+        time.extend_from_slice(&base_time);
+        worker.extend_from_slice(&base_worker);
+    }
+    let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
+    let result = fit_prepared_categorical_ols_unadjusted_map(
+        &prepared,
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("certified automatic slope fit");
+    assert!(result.fit().absorption_report().certified());
+    assert_eq!(
+        result.fit().absorption_report().requested_solver,
+        FeSolverKind::Auto
+    );
+    assert_ne!(
+        result.fit().absorption_report().used_solver,
+        FeSolverKind::Cmg
+    );
+}
+
+#[test]
 fn slope_only_plus_intercept_case_matches_explicit_dummy_oracle() {
     let (base_y, base_x1, base_firm, base_time, base_worker) = overabsorbed_case();
     let mut y = base_y.clone();

@@ -47,8 +47,8 @@ dimension. Cluster interactions use `#`, not `##`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `solver(auto)` | `auto` | Run the bounded pilot and select a certified direct, MAP, CG, or LSMR route. |
-| `solver(map|cg|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is a sparse AKM prototype for categorical intercept effects. |
+| `solver(auto)` | `auto` | Select topology-qualified CMG before the bounded MAP pilot; otherwise select a certified direct, MAP, CG, or LSMR route. |
+| `solver(map|cg|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. |
 | `preconditioner(auto|off|diagonal|schwarz)` | `auto` with `auto`/`lsmr` | Select the LSMR preconditioner. `none` aliases `off`; `additive` aliases `schwarz`. |
 | `threads(#)` | `0` | Request a native thread team. Zero uses the native default. |
 | `memory(auto|fast|low)` | `auto` | Choose automatically, retain dense workspaces, or use blockwise work and bounded scratch storage. |
@@ -69,8 +69,15 @@ additional absorbed intercept effects through a dense Schur layer capped at 64
 non-base columns. Zero- and one-effect models retain exact direct projection.
 CMG does not support absorbed slopes. Every result is independently certified;
 the existing CG solver polishes a small remaining projection error or is used
-as a visible fallback if CMG setup or PCG fails. `solver(auto)` does not select
-CMG in this prototype.
+as a visible fallback if CMG setup or PCG fails. `solver(auto)` selects CMG
+before the MAP pilot only for the frozen favorable topology: two intercept-only
+core effects, no nuisance Schur columns, at least eight observations per
+highest-cardinality level, and at least a 10:1 level-count ratio between the
+core effects. The route is available in `memory(fast)` and `memory(low)`. CMG
+setup is included in memory preflight and timing; setup failure returns visibly
+to the existing auto route, while a solve failure selects certified CG for the
+rest of that fit. The final OLS residual is certified directly and skips graph
+PCG when it is already within-transformed.
 
 ## Absorbed-term grammar
 
