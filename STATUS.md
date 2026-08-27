@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-08-26
 **Development branch:** `main`; low-overhead certified saved-FE recovery is integrated alongside qualified direct Schwarz-LSMR and explicit experimental CMG
-**Verified candidate plugin:** `add052171b4d4238db1bbd11f1095c7ecc88bf15cf9220e92a04ea33c529808e`
+**Verified candidate plugin:** `7d740de3eab5e8d62974400fd788d316079ee7a168025b059399c82425e58131`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
-**Earlier verified candidate source:** `786425f2a00049901e6a84877f486a0058aea471`
+**Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
 **Active milestone:** qualify low-overhead saved fixed-effect recovery and CMG's topology-sensitive performance without disturbing the frozen automatic LSMR route
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
