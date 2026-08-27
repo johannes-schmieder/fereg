@@ -355,6 +355,7 @@ pub fn recover_finalized_categorical_effects_map_certified(
 /// by the estimator. This path performs no iterative solve: it normalizes the
 /// solver's null-space representative, scatters requested channels, and
 /// independently certifies reconstruction and FE orthogonality.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
@@ -363,6 +364,7 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
     requested_channels: &[bool],
     coefficients: &FeCoefficientBatch,
     tolerance: f64,
+    known_connected: bool,
 ) -> Result<RecoveredCategoricalEffects> {
     validate_recovery_inputs(topology, effects, target, requested_channels)?;
     validate_coefficient_layout(topology, effects, coefficients)?;
@@ -373,7 +375,7 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
     }
     let weights = validate_weights(weights, target.len())?;
     let mut normalized = coefficients.rhs(0)?.to_vec();
-    normalize_intercept_components(topology, effects, weights, &mut normalized)?;
+    normalize_intercept_components(topology, effects, weights, &mut normalized, known_connected)?;
     finish_channel_major_recovery(
         topology,
         effects,
@@ -539,7 +541,7 @@ pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
     }
     let coefficients = FeCoefficientBatch::from_values(effect_channels, level_counts, 1, solved.x)?;
     let mut normalized = coefficients.rhs(0)?.to_vec();
-    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     finish_channel_major_recovery(
         topology,
         effects,
@@ -591,7 +593,7 @@ pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
     )?;
     let validated_weights = validate_weights(weights, target.len())?;
     let mut normalized = recovered.coefficients.rhs(0)?.to_vec();
-    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     let method = match recovered.method {
         BorrowedInterceptRecoveryMethod::Direct => CategoricalRecoveryMethod::Direct,
         BorrowedInterceptRecoveryMethod::SteepestDescent => {
@@ -656,7 +658,7 @@ pub(crate) fn recover_finalized_categorical_effects_cg_certified(
     })?;
     let validated_weights = validate_weights(weights, target.len())?;
     let mut normalized = coefficients.rhs(0)?.to_vec();
-    normalize_intercept_components(topology, effects, validated_weights, &mut normalized)?;
+    normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     finish_channel_major_recovery(
         topology,
         effects,
@@ -744,6 +746,7 @@ fn normalize_intercept_components(
     effects: &[CategoricalAbsorbedEffectView<'_>],
     weights: ValidatedWeights<'_>,
     coefficients: &mut [f64],
+    known_connected: bool,
 ) -> Result<()> {
     let intercept_effects = effects
         .iter()
@@ -752,6 +755,15 @@ fn normalize_intercept_components(
         .collect::<Vec<_>>();
     if intercept_effects.len() <= 1 {
         return Ok(());
+    }
+    if known_connected {
+        return normalize_connected_intercepts(
+            topology,
+            effects,
+            weights,
+            coefficients,
+            &intercept_effects,
+        );
     }
     let source_table = topology_source_table(topology)?;
     let mut codes = Vec::with_capacity(intercept_effects.len());
@@ -838,6 +850,69 @@ fn normalize_intercept_components(
     if coefficients.iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
             "categorical recovery normalization produced a nonfinite coefficient",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_connected_intercepts(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: ValidatedWeights<'_>,
+    coefficients: &mut [f64],
+    intercept_effects: &[usize],
+) -> Result<()> {
+    let effect_offsets = channel_major_effect_offsets(topology, effects)?;
+    let total_weight = if weights.values.is_none() {
+        topology.retained_rows().len() as f64
+    } else {
+        (0..topology.retained_rows().len())
+            .map(|row| weights.value(row))
+            .sum::<f64>()
+    };
+    if !total_weight.is_finite() || total_weight <= 0.0 {
+        return Err(invalid_data(
+            "categorical recovery connected-component weight is invalid",
+        ));
+    }
+    let mut anchor_adjustment = 0.0_f64;
+    for &effect_index in intercept_effects.iter().skip(1) {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        let mut numerator = 0.0_f64;
+        for level in 0..source.n_levels() {
+            let coefficient = coefficients[effect_offsets[effect_index] + level];
+            let members = source.members(level)?;
+            if weights.values.is_none() {
+                numerator += members.len() as f64 * coefficient;
+            } else {
+                for &row in members {
+                    numerator += weights.value(row) * coefficient;
+                }
+            }
+        }
+        let mean = numerator / total_weight;
+        if !mean.is_finite() {
+            return Err(invalid_data(
+                "categorical recovery connected-component mean is invalid",
+            ));
+        }
+        for level in 0..source.n_levels() {
+            coefficients[effect_offsets[effect_index] + level] -= mean;
+        }
+        anchor_adjustment += mean;
+    }
+    let anchor_effect = intercept_effects[0];
+    let anchor_source = topology
+        .registry()
+        .source(topology.effect_to_topology()[anchor_effect])?;
+    for level in 0..anchor_source.n_levels() {
+        coefficients[effect_offsets[anchor_effect] + level] += anchor_adjustment;
+    }
+    if coefficients.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_data(
+            "categorical recovery connected normalization produced a nonfinite coefficient",
         ));
     }
     Ok(())
@@ -2565,6 +2640,60 @@ mod tests {
                 assert!((left - right).abs() < 1e-10, "{left} != {right}");
             }
         }
+    }
+
+    #[test]
+    fn retained_coefficient_connected_hint_matches_component_normalization() {
+        let worker = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0_u32, 1, 1, 2, 2, 3, 3, 0];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 4),
+                CategoricalCodeView::new(&firm, 4),
+            ],
+            &[&[0], &[1]],
+            &[true; 8],
+        )
+        .expect("connected topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let coefficient_values = vec![1.0, -2.0, 0.5, 3.0, 4.0, -1.0, 2.0, -3.0];
+        let coefficients =
+            FeCoefficientBatch::from_values(vec![1, 1], vec![4, 4], 1, coefficient_values.clone())
+                .expect("coefficient batch");
+        let target = worker
+            .iter()
+            .zip(&firm)
+            .map(|(&worker, &firm)| {
+                coefficient_values[worker as usize] + coefficient_values[4 + firm as usize]
+            })
+            .collect::<Vec<_>>();
+        let general = recover_finalized_categorical_effects_from_coefficients_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            &coefficients,
+            1e-12,
+            false,
+        )
+        .expect("general normalization");
+        let connected = recover_finalized_categorical_effects_from_coefficients_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            &target,
+            &[true, true],
+            &coefficients,
+            1e-12,
+            true,
+        )
+        .expect("known-connected normalization");
+        assert_eq!(general.absorbed_sum(), connected.absorbed_sum());
+        assert_eq!(general.channels(), connected.channels());
     }
 
     #[test]

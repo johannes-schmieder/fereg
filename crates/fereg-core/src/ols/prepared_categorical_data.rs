@@ -269,6 +269,7 @@ impl PreparedCategoricalOlsData {
         target: &[f64],
         requested_channels: &[bool],
         retained: Option<&FeCoefficientBatch>,
+        known_connected: bool,
         lsmr: LsmrConfig,
         map: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
@@ -287,6 +288,7 @@ impl PreparedCategoricalOlsData {
                 requested_channels,
                 coefficients,
                 map.tolerance,
+                known_connected,
             ) {
                 return Ok(recovered);
             }

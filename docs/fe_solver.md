@@ -116,9 +116,16 @@ the cheapest coefficient-space product available:
   original batched `y`/`X` sweeps, then forms
   `alpha_y - sum_j beta_j alpha_Xj` after the finite coefficients are known.
 
-This MAP coefficient accumulation removes the recovery solve completely and
-was the fastest certified route at both the 30,000- and 300,000-row AKM
-checkpoints. The updates are cache-local and parallel for large level tables.
+This MAP coefficient accumulation removes the recovery solve completely. The
+running product uses the projection kernel's native level-major layout; large
+tables add each group mean to that product inside the same parallel pass, and
+the result is transposed once only after MAP certifies. When the exact DoF
+result has already proved the AKM graph connected, normalization uses that fact
+instead of rebuilding components. Saved-only publication also constructs the
+absorbed target in its final buffer rather than allocating a separate `xb`
+vector. Alternating warm Stata/MP checkpoints measured saved-output overhead of
+3.4 percent at 30,000 rows and 2.8 percent at 300,000 rows.
+
 Routes without a retained product, including `memory(low)` and SQUAREM, first
 run one reconstruction-aware CG recovery capped at 256 iterations. If that
 does not certify, intercept-only recovery performs four forward-Kaczmarz

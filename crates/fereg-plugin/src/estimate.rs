@@ -34,8 +34,8 @@ use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 use fereg_core::{
-    estimate_phase2_memory, plan_ols_memory, FeSolverMemoryBudget, MapConfig, MemoryMode,
-    MemoryPlan, PreparedCategoricalOlsData, ThreadConfig,
+    estimate_phase2_memory, plan_ols_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget,
+    MapConfig, MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig,
 };
 
 pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
@@ -211,6 +211,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                false,
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -238,6 +239,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                false,
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -270,6 +272,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 None,
                 inference.fit(),
                 &action.outputs,
+                false,
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -297,6 +300,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(&prepared),
                 inference.fit(),
                 &action.outputs,
+                normalization_known_connected(inference.absorbed_dof()),
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -324,6 +328,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(&prepared),
                 inference.fit(),
                 &action.outputs,
+                normalization_known_connected(inference.absorbed_dof()),
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -356,6 +361,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 Some(prepared.ols()),
                 inference.fit(),
                 &action.outputs,
+                normalization_known_connected(inference.absorbed_dof()),
                 action.fit,
             )?;
             let shadow = build_shadow_result(
@@ -1306,6 +1312,7 @@ fn build_derived_observation_outputs(
     categorical: Option<&PreparedCategoricalOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
+    known_connected: bool,
     fit_config: PreparedOlsFitConfig,
 ) -> Result<DerivedObservationOutputs> {
     let any_derived = requested.xb.is_some()
@@ -1327,49 +1334,95 @@ fn build_derived_observation_outputs(
             "prepared fit and derived-output model dimensions differ",
         ));
     }
-    let mut xb = reserved_filled(n, 0.0, "derived OLS xb output")?;
-    for fitted in fit.coefficients() {
-        match (fitted.generated_column_index, fitted.value) {
-            (Some(column), Some(coefficient)) => {
-                if !matches!(
-                    fitted.status,
-                    PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
-                ) {
+    let needs_absorbed =
+        requested.absorbed.is_some() || requested.saved_channels.iter().any(Option::is_some);
+    let materialize_xb = requested.xb.is_some() || requested.absorbed.is_some();
+    let mut xb_work = if materialize_xb {
+        Some(reserved_filled(n, 0.0, "derived OLS xb output")?)
+    } else {
+        None
+    };
+    if let Some(xb) = xb_work.as_mut() {
+        for fitted in fit.coefficients() {
+            match (fitted.generated_column_index, fitted.value) {
+                (Some(column), Some(coefficient)) => {
+                    if !matches!(
+                        fitted.status,
+                        PreparedOlsFitStatus::Kept
+                            | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                    ) {
+                        return Err(invalid(
+                            "derived OLS output received a value for a nonfitted coefficient",
+                        ));
+                    }
+                    for (row, value) in xb.iter_mut().enumerate() {
+                        *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
+                    }
+                }
+                (None, None) => {}
+                _ => {
                     return Err(invalid(
-                        "derived OLS output received a value for a nonfitted coefficient",
-                    ));
+                        "derived OLS output coefficient identity is incomplete",
+                    ))
                 }
-                for (row, value) in xb.iter_mut().enumerate() {
-                    *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
-                }
-            }
-            (None, None) => {}
-            _ => {
-                return Err(invalid(
-                    "derived OLS output coefficient identity is incomplete",
-                ))
             }
         }
     }
-    if xb.iter().any(|value| !value.is_finite()) {
+    if xb_work
+        .as_ref()
+        .is_some_and(|values| values.iter().any(|value| !value.is_finite()))
+    {
         return Err(invalid_data("derived OLS xb output is not finite"));
     }
-
-    let needs_absorbed = requested.absorbed.is_some()
-        || requested.xbd.is_some()
-        || requested.saved_channels.iter().any(Option::is_some);
     let mut absorbed_target = if needs_absorbed {
         Some(reserved_filled(n, 0.0, "derived OLS absorbed target")?)
     } else {
         None
     };
     if let Some(target) = absorbed_target.as_mut() {
-        for (row, value) in target.iter_mut().enumerate() {
-            *value = prepared.sample().outcome[row] - xb[row] - fit.residuals()[row];
-            if !value.is_finite() {
-                return Err(invalid_data("derived OLS absorbed target is not finite"));
+        if let Some(xb) = xb_work.as_ref() {
+            for (row, value) in target.iter_mut().enumerate() {
+                *value = prepared.sample().outcome[row] - xb[row] - fit.residuals()[row];
+            }
+        } else {
+            // Saved-only publication does not need an xb vector after target
+            // construction. Accumulate xb in the target buffer, then convert
+            // it in place; this preserves the ordinary xb rounding exactly.
+            for fitted in fit.coefficients() {
+                match (fitted.generated_column_index, fitted.value) {
+                    (Some(column), Some(coefficient)) => {
+                        if !matches!(
+                            fitted.status,
+                            PreparedOlsFitStatus::Kept
+                                | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                        ) {
+                            return Err(invalid(
+                                "derived OLS output received a value for a nonfitted coefficient",
+                            ));
+                        }
+                        for (row, value) in target.iter_mut().enumerate() {
+                            *value =
+                                coefficient.mul_add(prepared.column_value(column, row)?, *value);
+                        }
+                    }
+                    (None, None) => {}
+                    _ => {
+                        return Err(invalid(
+                            "derived OLS output coefficient identity is incomplete",
+                        ))
+                    }
+                }
+            }
+            for (row, value) in target.iter_mut().enumerate() {
+                *value = prepared.sample().outcome[row] - *value - fit.residuals()[row];
             }
         }
+    }
+    if absorbed_target
+        .as_ref()
+        .is_some_and(|values| values.iter().any(|value| !value.is_finite()))
+    {
+        return Err(invalid_data("derived OLS absorbed target is not finite"));
     }
 
     let mut saved_channels = reserved_empty(
@@ -1398,6 +1451,7 @@ fn build_derived_observation_outputs(
                 .ok_or_else(|| invalid("saved fixed-effect recovery target is absent"))?,
             &mask,
             fit.recovered_fe_coefficients(),
+            known_connected,
             LsmrConfig {
                 tolerance: 1e-12,
                 max_iterations: 20_000,
@@ -1435,12 +1489,35 @@ fn build_derived_observation_outputs(
     } else {
         None
     };
+    let xb = if requested.xb.is_some() {
+        xb_work
+    } else {
+        None
+    };
     Ok(DerivedObservationOutputs {
-        xb: requested.xb.is_some().then_some(xb),
+        xb,
         xbd,
         absorbed,
         saved_channels,
     })
+}
+
+fn normalization_known_connected(report: &CategoricalTopologyDofReport) -> bool {
+    // Under first-pair/pairwise DoF, the second eligible intercept's exact
+    // redundancy is the number of components in the first two intercepts'
+    // bipartite graph. One component there also connects every later effect,
+    // because each retained observation supplies a level in every effect.
+    let mut intercepts = report
+        .effects
+        .iter()
+        .filter(|effect| effect.slope_source.is_none());
+    let Some(first) = intercepts.next() else {
+        return false;
+    };
+    let Some(second) = intercepts.next() else {
+        return false;
+    };
+    !first.nested && !second.nested && second.redundancy_exact && second.redundant == 1
 }
 
 fn precommit_and_store(
@@ -3569,6 +3646,36 @@ mod tests {
             spi.stores.last(),
             Some(&StoreEvent::Matrix(14, 1, RECEIPT_COMPLETE_COLUMN, 1.0)),
         );
+    }
+
+    #[test]
+    fn saved_only_fast_path_matches_fully_materialized_outputs() {
+        let (full_args, mut full_spi) = saved_output_fixture();
+        estimate_ols_test(&full_args, &mut full_spi).expect("full saved-output estimate succeeds");
+
+        let (mut lean_args, mut lean_spi) = saved_output_fixture();
+        replace_argument(&mut lean_args, "output_xb", "output_xb=0".to_owned());
+        replace_argument(&mut lean_args, "output_xbd", "output_xbd=0".to_owned());
+        replace_argument(
+            &mut lean_args,
+            "output_absorbed",
+            "output_absorbed=0".to_owned(),
+        );
+        replace_argument(
+            &mut lean_args,
+            "output_saved_channels",
+            "output_saved_channels=1:8".to_owned(),
+        );
+        lean_spi.nvars = 8;
+        estimate_ols_test(&lean_args, &mut lean_spi).expect("saved-only estimate succeeds");
+
+        for observation in 1..=full_spi.nobs {
+            assert_eq!(
+                stored_numeric(&lean_spi, 8, observation),
+                stored_numeric(&full_spi, 11, observation)
+            );
+        }
+        assert_eq!(lean_spi.receipt_complete(), 1.0);
     }
 
     #[test]

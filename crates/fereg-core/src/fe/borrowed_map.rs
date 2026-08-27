@@ -53,6 +53,38 @@ pub struct FeCoefficientBatch {
     rhs_count: usize,
 }
 
+/// MAP-native coefficient accumulator.
+///
+/// Parallel group means are produced effect-major, level-major, then RHS-major.
+/// Keeping the running coefficients in that same order makes every projection
+/// a contiguous add. The public solver product is transposed to its canonical
+/// RHS-major layout only once, after MAP has certified the residuals.
+struct MapCoefficientAccumulator {
+    values: Vec<f64>,
+    level_counts: Vec<usize>,
+    effect_offsets: Vec<usize>,
+    rhs_count: usize,
+}
+
+trait InterceptCoefficientRecorder {
+    fn rhs_count(&self) -> usize;
+
+    fn add_intercept_level(&mut self, effect: usize, level: usize, means: &[f64]) -> Result<()>;
+
+    fn add_intercept_level_major(
+        &mut self,
+        effect: usize,
+        means: &[f64],
+        levels: usize,
+    ) -> Result<()>;
+
+    fn level_major_values_mut(
+        &mut self,
+        effect: usize,
+        levels: usize,
+    ) -> Result<Option<&mut [f64]>>;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BorrowedInterceptRecoveryMethod {
     Direct,
@@ -426,6 +458,223 @@ impl FeCoefficientBatch {
 
     pub(crate) const fn rhs_count(&self) -> usize {
         self.rhs_count
+    }
+}
+
+impl InterceptCoefficientRecorder for FeCoefficientBatch {
+    fn rhs_count(&self) -> usize {
+        FeCoefficientBatch::rhs_count(self)
+    }
+
+    fn add_intercept_level(&mut self, effect: usize, level: usize, means: &[f64]) -> Result<()> {
+        FeCoefficientBatch::add_intercept_level(self, effect, level, means)
+    }
+
+    fn add_intercept_level_major(
+        &mut self,
+        effect: usize,
+        means: &[f64],
+        levels: usize,
+    ) -> Result<()> {
+        FeCoefficientBatch::add_intercept_level_major(self, effect, means, levels)
+    }
+
+    fn level_major_values_mut(
+        &mut self,
+        _effect: usize,
+        _levels: usize,
+    ) -> Result<Option<&mut [f64]>> {
+        Ok(None)
+    }
+}
+
+impl MapCoefficientAccumulator {
+    fn zeros(design: &BorrowedInterceptFeDesign<'_>, rhs_count: usize) -> Result<Self> {
+        if rhs_count == 0 {
+            return Err(invalid_argument(
+                "MAP coefficient accumulator requires at least one RHS",
+            ));
+        }
+        let mut level_counts = Vec::new();
+        level_counts
+            .try_reserve_exact(design.effects().len())
+            .map_err(|_| allocation("unable to reserve MAP coefficient level layout"))?;
+        let mut effect_offsets = Vec::new();
+        effect_offsets
+            .try_reserve_exact(design.effects().len() + 1)
+            .map_err(|_| allocation("unable to reserve MAP coefficient effect offsets"))?;
+        effect_offsets.push(0);
+        for effect in design.effects() {
+            let levels = effect.n_levels();
+            level_counts.push(levels);
+            let width = levels
+                .checked_mul(rhs_count)
+                .ok_or_else(|| allocation("MAP coefficient effect width overflows"))?;
+            effect_offsets.push(
+                effect_offsets
+                    .last()
+                    .copied()
+                    .unwrap_or(0_usize)
+                    .checked_add(width)
+                    .ok_or_else(|| allocation("MAP coefficient offset overflows"))?,
+            );
+        }
+        let elements = effect_offsets.last().copied().unwrap_or(0);
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation("unable to reserve MAP coefficient accumulator"))?;
+        values.resize(elements, 0.0);
+        Ok(Self {
+            values,
+            level_counts,
+            effect_offsets,
+            rhs_count,
+        })
+    }
+
+    fn into_batch(self) -> Result<FeCoefficientBatch> {
+        let Self {
+            values,
+            level_counts,
+            effect_offsets,
+            rhs_count,
+        } = self;
+        let coefficients_per_rhs = level_counts.iter().try_fold(0_usize, |total, &levels| {
+            total
+                .checked_add(levels)
+                .ok_or_else(|| allocation("MAP coefficient count overflows"))
+        })?;
+        if coefficients_per_rhs == 0 {
+            return Err(invalid_data(
+                "MAP coefficient accumulator has no effect coefficients",
+            ));
+        }
+        let elements = coefficients_per_rhs
+            .checked_mul(rhs_count)
+            .ok_or_else(|| allocation("MAP coefficient batch dimensions overflow"))?;
+        if values.len() != elements {
+            return Err(invalid_argument(
+                "MAP coefficient accumulator dimensions are inconsistent",
+            ));
+        }
+        let mut rhs_major = Vec::new();
+        rhs_major
+            .try_reserve_exact(elements)
+            .map_err(|_| allocation("unable to reserve canonical MAP coefficient batch"))?;
+        rhs_major.resize(elements, 0.0);
+        rhs_major
+            .par_chunks_mut(coefficients_per_rhs)
+            .enumerate()
+            .try_for_each(|(rhs, destination)| -> Result<()> {
+                let mut canonical_effect_offset = 0_usize;
+                for (effect, &levels) in level_counts.iter().enumerate() {
+                    let source_offset = effect_offsets[effect];
+                    for level in 0..levels {
+                        let value = values[source_offset + level * rhs_count + rhs];
+                        if !value.is_finite() {
+                            return Err(invalid_data(
+                                "MAP coefficient accumulator produced a nonfinite value",
+                            ));
+                        }
+                        destination[canonical_effect_offset + level] = value;
+                    }
+                    canonical_effect_offset += levels;
+                }
+                Ok(())
+            })?;
+        let mut effect_channels = Vec::new();
+        effect_channels
+            .try_reserve_exact(level_counts.len())
+            .map_err(|_| allocation("unable to reserve canonical MAP coefficient channels"))?;
+        effect_channels.resize(level_counts.len(), 1);
+        FeCoefficientBatch::from_values(effect_channels, level_counts, rhs_count, rhs_major)
+    }
+}
+
+impl InterceptCoefficientRecorder for MapCoefficientAccumulator {
+    fn rhs_count(&self) -> usize {
+        self.rhs_count
+    }
+
+    fn add_intercept_level(&mut self, effect: usize, level: usize, means: &[f64]) -> Result<()> {
+        if means.len() != self.rhs_count
+            || self
+                .level_counts
+                .get(effect)
+                .is_none_or(|&levels| level >= levels)
+        {
+            return Err(invalid_argument(
+                "MAP coefficient level update is not aligned",
+            ));
+        }
+        let start = self.effect_offsets[effect] + level * self.rhs_count;
+        for (destination, &mean) in self.values[start..start + self.rhs_count]
+            .iter_mut()
+            .zip(means)
+        {
+            if !mean.is_finite() {
+                return Err(invalid_argument(
+                    "MAP coefficient level update is not finite",
+                ));
+            }
+            *destination += mean;
+            if !destination.is_finite() {
+                return Err(invalid_data(
+                    "MAP coefficient level accumulation is nonfinite",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn add_intercept_level_major(
+        &mut self,
+        effect: usize,
+        means: &[f64],
+        levels: usize,
+    ) -> Result<()> {
+        if self.level_counts.get(effect).copied() != Some(levels)
+            || means.len() != levels.saturating_mul(self.rhs_count)
+        {
+            return Err(invalid_argument(
+                "MAP coefficient group means are not aligned",
+            ));
+        }
+        let start = self.effect_offsets[effect];
+        let destination = &mut self.values[start..start + means.len()];
+        // This is a contiguous, cache-local update whose work is much smaller
+        // than the observation projection. Keeping it on the caller thread
+        // avoids launching a second Rayon job after every group-mean pass.
+        for (destination, &mean) in destination.iter_mut().zip(means) {
+            if !mean.is_finite() {
+                return Err(invalid_argument("MAP coefficient group mean is not finite"));
+            }
+            *destination += mean;
+            if !destination.is_finite() {
+                return Err(invalid_data(
+                    "MAP coefficient group accumulation is nonfinite",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn level_major_values_mut(
+        &mut self,
+        effect: usize,
+        levels: usize,
+    ) -> Result<Option<&mut [f64]>> {
+        if self.level_counts.get(effect).copied() != Some(levels) {
+            return Err(invalid_argument(
+                "MAP coefficient level-major block is not aligned",
+            ));
+        }
+        let elements = levels
+            .checked_mul(self.rhs_count)
+            .ok_or_else(|| allocation("MAP coefficient level-major block overflows"))?;
+        let start = self.effect_offsets[effect];
+        Ok(Some(&mut self.values[start..start + elements]))
     }
 }
 
@@ -2341,6 +2590,18 @@ fn attach_optional_coefficients(
     }
 }
 
+fn attach_optional_map_coefficients(
+    result: CertifiedBorrowedMap,
+    coefficients: Option<MapCoefficientAccumulator>,
+) -> Result<CertifiedBorrowedMap> {
+    attach_optional_coefficients(
+        result,
+        coefficients
+            .map(MapCoefficientAccumulator::into_batch)
+            .transpose()?,
+    )
+}
+
 fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2864,7 +3125,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
     let mut coefficients = retain_coefficients
-        .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+        .then(|| MapCoefficientAccumulator::zeros(design, values.ncols()))
         .transpose()?;
 
     if design.effects().is_empty() && !empty_design_is_structural_constant {
@@ -2876,7 +3137,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
-        return attach_optional_coefficients(result, coefficients);
+        return attach_optional_map_coefficients(result, coefficients);
     }
 
     if !skip_initial_one_effect_certificate {
@@ -2894,7 +3155,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
             )?;
-            return attach_optional_coefficients(result, coefficients);
+            return attach_optional_map_coefficients(result, coefficients);
         }
     }
 
@@ -2915,7 +3176,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
-        return attach_optional_coefficients(result, coefficients);
+        return attach_optional_map_coefficients(result, coefficients);
     }
 
     for iteration in 1..=config.max_iterations {
@@ -2944,7 +3205,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
-                return attach_optional_coefficients(result, coefficients);
+                return attach_optional_map_coefficients(result, coefficients);
             }
         }
     }
@@ -3172,12 +3433,12 @@ fn certify_structural_constant_with_current_norms(
     })
 }
 
-fn project_effect_recording(
+fn project_effect_recording<R: InterceptCoefficientRecorder>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
-    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
+    coefficients: Option<(&mut R, usize)>,
 ) -> Result<()> {
     if effect.codes().len() != values.nrows() {
         return Err(invalid_argument(
@@ -3204,12 +3465,12 @@ fn project_effect_recording(
     project_effect_serial(effect, weights, values, workspace, coefficients)
 }
 
-fn project_effect_serial(
+fn project_effect_serial<R: InterceptCoefficientRecorder>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
-    mut coefficients: Option<(&mut FeCoefficientBatch, usize)>,
+    mut coefficients: Option<(&mut R, usize)>,
 ) -> Result<()> {
     for level in 0..effect.n_levels() {
         let members = effect.level_index().checked_members(level)?;
@@ -3246,13 +3507,13 @@ fn project_effect_serial(
     Ok(())
 }
 
-fn project_effect_parallel(
+fn project_effect_parallel<R: InterceptCoefficientRecorder>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
-    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
+    coefficients: Option<(&mut R, usize)>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
@@ -3328,102 +3589,59 @@ fn project_effect_parallel(
     Ok(())
 }
 
-fn project_effect_parallel_fused(
+fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
-    coefficients: Option<(&mut FeCoefficientBatch, usize)>,
+    coefficients: Option<(&mut R, usize)>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
     let values_read = &*values;
-    workspace.parallel_group_means[..parallel_mean_count]
-        .par_chunks_mut(columns)
-        .enumerate()
-        .try_for_each(|(level, means)| -> Result<()> {
-            let members = effect.level_index().checked_members(level)?;
-            if members.is_empty() {
-                return Err(invalid_argument(
-                    "borrowed MAP effect contains an empty final level",
-                ));
-            }
-            let mut scales = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
-            let mut sums = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
-            let mut corrections = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
-            let mut weight_sum = 0.0_f64;
-            let mut weight_correction = 0.0_f64;
-            for &observation in members {
-                if observation >= values_read.nrows() {
-                    return Err(invalid_argument(
-                        "borrowed MAP membership exceeds the observation axis",
-                    ));
-                }
-                if weights.values.is_some() {
-                    compensated_add(
-                        weights.normalized(observation),
-                        &mut weight_sum,
-                        &mut weight_correction,
-                    )?;
-                }
-                for rhs in 0..columns {
-                    scales[rhs] = scales[rhs].max(values_read[(observation, rhs)].abs());
-                }
-            }
-            let total_weight = if weights.values.is_some() {
-                weight_sum + weight_correction
-            } else {
-                members.len() as f64
-            };
-            if !total_weight.is_finite() || total_weight <= 0.0 {
-                return Err(invalid_data(
-                    "borrowed MAP group weight sum is not finite and positive",
-                ));
-            }
-            if let Some(weight_values) = weights.values {
-                for &observation in members {
-                    let weight = weight_values[observation] / weights.raw_scale;
-                    for rhs in 0..columns {
-                        if scales[rhs] != 0.0 {
-                            compensated_add(
-                                weight * (values_read[(observation, rhs)] / scales[rhs]),
-                                &mut sums[rhs],
-                                &mut corrections[rhs],
-                            )?;
+    let mut coefficients = coefficients;
+    let mut recorded_inline = false;
+    if let Some((batch, effect_index)) = coefficients.as_mut() {
+        if batch.rhs_count() != columns {
+            return Err(invalid_argument(
+                "parallel MAP coefficient means are not aligned",
+            ));
+        }
+        if let Some(accumulated) = batch.level_major_values_mut(*effect_index, levels)? {
+            workspace.parallel_group_means[..parallel_mean_count]
+                .par_chunks_mut(columns)
+                .zip(accumulated.par_chunks_mut(columns))
+                .enumerate()
+                .try_for_each(|(level, (means, accumulated))| -> Result<()> {
+                    fused_group_means_for_level(effect, level, weights, values_read, means)?;
+                    for (destination, &mean) in accumulated.iter_mut().zip(means.iter()) {
+                        *destination += mean;
+                        if !destination.is_finite() {
+                            return Err(invalid_data(
+                                "MAP coefficient group accumulation is nonfinite",
+                            ));
                         }
                     }
-                }
-            } else {
-                for &observation in members {
-                    for rhs in 0..columns {
-                        if scales[rhs] != 0.0 {
-                            compensated_add(
-                                values_read[(observation, rhs)] / scales[rhs],
-                                &mut sums[rhs],
-                                &mut corrections[rhs],
-                            )?;
-                        }
-                    }
-                }
-            }
-            for rhs in 0..columns {
-                let mean = if scales[rhs] == 0.0 {
-                    0.0
-                } else {
-                    scales[rhs] * ((sums[rhs] + corrections[rhs]) / total_weight)
-                };
-                if !mean.is_finite() {
-                    return Err(invalid_data("borrowed MAP group mean is not finite"));
-                }
-                means[rhs] = mean;
-            }
-            Ok(())
-        })?;
+                    Ok(())
+                })?;
+            recorded_inline = true;
+        }
+    }
+    if !recorded_inline {
+        workspace.parallel_group_means[..parallel_mean_count]
+            .par_chunks_mut(columns)
+            .enumerate()
+            .try_for_each(|(level, means)| {
+                fused_group_means_for_level(effect, level, weights, values_read, means)
+            })?;
+    }
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
-    if let Some((batch, effect_index)) = coefficients {
-        record_parallel_group_means(batch, effect_index, means, levels, columns)?;
+    if !recorded_inline {
+        if let Some((batch, effect_index)) = coefficients {
+            record_parallel_group_means(batch, effect_index, means, levels, columns)?;
+        }
     }
     let codes = effect.codes();
     values
@@ -3451,8 +3669,93 @@ fn project_effect_parallel_fused(
     Ok(())
 }
 
-fn record_parallel_group_means(
-    batch: &mut FeCoefficientBatch,
+fn fused_group_means_for_level(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    means: &mut [f64],
+) -> Result<()> {
+    let members = effect.level_index().checked_members(level)?;
+    if members.is_empty() || means.len() > FUSED_PARALLEL_MAX_RHS {
+        return Err(invalid_argument(
+            "borrowed MAP fused group dimensions are invalid",
+        ));
+    }
+    let mut scales = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
+    let mut sums = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
+    let mut corrections = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
+    let mut weight_sum = 0.0_f64;
+    let mut weight_correction = 0.0_f64;
+    for &observation in members {
+        if observation >= values.nrows() {
+            return Err(invalid_argument(
+                "borrowed MAP membership exceeds the observation axis",
+            ));
+        }
+        if weights.values.is_some() {
+            compensated_add(
+                weights.normalized(observation),
+                &mut weight_sum,
+                &mut weight_correction,
+            )?;
+        }
+        for rhs in 0..means.len() {
+            scales[rhs] = scales[rhs].max(values[(observation, rhs)].abs());
+        }
+    }
+    let total_weight = if weights.values.is_some() {
+        weight_sum + weight_correction
+    } else {
+        members.len() as f64
+    };
+    if !total_weight.is_finite() || total_weight <= 0.0 {
+        return Err(invalid_data(
+            "borrowed MAP group weight sum is not finite and positive",
+        ));
+    }
+    if let Some(weight_values) = weights.values {
+        for &observation in members {
+            let weight = weight_values[observation] / weights.raw_scale;
+            for rhs in 0..means.len() {
+                if scales[rhs] != 0.0 {
+                    compensated_add(
+                        weight * (values[(observation, rhs)] / scales[rhs]),
+                        &mut sums[rhs],
+                        &mut corrections[rhs],
+                    )?;
+                }
+            }
+        }
+    } else {
+        for &observation in members {
+            for rhs in 0..means.len() {
+                if scales[rhs] != 0.0 {
+                    compensated_add(
+                        values[(observation, rhs)] / scales[rhs],
+                        &mut sums[rhs],
+                        &mut corrections[rhs],
+                    )?;
+                }
+            }
+        }
+    }
+    for rhs in 0..means.len() {
+        let mean = if scales[rhs] == 0.0 {
+            0.0
+        } else {
+            scales[rhs] * ((sums[rhs] + corrections[rhs]) / total_weight)
+        };
+        if !mean.is_finite() {
+            return Err(invalid_data("borrowed MAP group mean is not finite"));
+        }
+        means[rhs] = mean;
+    }
+    Ok(())
+}
+
+fn record_parallel_group_means<R: InterceptCoefficientRecorder>(
+    batch: &mut R,
     effect: usize,
     means: &[f64],
     levels: usize,
@@ -3902,12 +4205,12 @@ fn borrowed_symmetric_projection_into_recording(
     Ok(())
 }
 
-fn borrowed_residual_sweep_recording(
+fn borrowed_residual_sweep_recording<R: InterceptCoefficientRecorder>(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
-    mut coefficients: Option<&mut FeCoefficientBatch>,
+    mut coefficients: Option<&mut R>,
     symmetric: bool,
 ) -> Result<()> {
     for (effect_index, effect) in design.effects().iter().enumerate() {
@@ -5055,6 +5358,51 @@ mod tests {
         let (residualized, report, coefficients) = retained.into_full_parts();
         assert!(report.certified());
         let coefficients = coefficients.expect("CG coefficient product");
+        for rhs_index in 0..input.ncols() {
+            let rhs = coefficients.rhs(rhs_index).expect("coefficient RHS");
+            for row in 0..input.nrows() {
+                let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
+                    + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
+                assert!(
+                    (fitted - (input[(row, rhs_index)] - residualized[(row, rhs_index)])).abs()
+                        <= 2e-10
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn retained_map_level_major_accumulator_reconstructs_every_rhs() {
+        let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let firm_codes = [0_u32, 1, 1, 2, 2, 0, 0, 2];
+        let worker_index = LevelIndex::from_codes(&worker_codes, 4).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, 3).expect("firm index");
+        let worker =
+            ValidatedBorrowedInterceptSource::new(&worker_codes, 4, &worker_index).expect("worker");
+        let firm =
+            ValidatedBorrowedInterceptSource::new(&firm_codes, 3, &firm_index).expect("firm");
+        let design = BorrowedInterceptFeDesign::new(
+            worker_codes.len(),
+            vec![worker.effect(), firm.effect()],
+        )
+        .expect("design");
+        let weights = [1.0, 2.0, 1.5, 4.0, 0.5, 3.0, 2.5, 1.25];
+        let columns = [
+            vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0, 8.0, -2.0],
+            vec![2.0, -1.0, 4.0, 5.0, 0.0, 6.0, 3.0, 10.0],
+            vec![-3.0, 0.5, 1.0, 2.5, 7.0, -4.0, 6.0, 8.0],
+        ];
+        let input = DenseMatrix::from_columns(&columns).expect("matrix");
+        let retained = absorb_borrowed_intercept_map_retaining_certified(
+            &design,
+            BorrowedMapWeights::Provided(&weights),
+            input.clone(),
+            config(),
+        )
+        .expect("retaining MAP");
+        let (residualized, report, coefficients) = retained.into_full_parts();
+        assert!(report.certified());
+        let coefficients = coefficients.expect("MAP coefficient product");
         for rhs_index in 0..input.ncols() {
             let rhs = coefficients.rhs(rhs_index).expect("coefficient RHS");
             for row in 0..input.nrows() {

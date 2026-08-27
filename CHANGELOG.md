@@ -69,6 +69,14 @@
   uses strict LSMR, and certified MAP remains the fail-closed final fallback.
   Every route retains the established component normalization plus independent
   observation-space reconstruction and FE-moment certificates.
+- Reduced the remaining fast MAP saved-output overhead by storing retained
+  coefficients in the level-major order produced by the projection kernel,
+  accumulating them inside the parallel group-mean pass, and transposing once
+  only after MAP certification. Publication now reuses exact connectedness
+  already established by the DoF calculation and reuses the absorbed-target
+  buffer when only FE channels are requested. Alternating warm Stata/MP runs
+  measured 3.4 percent overhead at 30,000 rows and 2.8 percent at 300,000 rows,
+  with the reconstruction and FE-moment publication gates unchanged.
 - Identified the beta consistently as 0.5.0 and added deterministic
   source/release staging, checksum, dependency, SBOM/license, and platform-
   caveat requirements.

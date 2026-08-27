@@ -85,22 +85,28 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   | CMG | 300,000 | 0.287 s | 0.331 s | +0.044 s |
   | CG | 30,000 | 0.093 s | 0.100 s | +0.007 s |
   | Irons--Tuck | 30,000 | 0.295 s | 0.310 s | +0.015 s |
-  | MAP | 30,000 | 0.844 s | 0.891 s | +0.048 s |
-  | MAP | 300,000 | 2.983 s | 3.616 s | +0.633 s |
+  | MAP | 30,000 | 0.858 s | 0.887 s | +0.029 s |
+  | MAP | 300,000 | 3.626 s | 3.727 s | +0.101 s |
   | SQUAREM | 30,000 | 2.553 s | 2.950 s | +0.397 s |
 
-  The new MAP rows are paired warm means (11 pairs at 30,000 rows and nine
-  alternating-order pairs at 300,000 rows); the earlier solver rows retain
-  their registered medians. At the original 30,000-row reproducer scale, saved
-  MAP output adds 5.6 percent rather than the previous 44.9 percent. At 300,000
-  rows the measured 21.2 percent includes coefficient accumulation, strict
-  normalization/certification, and writing two observation-scale Stata
-  variables. The original `tests/manual/simple_AKM.do` reproducer's saved AUTO
+  The new MAP rows are alternating-order warm medians (15 pairs at 30,000 rows
+  and nine pairs at 300,000 rows); the earlier solver rows retain their
+  registered medians. At the original 30,000-row reproducer scale, saved MAP
+  output now adds 3.4 percent, down from the earlier 44.9 and 5.6 percent
+  checkpoints. At 300,000 rows it adds 2.8 percent, down from 21.2 percent; the
+  paired-difference median is 0.098 seconds (2.7 percent of the no-save median).
+  These timings include coefficient accumulation, strict normalization and
+  certification, and writing two observation-scale Stata variables. The MAP
+  path stores coefficients in the projection kernel's native level-major
+  order, fuses their update with parallel group means, transposes once after
+  certification, reuses exact connectedness from the DoF result, and avoids a
+  second observation-scale buffer for saved-only publication. The original
+  `tests/manual/simple_AKM.do` reproducer's saved AUTO
   and CMG runs were 0.129 s and 0.066 s. The expanded
   saved-output parity fixture passes MAP, CG, IT, SQUAREM, LSMR, and CMG with
   matching coefficients/RSS and explicit FE-channel reconstruction identities.
   The complete local entry point passes repository checks, 269 Python tests,
-  strict formatting/Clippy, 316 core tests, 52 FFI plugin tests, integration
+  strict formatting/Clippy, 318 core tests, 53 FFI plugin tests, integration
   oracles, mock SPI, and portable static checks.
 - `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
   and performance are outside the 0.5.0 beta.
