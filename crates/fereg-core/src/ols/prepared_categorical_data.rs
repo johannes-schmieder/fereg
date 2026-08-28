@@ -16,7 +16,7 @@ use crate::fe::{
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
     recover_finalized_categorical_effects_cg_certified,
-    recover_finalized_categorical_effects_from_coefficients_certified,
+    recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_map_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
@@ -264,12 +264,14 @@ impl PreparedCategoricalOlsData {
     /// Intercept-only fallback first uses reconstruction-aware CG, then a
     /// deterministic four-sweep SD-Kaczmarz pilot plus LSMR remainder solve;
     /// slopes use strict LSMR. Strict MAP remains the final certified fallback.
+    #[allow(clippy::too_many_arguments)]
     pub fn recover_absorbed_effects_fast(
         &self,
         target: &[f64],
         requested_channels: &[bool],
         retained: Option<&FeCoefficientBatch>,
         known_connected: bool,
+        materialize_absorbed_sum: bool,
         lsmr: LsmrConfig,
         map: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
@@ -280,16 +282,19 @@ impl PreparedCategoricalOlsData {
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
         if let Some(coefficients) = retained {
-            if let Ok(recovered) = recover_finalized_categorical_effects_from_coefficients_certified(
-                &self.fe_topology,
-                &effects,
-                weights,
-                target,
-                requested_channels,
-                coefficients,
-                map.tolerance,
-                known_connected,
-            ) {
+            if let Ok(recovered) =
+                recover_finalized_categorical_effects_from_coefficients_selected_certified(
+                    &self.fe_topology,
+                    &effects,
+                    weights,
+                    target,
+                    requested_channels,
+                    coefficients,
+                    map.tolerance,
+                    known_connected,
+                    materialize_absorbed_sum,
+                )
+            {
                 return Ok(recovered);
             }
         }

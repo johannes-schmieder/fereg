@@ -103,7 +103,7 @@ pub use topology_slope_map::{
 };
 pub(crate) use topology_slope_map::{
     recover_finalized_categorical_effects_cg_certified,
-    recover_finalized_categorical_effects_from_coefficients_certified,
+    recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified,
 };

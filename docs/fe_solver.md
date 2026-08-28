@@ -138,8 +138,20 @@ the result is transposed once only after MAP certifies. When the exact DoF
 result has already proved the AKM graph connected, normalization uses that fact
 instead of rebuilding components. Saved-only publication also constructs the
 absorbed target in its final buffer rather than allocating a separate `xb`
-vector. Alternating warm Stata/MP checkpoints measured saved-output overhead of
-3.4 percent at 30,000 rows and 2.8 percent at 300,000 rows.
+vector. Derived observation products execute inside the estimator's bounded
+native thread team. Intercept-only retained products are scattered
+observation-major, and saved-only calls do not materialize the additional
+combined absorbed vector.
+
+Publication remains independently fail-closed. Its intercept-only path
+computes the reconstruction residual, weighted norms, and FE moments with
+fixed deterministic chunks. The one-FE path evaluates these quantities
+directly from the retained level coefficients, so it neither allocates a
+second observation-length residual nor invokes the generic slope-capable
+per-level solve. Multi-FE intercept recovery uses the same strict moment
+definition with parallel level chunks; slope-bearing recovery retains the
+general rank-revealing certificate. None of these publication kernels changes
+the reconstruction threshold or FE tolerance.
 
 Routes without a retained product, including `memory(low)` and SQUAREM, first
 run one reconstruction-aware CG recovery capped at 256 iterations. If that

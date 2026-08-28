@@ -17,6 +17,7 @@ ffi = []
 
 [dependencies]
 fereg-core = { path = "../fereg-core" }
+rayon = { version = "=1.12.0" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.189"

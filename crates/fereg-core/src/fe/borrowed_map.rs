@@ -3484,9 +3484,9 @@ fn project_effect_recording<R: InterceptCoefficientRecorder>(
         .n_levels()
         .checked_mul(values.ncols())
         .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?;
-    if values.ncols() > 1
-        && rayon::current_num_threads() > 1
+    if rayon::current_num_threads() > 1
         && workspace.parallel_group_means.len() >= parallel_mean_count
+        && (values.ncols() > 1 || values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
     {
         return project_effect_parallel(
             effect,
@@ -5100,6 +5100,65 @@ mod tests {
                     .expect_err("parallel workspace allocation must fail closed");
                 assert_eq!(error.code, ErrorCode::Allocation);
             }
+        }
+    }
+
+    #[test]
+    fn large_one_rhs_one_fe_projection_is_bit_stable_through_sixteen_threads() {
+        let observations = PARALLEL_PROJECTION_MIN_ROWS;
+        let levels = 4_096;
+        let codes = (0..observations)
+            .map(|row| (row % levels) as u32)
+            .collect::<Vec<_>>();
+        let index = LevelIndex::from_codes(&codes, levels).expect("index");
+        let source = ValidatedBorrowedInterceptSource::new(&codes, levels, &index).expect("source");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![source.effect()]).expect("design");
+        let column = (0..observations)
+            .map(|row| {
+                let centered = (row % 97) as f64 - 48.0;
+                centered.mul_add(0.5, (row % levels) as f64 / 17.0)
+            })
+            .collect::<Vec<_>>();
+        let weights = (0..observations)
+            .map(|row| 1.0 + (row % 11) as f64 / 13.0)
+            .collect::<Vec<_>>();
+
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    absorb_borrowed_intercept_map_certified(
+                        &design,
+                        BorrowedMapWeights::Provided(&weights),
+                        DenseMatrix::from_columns(std::slice::from_ref(&column)).expect("matrix"),
+                        config(),
+                    )
+                    .expect("certified one-RHS projection")
+                })
+        };
+        let serial = run(1);
+        for threads in [2, 4, 8, 16] {
+            let parallel = run(threads);
+            assert_eq!(serial.residualized(), parallel.residualized());
+            assert_eq!(
+                serial.report().requested_solver,
+                parallel.report().requested_solver
+            );
+            assert_eq!(serial.report().used_solver, parallel.report().used_solver);
+            assert_eq!(serial.report().iterations, parallel.report().iterations);
+            assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
+            assert_eq!(serial.report().certificate, parallel.report().certificate);
+            assert_eq!(
+                serial.report().normal_equation_residual,
+                parallel.report().normal_equation_residual
+            );
+            assert_eq!(
+                serial.report().fallback_used,
+                parallel.report().fallback_used
+            );
         }
     }
 

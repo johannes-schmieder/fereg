@@ -9,6 +9,7 @@ use std::time::Instant;
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+use rayon::prelude::*;
 
 use super::{
     absorb_borrowed_intercept_cg_recovery_certified, borrow_categorical_topology_design,
@@ -50,7 +51,7 @@ pub struct CategoricalAbsorbedEffectView<'a> {
 /// `None` slot so callers cannot accidentally lose wire identity.
 #[derive(Debug, PartialEq)]
 pub struct RecoveredCategoricalEffects {
-    absorbed_sum: Vec<f64>,
+    absorbed_sum: Option<Vec<f64>>,
     channels: Vec<Option<Vec<f64>>>,
     iterations: usize,
     reconstruction_relative_infinity: f64,
@@ -71,7 +72,9 @@ pub(crate) enum CategoricalRecoveryMethod {
 impl RecoveredCategoricalEffects {
     #[must_use]
     pub fn absorbed_sum(&self) -> &[f64] {
-        &self.absorbed_sum
+        self.absorbed_sum
+            .as_deref()
+            .expect("categorical recovery caller requested the absorbed sum")
     }
 
     #[must_use]
@@ -96,6 +99,15 @@ impl RecoveredCategoricalEffects {
 
     #[must_use]
     pub fn into_parts(self) -> (Vec<f64>, Vec<Option<Vec<f64>>>) {
+        (
+            self.absorbed_sum
+                .expect("categorical recovery caller requested the absorbed sum"),
+            self.channels,
+        )
+    }
+
+    #[must_use]
+    pub fn into_optional_parts(self) -> (Option<Vec<f64>>, Vec<Option<Vec<f64>>>) {
         (self.absorbed_sum, self.channels)
     }
 }
@@ -356,6 +368,7 @@ pub fn recover_finalized_categorical_effects_map_certified(
 /// solver's null-space representative, scatters requested channels, and
 /// independently certifies reconstruction and FE orthogonality.
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
@@ -365,6 +378,34 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
     coefficients: &FeCoefficientBatch,
     tolerance: f64,
     known_connected: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    recover_finalized_categorical_effects_from_coefficients_selected_certified(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        coefficients,
+        tolerance,
+        known_connected,
+        true,
+    )
+}
+
+/// Retained-coefficient publication with an exact output materialization plan.
+/// Saved-only calls certify the same coefficient product without retaining an
+/// additional observation-length combined absorbed vector.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn recover_finalized_categorical_effects_from_coefficients_selected_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    coefficients: &FeCoefficientBatch,
+    tolerance: f64,
+    known_connected: bool,
+    materialize_absorbed_sum: bool,
 ) -> Result<RecoveredCategoricalEffects> {
     validate_recovery_inputs(topology, effects, target, requested_channels)?;
     validate_coefficient_layout(topology, effects, coefficients)?;
@@ -386,6 +427,7 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_certified(
         0,
         tolerance,
         CategoricalRecoveryMethod::RetainedCoefficients,
+        materialize_absorbed_sum,
     )
 }
 
@@ -552,6 +594,7 @@ pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
         solved.iterations,
         publication_tolerance,
         CategoricalRecoveryMethod::Lsmr,
+        true,
     )
 }
 
@@ -611,6 +654,7 @@ pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
         recovered.iterations,
         map.tolerance,
         method,
+        true,
     )
 }
 
@@ -669,6 +713,7 @@ pub(crate) fn recover_finalized_categorical_effects_cg_certified(
         report.iterations,
         map.tolerance,
         CategoricalRecoveryMethod::Cg,
+        true,
     )
 }
 
@@ -929,12 +974,31 @@ fn finish_channel_major_recovery(
     iterations: usize,
     tolerance: f64,
     recovery_method: CategoricalRecoveryMethod,
+    materialize_absorbed_sum: bool,
 ) -> Result<RecoveredCategoricalEffects> {
     let effect_offsets = channel_major_effect_offsets(topology, effects)?;
     if coefficients.len() != effect_offsets.last().copied().unwrap_or(0) {
         return Err(invalid_argument(
             "categorical recovery coefficient count is inconsistent",
         ));
+    }
+    if effects
+        .iter()
+        .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
+    {
+        return finish_intercept_only_recovery(
+            topology,
+            effects,
+            weights,
+            target,
+            requested_channels,
+            coefficients,
+            &effect_offsets,
+            iterations,
+            tolerance,
+            recovery_method,
+            materialize_absorbed_sum,
+        );
     }
     let mut absorbed_sum = vec![0.0_f64; target.len()];
     let mut channels = Vec::new();
@@ -1050,11 +1114,748 @@ fn finish_channel_major_recovery(
         ));
     }
     Ok(RecoveredCategoricalEffects {
+        absorbed_sum: Some(absorbed_sum),
+        channels,
+        iterations,
+        reconstruction_relative_infinity,
+        recovery_method,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_intercept_only_recovery(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: ValidatedWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    coefficients: &[f64],
+    effect_offsets: &[usize],
+    iterations: usize,
+    tolerance: f64,
+    recovery_method: CategoricalRecoveryMethod,
+    materialize_absorbed_sum: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    const RECOVERY_CHUNK_ROWS: usize = 32_768;
+
+    if effects.len() == 1 {
+        return finish_one_intercept_recovery(
+            topology,
+            weights,
+            target,
+            requested_channels,
+            coefficients,
+            effect_offsets,
+            iterations,
+            tolerance,
+            recovery_method,
+            materialize_absorbed_sum,
+        );
+    }
+
+    let source_table = topology_source_table(topology)?;
+    let mut codes = Vec::new();
+    codes
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve intercept recovery code views"))?;
+    let mut levels = Vec::new();
+    levels
+        .try_reserve_exact(effects.len())
+        .map_err(|_| allocation("unable to reserve intercept recovery level counts"))?;
+    for effect_index in 0..effects.len() {
+        let source = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?;
+        codes.push(source.codes(&source_table)?);
+        levels.push(source.n_levels());
+    }
+
+    let mut channels = Vec::new();
+    channels
+        .try_reserve_exact(requested_channels.len())
+        .map_err(|_| allocation("unable to reserve recovered channel registry"))?;
+    for effect_index in 0..effects.len() {
+        if requested_channels[effect_index] {
+            let mut values = vec![0.0_f64; target.len()];
+            let effect_codes = codes[effect_index];
+            let coefficient_offset = effect_offsets[effect_index];
+            let effect_levels = levels[effect_index];
+            values
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(row, value)| -> Result<()> {
+                    let level = effect_codes[row] as usize;
+                    if level >= effect_levels {
+                        return Err(invalid_argument(
+                            "categorical recovery code exceeds the final level count",
+                        ));
+                    }
+                    *value = coefficients[coefficient_offset + level];
+                    if !value.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery coefficient product is nonfinite",
+                        ));
+                    }
+                    Ok(())
+                })?;
+            channels.push(Some(values));
+        } else {
+            channels.push(None);
+        }
+    }
+
+    let mut residual_values = vec![0.0_f64; target.len()];
+    let mut absorbed_sum = materialize_absorbed_sum.then(|| vec![0.0_f64; target.len()]);
+    if let Some(absorbed) = absorbed_sum.as_mut() {
+        absorbed
+            .par_iter_mut()
+            .zip(residual_values.par_iter_mut())
+            .enumerate()
+            .try_for_each(|(row, (actual, remainder))| -> Result<()> {
+                let mut value = 0.0_f64;
+                for effect_index in 0..effects.len() {
+                    let level = codes[effect_index][row] as usize;
+                    if level >= levels[effect_index] {
+                        return Err(invalid_argument(
+                            "categorical recovery code exceeds the final level count",
+                        ));
+                    }
+                    value += coefficients[effect_offsets[effect_index] + level];
+                }
+                *actual = value;
+                *remainder = target[row] - value;
+                if !actual.is_finite() || !remainder.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery coefficient product produced a nonfinite residual",
+                    ));
+                }
+                Ok(())
+            })?;
+    } else {
+        residual_values.par_iter_mut().enumerate().try_for_each(
+            |(row, remainder)| -> Result<()> {
+                let mut value = 0.0_f64;
+                for effect_index in 0..effects.len() {
+                    let level = codes[effect_index][row] as usize;
+                    if level >= levels[effect_index] {
+                        return Err(invalid_argument(
+                            "categorical recovery code exceeds the final level count",
+                        ));
+                    }
+                    value += coefficients[effect_offsets[effect_index] + level];
+                }
+                *remainder = target[row] - value;
+                if !remainder.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery coefficient product produced a nonfinite residual",
+                    ));
+                }
+                Ok(())
+            },
+        )?;
+    }
+
+    let partials = target
+        .par_chunks(RECOVERY_CHUNK_ROWS)
+        .zip(residual_values.par_chunks(RECOVERY_CHUNK_ROWS))
+        .enumerate()
+        .map(
+            |(chunk, (expected_values, remainder_values))| -> Result<(f64, f64, f64, f64)> {
+                let row_start = chunk * RECOVERY_CHUNK_ROWS;
+                let mut target_infinity = 0.0_f64;
+                let mut residual_infinity = 0.0_f64;
+                let mut target_norm_scale = 0.0_f64;
+                let mut target_norm_sum = 1.0_f64;
+                let mut residual_norm_scale = 0.0_f64;
+                let mut residual_norm_sum = 1.0_f64;
+                for (local_row, (&expected, &remainder)) in
+                    expected_values.iter().zip(remainder_values).enumerate()
+                {
+                    target_infinity = target_infinity.max(expected.abs());
+                    residual_infinity = residual_infinity.max(remainder.abs());
+                    let weighted_target = weights.value(row_start + local_row).sqrt() * expected;
+                    if !weighted_target.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery weighted target is nonfinite",
+                        ));
+                    }
+                    let weighted_residual = weights.value(row_start + local_row).sqrt() * remainder;
+                    if !weighted_residual.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery weighted residual is nonfinite",
+                        ));
+                    }
+                    update_scaled_sum(
+                        weighted_target,
+                        &mut target_norm_scale,
+                        &mut target_norm_sum,
+                    );
+                    update_scaled_sum(
+                        weighted_residual,
+                        &mut residual_norm_scale,
+                        &mut residual_norm_sum,
+                    );
+                }
+                let target_norm = if target_norm_scale == 0.0 {
+                    0.0
+                } else {
+                    target_norm_scale * target_norm_sum.sqrt()
+                };
+                let residual_norm = if residual_norm_scale == 0.0 {
+                    0.0
+                } else {
+                    residual_norm_scale * residual_norm_sum.sqrt()
+                };
+                Ok((
+                    target_infinity,
+                    residual_infinity,
+                    target_norm,
+                    residual_norm,
+                ))
+            },
+        )
+        .collect::<Result<Vec<_>>>()?;
+    let mut target_infinity = 0.0_f64;
+    let mut residual_infinity = 0.0_f64;
+    let mut target_norm_scale = 0.0_f64;
+    let mut target_norm_sum = 1.0_f64;
+    let mut residual_norm_scale = 0.0_f64;
+    let mut residual_norm_sum = 1.0_f64;
+    for (partial_target, partial_residual, partial_target_norm, partial_residual_norm) in partials {
+        target_infinity = target_infinity.max(partial_target);
+        residual_infinity = residual_infinity.max(partial_residual);
+        update_scaled_sum(
+            partial_target_norm,
+            &mut target_norm_scale,
+            &mut target_norm_sum,
+        );
+        update_scaled_sum(
+            partial_residual_norm,
+            &mut residual_norm_scale,
+            &mut residual_norm_sum,
+        );
+    }
+    let target_norm = if target_norm_scale == 0.0 {
+        0.0
+    } else {
+        target_norm_scale * target_norm_sum.sqrt()
+    };
+    if !target_norm.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery weighted target norm is nonfinite",
+        ));
+    }
+    let residual_norm = if residual_norm_scale == 0.0 {
+        0.0
+    } else {
+        residual_norm_scale * residual_norm_sum.sqrt()
+    };
+    if !residual_norm.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery weighted residual norm is nonfinite",
+        ));
+    }
+    let reconstruction_relative_infinity = if target_infinity == 0.0 {
+        residual_infinity
+    } else {
+        residual_infinity / target_infinity
+    };
+    if !reconstruction_relative_infinity.is_finite()
+        || reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance)
+    {
+        return Err(invalid_data(format!(
+            "categorical recovery coefficient product failed reconstruction: relative infinity residual {reconstruction_relative_infinity:.6e}"
+        )));
+    }
+
+    let certificate = certify_intercept_only_recovery(
+        topology,
+        weights,
+        &residual_values,
+        target_norm,
+        residual_norm,
+        tolerance,
+    )?;
+    if !certificate.passed {
+        return Err(invalid_data(
+            "categorical recovery coefficient product failed its FE certificate",
+        ));
+    }
+    Ok(RecoveredCategoricalEffects {
         absorbed_sum,
         channels,
         iterations,
         reconstruction_relative_infinity,
         recovery_method,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_one_intercept_recovery(
+    topology: &FinalizedCategoricalTopology,
+    weights: ValidatedWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    coefficients: &[f64],
+    effect_offsets: &[usize],
+    iterations: usize,
+    tolerance: f64,
+    recovery_method: CategoricalRecoveryMethod,
+    materialize_absorbed_sum: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    const ROW_CHUNK: usize = 32_768;
+    const LEVEL_CHUNK: usize = 4_096;
+
+    if requested_channels.len() != 1 || effect_offsets.len() != 2 {
+        return Err(invalid_argument(
+            "one-intercept recovery layout is inconsistent",
+        ));
+    }
+    let source_table = topology_source_table(topology)?;
+    let source = topology
+        .registry()
+        .source(topology.effect_to_topology()[0])?;
+    let codes = source.codes(&source_table)?;
+    let levels = source.n_levels();
+    let coefficient_offset = effect_offsets[0];
+    let needs_publication = requested_channels[0] || materialize_absorbed_sum;
+    let mut publication = needs_publication.then(|| vec![0.0_f64; target.len()]);
+
+    let compute_rows = |chunk: usize,
+                        expected_values: &[f64],
+                        mut output: Option<&mut [f64]>|
+     -> Result<(f64, f64, f64, f64)> {
+        let row_start = chunk * ROW_CHUNK;
+        let mut target_infinity = 0.0_f64;
+        let mut residual_infinity = 0.0_f64;
+        let mut target_norm_scale = 0.0_f64;
+        let mut target_norm_sum = 1.0_f64;
+        let mut residual_norm_scale = 0.0_f64;
+        let mut residual_norm_sum = 1.0_f64;
+        for (local_row, &expected) in expected_values.iter().enumerate() {
+            let row = row_start + local_row;
+            let level = codes[row] as usize;
+            if level >= levels {
+                return Err(invalid_argument(
+                    "categorical recovery code exceeds the final level count",
+                ));
+            }
+            let actual = coefficients[coefficient_offset + level];
+            let remainder = expected - actual;
+            if !actual.is_finite() || !remainder.is_finite() {
+                return Err(invalid_data(
+                    "categorical recovery coefficient product produced a nonfinite residual",
+                ));
+            }
+            if let Some(values) = output.as_deref_mut() {
+                values[local_row] = actual;
+            }
+            target_infinity = target_infinity.max(expected.abs());
+            residual_infinity = residual_infinity.max(remainder.abs());
+            let root_weight = weights.value(row).sqrt();
+            let weighted_target = root_weight * expected;
+            let weighted_residual = root_weight * remainder;
+            if !weighted_target.is_finite() || !weighted_residual.is_finite() {
+                return Err(invalid_data(
+                    "categorical recovery weighted product is nonfinite",
+                ));
+            }
+            update_scaled_sum(
+                weighted_target,
+                &mut target_norm_scale,
+                &mut target_norm_sum,
+            );
+            update_scaled_sum(
+                weighted_residual,
+                &mut residual_norm_scale,
+                &mut residual_norm_sum,
+            );
+        }
+        let target_norm = if target_norm_scale == 0.0 {
+            0.0
+        } else {
+            target_norm_scale * target_norm_sum.sqrt()
+        };
+        let residual_norm = if residual_norm_scale == 0.0 {
+            0.0
+        } else {
+            residual_norm_scale * residual_norm_sum.sqrt()
+        };
+        Ok((
+            target_infinity,
+            residual_infinity,
+            target_norm,
+            residual_norm,
+        ))
+    };
+    let row_partials = if let Some(values) = publication.as_mut() {
+        target
+            .par_chunks(ROW_CHUNK)
+            .zip(values.par_chunks_mut(ROW_CHUNK))
+            .enumerate()
+            .map(|(chunk, (expected, output))| compute_rows(chunk, expected, Some(output)))
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        target
+            .par_chunks(ROW_CHUNK)
+            .enumerate()
+            .map(|(chunk, expected)| compute_rows(chunk, expected, None))
+            .collect::<Result<Vec<_>>>()?
+    };
+    let mut target_infinity = 0.0_f64;
+    let mut residual_infinity = 0.0_f64;
+    let mut target_norm_scale = 0.0_f64;
+    let mut target_norm_sum = 1.0_f64;
+    let mut residual_norm_scale = 0.0_f64;
+    let mut residual_norm_sum = 1.0_f64;
+    for (partial_target, partial_residual, partial_target_norm, partial_residual_norm) in
+        row_partials
+    {
+        target_infinity = target_infinity.max(partial_target);
+        residual_infinity = residual_infinity.max(partial_residual);
+        update_scaled_sum(
+            partial_target_norm,
+            &mut target_norm_scale,
+            &mut target_norm_sum,
+        );
+        update_scaled_sum(
+            partial_residual_norm,
+            &mut residual_norm_scale,
+            &mut residual_norm_sum,
+        );
+    }
+    let target_norm = if target_norm_scale == 0.0 {
+        0.0
+    } else {
+        target_norm_scale * target_norm_sum.sqrt()
+    };
+    let residual_norm = if residual_norm_scale == 0.0 {
+        0.0
+    } else {
+        residual_norm_scale * residual_norm_sum.sqrt()
+    };
+    if !target_norm.is_finite() || !residual_norm.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate norm is nonfinite",
+        ));
+    }
+    let reconstruction_relative_infinity = if target_infinity == 0.0 {
+        residual_infinity
+    } else {
+        residual_infinity / target_infinity
+    };
+    if !reconstruction_relative_infinity.is_finite()
+        || reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance)
+    {
+        return Err(invalid_data(format!(
+            "categorical recovery coefficient product failed reconstruction: relative infinity residual {reconstruction_relative_infinity:.6e}"
+        )));
+    }
+
+    let denominator = target_norm.max(residual_norm);
+    let level_partials = (0..levels.div_ceil(LEVEL_CHUNK))
+        .into_par_iter()
+        .map(|chunk| -> Result<InterceptRecoveryCertificatePartial> {
+            let start = chunk * LEVEL_CHUNK;
+            let end = (start + LEVEL_CHUNK).min(levels);
+            let mut partial = InterceptRecoveryCertificatePartial {
+                absolute_infinity: 0.0,
+                relative_infinity: 0.0,
+                relative_squares: 0.0,
+                count: 0,
+            };
+            for level in start..end {
+                let members = source.members(level)?;
+                if members.is_empty() {
+                    return Err(invalid_argument(
+                        "categorical recovery certificate contains an empty final level",
+                    ));
+                }
+                let alpha = coefficients[coefficient_offset + level];
+                let mut value_scale = 0.0_f64;
+                for &row in members {
+                    let remainder = target[row] - alpha;
+                    if !remainder.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery certificate residual is nonfinite",
+                        ));
+                    }
+                    value_scale = value_scale.max(remainder.abs());
+                }
+                let mut gram = 0.0_f64;
+                let mut gram_correction = 0.0_f64;
+                let mut cross = 0.0_f64;
+                let mut cross_correction = 0.0_f64;
+                for &row in members {
+                    let weight = weights.value(row);
+                    compensated_add(weight, &mut gram, &mut gram_correction)?;
+                    if value_scale != 0.0 {
+                        compensated_add(
+                            weight * ((target[row] - alpha) / value_scale),
+                            &mut cross,
+                            &mut cross_correction,
+                        )?;
+                    }
+                }
+                gram += gram_correction;
+                cross += cross_correction;
+                if !gram.is_finite() || gram <= 0.0 || !cross.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery certificate group moment is invalid",
+                    ));
+                }
+                let coefficient = value_scale * (cross / gram);
+                let projected_square = coefficient.mul_add(gram * coefficient, 0.0);
+                let projected = projected_square.max(0.0).sqrt();
+                let relative = if denominator == 0.0 {
+                    if projected == 0.0 {
+                        0.0
+                    } else {
+                        f64::INFINITY
+                    }
+                } else {
+                    projected / denominator
+                };
+                if !relative.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery certificate ratio is nonfinite",
+                    ));
+                }
+                partial.relative_infinity = partial.relative_infinity.max(relative);
+                partial.relative_squares = relative.mul_add(relative, partial.relative_squares);
+                partial.count = partial.count.checked_add(1).ok_or_else(|| {
+                    allocation("categorical recovery certificate count overflows")
+                })?;
+                let raw = cross.abs() * value_scale * weights.raw_scale;
+                partial.absolute_infinity = partial.absolute_infinity.max(if raw.is_finite() {
+                    raw
+                } else {
+                    f64::INFINITY
+                });
+            }
+            Ok(partial)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let mut certificate_total = InterceptRecoveryCertificatePartial {
+        absolute_infinity: 0.0,
+        relative_infinity: 0.0,
+        relative_squares: 0.0,
+        count: 0,
+    };
+    for partial in level_partials {
+        certificate_total.absolute_infinity = certificate_total
+            .absolute_infinity
+            .max(partial.absolute_infinity);
+        certificate_total.relative_infinity = certificate_total
+            .relative_infinity
+            .max(partial.relative_infinity);
+        certificate_total.relative_squares += partial.relative_squares;
+        certificate_total.count = certificate_total
+            .count
+            .checked_add(partial.count)
+            .ok_or_else(|| allocation("categorical recovery certificate count overflows"))?;
+    }
+    let relative_two = if certificate_total.count == 0 {
+        0.0
+    } else {
+        (certificate_total.relative_squares / certificate_total.count as f64).sqrt()
+    };
+    if !relative_two.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate two norm is nonfinite",
+        ));
+    }
+    let certificate = FeCertificate {
+        absolute_infinity_norm: certificate_total.absolute_infinity,
+        relative_infinity_norm: certificate_total.relative_infinity,
+        relative_two_norm: relative_two,
+        passed: certificate_total.relative_infinity <= tolerance,
+    };
+    if !certificate.passed {
+        return Err(invalid_data(
+            "categorical recovery coefficient product failed its FE certificate",
+        ));
+    }
+
+    let mut channels = vec![None];
+    let absorbed_sum = match (requested_channels[0], materialize_absorbed_sum) {
+        (true, true) => {
+            let values = publication
+                .take()
+                .expect("one-intercept publication buffer was requested");
+            let absorbed = values.clone();
+            channels[0] = Some(values);
+            Some(absorbed)
+        }
+        (true, false) => {
+            channels[0] = publication.take();
+            None
+        }
+        (false, true) => publication.take(),
+        (false, false) => None,
+    };
+    Ok(RecoveredCategoricalEffects {
+        absorbed_sum,
+        channels,
+        iterations,
+        reconstruction_relative_infinity,
+        recovery_method,
+    })
+}
+
+#[derive(Debug, Clone, Copy)]
+struct InterceptRecoveryCertificatePartial {
+    absolute_infinity: f64,
+    relative_infinity: f64,
+    relative_squares: f64,
+    count: usize,
+}
+
+fn certify_intercept_only_recovery(
+    topology: &FinalizedCategoricalTopology,
+    weights: ValidatedWeights<'_>,
+    residuals: &[f64],
+    reference_norm: f64,
+    residual_norm: f64,
+    tolerance: f64,
+) -> Result<FeCertificate> {
+    const LEVEL_CHUNK: usize = 4_096;
+
+    if !reference_norm.is_finite()
+        || reference_norm < 0.0
+        || !residual_norm.is_finite()
+        || residual_norm < 0.0
+    {
+        return Err(invalid_data(
+            "categorical recovery certificate norms are invalid",
+        ));
+    }
+    let denominator = reference_norm.max(residual_norm);
+    let mut total = InterceptRecoveryCertificatePartial {
+        absolute_infinity: 0.0,
+        relative_infinity: 0.0,
+        relative_squares: 0.0,
+        count: 0,
+    };
+    for &source_index in topology.effect_to_topology() {
+        let source = topology.registry().source(source_index)?;
+        let chunk_count = source.n_levels().div_ceil(LEVEL_CHUNK);
+        let partials = (0..chunk_count)
+            .into_par_iter()
+            .map(|chunk| -> Result<InterceptRecoveryCertificatePartial> {
+                let start = chunk * LEVEL_CHUNK;
+                let end = (start + LEVEL_CHUNK).min(source.n_levels());
+                let mut partial = InterceptRecoveryCertificatePartial {
+                    absolute_infinity: 0.0,
+                    relative_infinity: 0.0,
+                    relative_squares: 0.0,
+                    count: 0,
+                };
+                for level in start..end {
+                    let members = source.members(level)?;
+                    if members.is_empty() {
+                        return Err(invalid_argument(
+                            "categorical recovery certificate contains an empty final level",
+                        ));
+                    }
+                    let mut value_scale = 0.0_f64;
+                    for &row in members {
+                        let value = *residuals.get(row).ok_or_else(|| {
+                            invalid_argument(
+                                "categorical recovery membership exceeds the residual axis",
+                            )
+                        })?;
+                        value_scale = value_scale.max(value.abs());
+                    }
+                    let mut gram = 0.0_f64;
+                    let mut gram_correction = 0.0_f64;
+                    let mut cross = 0.0_f64;
+                    let mut cross_correction = 0.0_f64;
+                    for &row in members {
+                        let weight = weights.value(row);
+                        compensated_add(weight, &mut gram, &mut gram_correction)?;
+                        if value_scale != 0.0 {
+                            compensated_add(
+                                weight * (residuals[row] / value_scale),
+                                &mut cross,
+                                &mut cross_correction,
+                            )?;
+                        }
+                    }
+                    gram += gram_correction;
+                    cross += cross_correction;
+                    if !gram.is_finite() || gram <= 0.0 || !cross.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery certificate group moment is invalid",
+                        ));
+                    }
+                    let coefficient = value_scale * (cross / gram);
+                    let projected_square = coefficient.mul_add(gram * coefficient, 0.0);
+                    let projected = projected_square.max(0.0).sqrt();
+                    let relative = if denominator == 0.0 {
+                        if projected == 0.0 {
+                            0.0
+                        } else {
+                            f64::INFINITY
+                        }
+                    } else {
+                        projected / denominator
+                    };
+                    if !relative.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery certificate ratio is nonfinite",
+                        ));
+                    }
+                    partial.relative_infinity = partial.relative_infinity.max(relative);
+                    partial.relative_squares = relative.mul_add(relative, partial.relative_squares);
+                    if !partial.relative_squares.is_finite() {
+                        return Err(invalid_data(
+                            "categorical recovery certificate two-norm accumulation is nonfinite",
+                        ));
+                    }
+                    partial.count = partial.count.checked_add(1).ok_or_else(|| {
+                        allocation("categorical recovery certificate count overflows")
+                    })?;
+                    let raw = cross.abs() * value_scale * weights.raw_scale;
+                    partial.absolute_infinity = partial.absolute_infinity.max(if raw.is_finite() {
+                        raw
+                    } else {
+                        f64::INFINITY
+                    });
+                }
+                Ok(partial)
+            })
+            .collect::<Result<Vec<_>>>()?;
+        for partial in partials {
+            total.absolute_infinity = total.absolute_infinity.max(partial.absolute_infinity);
+            total.relative_infinity = total.relative_infinity.max(partial.relative_infinity);
+            total.relative_squares += partial.relative_squares;
+            if !total.relative_squares.is_finite() {
+                return Err(invalid_data(
+                    "categorical recovery certificate two-norm accumulation is nonfinite",
+                ));
+            }
+            total.count = total
+                .count
+                .checked_add(partial.count)
+                .ok_or_else(|| allocation("categorical recovery certificate count overflows"))?;
+        }
+    }
+    let relative_two = if total.count == 0 {
+        0.0
+    } else {
+        (total.relative_squares / total.count as f64).sqrt()
+    };
+    if !relative_two.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate two norm is nonfinite",
+        ));
+    }
+    Ok(FeCertificate {
+        absolute_infinity_norm: total.absolute_infinity,
+        relative_infinity_norm: total.relative_infinity,
+        relative_two_norm: relative_two,
+        passed: total.relative_infinity <= tolerance,
     })
 }
 
@@ -1438,7 +2239,7 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         }
     }
     Ok(RecoveredCategoricalEffects {
-        absorbed_sum,
+        absorbed_sum: Some(absorbed_sum),
         channels,
         iterations,
         reconstruction_relative_infinity,
@@ -2694,6 +3495,69 @@ mod tests {
         .expect("known-connected normalization");
         assert_eq!(general.absorbed_sum(), connected.absorbed_sum());
         assert_eq!(general.channels(), connected.channels());
+    }
+
+    #[test]
+    fn retained_coefficient_saved_only_plan_omits_combined_observation_vector() {
+        let worker = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0_u32, 1, 1, 2, 2, 3, 3, 0];
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&worker, 4),
+                CategoricalCodeView::new(&firm, 4),
+            ],
+            &[&[0], &[1]],
+            &[true; 8],
+        )
+        .expect("connected topology");
+        let effects = [
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("worker"),
+            CategoricalAbsorbedEffectView::new(true, Vec::new()).expect("firm"),
+        ];
+        let coefficient_values = vec![1.0, -2.0, 0.5, 3.0, 4.0, -1.0, 2.0, -3.0];
+        let coefficients =
+            FeCoefficientBatch::from_values(vec![1, 1], vec![4, 4], 1, coefficient_values.clone())
+                .expect("coefficient batch");
+        let target = worker
+            .iter()
+            .zip(&firm)
+            .map(|(&worker, &firm)| {
+                coefficient_values[worker as usize] + coefficient_values[4 + firm as usize]
+            })
+            .collect::<Vec<_>>();
+
+        let materialized =
+            recover_finalized_categorical_effects_from_coefficients_selected_certified(
+                &topology,
+                &effects,
+                BorrowedMapWeights::Unit,
+                &target,
+                &[true, true],
+                &coefficients,
+                1e-12,
+                true,
+                true,
+            )
+            .expect("materialized retained-coefficient recovery");
+        let saved_only =
+            recover_finalized_categorical_effects_from_coefficients_selected_certified(
+                &topology,
+                &effects,
+                BorrowedMapWeights::Unit,
+                &target,
+                &[true, true],
+                &coefficients,
+                1e-12,
+                true,
+                false,
+            )
+            .expect("saved-only retained-coefficient recovery");
+        assert_eq!(materialized.channels(), saved_only.channels());
+        let (materialized_sum, materialized_channels) = materialized.into_optional_parts();
+        let (saved_only_sum, saved_only_channels) = saved_only.into_optional_parts();
+        assert!(materialized_sum.is_some());
+        assert!(saved_only_sum.is_none());
+        assert_eq!(materialized_channels, saved_only_channels);
     }
 
     #[test]

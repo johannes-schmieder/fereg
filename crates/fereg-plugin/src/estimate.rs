@@ -35,8 +35,9 @@ use fereg_core::protocol::{
 };
 use fereg_core::{
     estimate_phase2_memory, plan_ols_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget,
-    MapConfig, MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig,
+    MapConfig, MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
 };
+use rayon::prelude::*;
 
 pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
 const CONFIRMATION: &str = "fereg-estimation";
@@ -1315,6 +1316,26 @@ fn build_derived_observation_outputs(
     known_connected: bool,
     fit_config: PreparedOlsFitConfig,
 ) -> Result<DerivedObservationOutputs> {
+    ThreadTeam::new(fit_config.execution.threads).install(|| {
+        build_derived_observation_outputs_in_team(
+            prepared,
+            categorical,
+            fit,
+            requested,
+            known_connected,
+            fit_config,
+        )
+    })?
+}
+
+fn build_derived_observation_outputs_in_team(
+    prepared: PreparedOlsResultData<'_>,
+    categorical: Option<&PreparedCategoricalOlsData>,
+    fit: &CertifiedPreparedOlsFit,
+    requested: &ObservationOutputs,
+    known_connected: bool,
+    fit_config: PreparedOlsFitConfig,
+) -> Result<DerivedObservationOutputs> {
     let any_derived = requested.xb.is_some()
         || requested.xbd.is_some()
         || requested.absorbed.is_some()
@@ -1337,36 +1358,45 @@ fn build_derived_observation_outputs(
     let needs_absorbed =
         requested.absorbed.is_some() || requested.saved_channels.iter().any(Option::is_some);
     let materialize_xb = requested.xb.is_some() || requested.absorbed.is_some();
+    let fitted_terms = fit
+        .coefficients()
+        .iter()
+        .filter_map(
+            |fitted| match (fitted.generated_column_index, fitted.value) {
+                (Some(column), Some(coefficient)) => Some(Ok((column, coefficient))),
+                (None, None) => None,
+                _ => Some(Err(invalid(
+                    "derived OLS output coefficient identity is incomplete",
+                ))),
+            },
+        )
+        .collect::<Result<Vec<_>>>()?;
+    for fitted in fit.coefficients() {
+        if fitted.value.is_some()
+            && !matches!(
+                fitted.status,
+                PreparedOlsFitStatus::Kept | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+            )
+        {
+            return Err(invalid(
+                "derived OLS output received a value for a nonfitted coefficient",
+            ));
+        }
+    }
     let mut xb_work = if materialize_xb {
         Some(reserved_filled(n, 0.0, "derived OLS xb output")?)
     } else {
         None
     };
     if let Some(xb) = xb_work.as_mut() {
-        for fitted in fit.coefficients() {
-            match (fitted.generated_column_index, fitted.value) {
-                (Some(column), Some(coefficient)) => {
-                    if !matches!(
-                        fitted.status,
-                        PreparedOlsFitStatus::Kept
-                            | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
-                    ) {
-                        return Err(invalid(
-                            "derived OLS output received a value for a nonfitted coefficient",
-                        ));
-                    }
-                    for (row, value) in xb.iter_mut().enumerate() {
-                        *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
-                    }
+        xb.par_iter_mut()
+            .enumerate()
+            .try_for_each(|(row, value)| -> Result<()> {
+                for &(column, coefficient) in &fitted_terms {
+                    *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
                 }
-                (None, None) => {}
-                _ => {
-                    return Err(invalid(
-                        "derived OLS output coefficient identity is incomplete",
-                    ))
-                }
-            }
-        }
+                Ok(())
+            })?;
     }
     if xb_work
         .as_ref()
@@ -1381,41 +1411,24 @@ fn build_derived_observation_outputs(
     };
     if let Some(target) = absorbed_target.as_mut() {
         if let Some(xb) = xb_work.as_ref() {
-            for (row, value) in target.iter_mut().enumerate() {
+            target.par_iter_mut().enumerate().for_each(|(row, value)| {
                 *value = prepared.sample().outcome[row] - xb[row] - fit.residuals()[row];
-            }
+            });
         } else {
             // Saved-only publication does not need an xb vector after target
             // construction. Accumulate xb in the target buffer, then convert
             // it in place; this preserves the ordinary xb rounding exactly.
-            for fitted in fit.coefficients() {
-                match (fitted.generated_column_index, fitted.value) {
-                    (Some(column), Some(coefficient)) => {
-                        if !matches!(
-                            fitted.status,
-                            PreparedOlsFitStatus::Kept
-                                | PreparedOlsFitStatus::NormalizedAbsorbedIntercept
-                        ) {
-                            return Err(invalid(
-                                "derived OLS output received a value for a nonfitted coefficient",
-                            ));
-                        }
-                        for (row, value) in target.iter_mut().enumerate() {
-                            *value =
-                                coefficient.mul_add(prepared.column_value(column, row)?, *value);
-                        }
+            target
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(row, value)| -> Result<()> {
+                    let mut xb = 0.0_f64;
+                    for &(column, coefficient) in &fitted_terms {
+                        xb = coefficient.mul_add(prepared.column_value(column, row)?, xb);
                     }
-                    (None, None) => {}
-                    _ => {
-                        return Err(invalid(
-                            "derived OLS output coefficient identity is incomplete",
-                        ))
-                    }
-                }
-            }
-            for (row, value) in target.iter_mut().enumerate() {
-                *value = prepared.sample().outcome[row] - *value - fit.residuals()[row];
-            }
+                    *value = prepared.sample().outcome[row] - xb - fit.residuals()[row];
+                    Ok(())
+                })?;
         }
     }
     if absorbed_target
@@ -1452,6 +1465,7 @@ fn build_derived_observation_outputs(
             &mask,
             fit.recovered_fe_coefficients(),
             known_connected,
+            requested.absorbed.is_some(),
             LsmrConfig {
                 tolerance: 1e-12,
                 max_iterations: 20_000,
@@ -1464,8 +1478,8 @@ fn build_derived_observation_outputs(
                 symmetric: true,
             },
         )?;
-        let (absorbed_sum, channels) = recovered.into_parts();
-        recovered_absorbed = Some(absorbed_sum);
+        let (absorbed_sum, channels) = recovered.into_optional_parts();
+        recovered_absorbed = absorbed_sum;
         saved_channels = channels;
     } else {
         saved_channels.resize_with(requested.saved_channels.len(), || None);
@@ -1473,9 +1487,9 @@ fn build_derived_observation_outputs(
 
     let xbd = if requested.xbd.is_some() {
         let mut values = reserved_filled(n, 0.0, "derived OLS xbd output")?;
-        for (row, value) in values.iter_mut().enumerate() {
+        values.par_iter_mut().enumerate().for_each(|(row, value)| {
             *value = prepared.sample().outcome[row] - fit.residuals()[row];
-        }
+        });
         Some(values)
     } else {
         None
@@ -3598,20 +3612,28 @@ mod tests {
             let (single_args, mut single_spi) = fixture(kind);
             estimate_ols_test(&single_args, &mut single_spi).expect("single-thread estimate");
 
-            let (mut parallel_args, mut parallel_spi) = fixture(kind);
-            replace_argument(&mut parallel_args, "threads", "threads=2".to_owned());
-            estimate_ols_test(&parallel_args, &mut parallel_spi).expect("parallel estimate");
+            for threads in [2, 4, 8, 16] {
+                let (mut parallel_args, mut parallel_spi) = fixture(kind);
+                replace_argument(&mut parallel_args, "threads", format!("threads={threads}"));
+                estimate_ols_test(&parallel_args, &mut parallel_spi).expect("parallel estimate");
 
-            for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
+                for matrix in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER"] {
+                    assert_eq!(
+                        single_spi.matrices[matrix], parallel_spi.matrices[matrix],
+                        "{matrix} differs at {threads} threads"
+                    );
+                }
                 assert_eq!(
-                    single_spi.matrices[matrix], parallel_spi.matrices[matrix],
-                    "{matrix} differs by thread count"
+                    parallel_spi.matrices["RRUNTIME"][27],
+                    vec![1.0, threads as f64]
                 );
+                assert_eq!(
+                    parallel_spi.matrices["RRUNTIME"][28],
+                    vec![1.0, threads as f64]
+                );
+                assert_eq!(parallel_spi.matrices["RRUNTIME"][29], vec![1.0, 1.0]);
+                assert_eq!(parallel_spi.receipt_complete(), 1.0);
             }
-            assert_eq!(parallel_spi.matrices["RRUNTIME"][27], vec![1.0, 2.0]);
-            assert_eq!(parallel_spi.matrices["RRUNTIME"][28], vec![1.0, 2.0]);
-            assert_eq!(parallel_spi.matrices["RRUNTIME"][29], vec![1.0, 1.0]);
-            assert_eq!(parallel_spi.receipt_complete(), 1.0);
         }
     }
 
