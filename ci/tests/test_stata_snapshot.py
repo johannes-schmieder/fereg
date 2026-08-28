@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 CI_DIR = Path(__file__).resolve().parents[1]
@@ -14,6 +15,38 @@ import supervise_stata  # noqa: E402
 
 
 class SnapshotManifestTests(unittest.TestCase):
+    def test_temporary_tree_cleanup_retries_a_transient_directory_race(self) -> None:
+        transient = OSError(66, "Directory not empty")
+        with (
+            mock.patch.object(
+                run_stata_ci.shutil,
+                "rmtree",
+                side_effect=[transient, None],
+            ) as remove,
+            mock.patch.object(run_stata_ci.time, "sleep") as sleep,
+        ):
+            run_stata_ci.remove_tree_with_retries(Path("/temporary/run"))
+
+        self.assertEqual(remove.call_count, 2)
+        sleep.assert_called_once_with(0.05)
+
+    def test_temporary_tree_cleanup_remains_fail_closed_after_bound(self) -> None:
+        transient = OSError(66, "Directory not empty")
+        with (
+            mock.patch.object(
+                run_stata_ci.shutil,
+                "rmtree",
+                side_effect=[transient, transient],
+            ),
+            mock.patch.object(run_stata_ci.time, "sleep") as sleep,
+        ):
+            with self.assertRaises(OSError):
+                run_stata_ci.remove_tree_with_retries(
+                    Path("/temporary/run"), attempts=2
+                )
+
+        sleep.assert_called_once_with(0.05)
+
     def test_non_macos_lock_uses_runtime_temporary_directory(self) -> None:
         if sys.platform == "darwin":
             self.skipTest("Linux/SCC default exercised off macOS")

@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 
 DEFAULT_STATA = Path("/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp")
@@ -111,6 +112,22 @@ def clear_directory(path: Path) -> None:
             shutil.rmtree(child)
         else:
             child.unlink()
+
+
+def remove_tree_with_retries(
+    path: Path, *, attempts: int = 5, initial_delay_seconds: float = 0.05
+) -> None:
+    """Remove an APFS tree despite a bounded transient ENOTEMPTY race."""
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if attempt + 1 == attempts:
+                raise
+            time.sleep(initial_delay_seconds * (2**attempt))
 
 
 def copy_evidence(run_root: Path, artifact_dir: Path) -> None:
@@ -308,7 +325,7 @@ def main() -> int:
     if os.environ.get("STATA_CI_KEEP_TEMP") == "1":
         print(f"STATA_CI_TEMP={run_root}")
     else:
-        shutil.rmtree(run_root)
+        remove_tree_with_retries(run_root)
 
     if receipt_rc != 0:
         return receipt_rc
