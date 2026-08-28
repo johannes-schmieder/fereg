@@ -1,11 +1,11 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-27
-**Development branch:** `main`; low-overhead certified saved-FE recovery and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
+**Development branch:** `main`; deterministic parallel saved-FE publication, 16-thread one-FE execution, and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
 **Verified candidate plugin:** `c0f8802201356e4c12bb41b5ad281b79824587358966ac53847524b2e2f3f23e`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** freeze the integrated saved-FE/CMG candidate, then complete the broader and cross-platform beta qualification without weakening the certified ADR-0009 fallback
+**Active milestone:** run the expanded macOS/Linux V2 matrix over 0/2/10/30 controls, one/two/three FEs, and requested native threads through 16 without weakening the certified ADR-0009 fallback
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -77,6 +77,17 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   pilot plus LSMR on the remainder; slopes use strict LSMR. Every route still
   applies connected-component normalization plus independent reconstruction
   and FE-moment certificates at the unchanged publication tolerance.
+- ADR-0011 makes retained-coefficient publication part of the bounded native
+  thread team. Saved-only calls omit both the persistent `xb` vector and the
+  combined absorbed vector; intercept-only coefficient products are scattered
+  observation-major; and their reconstruction and FE moments use fixed,
+  deterministic parallel chunks. The one-FE path evaluates the certificate
+  directly from the target and level coefficients without allocating an
+  observation-length recovery residual. Rust tests require bit-identical
+  scientific results at 1/2/4/8/16 threads. The V2 Stata prototype passed both
+  K=0/one-FE and K=30/worker-firm-year corners at requested 16 threads while
+  recording the local Stata license cap of eight separately. No CMG upstream
+  change was needed; ADR-0010 continues to govern any routing expansion.
 - Warm local Stata/MP timing checkpoints for saved output are shown below.
   Unless specifically noted after the table, they are alternating-order
   medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT

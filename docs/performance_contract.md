@@ -83,7 +83,7 @@ require their scheduler/accounting receipts. Exploratory Phase 0–1 thresholds
 are superseded by ADR 0007; the solver and memory policy is superseded by ADR
 0008.
 
-The registered Stata 19 command-comparison matrix is defined by
+The original registered Stata 19 command-comparison matrix is defined by
 `benchmarks/manifests/ols_command_comparison_stata19_v1.json`. It covers 13
 one- and two-FE datasets at 100,000, one million, and ten million observations;
 fit and separate saved-FE output; and fereg, Greg, pinned reghdfe 6.14.1, and
@@ -97,6 +97,25 @@ unless every available command has one cold plus five registered records and a g
 scientific preflight. fereg saved effects additionally require an independent
 relative-infinity reconstruction certificate; comparator reconstruction
 distances remain visible even when their publication rule is weaker.
+
+Optimization round V2 is separately frozen in
+`benchmarks/manifests/ols_command_comparison_stata19_v2.json`; it does not
+rewrite the captured V1 evidence. V2 excludes `areg`, crosses 0, 2, 10, and 30
+controls with one-, two-, and three-FE designs (the third dimension is an
+explicit ten-level year effect), and records requested native threads
+1/2/4/8/16 at one million and ten million observations. Core one-FE,
+standard-AKM, and standard-AKM-plus-year cells use the complete scaling ladder;
+low-mobility and remaining control-count coverage use the one/16-thread
+endpoints. Each scope retains one cold plus five warm calls for fereg, Greg,
+and pinned reghdfe in fit and saved-FE modes.
+
+V2 distinguishes requested threads from effective comparator capacity. fereg
+always receives the requested native value, including 16. Stata-side work is
+capped at `min(requested,c(processors_lic),c(processors_mach))`. Greg exposes no
+documented per-call thread control, so it is repeated on every requested row
+but labeled uncontrolled rather than assigned an invented effective count.
+The harness records both the cap and fereg's reported native thread count and
+fails if fereg does not honor the request.
 
 Large two-way `areg, hdfe` measurements use one timed invocation per fresh
 Stata process because repeated calls retain substantial process state. Each
