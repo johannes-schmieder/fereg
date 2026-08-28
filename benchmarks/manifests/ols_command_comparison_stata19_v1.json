@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "manifest_id": "ols_command_comparison_stata19_v1",
+  "status": "development_only",
+  "minimum_stata_version": 19,
+  "scientific_contract": "benchmarks/manifests/ols_v1.json",
+  "dependency_contract": {
+    "reghdfe": {"version": "6.14.1", "commit": "29b2b203f534413369d675d0c0f674d61291f536"},
+    "gtools": {"version": "1.11.8"},
+    "areg": {"provider": "StataCorp", "minimum_stata_version": 19}
+  },
+  "generator_contract": {
+    "periods": 10,
+    "workers_per_firm": 20,
+    "singleton_free": true,
+    "data_generated_outside_timing": true,
+    "shared_deterministic_data_for_isolated_components": true
+  },
+  "scales": [
+    {"id": "n100k", "n": 100000, "workers": 10000, "firms": 500},
+    {"id": "n1m", "n": 1000000, "workers": 100000, "firms": 5000},
+    {"id": "n10m", "n": 10000000, "workers": 1000000, "firms": 50000}
+  ],
+  "designs": [
+    {"id": "one_fe", "mobility": 0.15, "absorb": "worker", "seed": 2026082701},
+    {"id": "iid_two_fe", "mobility": 1.0, "absorb": "worker firm", "seed": 2026082702},
+    {"id": "akm_highmob", "mobility": 0.75, "absorb": "worker firm", "seed": 2026082703},
+    {"id": "akm_standard", "mobility": 0.15, "absorb": "worker firm", "seed": 2026082704},
+    {"id": "akm_lowmob", "mobility": 0.02, "absorb": "worker firm", "seed": 2026082705}
+  ],
+  "cases": [
+    {"scale": "n100k", "designs": ["one_fe", "iid_two_fe", "akm_highmob", "akm_standard", "akm_lowmob"]},
+    {"scale": "n1m", "designs": ["one_fe", "iid_two_fe", "akm_standard", "akm_lowmob"]},
+    {"scale": "n10m", "designs": ["one_fe", "iid_two_fe", "akm_standard", "akm_lowmob"]}
+  ],
+  "threads": [1, 8],
+  "arms": [
+    {"id": "fereg", "command": "fereg", "role": "candidate"},
+    {"id": "greg", "command": "greg", "role": "diagnostic"},
+    {"id": "reghdfe", "command": "reghdfe", "role": "scientific_oracle"},
+    {"id": "areg", "command": "areg", "role": "stata19_comparator"}
+  ],
+  "output_modes": [
+    {"id": "fit", "arms": ["fereg", "greg", "reghdfe", "areg"]},
+    {"id": "save_fe", "arms": ["fereg", "greg", "reghdfe"]}
+  ],
+  "repetitions": {"cold": 1, "warm": 5},
+  "timing_contract": {
+    "balanced_rotating_core_arm_order": true,
+    "large_two_fe_areg_fresh_process_per_measurement": true,
+    "component_time_limit_seconds": 2400,
+    "setup_cost_included": true,
+    "tolerance": 1e-8,
+    "maximum_iterations": 16000,
+    "areg_noabsorbtest": true,
+    "areg_dfabsorb": true,
+    "pairwise_degrees_of_freedom": true
+  },
+  "science_gates": {
+    "coefficient_rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-6,
+    "vce_atol": 1e-10,
+    "rss_rtol": 1e-7,
+    "sample_exact": true,
+    "absorbed_dof_exact_for_fereg_and_reghdfe": true,
+    "saved_predictor_rtol": 1e-7,
+    "saved_predictor_atol": 1e-9,
+    "fereg_saved_reconstruction_rtol": 1e-10,
+    "fereg_saved_reconstruction_atol": 1e-10
+  },
+  "limitations": {
+    "platform_threading": "Both registered platforms use Stata 19. The macOS matrix uses 1 and 8 application threads; the SCC Linux license permits 1 and 4 application threads.",
+    "areg_retained_state": "Repeated Stata 19 areg HDFE calls retain substantial process state at 10 million observations. Large two-way areg measurements therefore use exactly one timed invocation per fresh Stata process; data generation remains outside timing.",
+    "areg_saved_fe": "areg can predict the combined absorbed contribution but does not publish the separate fixed-effect coefficient vectors; it is therefore excluded from save_fe timing. Its e(df_a) convention also differs from reghdfe's, so parity is certified through VCE and fit rather than equality of that stored scalar.",
+    "greg_science": "greg is checked for sample and slope parity, but remains diagnostic because its beta Mata interface does not expose the full e-class fit contract.",
+    "saved_fe_cross_command": "Each command's saved predictor is checked against its own residual identity. Cross-command saved-predictor distances remain diagnostic because reghdfe uses a weaker saved-FE stopping rule than fereg."
+  }
+}

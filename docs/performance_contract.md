@@ -83,6 +83,33 @@ require their scheduler/accounting receipts. Exploratory Phase 0–1 thresholds
 are superseded by ADR 0007; the solver and memory policy is superseded by ADR
 0008.
 
+The registered Stata 19 command-comparison matrix is defined by
+`benchmarks/manifests/ols_command_comparison_stata19_v1.json`. It covers 13
+one- and two-FE datasets at 100,000, one million, and ten million observations;
+fit and separate saved-FE output; and fereg, Greg, pinned reghdfe 6.14.1, and
+Stata 19 `areg, hdfe`. macOS records one/eight application threads and SCC
+Linux records one/four because that Stata/MP license exposes four processors.
+Each deterministic large dataset is generated and saved once, then reloaded
+outside timing by fresh component processes; regeneration and sorting therefore
+cannot be mistaken for estimator runtime. Fresh Stata processes isolate
+case/thread shards, and the merger fails closed
+unless every available command has one cold plus five registered records and a green
+scientific preflight. fereg saved effects additionally require an independent
+relative-infinity reconstruction certificate; comparator reconstruction
+distances remain visible even when their publication rule is weaker.
+
+Large two-way `areg, hdfe` measurements use one timed invocation per fresh
+Stata process because repeated calls retain substantial process state. Each
+such component has a registered 2,400-second cap. A capped command is retained
+as an explicit DNF cell with an elapsed-time bound rather than omitted,
+fabricated, or allowed to block the core matrix indefinitely. The fereg/Greg/
+reghdfe scientific preflight remains mandatory for that cell; an areg parity
+preflight is mandatory only when all registered areg timings complete. DNF
+cells do not enter geometric-mean timing ratios. The five large-areg records,
+when available, are independent fresh-process repetitions rather than
+retained-process cache-warm repetitions; that distinction is carried in the
+evidence limitations.
+
 ## Current direct-LSMR qualification evidence
 
 ADR 0009 freezes direct Schwarz-LSMR for slow-mixing automatic routes. The
