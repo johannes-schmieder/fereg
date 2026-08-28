@@ -1,11 +1,11 @@
 {
-  "completed_at": "2026-08-28T03:17:12.662955Z",
+  "completed_at": "2026-08-28T03:36:42.359736Z",
   "driver": "fereg-fixtures",
-  "duration_seconds": 80.261,
+  "duration_seconds": 81.206,
   "failure_detail": null,
   "failure_kind": null,
   "platform": "Unix; Mac (Apple Silicon)",
-  "plugin_sha256": "e64ce866e7ad9964088d07f5a9929f1e83b60b165309f785060b1142ef37a1bb",
+  "plugin_sha256": "ebd51dfe37bba82c904c844dcba547b998ab4a7dd8208bc36b0847c53a5dfd09",
   "process_rc": 0,
   "profile": "quick",
   "ref": "refs/heads/main",
@@ -21,12 +21,12 @@
     }
   ],
   "run_attempt": "1",
-  "run_id": "33138354953",
+  "run_id": "33139326924",
   "runner_name": "macstudio-stata-mp18-stfixest",
   "rust_rc": 0,
   "rust_status": "success",
   "schema_version": 1,
-  "started_at": "2026-08-28T03:15:52.401283Z",
+  "started_at": "2026-08-28T03:35:21.135076Z",
   "stata_bundle_version": "19.0.115",
   "stata_edition": "MP",
   "stata_executable": "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
@@ -35,7 +35,7 @@
   "stata_status": "success",
   "stata_version": "19",
   "status": "success",
-  "tested_sha": "d452dbeab958b44c8d106d2147acf25613bceb48",
+  "tested_sha": "837f4d3f1ed808de20f086e852fedd9e132229bf",
   "tests_failed": 0,
   "tests_passed": 30
 }
