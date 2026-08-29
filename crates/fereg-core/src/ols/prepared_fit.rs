@@ -1517,6 +1517,12 @@ fn build_standardized_moments<R: FitReservation>(
     canonical_candidates: &[usize],
     reservation: &mut R,
 ) -> Result<(Vec<f64>, Vec<f64>)> {
+    // Keep the row-block accumulations as ordinary multiply/add operations.
+    // `f64::mul_add` becomes a software libm call on the portable x86-64
+    // release target when FMA is unavailable at compile time; at moderate K
+    // that turns hundreds of millions of moments into function calls. The
+    // fixed block order and compensated merge remain deterministic, while the
+    // independent score and bread certificates continue to fail closed.
     let candidate_count = canonical_candidates.len();
     if candidate_count == 0 {
         return Ok((Vec::new(), Vec::new()));
@@ -1576,12 +1582,12 @@ fn build_standardized_moments<R: FitReservation>(
                     let candidates = &values[matrix_start..matrix_start + candidate_count];
                     for left in 0..candidate_count {
                         let left_value = candidates[left];
-                        partial[left] = left_value.mul_add(outcome, partial[left]);
+                        partial[left] += left_value * outcome;
                         for (offset, right_value) in candidates[left..].iter().copied().enumerate()
                         {
                             let right = left + offset;
                             let position = candidate_count + left * candidate_count + right;
-                            partial[position] = left_value.mul_add(right_value, partial[position]);
+                            partial[position] += left_value * right_value;
                         }
                     }
                 }
@@ -1591,13 +1597,12 @@ fn build_standardized_moments<R: FitReservation>(
                     let outcome = values[0];
                     for (left, generated) in canonical_candidates.iter().copied().enumerate() {
                         let left_value = values[generated + 1];
-                        partial[left] = left_value.mul_add(outcome, partial[left]);
+                        partial[left] += left_value * outcome;
                         for (right, other_generated) in
                             canonical_candidates.iter().copied().enumerate().skip(left)
                         {
                             let position = candidate_count + left * candidate_count + right;
-                            partial[position] =
-                                left_value.mul_add(values[other_generated + 1], partial[position]);
+                            partial[position] += left_value * values[other_generated + 1];
                         }
                     }
                 }

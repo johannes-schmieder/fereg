@@ -61,6 +61,13 @@ had to reduce data movement while retaining an independent publication check.
     Greg remains a beta performance comparator, not a compatibility oracle or
     runtime dependency. Only frozen, self-consistent comparator bundles are
     valid evidence.
+11. Accumulate the guarded Cholesky moment blocks with ordinary portable
+    multiply/add operations, then merge blocks in the existing fixed order
+    with compensated addition. Do not use `f64::mul_add` in this dominant
+    portable x86-64 loop: without a compile-time FMA target feature it becomes
+    one software `fma()` call per moment. The independent score and bread
+    certificates remain the fail-closed authority, and any rejected Cholesky
+    candidate still falls back to rank-revealing QR.
 
 ## Local evidence
 
@@ -94,6 +101,32 @@ fails independently of fereg with its own temporary-matrix `r(601)`, including
 when invoked first in a fresh Stata process. Local Greg timings are therefore
 rejected; the frozen Linux/SCC comparator bundle is the authoritative Greg
 gate.
+
+## First SCC attempt and portable-x86 repair
+
+The first exact-source SCC attempt at
+`93292b94f84aee7fced05dcd6985037765dfeb3f` was scientifically clean: setup,
+all twelve scopes, and collection had `failed=0` and `exit_status=0`; every
+scope had 36 timing rows, one passing preflight, zero command failures, zero
+science failures, and the requested native thread count. The merged output had
+432 timing rows and 12 preflights, using only fereg, Greg, and reghdfe.
+
+It nevertheless failed the performance gate on the portable Linux build. The
+one-FE, 30-control, one-thread fit took 104.278 seconds, of which 102.942
+seconds were native, versus 1.366 seconds for Greg and 13.813 seconds for
+reghdfe in the same shard. The corresponding one-FE, 10-control time was
+17.232 seconds. The near-quadratic width scaling identified the dominant Gram
+accumulation, not FE recovery or SPI input, as the failure.
+
+The cause was architectural: the distributed x86-64 binary intentionally does
+not use `target-cpu=native`, so Rust's fused `f64::mul_add` lowers to a software
+`fma()` call when FMA is unavailable at compile time. The K=30 Gram kernel made
+hundreds of millions of those calls. The amended candidate uses ordinary
+multiply/add inside fixed row blocks and keeps the compensated fixed-order
+merge plus independent score and bread certificates. All 333 core tests, 54
+plugin tests, integration/oracle tests, formatting, clippy with warnings
+denied, and the repository checker pass after the repair. A repaired
+exact-source SCC timing is required before this ADR can be accepted.
 
 All Rust workspace tests passed: 333 core unit tests, 54 plugin tests, and every
 integration/oracle target. The compatible Python lane passed 291 tests and the
