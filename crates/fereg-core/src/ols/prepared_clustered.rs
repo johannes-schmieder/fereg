@@ -1,15 +1,15 @@
 use std::cmp::Ordering;
 
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::topology_dof::CategoricalTopologyDofReport;
+use rayon::prelude::*;
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
-use super::prepared_fit::{
-    fit_prepared_ols_coefficients_view_map_for_inference, FAST_INFERENCE_REUSE_MIN_ROWS,
-};
+use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
@@ -27,6 +27,9 @@ use super::{
     PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsReferenceWeightReport,
     PreparedOlsResidualDofReport,
 };
+
+const CLUSTER_REDUCTION_MAX_BLOCKS: usize = 64;
+const CLUSTER_PARTIAL_BUDGET_BYTES: usize = 32 << 20;
 
 /// Numerical and structural policy for the core-only clustered prepared OLS
 /// checkpoint. Cluster nesting is independent of the mobility policy so
@@ -386,8 +389,10 @@ pub fn fit_prepared_ols_clustered_map(
     prepared: &PreparedOlsClusteredData,
     config: PreparedOlsClusteredConfig,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    let mut reservation = SystemPreparedInferenceReservation;
-    fit_with_reservation(prepared, config, &mut reservation)
+    ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let mut reservation = SystemPreparedInferenceReservation;
+        fit_with_reservation(prepared, config, &mut reservation)
+    })?
 }
 
 /// Fit and certify categorical-interaction OLS/WLS with one-/multiway
@@ -396,8 +401,10 @@ pub fn fit_prepared_categorical_ols_clustered_map(
     prepared: &PreparedCategoricalOlsClusteredData,
     config: PreparedOlsClusteredConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsClustered> {
-    let mut reservation = SystemPreparedInferenceReservation;
-    let components = fit_clustered_view_with_reservation(prepared, config, &mut reservation)?;
+    let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let mut reservation = SystemPreparedInferenceReservation;
+        fit_clustered_view_with_reservation(prepared, config, &mut reservation)
+    })??;
     Ok(CertifiedPreparedCategoricalOlsClustered {
         fit: components.fit,
         absorbed_dof: components.absorbed_dof,
@@ -987,13 +994,30 @@ fn subset_score_meats<R: PreparedInferenceReservation>(
     mask: usize,
     reservation: &mut R,
 ) -> Result<SubsetMeats> {
-    if let Some(plan) =
-        dense_subset_plan(dimensions, mask, scores.nrows(), fit.bread().dimension())?
-    {
-        aggregate_subset_dense(fit, scores, weights, dimensions, mask, plan, reservation)
-    } else {
-        aggregate_subset_sorted(fit, scores, weights, dimensions, mask, reservation)
+    // Compact direct tables avoid ordering overhead in serial and for very
+    // narrow score vectors. Once the score axis is wide enough to dominate,
+    // deterministic radix ordering exposes whole cluster groups to the Rayon
+    // pool and avoids the serial observation-by-coordinate accumulation.
+    let prefer_ordered_parallel = rayon::current_num_threads() > 1
+        && scores
+            .dense_view()
+            .is_some_and(|dense| dense.reported_dimension() >= 8);
+    if scores.dense_view().is_some() && !prefer_ordered_parallel {
+        if let Some(plan) =
+            dense_subset_plan(dimensions, mask, scores.nrows(), fit.bread().dimension())?
+        {
+            return aggregate_subset_dense(
+                fit,
+                scores,
+                weights,
+                dimensions,
+                mask,
+                plan,
+                reservation,
+            );
+        }
     }
+    aggregate_subset_sorted(fit, scores, weights, dimensions, mask, reservation)
 }
 
 fn dense_subset_plan(
@@ -1010,9 +1034,6 @@ fn dense_subset_plan(
         return Err(invalid_argument(
             "prepared clustered dense subset plan is malformed",
         ));
-    }
-    if nobs < FAST_INFERENCE_REUSE_MIN_ROWS && !cfg!(test) {
-        return Ok(None);
     }
     let mut radices = [0_usize; 10];
     let mut group_slots = 1_usize;
@@ -1050,7 +1071,11 @@ fn dense_subset_plan(
     let ordering_bytes = nobs
         .checked_mul(std::mem::size_of::<usize>())
         .ok_or_else(|| allocation("prepared clustered ordering bytes overflow"))?;
-    if dense_bytes > ordering_bytes.max(1 << 20) {
+    let fast_dense_budget = ordering_bytes
+        .checked_mul(4)
+        .unwrap_or(usize::MAX)
+        .max(64 << 20);
+    if dense_bytes > fast_dense_budget {
         return Ok(None);
     }
     Ok(Some(DenseSubsetPlan {
@@ -1161,73 +1186,164 @@ fn aggregate_subset_dense<R: PreparedInferenceReservation>(
             )?;
         }
     }
-    let mut raw_transformed = reserved_filled(
-        reservation,
+    finish_dense_groups_parallel(
+        fit,
+        &group_scores,
+        &group_score_corrections,
+        &seen,
+        plan.group_slots,
         p,
-        0.0_f64,
-        "unable to reserve prepared clustered dense raw group score",
-    )?;
-    let mut influence_transformed = reserved_filled(
+        square,
         reservation,
-        p,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    group_scores: &[f64],
+    group_score_corrections: &[f64],
+    seen: &[u8],
+    group_slots: usize,
+    dimension: usize,
+    square: usize,
+    reservation: &mut R,
+) -> Result<SubsetMeats> {
+    if group_scores.len() != group_slots * dimension
+        || group_score_corrections.len() != group_scores.len()
+        || seen.len() != group_slots
+        || square != dimension * dimension
+    {
+        return Err(invalid_argument(
+            "prepared clustered dense group-finalization dimensions are inconsistent",
+        ));
+    }
+    let workspace = dimension
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(1))
+        .ok_or_else(|| allocation("prepared clustered dense group workspace overflows"))?;
+    let partial_stride = square
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(workspace))
+        .ok_or_else(|| allocation("prepared clustered dense group partial stride overflows"))?;
+    let chunks = cluster_reduction_chunks(group_slots, 1_024, partial_stride)?;
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared clustered dense group partials overflow usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
         0.0_f64,
-        "unable to reserve prepared clustered dense group influence",
+        "unable to reserve prepared clustered dense group partials",
     )?;
-    let mut raw_meat = reserved_filled(
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (raw_meat, remainder) = partial.split_at_mut(square);
+            let (influence_meat, workspace) = remainder.split_at_mut(square);
+            let (raw_score, workspace) = workspace.split_at_mut(dimension);
+            let (influence, count) = workspace.split_at_mut(dimension);
+            let groups_per_chunk = group_slots / chunks;
+            let remainder = group_slots % chunks;
+            let start = chunk * groups_per_chunk + chunk.min(remainder);
+            let end = start + groups_per_chunk + usize::from(chunk < remainder);
+            for (group, present) in seen.iter().enumerate().take(end).skip(start) {
+                if *present == 0 {
+                    continue;
+                }
+                let offset = group * dimension;
+                for coordinate in 0..dimension {
+                    raw_score[coordinate] = group_scores[offset + coordinate]
+                        + group_score_corrections[offset + coordinate];
+                }
+                for (left, influence_value) in influence.iter_mut().enumerate() {
+                    let mut value = 0.0_f64;
+                    let mut correction = 0.0_f64;
+                    for (right, raw_value) in raw_score.iter().copied().enumerate() {
+                        compensated_add(
+                            fit.bread().values()[left * dimension + right] * raw_value,
+                            &mut value,
+                            &mut correction,
+                        )?;
+                    }
+                    *influence_value = value + correction;
+                }
+                for left in 0..dimension {
+                    let raw_left = raw_score[left];
+                    let influence_left = influence[left];
+                    for right in left..dimension {
+                        raw_meat[left * dimension + right] += raw_left * raw_score[right];
+                        influence_meat[left * dimension + right] +=
+                            influence_left * influence[right];
+                    }
+                }
+                count[0] += 1.0;
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared clustered dense group partial contains a nonfinite value",
+                ))
+            }
+        })?;
+    let mut raw = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered dense subset meat",
     )?;
-    let mut raw_meat_corrections = reserved_filled(
+    let mut raw_corrections = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered dense subset meat corrections",
     )?;
-    let mut influence_meat = reserved_filled(
+    let mut influence = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered dense subset influence covariance",
     )?;
-    let mut influence_meat_corrections = reserved_filled(
+    let mut influence_corrections = reserved_filled(
         reservation,
         square,
         0.0_f64,
         "unable to reserve prepared clustered dense subset influence corrections",
     )?;
     let mut groups = 0_usize;
-    for (group, present) in seen.into_iter().enumerate() {
-        if present == 0 {
-            continue;
+    for partial in partials.chunks_exact(partial_stride) {
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    partial[position],
+                    &mut raw[position],
+                    &mut raw_corrections[position],
+                )?;
+                compensated_add(
+                    partial[square + position],
+                    &mut influence[position],
+                    &mut influence_corrections[position],
+                )?;
+            }
         }
-        let offset = group
-            .checked_mul(p)
-            .ok_or_else(|| allocation("prepared clustered dense group offset overflows"))?;
-        let end = offset
-            .checked_add(p)
-            .ok_or_else(|| allocation("prepared clustered dense group end overflows"))?;
-        finish_group_pair(
-            fit,
-            &group_scores[offset..end],
-            &group_score_corrections[offset..end],
-            &mut raw_transformed,
-            &mut influence_transformed,
-            &mut raw_meat,
-            &mut raw_meat_corrections,
-            &mut influence_meat,
-            &mut influence_meat_corrections,
-        )?;
+        let count = partial[2 * square + 2 * dimension];
+        if count.fract() != 0.0 || count < 0.0 || count > usize::MAX as f64 {
+            return Err(invalid_data(
+                "prepared clustered dense group partial count is invalid",
+            ));
+        }
         groups = groups
-            .checked_add(1)
+            .checked_add(count as usize)
             .ok_or_else(|| allocation("prepared clustered dense group count overflows"))?;
     }
-    finalize_subset_meat(&mut raw_meat, raw_meat_corrections, p)?;
-    finalize_subset_meat(&mut influence_meat, influence_meat_corrections, p)?;
+    finalize_subset_meat(&mut raw, raw_corrections, dimension)?;
+    finalize_subset_meat(&mut influence, influence_corrections, dimension)?;
     Ok(SubsetMeats {
-        raw: raw_meat,
-        influence: influence_meat,
+        raw,
+        influence,
         groups,
     })
 }
@@ -1254,21 +1370,40 @@ fn aggregate_subset_sorted<R: PreparedInferenceReservation>(
         p,
         "prepared clustered subset meat dimensions overflow usize",
     )?;
-    let mut order = reserved_empty(
-        reservation,
-        nobs,
-        "unable to reserve prepared clustered subset ordering",
-    )?;
-    for row in 0..nobs {
-        push_reserved(
-            &mut order,
-            row,
-            "prepared clustered subset ordering capacity exhausted",
-        )?;
+    let mut order = if scores.dense_view().is_some() {
+        build_subset_radix_order(dimensions, mask, nobs, reservation)?
+    } else {
+        None
     }
-    order.sort_unstable_by(|left, right| {
-        compare_cluster_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
-    });
+    .unwrap_or_else(Vec::new);
+    if order.is_empty() {
+        order = reserved_empty(
+            reservation,
+            nobs,
+            "unable to reserve prepared clustered subset ordering",
+        )?;
+        for row in 0..nobs {
+            push_reserved(
+                &mut order,
+                row,
+                "prepared clustered subset ordering capacity exhausted",
+            )?;
+        }
+        order.sort_unstable_by(|left, right| {
+            compare_cluster_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
+        });
+    }
+    if let Some(dense) = scores.dense_view() {
+        return aggregate_ordered_dense_parallel(
+            fit,
+            dense,
+            weights,
+            dimensions,
+            mask,
+            &order,
+            reservation,
+        );
+    }
     let mut group_score = reserved_filled(
         reservation,
         p,
@@ -1385,6 +1520,360 @@ fn aggregate_subset_sorted<R: PreparedInferenceReservation>(
         influence: influence_meat,
         groups,
     })
+}
+
+fn aggregate_ordered_dense_parallel<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: super::prepared_scores::PreparedOlsDenseScoreView<'_>,
+    weights: ReferenceWeightView<'_>,
+    dimensions: &[&[u32]],
+    mask: usize,
+    order: &[usize],
+    reservation: &mut R,
+) -> Result<SubsetMeats> {
+    let nobs = scores.nrows();
+    let dimension = scores.reported_dimension();
+    let square = checked_square(
+        dimension,
+        "prepared clustered ordered dense meat dimensions overflow usize",
+    )?;
+    if order.len() != nobs
+        || fit.residuals().len() != nobs
+        || fit.bread().dimension() != dimension
+        || dimensions.iter().any(|codes| codes.len() != nobs)
+    {
+        return Err(invalid_argument(
+            "prepared clustered ordered dense dimensions are inconsistent",
+        ));
+    }
+    let workspace = dimension
+        .checked_mul(4)
+        .and_then(|value| value.checked_add(1))
+        .ok_or_else(|| allocation("prepared clustered ordered dense workspace overflows"))?;
+    let partial_stride = square
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(workspace))
+        .ok_or_else(|| allocation("prepared clustered ordered dense partial stride overflows"))?;
+    let chunks = cluster_reduction_chunks(nobs, 16_384, partial_stride)?;
+    let mut boundaries = reserved_filled(
+        reservation,
+        chunks + 1,
+        0_usize,
+        "unable to reserve prepared clustered ordered dense boundaries",
+    )?;
+    boundaries[chunks] = nobs;
+    for (chunk, target) in boundaries.iter_mut().enumerate().take(chunks).skip(1) {
+        let mut boundary = chunk * nobs / chunks;
+        while boundary < nobs
+            && compare_cluster_rows(dimensions, mask, order[boundary - 1], order[boundary])
+                == Ordering::Equal
+        {
+            boundary += 1;
+        }
+        *target = boundary;
+    }
+    for chunk in 1..chunks {
+        boundaries[chunk] = boundaries[chunk].max(boundaries[chunk - 1]);
+    }
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared clustered ordered dense partials overflow usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared clustered ordered dense partials",
+    )?;
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (raw_meat, remainder) = partial.split_at_mut(square);
+            let (influence_meat, workspace) = remainder.split_at_mut(square);
+            let (group_score, workspace) = workspace.split_at_mut(dimension);
+            let (group_corrections, workspace) = workspace.split_at_mut(dimension);
+            let (raw_score, workspace) = workspace.split_at_mut(dimension);
+            let (influence, count) = workspace.split_at_mut(dimension);
+            let start = boundaries[chunk];
+            let end = boundaries[chunk + 1];
+            let mut previous = None;
+            for row in order[start..end].iter().copied() {
+                if previous.is_some_and(|prior| {
+                    compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
+                }) {
+                    finish_group_pair_uncompensated_meat(
+                        fit,
+                        group_score,
+                        group_corrections,
+                        raw_score,
+                        influence,
+                        raw_meat,
+                        influence_meat,
+                    )?;
+                    group_score.fill(0.0);
+                    group_corrections.fill(0.0);
+                    count[0] += 1.0;
+                }
+                let scale = weights.value(row)? * fit.residuals()[row];
+                if !scale.is_finite() {
+                    return Err(invalid_data(
+                        "prepared clustered ordered dense score scale is not finite",
+                    ));
+                }
+                scores.fill_reported_row(row, raw_score)?;
+                for coordinate in 0..dimension {
+                    compensated_add(
+                        scale * raw_score[coordinate],
+                        &mut group_score[coordinate],
+                        &mut group_corrections[coordinate],
+                    )?;
+                }
+                previous = Some(row);
+            }
+            if previous.is_some() {
+                finish_group_pair_uncompensated_meat(
+                    fit,
+                    group_score,
+                    group_corrections,
+                    raw_score,
+                    influence,
+                    raw_meat,
+                    influence_meat,
+                )?;
+                count[0] += 1.0;
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared clustered ordered dense partial contains a nonfinite value",
+                ))
+            }
+        })?;
+    merge_ordered_dense_partials(&partials, partial_stride, dimension, square, reservation)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_group_pair_uncompensated_meat(
+    fit: &CertifiedPreparedOlsFit,
+    score: &[f64],
+    score_corrections: &[f64],
+    raw_score: &mut [f64],
+    influence: &mut [f64],
+    raw_meat: &mut [f64],
+    influence_meat: &mut [f64],
+) -> Result<()> {
+    let dimension = score.len();
+    if score_corrections.len() != dimension
+        || raw_score.len() != dimension
+        || influence.len() != dimension
+        || raw_meat.len() != dimension * dimension
+        || influence_meat.len() != raw_meat.len()
+    {
+        return Err(invalid_argument(
+            "prepared clustered dense group pair dimensions are inconsistent",
+        ));
+    }
+    for coordinate in 0..dimension {
+        raw_score[coordinate] = score[coordinate] + score_corrections[coordinate];
+    }
+    for (left, influence_value) in influence.iter_mut().enumerate() {
+        let mut value = 0.0_f64;
+        let mut correction = 0.0_f64;
+        for (right, raw_value) in raw_score.iter().copied().enumerate() {
+            compensated_add(
+                fit.bread().values()[left * dimension + right] * raw_value,
+                &mut value,
+                &mut correction,
+            )?;
+        }
+        *influence_value = value + correction;
+    }
+    for left in 0..dimension {
+        let raw_left = raw_score[left];
+        let influence_left = influence[left];
+        for right in left..dimension {
+            raw_meat[left * dimension + right] += raw_left * raw_score[right];
+            influence_meat[left * dimension + right] += influence_left * influence[right];
+        }
+    }
+    Ok(())
+}
+
+fn merge_ordered_dense_partials<R: PreparedInferenceReservation>(
+    partials: &[f64],
+    partial_stride: usize,
+    dimension: usize,
+    square: usize,
+    reservation: &mut R,
+) -> Result<SubsetMeats> {
+    if partial_stride == 0 || partials.len() % partial_stride != 0 {
+        return Err(invalid_argument(
+            "prepared clustered ordered dense partial dimensions are inconsistent",
+        ));
+    }
+    let mut raw = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered ordered dense meat",
+    )?;
+    let mut raw_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered ordered dense meat corrections",
+    )?;
+    let mut influence = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered ordered dense influence covariance",
+    )?;
+    let mut influence_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared clustered ordered dense influence corrections",
+    )?;
+    let mut groups = 0_usize;
+    for partial in partials.chunks_exact(partial_stride) {
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    partial[position],
+                    &mut raw[position],
+                    &mut raw_corrections[position],
+                )?;
+                compensated_add(
+                    partial[square + position],
+                    &mut influence[position],
+                    &mut influence_corrections[position],
+                )?;
+            }
+        }
+        let count = partial[2 * square + 4 * dimension];
+        if count.fract() != 0.0 || count < 0.0 || count > usize::MAX as f64 {
+            return Err(invalid_data(
+                "prepared clustered ordered dense group count is invalid",
+            ));
+        }
+        groups = groups
+            .checked_add(count as usize)
+            .ok_or_else(|| allocation("prepared clustered ordered dense group count overflows"))?;
+    }
+    finalize_subset_meat(&mut raw, raw_corrections, dimension)?;
+    finalize_subset_meat(&mut influence, influence_corrections, dimension)?;
+    Ok(SubsetMeats {
+        raw,
+        influence,
+        groups,
+    })
+}
+
+fn build_subset_radix_order<R: PreparedInferenceReservation>(
+    dimensions: &[&[u32]],
+    mask: usize,
+    nobs: usize,
+    reservation: &mut R,
+) -> Result<Option<Vec<usize>>> {
+    if nobs == 0
+        || dimensions.is_empty()
+        || dimensions.len() > 10
+        || mask == 0
+        || mask >= (1_usize << dimensions.len())
+        || dimensions.iter().any(|codes| codes.len() != nobs)
+    {
+        return Err(invalid_argument(
+            "prepared clustered radix ordering dimensions are inconsistent",
+        ));
+    }
+    let mut radices = [0_usize; 10];
+    let mut maximum_radix = 0_usize;
+    for (dimension, codes) in dimensions.iter().enumerate() {
+        if mask & (1_usize << dimension) == 0 {
+            continue;
+        }
+        let radix = codes
+            .iter()
+            .copied()
+            .max()
+            .and_then(|value| usize::try_from(value).ok())
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| invalid_data("prepared clustered radix dimension has no groups"))?;
+        radices[dimension] = radix;
+        maximum_radix = maximum_radix.max(radix);
+    }
+    let scratch_bytes = nobs
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("prepared clustered radix scratch bytes overflow"))?;
+    let count_bytes = maximum_radix
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("prepared clustered radix count bytes overflow"))?;
+    if count_bytes > scratch_bytes.saturating_mul(2).max(1 << 20) {
+        return Ok(None);
+    }
+    let mut order = reserved_filled(
+        reservation,
+        nobs,
+        0_usize,
+        "unable to reserve prepared clustered radix ordering",
+    )?;
+    for (row, target) in order.iter_mut().enumerate() {
+        *target = row;
+    }
+    let mut scratch = reserved_filled(
+        reservation,
+        nobs,
+        0_usize,
+        "unable to reserve prepared clustered radix scratch ordering",
+    )?;
+    let mut counts = reserved_filled(
+        reservation,
+        maximum_radix,
+        0_usize,
+        "unable to reserve prepared clustered radix counts",
+    )?;
+    for dimension in (0..dimensions.len()).rev() {
+        if mask & (1_usize << dimension) == 0 {
+            continue;
+        }
+        let radix = radices[dimension];
+        let active_counts = &mut counts[..radix];
+        active_counts.fill(0);
+        for row in order.iter().copied() {
+            let key = usize::try_from(dimensions[dimension][row])
+                .map_err(|_| invalid_data("prepared clustered radix code exceeds usize"))?;
+            active_counts[key] = active_counts[key]
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared clustered radix count overflows"))?;
+        }
+        let mut offset = 0_usize;
+        for count in active_counts.iter_mut() {
+            let frequency = *count;
+            *count = offset;
+            offset = offset
+                .checked_add(frequency)
+                .ok_or_else(|| allocation("prepared clustered radix offset overflows"))?;
+        }
+        if offset != nobs {
+            return Err(invalid_data(
+                "prepared clustered radix counts do not cover the sample",
+            ));
+        }
+        for row in order.iter().copied() {
+            let key = usize::try_from(dimensions[dimension][row])
+                .map_err(|_| invalid_data("prepared clustered radix code exceeds usize"))?;
+            let position = active_counts[key];
+            scratch[position] = row;
+            active_counts[key] = position
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared clustered radix cursor overflows"))?;
+        }
+        std::mem::swap(&mut order, &mut scratch);
+    }
+    Ok(Some(order))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1506,6 +1995,26 @@ fn compare_cluster_rows(dimensions: &[&[u32]], mask: usize, left: usize, right: 
         }
     }
     Ordering::Equal
+}
+
+fn cluster_reduction_chunks(
+    work_items: usize,
+    minimum_items: usize,
+    partial_stride: usize,
+) -> Result<usize> {
+    if work_items == 0 || minimum_items == 0 || partial_stride == 0 {
+        return Err(invalid_argument(
+            "prepared clustered reduction dimensions are empty",
+        ));
+    }
+    let partial_bytes = partial_stride
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| allocation("prepared clustered reduction partial bytes overflow usize"))?;
+    let memory_blocks = (CLUSTER_PARTIAL_BUDGET_BYTES / partial_bytes.max(1)).max(1);
+    Ok(work_items
+        .div_ceil(minimum_items)
+        .clamp(1, CLUSTER_REDUCTION_MAX_BLOCKS)
+        .min(memory_blocks))
 }
 
 fn sandwich<R: PreparedInferenceReservation>(
@@ -2919,6 +3428,43 @@ mod tests {
         assert!(dense_subset_plan(&[&sparse_high_code], 1, 2, 32)
             .expect("valid sparse plan")
             .is_none());
+    }
+
+    #[test]
+    fn radix_subset_order_matches_lexicographic_cluster_order_with_stable_ties() {
+        let first = [1_u32, 0, 1, 0, 1, 0];
+        let second = [1_u32, 1, 0, 0, 1, 0];
+        let dimensions = [&first[..], &second[..]];
+        let mut reservation = CountingReservation::succeeds();
+        let joint = build_subset_radix_order(&dimensions, 0b11, 6, &mut reservation)
+            .expect("valid radix ordering")
+            .expect("compact radix ordering is admitted");
+        assert_eq!(joint, [3, 5, 1, 2, 0, 4]);
+
+        let second_only = build_subset_radix_order(&dimensions, 0b10, 6, &mut reservation)
+            .expect("valid one-dimension radix ordering")
+            .expect("compact radix ordering is admitted");
+        assert_eq!(second_only, [2, 3, 5, 0, 1, 4]);
+    }
+
+    #[test]
+    fn radix_subset_order_covers_more_than_four_cluster_dimensions() {
+        let first = [1_u32, 0, 1, 0, 1, 0, 1, 0];
+        let second = [0_u32, 1, 1, 0, 0, 1, 1, 0];
+        let third = [1_u32, 1, 0, 0, 1, 1, 0, 0];
+        let fourth = [0_u32, 0, 0, 0, 1, 1, 1, 1];
+        let fifth = [1_u32, 0, 1, 0, 1, 0, 1, 0];
+        let dimensions = [&first[..], &second[..], &third[..], &fourth[..], &fifth[..]];
+        let mask = 0b1_1111;
+        let mut reservation = CountingReservation::succeeds();
+        let actual = build_subset_radix_order(&dimensions, mask, first.len(), &mut reservation)
+            .expect("valid five-dimensional radix ordering")
+            .expect("compact five-dimensional ordering is admitted");
+        let mut expected = (0..first.len()).collect::<Vec<_>>();
+        expected.sort_unstable_by(|left, right| {
+            compare_cluster_rows(&dimensions, mask, *left, *right).then_with(|| left.cmp(right))
+        });
+        assert_eq!(actual, expected);
     }
 
     #[test]

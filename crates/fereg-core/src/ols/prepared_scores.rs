@@ -5,12 +5,16 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{AbsorbConfig, BorrowedMapWeights, CmgAbsorber, CmgConfig, FeSolverKind};
 use crate::options::ThreadConfig;
 use crate::prepared_fit_view::PreparedOlsFitView;
+use rayon::prelude::*;
 
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
 use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsExecutionMode};
 
 const TRANSPOSE_BUFFER_BYTES: usize = 1 << 20;
+const SCORE_CERTIFICATE_REDUCTION_ROWS: usize = 16_384;
+const SCORE_CERTIFICATE_MAX_BLOCKS: usize = 64;
+const SCORE_CERTIFICATE_PARTIAL_BUDGET_BYTES: usize = 32 << 20;
 
 pub(super) trait PreparedInferenceReservation {
     fn reserve<T>(
@@ -140,6 +144,75 @@ impl CertifiedPreparedOlsScoreDesign {
 
     pub(super) const fn certificate(&self) -> PreparedOlsScoreDesignCertificate {
         self.certificate
+    }
+
+    pub(super) fn dense_view(&self) -> Option<PreparedOlsDenseScoreView<'_>> {
+        match &self.storage {
+            PreparedOlsScoreStorage::Dense(within) => Some(PreparedOlsDenseScoreView {
+                values: within.as_slice(),
+                nrows: self.nrows,
+                finite_rank: self.finite_rank,
+                means: &self.means,
+                reported_to_finite: &self.reported_to_finite,
+                normalized_intercept_position: self.normalized_intercept_position,
+            }),
+            PreparedOlsScoreStorage::Scratch(_) => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct PreparedOlsDenseScoreView<'a> {
+    values: &'a [f64],
+    nrows: usize,
+    finite_rank: usize,
+    means: &'a [f64],
+    reported_to_finite: &'a [usize],
+    normalized_intercept_position: Option<usize>,
+}
+
+impl PreparedOlsDenseScoreView<'_> {
+    pub(super) const fn nrows(self) -> usize {
+        self.nrows
+    }
+
+    pub(super) const fn reported_dimension(self) -> usize {
+        self.reported_to_finite.len()
+    }
+
+    pub(super) fn fill_reported_row(self, row: usize, output: &mut [f64]) -> Result<()> {
+        if row >= self.nrows || output.len() != self.reported_dimension() {
+            return Err(invalid_argument(
+                "prepared robust dense reported score row dimensions are inconsistent",
+            ));
+        }
+        let start = row
+            .checked_mul(self.finite_rank)
+            .ok_or_else(|| allocation("prepared robust dense score offset overflows"))?;
+        let finite = &self.values[start..start + self.finite_rank];
+        for (position, value) in output.iter_mut().enumerate() {
+            if self.normalized_intercept_position == Some(position) {
+                *value = 1.0;
+                continue;
+            }
+            let finite_position = *self
+                .reported_to_finite
+                .get(position)
+                .filter(|finite| **finite != usize::MAX)
+                .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
+            *value = finite[finite_position]
+                + if self.normalized_intercept_position.is_some() {
+                    self.means[finite_position]
+                } else {
+                    0.0
+                };
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust dense reported score coordinate is not finite",
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -580,51 +653,19 @@ fn certify_score_design<R: PreparedInferenceReservation>(
         weights,
     } = inputs;
     let dimension = fit.bread().dimension();
-    let square = rank
-        .checked_mul(rank)
-        .ok_or_else(|| allocation("prepared robust score Gram dimensions overflow usize"))?;
     if means.len() != rank || finite_positions.len() != rank {
         return Err(invalid_argument(
             "prepared robust score certificate dimensions are inconsistent",
         ));
     }
-    let mut gram = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust score Gram",
-    )?;
-    let mut corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust score Gram corrections",
-    )?;
-    let mut score_row = reserved_filled(
-        reservation,
-        rank,
-        0.0_f64,
-        "unable to reserve prepared robust score certificate row",
-    )?;
-    for row in 0..nrows {
-        fill_score_storage_row(storage, nrows, rank, row, &mut score_row)?;
-        let weight = weights.value(row)?;
-        for left in 0..rank {
-            for right in 0..rank {
-                let term = weight * score_row[left] * score_row[right];
-                let position = left * rank + right;
-                compensated_add(term, &mut gram[position], &mut corrections[position])?;
-            }
+    let gram = match storage {
+        PreparedOlsScoreStorage::Dense(within) => {
+            certify_dense_score_gram(within.as_slice(), nrows, rank, weights, reservation)?
         }
-    }
-    for (value, correction) in gram.iter_mut().zip(corrections) {
-        *value += correction;
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "prepared robust score Gram contains a nonfinite value",
-            ));
+        PreparedOlsScoreStorage::Scratch(_) => {
+            certify_scratch_score_gram(storage, nrows, rank, weights, reservation)?
         }
-    }
+    };
 
     let mut left_error = 0.0_f64;
     let mut right_error = 0.0_f64;
@@ -724,6 +765,159 @@ fn certify_score_design<R: PreparedInferenceReservation>(
         intercept_coordinate_relative_infinity_norm: intercept_error,
         passed: false,
     })
+}
+
+fn certify_dense_score_gram<R: PreparedInferenceReservation>(
+    values: &[f64],
+    nrows: usize,
+    rank: usize,
+    weights: ReferenceWeightView<'_>,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = rank
+        .checked_mul(rank)
+        .ok_or_else(|| allocation("prepared robust score Gram dimensions overflow usize"))?;
+    if values.len() != nrows * rank {
+        return Err(invalid_argument(
+            "prepared robust dense score Gram dimensions are inconsistent",
+        ));
+    }
+    if rank == 0 {
+        return Ok(Vec::new());
+    }
+    let partial_bytes = square
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| allocation("prepared robust score Gram partial bytes overflow usize"))?;
+    let memory_blocks = (SCORE_CERTIFICATE_PARTIAL_BUDGET_BYTES / partial_bytes.max(1)).max(1);
+    let chunks = nrows
+        .div_ceil(SCORE_CERTIFICATE_REDUCTION_ROWS)
+        .clamp(1, SCORE_CERTIFICATE_MAX_BLOCKS)
+        .min(memory_blocks);
+    let partial_elements = chunks
+        .checked_mul(square)
+        .ok_or_else(|| allocation("prepared robust score Gram partials overflow usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared robust score Gram partials",
+    )?;
+    partials
+        .par_chunks_mut(square)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let rows_per_chunk = nrows / chunks;
+            let remainder = nrows % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let weight = weights.value(row)?;
+                let score = &values[row * rank..(row + 1) * rank];
+                for left in 0..rank {
+                    let scaled_left = weight * score[left];
+                    for right in left..rank {
+                        partial[left * rank + right] += scaled_left * score[right];
+                    }
+                }
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared robust score Gram partial contains a nonfinite value",
+                ))
+            }
+        })?;
+    let mut gram = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust score Gram",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust score Gram corrections",
+    )?;
+    for partial in partials.chunks_exact(square) {
+        for left in 0..rank {
+            for right in left..rank {
+                let position = left * rank + right;
+                compensated_add(
+                    partial[position],
+                    &mut gram[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    for left in 0..rank {
+        for right in left..rank {
+            let position = left * rank + right;
+            gram[position] += corrections[position];
+            if !gram[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared robust score Gram contains a nonfinite value",
+                ));
+            }
+            gram[right * rank + left] = gram[position];
+        }
+    }
+    Ok(gram)
+}
+
+fn certify_scratch_score_gram<R: PreparedInferenceReservation>(
+    storage: &PreparedOlsScoreStorage,
+    nrows: usize,
+    rank: usize,
+    weights: ReferenceWeightView<'_>,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = rank
+        .checked_mul(rank)
+        .ok_or_else(|| allocation("prepared robust score Gram dimensions overflow usize"))?;
+    let mut gram = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust score Gram",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust score Gram corrections",
+    )?;
+    let mut score_row = reserved_filled(
+        reservation,
+        rank,
+        0.0_f64,
+        "unable to reserve prepared robust score certificate row",
+    )?;
+    for row in 0..nrows {
+        fill_score_storage_row(storage, nrows, rank, row, &mut score_row)?;
+        let weight = weights.value(row)?;
+        for left in 0..rank {
+            for right in 0..rank {
+                let position = left * rank + right;
+                compensated_add(
+                    weight * score_row[left] * score_row[right],
+                    &mut gram[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    for (value, correction) in gram.iter_mut().zip(corrections) {
+        *value += correction;
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "prepared robust score Gram contains a nonfinite value",
+            ));
+        }
+    }
+    Ok(gram)
 }
 
 fn fill_score_storage_row(

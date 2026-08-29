@@ -1,12 +1,17 @@
 use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::parallel::ThreadTeam;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::topology_dof::CategoricalTopologyDofReport;
+use rayon::prelude::*;
 
+#[cfg(test)]
+use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
+use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
-    PreparedInferenceReservation, SystemPreparedInferenceReservation,
+    PreparedInferenceReservation, PreparedOlsDenseScoreView, SystemPreparedInferenceReservation,
 };
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
@@ -14,8 +19,7 @@ use super::prepared_unadjusted::{
     validate_sum_of_squares, weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
 };
 use super::{
-    compute_prepared_ols_absorbed_dof, fit_prepared_categorical_ols_coefficients_map,
-    fit_prepared_ols_coefficients_map, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
+    compute_prepared_ols_absorbed_dof, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
     PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsColumnKind,
     PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics, PreparedOlsFitStatus,
     PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
@@ -29,6 +33,10 @@ pub struct PreparedOlsRobustConfig {
     /// Maximum normalized score-design, sandwich, PSD, and statistic error.
     pub certificate_tolerance: f64,
 }
+
+const ROBUST_REDUCTION_ROWS: usize = 16_384;
+const ROBUST_MAX_BLOCKS: usize = 64;
+const ROBUST_PARTIAL_BUDGET_BYTES: usize = 32 << 20;
 
 impl Default for PreparedOlsRobustConfig {
     fn default() -> Self {
@@ -210,6 +218,14 @@ struct PreparedOlsRobustComponents {
     certificate: PreparedOlsRobustCertificate,
 }
 
+struct PreparedOlsRobustCovarianceBuild {
+    covariance: PreparedOlsRobustCovariance,
+    /// Independently accumulated raw score meat from the fused dense pass.
+    /// The production covariance is accumulated from bread-transformed
+    /// influences, so this remains an algebraically distinct certificate path.
+    dense_certificate_meat: Option<Vec<f64>>,
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct RobustPerturbations {
     score_design: bool,
@@ -253,17 +269,19 @@ pub fn fit_prepared_ols_robust_map(
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let fit = fit_prepared_ols_coefficients_map(prepared, config.fit)?;
+    let fit = fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
-    let mut reservation = SystemPreparedInferenceReservation;
-    compose_internal(
-        prepared,
-        fit,
-        absorbed_dof,
-        config,
-        &mut reservation,
-        RobustPerturbations::default(),
-    )
+    ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let mut reservation = SystemPreparedInferenceReservation;
+        compose_internal(
+            prepared,
+            fit,
+            absorbed_dof,
+            config,
+            &mut reservation,
+            RobustPerturbations::default(),
+        )
+    })?
 }
 
 /// Fit and certify categorical-interaction HC1 covariance through the same
@@ -273,19 +291,21 @@ pub fn fit_prepared_categorical_ols_robust_map(
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
-    let fit = fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?;
+    let fit = fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
-    let mut reservation = SystemPreparedInferenceReservation;
-    let components = compose_view_internal(
-        prepared,
-        fit,
-        absorbed_summary,
-        config,
-        &mut reservation,
-        RobustPerturbations::default(),
-    )?;
+    let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let mut reservation = SystemPreparedInferenceReservation;
+        compose_view_internal(
+            prepared,
+            fit,
+            absorbed_summary,
+            config,
+            &mut reservation,
+            RobustPerturbations::default(),
+        )
+    })??;
     Ok(CertifiedPreparedCategoricalOlsRobust {
         fit: components.fit,
         absorbed_dof,
@@ -383,7 +403,10 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         score_design.certificate.passed = false;
     }
 
-    let mut covariance = build_covariance(
+    let PreparedOlsRobustCovarianceBuild {
+        mut covariance,
+        dense_certificate_meat,
+    } = build_covariance(
         &fit,
         &score_design,
         weight_view,
@@ -415,6 +438,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         weights,
         dof,
         &covariance,
+        dense_certificate_meat.as_deref(),
         reservation,
     )?;
     let psd = certify_psd(
@@ -556,7 +580,7 @@ fn build_covariance<R: PreparedInferenceReservation>(
     dof: PreparedOlsResidualDofReport,
     perturb_meat_multiplier: bool,
     reservation: &mut R,
-) -> Result<PreparedOlsRobustCovariance> {
+) -> Result<PreparedOlsRobustCovarianceBuild> {
     let dimension = fit.bread().dimension();
     let square = checked_square(
         dimension,
@@ -571,6 +595,17 @@ fn build_covariance<R: PreparedInferenceReservation>(
         / exact_integer_as_f64(dof.residual_dof as u128)?;
     if !hc1_correction.is_finite() || hc1_correction <= 0.0 {
         return Err(invalid_data("prepared robust HC1 correction is invalid"));
+    }
+    if let Some(dense) = scores.dense_view() {
+        return build_dense_covariance(
+            fit,
+            dense,
+            weight_view,
+            weights,
+            hc1_correction,
+            perturb_meat_multiplier,
+            reservation,
+        );
     }
     let mut values = reserved_filled(
         reservation,
@@ -669,16 +704,231 @@ fn build_covariance<R: PreparedInferenceReservation>(
         }
         standard_errors[position] = diagonal.sqrt();
     }
-    Ok(PreparedOlsRobustCovariance {
-        hc1_correction,
-        values,
-        standard_errors,
+    Ok(PreparedOlsRobustCovarianceBuild {
+        covariance: PreparedOlsRobustCovariance {
+            hc1_correction,
+            values,
+            standard_errors,
+        },
+        dense_certificate_meat: None,
+    })
+}
+
+fn build_dense_covariance<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: PreparedOlsDenseScoreView<'_>,
+    weight_view: ReferenceWeightView<'_>,
+    weights: PreparedOlsReferenceWeightReport,
+    hc1_correction: f64,
+    perturb_meat_multiplier: bool,
+    reservation: &mut R,
+) -> Result<PreparedOlsRobustCovarianceBuild> {
+    let dimension = fit.bread().dimension();
+    let square = checked_square(
+        dimension,
+        "prepared robust dense covariance dimensions overflow usize",
+    )?;
+    if scores.reported_dimension() != dimension || fit.residuals().len() != scores.nrows() {
+        return Err(invalid_argument(
+            "prepared robust dense covariance dimensions are inconsistent",
+        ));
+    }
+    if dimension == 0 {
+        return Ok(PreparedOlsRobustCovarianceBuild {
+            covariance: PreparedOlsRobustCovariance {
+                hc1_correction,
+                values: Vec::new(),
+                standard_errors: Vec::new(),
+            },
+            dense_certificate_meat: Some(Vec::new()),
+        });
+    }
+    let workspace = dimension
+        .checked_mul(3)
+        .ok_or_else(|| allocation("prepared robust dense covariance workspace overflows"))?;
+    let partial_stride = square
+        .checked_mul(2)
+        .and_then(|meats| meats.checked_add(workspace))
+        .ok_or_else(|| allocation("prepared robust dense covariance partial stride overflows"))?;
+    let chunks = robust_reduction_chunks(scores.nrows(), partial_stride)?;
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared robust dense covariance partials overflow usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared robust dense covariance partials",
+    )?;
+    let correction_root = hc1_correction.sqrt();
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (production, tail) = partial.split_at_mut(square);
+            let (certificate, workspace) = tail.split_at_mut(square);
+            let (score, workspace) = workspace.split_at_mut(dimension);
+            let (certificate_score, influence) = workspace.split_at_mut(dimension);
+            let rows_per_chunk = scores.nrows() / chunks;
+            let remainder = scores.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                scores.fill_reported_row(row, score)?;
+                let reference_weight = weight_view.value(row)?;
+                let certificate_root = meat_root_multiplier(weights.kind, reference_weight)?;
+                let production_root = if perturb_meat_multiplier {
+                    match weights.kind {
+                        Some(WeightKind::Analytic | WeightKind::Probability) => {
+                            reference_weight.sqrt()
+                        }
+                        Some(WeightKind::Frequency) => reference_weight,
+                        _ => 1.0,
+                    }
+                } else {
+                    certificate_root
+                };
+                let residual = fit.residuals()[row];
+                let production_scale = correction_root * production_root * residual;
+                let certificate_scale = certificate_root * residual;
+                if !production_scale.is_finite() || !certificate_scale.is_finite() {
+                    return Err(invalid_data(
+                        "prepared robust dense influence scale is not finite",
+                    ));
+                }
+                for (destination, value) in certificate_score.iter_mut().zip(score.iter().copied())
+                {
+                    *destination = certificate_scale * value;
+                    if !destination.is_finite() {
+                        return Err(invalid_data(
+                            "prepared robust dense certificate score is not finite",
+                        ));
+                    }
+                }
+                for (left, influence_value) in influence.iter_mut().enumerate() {
+                    let bread_row = &fit.bread().values()[left * dimension..(left + 1) * dimension];
+                    let mut product = 0.0_f64;
+                    for right in 0..dimension {
+                        product += bread_row[right] * score[right];
+                    }
+                    *influence_value = production_scale * product;
+                    if !influence_value.is_finite() {
+                        return Err(invalid_data(
+                            "prepared robust dense influence row contains a nonfinite value",
+                        ));
+                    }
+                }
+                for left in 0..dimension {
+                    let left_value = influence[left];
+                    let certificate_left = certificate_score[left];
+                    for right in left..dimension {
+                        let position = left * dimension + right;
+                        production[position] += left_value * influence[right];
+                        certificate[position] += certificate_left * certificate_score[right];
+                    }
+                }
+            }
+            if production.iter().all(|value| value.is_finite())
+                && certificate.iter().all(|value| value.is_finite())
+            {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared robust dense covariance partial contains a nonfinite value",
+                ))
+            }
+        })?;
+    let mut values = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense covariance",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense covariance corrections",
+    )?;
+    let mut certificate_meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense certificate meat",
+    )?;
+    let mut certificate_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense certificate meat corrections",
+    )?;
+    for partial in partials.chunks_exact(partial_stride) {
+        let production = &partial[..square];
+        let certificate = &partial[square..2 * square];
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    production[position],
+                    &mut values[position],
+                    &mut corrections[position],
+                )?;
+                compensated_add(
+                    certificate[position],
+                    &mut certificate_meat[position],
+                    &mut certificate_corrections[position],
+                )?;
+            }
+        }
+    }
+    for left in 0..dimension {
+        for right in left..dimension {
+            let position = left * dimension + right;
+            values[position] += corrections[position];
+            if !values[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared robust dense covariance contains a nonfinite value",
+                ));
+            }
+            values[right * dimension + left] = values[position];
+            certificate_meat[position] += certificate_corrections[position];
+            if !certificate_meat[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared robust dense certificate meat is not finite",
+                ));
+            }
+            certificate_meat[right * dimension + left] = certificate_meat[position];
+        }
+    }
+    let mut standard_errors = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve prepared robust dense standard errors",
+    )?;
+    for position in 0..dimension {
+        let diagonal = values[position * dimension + position];
+        if !diagonal.is_finite() || diagonal < 0.0 {
+            return Err(invalid_data(
+                "prepared robust dense covariance diagonal is invalid",
+            ));
+        }
+        standard_errors[position] = diagonal.sqrt();
+    }
+    Ok(PreparedOlsRobustCovarianceBuild {
+        covariance: PreparedOlsRobustCovariance {
+            hc1_correction,
+            values,
+            standard_errors,
+        },
+        dense_certificate_meat: Some(certificate_meat),
     })
 }
 
 /// Independent sandwich reconstruction. The production path accumulates
 /// bread-transformed influences; this certificate instead builds the meat and
 /// then applies bread on both sides.
+#[allow(clippy::too_many_arguments)]
 fn certify_covariance_formula<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
     scores: &CertifiedPreparedOlsScoreDesign,
@@ -686,6 +936,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
     covariance: &PreparedOlsRobustCovariance,
+    dense_certificate_meat: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<(f64, f64, f64, f64)> {
     let dimension = covariance.dimension();
@@ -705,50 +956,23 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
         expected_correction,
         expected_correction.max(1.0),
     )?;
-    let mut meat = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust certificate meat",
-    )?;
-    let mut meat_corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust certificate meat corrections",
-    )?;
-    let mut score = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve prepared robust certificate score row",
-    )?;
-    for row in 0..scores.nrows() {
-        let scale =
-            meat_root_multiplier(weights.kind, weight_view.value(row)?)? * fit.residuals()[row];
-        scores.fill_reported_row(row, &mut score)?;
-        for score_value in &mut score {
-            *score_value *= scale;
-            if !score_value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust certificate score is not finite",
-                ));
-            }
+    let recomputed_meat;
+    let meat = if let Some(meat) = dense_certificate_meat {
+        if meat.len() != square {
+            return Err(invalid_argument(
+                "prepared robust fused certificate meat dimensions are inconsistent",
+            ));
         }
-        for left in 0..dimension {
-            for right in 0..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    score[left] * score[right],
-                    &mut meat[position],
-                    &mut meat_corrections[position],
-                )?;
-            }
-        }
-    }
-    for (value, correction) in meat.iter_mut().zip(meat_corrections) {
-        *value += correction;
-    }
+        meat
+    } else if let Some(dense) = scores.dense_view() {
+        recomputed_meat =
+            build_dense_certificate_meat(fit, dense, weight_view, weights.kind, reservation)?;
+        &recomputed_meat
+    } else {
+        recomputed_meat =
+            build_scratch_certificate_meat(fit, scores, weight_view, weights.kind, reservation)?;
+        &recomputed_meat
+    };
     let mut left_product = reserved_filled(
         reservation,
         square,
@@ -829,6 +1053,173 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             "prepared robust covariance certificate norm is not finite",
         ))
     }
+}
+
+fn build_dense_certificate_meat<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: PreparedOlsDenseScoreView<'_>,
+    weight_view: ReferenceWeightView<'_>,
+    weight_kind: Option<WeightKind>,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let dimension = scores.reported_dimension();
+    let square = checked_square(
+        dimension,
+        "prepared robust dense certificate meat dimensions overflow usize",
+    )?;
+    if fit.residuals().len() != scores.nrows() || fit.bread().dimension() != dimension {
+        return Err(invalid_argument(
+            "prepared robust dense certificate meat dimensions are inconsistent",
+        ));
+    }
+    if dimension == 0 {
+        return Ok(Vec::new());
+    }
+    let partial_stride = square
+        .checked_add(dimension)
+        .ok_or_else(|| allocation("prepared robust dense certificate partial stride overflows"))?;
+    let chunks = robust_reduction_chunks(scores.nrows(), partial_stride)?;
+    let partial_elements = chunks.checked_mul(partial_stride).ok_or_else(|| {
+        allocation("prepared robust dense certificate meat partials overflow usize")
+    })?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared robust dense certificate meat partials",
+    )?;
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (meat, score) = partial.split_at_mut(square);
+            let rows_per_chunk = scores.nrows() / chunks;
+            let remainder = scores.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let scale = meat_root_multiplier(weight_kind, weight_view.value(row)?)?
+                    * fit.residuals()[row];
+                scores.fill_reported_row(row, score)?;
+                for score_value in score.iter_mut() {
+                    *score_value *= scale;
+                    if !score_value.is_finite() {
+                        return Err(invalid_data(
+                            "prepared robust dense certificate score is not finite",
+                        ));
+                    }
+                }
+                for left in 0..dimension {
+                    let left_value = score[left];
+                    for right in left..dimension {
+                        meat[left * dimension + right] += left_value * score[right];
+                    }
+                }
+            }
+            if meat.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared robust dense certificate meat partial is not finite",
+                ))
+            }
+        })?;
+    let mut meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense certificate meat",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust dense certificate meat corrections",
+    )?;
+    for partial in partials.chunks_exact(partial_stride) {
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    partial[position],
+                    &mut meat[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    for left in 0..dimension {
+        for right in left..dimension {
+            let position = left * dimension + right;
+            meat[position] += corrections[position];
+            if !meat[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared robust dense certificate meat is not finite",
+                ));
+            }
+            meat[right * dimension + left] = meat[position];
+        }
+    }
+    Ok(meat)
+}
+
+fn build_scratch_certificate_meat<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
+    scores: &CertifiedPreparedOlsScoreDesign,
+    weight_view: ReferenceWeightView<'_>,
+    weight_kind: Option<WeightKind>,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let dimension = fit.bread().dimension();
+    let square = checked_square(
+        dimension,
+        "prepared robust scratch certificate meat dimensions overflow usize",
+    )?;
+    let mut meat = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust certificate meat",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust certificate meat corrections",
+    )?;
+    let mut score = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve prepared robust certificate score row",
+    )?;
+    for row in 0..scores.nrows() {
+        let scale =
+            meat_root_multiplier(weight_kind, weight_view.value(row)?)? * fit.residuals()[row];
+        scores.fill_reported_row(row, &mut score)?;
+        for score_value in &mut score {
+            *score_value *= scale;
+            if !score_value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust certificate score is not finite",
+                ));
+            }
+        }
+        for left in 0..dimension {
+            for right in 0..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    score[left] * score[right],
+                    &mut meat[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    for (value, correction) in meat.iter_mut().zip(corrections) {
+        *value += correction;
+    }
+    Ok(meat)
 }
 
 fn certify_psd<R: PreparedInferenceReservation>(
@@ -1235,6 +1626,22 @@ fn meat_root_multiplier(kind: Option<WeightKind>, reference_weight: f64) -> Resu
     }
 }
 
+fn robust_reduction_chunks(nrows: usize, partial_stride: usize) -> Result<usize> {
+    if nrows == 0 || partial_stride == 0 {
+        return Err(invalid_argument(
+            "prepared robust reduction dimensions are empty",
+        ));
+    }
+    let partial_bytes = partial_stride
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| allocation("prepared robust reduction partial bytes overflow usize"))?;
+    let memory_blocks = (ROBUST_PARTIAL_BUDGET_BYTES / partial_bytes.max(1)).max(1);
+    Ok(nrows
+        .div_ceil(ROBUST_REDUCTION_ROWS)
+        .clamp(1, ROBUST_MAX_BLOCKS)
+        .min(memory_blocks))
+}
+
 fn perturb_optional(value: &mut Option<f64>) -> Result<()> {
     let value = value.as_mut().ok_or_else(|| {
         invalid_argument("injected prepared robust perturbation requires a defined statistic")
@@ -1623,7 +2030,7 @@ mod tests {
         perturbations: RobustPerturbations,
     ) -> Result<CertifiedPreparedOlsRobust> {
         let config = PreparedOlsRobustConfig::default();
-        let fit = fit_prepared_ols_coefficients_map(prepared, config.fit)?;
+        let fit = fit_prepared_ols_coefficients_view_map(prepared, config.fit)?;
         let absorbed = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
         compose_internal(prepared, fit, absorbed, config, reservation, perturbations)
     }

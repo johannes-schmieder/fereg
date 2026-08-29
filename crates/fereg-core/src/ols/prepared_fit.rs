@@ -257,8 +257,6 @@ pub(super) struct PreparedOlsFastScoreCache {
     means: Vec<f64>,
 }
 
-pub(super) const FAST_INFERENCE_REUSE_MIN_ROWS: usize = 1_000_000;
-
 impl PreparedOlsFastScoreCache {
     fn mean(&self, generated: usize) -> Option<f64> {
         self.generated_columns
@@ -537,7 +535,11 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = ThreadTeam::new(config.execution.threads);
-    let retain_fast_score_cache = prepared.fit_sample().n_active() >= FAST_INFERENCE_REUSE_MIN_ROWS;
+    // A fast-mode inference call will consume these absorbed columns again for
+    // robust or clustered scores. Retain them whenever the bounded 512 MiB
+    // cache admits the design; rebuilding and reabsorbing them is always more
+    // expensive than the observation-major copy the cache performs.
+    let retain_fast_score_cache = true;
     team.install(|| {
         let mut reservation = SystemFitReservation;
         match config.execution.mode {
@@ -1033,42 +1035,98 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS fast score cache means",
     )?;
-    let mut mean_corrections = reserved_filled(
+    if generated_columns.is_empty() {
+        let within = DenseMatrix::from_row_major(nrows, 0, values)?;
+        return Ok(Some(PreparedOlsFastScoreCache {
+            generated_columns,
+            within,
+            means,
+        }));
+    }
+
+    // Cache construction is an O(NK) inference-path operation. Keep its hot
+    // inner loop to ordinary additions and merge fixed row blocks with
+    // compensation. This preserves deterministic, high-accuracy reference
+    // means without paying a compensated update for every observation-term
+    // pair. The independent score and covariance certificates still recompute
+    // their publication checks from the cached design.
+    let requested_chunks = nrows
+        .div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS)
+        .clamp(1, FUSED_MOMENT_MAX_BLOCKS);
+    let rows_per_chunk = nrows.div_ceil(requested_chunks);
+    let chunks = nrows.div_ceil(rows_per_chunk);
+    let partial_stride = generated_columns
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| allocation("prepared OLS fast score partial stride overflows usize"))?;
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared OLS fast score partial allocation overflows usize"))?;
+    let mut partials = reserved_filled(
         reservation,
-        generated_columns.len(),
+        partial_elements,
         0.0_f64,
-        "unable to reserve prepared OLS fast score cache mean corrections",
+        "unable to reserve prepared OLS fast score cache partials",
     )?;
+    let value_chunk_elements = rows_per_chunk
+        .checked_mul(generated_columns.len())
+        .ok_or_else(|| allocation("prepared OLS fast score value chunk overflows usize"))?;
+    values
+        .par_chunks_mut(value_chunk_elements)
+        .zip(partials.par_chunks_mut(partial_stride))
+        .enumerate()
+        .try_for_each(|(chunk, (value_chunk, partial))| -> Result<()> {
+            let start = chunk * rows_per_chunk;
+            let chunk_rows = value_chunk.len() / generated_columns.len();
+            for local_row in 0..chunk_rows {
+                let row = start + local_row;
+                let weight = weights.value(row)?;
+                partial[0] += weight;
+                for (cached, generated) in generated_columns.iter().copied().enumerate() {
+                    let value = within[(row, generated + 1)];
+                    if !value.is_finite() {
+                        return Err(invalid_data(
+                            "prepared OLS fast score cache contains a nonfinite value",
+                        ));
+                    }
+                    value_chunk[local_row * generated_columns.len() + cached] = value;
+                    let scale = reference_mean_scales[generated];
+                    if scale > 0.0 {
+                        partial[cached + 1] +=
+                            weight * (prepared.fit_column_value(generated, row)? / scale);
+                    }
+                }
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared OLS fast score cache partial is not finite",
+                ))
+            }
+        })?;
+
     let mut denominator = 0.0_f64;
     let mut denominator_correction = 0.0_f64;
-    for row in 0..nrows {
-        let weight = weights.value(row)?;
-        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-        for (cached, generated) in generated_columns.iter().copied().enumerate() {
-            let value = within[(row, generated + 1)];
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS fast score cache contains a nonfinite value",
-                ));
-            }
-            values[row * generated_columns.len() + cached] = value;
-            let scale = reference_mean_scales[generated];
-            if scale > 0.0 {
-                compensated_add(
-                    weight * (prepared.fit_column_value(generated, row)? / scale),
-                    &mut means[cached],
-                    &mut mean_corrections[cached],
-                )?;
-            }
-        }
+    for partial in partials.chunks_exact(partial_stride) {
+        compensated_add(partial[0], &mut denominator, &mut denominator_correction)?;
     }
     let denominator = denominator + denominator_correction;
     for (cached, generated) in generated_columns.iter().copied().enumerate() {
         let scale = reference_mean_scales[generated];
+        let mut normalized_mean = 0.0_f64;
+        let mut normalized_mean_correction = 0.0_f64;
+        for partial in partials.chunks_exact(partial_stride) {
+            compensated_add(
+                partial[cached + 1],
+                &mut normalized_mean,
+                &mut normalized_mean_correction,
+            )?;
+        }
         let mean = if scale == 0.0 {
             0.0
         } else {
-            scale * ((means[cached] + mean_corrections[cached]) / denominator)
+            scale * ((normalized_mean + normalized_mean_correction) / denominator)
         };
         if !mean.is_finite() || !denominator.is_finite() || denominator <= 0.0 {
             return Err(invalid_data(

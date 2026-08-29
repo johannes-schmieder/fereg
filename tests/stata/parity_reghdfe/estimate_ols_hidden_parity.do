@@ -143,12 +143,12 @@ assert e(fereg_certificate)[29,2] == 0
 * ADR-0012 deliberately changes the deterministic finite-moment reduction
 * order. Keep an exact candidate receipt in addition to the licensed-reference
 * tolerance checks below.
-assert e(V)[1,1] == +1.0202f4787943eX-005
-assert e(V)[1,2] == -1.2c7938e89dd75X-007
-assert e(V)[2,1] == -1.2c7938e89dd75X-007
-assert e(V)[2,2] == +1.5ddecfd9aa8fcX-009
-assert det(e(V)) == -1.b7ee8113869eaX-01b
-assert e(fereg_certificate)[31,2] == -1.b7ee8113869eaX-01b
+assert e(V)[1,1] == +1.0202f4787943dX-005
+assert e(V)[1,2] == -1.2c7938e89dd74X-007
+assert e(V)[2,1] == -1.2c7938e89dd74X-007
+assert e(V)[2,2] == +1.5ddecfd9aa8fbX-009
+assert det(e(V)) == -1.b7ee811388a29X-01b
+assert e(fereg_certificate)[31,2] == -1.b7ee811388a29X-01b
 assert abs(e(V)[1,1] - +1.0202f4787935bX-005) <= 2e-6
 assert abs(e(V)[1,2] - -1.2c88da1cac911X-007) <= 2e-6
 assert abs(e(V)[2,2] - +1.5e0658149d738X-009) <= 2e-6
@@ -165,15 +165,31 @@ assert e(fereg_certificate)[26,2] == 1
 assert e(fereg_certificate)[27,2] == 1
 assert e(fereg_certificate)[28,2] < 0
 assert e(fereg_certificate)[29,2] == 0
-assert e(V)[1,1] == +1.337c1458c0851X-006
-assert e(V)[1,2] == -1.6a2d71c2690d9X-008
-assert e(V)[2,1] == -1.6a2d71c2690d9X-008
-assert e(V)[2,2] == +1.aa6d2b8a04fa4X-00a
-assert det(e(V)) == -1.a79e784c85859X-01b
-assert e(fereg_certificate)[31,2] == -1.a79e784c85859X-01b
+assert e(V)[1,1] == +1.337c1458c0853X-006
+assert e(V)[1,2] == -1.6a2d71c2690dbX-008
+assert e(V)[2,1] == -1.6a2d71c2690dbX-008
+assert e(V)[2,2] == +1.aa6d2b8a04fa7X-00a
+assert det(e(V)) == -1.a79e784c84ec0X-01b
+assert e(fereg_certificate)[31,2] == -1.a79e784c84ec0X-01b
 assert abs(e(V)[1,1] - +1.337c143e3831eX-006) <= 4e-6
 assert abs(e(V)[1,2] - -1.6a5e0063700aaX-008) <= 4e-6
 assert abs(e(V)[2,2] - +1.aae99ff9c51f2X-00a) <= 4e-6
+
+* Four-way inclusion--exclusion exercises all fifteen common-path subsets and
+* guards the deterministic radix ordering used by the optimized VCE route.
+_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
+    cluster(cluster_a cluster_b cluster_c year)
+assert e(df_r) == 2
+assert e(N_clustervars) == 4
+assert e(N_clust1) == 8 & e(N_clust2) == 4
+assert e(N_clust3) == 3 & e(N_clust4) == 4
+assert rowsof(e(fereg_subset)) == 15
+assert e(V)[1,1] == +1.66d838a3f4e96X-007
+assert e(V)[1,2] == -1.a7193f6337747X-009
+assert e(V)[2,1] == -1.a7193f6337747X-009
+assert e(V)[2,2] == +1.f2435b63a7a59X-00b
+assert det(e(V)) == -1.aad22e007e857X-01b
+assert e(fereg_certificate)[31,2] == -1.aad22e007e857X-01b
 
 _fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
     cluster(cluster_a#cluster_b)
