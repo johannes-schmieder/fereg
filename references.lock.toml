@@ -12,7 +12,7 @@ raw_log_policy = "Stata logs and machine capture streams are temporary licensed 
 
 [governing_spec]
 file = "AGENTS.md"
-sha256 = "5c59d9d0b453c9096884199f397ba5ca22086cf6d283020137692d7aa7dc57d8"
+sha256 = "b3ce6b3a348b386e33648c218e7e22002193e18ead621c0edf15be1ac2eb61c8"
 source_filename = "fereg 1.0 Rust-First Implementation Plan for Codex.md"
 
 [[reference]]

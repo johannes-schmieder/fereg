@@ -140,12 +140,15 @@ assert e(fereg_certificate)[26,2] == 1
 assert e(fereg_certificate)[27,2] == 1
 assert e(fereg_certificate)[28,2] < 0
 assert e(fereg_certificate)[29,2] == 0
-assert e(V)[1,1] == +1.0202f4787943bX-005
-assert e(V)[1,2] == -1.2c7938e89dd6eX-007
-assert e(V)[2,1] == -1.2c7938e89dd6eX-007
-assert e(V)[2,2] == +1.5ddecfd9aa8f2X-009
-assert det(e(V)) == -1.b7ee8113849a5X-01b
-assert e(fereg_certificate)[31,2] == -1.b7ee8113849a5X-01b
+* ADR-0012 deliberately changes the deterministic finite-moment reduction
+* order. Keep an exact candidate receipt in addition to the licensed-reference
+* tolerance checks below.
+assert e(V)[1,1] == +1.0202f4787943eX-005
+assert e(V)[1,2] == -1.2c7938e89dd75X-007
+assert e(V)[2,1] == -1.2c7938e89dd75X-007
+assert e(V)[2,2] == +1.5ddecfd9aa8fcX-009
+assert det(e(V)) == -1.b7ee8113869eaX-01b
+assert e(fereg_certificate)[31,2] == -1.b7ee8113869eaX-01b
 assert abs(e(V)[1,1] - +1.0202f4787935bX-005) <= 2e-6
 assert abs(e(V)[1,2] - -1.2c88da1cac911X-007) <= 2e-6
 assert abs(e(V)[2,2] - +1.5e0658149d738X-009) <= 2e-6
@@ -162,12 +165,12 @@ assert e(fereg_certificate)[26,2] == 1
 assert e(fereg_certificate)[27,2] == 1
 assert e(fereg_certificate)[28,2] < 0
 assert e(fereg_certificate)[29,2] == 0
-assert e(V)[1,1] == +1.337c1458c0844X-006
-assert e(V)[1,2] == -1.6a2d71c2690caX-008
-assert e(V)[2,1] == -1.6a2d71c2690caX-008
-assert e(V)[2,2] == +1.aa6d2b8a04f93X-00a
-assert det(e(V)) == -1.a79e784c84eabX-01b
-assert e(fereg_certificate)[31,2] == -1.a79e784c84eabX-01b
+assert e(V)[1,1] == +1.337c1458c0851X-006
+assert e(V)[1,2] == -1.6a2d71c2690d9X-008
+assert e(V)[2,1] == -1.6a2d71c2690d9X-008
+assert e(V)[2,2] == +1.aa6d2b8a04fa4X-00a
+assert det(e(V)) == -1.a79e784c85859X-01b
+assert e(fereg_certificate)[31,2] == -1.a79e784c85859X-01b
 assert abs(e(V)[1,1] - +1.337c143e3831eX-006) <= 4e-6
 assert abs(e(V)[1,2] - -1.6a5e0063700aaX-008) <= 4e-6
 assert abs(e(V)[2,2] - +1.aae99ff9c51f2X-00a) <= 4e-6

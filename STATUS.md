@@ -1,17 +1,41 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-27
+**Last updated:** 2026-08-28
 **Development branch:** `main`; deterministic parallel saved-FE publication, 16-thread one-FE execution, and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
-**Verified candidate plugin:** `c0f8802201356e4c12bb41b5ad281b79824587358966ac53847524b2e2f3f23e`
+**Verified candidate plugin:** `638c6246b36b3b5754305ef754abecacb6ef39aa23bc95eb6101f7799038904a`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** run the expanded macOS/Linux V2 matrix over 0/2/10/30 controls, one/two/three FEs, and requested native threads through 16 without weakening the certified ADR-0009 fallback
+**Active milestone:** qualify ADR-0012's guarded finite solve and fused raw-moment cache on focused SCC/Linux cases, then profile the remaining one-FE Stata/plugin boundary; use macOS only for fast smoke tests, focused profiling, and prototypes
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
 and RSS rule while preserving its scientific and safety contracts. Historical receipts remain
 immutable even when they describe earlier hidden or fail-closed checkpoints.
+
+The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
+macOS matrix was deliberately stopped after 77 strictly valid scopes when this
+policy was adopted; those partial results are diagnostic only and must not be
+merged or cited as final benchmark evidence. Targeted macOS build, plugin-load,
+correctness, profiling, and packaging checks remain required where relevant.
+
+The authoritative SCC parent matrix was stopped at 100 strictly valid scopes.
+Original tasks 78, 79, 82, 99, 105--106, and 92--96 hit the runner's 7,200-second
+whole-scope timeout without scientific failures and remain rejected unless a
+strictly validated retry has been integrated. Retry tasks 78--79 under array
+`7344768`, retry task 82 under job `7346188`, and retry tasks 93--94 under job
+`7349705` passed all scheduler, application, and scientific gates and were
+integrated atomically with their failed parent evidence and retry provenance
+preserved. Parent tasks 97--98 and
+100--104 also completed strictly. The remaining parent, collector, and retry
+jobs were canceled on 2026-08-28; no additional scope may be merged into this
+frozen partial population. The separate run
+`/projectnb/welfgr/fereg/runs/20260828T194241Z-command-v2-retry-task99-d452dbe`
+preserves task 99's parent evidence. The separate run
+`/projectnb/welfgr/fereg/runs/20260828T220312Z-command-v2-retry-105-106-d452dbe`
+preserves tasks 105--106. The accepted inventory, comparisons, scaling,
+overheads, and coverage limits are captured under
+`benchmarks/reports/captured/linux-x86_64/stata19/command-comparison-v2-partial-100/`.
 
 ## Current accepted state
 
@@ -88,6 +112,38 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   K=0/one-FE and K=30/worker-firm-year corners at requested 16 threads while
   recording the local Stata license cap of eight separately. No CMG upstream
   change was needed; ADR-0010 continues to govern any routing expansion.
+- ADR-0012 replaces repeated full-row finite-moment scans with a bounded,
+  deterministic row-major RHS/Gram kernel for up to 64 controls and adds a
+  strongly guarded full-rank diagonal-pivoted Cholesky route. Weak,
+  rank-deficient, nonfinite, or bread-certificate-failing cases retain the
+  existing scaled column-pivoted QR. A second production round uses direct row
+  slices for contiguous candidates, computes raw means and stable norms in two
+  deterministic row-major passes for up to 64 raw columns, and bypasses the
+  cancelling weight/unweight transform for rank-zero fits; noncontiguous and
+  wider cases retain their original paths. On the targeted one-million-row,
+  one-thread macOS lane, one-FE/K=30 fell from 3.154 to 2.809 seconds overall
+  and from 1.903 to 1.462 seconds of native work. Worker-firm/K=30 fell from
+  7.127 to 6.816 seconds overall and from 5.825 to 5.444 seconds native. All
+  targeted Stata 19 science gates passed, with coefficient discrepancies below
+  `6.2e-15` and saved-FE reconstruction errors below `4.5e-15`. The K=0 and
+  16-thread totals did not measurably improve, confirming that their remaining
+  time is dominated by the Stata/plugin boundary and already-parallel work.
+  The 100 accepted SCC scopes remain the authoritative diagnosis; these local
+  results are focused prototype evidence only.
+  The exact audited universal plugin identified above then repeated the
+  one-FE/K=30 science gate and recorded a three-run confirmation at 2.608
+  seconds total and 1.338 seconds native; the longer seven-run medians remain
+  the conservative performance checkpoint. A broader targeted licensed pass
+  then covered iweights, fast/low/auto memory modes, rank-deficient absorbed
+  slopes, saved outputs, CMG auto routing, hidden numeric transport,
+  final-sample rebasing, and multiple absorbed slopes: all eight fixtures
+  passed on Stata 19. The fused reduction changed two hidden-adapter clustered
+  covariance receipts by only a few last-place binary units; two independent
+  repeats were bitwise identical and the unchanged reference tolerances passed.
+  The current worktree passes repository and portable static checks, 291
+  Python tests, strict formatting and Clippy, 331 core tests, 53 FFI plugin
+  tests, all Rust integration oracles, the universal macOS audit, and the
+  actual-plugin ABI loader.
 - Warm local Stata/MP timing checkpoints for saved output are shown below.
   Unless specifically noted after the table, they are alternating-order
   medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT
@@ -161,8 +217,8 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
 ## 0.5.0 beta exit gate
 
 The beta is not ready until default `solver(auto)` is consistently faster than
-the pinned `reghdfe` on representative standard OLS problems on the primary
-macOS Apple-Silicon/Stata 18 platform. A comparison counts only after matching
+the pinned `reghdfe` on representative standard OLS problems in the
+authoritative SCC/Linux matrix. A comparison counts only after matching
 the estimation sample, singleton policy, coefficients and omissions, VCE, DoF,
 requested outputs, tolerance, and effective thread count.
 
@@ -176,12 +232,12 @@ that does not meet them must be reported candidly. The selected route and any
 fallback must be visible in diagnostics and backed by the same final scientific
 certificates.
 
-The exact beta source SHA must also pass the complete local repository checks,
-licensed macOS quick/full profiles, native Apple-Silicon clean-install and
-binary audits, repeated-call/rollback checks, and deterministic beta archive
-staging. Rosetta, SCC/Linux, hosted Linux/Windows, and licensed Windows evidence
-remain important qualification work, but they do not replace the primary
-macOS speed and correctness gate.
+The exact beta source SHA must also pass complete repository checks on SCC,
+targeted licensed macOS fixtures, native Apple-Silicon clean-install and binary
+audits, repeated-call/rollback checks, and deterministic beta archive staging.
+macOS is not an exhaustive-matrix platform. Rosetta, hosted Linux/Windows, and
+licensed Windows evidence remain important qualification work, but they do not
+replace the authoritative SCC speed, correctness, and scaling gate.
 
 ## Completed, evidence-backed baseline
 

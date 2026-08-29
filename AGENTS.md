@@ -2078,7 +2078,30 @@ For common cases with moderate \(K\):
 
 # 21. Benchmark suite
 
-## 21.1 Dataset sizes
+## 21.1 Platform execution policy
+
+Use macOS only for fast local development work:
+
+- Small or representative smoke tests.
+- Focused regression tests for the code being changed.
+- Short profiling runs and optimization prototypes.
+- macOS build, plugin-load, packaging, and targeted platform-correctness checks.
+
+Do not run the exhaustive scientific or performance matrix on macOS. In
+particular, do not run every combination of dataset scale, control count,
+fixed-effect design, output mode, repetition, and requested thread count
+locally. Do not treat a partial or complete macOS matrix as production
+benchmark evidence.
+
+Run the full benchmark and scientific test matrices only on Linux/SCC under an
+isolated, exact-revision cluster run. SCC is the authoritative environment for
+exhaustive coverage, large-N performance evidence, scaling through the
+requested thread range, strict receipts, scheduler accounting, and merged reports.
+Prototype locally first, then submit the qualified candidate to SCC. This
+policy does not remove targeted macOS release checks; it prevents duplicating
+the exhaustive SCC matrix on a local workstation.
+
+## 21.2 Dataset sizes
 
 Where feasible:
 
@@ -2090,7 +2113,7 @@ Where feasible:
 100,000,000 observations
 ```
 
-## 21.2 Required linear designs
+## 21.3 Required linear designs
 
 - One dense FE.
 - Two dense well-connected FEs.
@@ -2116,7 +2139,7 @@ Where feasible:
 - Moderate \(K\), huge \(N\).
 - Fast and low-memory modes.
 
-## 21.3 Required PPML designs
+## 21.4 Required PPML designs
 
 - Trade-style exporter-year/importer-year/pair FEs.
 - Sparse worker–firm-style design.
@@ -2139,7 +2162,7 @@ Where feasible:
 - Ill-conditioned regressors.
 - Fast and low-memory modes.
 
-## 21.4 Reporting
+## 21.5 Reporting
 
 Record:
 
@@ -2734,6 +2757,7 @@ Codex must:
 28. Do not optimize peripheral display code before estimation kernels meet their gates.
 29. Do not use Stata tempvars for FE, cluster, or ordinary factor expansion unless an ADR explicitly permits a bounded exception.
 30. Preserve easy one-command installation as a product requirement.
+31. Keep macOS testing fast and targeted; never run the exhaustive benchmark or scientific matrix locally. Run full matrices only on SCC.
 
 ---
 

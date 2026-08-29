@@ -46,7 +46,8 @@ moment certificate.
    `benchmarks/manifests/ols_command_comparison_stata19_v2.json`, analyzed by
    `scripts/command_comparison_v2.py` and executed by the versioned Stata 19
    harness. It crosses control width, one/two/three FEs, and requested native
-   threads through 16 on macOS and Linux/SCC.
+   threads through 16. Exhaustive matrices run only on Linux/SCC; macOS is for
+   targeted build, correctness, profiling, and prototype checks.
 
 ## Consequences
 

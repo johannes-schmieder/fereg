@@ -127,7 +127,7 @@ pub struct PreparedOlsScoreCertificate {
     pub passed: bool,
 }
 
-/// Rank decision certificate from the scaled column-pivoted QR.
+/// Rank decision certificate from the guarded scaled finite solve.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsRankCertificate {
     pub relative_threshold: f64,
@@ -370,6 +370,8 @@ struct SystemFitReservation;
 
 const PARALLEL_QR_MIN_ROWS: usize = 65_536;
 const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
+const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
+const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
 
 impl FitReservation for SystemFitReservation {
     fn reserve<T>(
@@ -486,7 +488,7 @@ struct FitPerturbations {
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
-/// the strict borrowed-intercept MAP path and a certified scaled pivoted QR.
+/// the strict borrowed-intercept MAP path and a certified scaled finite solve.
 pub fn fit_prepared_ols_coefficients_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
@@ -495,7 +497,7 @@ pub fn fit_prepared_ols_coefficients_map(
 }
 
 /// Fit the interaction-aware categorical prepared artifact through the exact
-/// same certified MAP, scaled pivoted QR, bread, residual, and score path used
+/// same certified MAP, guarded Cholesky/QR, bread, residual, and score path used
 /// by the legacy prepared boundary.
 pub fn fit_prepared_categorical_ols_coefficients_map(
     prepared: &PreparedCategoricalOlsData,
@@ -1479,6 +1481,578 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
+fn build_standardized_moments<R: FitReservation>(
+    within: &DenseMatrix,
+    canonical_candidates: &[usize],
+    reservation: &mut R,
+) -> Result<(Vec<f64>, Vec<f64>)> {
+    let candidate_count = canonical_candidates.len();
+    if candidate_count == 0 {
+        return Ok((Vec::new(), Vec::new()));
+    }
+    if candidate_count > FUSED_MOMENT_MAX_COLUMNS {
+        return build_standardized_moments_columnwise(within, canonical_candidates, reservation);
+    }
+    let gram_elements = checked_square(
+        candidate_count,
+        "prepared OLS standardized Gram dimensions overflow usize",
+    )?;
+    let partial_stride = candidate_count
+        .checked_add(gram_elements)
+        .ok_or_else(|| allocation("prepared OLS moment-partial dimensions overflow usize"))?;
+    let chunks = within
+        .nrows()
+        .div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS)
+        .clamp(1, FUSED_MOMENT_MAX_BLOCKS);
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared OLS moment-partial allocation overflows usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared OLS moment partials",
+    )?;
+    let ncols = within.ncols();
+    let contiguous_matrix_start = canonical_candidates
+        .first()
+        .copied()
+        .filter(|start| {
+            canonical_candidates
+                .iter()
+                .copied()
+                .enumerate()
+                .all(|(offset, generated)| start.checked_add(offset) == Some(generated))
+        })
+        .and_then(|start| start.checked_add(1))
+        .filter(|start| {
+            start
+                .checked_add(candidate_count)
+                .is_some_and(|end| end <= ncols)
+        });
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let rows_per_chunk = within.nrows() / chunks;
+            let remainder = within.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            if let Some(matrix_start) = contiguous_matrix_start {
+                for row in start..end {
+                    let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
+                    let outcome = values[0];
+                    let candidates = &values[matrix_start..matrix_start + candidate_count];
+                    for left in 0..candidate_count {
+                        let left_value = candidates[left];
+                        partial[left] = left_value.mul_add(outcome, partial[left]);
+                        for (offset, right_value) in candidates[left..].iter().copied().enumerate()
+                        {
+                            let right = left + offset;
+                            let position = candidate_count + left * candidate_count + right;
+                            partial[position] = left_value.mul_add(right_value, partial[position]);
+                        }
+                    }
+                }
+            } else {
+                for row in start..end {
+                    let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
+                    let outcome = values[0];
+                    for (left, generated) in canonical_candidates.iter().copied().enumerate() {
+                        let left_value = values[generated + 1];
+                        partial[left] = left_value.mul_add(outcome, partial[left]);
+                        for (right, other_generated) in
+                            canonical_candidates.iter().copied().enumerate().skip(left)
+                        {
+                            let position = candidate_count + left * candidate_count + right;
+                            partial[position] =
+                                left_value.mul_add(values[other_generated + 1], partial[position]);
+                        }
+                    }
+                }
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared OLS standardized moment partial is not finite",
+                ))
+            }
+        })?;
+
+    let mut standardized_rhs = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized RHS cross-products",
+    )?;
+    let mut standardized_gram = reserved_filled(
+        reservation,
+        gram_elements,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized Gram",
+    )?;
+    for position in 0..candidate_count {
+        let mut sum = 0.0_f64;
+        let mut correction = 0.0_f64;
+        for partial in partials.chunks_exact(partial_stride) {
+            compensated_add(partial[position], &mut sum, &mut correction)?;
+        }
+        standardized_rhs[position] = sum + correction;
+    }
+    for left in 0..candidate_count {
+        for right in left..candidate_count {
+            let partial_position = candidate_count + left * candidate_count + right;
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for partial in partials.chunks_exact(partial_stride) {
+                compensated_add(partial[partial_position], &mut sum, &mut correction)?;
+            }
+            let value = sum + correction;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS standardized Gram entry is not finite",
+                ));
+            }
+            standardized_gram[left * candidate_count + right] = value;
+            standardized_gram[right * candidate_count + left] = value;
+        }
+    }
+    Ok((standardized_rhs, standardized_gram))
+}
+
+fn build_standardized_moments_columnwise<R: FitReservation>(
+    within: &DenseMatrix,
+    canonical_candidates: &[usize],
+    reservation: &mut R,
+) -> Result<(Vec<f64>, Vec<f64>)> {
+    let candidate_count = canonical_candidates.len();
+    let mut standardized_rhs = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized RHS cross-products",
+    )?;
+    standardized_rhs.par_iter_mut().enumerate().try_for_each(
+        |(position, destination)| -> Result<()> {
+            let matrix_column = canonical_candidates[position]
+                .checked_add(1)
+                .ok_or_else(|| allocation("prepared OLS standardized RHS column overflows"))?;
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for row in 0..within.nrows() {
+                compensated_add(
+                    within[(row, matrix_column)] * within[(row, 0)],
+                    &mut sum,
+                    &mut correction,
+                )?;
+            }
+            *destination = sum + correction;
+            if destination.is_finite() {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared OLS standardized RHS cross-product is not finite",
+                ))
+            }
+        },
+    )?;
+    let gram_elements = checked_square(
+        candidate_count,
+        "prepared OLS standardized Gram dimensions overflow usize",
+    )?;
+    let mut standardized_gram = reserved_filled(
+        reservation,
+        gram_elements,
+        0.0_f64,
+        "unable to reserve prepared OLS standardized Gram",
+    )?;
+    standardized_gram
+        .par_chunks_mut(candidate_count)
+        .enumerate()
+        .try_for_each(|(left, gram_row)| -> Result<()> {
+            for right in left..candidate_count {
+                let left_column = canonical_candidates[left] + 1;
+                let right_column = canonical_candidates[right] + 1;
+                let mut sum = 0.0_f64;
+                let mut correction = 0.0_f64;
+                for row in 0..within.nrows() {
+                    compensated_add(
+                        within[(row, left_column)] * within[(row, right_column)],
+                        &mut sum,
+                        &mut correction,
+                    )?;
+                }
+                let value = sum + correction;
+                if !value.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS standardized Gram entry is not finite",
+                    ));
+                }
+                gram_row[right] = value;
+            }
+            Ok(())
+        })?;
+    for left in 0..candidate_count {
+        for right in (left + 1)..candidate_count {
+            standardized_gram[right * candidate_count + left] =
+                standardized_gram[left * candidate_count + right];
+        }
+    }
+    Ok((standardized_rhs, standardized_gram))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    within: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    reference_norms: &[f64],
+    score_norms: &[f64],
+    canonical_candidates: &[usize],
+    initial_statuses: &[PreparedOlsFitStatus],
+    standardized_gram: &[f64],
+    standardized_rhs: &[f64],
+    relative_threshold: f64,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturb_first_coefficient: bool,
+    perturb_bread: bool,
+) -> Result<Option<QrFit>> {
+    let candidate_count = canonical_candidates.len();
+    if candidate_count == 0 || candidate_count > FUSED_MOMENT_MAX_COLUMNS {
+        return Ok(None);
+    }
+    let square = checked_square(
+        candidate_count,
+        "prepared OLS Cholesky dimensions overflow usize",
+    )?;
+    if standardized_gram.len() != square
+        || standardized_rhs.len() != candidate_count
+        || initial_statuses.len() != reference_norms.len()
+        || score_norms.len() != reference_norms.len()
+    {
+        return Err(invalid_argument(
+            "prepared OLS Cholesky inputs have inconsistent dimensions",
+        ));
+    }
+
+    let mut gram = reserved_empty(
+        reservation,
+        square,
+        "unable to reserve prepared OLS Cholesky Gram",
+    )?;
+    gram.extend_from_slice(standardized_gram);
+    let mut rhs = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS Cholesky RHS",
+    )?;
+    rhs.extend_from_slice(standardized_rhs);
+    let mut permutation = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS Cholesky permutation",
+    )?;
+    permutation.extend(0..candidate_count);
+    let mut factor = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared OLS Cholesky factor",
+    )?;
+    let initial_pivot = (0..candidate_count)
+        .map(|index| gram[index * candidate_count + index])
+        .fold(0.0_f64, f64::max);
+    if !initial_pivot.is_finite() || initial_pivot <= 0.0 {
+        return Ok(None);
+    }
+    // Normal equations square the finite-design condition number. Only use
+    // this route when every Schur pivot clears a deliberately stronger guard
+    // than the QR rank threshold; weak or rank-deficient designs retain the
+    // existing column-pivoted QR decision and certificates.
+    let pivot_guard = initial_pivot * relative_threshold.sqrt();
+    if !pivot_guard.is_finite() || pivot_guard <= 0.0 {
+        return Ok(None);
+    }
+    let mut largest_diagonal = 0.0_f64;
+    let mut smallest_diagonal = f64::INFINITY;
+    for step in 0..candidate_count {
+        let mut pivot_position = step;
+        let mut pivot_value = gram[step * candidate_count + step];
+        for candidate in (step + 1)..candidate_count {
+            let value = gram[candidate * candidate_count + candidate];
+            if value > pivot_value {
+                pivot_position = candidate;
+                pivot_value = value;
+            }
+        }
+        if !pivot_value.is_finite() || pivot_value <= pivot_guard {
+            return Ok(None);
+        }
+        if pivot_position != step {
+            swap_symmetric_block(&mut gram, candidate_count, step, pivot_position);
+            rhs.swap(step, pivot_position);
+            permutation.swap(step, pivot_position);
+            for column in 0..step {
+                factor.swap(
+                    step * candidate_count + column,
+                    pivot_position * candidate_count + column,
+                );
+            }
+        }
+        let diagonal = gram[step * candidate_count + step].sqrt();
+        if !diagonal.is_finite() || diagonal <= 0.0 {
+            return Ok(None);
+        }
+        factor[step * candidate_count + step] = diagonal;
+        largest_diagonal = largest_diagonal.max(diagonal);
+        smallest_diagonal = smallest_diagonal.min(diagonal);
+        for row in (step + 1)..candidate_count {
+            factor[row * candidate_count + step] = gram[row * candidate_count + step] / diagonal;
+        }
+        for row in (step + 1)..candidate_count {
+            for column in row..candidate_count {
+                let updated = gram[column * candidate_count + row]
+                    - factor[row * candidate_count + step]
+                        * factor[column * candidate_count + step];
+                if !updated.is_finite() {
+                    return Ok(None);
+                }
+                gram[column * candidate_count + row] = updated;
+                gram[row * candidate_count + column] = updated;
+            }
+        }
+    }
+
+    let mut forward = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS Cholesky forward solve",
+    )?;
+    for row in 0..candidate_count {
+        let mut value = rhs[row];
+        for column in 0..row {
+            value = (-factor[row * candidate_count + column]).mul_add(forward[column], value);
+        }
+        forward[row] = value / factor[row * candidate_count + row];
+        if !forward[row].is_finite() {
+            return Ok(None);
+        }
+    }
+    let mut pivot_coefficients = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS Cholesky coefficients",
+    )?;
+    for row in (0..candidate_count).rev() {
+        let mut value = forward[row];
+        for column in (row + 1)..candidate_count {
+            value = (-factor[column * candidate_count + row])
+                .mul_add(pivot_coefficients[column], value);
+        }
+        pivot_coefficients[row] = value / factor[row * candidate_count + row];
+        if !pivot_coefficients[row].is_finite() {
+            return Ok(None);
+        }
+    }
+    let mut standardized_coefficients = reserved_filled(
+        reservation,
+        candidate_count,
+        0.0_f64,
+        "unable to reserve prepared OLS canonical Cholesky coefficients",
+    )?;
+    for position in 0..candidate_count {
+        standardized_coefficients[permutation[position]] = pivot_coefficients[position];
+    }
+
+    let mut inverse_lower = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared OLS inverse Cholesky factor",
+    )?;
+    for column in 0..candidate_count {
+        for row in 0..candidate_count {
+            let mut value = f64::from(row == column);
+            for inner in 0..row {
+                value = (-factor[row * candidate_count + inner])
+                    .mul_add(inverse_lower[inner * candidate_count + column], value);
+            }
+            inverse_lower[row * candidate_count + column] =
+                value / factor[row * candidate_count + row];
+        }
+    }
+    let mut canonical_inverse = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared OLS canonical Cholesky inverse",
+    )?;
+    for left in 0..candidate_count {
+        for right in left..candidate_count {
+            let mut sum = 0.0_f64;
+            let mut correction = 0.0_f64;
+            for inner in 0..candidate_count {
+                compensated_add(
+                    inverse_lower[inner * candidate_count + left]
+                        * inverse_lower[inner * candidate_count + right],
+                    &mut sum,
+                    &mut correction,
+                )?;
+            }
+            let value = sum + correction;
+            if !value.is_finite() {
+                return Ok(None);
+            }
+            let canonical_left = permutation[left];
+            let canonical_right = permutation[right];
+            canonical_inverse[canonical_left * candidate_count + canonical_right] = value;
+            canonical_inverse[canonical_right * candidate_count + canonical_left] = value;
+        }
+    }
+
+    let mut generated_coefficients = reserved_filled(
+        reservation,
+        reference_norms.len(),
+        None,
+        "unable to reserve prepared OLS Cholesky generated coefficients",
+    )?;
+    let mut generated_statuses = reserved_empty(
+        reservation,
+        initial_statuses.len(),
+        "unable to reserve prepared OLS Cholesky generated statuses",
+    )?;
+    generated_statuses.extend_from_slice(initial_statuses);
+    for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+        let coefficient = standardized_coefficients[position] / reference_norms[generated];
+        if !coefficient.is_finite() {
+            return Ok(None);
+        }
+        generated_coefficients[generated] = Some(coefficient);
+        generated_statuses[generated] = PreparedOlsFitStatus::Kept;
+    }
+    let mut residuals = reserved_filled(
+        reservation,
+        within.nrows(),
+        0.0_f64,
+        "unable to reserve prepared OLS Cholesky residual",
+    )?;
+    residuals
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(row, residual)| -> Result<()> {
+            let values = &within.as_slice()[row * within.ncols()..(row + 1) * within.ncols()];
+            let mut value = values[0];
+            for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+                value =
+                    (-standardized_coefficients[position]).mul_add(values[generated + 1], value);
+            }
+            *residual = value / weights.root(row)?;
+            if residual.is_finite() {
+                Ok(())
+            } else {
+                Err(invalid_data("prepared OLS Cholesky residual is not finite"))
+            }
+        })?;
+    if perturb_first_coefficient {
+        let coefficient = generated_coefficients
+            .iter_mut()
+            .flatten()
+            .next()
+            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
+        *coefficient += 0.25;
+    }
+    let finite_score = build_finite_score_draft(
+        canonical_candidates,
+        standardized_gram,
+        standardized_rhs,
+        &generated_coefficients,
+        &generated_statuses,
+        reference_norms,
+        score_norms,
+    )?;
+    let mut generated_columns = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS Cholesky bread coordinates",
+    )?;
+    generated_columns.extend_from_slice(canonical_candidates);
+    let mut canonical_candidate_positions = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS Cholesky candidate positions",
+    )?;
+    canonical_candidate_positions.extend(0..candidate_count);
+    let bread = match finalize_finite_bread_draft(
+        prepared,
+        canonical_candidates,
+        standardized_gram,
+        generated_columns,
+        canonical_candidate_positions,
+        canonical_inverse,
+        reference_norms,
+        weights,
+        config.bread_tolerance,
+        reservation,
+        perturb_bread,
+    ) {
+        Ok(bread) => bread,
+        Err(error) if error.code == ErrorCode::InvalidData && !perturb_bread => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let mut kept = reserved_empty(
+        reservation,
+        candidate_count,
+        "unable to reserve prepared OLS Cholesky kept columns",
+    )?;
+    kept.extend_from_slice(canonical_candidates);
+    let mut dropped = reserved_empty(
+        reservation,
+        initial_statuses.len(),
+        "unable to reserve prepared OLS Cholesky dropped columns",
+    )?;
+    for (generated, status) in generated_statuses.iter().copied().enumerate() {
+        if status != PreparedOlsFitStatus::Kept {
+            push_reserved(
+                &mut dropped,
+                generated,
+                "prepared OLS Cholesky dropped-column capacity exhausted",
+            )?;
+        }
+    }
+    Ok(Some(QrFit {
+        generated_coefficients,
+        generated_statuses,
+        kept,
+        dropped,
+        rank: candidate_count,
+        certificate: PreparedOlsRankCertificate {
+            relative_threshold,
+            maximum_dropped_trailing_norm: 0.0,
+            condition_proxy: largest_diagonal / smallest_diagonal,
+            passed: true,
+        },
+        finite_score,
+        bread: Some(bread),
+        within_residuals: Some(residuals),
+    }))
+}
+
+fn swap_symmetric_block(matrix: &mut [f64], dimension: usize, left: usize, right: usize) {
+    if left == right {
+        return;
+    }
+    for column in 0..dimension {
+        matrix.swap(left * dimension + column, right * dimension + column);
+    }
+    for row in 0..dimension {
+        matrix.swap(row * dimension + left, row * dimension + right);
+    }
+}
+
 const fn valid_unit_tolerance(value: f64) -> bool {
     value.is_finite() && value > 0.0 && value < 1.0
 }
@@ -1644,6 +2218,85 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS dropped-column table",
     )?;
+    let relative_threshold = config.rank_tolerance_multiplier
+        * f64::EPSILON
+        * nrows.max(generated_columns).max(1) as f64;
+    if candidate_count == 0 {
+        if perturb_first_coefficient {
+            return Err(invalid_argument(
+                "injected perturbation requires a kept coefficient",
+            ));
+        }
+        for (column, status) in generated_statuses.iter().copied().enumerate() {
+            if status != PreparedOlsFitStatus::Kept {
+                push_reserved(
+                    &mut dropped,
+                    column,
+                    "prepared OLS dropped-column capacity exhausted",
+                )?;
+            }
+        }
+        let standardized_rhs = Vec::new();
+        let standardized_gram = Vec::new();
+        let finite_score = build_finite_score_draft(
+            &canonical_candidates,
+            &standardized_gram,
+            &standardized_rhs,
+            &generated_coefficients,
+            &generated_statuses,
+            reference_norms,
+            score_norms,
+        )?;
+        let mut within_residuals = reserved_filled(
+            reservation,
+            nrows,
+            0.0_f64,
+            "unable to reserve prepared OLS rank-zero within residual",
+        )?;
+        within_residuals.par_iter_mut().enumerate().try_for_each(
+            |(row, residual)| -> Result<()> {
+                *residual = within[(row, 0)];
+                if residual.is_finite() {
+                    Ok(())
+                } else {
+                    Err(invalid_data(
+                        "prepared OLS rank-zero within residual is not finite",
+                    ))
+                }
+            },
+        )?;
+        let bread = build_finite_bread_draft(
+            prepared,
+            FiniteBreadInputs {
+                qr: within,
+                pivot_columns: &candidate_columns,
+                canonical_candidates: &canonical_candidates,
+                standardized_gram: &standardized_gram,
+                rank: 0,
+                reference_norms,
+                weights,
+            },
+            config.bread_tolerance,
+            reservation,
+            perturb_bread,
+        )?;
+        return Ok(QrFit {
+            generated_coefficients,
+            generated_statuses,
+            kept,
+            dropped,
+            rank: 0,
+            certificate: PreparedOlsRankCertificate {
+                relative_threshold,
+                maximum_dropped_trailing_norm: 0.0,
+                condition_proxy: 1.0,
+                passed: true,
+            },
+            finite_score,
+            bread: Some(bread),
+            within_residuals: Some(within_residuals),
+        });
+    }
     within
         .as_mut_slice()
         .par_chunks_mut(expected_columns)
@@ -1668,81 +2321,28 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
             Ok(())
         })?;
-    let mut standardized_rhs = reserved_filled(
+    let (standardized_rhs, standardized_gram) =
+        build_standardized_moments(within, &canonical_candidates, reservation)?;
+    if let Some(fit) = try_fit_scaled_pivoted_cholesky(
+        prepared,
+        within,
+        weights,
+        reference_norms,
+        score_norms,
+        &canonical_candidates,
+        &generated_statuses,
+        &standardized_gram,
+        &standardized_rhs,
+        relative_threshold,
+        config,
         reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS standardized RHS cross-products",
-    )?;
-    standardized_rhs.par_iter_mut().enumerate().try_for_each(
-        |(position, destination)| -> Result<()> {
-            let matrix_column = canonical_candidates[position]
-                .checked_add(1)
-                .ok_or_else(|| allocation("prepared OLS standardized RHS column overflows"))?;
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for row in 0..nrows {
-                compensated_add(
-                    within[(row, matrix_column)] * within[(row, 0)],
-                    &mut sum,
-                    &mut correction,
-                )?;
-            }
-            *destination = sum + correction;
-            if !destination.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS standardized RHS cross-product is not finite",
-                ));
-            }
-            Ok(())
-        },
-    )?;
-    let standardized_gram_elements = checked_square(
-        candidate_count,
-        "prepared OLS standardized Gram dimensions overflow usize",
-    )?;
-    let mut standardized_gram = reserved_filled(
-        reservation,
-        standardized_gram_elements,
-        0.0_f64,
-        "unable to reserve prepared OLS standardized Gram",
-    )?;
-    if candidate_count > 0 {
-        standardized_gram
-            .par_chunks_mut(candidate_count)
-            .enumerate()
-            .try_for_each(|(left, gram_row)| -> Result<()> {
-                for right in left..candidate_count {
-                    let left_column = canonical_candidates[left] + 1;
-                    let right_column = canonical_candidates[right] + 1;
-                    let mut sum = 0.0_f64;
-                    let mut correction = 0.0_f64;
-                    for row in 0..nrows {
-                        let term = within[(row, left_column)] * within[(row, right_column)];
-                        compensated_add(term, &mut sum, &mut correction)?;
-                    }
-                    let value = sum + correction;
-                    if !value.is_finite() {
-                        return Err(invalid_data(
-                            "prepared OLS standardized Gram entry is not finite",
-                        ));
-                    }
-                    gram_row[right] = value;
-                }
-                Ok(())
-            })?;
-        for left in 0..candidate_count {
-            for right in (left + 1)..candidate_count {
-                standardized_gram[right * candidate_count + left] =
-                    standardized_gram[left * candidate_count + right];
-            }
-        }
+        perturb_first_coefficient,
+        perturb_bread,
+    )? {
+        return Ok(fit);
     }
     fill_trailing_norms(within, &candidate_columns, 0, &mut trailing_norms)?;
     let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
-    let relative_threshold = config.rank_tolerance_multiplier
-        * f64::EPSILON
-        * nrows.max(generated_columns).max(1) as f64;
     let absolute_threshold = initial_norm * relative_threshold;
     if !absolute_threshold.is_finite() {
         return Err(invalid_data("prepared OLS QR rank threshold is not finite"));
@@ -2843,6 +3443,56 @@ fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 [canonical_pivot_positions[left] * rank + canonical_pivot_positions[right]];
         }
     }
+    finalize_finite_bread_draft(
+        prepared,
+        canonical_candidates,
+        standardized_gram,
+        generated_columns,
+        canonical_candidate_positions,
+        canonical_inverse,
+        reference_norms,
+        weights,
+        tolerance,
+        reservation,
+        perturb_bread,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finalize_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    canonical_candidates: &[usize],
+    standardized_gram: &[f64],
+    generated_columns: Vec<usize>,
+    canonical_candidate_positions: Vec<usize>,
+    mut canonical_inverse: Vec<f64>,
+    reference_norms: &[f64],
+    weights: NormalizedWeights<'_>,
+    tolerance: f64,
+    reservation: &mut R,
+    perturb_bread: bool,
+) -> Result<FiniteBreadDraft> {
+    let candidate_count = canonical_candidates.len();
+    let rank = generated_columns.len();
+    let rank_square = checked_square(rank, "prepared OLS bread dimensions overflow usize")?;
+    if standardized_gram.len()
+        != checked_square(
+            candidate_count,
+            "prepared OLS standardized Gram dimensions overflow usize",
+        )?
+        || canonical_candidate_positions.len() != rank
+        || canonical_inverse.len() != rank_square
+        || generated_columns
+            .iter()
+            .any(|generated| *generated >= reference_norms.len())
+        || canonical_candidate_positions
+            .iter()
+            .any(|position| *position >= candidate_count)
+    {
+        return Err(invalid_argument(
+            "prepared OLS finalized bread inputs have inconsistent dimensions",
+        ));
+    }
     if perturb_bread && rank > 0 {
         canonical_inverse[0] += 0.25;
     }
@@ -2906,9 +3556,9 @@ fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     }
 
     // Reuse the now-dead canonical-inverse allocation for an independently
-    // derived reference-scale finite cross-product. Keeping this pre-QR Gram
-    // block permits the reported-coordinate certificate to check the full
-    // intercept extension without allocating another O(K^2) buffer.
+    // derived reference-scale finite cross-product. Keeping this pre-solve
+    // Gram block permits the reported-coordinate certificate to check the
+    // full intercept extension without allocating another O(K^2) buffer.
     let mut reference_crossproduct = canonical_inverse;
     for left in 0..rank {
         let left_scale = reference_norms[generated_columns[left]];
@@ -3602,6 +4252,184 @@ fn build_raw_moment_cache<R: FitReservation>(
             "prepared OLS raw-moment weight sum is invalid",
         ));
     }
+    if raw.ncols() <= FUSED_MOMENT_MAX_COLUMNS {
+        fill_raw_moment_cache_fused(
+            raw,
+            weights,
+            weight_sum,
+            &mut scales,
+            &mut means,
+            &mut norms,
+            reservation,
+        )?;
+    } else {
+        fill_raw_moment_cache_columnwise(
+            raw,
+            weights,
+            weight_sum,
+            &mut scales,
+            &mut means,
+            &mut norms,
+        )?;
+    }
+    Ok(RawMomentCache {
+        means,
+        scales,
+        norms,
+        weight_sum,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fill_raw_moment_cache_fused<R: FitReservation>(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    weight_sum: f64,
+    scales: &mut [f64],
+    means: &mut [f64],
+    norms: &mut [f64],
+    reservation: &mut R,
+) -> Result<()> {
+    let columns = raw.ncols();
+    if columns == 0
+        || columns > FUSED_MOMENT_MAX_COLUMNS
+        || scales.len() != columns
+        || means.len() != columns
+        || norms.len() != columns
+        || !weight_sum.is_finite()
+        || weight_sum <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared OLS fused raw-moment dimensions are inconsistent",
+        ));
+    }
+    let partial_stride = columns
+        .checked_mul(3)
+        .ok_or_else(|| allocation("prepared OLS raw-moment partial stride overflows usize"))?;
+    let chunks = raw
+        .nrows()
+        .div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS)
+        .clamp(1, FUSED_MOMENT_MAX_BLOCKS);
+    let partial_elements = chunks
+        .checked_mul(partial_stride)
+        .ok_or_else(|| allocation("prepared OLS raw-moment partial allocation overflows usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared OLS raw-moment partials",
+    )?;
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (partial_raw_scales, remainder) = partial.split_at_mut(columns);
+            let (partial_norm_scales, partial_norm_sums) = remainder.split_at_mut(columns);
+            partial_norm_sums.fill(1.0);
+            let rows_per_chunk = raw.nrows() / chunks;
+            let remainder = raw.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let root_weight = weights.root(row)?;
+                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+                for column in 0..columns {
+                    let value = values[column];
+                    if !value.is_finite() {
+                        return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+                    }
+                    partial_raw_scales[column] = partial_raw_scales[column].max(value.abs());
+                    update_scaled_sum_of_squares(
+                        root_weight * value,
+                        &mut partial_norm_scales[column],
+                        &mut partial_norm_sums[column],
+                    )?;
+                }
+            }
+            Ok(())
+        })?;
+    for column in 0..columns {
+        let mut norm_scale = 0.0_f64;
+        let mut norm_sum = 1.0_f64;
+        let mut scale = 0.0_f64;
+        for partial in partials.chunks_exact(partial_stride) {
+            scale = scale.max(partial[column]);
+            merge_scaled_sum_of_squares(
+                partial[columns + column],
+                partial[2 * columns + column],
+                &mut norm_scale,
+                &mut norm_sum,
+            )?;
+        }
+        scales[column] = scale;
+        norms[column] = checked_norm(norm_scale, norm_sum)?;
+    }
+
+    partials.fill(0.0);
+    partials
+        .par_chunks_mut(partial_stride)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let (partial_means, partial_corrections) = partial.split_at_mut(columns);
+            let rows_per_chunk = raw.nrows() / chunks;
+            let remainder = raw.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let weight = weights.value(row)?;
+                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+                for column in 0..columns {
+                    if scales[column] != 0.0 {
+                        compensated_add(
+                            weight * (values[column] / scales[column]),
+                            &mut partial_means[column],
+                            &mut partial_corrections[column],
+                        )?;
+                    }
+                }
+            }
+            Ok(())
+        })?;
+    for column in 0..columns {
+        let mut sum = 0.0_f64;
+        let mut correction = 0.0_f64;
+        for partial in partials.chunks_exact(partial_stride) {
+            compensated_add(
+                partial[column] + partial[columns + column],
+                &mut sum,
+                &mut correction,
+            )?;
+        }
+        means[column] = if scales[column] == 0.0 {
+            0.0
+        } else {
+            scales[column] * ((sum + correction) / weight_sum)
+        };
+        if !means[column].is_finite() {
+            return Err(invalid_data("prepared OLS raw-moment mean is not finite"));
+        }
+    }
+    Ok(())
+}
+
+fn fill_raw_moment_cache_columnwise(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    weight_sum: f64,
+    scales: &mut [f64],
+    means: &mut [f64],
+    norms: &mut [f64],
+) -> Result<()> {
+    if scales.len() != raw.ncols()
+        || means.len() != raw.ncols()
+        || norms.len() != raw.ncols()
+        || !weight_sum.is_finite()
+        || weight_sum <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared OLS columnwise raw-moment dimensions are inconsistent",
+        ));
+    }
     scales
         .par_iter_mut()
         .zip(means.par_iter_mut())
@@ -3643,13 +4471,7 @@ fn build_raw_moment_cache<R: FitReservation>(
             }
             *norm = checked_norm(norm_scale, norm_sum)?;
             Ok(())
-        })?;
-    Ok(RawMomentCache {
-        means,
-        scales,
-        norms,
-        weight_sum,
-    })
+        })
 }
 
 fn cached_raw_residual_mean<P: PreparedOlsFitView + ?Sized>(
@@ -4732,6 +5554,281 @@ mod tests {
     }
 
     #[test]
+    fn fused_standardized_moments_match_compensated_scalar_reference() {
+        let rows = 40_003_usize;
+        let columns = 5_usize;
+        let mut values = Vec::with_capacity(rows * columns);
+        for row in 0..rows {
+            let axis = row as f64;
+            values.extend_from_slice(&[
+                (axis * 0.013).sin() + 0.4 * (axis * 0.007).cos(),
+                (axis * 0.011).sin(),
+                (axis * 0.017).cos(),
+                ((row % 29) as f64 - 14.0) / 17.0,
+                ((row * 37 % 101) as f64 - 50.0) / 31.0,
+            ]);
+        }
+        let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("moment matrix");
+        let candidates = [0_usize, 1, 2, 3];
+        let mut reservation = SystemFitReservation;
+        let (rhs, gram) = build_standardized_moments(&matrix, &candidates, &mut reservation)
+            .expect("fused standardized moments");
+        for (left, generated) in candidates.iter().copied().enumerate() {
+            let mut expected_rhs = 0.0_f64;
+            let mut rhs_correction = 0.0_f64;
+            for row in 0..rows {
+                compensated_add(
+                    matrix[(row, generated + 1)] * matrix[(row, 0)],
+                    &mut expected_rhs,
+                    &mut rhs_correction,
+                )
+                .expect("reference RHS");
+            }
+            assert_close(rhs[left], expected_rhs + rhs_correction, 2e-12);
+            for (right, other_generated) in candidates.iter().copied().enumerate() {
+                let mut expected_gram = 0.0_f64;
+                let mut gram_correction = 0.0_f64;
+                for row in 0..rows {
+                    compensated_add(
+                        matrix[(row, generated + 1)] * matrix[(row, other_generated + 1)],
+                        &mut expected_gram,
+                        &mut gram_correction,
+                    )
+                    .expect("reference Gram");
+                }
+                assert_close(
+                    gram[left * candidates.len() + right],
+                    expected_gram + gram_correction,
+                    2e-12,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fused_standardized_moments_preserve_noncontiguous_candidate_fallback() {
+        let rows = 40_019_usize;
+        let columns = 6_usize;
+        let mut values = Vec::with_capacity(rows * columns);
+        for row in 0..rows {
+            let axis = row as f64;
+            values.extend_from_slice(&[
+                (axis * 0.019).sin(),
+                (axis * 0.023).cos(),
+                ((row % 31) as f64 - 15.0) / 19.0,
+                (axis * 0.029).sin(),
+                ((row * 41 % 109) as f64 - 54.0) / 37.0,
+                (axis * 0.031).cos(),
+            ]);
+        }
+        let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("moment matrix");
+        let candidates = [0_usize, 2, 4];
+        let mut fused_reservation = SystemFitReservation;
+        let (rhs, gram) = build_standardized_moments(&matrix, &candidates, &mut fused_reservation)
+            .expect("noncontiguous fused standardized moments");
+        let mut reference_reservation = SystemFitReservation;
+        let (reference_rhs, reference_gram) =
+            build_standardized_moments_columnwise(&matrix, &candidates, &mut reference_reservation)
+                .expect("noncontiguous scalar standardized moments");
+        for (actual, expected) in rhs.iter().zip(reference_rhs) {
+            assert_close(*actual, expected, 2e-12);
+        }
+        for (actual, expected) in gram.iter().zip(reference_gram) {
+            assert_close(*actual, expected, 2e-12);
+        }
+    }
+
+    #[test]
+    fn fused_raw_moment_cache_matches_columnwise_reference() {
+        let rows = 40_021_usize;
+        let columns = 7_usize;
+        let mut values = Vec::with_capacity(rows * columns);
+        let mut raw_weights = Vec::with_capacity(rows);
+        for row in 0..rows {
+            let axis = row as f64;
+            raw_weights.push(0.25 + ((row * 17 % 43) + 1) as f64 / 11.0);
+            values.extend_from_slice(&[
+                (axis * 0.013).sin(),
+                (axis * 0.017).cos(),
+                ((row % 29) as f64 - 14.0) / 17.0,
+                ((row * 37 % 101) as f64 - 50.0) / 31.0,
+                0.0,
+                1.0e120 * (axis * 0.007).sin(),
+                1.0e-120 * (axis * 0.011).cos(),
+            ]);
+        }
+        let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("raw matrix");
+        let raw_scale = raw_weights.iter().copied().fold(0.0_f64, f64::max);
+        for weights in [
+            NormalizedWeights {
+                values: None,
+                raw_scale: 1.0,
+                kind: None,
+            },
+            NormalizedWeights {
+                values: Some(&raw_weights),
+                raw_scale,
+                kind: Some(WeightKind::Analytic),
+            },
+        ] {
+            let mut reservation = SystemFitReservation;
+            let cache = build_raw_moment_cache(&matrix, weights, &mut reservation)
+                .expect("fused raw moments");
+            let mut scales = vec![0.0_f64; columns];
+            let mut means = vec![0.0_f64; columns];
+            let mut norms = vec![0.0_f64; columns];
+            fill_raw_moment_cache_columnwise(
+                &matrix,
+                weights,
+                cache.weight_sum,
+                &mut scales,
+                &mut means,
+                &mut norms,
+            )
+            .expect("columnwise raw moments");
+            assert_eq!(cache.scales, scales);
+            for (actual, expected) in cache.means.iter().zip(means) {
+                assert_close(*actual, expected, 3e-12);
+            }
+            for (actual, expected) in cache.norms.iter().zip(norms) {
+                assert_close(*actual, expected, 3e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn fused_raw_moment_block_cap_covers_tail_rows() {
+        let rows = FUSED_MOMENT_MAX_BLOCKS * PARALLEL_REDUCTION_CHUNK_ROWS + 17;
+        let mut values = vec![0.0_f64; rows * 2];
+        for row in rows - 17..rows {
+            values[row * 2] = 2.0;
+            values[row * 2 + 1] = 3.0;
+        }
+        let matrix = DenseMatrix::from_row_major(rows, 2, values).expect("raw matrix");
+        let mut reservation = SystemFitReservation;
+        let cache = build_raw_moment_cache(
+            &matrix,
+            NormalizedWeights {
+                values: None,
+                raw_scale: 1.0,
+                kind: None,
+            },
+            &mut reservation,
+        )
+        .expect("capped fused raw moments");
+        assert_eq!(cache.scales, vec![2.0, 3.0]);
+        assert_close(cache.means[0], 34.0 / rows as f64, 1e-15);
+        assert_close(cache.means[1], 51.0 / rows as f64, 1e-15);
+        assert_close(cache.norms[0], 2.0 * 17.0_f64.sqrt(), 1e-15);
+        assert_close(cache.norms[1], 3.0 * 17.0_f64.sqrt(), 1e-15);
+    }
+
+    #[test]
+    fn fused_standardized_moment_block_cap_covers_tail_rows() {
+        let rows = FUSED_MOMENT_MAX_BLOCKS * PARALLEL_REDUCTION_CHUNK_ROWS + 17;
+        let mut values = vec![0.0_f64; rows * 2];
+        for row in rows - 17..rows {
+            values[row * 2] = 2.0;
+            values[row * 2 + 1] = 3.0;
+        }
+        let matrix = DenseMatrix::from_row_major(rows, 2, values).expect("moment matrix");
+        let mut reservation = SystemFitReservation;
+        let (rhs, gram) = build_standardized_moments(&matrix, &[0], &mut reservation)
+            .expect("capped fused standardized moments");
+        assert_eq!(rhs, vec![102.0]);
+        assert_eq!(gram, vec![153.0]);
+    }
+
+    #[test]
+    fn guarded_cholesky_accepts_well_conditioned_wide_finite_design() {
+        let rows = 512_usize;
+        let columns = 12_usize;
+        let mut regressors = vec![vec![0.0_f64; rows]; columns];
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        for row in 0..rows {
+            for (column, values) in regressors.iter_mut().enumerate() {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                let uniform = ((state >> 11) as f64) / ((1_u64 << 53) as f64) - 0.5;
+                values[row] = uniform + 0.03 * ((row + 3 * column) as f64 * 0.17).sin();
+            }
+        }
+        let outcome = (0..rows)
+            .map(|row| {
+                regressors.iter().enumerate().fold(
+                    0.02 * (row as f64 * 0.13).cos(),
+                    |value, (column, regressor)| {
+                        ((column + 1) as f64 / columns as f64).mul_add(regressor[row], value)
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &outcome,
+            &regressors,
+            &vec![false; columns],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let mut within_values = Vec::with_capacity(rows * (columns + 1));
+        for row in 0..rows {
+            within_values.push(outcome[row]);
+            for regressor in &regressors {
+                within_values.push(regressor[row]);
+            }
+        }
+        let mut within = DenseMatrix::from_row_major(rows, columns + 1, within_values)
+            .expect("wide within matrix");
+        let weights = normalized_weights(&prepared).expect("unit weights");
+        let mut reference_norms = Vec::with_capacity(columns);
+        for column in 0..columns {
+            reference_norms.push(
+                weighted_matrix_column_norm(&within, column + 1, weights).expect("reference norm"),
+            );
+        }
+        let score_norms = reference_norms.clone();
+        for row in 0..rows {
+            for column in 0..columns {
+                within[(row, column + 1)] /= reference_norms[column];
+            }
+        }
+        let candidates = (0..columns).collect::<Vec<_>>();
+        let statuses = vec![PreparedOlsFitStatus::NumericallyRankDeficient; columns];
+        let mut reservation = SystemFitReservation;
+        let (rhs, gram) = build_standardized_moments(&within, &candidates, &mut reservation)
+            .expect("wide standardized moments");
+        let relative_threshold =
+            PreparedOlsFitConfig::default().rank_tolerance_multiplier * f64::EPSILON * rows as f64;
+        let fit = try_fit_scaled_pivoted_cholesky(
+            &prepared,
+            &within,
+            weights,
+            &reference_norms,
+            &score_norms,
+            &candidates,
+            &statuses,
+            &gram,
+            &rhs,
+            relative_threshold,
+            PreparedOlsFitConfig::default(),
+            &mut reservation,
+            false,
+            false,
+        )
+        .expect("guarded Cholesky attempt")
+        .expect("well-conditioned design selects guarded Cholesky");
+        assert_eq!(fit.rank, columns);
+        assert!(fit.certificate.passed);
+        assert_eq!(fit.certificate.maximum_dropped_trailing_norm, 0.0);
+        assert!(fit.finite_score.infinity_scale < 1e-10);
+        let bread = fit.bread.expect("certified Cholesky bread");
+        assert!(bread.left_inverse_relative_infinity_norm < 5e-10);
+        assert!(bread.right_inverse_relative_infinity_norm < 5e-10);
+    }
+
+    #[test]
     fn no_fe_intercept_and_syntax_omission_preserve_canonical_slots() {
         let x = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 4.0];
         let omitted = vec![9.0, 8.0, 7.0, 6.0, 5.0, 4.0];
@@ -5490,6 +6587,45 @@ mod tests {
             y.iter().map(|value| value - mean).collect::<Vec<_>>()
         );
         assert_eq!(fit.score_certificate().moments, 0);
+    }
+
+    #[test]
+    fn rank_zero_fast_path_matches_low_memory_weighted_fe_fit() {
+        let g = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 3.0];
+        let y = vec![2.0, 4.0, -1.0, 1.0, 7.0, 9.0, 8.0];
+        let weights = vec![0.5, 2.0, 1.5, 0.75, 3.0, 1.0, 2.5];
+        let prepared = prepared(
+            &y,
+            &[],
+            &[],
+            Some(&g),
+            true,
+            TestWeights::Analytic(&weights),
+        );
+        let fast = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default())
+            .expect("fast weighted FE-only fit");
+        let low = fit_prepared_ols_coefficients_map(
+            &prepared,
+            PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode: PreparedOlsExecutionMode::Low,
+                    poolsize: 1,
+                    ..PreparedOlsExecutionConfig::default()
+                },
+                ..PreparedOlsFitConfig::default()
+            },
+        )
+        .expect("low-memory weighted FE-only fit");
+        assert_eq!(fast.finite_rank(), 0);
+        assert_eq!(fast.coefficients(), low.coefficients());
+        for (actual, expected) in fast.residuals().iter().zip(low.residuals()) {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        for (actual, expected) in fast.bread().values().iter().zip(low.bread().values()) {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        assert!(fast.rank_certificate().passed);
+        assert!(fast.score_certificate().passed);
     }
 
     #[test]
