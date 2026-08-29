@@ -49,6 +49,37 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64>;
 
+    /// Subtract one fitted raw-scale column from an observation vector. The
+    /// default is topology-generic; concrete prepared layouts may resolve the
+    /// column recipe once and stream its backing storage directly.
+    fn fit_subtract_raw_column(
+        &self,
+        column: usize,
+        coefficient: f64,
+        residuals: &mut [f64],
+    ) -> Result<()> {
+        if residuals.len() != self.fit_sample().n_active() || !coefficient.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "prepared OLS raw-residual update has an invalid shape",
+            ));
+        }
+        residuals
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(row, residual)| -> Result<()> {
+                *residual = (-coefficient).mul_add(self.fit_column_value(column, row)?, *residual);
+                if residual.is_finite() {
+                    Ok(())
+                } else {
+                    Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        "prepared OLS raw residual is not finite",
+                    ))
+                }
+            })
+    }
+
     fn fit_build_rhs(&self) -> Result<DenseMatrix>;
 
     /// Build a bounded contiguous block of generated columns. The outcome is
@@ -280,6 +311,111 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
         self.column_value(column, row)
+    }
+
+    fn fit_subtract_raw_column(
+        &self,
+        column: usize,
+        coefficient: f64,
+        residuals: &mut [f64],
+    ) -> Result<()> {
+        if residuals.len() != self.sample.n_active() || !coefficient.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "prepared OLS raw-residual update has an invalid shape",
+            ));
+        }
+        let column = self.model.columns.get(column).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::InvalidArgument,
+                "prepared OLS raw-residual column is out of range",
+            )
+        })?;
+        match &column.kind {
+            super::PreparedOlsColumnKind::Intercept => {
+                for residual in residuals.iter_mut() {
+                    *residual = (-coefficient).mul_add(1.0, *residual);
+                }
+            }
+            super::PreparedOlsColumnKind::Continuous {
+                prepared_source_index,
+                ..
+            } => {
+                let source = self
+                    .sample
+                    .regressors
+                    .get(*prepared_source_index)
+                    .ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::InvalidArgument,
+                            "prepared continuous source is out of range",
+                        )
+                    })?;
+                for (residual, value) in residuals.iter_mut().zip(source) {
+                    *residual = (-coefficient).mul_add(*value, *residual);
+                }
+            }
+            super::PreparedOlsColumnKind::Categorical {
+                categorical_source_index,
+                level_code,
+                ..
+            } => {
+                if let Some(level_code) = level_code {
+                    let codes = &self
+                        .categorical_sources
+                        .get(*categorical_source_index)
+                        .ok_or_else(|| {
+                            FeregError::new(
+                                ErrorCode::InvalidArgument,
+                                "prepared categorical source is out of range",
+                            )
+                        })?
+                        .encoded
+                        .codes;
+                    for (residual, code) in residuals.iter_mut().zip(codes) {
+                        if code == level_code {
+                            *residual = (-coefficient).mul_add(1.0, *residual);
+                        }
+                    }
+                }
+            }
+            super::PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                for (row, residual) in residuals.iter_mut().enumerate() {
+                    let mut present = true;
+                    for component in components {
+                        let Some(level_code) = component.level_code else {
+                            present = false;
+                            break;
+                        };
+                        let code = self
+                            .categorical_sources
+                            .get(component.categorical_source_index)
+                            .and_then(|source| source.encoded.codes.get(row))
+                            .copied()
+                            .ok_or_else(|| {
+                                FeregError::new(
+                                    ErrorCode::InvalidArgument,
+                                    "prepared categorical interaction source is out of range",
+                                )
+                            })?;
+                        if code != level_code {
+                            present = false;
+                            break;
+                        }
+                    }
+                    if present {
+                        *residual = (-coefficient).mul_add(1.0, *residual);
+                    }
+                }
+            }
+        }
+        if residuals.iter().any(|value| !value.is_finite()) {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "prepared OLS raw residual is not finite",
+            ));
+        }
+        Ok(())
     }
 
     fn fit_build_rhs(&self) -> Result<DenseMatrix> {

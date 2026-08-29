@@ -23,8 +23,8 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
     prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
-    CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
+    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
@@ -104,6 +104,7 @@ struct DerivedObservationOutputs {
 struct EstimateAction {
     request: OlsRequestV1,
     candidate_all: bool,
+    input_complete: bool,
     clusters: Vec<OlsClusterTermV1>,
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
@@ -144,6 +145,7 @@ struct EstimateActionSpec {
     binding_count: usize,
     include_intercept: bool,
     candidate_all: bool,
+    input_complete: bool,
     keep_singletons: bool,
     vce: OlsVceKind,
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
@@ -181,7 +183,12 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let specification = EstimateActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let preflight_seconds = started.elapsed().as_secs_f64();
-    let loaded = load_ols_input(&action.request, action.candidate_all, spi)?;
+    let loaded = load_ols_input(
+        &action.request,
+        action.candidate_all,
+        action.input_complete,
+        spi,
+    )?;
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
         started,
@@ -196,8 +203,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     });
     match (action.vce, categorical) {
         (OlsVceKind::Iid, false) => {
-            let prepared = prepare_ols_data(&action.request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_ols_data_owned(&action.request, loaded)?;
             let inference = fit_prepared_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -461,6 +467,7 @@ impl EstimateActionSpec {
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
             candidate_all: parse_bool(&values, "candidate_all")?,
+            input_complete: parse_bool(&values, "input_complete")?,
             keep_singletons: parse_bool(&values, "keep_singletons")?,
             vce: parse_vce(required(&values, "vce")?)?,
             absorbed_dof: parse_dof(required(&values, "dof")?)?,
@@ -543,6 +550,7 @@ impl EstimateActionSpec {
             "binding_count",
             "include_intercept",
             "candidate_all",
+            "input_complete",
             "keep_singletons",
             "vce",
             "dof",
@@ -796,6 +804,7 @@ impl EstimateActionSpec {
         Ok(EstimateAction {
             request,
             candidate_all: self.candidate_all,
+            input_complete: self.input_complete,
             clusters,
             vce: self.vce,
             absorbed_dof: self.absorbed_dof,
@@ -1020,6 +1029,7 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
 fn load_ols_input(
     request: &OlsRequestV1,
     candidate_all: bool,
+    input_complete: bool,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
@@ -1083,16 +1093,26 @@ fn load_ols_input(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
-    if candidate_all && all_sources_numeric {
-        let chunk_capacity = n.clamp(1, INPUT_BULK_READ_CHUNK_ROWS);
-        let mut missing_buffer =
-            reserved_filled(chunk_capacity, 0_u8, "numeric SPI range missing buffer")?;
-        read_numeric_column_in_chunks(spi, outcome_position, &mut outcome, &mut missing_buffer)?;
+    if candidate_all && all_sources_numeric && input_complete {
+        let mut positions = reserved_empty(
+            1 + source_positions.len()
+                + usize::from(analytic_position.is_some())
+                + usize::from(frequency_position.is_some())
+                + usize::from(probability_position.is_some()),
+            "complete numeric SPI positions",
+        )?;
+        let mut columns: Vec<&mut [f64]> = Vec::new();
+        columns
+            .try_reserve_exact(positions.capacity())
+            .map_err(|_| allocation("unable to reserve complete numeric SPI column batch"))?;
+        positions.push(outcome_position);
+        columns.push(outcome.values.as_mut_slice());
         for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
             let OlsSourceLoader::Numeric(destination) = destination else {
                 unreachable!("all source loaders were certified numeric");
             };
-            read_numeric_column_in_chunks(spi, *position, destination, &mut missing_buffer)?;
+            positions.push(*position);
+            columns.push(destination.values.as_mut_slice());
         }
         for (position, destination) in [
             (analytic_position, analytic_weight.as_mut()),
@@ -1100,7 +1120,45 @@ fn load_ols_input(
             (probability_position, probability_weight.as_mut()),
         ] {
             if let (Some(position), Some(destination)) = (position, destination) {
-                read_numeric_column_in_chunks(spi, position, destination, &mut missing_buffer)?;
+                positions.push(position);
+                columns.push(destination.values.as_mut_slice());
+            }
+        }
+        read_complete_numeric_columns_in_chunks(spi, &positions, &mut columns)?;
+    } else if candidate_all && all_sources_numeric {
+        let chunk_capacity = n.clamp(1, INPUT_BULK_READ_CHUNK_ROWS);
+        let mut missing_buffer = (!input_complete)
+            .then(|| reserved_filled(chunk_capacity, 0_u8, "numeric SPI range missing buffer"))
+            .transpose()?;
+        read_numeric_column_in_chunks(
+            spi,
+            outcome_position,
+            &mut outcome,
+            missing_buffer.as_deref_mut(),
+        )?;
+        for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
+            let OlsSourceLoader::Numeric(destination) = destination else {
+                unreachable!("all source loaders were certified numeric");
+            };
+            read_numeric_column_in_chunks(
+                spi,
+                *position,
+                destination,
+                missing_buffer.as_deref_mut(),
+            )?;
+        }
+        for (position, destination) in [
+            (analytic_position, analytic_weight.as_mut()),
+            (frequency_position, frequency_weight.as_mut()),
+            (probability_position, probability_weight.as_mut()),
+        ] {
+            if let (Some(position), Some(destination)) = (position, destination) {
+                read_numeric_column_in_chunks(
+                    spi,
+                    position,
+                    destination,
+                    missing_buffer.as_deref_mut(),
+                )?;
             }
         }
     } else {
@@ -1167,6 +1225,37 @@ fn load_ols_input(
         frequency_weight,
         probability_weight,
     })
+}
+
+fn read_complete_numeric_columns_in_chunks(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    columns: &mut [&mut [f64]],
+) -> Result<()> {
+    if positions.len() != columns.len()
+        || columns.is_empty()
+        || columns
+            .iter()
+            .any(|column| column.len() != columns[0].len())
+    {
+        return Err(invalid(
+            "complete numeric SPI column batch has an invalid shape",
+        ));
+    }
+    for start in (0..columns[0].len()).step_by(INPUT_BULK_READ_CHUNK_ROWS) {
+        spi.check_interrupted()?;
+        let end = start
+            .checked_add(INPUT_BULK_READ_CHUNK_ROWS)
+            .unwrap_or(columns[0].len())
+            .min(columns[0].len());
+        let mut chunk = Vec::new();
+        chunk
+            .try_reserve_exact(columns.len())
+            .map_err(|_| allocation("unable to reserve complete numeric SPI chunk"))?;
+        chunk.extend(columns.iter_mut().map(|column| &mut column[start..end]));
+        spi.read_complete_numeric_columns(positions, start + 1, &mut chunk)?;
+    }
+    Ok(())
 }
 
 enum OlsSourceLoader {
@@ -1276,33 +1365,48 @@ fn read_numeric_column_in_chunks(
     spi: &mut dyn SpiApi,
     position: u32,
     destination: &mut LoadedNumericColumn,
-    missing_buffer: &mut [u8],
+    mut missing_buffer: Option<&mut [u8]>,
 ) -> Result<()> {
-    if destination.values.len() != destination.missing.len() || missing_buffer.is_empty() {
+    if destination.values.len() != destination.missing.len()
+        || missing_buffer
+            .as_ref()
+            .is_some_and(|buffer| buffer.is_empty())
+    {
         return Err(invalid(
             "numeric SPI range destination has an invalid shape",
         ));
     }
-    for start in (0..destination.values.len()).step_by(missing_buffer.len()) {
+    let chunk_size = missing_buffer
+        .as_ref()
+        .map_or(INPUT_BULK_READ_CHUNK_ROWS, |buffer| buffer.len());
+    for start in (0..destination.values.len()).step_by(chunk_size) {
         spi.check_interrupted()?;
         let end = start
-            .checked_add(missing_buffer.len())
+            .checked_add(chunk_size)
             .unwrap_or(destination.values.len())
             .min(destination.values.len());
         let count = end - start;
-        let statuses = &mut missing_buffer[..count];
-        statuses.fill(0);
-        spi.read_numeric_range(
-            position,
-            start + 1,
-            &mut destination.values[start..end],
-            statuses,
-        )?;
-        for (slot, status) in destination.missing[start..end]
-            .iter_mut()
-            .zip(statuses.iter().copied())
-        {
-            *slot = status == 1;
+        if let Some(buffer) = missing_buffer.as_deref_mut() {
+            let statuses = &mut buffer[..count];
+            statuses.fill(0);
+            spi.read_numeric_range(
+                position,
+                start + 1,
+                &mut destination.values[start..end],
+                statuses,
+            )?;
+            for (slot, status) in destination.missing[start..end]
+                .iter_mut()
+                .zip(statuses.iter().copied())
+            {
+                *slot = status == 1;
+            }
+        } else {
+            spi.read_complete_numeric_range(
+                position,
+                start + 1,
+                &mut destination.values[start..end],
+            )?;
         }
     }
     Ok(())
@@ -3255,6 +3359,7 @@ mod tests {
             format!("binding_count={binding_count}"),
             "include_intercept=1".to_owned(),
             "candidate_all=0".to_owned(),
+            "input_complete=0".to_owned(),
             "keep_singletons=0".to_owned(),
             format!(
                 "vce={}",
@@ -3539,6 +3644,7 @@ mod tests {
     fn complete_candidate_universe_skips_candidate_spi_reads() {
         let (mut args, mut spi) = fixture(OlsVceKind::Iid);
         replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
+        replace_argument(&mut args, "input_complete", "input_complete=1".to_owned());
 
         estimate_ols_test(&args, &mut spi).expect("complete-candidate estimate succeeds");
 
@@ -3549,6 +3655,20 @@ mod tests {
         assert_eq!(spi.matrices["RREC"][0][7], 6.0);
         assert_eq!(spi.matrices["RREC"][0][8], 6.0);
         assert_eq!(spi.receipt_complete(), 1.0);
+    }
+
+    #[test]
+    fn complete_input_certificate_disagreement_fails_before_output() {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
+        replace_argument(&mut args, "input_complete", "input_complete=1".to_owned());
+        spi.data.insert((2, 3), (0.0, true));
+
+        let error = estimate_ols_test(&args, &mut spi)
+            .expect_err("false complete-input certificate rejected");
+
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(spi.store_calls, 0);
     }
 
     #[test]

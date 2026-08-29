@@ -812,37 +812,48 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     } else {
         None
     };
-    let within_outcome_norm = weighted_matrix_column_norm(&within, 0, weights)?;
+    let mut within_norms = reserved_filled(
+        reservation,
+        generated_columns + 1,
+        0.0_f64,
+        "unable to reserve prepared OLS fused within norms",
+    )?;
+    if rayon::current_num_threads() == 1 {
+        fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+    } else {
+        within_norms
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&within, column, weights)?;
+                Ok(())
+            })?;
+    }
+    let within_outcome_norm = within_norms[0];
     let normalized_initial_within_sum_of_squares =
         initial_within_sum_of_squares(prepared, &within, weights, within_outcome_norm)?;
-    let mut score_norms = reserved_filled(
-        reservation,
-        generated_columns,
-        0.0_f64,
-        "unable to reserve prepared OLS within score norms",
-    )?;
-    score_norms
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(column, norm)| -> Result<()> {
-            *norm = weighted_matrix_column_norm(&within, column + 1, weights)?;
-            Ok(())
-        })?;
+    let score_norms = &within_norms[1..];
     let mut qr = fit_scaled_pivoted_qr(
         prepared,
         &mut within,
         weights,
         &reference_norms,
-        &score_norms,
+        score_norms,
         config,
         reservation,
         perturbations.first_coefficient,
         perturbations.finite_bread,
     )?;
+    let mut independent_raw_residuals =
+        if raw_moments.is_some() && qr.generated_coefficients.iter().any(Option::is_some) {
+            Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
+        } else {
+            None
+        };
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         &mut qr,
-        None,
+        independent_raw_residuals.as_deref_mut(),
         weights,
         config.bread_tolerance,
         reservation,
@@ -895,7 +906,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         residuals.as_slice(),
         weights,
         &reference_norms,
-        &score_norms,
+        score_norms,
         qr.finite_score,
         &qr.generated_statuses,
         within_outcome_norm,
@@ -944,6 +955,26 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             deterministic: config.execution.threads.deterministic,
         },
     })
+}
+
+fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    qr: &QrFit,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let rows = prepared.fit_sample().n_active();
+    let mut residuals = reserved_empty(
+        reservation,
+        rows,
+        "unable to reserve prepared OLS independent raw residual",
+    )?;
+    residuals.extend_from_slice(&prepared.fit_sample().outcome);
+    for (column, coefficient) in qr.generated_coefficients.iter().copied().enumerate() {
+        if let Some(coefficient) = coefficient {
+            prepared.fit_subtract_raw_column(column, coefficient, &mut residuals)?;
+        }
+    }
+    Ok(residuals)
 }
 
 const MAX_FAST_SCORE_CACHE_BYTES: usize = 512 * 1024 * 1024;
@@ -4858,6 +4889,46 @@ fn weighted_matrix_column_norm(
     checked_norm(scale, scaled_square_sum)
 }
 
+/// Compute every column norm in one row-major pass.  The update order within
+/// each column is identical to `weighted_matrix_column_norm`; only the loop
+/// nesting changes.  This matters for the single-threaded wide-control path,
+/// where separate column scans repeatedly traverse the row-major matrix with a
+/// large stride and recompute the same normalized weight root.
+fn fill_weighted_matrix_norms_fused<R: FitReservation>(
+    matrix: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    output: &mut [f64],
+    reservation: &mut R,
+) -> Result<()> {
+    if output.len() != matrix.ncols() {
+        return Err(invalid_argument(
+            "prepared OLS fused weighted norm output has the wrong width",
+        ));
+    }
+    output.fill(0.0);
+    let mut scaled_square_sums = reserved_filled(
+        reservation,
+        matrix.ncols(),
+        1.0_f64,
+        "unable to reserve prepared OLS fused norm workspace",
+    )?;
+    for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
+        let root = weights.root(row)?;
+        for ((value, scale), scaled_square_sum) in values
+            .iter()
+            .copied()
+            .zip(output.iter_mut())
+            .zip(scaled_square_sums.iter_mut())
+        {
+            update_scaled_sum_of_squares(root * value, scale, scaled_square_sum)?;
+        }
+    }
+    for (scale, scaled_square_sum) in output.iter_mut().zip(scaled_square_sums) {
+        *scale = checked_norm(*scale, scaled_square_sum)?;
+    }
+    Ok(())
+}
+
 fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     within: &DenseMatrix,
@@ -5603,6 +5674,40 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn fused_weighted_norms_match_columnwise_reference_exactly() {
+        let rows = 40_007_usize;
+        let columns = 7_usize;
+        let mut values = Vec::with_capacity(rows * columns);
+        let mut weights = Vec::with_capacity(rows);
+        for row in 0..rows {
+            let axis = row as f64;
+            for column in 0..columns {
+                let frequency = (column + 3) as f64 * 0.000_017;
+                values.push((axis * frequency).sin() + (column as f64 - 2.0) * 0.125);
+            }
+            weights.push(0.25 + ((row * 37 % 97) as f64 + 1.0) / 101.0);
+        }
+        let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("norm matrix");
+        let raw_scale = weights.iter().copied().fold(0.0_f64, f64::max);
+        let normalized = NormalizedWeights {
+            values: Some(&weights),
+            raw_scale,
+            kind: Some(WeightKind::Analytic),
+        };
+        let expected = (0..columns)
+            .map(|column| {
+                weighted_matrix_column_norm(&matrix, column, normalized)
+                    .expect("columnwise weighted norm")
+            })
+            .collect::<Vec<_>>();
+        let mut actual = vec![0.0_f64; columns];
+        let mut reservation = SystemFitReservation;
+        fill_weighted_matrix_norms_fused(&matrix, normalized, &mut actual, &mut reservation)
+            .expect("fused weighted norms");
+        assert_eq!(actual, expected);
     }
 
     #[test]

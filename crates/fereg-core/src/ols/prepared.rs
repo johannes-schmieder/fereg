@@ -605,12 +605,32 @@ pub fn prepare_ols_data(
     prepare_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
+/// Finish the common complete, unweighted boundary by taking ownership of the
+/// plugin input buffers.  This avoids copying every outcome and regressor
+/// column before the row-major solver batch is built.  Inputs with exclusions,
+/// missing values, or weights retain the fully general borrowed preparation
+/// path and its authoritative classification semantics.
+pub fn prepare_ols_data_owned(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+) -> Result<PreparedOlsData> {
+    if !is_full_retained_unweighted_sample(&loaded) {
+        return prepare_ols_data(request, &loaded);
+    }
+    let model = request.validate_and_compile_with_cluster_sources(&[])?;
+    validate_loaded(request, &loaded)?;
+    validate_candidate_categorical_domain(request, &loaded, &[])?;
+    validate_candidate_weight_domain(&loaded)?;
+    let sample = take_full_retained_unweighted_sample(loaded)?;
+    finish_prepare_ols_data(request, &[], model, sample)
+}
+
 pub(crate) fn prepare_ols_data_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    let mut model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
+    let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, loaded)?;
     validate_candidate_categorical_domain(request, loaded, cluster_sources)?;
 
@@ -658,6 +678,15 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
             prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?
         }
     };
+    finish_prepare_ols_data(request, cluster_sources, model, sample)
+}
+
+fn finish_prepare_ols_data(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+    mut model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+) -> Result<PreparedOlsData> {
     // Cluster-only sources are deliberately absent from this pre-singleton
     // factorization. They affect availability (reason 6), never FE pruning;
     // cluster coding is created only on the final singleton fixed point below.
@@ -721,17 +750,7 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
 fn prepare_full_retained_unweighted_sample(
     loaded: &LoadedOlsInput,
 ) -> Result<Option<PreparedNumericSample>> {
-    if loaded.analytic_weight.is_some()
-        || loaded.frequency_weight.is_some()
-        || loaded.probability_weight.is_some()
-        || loaded.candidate.iter().any(|candidate| !candidate)
-        || loaded.outcome.missing.iter().any(|missing| *missing)
-        || loaded.outcome.values.iter().any(|value| !value.is_finite())
-        || loaded.numeric_sources.iter().any(|(_, column)| {
-            column.missing.iter().any(|missing| *missing)
-                || column.values.iter().any(|value| !value.is_finite())
-        })
-    {
+    if !is_full_retained_unweighted_sample(loaded) {
         return Ok(None);
     }
 
@@ -777,6 +796,56 @@ fn prepare_full_retained_unweighted_sample(
         adjustment: crate::data::PreparedAdjustment::None,
         drop_reasons,
     }))
+}
+
+fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
+    loaded.analytic_weight.is_none()
+        && loaded.frequency_weight.is_none()
+        && loaded.probability_weight.is_none()
+        && loaded.candidate.iter().all(|candidate| *candidate)
+        && loaded.outcome.missing.iter().all(|missing| !*missing)
+        && loaded.outcome.values.iter().all(|value| value.is_finite())
+        && loaded.numeric_sources.iter().all(|(_, column)| {
+            column.missing.iter().all(|missing| !*missing)
+                && column.values.iter().all(|value| value.is_finite())
+        })
+}
+
+fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<PreparedNumericSample> {
+    let n = loaded.candidate.len();
+    let mut original_row_by_active = Vec::new();
+    original_row_by_active
+        .try_reserve_exact(n)
+        .map_err(|_| allocation("unable to reserve complete-sample observation map"))?;
+    original_row_by_active.extend(0..n);
+
+    let mut regressors = Vec::new();
+    regressors
+        .try_reserve_exact(loaded.numeric_sources.len())
+        .map_err(|_| allocation("unable to reserve complete-sample regressor table"))?;
+    regressors.extend(
+        loaded
+            .numeric_sources
+            .into_iter()
+            .map(|(_, column)| column.values),
+    );
+
+    let mut drop_reasons = Vec::new();
+    drop_reasons
+        .try_reserve_exact(n)
+        .map_err(|_| allocation("unable to reserve complete-sample drop-reason mask"))?;
+    drop_reasons.resize(n, crate::data::DropReason::Retained);
+
+    Ok(PreparedNumericSample {
+        n_original: n,
+        n_candidate: n,
+        original_row_by_active,
+        outcome: loaded.outcome.values,
+        regressors,
+        weights: PreparedWeights::None,
+        adjustment: crate::data::PreparedAdjustment::None,
+        drop_reasons,
+    })
 }
 
 fn prune_prepared_singletons(
@@ -2046,6 +2115,31 @@ mod tests {
                 kind: PreparedOlsColumnKind::Intercept,
             }
         );
+    }
+
+    #[test]
+    fn owned_complete_sample_fast_path_matches_borrowed_preparation_exactly() {
+        let request = request(2, true);
+        let loaded = LoadedOlsInput {
+            candidate: vec![true; 5],
+            outcome: column(&[1.0, -0.0, 3.5, f64::from_bits(1), -7.0], &[false; 5]),
+            numeric_sources: vec![
+                (
+                    SourceId::new(1).expect("id"),
+                    column(&[2.0, 4.0, -6.0, 8.0, 10.0], &[false; 5]),
+                ),
+                (
+                    SourceId::new(2).expect("id"),
+                    column(&[-1.0, 3.0, 5.0, 7.0, 9.0], &[false; 5]),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let borrowed = prepare_ols_data(&request, &loaded).expect("borrowed preparation");
+        let owned = prepare_ols_data_owned(&request, loaded).expect("owned preparation");
+        assert_eq!(owned, borrowed);
     }
 
     #[test]

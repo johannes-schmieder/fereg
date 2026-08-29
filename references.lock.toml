@@ -65,6 +65,24 @@ required_capture_files = ["src/reghdfe.ado", "src/reghdfe.mata"]
 required_capture_sha256 = { "src/reghdfe.ado" = "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc", "src/reghdfe.mata" = "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6" }
 
 [[reference]]
+name = "gtools-gregress"
+repository = "https://github.com/mcaceresb/stata-gtools"
+commit = "9dcbb835e9c8a7b30f037cdf1ec7de7f8c6ad30f"
+version = "1.11.8"
+license = "MIT"
+relevant_source_paths = [
+  "src/ado/greg.ado",
+  "src/ado/gregress.ado",
+  "src/plugin/regress/",
+  "src/plugin/stats/hdfe.c",
+]
+relevant_test_paths = ["src/test/", "src/github-issues/"]
+use = "Performance and limited scientific comparator for OLS/HDFE; beta command, never called at fereg runtime."
+source_archive_sha256 = "41af0502dc7ba8fb6ed60e1f11f6b89390c1cbf5d344f3b3ccec290e6b640c8d"
+captured_component_sha256 = { "build/greg.ado" = "233c877a5a22cc281cc67f96589bd51b50ac4203a1bd1b03d5379d6e93bd3107", "build/gregress.ado" = "de1615bc2f6fa478781268fae658538f6a4667a57721064dda9f02a3d3d76950", "build/lgtools.mlib" = "9d46cfe88bb2096c6fb90912ec2c67404625f4cbc9c50f03c38f6651163b7e2b" }
+comparator_policy = "Benchmark only from a frozen self-consistent comparator bundle; local Stata 19/macOS gregress currently fails independently with r(601), so SCC/Linux is the authoritative Greg timing environment."
+
+[[reference]]
 name = "ftools"
 repository = "https://github.com/sergiocorreia/ftools"
 commit = "d6e24d66fd02ba1b37325c82c5040444c5b4c636"

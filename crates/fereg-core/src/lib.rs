@@ -74,7 +74,7 @@ pub use ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
     fit_prepared_ols_unadjusted_map, prepare_categorical_ols_clustered_data,
-    prepare_ols_clustered_data, prepare_ols_data, solve_rank_revealing,
+    prepare_ols_clustered_data, prepare_ols_data, prepare_ols_data_owned, solve_rank_revealing,
     CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
     CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
     CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,

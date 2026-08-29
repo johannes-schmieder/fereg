@@ -94,16 +94,20 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     }
     data.resize(elements, 0.0);
 
-    data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
-        |(row, destination)| -> Result<()> {
-            destination[0] = prepared.sample.outcome[row];
-            for generated_column in 0..prepared.model.columns.len() {
-                let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
-                destination[rhs_column] = prepared.column_value(generated_column, row)?;
-            }
-            Ok(())
-        },
-    )?;
+    if rayon::current_num_threads() == 1 {
+        fill_rhs_single_thread(prepared, ncols, &mut data)?;
+    } else {
+        data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
+            |(row, destination)| -> Result<()> {
+                destination[0] = prepared.sample.outcome[row];
+                for generated_column in 0..prepared.model.columns.len() {
+                    let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
+                    destination[rhs_column] = prepared.column_value(generated_column, row)?;
+                }
+                Ok(())
+            },
+        )?;
+    }
     if data.par_iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
             "prepared OLS RHS construction produced a nonfinite value",
@@ -112,6 +116,90 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     Ok(PreparedOlsRhs {
         values: DenseMatrix::from_row_major(nrows, ncols, data)?,
     })
+}
+
+/// Fill the row-major batch one generated recipe at a time. On one thread this
+/// resolves each recipe once and then streams its source/code column instead
+/// of repeating the recipe dispatch for every observation.
+fn fill_rhs_single_thread(
+    prepared: &PreparedOlsData,
+    ncols: usize,
+    data: &mut [f64],
+) -> Result<()> {
+    for (row, outcome) in prepared.sample.outcome.iter().copied().enumerate() {
+        data[row * ncols] = outcome;
+    }
+    for (generated, column) in prepared.model.columns.iter().enumerate() {
+        let rhs_column = PreparedOlsRhs::model_column(generated)?;
+        match &column.kind {
+            PreparedOlsColumnKind::Intercept => {
+                for row in 0..prepared.sample.n_active() {
+                    data[row * ncols + rhs_column] = 1.0;
+                }
+            }
+            PreparedOlsColumnKind::Continuous {
+                prepared_source_index,
+                ..
+            } => {
+                let source = prepared
+                    .sample
+                    .regressors
+                    .get(*prepared_source_index)
+                    .ok_or_else(|| {
+                        invalid_argument("prepared continuous source is out of range")
+                    })?;
+                for (row, value) in source.iter().copied().enumerate() {
+                    data[row * ncols + rhs_column] = value;
+                }
+            }
+            PreparedOlsColumnKind::Categorical {
+                categorical_source_index,
+                level_code,
+                ..
+            } => {
+                let codes = prepared
+                    .categorical_sources
+                    .get(*categorical_source_index)
+                    .ok_or_else(|| invalid_argument("prepared categorical source is out of range"))?
+                    .encoded
+                    .codes
+                    .as_slice();
+                if let Some(level_code) = level_code {
+                    for (row, code) in codes.iter().copied().enumerate() {
+                        data[row * ncols + rhs_column] =
+                            if code == *level_code { 1.0 } else { 0.0 };
+                    }
+                }
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                for row in 0..prepared.sample.n_active() {
+                    let mut present = true;
+                    for component in components {
+                        let Some(level_code) = component.level_code else {
+                            present = false;
+                            break;
+                        };
+                        let code = prepared
+                            .categorical_sources
+                            .get(component.categorical_source_index)
+                            .and_then(|source| source.encoded.codes.get(row))
+                            .copied()
+                            .ok_or_else(|| {
+                                invalid_argument(
+                                    "prepared categorical interaction source is out of range",
+                                )
+                            })?;
+                        if code != level_code {
+                            present = false;
+                            break;
+                        }
+                    }
+                    data[row * ncols + rhs_column] = if present { 1.0 } else { 0.0 };
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {

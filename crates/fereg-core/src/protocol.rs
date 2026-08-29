@@ -22,10 +22,10 @@ impl ProtocolVersion {
 
 /// Version of the small action/diagnostics handshake accepted by the plugin.
 ///
-/// Minor 4 adds the explicit CMG solver code while retaining the existing
-/// solver-diagnostic matrix shape. Older diagnostic callers remain valid under
-/// the usual minor-version rule.
-pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
+/// Minor 5 adds the explicit ado-certified complete-input flag used by the
+/// estimation bridge. Older diagnostic callers remain valid under the usual
+/// minor-version rule; estimation continues to require an exact action wire.
+pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 /// Version of the public prepared-OLS shadow-result layout.
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn action_handshake_and_model_wire_are_distinct_versions() {
-        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 4));
+        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 5));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }

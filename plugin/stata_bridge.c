@@ -200,6 +200,60 @@ ST_int fereg_spi_vdata_range_with_missing(
     return 0;
 }
 
+ST_int fereg_spi_vdata_range_complete(
+    ST_int variable,
+    ST_int first_observation,
+    ST_int count,
+    ST_double *values
+)
+{
+    ST_int index;
+    ST_int rc;
+    if (values == NULL || first_observation <= 0 || count <= 0) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    if (fereg_bridge_require_main_thread() != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    for (index = 0; index < count; ++index) {
+        rc = SF_vdata(variable, first_observation + index, &values[index]);
+        if (rc != 0) return rc;
+    }
+    return 0;
+}
+
+ST_int fereg_spi_vdata_columns_complete(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int first_observation,
+    ST_int observation_count,
+    ST_double **columns
+)
+{
+    ST_int observation;
+    ST_int variable;
+    ST_int rc;
+    if (variables == NULL || columns == NULL || variable_count <= 0 ||
+        first_observation <= 0 || observation_count <= 0) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    if (fereg_bridge_require_main_thread() != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    for (observation = 0; observation < observation_count; ++observation) {
+        for (variable = 0; variable < variable_count; ++variable) {
+            if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;
+            rc = SF_vdata(
+                variables[variable],
+                first_observation + observation,
+                &columns[variable][observation]
+            );
+            if (rc != 0) return rc;
+        }
+    }
+    return 0;
+}
+
 ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
 {
     if (fereg_bridge_require_main_thread() != 0) {

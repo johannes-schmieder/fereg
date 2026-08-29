@@ -253,6 +253,19 @@ extern "C" {
         values: *mut f64,
         missing: *mut u8,
     ) -> c_int;
+    fn fereg_spi_vdata_range_complete(
+        variable: c_int,
+        first_observation: c_int,
+        count: c_int,
+        values: *mut f64,
+    ) -> c_int;
+    fn fereg_spi_vdata_columns_complete(
+        variables: *const c_int,
+        variable_count: c_int,
+        first_observation: c_int,
+        observation_count: c_int,
+        columns: *mut *mut f64,
+    ) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
     fn fereg_spi_matrix_rows(name: *const c_char) -> c_int;
     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
@@ -324,6 +337,25 @@ unsafe fn fereg_spi_vdata_range_with_missing(
     _count: c_int,
     _values: *mut f64,
     _missing: *mut u8,
+) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn fereg_spi_vdata_range_complete(
+    _variable: c_int,
+    _first_observation: c_int,
+    _count: c_int,
+    _values: *mut f64,
+) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn fereg_spi_vdata_columns_complete(
+    _variables: *const c_int,
+    _variable_count: c_int,
+    _first_observation: c_int,
+    _observation_count: c_int,
+    _columns: *mut *mut f64,
 ) -> c_int {
     498
 }
@@ -562,6 +594,122 @@ impl SpiApi for SpiSession {
             ));
         }
         Ok(())
+    }
+
+    fn read_complete_numeric_range(
+        &mut self,
+        variable: u32,
+        first_observation: usize,
+        values: &mut [f64],
+    ) -> Result<(), FeregError> {
+        if values.is_empty() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "complete numeric SPI range buffer must be nonempty",
+            ));
+        }
+        let variable = Self::position(variable, "variable position")?;
+        let first_observation = Self::observation(first_observation)?;
+        let count = c_int::try_from(values.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "complete numeric SPI range length exceeds Stata's index width",
+            )
+        })?;
+        first_observation.checked_add(count - 1).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "complete numeric SPI range observation index overflows",
+            )
+        })?;
+        // SAFETY: the buffer is live for `count` elements, all coordinates
+        // were checked, and the ado caller certified these retained cells as
+        // complete before entering the thread-confined SPI session.
+        Self::spi_rc(
+            unsafe {
+                fereg_spi_vdata_range_complete(
+                    variable,
+                    first_observation,
+                    count,
+                    values.as_mut_ptr(),
+                )
+            },
+            "complete numeric range read",
+        )
+    }
+
+    fn read_complete_numeric_columns(
+        &mut self,
+        variables: &[u32],
+        first_observation: usize,
+        columns: &mut [&mut [f64]],
+    ) -> Result<(), FeregError> {
+        if variables.len() != columns.len()
+            || columns.is_empty()
+            || columns[0].is_empty()
+            || columns
+                .iter()
+                .any(|column| column.len() != columns[0].len())
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "complete numeric SPI column batch has an invalid shape",
+            ));
+        }
+        let mut positions = Vec::new();
+        positions.try_reserve_exact(variables.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve complete numeric SPI positions",
+            )
+        })?;
+        for variable in variables {
+            positions.push(Self::position(*variable, "variable position")?);
+        }
+        let mut pointers = Vec::new();
+        pointers.try_reserve_exact(columns.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve complete numeric SPI column pointers",
+            )
+        })?;
+        pointers.extend(columns.iter_mut().map(|column| column.as_mut_ptr()));
+        let variable_count = c_int::try_from(positions.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "complete numeric SPI column count exceeds Stata's index width",
+            )
+        })?;
+        let first_observation = Self::observation(first_observation)?;
+        let observation_count = c_int::try_from(columns[0].len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "complete numeric SPI observation count exceeds Stata's index width",
+            )
+        })?;
+        first_observation
+            .checked_add(observation_count - 1)
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "complete numeric SPI observation index overflows",
+                )
+            })?;
+        // SAFETY: all position and slice shapes are checked; every pointer is
+        // live for `observation_count` elements during this thread-confined
+        // call.
+        Self::spi_rc(
+            unsafe {
+                fereg_spi_vdata_columns_complete(
+                    positions.as_ptr(),
+                    variable_count,
+                    first_observation,
+                    observation_count,
+                    pointers.as_mut_ptr(),
+                )
+            },
+            "complete numeric column read",
+        )
     }
 
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>, FeregError> {
