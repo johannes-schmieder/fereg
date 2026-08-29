@@ -1,0 +1,13 @@
+status=diagnostic_only
+source_commit=6be8f067f5c54e46e71e470b55beda7eb30a0ea1
+plugin_sha256=638c6246b36b3b5754305ef754abecacb6ef39aa23bc95eb6101f7799038904a
+dataset_sha256=d6a0bd5c6a0ee88f602fa5ea374b8de8980c57cec060b7ce81536f42a9338f46
+scope=one_fe_n1m_k10
+requested_threads=1
+warm_repetitions=5
+fit_median_seconds=1.010
+fit_native_median_seconds=0.39128324
+save_fe_median_seconds=1.178
+save_fe_native_median_seconds=0.53670555
+science_fail=0
+policy=macOS is targeted anomaly-diagnostic evidence only; SCC remains the production qualification lane

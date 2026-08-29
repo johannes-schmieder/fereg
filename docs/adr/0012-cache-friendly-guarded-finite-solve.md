@@ -127,6 +127,34 @@ independent licensed-reference tolerance checks continued to pass unchanged.
 This is an expected summation-order consequence, not a relaxed scientific
 tolerance or a changed reference output.
 
+The exact candidate source
+`6be8f067f5c54e46e71e470b55beda7eb30a0ea1` then passed a focused Linux/SCC
+qualification spanning twelve one-million-row scopes. Every scope had a
+strict success receipt, 36 timing rows, one passing scientific preflight, zero
+command failures, and the requested native thread count; the merged evidence
+contains 432 timing rows and 12 preflights. The matrix covers one, two, and
+three fixed-effect dimensions; 0, 10, and 30 controls; standard and
+low-mobility graphs; fit and saved-FE modes; and requested threads 1 and 16.
+The exact Linux plugin SHA-256 is
+`60d4b6525aedbb3bfbcfeb9f14d6b1b994545825f03f4fb2461cbfc352ee45a7`.
+
+Within the K=30 target cells matched to the frozen pre-ADR SCC population, the
+geometric mean of the fereg/comparator ratio changed by a factor of 0.672
+against reghdfe and 0.777 against Greg. At sixteen requested threads the
+focused candidate's overall geometric-mean ratios were 0.916 against reghdfe
+for fit and 0.839 for saved output. The hard multiway sixteen-thread fit cells
+ranged from 0.260 to 0.650 times reghdfe. Multiway saved-FE publication added
+5.9--9.2 percent.
+
+The scheduler spread shards across heterogeneous 16-, 20-, and 32-processor
+nodes, so cross-run absolute times and apparent scaling are secondary evidence.
+The collector preserves each original shard environment and computes command
+ratios only within a shard. A conspicuous one-FE/K=10 one-thread SCC time of
+17.378 seconds did not reproduce in a same-source macOS diagnostic, which
+recorded 1.010 seconds total and 0.391 seconds native with `science_fail=0`.
+No SCC cell was filtered. The full evidence and operational provenance are in
+`benchmarks/reports/captured/linux-x86_64/stata19/adr12-focused-12/`.
+
 ## Consequences
 
 - Wide, well-conditioned control sets no longer pay repeated full-row scans or
@@ -141,5 +169,7 @@ tolerance or a changed reference output.
   controls, fereg native work is already small enough that input and result
   publication dominate; future gains there require reducing boundary passes,
   not changing the FE solver.
-- Future full performance qualification remains SCC-only. macOS remains the
-  fast local lane for focused profiling and correctness checks.
+- Exhaustive performance qualification remains SCC-only. macOS remains the
+  fast local lane for focused profiling, anomaly diagnosis, and correctness
+  checks. The focused SCC qualification establishes scientific and operational
+  breadth for ADR 0012, but does not replace the exhaustive release matrix.

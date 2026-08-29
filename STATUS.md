@@ -1,11 +1,11 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-28
+**Last updated:** 2026-08-29
 **Development branch:** `main`; deterministic parallel saved-FE publication, 16-thread one-FE execution, and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
 **Verified candidate plugin:** `638c6246b36b3b5754305ef754abecacb6ef39aa23bc95eb6101f7799038904a`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** qualify ADR-0012's guarded finite solve and fused raw-moment cache on focused SCC/Linux cases, then profile the remaining one-FE Stata/plugin boundary; use macOS only for fast smoke tests, focused profiling, and prototypes
+**Active milestone:** profile the remaining one-FE Stata/plugin boundary and reduce the moderate-control gap to Greg; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -144,6 +144,22 @@ overheads, and coverage limits are captured under
   Python tests, strict formatting and Clippy, 331 core tests, 53 FFI plugin
   tests, all Rust integration oracles, the universal macOS audit, and the
   actual-plugin ABI loader.
+- Exact source `6be8f067f5c54e46e71e470b55beda7eb30a0ea1` passed the focused
+  ADR-0012 Linux/SCC qualification. Setup, all twelve benchmark scopes, and
+  the final collector have complete `failed=0`/`exit_status=0` accounting.
+  The twelve strict shards contribute 432 timing rows and 12 passing
+  scientific preflights, cover one through three fixed-effect dimensions,
+  0/10/30 controls, standard and low-mobility graphs, fit and saved-FE modes,
+  and native thread requests 1 and 16. The exact Linux plugin SHA-256 is
+  `60d4b6525aedbb3bfbcfeb9f14d6b1b994545825f03f4fb2461cbfc352ee45a7`.
+  In the matched K=30 target population, the geometric mean of the
+  fereg/comparator ratio improved by 32.8 percent against reghdfe and 22.3
+  percent against Greg. At sixteen requested threads the focused fit/save
+  ratios were 0.916/0.839 against reghdfe; hard multiway fit cells were
+  0.260--0.650. The scheduler used heterogeneous 16/20/32-processor nodes, so
+  absolute cross-run times remain secondary and no noisy cell was filtered.
+  The evidence and retry provenance are captured under
+  `benchmarks/reports/captured/linux-x86_64/stata19/adr12-focused-12/`.
 - Warm local Stata/MP timing checkpoints for saved output are shown below.
   Unless specifically noted after the table, they are alternating-order
   medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT

@@ -1,0 +1,7 @@
+job_id=7357077
+task_id=2
+scope_index=1
+scope_name=n1m-one_fe-k0-t1
+hostname=scc-ti1
+slots=16
+job_rc=0

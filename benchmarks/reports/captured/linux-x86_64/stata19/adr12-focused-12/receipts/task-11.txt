@@ -1,0 +1,7 @@
+job_id=7357077
+task_id=11
+scope_index=49
+scope_name=n1m-akm_lowmob-k30-t1
+hostname=scc-sa6
+slots=16
+job_rc=0

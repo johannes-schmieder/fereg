@@ -1,0 +1,7 @@
+job_id=7357077
+task_id=10
+scope_index=38
+scope_name=n1m-akm_standard_year-k30-t16
+hostname=scc-sa4
+slots=16
+job_rc=0
