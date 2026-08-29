@@ -744,7 +744,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
         });
     }
     let workspace = dimension
-        .checked_mul(3)
+        .checked_mul(2)
         .ok_or_else(|| allocation("prepared robust dense covariance workspace overflows"))?;
     let partial_stride = square
         .checked_mul(2)
@@ -760,21 +760,19 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust dense covariance partials",
     )?;
-    let correction_root = hc1_correction.sqrt();
     partials
         .par_chunks_mut(partial_stride)
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (production, tail) = partial.split_at_mut(square);
-            let (certificate, workspace) = tail.split_at_mut(square);
-            let (score, workspace) = workspace.split_at_mut(dimension);
-            let (certificate_score, influence) = workspace.split_at_mut(dimension);
+            let (production_meat, tail) = partial.split_at_mut(square);
+            let (certificate_meat, workspace) = tail.split_at_mut(square);
+            let (production_score, certificate_score) = workspace.split_at_mut(dimension);
             let rows_per_chunk = scores.nrows() / chunks;
             let remainder = scores.nrows() % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
             for row in start..end {
-                scores.fill_reported_row(row, score)?;
+                scores.fill_reported_row(row, production_score)?;
                 let reference_weight = weight_view.value(row)?;
                 let certificate_root = meat_root_multiplier(weights.kind, reference_weight)?;
                 let production_root = if perturb_meat_multiplier {
@@ -789,47 +787,43 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
                     certificate_root
                 };
                 let residual = fit.residuals()[row];
-                let production_scale = correction_root * production_root * residual;
+                let production_scale = production_root * residual;
                 let certificate_scale = certificate_root * residual;
                 if !production_scale.is_finite() || !certificate_scale.is_finite() {
                     return Err(invalid_data(
                         "prepared robust dense influence scale is not finite",
                     ));
                 }
-                for (destination, value) in certificate_score.iter_mut().zip(score.iter().copied())
-                {
-                    *destination = certificate_scale * value;
-                    if !destination.is_finite() {
+                for coordinate in 0..dimension {
+                    let raw = production_score[coordinate];
+                    production_score[coordinate] = production_scale * raw;
+                    certificate_score[coordinate] = certificate_scale * raw;
+                    if !production_score[coordinate].is_finite()
+                        || !certificate_score[coordinate].is_finite()
+                    {
                         return Err(invalid_data(
-                            "prepared robust dense certificate score is not finite",
-                        ));
-                    }
-                }
-                for (left, influence_value) in influence.iter_mut().enumerate() {
-                    let bread_row = &fit.bread().values()[left * dimension..(left + 1) * dimension];
-                    let mut product = 0.0_f64;
-                    for right in 0..dimension {
-                        product += bread_row[right] * score[right];
-                    }
-                    *influence_value = production_scale * product;
-                    if !influence_value.is_finite() {
-                        return Err(invalid_data(
-                            "prepared robust dense influence row contains a nonfinite value",
+                            "prepared robust dense scaled score is not finite",
                         ));
                     }
                 }
                 for left in 0..dimension {
-                    let left_value = influence[left];
+                    let production_left = production_score[left];
                     let certificate_left = certificate_score[left];
                     for right in left..dimension {
                         let position = left * dimension + right;
-                        production[position] += left_value * influence[right];
-                        certificate[position] += certificate_left * certificate_score[right];
+                        production_meat[position] += production_left * production_score[right];
+                        // Use the transposed triangle for the independent
+                        // fixed-block reconstruction.  The separate storage,
+                        // scale, traversal direction, and compensated merge
+                        // make a production/certificate alias visible without
+                        // paying a bread matrix-vector multiply per row.
+                        certificate_meat[right * dimension + left] +=
+                            certificate_score[right] * certificate_left;
                     }
                 }
             }
-            if production.iter().all(|value| value.is_finite())
-                && certificate.iter().all(|value| value.is_finite())
+            if production_meat.iter().all(|value| value.is_finite())
+                && certificate_meat.iter().all(|value| value.is_finite())
             {
                 Ok(())
             } else {
@@ -838,11 +832,11 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
                 ))
             }
         })?;
-    let mut values = reserved_filled(
+    let mut production_meat = reserved_filled(
         reservation,
         square,
         0.0_f64,
-        "unable to reserve prepared robust dense covariance",
+        "unable to reserve prepared robust dense production meat",
     )?;
     let mut corrections = reserved_filled(
         reservation,
@@ -870,11 +864,11 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
                 let position = left * dimension + right;
                 compensated_add(
                     production[position],
-                    &mut values[position],
+                    &mut production_meat[position],
                     &mut corrections[position],
                 )?;
                 compensated_add(
-                    certificate[position],
+                    certificate[right * dimension + left],
                     &mut certificate_meat[position],
                     &mut certificate_corrections[position],
                 )?;
@@ -884,13 +878,13 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
     for left in 0..dimension {
         for right in left..dimension {
             let position = left * dimension + right;
-            values[position] += corrections[position];
-            if !values[position].is_finite() {
+            production_meat[position] += corrections[position];
+            if !production_meat[position].is_finite() {
                 return Err(invalid_data(
-                    "prepared robust dense covariance contains a nonfinite value",
+                    "prepared robust dense production meat contains a nonfinite value",
                 ));
             }
-            values[right * dimension + left] = values[position];
+            production_meat[right * dimension + left] = production_meat[position];
             certificate_meat[position] += certificate_corrections[position];
             if !certificate_meat[position].is_finite() {
                 return Err(invalid_data(
@@ -900,6 +894,13 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
             certificate_meat[right * dimension + left] = certificate_meat[position];
         }
     }
+    let values = sandwich_covariance_from_meat(
+        fit.bread().values(),
+        &production_meat,
+        dimension,
+        hc1_correction,
+        reservation,
+    )?;
     let mut standard_errors = reserved_filled(
         reservation,
         dimension,
@@ -925,9 +926,73 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
     })
 }
 
-/// Independent sandwich reconstruction. The production path accumulates
-/// bread-transformed influences; this certificate instead builds the meat and
-/// then applies bread on both sides.
+fn sandwich_covariance_from_meat<R: PreparedInferenceReservation>(
+    bread: &[f64],
+    meat: &[f64],
+    dimension: usize,
+    correction: f64,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = checked_square(
+        dimension,
+        "prepared robust sandwich dimensions overflow usize",
+    )?;
+    if bread.len() != square || meat.len() != square || !correction.is_finite() || correction <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared robust sandwich dimensions or correction are invalid",
+        ));
+    }
+    let mut left = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust production bread-meat product",
+    )?;
+    for row in 0..dimension {
+        for column in 0..dimension {
+            let mut value = 0.0_f64;
+            for inner in 0..dimension {
+                value += bread[row * dimension + inner] * meat[inner * dimension + column];
+            }
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust production bread-meat product is not finite",
+                ));
+            }
+            left[row * dimension + column] = value;
+        }
+    }
+    let mut covariance = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust production sandwich",
+    )?;
+    for row in 0..dimension {
+        for column in row..dimension {
+            let mut value = 0.0_f64;
+            for inner in 0..dimension {
+                value += left[row * dimension + inner] * bread[column * dimension + inner];
+            }
+            value *= correction;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust production sandwich is not finite",
+                ));
+            }
+            covariance[row * dimension + column] = value;
+            covariance[column * dimension + row] = value;
+        }
+    }
+    Ok(covariance)
+}
+
+/// Independent sandwich reconstruction. Dense production uses its
+/// upper-triangle fixed-block meat and an ordinary final sandwich; the dense
+/// certificate uses the separately stored reverse-triangle meat and this
+/// compensated sandwich. Scratch-backed production retains the original
+/// observation-influence path and is certified by a fresh meat traversal.
 #[allow(clippy::too_many_arguments)]
 fn certify_covariance_formula<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,

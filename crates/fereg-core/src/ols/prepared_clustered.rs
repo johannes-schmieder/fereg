@@ -957,7 +957,16 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
             ));
         }
     }
-    symmetrize(&mut combined_influence, p)?;
+    let combined_influence = if scores.dense_view().is_some() {
+        // Dense fast paths retain a second, independently ordered raw-score
+        // meat.  Apply the bread only once after inclusion-exclusion instead
+        // of once per cluster group; this is algebraically identical and
+        // removes the dominant O(G K^2) matrix-vector work for wide designs.
+        sandwich(fit.bread().values(), &combined_influence, p, reservation)?
+    } else {
+        symmetrize(&mut combined_influence, p)?;
+        combined_influence
+    };
     let uncorrected = sandwich(fit.bread().values(), &combined_meat, p, reservation)?;
     let correction = cluster_correction(weight_report, dof)?;
     let mut corrected = reserved_filled(
@@ -1187,7 +1196,6 @@ fn aggregate_subset_dense<R: PreparedInferenceReservation>(
         }
     }
     finish_dense_groups_parallel(
-        fit,
         &group_scores,
         &group_score_corrections,
         &seen,
@@ -1200,7 +1208,6 @@ fn aggregate_subset_dense<R: PreparedInferenceReservation>(
 
 #[allow(clippy::too_many_arguments)]
 fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
-    fit: &CertifiedPreparedOlsFit,
     group_scores: &[f64],
     group_score_corrections: &[f64],
     seen: &[u8],
@@ -1241,9 +1248,9 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let (raw_meat, remainder) = partial.split_at_mut(square);
-            let (influence_meat, workspace) = remainder.split_at_mut(square);
+            let (independent_meat, workspace) = remainder.split_at_mut(square);
             let (raw_score, workspace) = workspace.split_at_mut(dimension);
-            let (influence, count) = workspace.split_at_mut(dimension);
+            let (independent_score, count) = workspace.split_at_mut(dimension);
             let groups_per_chunk = group_slots / chunks;
             let remainder = group_slots % chunks;
             let start = chunk * groups_per_chunk + chunk.min(remainder);
@@ -1256,26 +1263,16 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
                 for coordinate in 0..dimension {
                     raw_score[coordinate] = group_scores[offset + coordinate]
                         + group_score_corrections[offset + coordinate];
-                }
-                for (left, influence_value) in influence.iter_mut().enumerate() {
-                    let mut value = 0.0_f64;
-                    let mut correction = 0.0_f64;
-                    for (right, raw_value) in raw_score.iter().copied().enumerate() {
-                        compensated_add(
-                            fit.bread().values()[left * dimension + right] * raw_value,
-                            &mut value,
-                            &mut correction,
-                        )?;
-                    }
-                    *influence_value = value + correction;
+                    independent_score[coordinate] = group_score_corrections[offset + coordinate]
+                        + group_scores[offset + coordinate];
                 }
                 for left in 0..dimension {
                     let raw_left = raw_score[left];
-                    let influence_left = influence[left];
+                    let independent_left = independent_score[left];
                     for right in left..dimension {
                         raw_meat[left * dimension + right] += raw_left * raw_score[right];
-                        influence_meat[left * dimension + right] +=
-                            influence_left * influence[right];
+                        independent_meat[right * dimension + left] +=
+                            independent_score[right] * independent_left;
                     }
                 }
                 count[0] += 1.0;
@@ -1323,7 +1320,7 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
                     &mut raw_corrections[position],
                 )?;
                 compensated_add(
-                    partial[square + position],
+                    partial[square + right * dimension + left],
                     &mut influence[position],
                     &mut influence_corrections[position],
                 )?;
@@ -1348,9 +1345,9 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
     })
 }
 
-/// Generic bounded-memory subset aggregation. One sort and score scan produces
-/// both the raw-score meat and the algebraically independent bread-transformed
-/// influence covariance.
+/// Generic bounded-memory subset aggregation. Scratch-backed score designs
+/// retain the original algebraically independent bread-transformed influence
+/// covariance; dense score designs use the fixed-block raw-meat path below.
 fn aggregate_subset_sorted<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
     scores: &CertifiedPreparedOlsScoreDesign,
@@ -1589,11 +1586,11 @@ fn aggregate_ordered_dense_parallel<R: PreparedInferenceReservation>(
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let (raw_meat, remainder) = partial.split_at_mut(square);
-            let (influence_meat, workspace) = remainder.split_at_mut(square);
+            let (independent_meat, workspace) = remainder.split_at_mut(square);
             let (group_score, workspace) = workspace.split_at_mut(dimension);
             let (group_corrections, workspace) = workspace.split_at_mut(dimension);
             let (raw_score, workspace) = workspace.split_at_mut(dimension);
-            let (influence, count) = workspace.split_at_mut(dimension);
+            let (independent_score, count) = workspace.split_at_mut(dimension);
             let start = boundaries[chunk];
             let end = boundaries[chunk + 1];
             let mut previous = None;
@@ -1602,13 +1599,12 @@ fn aggregate_ordered_dense_parallel<R: PreparedInferenceReservation>(
                     compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
                 }) {
                     finish_group_pair_uncompensated_meat(
-                        fit,
                         group_score,
                         group_corrections,
                         raw_score,
-                        influence,
+                        independent_score,
                         raw_meat,
-                        influence_meat,
+                        independent_meat,
                     )?;
                     group_score.fill(0.0);
                     group_corrections.fill(0.0);
@@ -1632,13 +1628,12 @@ fn aggregate_ordered_dense_parallel<R: PreparedInferenceReservation>(
             }
             if previous.is_some() {
                 finish_group_pair_uncompensated_meat(
-                    fit,
                     group_score,
                     group_corrections,
                     raw_score,
-                    influence,
+                    independent_score,
                     raw_meat,
-                    influence_meat,
+                    independent_meat,
                 )?;
                 count[0] += 1.0;
             }
@@ -1655,20 +1650,19 @@ fn aggregate_ordered_dense_parallel<R: PreparedInferenceReservation>(
 
 #[allow(clippy::too_many_arguments)]
 fn finish_group_pair_uncompensated_meat(
-    fit: &CertifiedPreparedOlsFit,
     score: &[f64],
     score_corrections: &[f64],
     raw_score: &mut [f64],
-    influence: &mut [f64],
+    independent_score: &mut [f64],
     raw_meat: &mut [f64],
-    influence_meat: &mut [f64],
+    independent_meat: &mut [f64],
 ) -> Result<()> {
     let dimension = score.len();
     if score_corrections.len() != dimension
         || raw_score.len() != dimension
-        || influence.len() != dimension
+        || independent_score.len() != dimension
         || raw_meat.len() != dimension * dimension
-        || influence_meat.len() != raw_meat.len()
+        || independent_meat.len() != raw_meat.len()
     {
         return Err(invalid_argument(
             "prepared clustered dense group pair dimensions are inconsistent",
@@ -1676,25 +1670,15 @@ fn finish_group_pair_uncompensated_meat(
     }
     for coordinate in 0..dimension {
         raw_score[coordinate] = score[coordinate] + score_corrections[coordinate];
-    }
-    for (left, influence_value) in influence.iter_mut().enumerate() {
-        let mut value = 0.0_f64;
-        let mut correction = 0.0_f64;
-        for (right, raw_value) in raw_score.iter().copied().enumerate() {
-            compensated_add(
-                fit.bread().values()[left * dimension + right] * raw_value,
-                &mut value,
-                &mut correction,
-            )?;
-        }
-        *influence_value = value + correction;
+        independent_score[coordinate] = score_corrections[coordinate] + score[coordinate];
     }
     for left in 0..dimension {
         let raw_left = raw_score[left];
-        let influence_left = influence[left];
+        let independent_left = independent_score[left];
         for right in left..dimension {
             raw_meat[left * dimension + right] += raw_left * raw_score[right];
-            influence_meat[left * dimension + right] += influence_left * influence[right];
+            independent_meat[right * dimension + left] +=
+                independent_score[right] * independent_left;
         }
     }
     Ok(())
@@ -1747,7 +1731,7 @@ fn merge_ordered_dense_partials<R: PreparedInferenceReservation>(
                     &mut raw_corrections[position],
                 )?;
                 compensated_add(
-                    partial[square + position],
+                    partial[square + right * dimension + left],
                     &mut influence[position],
                     &mut influence_corrections[position],
                 )?;
