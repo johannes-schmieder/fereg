@@ -1,11 +1,11 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-29
-**Development branch:** `main`; deterministic parallel saved-FE publication, 16-thread one-FE execution, and conservative topology-aware CMG auto routing are integrated alongside qualified direct Schwarz-LSMR
-**Verified candidate plugin:** `638c6246b36b3b5754305ef754abecacb6ef39aa23bc95eb6101f7799038904a`
+**Development branch:** `main`; the certified complete-input OLS pipeline and portable-x86 Gram repair are integrated alongside deterministic parallel saved-FE publication, 16-thread one-FE execution, conservative topology-aware CMG auto routing, and qualified direct Schwarz-LSMR
+**Verified candidate plugin:** `94017d23d97c1a0890cd9a1a180dad4ce3482b5b29cbe6efdbece5016b3e7099`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** profile the remaining one-FE Stata/plugin boundary and reduce the moderate-control gap to Greg; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
+**Active milestone:** close the remaining one-FE single-thread boundary/publication gap to Greg; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
 **Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
@@ -60,7 +60,8 @@ overheads, and coverage limits are captured under
 - `memory(fast|low|auto)`, scratch-backed low-memory execution, allocation
   preflight, bounded cleanup, allocation/RSS reporting, `timeit`, thread
   reporting, and deterministic per-action Rayon pools are implemented.
-- Public solver controls and action/result wire 1.4 are implemented. Explicit
+- Public solver controls, action protocol 1.5, and OLS result wire 1.4 are
+  implemented. Explicit
   MAP, genuine batched weighted CG over the symmetric-Kaczmarz operator,
   IT/SQUAREM diagnostics, and LSMR paths expose diagnostics and require an
   independent final certificate. Categorical CG borrows the prepared topology;
@@ -160,6 +161,26 @@ overheads, and coverage limits are captured under
   absolute cross-run times remain secondary and no noisy cell was filtered.
   The evidence and retry provenance are captured under
   `benchmarks/reports/captured/linux-x86_64/stata19/adr12-focused-12/`.
+- ADR-0013 now removes per-column SPI traversal and redundant complete-input
+  copies, fills prepared solve storage in cache order, fuses one-thread norms,
+  and retains independent residual, score, reconstruction, and bread
+  certificates. The first exact-source Linux run (`93292b9`) passed all twelve
+  scientific/operational shards but exposed a portable-x86 build defect:
+  `f64::mul_add` in the dominant Gram loop compiled to hundreds of millions of
+  software `fma()` calls. Exact repaired source `947f793` replaced only that
+  loop arithmetic with fixed-order portable multiply/add and passed five
+  strict SCC repair shards. One-FE/K=30/one-thread fit fell from 104.278 to
+  3.210 seconds and standard worker-firm/K=30/one-thread fit from 109.292 to
+  5.080 seconds. In the repaired same-shard comparisons, fereg beat reghdfe in
+  all ten fit/save cells and Greg in all four worker-firm cells; worker-firm
+  fit was 0.901/0.368 times Greg at one/sixteen threads. One-FE/K=30 fit is now
+  2.554 times Greg at one thread and 1.255 times Greg at sixteen, concentrating
+  the next optimization target in single-FE serial boundary/publication work.
+  Setup and every repair task have `failed=0`/`exit_status=0`; the exact Linux
+  plugin SHA-256 is
+  `94017d23d97c1a0890cd9a1a180dad4ce3482b5b29cbe6efdbece5016b3e7099`.
+  Full and repair evidence is captured under
+  `benchmarks/reports/captured/linux-x86_64/stata19/adr13-qualified/`.
 - Warm local Stata/MP timing checkpoints for saved output are shown below.
   Unless specifically noted after the table, they are alternating-order
   medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT

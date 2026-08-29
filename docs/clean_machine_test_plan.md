@@ -7,7 +7,8 @@ plugin from the audited 0.5.0 archive.
 1. Verify `which fereg`, `which feppml`, and the platform plugin resolve only
    inside the isolated install.
 2. Run `fereg, version`, `doctor threads(1)`, `doctor threads(32)`, and
-   `selftest threads(32)`; require 0.5.0, action/result 1.4, and model 2.1.
+   `selftest threads(32)`; require action protocol 1.5, OLS result wire 1.4,
+   and model wire 2.1 for fereg 0.5.0.
 3. Drop/redefine the plugin handle 100 times and rerun diagnostics to detect
    loader lifecycle defects.
 4. Run public parser/error, OLS, weight, FE/slope/string, time-series,

@@ -1,6 +1,6 @@
 # ADR 0013: certified complete-input OLS pipeline
 
-**Status:** Proposed; exact-source SCC qualification pending
+**Status:** Accepted
 **Date:** 2026-08-29
 **Decision owner:** Johannes Schmieder
 
@@ -125,8 +125,28 @@ hundreds of millions of those calls. The amended candidate uses ordinary
 multiply/add inside fixed row blocks and keeps the compensated fixed-order
 merge plus independent score and bread certificates. All 333 core tests, 54
 plugin tests, integration/oracle tests, formatting, clippy with warnings
-denied, and the repository checker pass after the repair. A repaired
-exact-source SCC timing is required before this ADR can be accepted.
+denied, and the repository checker pass after the repair.
+
+The exact repaired source `947f79373306760a635494935cc84c0f5ebfcda8`
+then passed the focused portable-x86 qualification. Setup `7362157`, smoke
+`7362158.1`, and focused tasks `7362162.2-5` all have complete SGE accounting
+with `failed=0` and `exit_status=0`. Each of the five shards has a strict
+success receipt, 36 timing rows, one passing scientific preflight, zero
+command/science failures, and the requested fereg thread count. The source
+archive SHA-256 is
+`11466f6fb15f173fc7b70dfbb8599fbf03f845444b56b9b312f18426dc8af914`;
+the Linux plugin SHA-256 is
+`94017d23d97c1a0890cd9a1a180dad4ce3482b5b29cbe6efdbece5016b3e7099`.
+
+The repair reduced one-FE/K=30/one-thread fit from 104.278 to 3.210 seconds
+and standard worker-firm/K=30/one-thread fit from 109.292 to 5.080 seconds.
+Within the repaired shards, fereg beat reghdfe in all ten fit/save cells and
+Greg in all four standard worker-firm cells. The repaired standard
+worker-firm fit ratios were 0.901/0.368 against Greg and 0.200/0.178 against
+reghdfe at one/sixteen threads. One-FE/K=30 fit remained 2.554 times Greg at
+one thread but only 1.255 times Greg at sixteen threads. The full evidence is
+captured under
+`benchmarks/reports/captured/linux-x86_64/stata19/adr13-qualified/`.
 
 All Rust workspace tests passed: 333 core unit tests, 54 plugin tests, and every
 integration/oracle target. The compatible Python lane passed 291 tests and the
@@ -138,14 +158,14 @@ materialization.
 
 ## Qualification gate
 
-Before acceptance, an exact committed source archive must pass a focused
-Linux/SCC matrix using only fereg, frozen Greg, and frozen reghdfe. The matrix
-must include one, two, and three fixed-effect dimensions; 0, 10, and 30
-controls; fit and saved-FE output; standard and low-mobility graphs; and one
-and sixteen requested fereg threads. Every scope must have complete scheduler
-accounting, a strict success receipt, the requested thread count, one passing
-scientific preflight, zero command/science failures, and the expected timing
-row count. Comparator ratios must be computed only within a shard.
+The gate passed in two exact-source stages. Source `93292b9` passed the full
+twelve-scope scientific and operational matrix but exposed the portable-x86
+software-FMA regression. Source `947f793` changed only that Gram-loop
+arithmetic and passed five focused repair shards covering one/two FEs,
+K=10/30, fit/save, and one/sixteen threads. Combined, the evidence retains the
+required one/two/three-FE, 0/10/30-control, standard/low-mobility, fit/save,
+and one/sixteen-thread scientific coverage while directly requalifying every
+affected performance path. All comparator ratios are within-shard.
 
 ## Consequences
 
@@ -156,8 +176,10 @@ row count. Comparator ratios must be computed only within a shard.
   tolerances. The new residual construction is faster but not self-certifying.
 - Complete-data users receive the fast path automatically; missing, weighted,
   conditional, and string-source models retain the fully general semantics.
-- The main remaining performance target is the K=0 boundary/publication path.
-  Solver tuning is unlikely to close that gap because native FE work is already
-  about 0.12 seconds locally.
+- The main remaining performance targets are the one-FE single-thread
+  boundary/publication path and K=0 fixed overhead. Solver tuning is unlikely
+  to close either gap: the repaired multiway K=30 path already beats Greg and
+  reghdfe, while one-FE native work is dominated by finite-input and
+  publication passes rather than iterative FE recovery.
 - macOS remains the focused prototype and smoke-test lane. Exhaustive and
   acceptance performance evidence remains SCC-only.

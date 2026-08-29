@@ -1,0 +1,7 @@
+job_id=7359555
+task_id=12
+scope_index=58
+scope_name=n1m-akm_lowmob_year-k30-t16
+hostname=scc-sb8
+slots=16
+job_rc=0

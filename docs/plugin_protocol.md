@@ -11,7 +11,7 @@ versioned:
 
 | Contract | Public 0.5.0 version |
 |---|---:|
-| Action protocol | 1.4 |
+| Action protocol | 1.5 |
 | Model wire | 2.1 |
 | OLS result wire | 1.4 |
 

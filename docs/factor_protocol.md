@@ -2,7 +2,7 @@
 
 ## Version and ownership
 
-Model wire 2.1 is independent of action protocol 1.4 and OLS result wire 1.4.
+Model wire 2.1 is independent of action protocol 1.5 and OLS result wire 1.4.
 Model wire v1, unknown majors, and newer minors are rejected. Version 2.0 is
 accepted only for the compatible diagnostic shape with empty absorbed tables
 and registries; it cannot claim absorbed metadata.

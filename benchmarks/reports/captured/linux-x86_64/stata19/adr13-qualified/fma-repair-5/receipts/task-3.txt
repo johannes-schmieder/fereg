@@ -1,0 +1,7 @@
+job_id=7362162
+task_id=3
+scope_index=13
+scope_name=n1m-one_fe-k10-t1
+hostname=scc-fd2
+slots=16
+job_rc=0

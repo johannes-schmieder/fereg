@@ -1,0 +1,19 @@
+status=submitted
+run_root=/projectnb/welfgr/fereg/runs/20260829T111000Z-adr13-focused-93292b9
+source_commit=93292b94f84aee7fced05dcd6985037765dfeb3f
+source_archive_sha256=e299029e749e26842f7cdbede41a4a09358f8de68926c1679651db962e6139f3
+comparator_root=/projectnb/welfgr/fereg/runs/20260828T031754Z-command-v2-d452dbe/source/comparator-plus
+dataset_root=/projectnb/welfgr/fereg/runs/20260828T031754Z-command-v2-d452dbe/output/matrix/datasets
+setup_job=7359551
+smoke_job=7359554
+smoke_task=1
+scope_array_job=7359555
+scope_tasks=2-12
+collector_job=7359557
+expected_scopes=12
+expected_timing_rows=432
+expected_preflights=12
+arms=fereg greg reghdfe
+setup_resources=omp4 h_rt=02:00:00 mem_per_core=4G
+scope_resources=omp16 h_rt=02:00:00 mem_per_core=4G timeout=5400
+collector_resources=omp4 h_rt=00:30:00 mem_per_core=4G
