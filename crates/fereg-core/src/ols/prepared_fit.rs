@@ -11,6 +11,7 @@ use crate::parallel::ThreadTeam;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
+use std::time::Instant;
 
 use super::prepared_scratch::PreparedOlsScratch;
 use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
@@ -370,6 +371,36 @@ const PARALLEL_QR_MIN_ROWS: usize = 65_536;
 const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
 const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
 const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
+
+struct PhaseTrace {
+    enabled: bool,
+    started: Instant,
+    mark: Instant,
+}
+
+impl PhaseTrace {
+    fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            enabled: std::env::var_os("FEREG_PHASE_TIMING").is_some(),
+            started: now,
+            mark: now,
+        }
+    }
+
+    fn lap(&mut self) -> f64 {
+        if !self.enabled {
+            return 0.0;
+        }
+        let elapsed = self.mark.elapsed().as_secs_f64();
+        self.mark = Instant::now();
+        elapsed
+    }
+
+    fn total(&self) -> f64 {
+        self.started.elapsed().as_secs_f64()
+    }
+}
 
 impl FitReservation for SystemFitReservation {
     fn reserve<T>(
@@ -737,11 +768,13 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     perturbations: FitPerturbations,
     retain_fast_score_cache: bool,
 ) -> Result<CertifiedPreparedOlsFit> {
+    let mut trace = PhaseTrace::new();
     validate_config(prepared, config)?;
     let weights = normalized_weights(prepared)?;
     let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
 
     let raw = prepared.fit_build_rhs()?;
+    let rhs_seconds = trace.lap();
     let generated_columns = prepared.fit_model().columns.len();
     let mut reference_norms = reserved_filled(
         reservation,
@@ -788,6 +821,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             },
         )?;
     }
+    let raw_moments_seconds = trace.lap();
     let absorbed = absorb_fit_matrix(
         prepared,
         weights.borrowed(),
@@ -803,6 +837,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         ));
     }
     let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
+    let initial_absorb_seconds = trace.lap();
     let fast_score_cache = if retain_fast_score_cache {
         build_fast_score_cache(
             prepared,
@@ -835,6 +870,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     let normalized_initial_within_sum_of_squares =
         initial_within_sum_of_squares(prepared, &within, weights, within_outcome_norm)?;
     let score_norms = &within_norms[1..];
+    let within_norm_seconds = trace.lap();
     let mut qr = fit_scaled_pivoted_qr(
         prepared,
         &mut within,
@@ -846,6 +882,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         perturbations.first_coefficient,
         perturbations.finite_bread,
     )?;
+    let finite_solve_seconds = trace.lap();
     let mut independent_raw_residuals =
         if raw_moments.is_some() && qr.generated_coefficients.iter().any(Option::is_some) {
             Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
@@ -863,6 +900,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         fast_score_cache.as_ref(),
         raw_moments.as_ref(),
     )?;
+    let bread_residual_seconds = trace.lap();
     let initial_absorbed_outcome_sum_of_squares =
         normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
     if !initial_absorbed_outcome_sum_of_squares.is_finite()
@@ -898,6 +936,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     }
     let (mut residuals, residual_absorption_report, residual_fe_coefficients) =
         residual_absorbed.into_full_parts();
+    let residual_absorb_seconds = trace.lap();
     if perturbations.final_residual_constant {
         for row in 0..residuals.nrows() {
             residuals[(row, 0)] += 0.25;
@@ -919,6 +958,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             "prepared OLS finite score certificate did not pass",
         ));
     }
+    let score_seconds = trace.lap();
 
     let recovered_fe_coefficients = combine_recovered_fe_coefficients(
         initial_fe_coefficients,
@@ -930,6 +970,13 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
     qr.kept.sort_unstable();
     qr.dropped.sort_unstable();
+    let finalize_seconds = trace.lap();
+    if trace.enabled {
+        eprintln!(
+            "FEREG_PHASE|fit|rhs={rhs_seconds:.9}|raw_moments={raw_moments_seconds:.9}|initial_absorb={initial_absorb_seconds:.9}|within_norms={within_norm_seconds:.9}|finite_solve={finite_solve_seconds:.9}|bread_raw_residual={bread_residual_seconds:.9}|residual_absorb={residual_absorb_seconds:.9}|score={score_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
+            trace.total()
+        );
+    }
     Ok(CertifiedPreparedOlsFit {
         coefficients,
         kept_generated_columns: qr.kept,
