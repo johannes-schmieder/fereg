@@ -71,6 +71,10 @@ impl DenseMatrix {
         &mut self.data
     }
 
+    pub(crate) fn into_row_major_parts(self) -> (usize, usize, Vec<f64>) {
+        (self.nrows, self.ncols, self.data)
+    }
+
     pub fn column(&self, column: usize) -> Result<Vec<f64>> {
         if column >= self.ncols {
             return Err(FeregError::new(

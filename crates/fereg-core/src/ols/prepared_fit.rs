@@ -496,6 +496,7 @@ struct QrFit {
     finite_score: FiniteScoreDraft,
     bread: Option<FiniteBreadDraft>,
     within_residuals: Option<Vec<f64>>,
+    standardized_within_is_reusable: bool,
 }
 
 #[derive(Debug)]
@@ -580,6 +581,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
                 &mut reservation,
                 FitPerturbations::default(),
                 retain_fast_score_cache,
+                MAX_FAST_SCORE_CACHE_BYTES,
             ),
             PreparedOlsExecutionMode::Low => fit_with_controls_low_internal(
                 prepared,
@@ -690,7 +692,14 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
     reservation: &mut R,
     perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_with_controls_internal_mode(prepared, config, reservation, perturbations, false)
+    fit_with_controls_internal_mode(
+        prepared,
+        config,
+        reservation,
+        perturbations,
+        false,
+        MAX_FAST_SCORE_CACHE_BYTES,
+    )
 }
 
 fn combine_recovered_fe_coefficients<R: FitReservation>(
@@ -767,6 +776,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     reservation: &mut R,
     perturbations: FitPerturbations,
     retain_fast_score_cache: bool,
+    max_fast_score_cache_bytes: usize,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut trace = PhaseTrace::new();
     validate_config(prepared, config)?;
@@ -782,7 +792,9 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         0.0_f64,
         "unable to reserve prepared OLS reference norms",
     )?;
-    let mut reference_mean_scales = if retain_fast_score_cache {
+    let packed_fast_score_cache =
+        retain_fast_score_cache && fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?;
+    let mut reference_mean_scales = if packed_fast_score_cache {
         reserved_filled(
             reservation,
             generated_columns,
@@ -792,7 +804,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     } else {
         Vec::new()
     };
-    let raw_moments = if prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache {
+    let raw_moments = if prepared.fit_has_absorbed_intercept() && !packed_fast_score_cache {
         let cache = build_raw_moment_cache(&raw, weights, reservation)?;
         for (column, norm) in reference_norms.iter_mut().enumerate() {
             *norm = cache.norms[column + 1];
@@ -801,7 +813,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     } else {
         None
     };
-    if retain_fast_score_cache {
+    if packed_fast_score_cache {
         reference_norms
             .par_iter_mut()
             .zip(reference_mean_scales.par_iter_mut())
@@ -838,7 +850,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     }
     let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
     let initial_absorb_seconds = trace.lap();
-    let fast_score_cache = if retain_fast_score_cache {
+    let mut fast_score_cache = if packed_fast_score_cache {
         build_fast_score_cache(
             prepared,
             &within,
@@ -883,6 +895,17 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         perturbations.finite_bread,
     )?;
     let finite_solve_seconds = trace.lap();
+    if retain_fast_score_cache && fast_score_cache.is_none() && qr.standardized_within_is_reusable {
+        fast_score_cache = Some(build_reused_fast_score_cache(
+            prepared,
+            within,
+            &qr,
+            &reference_norms,
+            weights,
+            raw_moments.as_ref(),
+            reservation,
+        )?);
+    }
     let mut independent_raw_residuals =
         if raw_moments.is_some() && qr.generated_coefficients.iter().any(Option::is_some) {
             Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
@@ -1027,6 +1050,28 @@ fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReserva
 }
 
 const MAX_FAST_SCORE_CACHE_BYTES: usize = 512 * 1024 * 1024;
+
+fn fast_score_cache_fits<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    max_bytes: usize,
+) -> Result<bool> {
+    let cached_columns = prepared
+        .fit_model()
+        .columns
+        .iter()
+        .filter(|column| {
+            !(prepared.fit_has_absorbed_intercept()
+                && matches!(column.kind, PreparedOlsColumnKind::Intercept))
+        })
+        .count();
+    let bytes = prepared
+        .fit_sample()
+        .n_active()
+        .checked_mul(cached_columns)
+        .and_then(|elements| elements.checked_mul(std::mem::size_of::<f64>()))
+        .ok_or_else(|| allocation("prepared OLS fast score cache bytes overflow"))?;
+    Ok(bytes <= max_bytes)
+}
 
 fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
@@ -1188,6 +1233,96 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         within,
         means,
     }))
+}
+
+fn build_reused_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    within: DenseMatrix,
+    qr: &QrFit,
+    reference_norms: &[f64],
+    weights: NormalizedWeights<'_>,
+    raw_moments: Option<&RawMomentCache>,
+    reservation: &mut R,
+) -> Result<PreparedOlsFastScoreCache> {
+    let bread_generated_columns = &qr
+        .bread
+        .as_ref()
+        .ok_or_else(|| invalid_argument("prepared OLS reusable score cache has no bread"))?
+        .generated_columns;
+    let mut generated_columns = reserved_empty(
+        reservation,
+        bread_generated_columns.len(),
+        "unable to reserve prepared OLS reusable score identities",
+    )?;
+    generated_columns.extend_from_slice(bread_generated_columns);
+    let nrows = prepared.fit_sample().n_active();
+    let expected_columns = prepared
+        .fit_model()
+        .columns
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| allocation("prepared OLS reusable score column count overflows"))?;
+    if within.nrows() != nrows
+        || within.ncols() != expected_columns
+        || reference_norms.len() != prepared.fit_model().columns.len()
+        || generated_columns.iter().any(|generated| {
+            *generated >= reference_norms.len() || reference_norms[*generated] <= 0.0
+        })
+    {
+        return Err(invalid_argument(
+            "prepared OLS reusable score cache dimensions are inconsistent",
+        ));
+    }
+    let mut means = reserved_filled(
+        reservation,
+        generated_columns.len(),
+        0.0_f64,
+        "unable to reserve prepared OLS reusable score means",
+    )?;
+    if prepared.fit_has_absorbed_intercept() {
+        let raw_moments = raw_moments.ok_or_else(|| {
+            invalid_argument("prepared OLS reusable score cache has no raw moments")
+        })?;
+        for (position, generated) in generated_columns.iter().copied().enumerate() {
+            means[position] = *raw_moments
+                .means
+                .get(generated + 1)
+                .ok_or_else(|| invalid_argument("prepared OLS reusable score mean is absent"))?;
+        }
+    }
+
+    // The Cholesky fast route leaves the observation-major absorbed matrix
+    // intact apart from root-weighting and the registered reference scaling.
+    // Compact that same allocation forward into kept score order. The forward
+    // traversal is overlap-safe because every destination row starts no later
+    // than its source row; no second N-by-K allocation is required.
+    let (matrix_rows, matrix_columns, mut values) = within.into_row_major_parts();
+    let rank = generated_columns.len();
+    for row in 0..matrix_rows {
+        let source = row * matrix_columns;
+        let destination = row * rank;
+        let root_weight = weights.root(row)?;
+        for (finite, generated) in generated_columns.iter().copied().enumerate() {
+            let value = values[source + generated + 1] * reference_norms[generated] / root_weight;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS reusable score cache contains a nonfinite value",
+                ));
+            }
+            values[destination + finite] = value;
+        }
+    }
+    values.truncate(
+        matrix_rows
+            .checked_mul(rank)
+            .ok_or_else(|| allocation("prepared OLS reusable score dimensions overflow"))?,
+    );
+    let within = DenseMatrix::from_row_major(matrix_rows, rank, values)?;
+    Ok(PreparedOlsFastScoreCache {
+        generated_columns,
+        within,
+        means,
+    })
 }
 
 fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -2179,6 +2314,7 @@ fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReserva
         finite_score,
         bread: Some(bread),
         within_residuals: Some(residuals),
+        standardized_within_is_reusable: true,
     }))
 }
 
@@ -2436,6 +2572,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             finite_score,
             bread: Some(bread),
             within_residuals: Some(within_residuals),
+            standardized_within_is_reusable: false,
         });
     }
     within
@@ -2713,6 +2850,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         finite_score,
         bread: Some(bread),
         within_residuals,
+        standardized_within_is_reusable: false,
     })
 }
 
@@ -3174,6 +3312,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         finite_score,
         bread: Some(bread),
         within_residuals: None,
+        standardized_within_is_reusable: false,
     })
 }
 
@@ -6844,6 +6983,72 @@ mod tests {
     }
 
     #[test]
+    fn cholesky_reuses_oversized_score_matrix_without_a_second_dense_cache() {
+        let group = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x1 = vec![-2.0, 0.5, 1.0, 3.0, -1.5, 2.0, 0.25, 4.0];
+        let x2 = vec![1.0, -3.0, 0.75, 2.5, 4.0, -0.5, 3.0, 1.5];
+        let weights = vec![0.5, 2.0, 1.5, 0.75, 3.0, 1.0, 2.5, 1.25];
+        let y = x1
+            .iter()
+            .zip(&x2)
+            .zip(&group)
+            .map(|((left, right), group)| {
+                1.75 * left - 0.4 * right + if *group <= 2.0 { 2.0 } else { -1.0 }
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &y,
+            &[x1, x2],
+            &[false, false],
+            Some(&group),
+            true,
+            TestWeights::Analytic(&weights),
+        );
+        assert!(fast_score_cache_fits(&prepared, MAX_FAST_SCORE_CACHE_BYTES).expect("size gate"));
+        assert!(!fast_score_cache_fits(&prepared, 0).expect("forced oversized gate"));
+
+        let mut packed_reservation = InjectedReservation::default();
+        let packed = fit_with_controls_internal_mode(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut packed_reservation,
+            FitPerturbations::default(),
+            true,
+            MAX_FAST_SCORE_CACHE_BYTES,
+        )
+        .expect("packed score cache fit");
+        let mut reused_reservation = InjectedReservation::default();
+        let reused = fit_with_controls_internal_mode(
+            &prepared,
+            PreparedOlsFitConfig::default(),
+            &mut reused_reservation,
+            FitPerturbations::default(),
+            true,
+            0,
+        )
+        .expect("reused score cache fit");
+        let packed_cache = packed.fast_score_cache.expect("packed cache");
+        let reused_cache = reused.fast_score_cache.expect("reused cache");
+        assert_eq!(
+            packed_cache.generated_columns,
+            reused_cache.generated_columns
+        );
+        assert_eq!(packed_cache.within.nrows(), reused_cache.within.nrows());
+        assert_eq!(packed_cache.within.ncols(), reused_cache.within.ncols());
+        for (actual, expected) in reused_cache
+            .within
+            .as_slice()
+            .iter()
+            .zip(packed_cache.within.as_slice())
+        {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        for (actual, expected) in reused_cache.means.iter().zip(packed_cache.means) {
+            assert_close(*actual, expected, 2e-12);
+        }
+    }
+
+    #[test]
     fn allocation_capacity_and_score_failures_are_fatal() {
         let x = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
         let y = vec![1.2, -0.5, 0.4, 3.1, 4.0, 7.2];
@@ -6887,6 +7092,7 @@ mod tests {
             &mut cached_successful,
             FitPerturbations::default(),
             true,
+            MAX_FAST_SCORE_CACHE_BYTES,
         )
         .expect("fast inference-cache control fit");
         assert!(cached.fast_score_cache.is_some());
@@ -6902,6 +7108,7 @@ mod tests {
                 &mut injected,
                 FitPerturbations::default(),
                 true,
+                MAX_FAST_SCORE_CACHE_BYTES,
             )
             .expect_err("injected fast inference-cache allocation failure");
             assert_eq!(

@@ -22,9 +22,9 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
-    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
-    prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data_owned,
+    CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
+    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
@@ -247,8 +247,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Robust, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let prepared = prepare_ols_data(&action.request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_ols_data_owned(&action.request, loaded)?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_robust_map(
