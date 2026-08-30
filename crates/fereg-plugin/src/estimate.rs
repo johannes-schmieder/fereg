@@ -245,8 +245,12 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Robust, false) => {
+            let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+            let trace_started = Instant::now();
             let prepared = prepare_ols_data(&action.request, &loaded)?;
             drop(loaded);
+            let prepare_seconds = trace_started.elapsed().as_secs_f64();
+            let inference_started = Instant::now();
             let inference = fit_prepared_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
@@ -255,6 +259,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsRobustConfig::default()
                 },
             )?;
+            let inference_seconds = inference_started.elapsed().as_secs_f64();
+            let outputs_started = Instant::now();
             let result_data = PreparedOlsResultData::legacy(&prepared);
             let derived = build_derived_observation_outputs(
                 result_data,
@@ -264,12 +270,21 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 false,
                 action.fit,
             )?;
+            let outputs_seconds = outputs_started.elapsed().as_secs_f64();
+            let shadow_started = Instant::now();
             let shadow = build_shadow_result(
                 result_data,
                 None,
                 CertifiedOlsInference::Robust(&inference),
                 action.outputs.residual.is_some(),
             )?;
+            let shadow_seconds = shadow_started.elapsed().as_secs_f64();
+            if trace_enabled {
+                eprintln!(
+                    "FEREG_PHASE|robust_plugin|prepare={prepare_seconds:.9}|inference={inference_seconds:.9}|outputs={outputs_seconds:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
+                    trace_started.elapsed().as_secs_f64()
+                );
+            }
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Clustered, false) => {
