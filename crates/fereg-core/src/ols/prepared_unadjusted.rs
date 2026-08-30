@@ -2,6 +2,7 @@ use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::topology_dof::CategoricalTopologyDofReport;
+use std::time::Instant;
 
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 
@@ -448,6 +449,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     reservation: &mut R,
     perturbations: InferencePerturbations,
 ) -> Result<PreparedOlsUnadjustedComponents> {
+    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let total_started = Instant::now();
+    let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, weight_sum_relative_error) =
         build_reference_weight_report_view(prepared, &fit, tolerance, false)?;
@@ -509,8 +513,14 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     if perturbations.gaussian_null_log_likelihood {
         perturb_optional_statistic(&mut statistics.gaussian_null_log_likelihood)?;
     }
+    let setup_statistics_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let mut covariance = build_covariance(&fit, rss, dof.residual_dof, reservation)?;
+    let covariance_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let wald = build_wald_f(prepared, &fit, &covariance, dof, reservation)?;
+    let wald_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     statistics.f_statistic = wald.statistic;
     if perturbations.f_statistic {
         perturb_optional_statistic(&mut statistics.f_statistic)?;
@@ -544,6 +554,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
         return Err(invalid_data(
             "prepared iid covariance or fit-statistic certificate did not pass",
         ));
+    }
+    let certificate_seconds = phase_started.elapsed().as_secs_f64();
+    if phase_timing {
+        eprintln!(
+            "FEREG_PHASE|iid|setup_statistics={setup_statistics_seconds:.9}|covariance={covariance_seconds:.9}|wald={wald_seconds:.9}|certificate={certificate_seconds:.9}|total={:.9}",
+            total_started.elapsed().as_secs_f64(),
+        );
     }
     Ok(PreparedOlsUnadjustedComponents {
         fit,

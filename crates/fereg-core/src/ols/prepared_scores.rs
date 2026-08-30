@@ -6,6 +6,7 @@ use crate::fe::{AbsorbConfig, BorrowedMapWeights, CmgAbsorber, CmgConfig, FeSolv
 use crate::options::ThreadConfig;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
+use std::time::Instant;
 
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
@@ -253,6 +254,9 @@ pub(super) fn build_prepared_ols_score_design<
     tolerance: f64,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsScoreDesign> {
+    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let total_started = Instant::now();
+    let phase_started = Instant::now();
     let nrows = prepared.fit_sample().n_active();
     let rank = fit.finite_rank();
     let dimension = fit.bread().dimension();
@@ -355,6 +359,8 @@ pub(super) fn build_prepared_ols_score_design<
     } else {
         None
     };
+    let setup_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
         (PreparedOlsExecutionMode::Fast, Some((within, means))) => {
             (PreparedOlsScoreStorage::Dense(within), means, 0)
@@ -378,7 +384,9 @@ pub(super) fn build_prepared_ols_score_design<
         )?,
     };
     fit.record_additional_scratch_peak(scratch_peak_bytes);
+    let storage_seconds = phase_started.elapsed().as_secs_f64();
 
+    let phase_started = Instant::now();
     let mut certificate = certify_score_design(
         ScoreCertificateInputs {
             storage: &storage,
@@ -400,12 +408,21 @@ pub(super) fn build_prepared_ols_score_design<
             "prepared robust score-design certificate did not pass",
         ));
     }
+    let certificate_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let finite_row_buffer = reserved_filled(
         reservation,
         rank,
         0.0_f64,
         "unable to reserve prepared robust finite score row buffer",
     )?;
+    let finalize_seconds = phase_started.elapsed().as_secs_f64();
+    if phase_timing {
+        eprintln!(
+            "FEREG_PHASE|score_design|setup={setup_seconds:.9}|storage={storage_seconds:.9}|certificate={certificate_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
+            total_started.elapsed().as_secs_f64(),
+        );
+    }
     Ok(CertifiedPreparedOlsScoreDesign {
         storage,
         nrows,

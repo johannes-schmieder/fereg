@@ -4,6 +4,7 @@ use crate::parallel::ThreadTeam;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::topology_dof::CategoricalTopologyDofReport;
 use rayon::prelude::*;
+use std::time::Instant;
 
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
@@ -354,6 +355,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     reservation: &mut R,
     perturbations: RobustPerturbations,
 ) -> Result<PreparedOlsRobustComponents> {
+    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let total_started = Instant::now();
+    let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, reference_weight_error) =
         build_reference_weight_report_view(prepared, &fit, config.certificate_tolerance, true)?;
@@ -390,7 +394,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     if perturbations.within_tss {
         statistics.within_tss += 0.25;
     }
+    let setup_statistics_seconds = phase_started.elapsed().as_secs_f64();
 
+    let phase_started = Instant::now();
     let mut score_design = build_prepared_ols_score_design(
         prepared,
         &mut fit,
@@ -402,7 +408,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     if perturbations.score_design && score_design.finite_rank() > 0 {
         score_design.certificate.passed = false;
     }
+    let score_design_seconds = phase_started.elapsed().as_secs_f64();
 
+    let phase_started = Instant::now();
     let PreparedOlsRobustCovarianceBuild {
         mut covariance,
         dense_certificate_meat,
@@ -430,7 +438,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     if perturbations.standard_error && !covariance.standard_errors.is_empty() {
         covariance.standard_errors[0] += 0.25;
     }
+    let covariance_seconds = phase_started.elapsed().as_secs_f64();
 
+    let phase_started = Instant::now();
     let covariance_formula = certify_covariance_formula(
         &fit,
         &score_design,
@@ -441,12 +451,16 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         dense_certificate_meat.as_deref(),
         reservation,
     )?;
+    let covariance_certificate_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let psd = certify_psd(
         covariance.values(),
         covariance.dimension(),
         config.certificate_tolerance,
         reservation,
     )?;
+    let psd_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     let wald = build_robust_wald(
         prepared,
         &fit,
@@ -455,6 +469,8 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         config.certificate_tolerance,
         reservation,
     )?;
+    let wald_seconds = phase_started.elapsed().as_secs_f64();
+    let phase_started = Instant::now();
     statistics.f_statistic = wald.statistic;
     if perturbations.f_statistic {
         perturb_optional(&mut statistics.f_statistic)?;
@@ -513,6 +529,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         return Err(invalid_data(
             "prepared robust covariance or statistic certificate did not pass",
         ));
+    }
+    let finalize_seconds = phase_started.elapsed().as_secs_f64();
+    if phase_timing {
+        eprintln!(
+            "FEREG_PHASE|robust|setup_statistics={setup_statistics_seconds:.9}|score_design={score_design_seconds:.9}|covariance={covariance_seconds:.9}|covariance_certificate={covariance_certificate_seconds:.9}|psd={psd_seconds:.9}|wald={wald_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
+            total_started.elapsed().as_secs_f64(),
+        );
     }
     // `score_design` owns the only N-by-kept-coordinate inference matrix. It
     // goes out of scope here and is intentionally absent from the result.
