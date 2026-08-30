@@ -10,6 +10,7 @@ use std::time::Instant;
 use cmg::{
     CmgMemoryEstimate, CmgOptions, CmgPreconditioner, CmgProblemSize, Laplacian, ParallelExecutor,
     ParallelOptions, ParallelPcgPolicy, ParallelPcgSolver, ParallelPcgWorkspace, PcgOptions,
+    PcgResult,
 };
 
 use crate::data::DenseMatrix;
@@ -586,14 +587,8 @@ impl GraphCmg {
                         solution.solution(),
                     )?;
                 }
-                subtract_core_fit(
-                    design,
-                    self.core_effects,
-                    values,
-                    start + local,
-                    solution.solution(),
-                )?;
             }
+            subtract_core_fit_batch(design, self.core_effects, values, start, solved.results())?;
         }
         Ok(metrics)
     }
@@ -1085,29 +1080,45 @@ fn nuisance_value(
     }
 }
 
-fn subtract_core_fit(
+fn subtract_core_fit_batch(
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
     values: &mut DenseMatrix,
-    column: usize,
-    solution: &[f64],
+    start: usize,
+    solutions: &[PcgResult],
 ) -> Result<()> {
     let vertices = core_vertices(design, core)?;
-    if solution.len() != vertices {
+    let end = start
+        .checked_add(solutions.len())
+        .ok_or_else(|| allocation("CMG fitted-value batch dimensions overflow"))?;
+    if solutions.is_empty()
+        || end > values.ncols()
+        || solutions
+            .iter()
+            .any(|solution| solution.solution().len() != vertices)
+    {
         return Err(invalid_argument(
-            "CMG solution and graph dimensions are inconsistent",
+            "CMG solution batch and graph dimensions are inconsistent",
         ));
     }
     let left = design.effects()[core[0]].codes();
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
+    let columns = values.ncols();
     for row in 0..values.nrows() {
-        let fitted = solution[left[row] as usize] - solution[right_offset + right[row] as usize];
-        let residual = values[(row, column)] - fitted;
-        if !residual.is_finite() {
-            return Err(invalid_data("CMG projection produced a nonfinite residual"));
+        let left_level = left[row] as usize;
+        let right_level = right_offset + right[row] as usize;
+        let row_start = row * columns + start;
+        let destinations = &mut values.as_mut_slice()[row_start..row_start + solutions.len()];
+        for (destination, solution) in destinations.iter_mut().zip(solutions) {
+            let coefficients = solution.solution();
+            let fitted = coefficients[left_level] - coefficients[right_level];
+            let residual = *destination - fitted;
+            if !residual.is_finite() {
+                return Err(invalid_data("CMG projection produced a nonfinite residual"));
+            }
+            *destination = residual;
         }
-        values[(row, column)] = residual;
     }
     Ok(())
 }
@@ -1775,6 +1786,53 @@ mod tests {
         assert!(first.report().setup_seconds >= 0.0);
         assert_eq!(second.report().setup_seconds, 0.0);
         assert!(first.report().certified() && second.report().certified());
+    }
+
+    #[test]
+    fn batched_core_subtraction_is_bit_identical_to_single_rhs_batches() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
+        let firm = [0, 1, 0, 2, 1, 2, 0, 1, 2, 2, 0, 1];
+        let worker_index = LevelIndex::from_codes(&worker, 4).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 3).expect("firm index");
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(
+                worker.len(),
+                vec![
+                    effect(&worker, 4, &worker_index),
+                    effect(&firm, 3, &firm_index),
+                ],
+            )
+            .expect("design")
+        };
+        let values = DenseMatrix::from_columns(&[
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.31).sin())
+                .collect(),
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.17).cos())
+                .collect(),
+            (0..worker.len())
+                .map(|row| row as f64 * 0.07 - 0.4)
+                .collect(),
+        ])
+        .expect("values");
+        let mut singles =
+            CmgAbsorber::build(make_design(), BorrowedMapWeights::Unit, config(1), false)
+                .expect("single-RHS setup");
+        let mut batch =
+            CmgAbsorber::build(make_design(), BorrowedMapWeights::Unit, config(3), false)
+                .expect("batched setup");
+        let single_values = singles
+            .absorb(values.clone())
+            .expect("single-RHS projection")
+            .into_parts()
+            .0;
+        let batch_values = batch
+            .absorb(values)
+            .expect("batched projection")
+            .into_parts()
+            .0;
+        assert_eq!(batch_values.as_slice(), single_values.as_slice());
     }
 
     #[test]
