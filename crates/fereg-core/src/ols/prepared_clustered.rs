@@ -1271,7 +1271,7 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
                     let independent_left = independent_score[left];
                     for right in left..dimension {
                         raw_meat[left * dimension + right] += raw_left * raw_score[right];
-                        independent_meat[right * dimension + left] +=
+                        independent_meat[left * dimension + right] +=
                             independent_score[right] * independent_left;
                     }
                 }
@@ -1319,11 +1319,6 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
                     &mut raw[position],
                     &mut raw_corrections[position],
                 )?;
-                compensated_add(
-                    partial[square + right * dimension + left],
-                    &mut influence[position],
-                    &mut influence_corrections[position],
-                )?;
             }
         }
         let count = partial[2 * square + 2 * dimension];
@@ -1335,6 +1330,18 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
         groups = groups
             .checked_add(count as usize)
             .ok_or_else(|| allocation("prepared clustered dense group count overflows"))?;
+    }
+    for partial in partials.rchunks_exact(partial_stride) {
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    partial[square + position],
+                    &mut influence[position],
+                    &mut influence_corrections[position],
+                )?;
+            }
+        }
     }
     finalize_subset_meat(&mut raw, raw_corrections, dimension)?;
     finalize_subset_meat(&mut influence, influence_corrections, dimension)?;
@@ -1677,7 +1684,7 @@ fn finish_group_pair_uncompensated_meat(
         let independent_left = independent_score[left];
         for right in left..dimension {
             raw_meat[left * dimension + right] += raw_left * raw_score[right];
-            independent_meat[right * dimension + left] +=
+            independent_meat[left * dimension + right] +=
                 independent_score[right] * independent_left;
         }
     }
@@ -1730,11 +1737,6 @@ fn merge_ordered_dense_partials<R: PreparedInferenceReservation>(
                     &mut raw[position],
                     &mut raw_corrections[position],
                 )?;
-                compensated_add(
-                    partial[square + right * dimension + left],
-                    &mut influence[position],
-                    &mut influence_corrections[position],
-                )?;
             }
         }
         let count = partial[2 * square + 4 * dimension];
@@ -1746,6 +1748,18 @@ fn merge_ordered_dense_partials<R: PreparedInferenceReservation>(
         groups = groups
             .checked_add(count as usize)
             .ok_or_else(|| allocation("prepared clustered ordered dense group count overflows"))?;
+    }
+    for partial in partials.rchunks_exact(partial_stride) {
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                compensated_add(
+                    partial[square + position],
+                    &mut influence[position],
+                    &mut influence_corrections[position],
+                )?;
+            }
+        }
     }
     finalize_subset_meat(&mut raw, raw_corrections, dimension)?;
     finalize_subset_meat(&mut influence, influence_corrections, dimension)?;

@@ -812,13 +812,12 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
                     for right in left..dimension {
                         let position = left * dimension + right;
                         production_meat[position] += production_left * production_score[right];
-                        // Use the transposed triangle for the independent
-                        // fixed-block reconstruction.  The separate storage,
-                        // scale, traversal direction, and compensated merge
-                        // make a production/certificate alias visible without
-                        // paying a bread matrix-vector multiply per row.
-                        certificate_meat[right * dimension + left] +=
-                            certificate_score[right] * certificate_left;
+                        // Keep both hot reductions contiguous.  The
+                        // certificate remains independent through separate
+                        // storage, scale, and reverse fixed-block merge order;
+                        // a transposed/strided write here is catastrophically
+                        // expensive for wide designs at observation scale.
+                        certificate_meat[position] += certificate_score[right] * certificate_left;
                     }
                 }
             }
@@ -858,7 +857,6 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
     )?;
     for partial in partials.chunks_exact(partial_stride) {
         let production = &partial[..square];
-        let certificate = &partial[square..2 * square];
         for left in 0..dimension {
             for right in left..dimension {
                 let position = left * dimension + right;
@@ -867,8 +865,19 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
                     &mut production_meat[position],
                     &mut corrections[position],
                 )?;
+            }
+        }
+    }
+    // Reverse the fixed-block order for the certificate reconstruction.  This
+    // provides a distinct accumulation path without turning every hot
+    // observation-level write into a cache-hostile column stride.
+    for partial in partials.rchunks_exact(partial_stride) {
+        let certificate = &partial[square..2 * square];
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
                 compensated_add(
-                    certificate[right * dimension + left],
+                    certificate[position],
                     &mut certificate_meat[position],
                     &mut certificate_corrections[position],
                 )?;
@@ -990,7 +999,7 @@ fn sandwich_covariance_from_meat<R: PreparedInferenceReservation>(
 
 /// Independent sandwich reconstruction. Dense production uses its
 /// upper-triangle fixed-block meat and an ordinary final sandwich; the dense
-/// certificate uses the separately stored reverse-triangle meat and this
+/// certificate uses the separately stored reverse-block-order meat and this
 /// compensated sandwich. Scratch-backed production retains the original
 /// observation-influence path and is certified by a fresh meat traversal.
 #[allow(clippy::too_many_arguments)]
