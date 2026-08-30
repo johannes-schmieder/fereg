@@ -1,12 +1,12 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-08-29
-**Development branch:** `main`; the certified complete-input OLS pipeline and portable-x86 Gram repair are integrated alongside deterministic parallel saved-FE publication, 16-thread one-FE execution, conservative topology-aware CMG auto routing, and qualified direct Schwarz-LSMR
-**Verified candidate plugin:** `94017d23d97c1a0890cd9a1a180dad4ce3482b5b29cbe6efdbece5016b3e7099`
+**Development branch:** `main`; certified contiguous robust/multiway VCE reductions are integrated alongside the complete-input OLS pipeline, portable-x86 Gram repair, deterministic parallel saved-FE publication, 16-thread one-FE execution, conservative topology-aware CMG auto routing, and qualified direct Schwarz-LSMR
+**Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** close the remaining one-FE single-thread boundary/publication gap to Greg; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
-**Release state:** public OLS beta and the primary macOS direct-LSMR route are qualified; cross-platform and final release qualification remain incomplete
+**Active milestone:** close the remaining serial one-FE/VCE boundary gap to Greg and complete publication qualification; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
+**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE are qualified on SCC/Linux; cross-platform and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
@@ -181,6 +181,25 @@ overheads, and coverage limits are captured under
   `94017d23d97c1a0890cd9a1a180dad4ce3482b5b29cbe6efdbece5016b3e7099`.
   Full and repair evidence is captured under
   `benchmarks/reports/captured/linux-x86_64/stata19/adr13-qualified/`.
+- ADR-0014 qualifies certified robust and clustered VCE hot reductions.  The
+  broad exact-source SCC stage covered 34 IID/robust/one- through five-way
+  cluster scopes, analytic/probability weights, one million/K=10 and ten
+  million/K=30 rows, and one/sixteen native threads with 34 green preflights
+  and zero command/science failures.  A first bread-hoisting repair remained
+  scientifically clean but was rejected because transposed independent-meat
+  writes were cache hostile.  Exact source
+  `490e03a3e2458d8bc463c3f60389062e2f8fae42` keeps both hot reductions
+  contiguous while preserving separate storage and reverse fixed-block
+  certificate merging.  Its final eight-scope SCC gate has complete
+  `failed=0`/`exit_status=0` accounting, 72 timing rows, eight green
+  preflights, exact threads, and Linux plugin SHA-256
+  `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`.
+  Fereg beat reghdfe in 8/8 final scopes and Greg in all 4/4 sixteen-thread
+  scopes; its geometric-mean ratios were 0.987 against Greg and 0.258 against
+  reghdfe overall, and 0.620/0.216 at sixteen threads.  Serial ten-million-row
+  robust and one-way clustered VCE remain about two times Greg while staying
+  2.7--2.8 times faster than reghdfe.  Full staged evidence is captured under
+  `benchmarks/reports/captured/linux-x86_64/stata19/adr14-vce-qualified/`.
 - Warm local Stata/MP timing checkpoints for saved output are shown below.
   Unless specifically noted after the table, they are alternating-order
   medians. The 300,000-row runs use nine pairs; the 30,000-row CG/IT
@@ -349,11 +368,12 @@ blocker when modeled allocation, cleanup, and science pass.
 3. Explicit IT remains quarantined after the two registered high-mobility
    `r(459)` failures. It may not influence auto or publish uncertified output.
 4. The direct-LSMR qualification covers the registered standard and
-   low-mobility 1m/10m cases. The broader slopes, clustered inference, and
-   moderate-K release matrix still must be rerun on the eventual integration
-   commit even though the existing full Rust/Stata surface is green.
-5. Rosetta, SCC/Linux, hosted Linux/Windows, and licensed Windows evidence is
-   not refreshed for this candidate. No tag or publication is permitted yet.
+   low-mobility 1m/10m cases, and ADR-0014 now covers the broad clustered VCE,
+   weight, moderate-K, scale, and thread surface.  The final release candidate
+   still needs the combined slopes/saved-output/solver/resource matrix even
+   though the component Rust and Stata surfaces are green.
+5. Rosetta, hosted Linux/Windows, and licensed Windows evidence is not refreshed
+   for this candidate. No tag or publication is permitted yet.
 
 ## Development plan
 

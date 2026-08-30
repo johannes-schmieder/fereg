@@ -1,0 +1,15 @@
+{
+  "geomean_fereg_over_9789f84_common_10m": 0.382079405899141,
+  "geomean_fereg_over_a8fbad2": 0.30257860460418995,
+  "geomean_fereg_over_greg": 0.986675006719814,
+  "geomean_fereg_over_reghdfe": 0.25767709427141106,
+  "geomean_one_thread_fereg_over_greg": 1.5709631824892143,
+  "geomean_one_thread_fereg_over_reghdfe": 0.3077264998525196,
+  "geomean_sixteen_thread_fereg_over_greg": 0.6197010723974933,
+  "geomean_sixteen_thread_fereg_over_reghdfe": 0.21576784886572717,
+  "wins_vs_greg": 4,
+  "wins_vs_reghdfe": 8,
+  "scopes": 8,
+  "timing_rows": 72,
+  "preflights": 8
+}
