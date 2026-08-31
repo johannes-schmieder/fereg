@@ -842,6 +842,8 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     let raw = prepared.fit_build_rhs()?;
     let rhs_seconds = trace.lap();
     let generated_columns = prepared.fit_model().columns.len();
+    let use_strided_fast_score_cache =
+        retain_fast_score_cache && !fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?;
     let mut reference_norms = reserved_filled(
         reservation,
         generated_columns,
@@ -858,16 +860,27 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     } else {
         Vec::new()
     };
-    let raw_moments = if prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache {
+    // IID already uses the deterministic row-major raw-moment cache for an
+    // absorbed intercept.  Reuse that same primitive when an inference fit is
+    // too large for the accepted packed score cache: it supplies norms,
+    // scales, and means in two fused passes rather than walking the row-major
+    // matrix once per generated column and then scanning it again for score
+    // means.  The packed path remains unchanged.
+    let raw_moments = if (prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache)
+        || use_strided_fast_score_cache
+    {
         let cache = build_raw_moment_cache(&raw, weights, reservation)?;
         for (column, norm) in reference_norms.iter_mut().enumerate() {
             *norm = cache.norms[column + 1];
+        }
+        for (column, scale) in reference_mean_scales.iter_mut().enumerate() {
+            *scale = cache.scales[column + 1];
         }
         Some(cache)
     } else {
         None
     };
-    if retain_fast_score_cache {
+    if retain_fast_score_cache && raw_moments.is_none() {
         reference_norms
             .par_iter_mut()
             .zip(reference_mean_scales.par_iter_mut())
@@ -887,15 +900,17 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             },
         )?;
     }
-    let strided_score_means = if retain_fast_score_cache
-        && !fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?
-    {
-        Some(build_strided_score_means(
-            &raw,
-            &reference_mean_scales,
-            weights,
+    let strided_score_means = if use_strided_fast_score_cache {
+        let cache = raw_moments
+            .as_ref()
+            .ok_or_else(|| invalid_argument("prepared OLS strided score raw moments are absent"))?;
+        let mut means = reserved_empty(
             reservation,
-        )?)
+            generated_columns,
+            "unable to reserve prepared OLS strided score means",
+        )?;
+        means.extend_from_slice(&cache.means[1..]);
+        Some(means)
     } else {
         None
     };
@@ -973,12 +988,14 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         )?);
     }
     let score_cache_seconds = trace.lap();
-    let mut independent_raw_residuals =
-        if raw_moments.is_some() && qr.generated_coefficients.iter().any(Option::is_some) {
-            Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
-        } else {
-            None
-        };
+    let mut independent_raw_residuals = if prepared.fit_has_absorbed_intercept()
+        && raw_moments.is_some()
+        && qr.generated_coefficients.iter().any(Option::is_some)
+    {
+        Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
+    } else {
+        None
+    };
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         &mut qr,
@@ -1383,106 +1400,6 @@ fn build_strided_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservat
         reference_norms,
         means,
     })
-}
-
-fn build_strided_score_means<R: FitReservation>(
-    raw: &DenseMatrix,
-    reference_mean_scales: &[f64],
-    weights: NormalizedWeights<'_>,
-    reservation: &mut R,
-) -> Result<Vec<f64>> {
-    let nrows = raw.nrows();
-    let generated_columns = raw
-        .ncols()
-        .checked_sub(1)
-        .ok_or_else(|| invalid_argument("prepared OLS strided score raw matrix has no outcome"))?;
-    if nrows == 0 || reference_mean_scales.len() != generated_columns {
-        return Err(invalid_argument(
-            "prepared OLS strided score mean dimensions are inconsistent",
-        ));
-    }
-    let mut means = reserved_filled(
-        reservation,
-        generated_columns,
-        0.0_f64,
-        "unable to reserve prepared OLS strided score means",
-    )?;
-    if generated_columns == 0 {
-        return Ok(means);
-    }
-    let requested_chunks = nrows
-        .div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS)
-        .clamp(1, FUSED_MOMENT_MAX_BLOCKS);
-    let rows_per_chunk = nrows.div_ceil(requested_chunks);
-    let chunks = nrows.div_ceil(rows_per_chunk);
-    let partial_stride = generated_columns
-        .checked_add(1)
-        .ok_or_else(|| allocation("prepared OLS strided score partial stride overflows usize"))?;
-    let partial_elements = chunks.checked_mul(partial_stride).ok_or_else(|| {
-        allocation("prepared OLS strided score partial allocation overflows usize")
-    })?;
-    let mut partials = reserved_filled(
-        reservation,
-        partial_elements,
-        0.0_f64,
-        "unable to reserve prepared OLS strided score partials",
-    )?;
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let start = chunk * rows_per_chunk;
-            let end = start.saturating_add(rows_per_chunk).min(nrows);
-            for row in start..end {
-                let weight = weights.value(row)?;
-                partial[0] += weight;
-                let values = &raw.as_slice()[row * raw.ncols()..(row + 1) * raw.ncols()];
-                for generated in 0..generated_columns {
-                    let scale = reference_mean_scales[generated];
-                    if scale > 0.0 {
-                        partial[generated + 1] += weight * (values[generated + 1] / scale);
-                    }
-                }
-            }
-            if partial.iter().all(|value| value.is_finite()) {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "prepared OLS strided score partial is not finite",
-                ))
-            }
-        })?;
-
-    let mut denominator = 0.0_f64;
-    let mut denominator_correction = 0.0_f64;
-    for partial in partials.chunks_exact(partial_stride) {
-        compensated_add(partial[0], &mut denominator, &mut denominator_correction)?;
-    }
-    let denominator = denominator + denominator_correction;
-    for generated in 0..generated_columns {
-        let scale = reference_mean_scales[generated];
-        let mut normalized_mean = 0.0_f64;
-        let mut normalized_mean_correction = 0.0_f64;
-        for partial in partials.chunks_exact(partial_stride) {
-            compensated_add(
-                partial[generated + 1],
-                &mut normalized_mean,
-                &mut normalized_mean_correction,
-            )?;
-        }
-        let mean = if scale == 0.0 {
-            0.0
-        } else {
-            scale * ((normalized_mean + normalized_mean_correction) / denominator)
-        };
-        if !mean.is_finite() || !denominator.is_finite() || denominator <= 0.0 {
-            return Err(invalid_data(
-                "prepared OLS strided score mean is not finite",
-            ));
-        }
-        means[generated] = mean;
-    }
-    Ok(means)
 }
 
 fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
