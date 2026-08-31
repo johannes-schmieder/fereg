@@ -343,6 +343,26 @@ impl ReferenceWeightView<'_> {
             ))
         }
     }
+
+    pub(super) fn solver_root(self, row: usize) -> Result<f64> {
+        let value = if self.kind.is_none() {
+            1.0
+        } else {
+            self.value(row)? / self.multiplier
+        };
+        let root = value.sqrt();
+        if root.is_finite() && root > 0.0 {
+            Ok(root)
+        } else {
+            Err(invalid_data(
+                "prepared inference solver weight is not finite and positive",
+            ))
+        }
+    }
+
+    pub(super) const fn multiplier(self) -> f64 {
+        self.multiplier
+    }
 }
 
 /// Fit and certify the current prepared model with conventional homoskedastic

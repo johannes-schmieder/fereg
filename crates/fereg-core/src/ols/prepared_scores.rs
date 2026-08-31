@@ -8,6 +8,7 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::time::Instant;
 
+use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
 use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsExecutionMode};
@@ -52,8 +53,8 @@ pub(super) struct PreparedOlsScoreDesignCertificate {
 /// Ephemeral, kept-coordinate score design. It is deliberately consumed by
 /// robust inference and is never retained in the final certified result.
 #[derive(Debug)]
-pub(super) struct CertifiedPreparedOlsScoreDesign {
-    storage: PreparedOlsScoreStorage,
+pub(super) struct CertifiedPreparedOlsScoreDesign<'a> {
+    storage: PreparedOlsScoreStorage<'a>,
     nrows: usize,
     finite_rank: usize,
     means: Vec<f64>,
@@ -64,9 +65,18 @@ pub(super) struct CertifiedPreparedOlsScoreDesign {
 }
 
 #[derive(Debug)]
-enum PreparedOlsScoreStorage {
+enum PreparedOlsScoreStorage<'a> {
     Dense(DenseMatrix),
+    Strided(PreparedOlsStridedScoreStorage<'a>),
     Scratch(PreparedOlsScratchScoreStorage),
+}
+
+#[derive(Debug)]
+struct PreparedOlsStridedScoreStorage<'a> {
+    within: DenseMatrix,
+    generated_columns: Vec<usize>,
+    reference_norms: Vec<f64>,
+    weights: ReferenceWeightView<'a>,
 }
 
 #[derive(Debug)]
@@ -82,7 +92,7 @@ struct PreparedOlsScoreRowCache {
     values: Vec<f64>,
 }
 
-impl CertifiedPreparedOlsScoreDesign {
+impl CertifiedPreparedOlsScoreDesign<'_> {
     pub(super) const fn nrows(&self) -> usize {
         self.nrows
     }
@@ -102,6 +112,9 @@ impl CertifiedPreparedOlsScoreDesign {
                 for (column, value) in output.iter_mut().enumerate() {
                     *value = within[(row, column)];
                 }
+            }
+            PreparedOlsScoreStorage::Strided(strided) => {
+                strided.fill_row(row, output)?;
             }
             PreparedOlsScoreStorage::Scratch(scratch) => {
                 scratch.fill_row(self.nrows, self.finite_rank, row, output)?
@@ -150,9 +163,24 @@ impl CertifiedPreparedOlsScoreDesign {
     pub(super) fn dense_view(&self) -> Option<PreparedOlsDenseScoreView<'_>> {
         match &self.storage {
             PreparedOlsScoreStorage::Dense(within) => Some(PreparedOlsDenseScoreView {
-                values: within.as_slice(),
+                storage: PreparedOlsDenseScoreStorageView::Packed {
+                    values: within.as_slice(),
+                    finite_rank: self.finite_rank,
+                },
                 nrows: self.nrows,
-                finite_rank: self.finite_rank,
+                means: &self.means,
+                reported_to_finite: &self.reported_to_finite,
+                normalized_intercept_position: self.normalized_intercept_position,
+            }),
+            PreparedOlsScoreStorage::Strided(strided) => Some(PreparedOlsDenseScoreView {
+                storage: PreparedOlsDenseScoreStorageView::Strided {
+                    values: strided.within.as_slice(),
+                    matrix_columns: strided.within.ncols(),
+                    generated_columns: &strided.generated_columns,
+                    reference_norms: &strided.reference_norms,
+                    weights: strided.weights,
+                },
+                nrows: self.nrows,
                 means: &self.means,
                 reported_to_finite: &self.reported_to_finite,
                 normalized_intercept_position: self.normalized_intercept_position,
@@ -162,11 +190,54 @@ impl CertifiedPreparedOlsScoreDesign {
     }
 }
 
+impl PreparedOlsStridedScoreStorage<'_> {
+    fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+        if row >= self.within.nrows()
+            || output.len() != self.generated_columns.len()
+            || self.reference_norms.len() != self.generated_columns.len()
+        {
+            return Err(invalid_argument(
+                "prepared robust strided score row dimensions are inconsistent",
+            ));
+        }
+        let root = self.weights.solver_root(row)?;
+        let matrix_columns = self.within.ncols();
+        let values = &self.within.as_slice()[row * matrix_columns..(row + 1) * matrix_columns];
+        for ((value, generated), norm) in output
+            .iter_mut()
+            .zip(self.generated_columns.iter().copied())
+            .zip(self.reference_norms.iter().copied())
+        {
+            *value = values[generated + 1] * norm / root;
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared robust strided score coordinate is not finite",
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PreparedOlsDenseScoreStorageView<'a> {
+    Packed {
+        values: &'a [f64],
+        finite_rank: usize,
+    },
+    Strided {
+        values: &'a [f64],
+        matrix_columns: usize,
+        generated_columns: &'a [usize],
+        reference_norms: &'a [f64],
+        weights: ReferenceWeightView<'a>,
+    },
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) struct PreparedOlsDenseScoreView<'a> {
-    values: &'a [f64],
+    storage: PreparedOlsDenseScoreStorageView<'a>,
     nrows: usize,
-    finite_rank: usize,
     means: &'a [f64],
     reported_to_finite: &'a [usize],
     normalized_intercept_position: Option<usize>,
@@ -187,10 +258,12 @@ impl PreparedOlsDenseScoreView<'_> {
                 "prepared robust dense reported score row dimensions are inconsistent",
             ));
         }
-        let start = row
-            .checked_mul(self.finite_rank)
-            .ok_or_else(|| allocation("prepared robust dense score offset overflows"))?;
-        let finite = &self.values[start..start + self.finite_rank];
+        let strided_root = match self.storage {
+            PreparedOlsDenseScoreStorageView::Packed { .. } => None,
+            PreparedOlsDenseScoreStorageView::Strided { weights, .. } => {
+                Some(weights.solver_root(row)?)
+            }
+        };
         for (position, value) in output.iter_mut().enumerate() {
             if self.normalized_intercept_position == Some(position) {
                 *value = 1.0;
@@ -201,7 +274,36 @@ impl PreparedOlsDenseScoreView<'_> {
                 .get(position)
                 .filter(|finite| **finite != usize::MAX)
                 .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
-            *value = finite[finite_position]
+            let finite_value = match self.storage {
+                PreparedOlsDenseScoreStorageView::Packed {
+                    values,
+                    finite_rank,
+                } => {
+                    let start = row.checked_mul(finite_rank).ok_or_else(|| {
+                        allocation("prepared robust dense score offset overflows")
+                    })?;
+                    values[start + finite_position]
+                }
+                PreparedOlsDenseScoreStorageView::Strided {
+                    values,
+                    matrix_columns,
+                    generated_columns,
+                    reference_norms,
+                    ..
+                } => {
+                    let generated = *generated_columns.get(finite_position).ok_or_else(|| {
+                        invalid_argument("prepared robust strided score coordinate is absent")
+                    })?;
+                    let norm = *reference_norms.get(finite_position).ok_or_else(|| {
+                        invalid_argument("prepared robust strided score norm is absent")
+                    })?;
+                    let root = strided_root.ok_or_else(|| {
+                        invalid_argument("prepared robust strided score root is absent")
+                    })?;
+                    values[row * matrix_columns + generated + 1] * norm / root
+                }
+            };
+            *value = finite_value
                 + if self.normalized_intercept_position.is_some() {
                     self.means[finite_position]
                 } else {
@@ -244,16 +346,17 @@ impl PreparedOlsScratchScoreStorage {
 }
 
 pub(super) fn build_prepared_ols_score_design<
+    'a,
     P: PreparedOlsFitView + ?Sized,
     R: PreparedInferenceReservation,
 >(
-    prepared: &P,
+    prepared: &'a P,
     fit: &mut CertifiedPreparedOlsFit,
-    weights: ReferenceWeightView<'_>,
+    weights: ReferenceWeightView<'a>,
     absorb: AbsorbConfig,
     tolerance: f64,
     reservation: &mut R,
-) -> Result<CertifiedPreparedOlsScoreDesign> {
+) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
     let phase_started = Instant::now();
@@ -361,10 +464,32 @@ pub(super) fn build_prepared_ols_score_design<
     };
     let setup_seconds = phase_started.elapsed().as_secs_f64();
     let phase_started = Instant::now();
+    let used_strided_cache = matches!(&cached, Some(PreparedOlsFastScoreCache::Strided { .. }));
+    let reabsorbed_fast_scores =
+        fit.execution().mode == PreparedOlsExecutionMode::Fast && cached.is_none();
     let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
-        (PreparedOlsExecutionMode::Fast, Some((within, means))) => {
-            (PreparedOlsScoreStorage::Dense(within), means, 0)
-        }
+        (
+            PreparedOlsExecutionMode::Fast,
+            Some(PreparedOlsFastScoreCache::Packed { within, means, .. }),
+        ) => (PreparedOlsScoreStorage::Dense(within), means, 0),
+        (
+            PreparedOlsExecutionMode::Fast,
+            Some(PreparedOlsFastScoreCache::Strided {
+                generated_columns,
+                within,
+                reference_norms,
+                means,
+            }),
+        ) => (
+            PreparedOlsScoreStorage::Strided(PreparedOlsStridedScoreStorage {
+                within,
+                generated_columns,
+                reference_norms,
+                weights,
+            }),
+            means,
+            0,
+        ),
         (PreparedOlsExecutionMode::Fast, None) => build_dense_score_storage(
             prepared,
             &generated_columns,
@@ -419,7 +544,9 @@ pub(super) fn build_prepared_ols_score_design<
     let finalize_seconds = phase_started.elapsed().as_secs_f64();
     if phase_timing {
         eprintln!(
-            "FEREG_PHASE|score_design|setup={setup_seconds:.9}|storage={storage_seconds:.9}|certificate={certificate_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
+            "FEREG_PHASE|score_design|setup={setup_seconds:.9}|storage={storage_seconds:.9}|certificate={certificate_seconds:.9}|finalize={finalize_seconds:.9}|strided={}|reabsorbed={}|total={:.9}",
+            usize::from(used_strided_cache),
+            usize::from(reabsorbed_fast_scores),
             total_started.elapsed().as_secs_f64(),
         );
     }
@@ -435,14 +562,18 @@ pub(super) fn build_prepared_ols_score_design<
     })
 }
 
-fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
-    prepared: &P,
+fn build_dense_score_storage<
+    'a,
+    P: PreparedOlsFitView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &'a P,
     generated_columns: &[usize],
-    weights: ReferenceWeightView<'_>,
+    weights: ReferenceWeightView<'a>,
     absorb: AbsorbConfig,
     cmg: &mut Option<CmgAbsorber<'_>>,
     reservation: &mut R,
-) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
+) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
     let rank = generated_columns.len();
     let elements = nrows
@@ -461,15 +592,19 @@ fn build_dense_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenc
     Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
 }
 
-fn build_scratch_score_storage<P: PreparedOlsFitView + ?Sized, R: PreparedInferenceReservation>(
-    prepared: &P,
+fn build_scratch_score_storage<
+    'a,
+    P: PreparedOlsFitView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &'a P,
     generated_columns: &[usize],
-    weights: ReferenceWeightView<'_>,
+    weights: ReferenceWeightView<'a>,
     absorb: AbsorbConfig,
     poolsize: usize,
     cmg: &mut Option<CmgAbsorber<'_>>,
     reservation: &mut R,
-) -> Result<(PreparedOlsScoreStorage, Vec<f64>, u64)> {
+) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
     let rank = generated_columns.len();
     let mut means = reserved_filled(
@@ -644,19 +779,19 @@ fn transpose_score_scratch<R: PreparedInferenceReservation>(
     Ok((rows, tile))
 }
 
-struct ScoreCertificateInputs<'a> {
-    storage: &'a PreparedOlsScoreStorage,
+struct ScoreCertificateInputs<'storage, 'weights> {
+    storage: &'storage PreparedOlsScoreStorage<'weights>,
     nrows: usize,
     rank: usize,
-    means: &'a [f64],
-    finite_positions: &'a [usize],
+    means: &'storage [f64],
+    finite_positions: &'storage [usize],
     normalized_intercept_position: Option<usize>,
-    fit: &'a CertifiedPreparedOlsFit,
-    weights: ReferenceWeightView<'a>,
+    fit: &'storage CertifiedPreparedOlsFit,
+    weights: ReferenceWeightView<'weights>,
 }
 
 fn certify_score_design<R: PreparedInferenceReservation>(
-    inputs: ScoreCertificateInputs<'_>,
+    inputs: ScoreCertificateInputs<'_, '_>,
     reservation: &mut R,
 ) -> Result<PreparedOlsScoreDesignCertificate> {
     let ScoreCertificateInputs {
@@ -678,6 +813,9 @@ fn certify_score_design<R: PreparedInferenceReservation>(
     let gram = match storage {
         PreparedOlsScoreStorage::Dense(within) => {
             certify_dense_score_gram(within.as_slice(), nrows, rank, weights, reservation)?
+        }
+        PreparedOlsScoreStorage::Strided(strided) => {
+            certify_strided_score_gram(strided, nrows, rank, reservation)?
         }
         PreparedOlsScoreStorage::Scratch(_) => {
             certify_scratch_score_gram(storage, nrows, rank, weights, reservation)?
@@ -784,6 +922,123 @@ fn certify_score_design<R: PreparedInferenceReservation>(
     })
 }
 
+fn certify_strided_score_gram<R: PreparedInferenceReservation>(
+    storage: &PreparedOlsStridedScoreStorage<'_>,
+    nrows: usize,
+    rank: usize,
+    reservation: &mut R,
+) -> Result<Vec<f64>> {
+    let square = rank.checked_mul(rank).ok_or_else(|| {
+        allocation("prepared robust strided score Gram dimensions overflow usize")
+    })?;
+    let matrix_columns = storage.within.ncols();
+    if storage.within.nrows() != nrows
+        || storage.generated_columns.len() != rank
+        || storage.reference_norms.len() != rank
+        || storage
+            .generated_columns
+            .iter()
+            .any(|generated| generated.saturating_add(1) >= matrix_columns)
+    {
+        return Err(invalid_argument(
+            "prepared robust strided score Gram dimensions are inconsistent",
+        ));
+    }
+    if rank == 0 {
+        return Ok(Vec::new());
+    }
+    let partial_bytes = square
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| allocation("prepared robust score Gram partial bytes overflow usize"))?;
+    let memory_blocks = (SCORE_CERTIFICATE_PARTIAL_BUDGET_BYTES / partial_bytes.max(1)).max(1);
+    let chunks = nrows
+        .div_ceil(SCORE_CERTIFICATE_REDUCTION_ROWS)
+        .clamp(1, SCORE_CERTIFICATE_MAX_BLOCKS)
+        .min(memory_blocks);
+    let partial_elements = chunks
+        .checked_mul(square)
+        .ok_or_else(|| allocation("prepared robust score Gram partials overflow usize"))?;
+    let mut partials = reserved_filled(
+        reservation,
+        partial_elements,
+        0.0_f64,
+        "unable to reserve prepared robust strided score Gram partials",
+    )?;
+    let multiplier = storage.weights.multiplier();
+    if !multiplier.is_finite() || multiplier <= 0.0 {
+        return Err(invalid_data(
+            "prepared robust strided score weight multiplier is invalid",
+        ));
+    }
+    partials
+        .par_chunks_mut(square)
+        .enumerate()
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let rows_per_chunk = nrows / chunks;
+            let remainder = nrows % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let values =
+                    &storage.within.as_slice()[row * matrix_columns..(row + 1) * matrix_columns];
+                for left in 0..rank {
+                    let left_value =
+                        values[storage.generated_columns[left] + 1] * storage.reference_norms[left];
+                    let scaled_left = multiplier * left_value;
+                    for right in left..rank {
+                        let right_value = values[storage.generated_columns[right] + 1]
+                            * storage.reference_norms[right];
+                        partial[left * rank + right] += scaled_left * right_value;
+                    }
+                }
+            }
+            if partial.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared robust strided score Gram partial contains a nonfinite value",
+                ))
+            }
+        })?;
+    let mut gram = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust strided score Gram",
+    )?;
+    let mut corrections = reserved_filled(
+        reservation,
+        square,
+        0.0_f64,
+        "unable to reserve prepared robust strided score Gram corrections",
+    )?;
+    for partial in partials.chunks_exact(square) {
+        for left in 0..rank {
+            for right in left..rank {
+                let position = left * rank + right;
+                compensated_add(
+                    partial[position],
+                    &mut gram[position],
+                    &mut corrections[position],
+                )?;
+            }
+        }
+    }
+    for left in 0..rank {
+        for right in left..rank {
+            let position = left * rank + right;
+            gram[position] += corrections[position];
+            if !gram[position].is_finite() {
+                return Err(invalid_data(
+                    "prepared robust strided score Gram contains a nonfinite value",
+                ));
+            }
+            gram[right * rank + left] = gram[position];
+        }
+    }
+    Ok(gram)
+}
+
 fn certify_dense_score_gram<R: PreparedInferenceReservation>(
     values: &[f64],
     nrows: usize,
@@ -885,7 +1140,7 @@ fn certify_dense_score_gram<R: PreparedInferenceReservation>(
 }
 
 fn certify_scratch_score_gram<R: PreparedInferenceReservation>(
-    storage: &PreparedOlsScoreStorage,
+    storage: &PreparedOlsScoreStorage<'_>,
     nrows: usize,
     rank: usize,
     weights: ReferenceWeightView<'_>,
@@ -938,7 +1193,7 @@ fn certify_scratch_score_gram<R: PreparedInferenceReservation>(
 }
 
 fn fill_score_storage_row(
-    storage: &PreparedOlsScoreStorage,
+    storage: &PreparedOlsScoreStorage<'_>,
     nrows: usize,
     rank: usize,
     row: usize,
@@ -955,6 +1210,7 @@ fn fill_score_storage_row(
                 *value = within[(row, column)];
             }
         }
+        PreparedOlsScoreStorage::Strided(strided) => strided.fill_row(row, output)?,
         PreparedOlsScoreStorage::Scratch(scratch) => {
             scratch.fill_row(nrows, rank, row, output)?;
         }

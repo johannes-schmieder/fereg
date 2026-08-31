@@ -597,7 +597,7 @@ fn certify_dof_identity<P: PreparedOlsInferenceView + ?Sized>(
 
 fn build_covariance<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weight_view: ReferenceWeightView<'_>,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
@@ -1028,7 +1028,7 @@ fn sandwich_covariance_from_meat<R: PreparedInferenceReservation>(
 #[allow(clippy::too_many_arguments)]
 fn certify_covariance_formula<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weight_view: ReferenceWeightView<'_>,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
@@ -1262,7 +1262,7 @@ fn build_dense_certificate_meat<R: PreparedInferenceReservation>(
 
 fn build_scratch_certificate_meat<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weight_view: ReferenceWeightView<'_>,
     weight_kind: Option<WeightKind>,
     reservation: &mut R,
@@ -1771,6 +1771,7 @@ mod tests {
         TermComponent, TermId, TermOrder, TimeSeriesState,
     };
 
+    use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::super::{
         prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
         OlsRequestV1,
@@ -1809,6 +1810,65 @@ mod tests {
                     .map_err(|_| allocation("test prepared robust reservation failed"))?;
             }
             Ok(())
+        }
+    }
+
+    #[test]
+    fn strided_score_storage_matches_packed_robust_inference() {
+        let group = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x1 = vec![-2.0, 0.5, 1.0, 3.0, -1.5, 2.0, 0.25, 4.0];
+        let x2 = vec![1.0, -3.0, 0.75, 2.5, 4.0, -0.5, 3.0, 1.5];
+        let weights = vec![0.5, 2.0, 1.5, 0.75, 3.0, 1.0, 2.5, 1.25];
+        let frequencies = vec![1_u32, 2, 3, 1, 2, 1, 3, 2];
+        let y = x1
+            .iter()
+            .zip(&x2)
+            .zip(&group)
+            .map(|((left, right), group)| {
+                1.75 * left - 0.4 * right + if *group <= 2.0 { 2.0 } else { -1.0 }
+            })
+            .collect::<Vec<_>>();
+        for test_weights in [
+            TestWeights::Unit,
+            TestWeights::Analytic(&weights),
+            TestWeights::Probability(&weights),
+            TestWeights::Frequency(&frequencies),
+        ] {
+            let prepared = prepared(
+                &y,
+                &[x1.clone(), x2.clone()],
+                Some(&group),
+                true,
+                test_weights,
+            );
+            let config = PreparedOlsRobustConfig::default();
+            let packed = fit_prepared_ols_robust_map(&prepared, config).expect("packed robust fit");
+            let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+                &prepared, config.fit, 0,
+            )
+            .expect("strided coefficient fit");
+            let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                .expect("strided absorbed DoF");
+            let mut reservation = CountingReservation::default();
+            let strided = compose_internal(
+                &prepared,
+                fit,
+                absorbed,
+                config,
+                &mut reservation,
+                RobustPerturbations::default(),
+            )
+            .expect("strided robust fit");
+            assert!(strided.certificate().passed);
+            assert_eq!(packed.fit().coefficients(), strided.fit().coefficients());
+            for (actual, expected) in strided
+                .covariance()
+                .values()
+                .iter()
+                .zip(packed.covariance().values())
+            {
+                assert_close(*actual, *expected, 2e-11);
+            }
         }
     }
 

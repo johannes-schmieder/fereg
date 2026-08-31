@@ -850,7 +850,7 @@ fn cluster_correction(
 
 fn build_raw_covariance<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     dof: PreparedOlsClusteredDofReport,
@@ -997,7 +997,7 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
 
 fn subset_score_meats<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     mask: usize,
@@ -1127,7 +1127,7 @@ fn dense_subset_group(
 
 fn aggregate_subset_dense<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     mask: usize,
@@ -1357,7 +1357,7 @@ fn finish_dense_groups_parallel<R: PreparedInferenceReservation>(
 /// covariance; dense score designs use the fixed-block raw-meat path below.
 fn aggregate_subset_sorted<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
-    scores: &CertifiedPreparedOlsScoreDesign,
+    scores: &CertifiedPreparedOlsScoreDesign<'_>,
     weights: ReferenceWeightView<'_>,
     dimensions: &[&[u32]],
     mask: usize,
@@ -3344,6 +3344,7 @@ fn allocation(message: impl Into<String>) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+    use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::*;
     use crate::ols::prepare_ols_clustered_data;
 
@@ -3401,6 +3402,43 @@ mod tests {
             target
                 .try_reserve_exact(requested)
                 .map_err(|_| allocation("test prepared clustered reservation failed"))
+        }
+    }
+
+    #[test]
+    fn strided_score_storage_matches_packed_clustered_inference() {
+        let (mut request, loaded) = super::super::prepared_clusters::tests::fixture();
+        request.ols.include_intercept = true;
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+        let config = PreparedOlsClusteredConfig::default();
+        let packed =
+            fit_prepared_ols_clustered_map(&prepared, config).expect("packed clustered inference");
+        let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+            prepared.ols(),
+            config.fit,
+            0,
+        )
+        .expect("strided clustered coefficient fit");
+        let mut reservation = CountingReservation::succeeds();
+        let strided = compose(
+            &prepared,
+            fit,
+            config,
+            &mut reservation,
+            ClusteredPerturbations::default(),
+        )
+        .expect("strided clustered inference");
+        assert!(strided.certificate().passed);
+        assert_eq!(packed.fit().coefficients(), strided.fit().coefficients());
+        for (actual, expected) in strided
+            .covariance()
+            .values()
+            .iter()
+            .zip(packed.covariance().values())
+        {
+            let scale = actual.abs().max(expected.abs()).max(1.0);
+            assert!((actual - expected).abs() <= 2e-11 * scale);
         }
     }
 
