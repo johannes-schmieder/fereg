@@ -9,7 +9,7 @@
   self-contained examples.
 - [`../stata/fereg_postestimation.sthlp`](../stata/fereg_postestimation.sthlp)
   — prediction, `test`, and `estat summarize`.
-- [`../AGENTS.md`](../AGENTS.md) — governing implementation specification.
+- [`../AGENTS.md`](../AGENTS.md) — concise operating rules for repository work.
 - [`../STATUS.md`](../STATUS.md) — sole mutable development status and resume
   point.
 - [`development_workflow.md`](development_workflow.md) — local development,

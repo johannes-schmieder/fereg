@@ -2,6 +2,9 @@
 
 ## 0.5.0 beta — unreleased
 
+- Standardized the installed help with the shared author header and contact
+  footer, source acknowledgements, and one-click execution for all twelve
+  documented examples.
 - Activated public `fereg` OLS/WLS with action protocol 1.4, OLS result wire
   1.4, and model wire 2.1 while retaining receipt-last atomic publication and
   rollback on error, panic, store failure, or Break.

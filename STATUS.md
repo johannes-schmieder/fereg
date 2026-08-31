@@ -1,12 +1,12 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-08-30
 **Development branch:** `main`; certified contiguous robust/multiway VCE reductions are integrated alongside the complete-input OLS pipeline, portable-x86 Gram repair, deterministic parallel saved-FE publication, 16-thread one-FE execution, conservative topology-aware CMG auto routing, and qualified direct Schwarz-LSMR
 **Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** close the remaining serial one-FE/VCE boundary gap to Greg and complete publication qualification; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
-**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE are qualified on SCC/Linux; cross-platform and final release qualification remain incomplete
+**Active milestone:** complete publication and cross-platform qualification, synchronize the GPL-3.0-only release files, and resolve the marked release metadata in the Stata Journal working-paper draft; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
+**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE are qualified on SCC/Linux; the intended public license is GPL-3.0-only, while repository license-file synchronization, cross-platform qualification, and final release qualification remain incomplete
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
@@ -53,6 +53,21 @@ overheads, and coverage limits are captured under
   dfabsorb` arm follows the official Stata 19 syntax but was not executed on
   this Stata 18 host; it is documentation validation, not qualification
   evidence.
+- `paper/fereg.tex` and `paper/fereg.pdf` provide a 26-page generic
+  working-paper draft for eventual Stata Journal submission. The draft covers
+  syntax, examples, architecture, inference, feature comparisons against
+  reghdfe 6.14.1, Stata 19 areg/xtreg HDFE, and the StataNow documentation
+  accessed 2026-08-30, plus technical and reproducibility appendices. Its
+  existing benchmark tables remain generated from the frozen ADR-0013 and
+  ADR-0014 evidence. Two new registered three-panel vector figures report
+  elapsed time, peak RSS, and peak-to-baseline RSS for a low-mobility two-way
+  AKM design with ten controls. Production SCC job `7370995` passed complete
+  scheduler, application, provenance, and scientific gates; its accepted
+  evidence bundle contains 115 measurements, 23 summary cells, and 11 passing
+  preflights. At eight million observations and four processors, median times
+  were 15.9 seconds for fereg, 263.6 for reghdfe, and 217.6 for areg, with peak
+  RSS of 3.10, 3.75, and 5.40 GiB. Greg remains confined to a beta diagnostic
+  footnote, and incomplete broad comparison evidence remains excluded.
 - The Stata public path retains one substantive plugin call. Rust owns sample
   construction and computation; SPI access stays on the Stata thread; the
   completion receipt is stored last; and failure/Break tests require rollback
@@ -79,8 +94,9 @@ overheads, and coverage limits are captured under
   failure returns visibly to the existing auto policy, and solve failure uses
   certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
   tolerance to satisfy the OLS score certificate without a separate post-QR
-  correction. The GPL-3.0-only dependency remains a release-distribution
-  blocker.
+  correction. The release decision is GPL-3.0-only; the repository license,
+  dependency notices, and staged package metadata must be synchronized before
+  distribution.
 - The qualified automatic policy is implemented: one FE uses direct one-pass
   demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
   if certified. Otherwise a pilot contraction of at least 0.008 selects direct

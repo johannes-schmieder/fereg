@@ -300,7 +300,9 @@ supplied to {cmd:doctor} or {cmd:selftest}; zero selects the native default.
 Each estimation example creates its own synthetic data and wraps the block in
 {cmd:preserve}/{cmd:restore}, so it can be copied into a do-file without
 replacing the caller's dataset. The blocks set Stata's random-number seed.
-Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
+The clickable link runs the entire marked block through {cmd:fereg_run}, which
+also restores the caller's data. Example 12 additionally requires an installed
+{cmd:reghdfe} and Stata 19.
 
 {space 2}{hline 8} {it:Example 1 - Basic two-way fixed effects} {hline 8}
 {cmd}{...}
@@ -323,6 +325,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run basic_two_way using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 2 - Factor variables, interactions, and if} {hline 8}
 {cmd}{...}
@@ -349,6 +352,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run factor_if using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 3 - Analytic, frequency, and probability weights} {hline 8}
 {cmd}{...}
@@ -379,6 +383,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run weights using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 4 - Multiway and interacted clusters} {hline 8}
 {cmd}{...}
@@ -406,6 +411,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run clusters using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 5 - A fixed-width string fixed effect} {hline 8}
 {cmd}{...}
@@ -429,6 +435,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run string_fe using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 6 - An interacted firm-year fixed effect} {hline 8}
 {cmd}{...}
@@ -453,6 +460,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run interacted_fe using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 7 - Firm intercepts and firm-specific slopes} {hline 8}
 {cmd}{...}
@@ -479,6 +487,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run absorbed_slope using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 8 - Multiple slope-only absorbed channels} {hline 8}
 {cmd}{...}
@@ -509,6 +518,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run slope_only using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 9 - Saved effects, residuals, and prediction} {hline 8}
 {cmd}{...}
@@ -540,6 +550,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run saved_outputs using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 10 - No finite regressors and disconnected components} {hline 8}
 {cmd}{...}
@@ -564,6 +575,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run disconnected using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 11 - Low-memory execution and solver diagnostics} {hline 8}
 {cmd}{...}
@@ -590,6 +602,7 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run low_memory using fereg.sthlp:click to run})}
 
 {space 2}{hline 8} {it:Example 12 - Benchmark against reghdfe and Stata 19 areg} {hline 8}
 {cmd}{...}
@@ -623,10 +636,19 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           scalar __fereg_doc_b_reghdfe = _b[x1]
           scalar __fereg_doc_rss_reghdfe = e(rss)
           scalar __fereg_doc_N_reghdfe = e(N)
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb
+          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
+              tolerance(1e-12) iterate(10000)
           scalar __fereg_doc_b_areg = _b[x1]
           scalar __fereg_doc_rss_areg = e(rss)
           scalar __fereg_doc_N_areg = e(N)
+
+          display as text "Coefficient on x1: fereg=" ///
+              as result %12.8f __fereg_doc_b_fereg ///
+              as text " reghdfe=" as result %12.8f __fereg_doc_b_reghdfe ///
+              as text " areg=" as result %12.8f __fereg_doc_b_areg
+          display as text "RSS: fereg=" as result %12.4f __fereg_doc_rss_fereg ///
+              as text " reghdfe=" as result %12.4f __fereg_doc_rss_reghdfe ///
+              as text " areg=" as result %12.4f __fereg_doc_rss_areg
 
           assert __fereg_doc_N_fereg == __fereg_doc_N_reghdfe
           assert __fereg_doc_N_fereg == __fereg_doc_N_areg
@@ -646,7 +668,8 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
           timer off 98
           timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb
+          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
+              tolerance(1e-12) iterate(10000)
           timer off 99
           timer on 97
           quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
@@ -656,7 +679,8 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
           timer off 98
           timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb
+          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
+              tolerance(1e-12) iterate(10000)
           timer off 99
           timer on 97
           quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
@@ -666,7 +690,8 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
           timer off 98
           timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb
+          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
+              tolerance(1e-12) iterate(10000)
           timer off 99
 
           quietly timer list
@@ -693,12 +718,14 @@ Example 12 additionally requires an installed {cmd:reghdfe} and Stata 19.
           restore
 {txt}{...}
 {space 2}{hline 76}
+{space 2}{it:({stata fereg_run benchmark using fereg.sthlp:click to run benchmark})}
 
 {pstd}
 Example 12 warms all three commands before timing, verifies the coefficient on
 {cmd:x1}, the estimation sample size, and RSS, and averages three end-to-end
-runs. It uses the current Stata processor setting for Stata's commands and
-passes the same allowance to {cmd:fereg}. Change {cmd:local N} and the number
+runs. It uses a tighter {cmd:areg} convergence tolerance for numerical parity,
+the current Stata processor setting for Stata's commands, and passes the same
+allowance to {cmd:fereg}. Change {cmd:local N} and the number
 of repetitions for a more demanding local comparison. Release claims require
 the frozen exact-SHA benchmark suite, not this example.
 
@@ -717,14 +744,23 @@ Version 0.5.0 is unreleased beta source. Public OLS is active, while
 See {cmd:STATUS.md} and {cmd:docs/compatibility_matrix.md} in the source
 distribution for exact-SHA qualification evidence and platform caveats.
 
-{marker author}
-{title:Author}
+{marker sources}
+{title:Sources and acknowledgements}
 
-{p 4 4 2}
-Johannes F. Schmieder, Boston University, USA
+{pstd}
+Development and compatibility validation use the independently maintained
+{browse "https://github.com/sergiocorreia/reghdfe":reghdfe},
+{browse "https://github.com/sergiocorreia/ppmlhdfe":ppmlhdfe}, and
+{browse "https://github.com/py-econometrics/pyfixest":PyFixest} projects as
+scientific or behavioral references. They are not called by {cmd:fereg} at
+runtime, and their source is not copied into the package.
 
-{p 4 4 2}
-Email: {browse "mailto:johannes@bu.edu":johannes@bu.edu}
+{pstd}
+The native bridge uses the official
+{browse "https://www.stata.com/plugins/":Stata Plugin Interface} sources
+published by StataCorp LP. Exact reference revisions, licenses, and dependency
+boundaries are recorded in the source distribution's
+{cmd:references.lock.toml} and {cmd:THIRD_PARTY_NOTICES.md}.
 
 {marker also}
 {title:Also see}
@@ -737,4 +773,17 @@ Online: {help regress}, {help areg}, {help xtreg}, {help fvvarlist},
 
 {p 4 4 2}
 Web: {browse "https://www.stata.com/new-in-stata/high-dimensional-fixed-effects/":Stata 19 high-dimensional fixed effects}
+
+{marker author}
+{title:Author}
+
+{pstd}
+Johannes F. Schmieder, Boston University, USA
+
+{pstd}
+Website: {browse "https://johannes-schmieder.com/":johannes-schmieder.com}
+{break}GitHub: {browse "https://github.com/johannes-schmieder":johannes-schmieder}
+{break}Email: {browse "mailto:johannes@bu.edu":johannes@bu.edu}
+
+{pstd}Comments and suggestions are welcome.
 {.-}

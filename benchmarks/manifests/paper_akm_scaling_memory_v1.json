@@ -1,0 +1,41 @@
+{
+  "id": "paper-akm-scaling-memory-v1",
+  "description": "Low-mobility two-way worker-firm IID benchmark for the fereg working paper figures.",
+  "fereg_source_commit": "490e03a3e2458d8bc463c3f60389062e2f8fae42",
+  "fereg_linux_plugin_sha256": "9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2",
+  "reghdfe_version": "6.14.1",
+  "reghdfe_commit": "29b2b203f534413369d675d0c0f674d61291f536",
+  "stata_version": "19",
+  "design": {
+    "observations": [1000000, 2000000, 4000000, 8000000],
+    "periods_per_worker": 10,
+    "initial_workers_per_firm": 20,
+    "mobility_probability": 0.02,
+    "controls": 10,
+    "absorbed_effects": ["worker", "firm"],
+    "weights": "none",
+    "vce": "default IID/unadjusted",
+    "seed": 20260830
+  },
+  "measurement": {
+    "independent_processes_per_cell": 5,
+    "baseline_stabilization_seconds": 1.0,
+    "rss_sampling_interval_seconds": 0.01,
+    "reported_statistic": "median",
+    "whiskers": "minimum to maximum"
+  },
+  "figures": {
+    "size_scaling_equal_stata_processors": 4,
+    "maximum_available_threads": {
+      "fereg": 16,
+      "reghdfe": 4,
+      "areg": 4
+    },
+    "core_scaling_observations": 8000000,
+    "core_scaling": {
+      "fereg": [1, 2, 4, 8, 16],
+      "reghdfe": [1, 2, 4],
+      "areg": [1, 2, 4]
+    }
+  }
+}

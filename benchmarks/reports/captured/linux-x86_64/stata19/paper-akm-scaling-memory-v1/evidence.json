@@ -1,0 +1,21 @@
+{
+  "benchmark_id": "paper-akm-scaling-memory-v1",
+  "hostname": "scc-q22",
+  "measurement_rows": 115,
+  "mode": "production",
+  "platform": "Linux-4.18.0-553.158.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "plugin_sha256": "9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2",
+  "preflight_rows": 11,
+  "processor": "x86_64",
+  "reghdfe_commit": "29b2b203f534413369d675d0c0f674d61291f536",
+  "reghdfe_version": "6.14.1",
+  "repetitions_per_cell": 5,
+  "runs_csv_sha256": "b1c1051e3fae32c6b0070e69ffa436a0afa0e8d3259b66fcfb19f178bd2fc801",
+  "science_csv_sha256": "96c02e09463e1b93fa11bc8bcf1c61b8b8faf8e06e5081e8a69e336d641bd09b",
+  "sge_job_id": "7370995",
+  "sge_slots": "32",
+  "source_commit": "490e03a3e2458d8bc463c3f60389062e2f8fae42",
+  "status": "success",
+  "summary_cells": 23,
+  "summary_csv_sha256": "4ec16a21e9bf0d3c7ec1b5c43994f6c9b998e07a309d34825457d4668eec7dd3"
+}

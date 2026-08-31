@@ -128,8 +128,8 @@ acceptance and runner requirements are documented in
 - [`docs/compatibility_matrix.md`](docs/compatibility_matrix.md) — implemented,
   deferred, and platform-specific behavior.
 - [`STATUS.md`](STATUS.md) — current qualification status and measured evidence.
-- [`AGENTS.md`](AGENTS.md) and [`docs/adr/`](docs/adr/) — governing architecture
-  and accepted decisions.
+- [`AGENTS.md`](AGENTS.md) — concise operating rules for repository work.
+- [`docs/adr/`](docs/adr/) — accepted architectural and scientific decisions.
 
 Development is consolidated on `main`. Historical receipts are evidence for
 the exact source and artifact they name; they are not general release claims.

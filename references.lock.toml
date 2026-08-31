@@ -9,12 +9,6 @@ network_policy = "offline-only; the runner never installs or fetches reference c
 eligibility = "exact source pins are resolved; capture requires all three matching clean local checkouts, and candidate performance may pass only after exact scientific parity"
 raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
 
-
-[governing_spec]
-file = "AGENTS.md"
-sha256 = "b3ce6b3a348b386e33648c218e7e22002193e18ead621c0edf15be1ac2eb61c8"
-source_filename = "fereg 1.0 Rust-First Implementation Plan for Codex.md"
-
 [[reference]]
 name = "pyfixest"
 repository = "https://github.com/py-econometrics/pyfixest"

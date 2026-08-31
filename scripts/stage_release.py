@@ -24,6 +24,7 @@ EXPECTED_PLUGINS = (
 )
 PRODUCTION_STATA_FILES = (
     "fereg.ado",
+    "fereg_run.ado",
     "_fereg_estimate_public.ado",
     "_fereg_ols.ado",
     "_fereg_estimate_ols.ado",

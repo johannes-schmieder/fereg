@@ -1,0 +1,17 @@
+BU SCC / SGE accounting receipt
+benchmark_id=paper-akm-scaling-memory-v1
+jobnumber=7370995
+jobname=fep_prod
+queue=onrcc-m1024-pub
+hostname=scc-q22.scc.bu.edu
+project=welfgr
+granted_pe=omp32
+slots=32
+qsub_time=2026-08-30T11:47:57-04:00
+start_time=2026-08-30T11:48:53-04:00
+end_time=2026-08-30T16:47:10-04:00
+failed=0
+exit_status=0
+ru_wallclock_seconds=17897
+cpu_seconds=37529.995
+maxvmem=8.743G

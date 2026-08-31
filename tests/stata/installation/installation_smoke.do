@@ -10,6 +10,9 @@ assert _rc == 111
 capture which `legacy_prefix'fixest
 assert _rc == 111
 
+capture which fereg_run
+assert _rc == 0
+
 capture noisily fereg, version
 local version_rc = _rc
 local plugin_name "`r(plugin_name)'"

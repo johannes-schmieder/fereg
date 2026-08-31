@@ -1,6 +1,7 @@
 v 3
 p fereg 0.5.0 high-dimensional fixed-effect OLS/WLS beta
 f fereg.ado
+f fereg_run.ado
 f _fereg_estimate_public.ado
 f _fereg_ols.ado
 f _fereg_estimate_ols.ado

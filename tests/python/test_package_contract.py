@@ -52,13 +52,6 @@ def invalid_native_plugins(paths: list[Path]) -> list[Path]:
 
 
 class PackageContractTests(unittest.TestCase):
-    def test_governing_spec_hash_is_locked(self):
-        with (ROOT / "references.lock.toml").open("rb") as handle:
-            lock = tomllib.load(handle)
-        expected = lock["governing_spec"]["sha256"]
-        actual = hashlib.sha256((ROOT / "AGENTS.md").read_bytes()).hexdigest()
-        self.assertEqual(actual, expected)
-
     def test_reference_commits_are_immutable_hashes(self):
         with (ROOT / "references.lock.toml").open("rb") as handle:
             lock = tomllib.load(handle)

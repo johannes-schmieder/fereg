@@ -40,6 +40,7 @@
       "fixtures": [
         "ci/fereg_smoke.do",
         "tests/stata/installation/installation_smoke.do",
+        "tests/stata/documentation/help_examples.do",
         "tests/stata/installation/reload_loop.do",
         "tests/stata/parser/ordinary_factor_terms.do",
         "tests/stata/parser/absorbed_slopes_and_clusters.do",
@@ -177,6 +178,7 @@
         "tests/stata/installation/estimate_ols_eclass_transaction.do",
         "tests/stata/installation/estimate_ols_categorical_interaction.do",
         "tests/stata/installation/installation_smoke.do",
+        "tests/stata/documentation/help_examples.do",
         "tests/stata/installation/prepare_ols_boundary.do",
         "tests/stata/installation/reload_loop.do",
         "tests/stata/parser/absorbed_slopes_and_clusters.do",

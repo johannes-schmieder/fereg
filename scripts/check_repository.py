@@ -160,6 +160,8 @@ required_files = [
     "plugin/stata_bridge.c",
     "plugin/stata_bridge.h",
     "stata/fereg.ado",
+    "stata/fereg_run.ado",
+    "stata/fereg.sthlp",
     "stata/fereg_parse.ado",
     "scripts/build_linux.sh",
     "scripts/build_macos.sh",
@@ -205,7 +207,15 @@ for heading in (
     require(heading in status, f"STATUS.md is missing required section: {heading}")
 
 agents = read("AGENTS.md")
-require("# fereg 1.0 Rust-First Implementation Plan for Codex" in agents, "AGENTS.md is not the supplied specification")
+require(agents.startswith("# fereg agent instructions\n"), "AGENTS.md has the wrong title")
+for reference in (
+    "STATUS.md",
+    "docs/development_workflow.md",
+    "docs/adr/",
+    "docs/architecture.md",
+    "docs/scientific_contracts.md",
+):
+    require(reference in agents, f"AGENTS.md is missing current source pointer: {reference}")
 require(
     "0.5.0" in read("docs/adr/0007-fereg-050-beta-qualification-contract.md"),
     "ADR-0007 beta contract is missing",
@@ -297,12 +307,6 @@ require("crt-static" in build_windows and "/MT" in build_windows, "Windows stati
 
 with (ROOT / "references.lock.toml").open("rb") as handle:
     lock = tomllib.load(handle)
-spec_lock = lock.get("governing_spec", {})
-require(spec_lock.get("file") == "AGENTS.md", "governing specification filename is not locked")
-require(
-    spec_lock.get("sha256") == sha256(ROOT / "AGENTS.md"),
-    "AGENTS.md hash does not match the governing specification lock",
-)
 refs = {entry["name"]: entry for entry in lock["reference"]}
 for name in ("pyfixest", "within", "reghdfe", "ftools", "require", "ppmlhdfe", "stata-spi"):
     require(name in refs, f"reference lock missing {name}")

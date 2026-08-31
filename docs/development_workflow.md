@@ -1,20 +1,20 @@
 # Development workflow
 
 This document is the operational entry point for maintainers and local Codex
-sessions. It does not replace the scientific specification.
+sessions. Detailed scientific and architectural contracts live in the focused
+documents under `docs/`.
 
 ## Authority and source of truth
 
-Use this order when sources disagree:
+Use each source for its intended purpose:
 
-1. The current user-approved release plan and ADR-0007.
-2. `AGENTS.md` — governing implementation and release specification except
-   where the later 0.5.0 plan explicitly supersedes its phase sequencing.
-3. Accepted decisions in `docs/adr/`.
-4. `STATUS.md` — sole mutable progress record and current resume point.
-5. Exact-SHA CI and scientific receipts under `.ci/`, `build_evidence/`, and
-   `benchmarks/reports/captured/`.
-6. Other design documents, tests, and source comments.
+1. Direct user instructions and the current user-approved release decision.
+2. Accepted decisions in `docs/adr/`, including ADR-0007 for the 0.5.0 beta.
+3. Focused contracts in `docs/`, frozen manifests, and pinned references.
+4. `AGENTS.md` for agent conduct and cross-cutting implementation invariants.
+5. `STATUS.md` for the sole mutable progress record and current resume point.
+6. Tests and source for implemented behavior; exact-SHA CI and scientific
+   receipts for claims about a particular revision or artifact.
 
 Historical commits and receipts remain evidence of what was tested, but a
 superseded scientific policy is not current acceptance evidence.
