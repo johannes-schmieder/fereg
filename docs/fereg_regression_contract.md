@@ -1,0 +1,240 @@
+# Direct `fereg` regression contract
+
+This contract protects public OLS while shared prepared-model, linear-solve,
+inference, and memory mechanisms are extracted for `feppml`. It compares the
+same `fereg` command in an exact baseline artifact and a candidate artifact.
+External `reghdfe` and Greg comparisons remain separate acceptance evidence;
+they cannot replace this direct internal comparison.
+
+The machine-readable authority is
+`benchmarks/manifests/fereg_f0_regression_v1.json`. The validator and receipt
+evaluator are `scripts/fereg_f0_regression.py`.
+
+## F0 state and identity
+
+The current F0 entry is deliberately `candidate_unsealed`, not frozen. It is
+bound to:
+
+- source commit `2dee5d8c4cd99b51bbaca600348f66f325b58ab4` and tree
+  `cc10b50077f162cab8be10702a9627b99ee5eea2`;
+- SHA-256 identities for `Cargo.lock` and `references.lock.toml`;
+- ADO/plugin 0.5.0, action protocol 1.5, model wire 2.1, and OLS result wire
+  1.4; and
+- the exact detached-build universal macOS plugin, including size, SHA-256,
+  and embedded source prefix.
+
+The exact-SHA local full run is recorded under
+`build_evidence/local/f0-2dee5d8/`. Its augmented receipt passed the Rust quick
+record and all 35 licensed Stata/MP 19.0.115 full-profile fixtures, including
+Break, and is hash-bound in the manifest. This does not seal F0. SCC
+scientific/performance evidence and target-native Linux and Windows evidence
+remain explicitly missing. A green comparison against an unsealed manifest
+therefore returns `blocked`, never `pass`.
+
+Changing F0 requires a reviewed manifest change. Historical receipts retain
+their original manifest hash and cannot silently follow the change.
+
+## Closed profiles
+
+The manifest owns two non-overlapping inventories:
+
+- `local_screen`: 18 cells at 100,000 and one million observations, covering
+  dense and sparse two-way FE designs, absorbed slopes, clustered VCE,
+  moderate K, `memory(fast)`, `memory(low)`, one/eight threads, fit-only, and
+  saved fixed effects.
+- `scc_governing`: 14 ten-million-observation cells covering the same main
+  shapes plus the governing constrained-memory case.
+
+Evidence names one profile and must contain every cell in manifest order,
+exactly once. Local evidence cannot satisfy the SCC profile, and evidence may
+not add a favorable unregistered cell. Each cell carries its own complete host
+and software environment because SCC array cells may land on different nodes.
+Both arms within a cell use that one node and environment. The evaluator first
+forms one mean log ratio per cell, so it never pools raw timing observations
+across machines.
+
+## Scientific gate comes first
+
+Each cell contains baseline and candidate preflight records for return code,
+sample and singleton identities, coefficient names and statuses, coefficients,
+VCE shape and values, DoF, fit statistics, saved-output identities, solver
+metadata, and independent certificates. The inventory is closed. Both arms
+must return zero, converge, and satisfy every absolute certificate bound.
+
+The active `extraction_exact` policy compares all scientific fields exactly,
+including numeric arrays and certificate values. It additionally requires an
+exact `numeric_hex_sha256`. Its preimage is compact sorted-key ASCII JSON, with
+the canonical terminal newline, over keys `coefficients`, `vce`, `fit`, and
+`certificates`. Their values are the complete row-major raw `%21x` strings from
+`e(b)`, `e(V)`, `e(fereg_fit)`, and `e(fereg_certificate)`, respectively. This
+is the rule for pure shared-engine moves: deterministic extraction may not hide
+a numerical change or a signed-zero/last-bit difference.
+
+The manifest also records the pre-existing fallback OLS tolerances, but leaves
+them inactive:
+
+| Field | Absolute tolerance | Relative tolerance |
+| --- | ---: | ---: |
+| coefficients | `1e-10` | `1e-7` |
+| VCE | `1e-10` | `1e-6` |
+| fit statistics | `1e-9` | `1e-7` |
+
+Activating `registered_tolerance` requires an explicit accepted ADR recorded
+in the manifest. A code extraction or PPML implementation cannot activate it
+implicitly. DoF, sample, status, output, solver, and digest identities remain
+exact even under that fallback.
+
+If any scientific comparison fails, the evaluator returns at the scientific
+stage without parsing timing or memory records. Timing from a scientifically
+invalid arm is never reported as performance evidence. Platform capture code
+can enforce the same preflight by importing
+`compare_scientific(manifest, baseline, candidate)`.
+
+## Paired performance gate
+
+Every cell contains nine warm pairs with the fixed order
+`AB, BA, AB, BA, AB, BA, AB, BA, AB`, where A is F0 and B is the candidate.
+For pair (i), the evaluator forms
+
+\[
+  \ell_i = \log(t_{B,i}) - \log(t_{A,i}).
+\]
+
+It reports the complete nine log ratios, their mean and sample standard
+deviation, standard error, geometric-mean ratio, and two-sided 95 percent
+confidence interval. With nine pairs it uses the frozen Student-t critical
+value `2.306004135` for eight degrees of freedom.
+
+The gates are:
+
+- equal-weight geometric mean of primary-cell ratios no greater than `1.02`;
+- no cell whose paired-log-ratio confidence interval lies wholly above parity;
+  and
+- no confirmed individual-cell geometric mean above `1.05`.
+
+An initial cell above `1.05` or whose interval lies wholly above parity returns
+`confirmation_required`. It must be rerun on the same node with another full
+nine-pair alternating sequence. The confirmation replaces the initial run for
+the aggregate and memory comparison; it fails if its ratio remains above
+`1.05` or its interval still excludes parity. Unrequested confirmation data is
+rejected to prevent post-hoc selection.
+
+## Allocation, leak, constrained-memory, and RSS gates
+
+For each arm, a cell records total native allocation, counts in the
+observation, observation-column, FE-level, and cluster size classes, retained
+bytes after repeated calls, and optional constrained-memory results.
+
+- Data-sized allocation-class counts must be exactly equal. This detects a new
+  O(N), O(NK), O(number of FE levels), or O(number of clusters) allocation even
+  when RSS noise masks it.
+- Candidate native allocation may exceed F0 by at most one MiB of fixed-size
+  bookkeeping.
+- Candidate retained bytes after repeated calls must be zero.
+- The governing constrained cell must show `memory(low)` succeeding with
+  return code zero and `memory(fast)` failing preflight with `r(909)` at the
+  same byte limit for both artifacts.
+- Candidate peak RSS may exceed matched F0 peak RSS by no more than the larger
+  of two percent or 64 MiB.
+
+RSS is diagnostic noise until it crosses that registered allowance; explicit
+allocation classes remain the structural no-regression check.
+
+## Evidence and receipt integrity
+
+Evidence binds the manifest SHA-256, F0 and candidate commit/tree/lockfile
+identities, platform, plugin SHA-256, size, and embedded commit prefix. The
+evaluator rejects pending F0 platform artifacts, cross-platform arm pairs,
+missing/extra cells, malformed cadence, nonfinite values, and identity
+substitution. Local scientific certificate digests also expose the exact
+preparation receipt, input config, dataset, and command SHA-256 identities, so
+the final evaluator receipt remains auditable without trusting a loose path.
+
+An evaluation receipt contains the complete raw evidence and derived metrics.
+It is canonical-JSON sealed with SHA-256. Verification recomputes the evidence
+hash and the entire evaluation against the currently named manifest. An
+optional external identity file binds both the receipt file hash and payload
+hash, so a modified-and-resealed receipt cannot replace accepted evidence.
+Keep raw licensed logs out of Git; commit only sanitized receipts and their
+identity records when the relevant gate is accepted.
+
+## Commands
+
+Validate the audited F0 object and manifest:
+
+```bash
+python3 scripts/fereg_f0_regression.py validate-manifest
+```
+
+Capture a clean exact candidate identity:
+
+```bash
+python3 scripts/fereg_f0_regression.py source-identity --repository . --revision HEAD
+```
+
+Prepare the four immutable local datasets and the exact 18-cell command map
+in a new directory. This is an untimed licensed-Stata phase. It verifies the
+generator and OLS manifest from a clean exact-F0 checkout, adds and validates
+the stable `obs_id`, hashes every dataset, and writes a canonical sealed
+`preparation-receipt.json`:
+
+```bash
+python3 scripts/run_fereg_f0_local.py prepare \
+  --manifest benchmarks/manifests/fereg_f0_regression_v1.json \
+  --baseline-source /path/to/clean/f0 \
+  --stata /path/to/StataMP \
+  --output-root /path/to/new/f0-local-preparation
+```
+
+Run the closed local screen from that preparation. Both source checkouts must
+be clean, both complete packages are staged into isolated resolver roots, and
+every preflight and measured arm is a fresh Stata process. The runner refuses
+an altered preparation receipt, dataset, command map, cell order, artifact,
+source identity, or reused output path:
+
+```bash
+python3 scripts/run_fereg_f0_local.py run \
+  --manifest benchmarks/manifests/fereg_f0_regression_v1.json \
+  --input-config /path/to/new/f0-local-preparation/local-input.json \
+  --preparation-receipt /path/to/new/f0-local-preparation/preparation-receipt.json \
+  --baseline-source /path/to/clean/f0 \
+  --baseline-plugin /path/to/f0/fereg_macos.plugin \
+  --candidate-source /path/to/clean/candidate \
+  --candidate-plugin /path/to/candidate/fereg_macos.plugin \
+  --stata /path/to/StataMP \
+  --toolchain 'rustc/cargo/clang exact versions' \
+  --run-root /path/to/new/f0-local-run \
+  --evidence /path/to/f0-local-evidence.json \
+  --receipt /path/to/f0-local-receipt.json \
+  --identity-output /path/to/f0-local-receipt.identity.json
+```
+
+The current unsealed F0 makes an otherwise green local receipt honestly exit
+nonzero with status `blocked`; the evidence and receipt are still written for
+review. A local screen is required diagnostic evidence, not a substitute for
+the governing SCC profile.
+
+Evaluate platform-produced evidence and write both receipt and external
+identity:
+
+```bash
+python3 scripts/fereg_f0_regression.py evaluate \
+  --evidence /path/to/evidence.json \
+  --output /path/to/receipt.json \
+  --identity-output /path/to/receipt.identity.json
+```
+
+The evaluate command exits nonzero for both failure and an honestly blocked
+unsealed baseline, while still writing the diagnostic receipt. Verify a stored
+receipt independently with:
+
+```bash
+python3 scripts/fereg_f0_regression.py verify-receipt \
+  --receipt /path/to/receipt.json \
+  --identity /path/to/receipt.identity.json
+```
+
+F0 may change from `candidate_unsealed` to `frozen` only after every missing
+manifest requirement has exact-SHA evidence, all three baseline platform
+artifacts are qualified, and the governing SCC profile passes. Freezing is a
+manifest and evidence milestone; it is not inferred from a process exit code.
