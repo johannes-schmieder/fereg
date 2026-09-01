@@ -92,7 +92,7 @@ and the live plugin route no longer reaches the legacy fitter.  No SCC run is
 part of implementation itself; use a new immutable run directory when the
 candidate is ready.  A typical preparation command is:
 
-    python3 benchmarks/scc/feppml_qualification_scc.py prepare \
+    python3 -I -B -S benchmarks/scc/feppml_qualification_scc.py prepare \
       --run-root /private/tmp/fereg-ppml-runs/20260831T120000Z-feppml-q \
       --candidate-repo /path/to/fereg --candidate-commit 40_HEX_SHA \
       --manifest /path/to/fereg/benchmarks/manifests/feppml_qualification_v1.json \

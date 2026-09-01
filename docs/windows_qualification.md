@@ -108,7 +108,7 @@ result members without changing them and seal through the authoritative
 verifier:
 
 ```text
-python3 scripts/feppml_platform_load_receipt.py create \
+python3 -I -B -S scripts/feppml_platform_load_receipt.py create \
   --platform windows-x86_64 \
   --artifact /evidence/artifact/fereg_windows.plugin \
   --capture /evidence/evidence/capture.json \
@@ -125,7 +125,7 @@ python3 scripts/feppml_platform_load_receipt.py create \
   --windows-controller-archive /evidence/exact-controller-source.zip \
   --windows-results-archive /evidence/feppml-windows-results.zip \
   --windows-source-manifest /evidence/evidence/source-manifest.json
-python3 scripts/feppml_platform_load_receipt.py verify \
+python3 -I -B -S scripts/feppml_platform_load_receipt.py verify \
   --receipt /evidence/windows-platform-load.json \
   --record /evidence/windows-platform-record.json
 ```

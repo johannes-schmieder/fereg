@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -49,6 +50,38 @@ def canonical_archive(repo: Path, commit: str, output: Path) -> Path:
 
 
 class FeppmlPlatformLoadReceiptTests(unittest.TestCase):
+    def isolated_cli(
+        self, *arguments: str, cwd: Path, python: str | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        hostile = cwd / "hostile"
+        hostile.mkdir(exist_ok=True)
+        (hostile / "feppml_qualification.py").write_text(
+            "raise RuntimeError('hostile qualification import executed')\n",
+            encoding="ascii",
+        )
+        (hostile / "prepare_windows_feppml_target.py").write_text(
+            "raise RuntimeError('hostile Windows target import executed')\n",
+            encoding="ascii",
+        )
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(hostile)
+        return subprocess.run(
+            [
+                python or sys.executable,
+                "-I",
+                "-B",
+                "-S",
+                str(Path(platform.__file__).resolve()),
+                *arguments,
+            ],
+            cwd=cwd,
+            env=environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
     def native_fixture(
         self, root: Path, *, platform_name: str, same_controller: bool = False
     ) -> dict[str, object]:
@@ -357,6 +390,33 @@ class FeppmlPlatformLoadReceiptTests(unittest.TestCase):
                 time.tzset()
             self.assertEqual(len(set(observed)), 1)
             self.assertEqual(observed[0], fixture["build_date_utc"])
+
+    def test_isolated_cli_help_uses_only_reviewed_import_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            completed = self.isolated_cli("--help", cwd=Path(temporary))
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verify-portable", completed.stdout)
+            self.assertNotIn("hostile", completed.stderr)
+
+    def test_isolated_cli_verifies_a_valid_native_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = self.create_native(
+                root / "fixture", platform_name="linux-x86_64"
+            )
+            completed = self.isolated_cli(
+                "verify",
+                "--receipt",
+                str(Path(fixture["receipt"]).resolve()),
+                "--record",
+                str(Path(fixture["record"]).resolve()),
+                cwd=root,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                completed.stdout.strip(), "FEPPML_PLATFORM_VERIFY_COMPLETE"
+            )
+            self.assertNotIn("hostile", completed.stderr)
 
 
 if __name__ == "__main__":

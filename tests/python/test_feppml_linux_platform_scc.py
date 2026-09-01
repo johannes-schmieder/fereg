@@ -7,6 +7,7 @@ import importlib.util
 import inspect
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shlex
@@ -115,6 +116,148 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
                         verifier()
                 finally:
                     extra.unlink()
+
+    def run_owned_build_environment(
+        self, run_root: Path
+    ) -> dict[str, str]:
+        cargo_home = run_root / "work/cargo-home"
+        tool_bin = run_root / "work/sealed-tool-bin"
+        (cargo_home / "registry/cache").mkdir(parents=True)
+        (cargo_home / "git/db").mkdir(parents=True)
+        (cargo_home / "registry/cache/crate").write_bytes(b"crate")
+        (cargo_home / "git/db/object").write_bytes(b"object")
+        tool_bin.mkdir(parents=True)
+        (tool_bin / "cargo").write_bytes(SCC._cargo_wrapper_bytes())
+        (tool_bin / "python3").write_bytes(SCC._python_wrapper_bytes())
+        (tool_bin / "cargo").chmod(0o555)
+        (tool_bin / "python3").chmod(0o555)
+        return {
+            "CARGO_HOME": str(cargo_home),
+            "RUSTUP_HOME": str(SCC.SHARED_RUSTUP_HOME),
+            "RUSTUP_TOOLCHAIN": SCC.EXPECTED_RUSTUP_TOOLCHAIN,
+            "CARGO_NET_OFFLINE": "true",
+            "PATH": os.pathsep.join(
+                [
+                    str(tool_bin),
+                    str(SCC.SHARED_CARGO_HOME / "bin"),
+                    "/usr/bin",
+                ]
+            ),
+        }
+
+    def test_two_run_ids_have_closed_independent_cargo_homes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run_roots = (
+                root / "runs/20260831T180001Z-f0-linux-platform",
+                root / "runs/20260831T180002Z-candidate-linux-platform",
+            )
+            environments = []
+            cargo_homes = []
+            for run_root in run_roots:
+                environment = self.run_owned_build_environment(run_root)
+                cargo_home, _ = SCC._validate_run_owned_build_environment(
+                    run_root, environment
+                )
+                environments.append(environment)
+                cargo_homes.append(cargo_home)
+                self.assertEqual(cargo_home.parent, run_root / "work")
+                self.assertNotEqual(cargo_home, SCC.SHARED_CARGO_HOME)
+            self.assertNotEqual(cargo_homes[0], cargo_homes[1])
+            self.assertNotEqual(
+                environments[0]["CARGO_HOME"], environments[1]["CARGO_HOME"]
+            )
+
+            shared_environment = dict(environments[0])
+            shared_environment["CARGO_HOME"] = str(SCC.SHARED_CARGO_HOME)
+            with self.assertRaisesRegex(SCC.BootstrapError, "run-owned"):
+                SCC._validate_run_owned_build_environment(
+                    run_roots[0], shared_environment
+                )
+
+            registry = cargo_homes[0] / "registry"
+            shutil.rmtree(registry)
+            registry.symlink_to(cargo_homes[1] / "registry", target_is_directory=True)
+            with self.assertRaisesRegex(SCC.BootstrapError, "symlink"):
+                SCC._validate_run_owned_build_environment(
+                    run_roots[0], environments[0]
+                )
+
+            writable_wrapper = run_roots[1] / "work/sealed-tool-bin/python3"
+            writable_wrapper.chmod(0o755)
+            with self.assertRaisesRegex(SCC.BootstrapError, "wrapper is invalid"):
+                SCC._validate_run_owned_build_environment(
+                    run_roots[1], environments[1]
+                )
+
+    def test_build_script_contract_covers_current_and_historical_f0(self) -> None:
+        SCC._verify_build_script_contract(ROOT / "scripts/build_linux.sh")
+        f0 = subprocess.check_output(
+            [
+                "git",
+                "show",
+                "2dee5d8c4cd99b51bbaca600348f66f325b58ab4:"
+                "scripts/build_linux.sh",
+            ],
+            cwd=ROOT,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "build_linux.sh"
+            path.write_bytes(f0)
+            SCC._verify_build_script_contract(path)
+            text = path.read_text(encoding="utf-8")
+            path.write_text(text.replace("build --locked", "build"), encoding="utf-8")
+            with self.assertRaisesRegex(SCC.BootstrapError, "sealed Cargo/Python"):
+                SCC._verify_build_script_contract(path)
+            path.write_text(
+                text.replace(
+                    'python3 "$ROOT/scripts/audit_binary.py"',
+                    '/usr/bin/python3 "$ROOT/scripts/audit_binary.py"',
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(SCC.BootstrapError, "sealed Cargo/Python"):
+                SCC._verify_build_script_contract(path)
+
+    def test_capture_failure_reports_bounded_process_detail(self) -> None:
+        good = subprocess.CompletedProcess(
+            [],
+            0,
+            stdout="FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE\n",
+            stderr="",
+        )
+        SCC._validate_capture_process(good)
+        cases = (
+            subprocess.CompletedProcess([], 23, stdout="partial", stderr="boom"),
+            subprocess.CompletedProcess([], 0, stdout="wrong sentinel", stderr=""),
+            subprocess.CompletedProcess(
+                [],
+                0,
+                stdout="FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE\n",
+                stderr="unexpected warning",
+            ),
+        )
+        for completed in cases:
+            with self.subTest(completed=completed):
+                with self.assertRaises(SCC.BootstrapError) as raised:
+                    SCC._validate_capture_process(completed)
+                detail = str(raised.exception)
+                self.assertIn(f"rc={completed.returncode}", detail)
+                self.assertIn("stdout=", detail)
+                self.assertIn("stderr=", detail)
+        long_failure = subprocess.CompletedProcess(
+            [], 91, stdout="x" * 900, stderr="y" * 800
+        )
+        with self.assertRaises(SCC.BootstrapError) as raised:
+            SCC._validate_capture_process(long_failure)
+        detail = str(raised.exception)
+        self.assertIn("<402 rendered chars omitted>", detail)
+        self.assertIn("<302 rendered chars omitted>", detail)
+        self.assertLess(len(detail), 1200)
+        self.assertLess(
+            len(SCC._bounded_process_text("\0\n\t" * 400)),
+            550,
+        )
 
     def reseal_preparation(self, run_root: Path, payload: dict[str, object]) -> None:
         preparation = run_root / "input/preparation.json"
@@ -643,6 +786,35 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             self.assertEqual(west["FEREG_BUILD_DATE"], source["build_date_utc"])
             self.assertEqual(east["FEREG_GIT_COMMIT"], commit[:12])
             self.assertEqual(west["FEREG_GIT_COMMIT"], commit[:12])
+            self.assertEqual(east["LANG"], "C")
+            self.assertEqual(east["LC_ALL"], "C")
+
+    def test_formal_build_environment_drops_shell_and_compiler_overrides(self) -> None:
+        source = {
+            "embedded_git_commit": "0123456789ab",
+            "build_date_utc": "2026-08-31",
+        }
+        hostile = {
+            "BASH_ENV": "/tmp/hostile-bash-env",
+            "ENV": "/tmp/hostile-env",
+            "BASH_FUNC_cargo%%": "() { /tmp/not-cargo; }",
+            "BASH_FUNC_python3%%": "() { /tmp/not-python; }",
+            "RUSTC": "/tmp/not-rustc",
+            "RUSTC_WRAPPER": "/tmp/not-wrapper",
+            "RUSTFLAGS": "--cfg hostile",
+            "CARGO_BUILD_RUSTC": "/tmp/not-rustc",
+            "CC": "/tmp/not-cc",
+            "CFLAGS": "-include /tmp/hostile.h",
+            "LD_PRELOAD": "/tmp/hostile.so",
+            "PYTHONPATH": "/tmp/hostile-python",
+        }
+        with mock.patch.dict(SCC.os.environ, hostile, clear=False):
+            environment = SCC._formal_build_environment(source, slots="4")
+        for key in hostile:
+            self.assertNotIn(key, environment)
+        self.assertEqual(environment["FEREG_GIT_COMMIT"], "0123456789ab")
+        self.assertEqual(environment["FEREG_BUILD_DATE"], "2026-08-31")
+        self.assertEqual(environment["CARGO_BUILD_JOBS"], "4")
 
     def test_qacct_is_exact_scheduler_identity_not_just_success(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -786,6 +958,23 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
         )
         self.assertNotIn("--delete", combined)
         self.assertNotIn("--info=progress2", combined)
+        job = scripts[1].read_text(encoding="utf-8")
+        for token in (
+            'RUN_CARGO_HOME="$RUN_ROOT/work/cargo-home"',
+            'export CARGO_HOME="$RUN_CARGO_HOME"',
+            'export CARGO_NET_OFFLINE=true',
+            'unset CARGO_TARGET_DIR',
+            'export RUSTUP_HOME="$SHARED_RUSTUP_HOME"',
+            'export PATH="$RUN_TOOL_BIN:$SHARED_CARGO_HOME/bin:$PATH"',
+            'cp -a "$SHARED_CARGO_HOME/registry"',
+            'cp -a "$SHARED_CARGO_HOME/git"',
+            'exec /share/pkg.8/python3/3.12.4/install/bin/python3 -I -B -S',
+            '[ "$2" != "--locked" ]',
+        ):
+            self.assertIn(token, job)
+        self.assertNotIn(
+            "export CARGO_HOME=/projectnb/welfgr/johannes/", job
+        )
 
     def test_run_job_capture_launch_is_formally_isolated(self) -> None:
         run_job_source = inspect.getsource(SCC.run_job)

@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -58,6 +59,21 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
 EXPECTED_RUSTC = "rustc 1.85.1 (4eb161250 2025-03-15)"
 EXPECTED_CARGO = "cargo 1.85.1 (d73d2caf9 2024-12-31)"
+SHARED_CARGO_HOME = Path(
+    "/projectnb/welfgr/johannes/fereg-rust-1.85.1/cargo"
+)
+SHARED_RUSTUP_HOME = Path(
+    "/projectnb/welfgr/johannes/fereg-rust-1.85.1/rustup"
+)
+EXPECTED_RUSTUP_TOOLCHAIN = "1.85.1-x86_64-unknown-linux-gnu"
+SCC_PYTHON = Path("/share/pkg.8/python3/3.12.4/install/bin/python3")
+EXPECTED_CARGO_TARGET = "x86_64-unknown-linux-gnu"
+EXPECTED_BUILD_COMMAND = (
+    'cargo build --locked --release -p fereg-plugin --target "$TARGET"'
+)
+EXPECTED_AUDIT_COMMAND = (
+    'python3 "$ROOT/scripts/audit_binary.py" "$DIST/fereg_linux.plugin"'
+)
 SGE_OWNER = "johannes"
 SGE_PROJECT = "welfgr"
 SGE_JOB_ROLE = "licensed-stata-platform-bootstrap"
@@ -145,11 +161,29 @@ FILE_RECORD_FIELDS = frozenset({"sha256", "size_bytes"})
 EXPECTED_TOOLCHAIN = {
     "rustc": EXPECTED_RUSTC,
     "cargo": EXPECTED_CARGO,
-    "rustup_toolchain": "1.85.1-x86_64-unknown-linux-gnu",
+    "rustup_toolchain": EXPECTED_RUSTUP_TOOLCHAIN,
     "stata_module": "stata-mp/19",
     "python_module": "python3/3.12.4",
 }
 ISOLATED_PYTHON_FLAGS = ("-I", "-B", "-S")
+CAPTURE_DIAGNOSTIC_LIMIT = 500
+FORMAL_BUILD_PASSTHROUGH = frozenset(
+    {
+        "PATH",
+        "CARGO_HOME",
+        "CARGO_NET_OFFLINE",
+        "RUSTUP_HOME",
+        "RUSTUP_TOOLCHAIN",
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
+        "LD_LIBRARY_PATH",
+    }
+)
 
 
 class BootstrapError(RuntimeError):
@@ -271,6 +305,151 @@ def _run_isolated_python(
         check=False,
         text=True,
     )
+
+
+def _python_wrapper_bytes() -> bytes:
+    return (
+        f'#!/bin/bash\nexec {SCC_PYTHON} -I -B -S "$@"\n'
+    ).encode("ascii")
+
+
+def _cargo_wrapper_bytes() -> bytes:
+    cargo = SHARED_CARGO_HOME / "bin/cargo"
+    return (
+        "#!/bin/bash\n"
+        "set -euo pipefail\n"
+        'if [ "$#" -eq 1 ] && [ "$1" = "--version" ]; then\n'
+        f'    exec {cargo} "$@"\n'
+        "fi\n"
+        'if [ "$#" -ne 7 ] || [ "$1" != "build" ] || '
+        '[ "$2" != "--locked" ] || [ "$3" != "--release" ] || '
+        '[ "$4" != "-p" ] || [ "$5" != "fereg-plugin" ] || '
+        '[ "$6" != "--target" ] || '
+        f'[ "$7" != "{EXPECTED_CARGO_TARGET}" ]; then\n'
+        '    echo "sealed cargo wrapper rejected invocation" >&2\n'
+        "    exit 97\n"
+        "fi\n"
+        f'exec {cargo} "$@"\n'
+    ).encode("ascii")
+
+
+def _verify_regular_tree_without_symlinks(path: Path, where: str) -> None:
+    pending = [path]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = list(os.scandir(directory))
+        except OSError as error:
+            raise BootstrapError(f"cannot enumerate {where}") from error
+        for entry in entries:
+            if entry.is_symlink():
+                raise BootstrapError(f"{where} contains a symlink")
+            if entry.is_dir(follow_symlinks=False):
+                pending.append(Path(entry.path))
+            elif not entry.is_file(follow_symlinks=False):
+                raise BootstrapError(f"{where} contains a non-regular entry")
+
+
+def _validate_run_owned_build_environment(
+    root: Path, environment: Mapping[str, str]
+) -> tuple[Path, Path]:
+    work = root / "work"
+    cargo_home = work / "cargo-home"
+    tool_bin = work / "sealed-tool-bin"
+    if work.is_symlink() or not work.is_dir():
+        raise BootstrapError("run work root must be a regular directory")
+    expected = {
+        "CARGO_HOME": str(cargo_home),
+        "RUSTUP_HOME": str(SHARED_RUSTUP_HOME),
+        "RUSTUP_TOOLCHAIN": EXPECTED_RUSTUP_TOOLCHAIN,
+        "CARGO_NET_OFFLINE": "true",
+    }
+    if any(environment.get(key) != value for key, value in expected.items()):
+        raise BootstrapError("SCC build environment is not exact and run-owned")
+    if "CARGO_TARGET_DIR" in environment:
+        raise BootstrapError("ambient CARGO_TARGET_DIR is forbidden")
+    path_entries = environment.get("PATH", "").split(os.pathsep)
+    if path_entries[:2] != [
+        str(tool_bin),
+        str(SHARED_CARGO_HOME / "bin"),
+    ]:
+        raise BootstrapError("sealed build tools do not lead PATH")
+    if cargo_home.is_symlink() or not cargo_home.is_dir():
+        raise BootstrapError("run-owned Cargo home is absent or a symlink")
+    if {entry.name for entry in os.scandir(cargo_home)} != {"git", "registry"}:
+        raise BootstrapError("run-owned Cargo seed inventory is not closed")
+    for name in ("git", "registry"):
+        child = cargo_home / name
+        if child.is_symlink() or not child.is_dir():
+            raise BootstrapError("run-owned Cargo seed is absent or a symlink")
+    _verify_regular_tree_without_symlinks(cargo_home, "run-owned Cargo home")
+    if tool_bin.is_symlink() or not tool_bin.is_dir():
+        raise BootstrapError("sealed tool directory is absent or a symlink")
+    if {entry.name for entry in os.scandir(tool_bin)} != {"cargo", "python3"}:
+        raise BootstrapError("sealed tool directory inventory is not closed")
+    for name, expected_bytes in (
+        ("cargo", _cargo_wrapper_bytes()),
+        ("python3", _python_wrapper_bytes()),
+    ):
+        wrapper = tool_bin / name
+        if (
+            wrapper.is_symlink()
+            or not wrapper.is_file()
+            or wrapper.read_bytes() != expected_bytes
+            or stat.S_IMODE(wrapper.stat().st_mode) != 0o555
+        ):
+            raise BootstrapError(f"sealed {name} wrapper is invalid")
+    return cargo_home, tool_bin
+
+
+def _verify_build_script_contract(path: Path) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise BootstrapError("exact Linux build script is absent or a symlink")
+    lines = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    cargo_builds = [
+        line
+        for line in lines
+        if re.search(r"(?:^|\s)(?:\S*/)?cargo\s+build(?:\s|$)", line)
+    ]
+    audit_launches = [line for line in lines if "audit_binary.py" in line]
+    if (
+        cargo_builds != [EXPECTED_BUILD_COMMAND]
+        or audit_launches != [EXPECTED_AUDIT_COMMAND]
+    ):
+        raise BootstrapError(
+            "exact Linux build script bypasses the sealed Cargo/Python tools"
+        )
+
+
+def _bounded_process_text(value: str, limit: int = CAPTURE_DIAGNOSTIC_LIMIT) -> str:
+    rendered = repr(value)
+    if len(rendered) <= limit:
+        return rendered
+    return (
+        f"{rendered[:limit]}..."
+        f"<{len(rendered) - limit} rendered chars omitted>"
+    )
+
+
+def _validate_capture_process(
+    completed: subprocess.CompletedProcess[str],
+) -> None:
+    if (
+        completed.returncode != 0
+        or completed.stdout.strip()
+        != "FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE"
+        or completed.stderr != ""
+    ):
+        raise BootstrapError(
+            "licensed Linux Stata load capture failed: "
+            f"rc={completed.returncode} "
+            f"stdout={_bounded_process_text(completed.stdout)} "
+            f"stderr={_bounded_process_text(completed.stderr)}"
+        )
 
 
 def _git(repo: Path, *arguments: str) -> bytes:
@@ -420,7 +599,13 @@ def _commit_build_date_utc(repo: Path, commit: str) -> str:
 def _formal_build_environment(
     source: Mapping[str, Any], *, slots: str | int
 ) -> dict[str, str]:
-    environment = dict(os.environ)
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key in FORMAL_BUILD_PASSTHROUGH
+    }
+    environment["LANG"] = "C"
+    environment["LC_ALL"] = "C"
     environment["FEREG_GIT_COMMIT"] = str(source["embedded_git_commit"])
     environment["FEREG_BUILD_DATE"] = str(source["build_date_utc"])
     environment["CARGO_BUILD_JOBS"] = str(int(slots))
@@ -843,6 +1028,7 @@ def run_job(run_root: Path) -> None:
     root = _run_root(run_root, remote=True)
     preparation = verify_input(root)
     verify_deployment(root)
+    _validate_run_owned_build_environment(root, os.environ)
     source_record = preparation["source"]
     source = root / "work/source"
     _run(
@@ -891,6 +1077,7 @@ def run_job(run_root: Path) -> None:
             or digest_file(path) != expected["sha256"]
         ):
             raise BootstrapError(f"exact source file changed: {relative}")
+    _verify_build_script_contract(source / "scripts/build_linux.sh")
     rustc = _run(["rustc", "--version"]).decode().strip()
     cargo = _run(["cargo", "--version"]).decode().strip()
     if rustc != EXPECTED_RUSTC or cargo != EXPECTED_CARGO:
@@ -956,12 +1143,7 @@ def run_job(run_root: Path) -> None:
         capture_arguments,
         cwd=source,
     )
-    if (
-        completed.returncode
-        or completed.stdout.strip() != "FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE"
-        or completed.stderr
-    ):
-        raise BootstrapError("licensed Linux Stata load capture failed")
+    _validate_capture_process(completed)
     capture = platform_receipts.validate_capture(
         _read(capture_path, "licensed Linux capture"),
         output_plugin,

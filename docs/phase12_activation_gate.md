@@ -57,7 +57,7 @@ for the selected check; the gate rejects arbitrary argv, producer identities,
 profiles, toolchains, output roles, or environment-key order:
 
 ```text
-python3 scripts/feppml_activation_gate.py run-check \
+python3 -I -B -S scripts/feppml_activation_gate.py run-check \
   --check-id python \
   --source-root /clean/fereg \
   --source-sha <40-hex-commit> \
@@ -165,7 +165,7 @@ read-only `feppml-phase12-check-v1` receipt with exclusive creation. The check
 sealer itself must be the exact committed activation gate:
 
 ```text
-python3 scripts/feppml_activation_gate.py seal-check \
+python3 -I -B -S scripts/feppml_activation_gate.py seal-check \
   --check-id feppml_qualification \
   --source-root /clean/fereg \
   --source-sha <40-hex-commit> \
@@ -191,12 +191,12 @@ artifact files, check-receipt files, activation lineage, an empty waiver list,
 and the terminal input sentinel. Run:
 
 ```text
-python3 scripts/feppml_activation_gate.py evaluate \
+python3 -I -B -S scripts/feppml_activation_gate.py evaluate \
   --index /evidence/phase12-index.json \
   --source-root /clean/fereg \
   --receipt /evidence/phase12-aggregate.json
 
-python3 scripts/feppml_activation_gate.py verify-receipt \
+python3 -I -B -S scripts/feppml_activation_gate.py verify-receipt \
   --receipt /evidence/phase12-aggregate.json \
   --index /evidence/phase12-index.json \
   --source-root /clean/fereg

@@ -16,10 +16,22 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import tarfile
 from typing import Any, Mapping, Sequence
 import zipfile
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Formal callers use ``python -I -B -S`` from arbitrary working directories.
+# Make only the reviewed repository roots importable; ambient cwd and site
+# packages remain excluded by the interpreter flags.
+for import_root in (ROOT / "scripts", ROOT):
+    import_root_text = str(import_root)
+    if import_root_text not in sys.path:
+        sys.path.insert(0, import_root_text)
 
 try:
     from scripts import feppml_qualification as qualification

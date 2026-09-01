@@ -199,7 +199,7 @@ qualification.  Do not reconstruct either ZIP or synthesize a run ID.
 Once the enhanced backend returns the authoritative bytes, seal them locally:
 
 ```text
-python3 scripts/feppml_platform_load_receipt.py create \
+python3 -I -B -S scripts/feppml_platform_load_receipt.py create \
   --platform windows-x86_64 \
   --artifact /sanitized/windows/artifact/fereg_windows.plugin \
   --capture /sanitized/windows/evidence/capture.json \
@@ -216,7 +216,7 @@ python3 scripts/feppml_platform_load_receipt.py create \
   --windows-controller-archive /sanitized/windows/exact-controller-source.zip \
   --windows-results-archive /sanitized/windows/feppml-windows-results.zip \
   --windows-source-manifest /sanitized/windows/evidence/source-manifest.json
-python3 scripts/feppml_platform_load_receipt.py verify \
+python3 -I -B -S scripts/feppml_platform_load_receipt.py verify \
   --receipt /new/evidence/root/windows-platform-load.json \
   --record /new/evidence/root/windows-platform-record.json
 ```
