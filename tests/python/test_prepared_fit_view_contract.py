@@ -13,6 +13,9 @@ OLS_MOD = CORE / "ols/mod.rs"
 RHS = CORE / "ols/prepared_rhs.rs"
 CATEGORICAL = CORE / "ols/prepared_categorical_data.rs"
 LIB = CORE / "lib.rs"
+PPML = CORE / "ppml"
+PPML_MODEL = PPML / "prepared_model.rs"
+PPML_SEPARATION = PPML / "prepared_separation.rs"
 
 
 class PreparedFitViewContractTests(unittest.TestCase):
@@ -111,6 +114,31 @@ class PreparedFitViewContractTests(unittest.TestCase):
             self.assertNotIn("CertifiedLinearSession", body)
             self.assertNotIn("solve_frozen", body)
             self.assertNotIn("working_response", body)
+
+    def test_ppml_session_uses_a_concrete_prepared_view_in_hot_loops(self):
+        model = PPML_MODEL.read_text(encoding="utf-8")
+        self.assertEqual(
+            model.count("fn fit_view(&self) -> &PreparedCategoricalOlsData"), 2
+        )
+        self.assertNotIn("PreparedOlsFitView", model)
+        for path in CORE.rglob("*.rs"):
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn(
+                "dyn PreparedOlsFitView",
+                source,
+                f"{path.relative_to(CORE)} introduces prepared-view dynamic dispatch",
+            )
+
+        separation = PPML_SEPARATION.read_text(encoding="utf-8")
+        simplex = separation.split("fn prepared_simplex_proposal(", 1)[1].split(
+            "\nfn ", 1
+        )[0]
+        finite_design_loop = simplex.split("for row in 0..rows {", 1)[1].split(
+            "let mut column_offset", 1
+        )[0]
+        self.assertIn("let fit_view = generation.fit_view();", simplex)
+        self.assertIn("fit_view.column_value(column, row)?", finite_design_loop)
+        self.assertNotIn("generation.fit_view()", finite_design_loop)
 
     def test_phase_allocator_probe_is_session_only_and_ols_defaults_to_none(self):
         session = SESSION.read_text(encoding="utf-8")

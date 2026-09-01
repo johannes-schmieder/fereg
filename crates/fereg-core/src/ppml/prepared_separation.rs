@@ -1386,7 +1386,11 @@ fn prepared_simplex_proposal(
             "prepared simplex has no categorical topology",
         )
     })?;
-    let finite_columns = generation.fit_view().fit_model().columns.len();
+    // Resolve the enum-backed model exactly once before entering the dense
+    // row/column construction loop. The concrete view keeps both this loop
+    // and the shared linear-session loops statically dispatched.
+    let fit_view = generation.fit_view();
+    let finite_columns = fit_view.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
     let mut absorbed_columns = 0_usize;
     for (effect, spec) in categorical.effect_specs().iter().enumerate() {
@@ -1454,7 +1458,7 @@ fn prepared_simplex_proposal(
     values.resize(cells, 0.0);
     for row in 0..rows {
         for column in 0..finite_columns {
-            values[row * columns + column] = generation.fit_view().fit_column_value(column, row)?;
+            values[row * columns + column] = fit_view.column_value(column, row)?;
         }
     }
     let mut column_offset = finite_columns;

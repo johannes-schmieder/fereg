@@ -9,6 +9,10 @@
 
 use std::sync::Arc;
 
+use super::prepared::{
+    canonicalize_probability_weights, checked_frequency_effective_observations,
+    PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
+};
 use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
 };
@@ -21,12 +25,6 @@ use crate::ols::{
 use crate::ppml_separation::{PreparedSeparationRebuilder, SeparationDropReason};
 use crate::prepared_categorical_data::{
     prepare_ppml_categorical_ols_data, PreparedCategoricalOlsData,
-};
-use crate::prepared_fit_view::PreparedOlsFitView;
-
-use super::prepared::{
-    canonicalize_probability_weights, checked_frequency_effective_observations,
-    PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
 };
 
 const MAX_PPML_CLUSTER_DIMENSIONS: usize = 5;
@@ -43,7 +41,12 @@ pub(crate) enum PreparedPpmlModel {
 }
 
 impl PreparedPpmlModel {
-    pub(crate) fn fit_view(&self) -> &(dyn PreparedOlsFitView + Sync) {
+    /// Resolve the PPML model variant once to the one concrete prepared
+    /// layout used by every production generation. Keeping this return type
+    /// concrete is performance-critical: the shared linear session then
+    /// monomorphizes its observation loops instead of calling the prepared
+    /// view through a vtable.
+    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
         match self {
             Self::Categorical(prepared) => prepared,
             Self::CategoricalClustered(prepared) => prepared.ols(),
@@ -123,7 +126,7 @@ impl PreparedPpmlModelGeneration {
         &self.prepared
     }
 
-    pub(crate) fn fit_view(&self) -> &(dyn PreparedOlsFitView + Sync) {
+    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
         self.prepared.fit_view()
     }
 
@@ -1201,8 +1204,9 @@ mod tests {
             .categorical()
             .expect("categorical PPML view");
         assert!(categorical.effect_specs().is_empty());
-        assert!(!generation.fit_view().fit_has_absorbed_intercept());
-        assert!(generation.fit_view().fit_report_intercept());
+        let concrete_fit: &PreparedCategoricalOlsData = generation.fit_view();
+        assert!(!concrete_fit.has_absorbed_intercept());
+        assert!(concrete_fit.report_intercept());
         let fit = fit_prepared_categorical_ols_coefficients_map(
             categorical,
             PreparedOlsFitConfig::default(),
@@ -1216,7 +1220,7 @@ mod tests {
                 && coordinate.kind == crate::ols::PreparedOlsBreadCoordinateKind::FiniteRegressor
         }));
         assert!(generation.cluster_design().is_none());
-        assert_eq!(generation.fit_view().fit_sample().n_active(), 7);
+        assert_eq!(generation.fit_view().sample().n_active(), 7);
         let fit = fit_prepared_categorical_ols_coefficients_map(
             generation
                 .prepared()
