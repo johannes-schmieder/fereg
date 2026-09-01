@@ -531,6 +531,32 @@ class FeregF0BehaviorContractTests(unittest.TestCase):
                     noncanonical, noncanonical_identity
                 )
 
+    def test_empty_retained_process_stream_is_narrowly_valid(self):
+        empty_stream = BEHAVIOR._bundle_record(
+            "fixture-streams/help_examples.stdout-stderr",
+            "fixture_stdout_stderr",
+            b"",
+        )
+        record = {
+            "format": BEHAVIOR.BUNDLE_FORMAT,
+            "filename": "evidence.tar",
+            "sha256": "f" * 64,
+            "size_bytes": 10240,
+            "members": [empty_stream],
+        }
+        BEHAVIOR._validate_evidence_bundle_record(record, "bundle")
+
+        for field, value in (
+            ("role", "fixture_log"),
+            ("path", "fixture-logs/help_examples.log"),
+        ):
+            changed = copy.deepcopy(record)
+            changed["members"][0][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(
+                BEHAVIOR.BehaviorContractError, "size is invalid"
+            ):
+                BEHAVIOR._validate_evidence_bundle_record(changed, "bundle")
+
     def test_retained_plugin_bytes_must_embed_claimed_source(self):
         source = self._source(baseline=False)
         BEHAVIOR._verify_plugin_source_bytes(

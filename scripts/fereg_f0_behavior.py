@@ -948,10 +948,19 @@ def _validate_evidence_bundle_record(value: Any, where: str) -> None:
         if not isinstance(item["role"], str) or not item["role"]:
             raise BehaviorContractError(f"{where}.members[{index}].role is empty")
         _sha256(item["sha256"], f"{where}.members[{index}].sha256")
+        allows_empty_process_stream = (
+            item["role"] == "fixture_stdout_stderr"
+            and re.fullmatch(
+                r"fixture-streams/[a-z][a-z0-9_]{1,63}\.stdout-stderr",
+                item["path"],
+            )
+            is not None
+        )
         if (
             isinstance(item["size_bytes"], bool)
             or not isinstance(item["size_bytes"], int)
-            or item["size_bytes"] < 1
+            or item["size_bytes"] < 0
+            or (item["size_bytes"] == 0 and not allows_empty_process_stream)
         ):
             raise BehaviorContractError(f"{where}.members[{index}] size is invalid")
         names.append(item["path"])
