@@ -89,8 +89,8 @@ class FeppmlSeparationRecipeContractTests(unittest.TestCase):
         slope = next(
             case for case in self.document["cases"] if case["id"] == "absorbed_slope"
         )
-        self.assertEqual(len(slope["stata"]["rows"]), 8)
-        self.assertEqual(len(slope["design"]), 8)
+        self.assertEqual(len(slope["stata"]["rows"]), 10)
+        self.assertEqual(len(slope["design"]), 10)
         self.assertIn("absorb(fe##c.slope)", CONTRACT.stata_case_recipe(slope))
 
         boundary = next(

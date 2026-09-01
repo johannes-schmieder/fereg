@@ -478,7 +478,8 @@ def stata_case_recipe(case: Mapping[str, Any]) -> str:
         options.append(f"absorb({' '.join(stata['absorb'])})")
     weight_kind = case["weight"]["kind"]
     if weight_kind != "none":
-        options.append(f"{weight_kind}({stata['weight_column']})")
+        abbreviation = {"fweight": "fw", "pweight": "pw"}[weight_kind]
+        command += f" [{abbreviation}={stata['weight_column']}]"
     if stata["exposure_column"] is not None:
         options.append(f"exposure({stata['exposure_column']})")
     options.append(f"separation({stata['method']})")
@@ -527,10 +528,10 @@ def stata_case_recipe(case: Mapping[str, Any]) -> str:
                 "tempname __p7_before_b __p7_before_v",
                 "matrix `__p7_before_b' = e(b)",
                 "matrix `__p7_before_v' = e(V)",
-                "datasignature, reset",
+                "quietly datasignature set, reset",
                 "capture noisily " + command + ", " + " ".join(options),
                 f"assert _rc == {case['terminal_rc']}",
-                "datasignature confirm",
+                "quietly datasignature confirm",
                 "assert mreldif(e(b), `__p7_before_b') == 0",
                 "assert mreldif(e(V), `__p7_before_v') == 0",
             )
@@ -650,7 +651,9 @@ def validate_stata_and_formal_binding(document: Mapping[str, Any], root: Path = 
         "e(feppml_separation_sequence)[5,3] == cond(`mu_requested', 4, 0)",
         "assert e(num_singletons) == 0",
         "assert e(N_physical) == 9",
-        "pweight(pw)",
+        "[pw=pw]",
+        "[fw=fw]",
+        "[pw=__p7_pw]",
         "exposure(exposure)",
         "threads(1) deterministic",
         "threads(4) deterministic",

@@ -61,8 +61,8 @@
   ],
   "recipe_contract": {
     "path": "scripts/feppml_qualification_recipe_contract.py",
-    "sha256": "699ea32a828ba0ee018ebbdb75980292ab501a02b591ca594a9117acbfcfa842",
-    "profile_sha256": "6591419b15adf0768372a86a1014d15fa183feb9c0adf6e2c43eef19e8b7088b",
+    "sha256": "b635454cb21bc6806d77e0a62b9e57b7fd59c5134a084d1786c17c80a7575fac",
+    "profile_sha256": "f3c35813ae956b336ccdda3f8464a03eb96f0e8318ef2dec31d4c3311ae0d0ad",
     "compilers": [
       {
         "id": "main",

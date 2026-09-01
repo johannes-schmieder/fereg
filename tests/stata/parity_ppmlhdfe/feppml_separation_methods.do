@@ -329,19 +329,21 @@ clear
 input long obs_id double(y sep fe slope)
 1 1 0 1 0
 2 2 0 1 1
-3 0 1 1 0
-4 0 1 1 1
-5 1 0 2 0
-6 2 0 2 1
-7 0 1 2 0
-8 0 1 2 1
+3 3 0 1 2
+4 0 1 1 0
+5 0 1 1 1
+6 1 0 2 0
+7 2 0 2 1
+8 3 0 2 2
+9 0 1 2 0
+10 0 1 2 1
 end
-assert _N == 8
+assert _N == 10
 `feppml_test_command' y c.sep, absorb(fe##c.slope) separation(simplex) dropreason(__p7_case_drop)
 assert e(converged) == 1
 assert e(separated) == 4
-assert e(N_physical) == 4
-generate byte __p7_expected_drop = inlist(obs_id, 3, 4, 7, 8)
+assert e(N_physical) == 6
+generate byte __p7_expected_drop = inlist(obs_id, 4, 5, 9, 10)
 assert e(sample) == !__p7_expected_drop
 assert __p7_case_drop == 10 if __p7_expected_drop
 assert __p7_case_drop == 0 if !__p7_expected_drop
@@ -359,7 +361,7 @@ input long obs_id double(y sep pw fe)
 6 0 1 11 2
 end
 assert _N == 6
-`feppml_test_command' y c.sep, absorb(fe) pweight(pw) separation(ir) dropreason(__p7_case_drop)
+`feppml_test_command' y c.sep [pw=pw], absorb(fe) separation(ir) dropreason(__p7_case_drop)
 assert e(converged) == 1
 assert e(separated) == 2
 assert e(N_physical) == 4
@@ -406,7 +408,7 @@ input long obs_id double(y x fe fw)
 9 1 3 3 1
 end
 assert _N == 9
-`feppml_test_command' y c.x, absorb(fe) fweight(fw) separation(fe simplex ir) dropreason(__p7_case_drop)
+`feppml_test_command' y c.x [fw=fw], absorb(fe) separation(fe simplex ir) dropreason(__p7_case_drop)
 assert e(converged) == 1
 assert e(separated) == 0
 assert e(N_physical) == 9
@@ -447,10 +449,10 @@ quietly regress y
 tempname __p7_before_b __p7_before_v
 matrix `__p7_before_b' = e(b)
 matrix `__p7_before_v' = e(V)
-datasignature, reset
+quietly datasignature set, reset
 capture noisily `feppml_test_command' y, separation(simplex)
 assert _rc == 2001
-datasignature confirm
+quietly datasignature confirm
 assert mreldif(e(b), `__p7_before_b') == 0
 assert mreldif(e(V), `__p7_before_v') == 0
 display as result "PHASE7_ORACLE|all_zero_terminal_failure|all_zero_failure"
@@ -467,16 +469,16 @@ generate double y = 1 + mod(7 * _n, 10)
 replace y = 0 if separated_cell
 generate double __p7_pw = .5 + mod(_n, 7)
 generate double __p7_exposure = exp(.02 * (mod(_n, 5) - 2))
-`feppml_test_command' y c.x c.separated_cell, absorb(fe) ///
-    pweight(__p7_pw) exposure(__p7_exposure) separation(fe simplex ir) ///
+`feppml_test_command' y c.x c.separated_cell [pw=__p7_pw], absorb(fe) ///
+    exposure(__p7_exposure) separation(fe simplex ir) ///
     dropreason(__p7_t1_drop) threads(1) deterministic
 tempname __p7_t1_b __p7_t1_v __p7_t1_receipt
 matrix `__p7_t1_b' = e(b)
 matrix `__p7_t1_v' = e(V)
 matrix `__p7_t1_receipt' = e(feppml_receipt)
 generate byte __p7_t1_sample = e(sample)
-`feppml_test_command' y c.x c.separated_cell, absorb(fe) ///
-    pweight(__p7_pw) exposure(__p7_exposure) separation(fe simplex ir) ///
+`feppml_test_command' y c.x c.separated_cell [pw=__p7_pw], absorb(fe) ///
+    exposure(__p7_exposure) separation(fe simplex ir) ///
     dropreason(__p7_t4_drop) threads(4) deterministic
 assert mreldif(`__p7_t1_b', e(b)) == 0
 assert mreldif(`__p7_t1_v', e(V)) == 0

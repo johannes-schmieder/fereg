@@ -81,7 +81,7 @@ EXPECTED_CELL_IDS = [
 ]
 
 EXPECTED_RECIPE_PROFILE_SHA256 = (
-    "6591419b15adf0768372a86a1014d15fa183feb9c0adf6e2c43eef19e8b7088b"
+    "f3c35813ae956b336ccdda3f8464a03eb96f0e8318ef2dec31d4c3311ae0d0ad"
 )
 EXPECTED_RECIPE_COMPILERS = {
     "main": "scripts/generate_feppml_qualification_recipes.py",
