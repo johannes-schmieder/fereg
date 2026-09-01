@@ -10,6 +10,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -26,6 +27,18 @@ SPEC.loader.exec_module(SCC)
 
 
 class FeppmlLinuxPlatformSccTests(unittest.TestCase):
+    def test_direct_isolated_cli_bootstraps_repository_imports(self):
+        completed = subprocess.run(
+            [sys.executable, "-I", "-B", "-S", str(PROGRAM), "--help"],
+            cwd="/",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("Closed SCC bootstrap", completed.stdout)
+
     def repository(
         self, root: Path, name: str, paths: tuple[str, ...]
     ) -> tuple[Path, str]:

@@ -28,6 +28,15 @@ from typing import Any, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[2]
 PLATFORM_RECEIPT_PATH = ROOT / "scripts/feppml_platform_load_receipt.py"
 
+# The formal controller is launched with ``python -I -B -S`` from arbitrary
+# local and SCC working directories.  In that mode Python intentionally omits
+# both the caller's cwd and user site paths, so make the reviewed repository
+# roots explicit before loading the sibling receipt module.
+for import_root in (ROOT / "scripts", ROOT):
+    import_root_text = str(import_root)
+    if import_root_text not in sys.path:
+        sys.path.insert(0, import_root_text)
+
 
 def _module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
