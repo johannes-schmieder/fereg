@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -37,6 +39,123 @@ class CaptureFeppmlPlatformLoadTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("Capture one exact plugin load", completed.stdout)
+
+    @staticmethod
+    def cli_arguments(*, stata: str = "/tmp/stata-mp") -> list[str]:
+        return [
+            "--platform",
+            "linux-x86_64",
+            "--artifact",
+            "/tmp/fereg_linux.plugin",
+            "--stata",
+            stata,
+            "--output",
+            "/tmp/capture.json",
+            "--source-commit",
+            "a" * 40,
+        ]
+
+    def test_native_attested_scc_cli_succeeds_with_one_sentinel(self) -> None:
+        arguments = [
+            *self.cli_arguments(),
+            "--source-archive",
+            "/tmp/source.tar",
+            "--attestation",
+            "/tmp/native-attestation.json",
+        ]
+        stdout = io.StringIO()
+        with (
+            mock.patch.object(CAPTURE, "capture", return_value={}) as capture,
+            mock.patch.object(CAPTURE.platform_receipt, "create") as create,
+            redirect_stdout(stdout),
+        ):
+            self.assertEqual(CAPTURE.main(arguments), 0)
+
+        capture.assert_called_once()
+        self.assertEqual(
+            capture.call_args.kwargs["source_archive"], Path("/tmp/source.tar")
+        )
+        self.assertEqual(
+            capture.call_args.kwargs["attestation"],
+            Path("/tmp/native-attestation.json"),
+        )
+        create.assert_not_called()
+        self.assertEqual(
+            stdout.getvalue(), "FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE\n"
+        )
+
+    def test_partial_evidence_argument_combinations_fail_before_capture(self) -> None:
+        self.assertEqual(
+            CAPTURE._cli_evidence_mode(
+                source_archive=None,
+                attestation=None,
+                receipt=None,
+                record=None,
+            ),
+            "capture-only",
+        )
+        options = (
+            ("--source-archive", "/tmp/source.tar"),
+            ("--attestation", "/tmp/native-attestation.json"),
+            ("--receipt", "/tmp/receipt.json"),
+            ("--record", "/tmp/record.json"),
+        )
+        valid_masks = {0, 0b0011, 0b1111}
+        for mask in range(1 << len(options)):
+            if mask in valid_masks:
+                continue
+            arguments = self.cli_arguments()
+            for index, (option, value) in enumerate(options):
+                if mask & (1 << index):
+                    arguments.extend((option, value))
+            with (
+                self.subTest(mask=mask),
+                mock.patch.object(CAPTURE, "capture") as capture,
+                self.assertRaisesRegex(SystemExit, "must be exactly none"),
+            ):
+                CAPTURE.main(arguments)
+            capture.assert_not_called()
+
+    def test_full_portable_sealing_arguments_still_create_receipt_and_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source_archive = root / "source.tar"
+            source_archive.write_bytes(b"source archive")
+            stata = root / "stata-mp"
+            stata.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+            stata.chmod(0o755)
+            attestation = root / "native-attestation.json"
+            receipt = root / "receipt.json"
+            record = root / "record.json"
+            arguments = [
+                *self.cli_arguments(stata=str(stata)),
+                "--source-archive",
+                str(source_archive),
+                "--attestation",
+                str(attestation),
+                "--receipt",
+                str(receipt),
+                "--record",
+                str(record),
+            ]
+            stdout = io.StringIO()
+            with (
+                mock.patch.object(CAPTURE, "capture", return_value={}) as capture,
+                mock.patch.object(CAPTURE.platform_receipt, "create") as create,
+                redirect_stdout(stdout),
+            ):
+                self.assertEqual(CAPTURE.main(arguments), 0)
+
+            capture.assert_called_once()
+            create.assert_called_once()
+            self.assertEqual(create.call_args.kwargs["receipt"], receipt)
+            self.assertEqual(create.call_args.kwargs["record"], record)
+            self.assertEqual(
+                create.call_args.kwargs["native_attestation"], attestation
+            )
+            self.assertEqual(
+                stdout.getvalue(), "FEPPML_LICENSED_STATA_LOAD_CAPTURE_COMPLETE\n"
+            )
 
     def source(self, root: Path) -> tuple[Path, Path, str]:
         repo = root / "source"

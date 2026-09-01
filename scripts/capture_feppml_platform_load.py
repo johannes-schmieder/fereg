@@ -66,10 +66,44 @@ STATUS_FIELDS = {
 }
 STATA_BASENAME = re.compile(r"^stata(?:-mp|-se)?$", re.IGNORECASE)
 TERMINAL_SENTINEL = "FEPPML_LICENSED_STATA_LOAD_COMPLETE"
+CLI_EVIDENCE_ARGUMENTS = frozenset(
+    {"source_archive", "attestation", "receipt", "record"}
+)
+CLI_NATIVE_ARGUMENTS = frozenset({"source_archive", "attestation"})
 
 
 class CaptureError(RuntimeError):
     """The licensed-load process or exact-byte binding failed closed."""
+
+
+def _cli_evidence_mode(
+    *,
+    source_archive: Path | None,
+    attestation: Path | None,
+    receipt: Path | None,
+    record: Path | None,
+) -> str:
+    supplied = frozenset(
+        name
+        for name, value in (
+            ("source_archive", source_archive),
+            ("attestation", attestation),
+            ("receipt", receipt),
+            ("record", record),
+        )
+        if value is not None
+    )
+    if not supplied:
+        return "capture-only"
+    if supplied == CLI_NATIVE_ARGUMENTS:
+        return "native-attested"
+    if supplied == CLI_EVIDENCE_ARGUMENTS:
+        return "portable-sealed"
+    raise CaptureError(
+        "evidence arguments must be exactly none, "
+        "--source-archive with --attestation, or "
+        "--source-archive with --attestation, --receipt, and --record"
+    )
 
 
 def _regular_file(path: Path, where: str) -> Path:
@@ -529,6 +563,12 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        evidence_mode = _cli_evidence_mode(
+            source_archive=args.source_archive,
+            attestation=args.attestation,
+            receipt=args.receipt,
+            record=args.record,
+        )
         capture(
             platform=args.platform,
             artifact=args.artifact,
@@ -543,17 +583,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             source_archive=args.source_archive,
             attestation=args.attestation,
         )
-        seal_arguments = (
-            args.source_archive,
-            args.attestation,
-            args.receipt,
-            args.record,
-        )
-        if any(value is not None for value in seal_arguments):
-            if not all(value is not None for value in seal_arguments):
-                raise CaptureError(
-                    "--source-archive, --receipt, and --record must be supplied together"
-                )
+        if evidence_mode == "portable-sealed":
             archive = _regular_file(args.source_archive, "candidate source archive")
             platform_receipt.create(
                 platform=args.platform,
