@@ -775,13 +775,17 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
                 {"TZ": "Pacific/Kiritimati", "FEREG_BUILD_DATE": "2099-12-31"},
                 clear=False,
             ):
-                east = SCC._formal_build_environment(source, slots="4")
+                east = SCC._formal_build_environment(
+                    source, slots="4", tool_bin=Path("/sealed/tools")
+                )
             with mock.patch.dict(
                 SCC.os.environ,
                 {"TZ": "Pacific/Pago_Pago", "FEREG_BUILD_DATE": "1970-01-01"},
                 clear=False,
             ):
-                west = SCC._formal_build_environment(source, slots="4")
+                west = SCC._formal_build_environment(
+                    source, slots="4", tool_bin=Path("/sealed/tools")
+                )
             self.assertEqual(east["FEREG_BUILD_DATE"], source["build_date_utc"])
             self.assertEqual(west["FEREG_BUILD_DATE"], source["build_date_utc"])
             self.assertEqual(east["FEREG_GIT_COMMIT"], commit[:12])
@@ -806,12 +810,29 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             "CC": "/tmp/not-cc",
             "CFLAGS": "-include /tmp/hostile.h",
             "LD_PRELOAD": "/tmp/hostile.so",
+            "LD_LIBRARY_PATH": "/tmp/hostile-libraries",
             "PYTHONPATH": "/tmp/hostile-python",
+            "PATH": "/tmp/hostile:/usr/bin:/bin",
         }
         with mock.patch.dict(SCC.os.environ, hostile, clear=False):
-            environment = SCC._formal_build_environment(source, slots="4")
+            environment = SCC._formal_build_environment(
+                source, slots="4", tool_bin=Path("/run/work/sealed-tool-bin")
+            )
         for key in hostile:
-            self.assertNotIn(key, environment)
+            if key not in {"CC", "PATH"}:
+                self.assertNotIn(key, environment)
+        self.assertEqual(environment["CC"], "/usr/bin/cc")
+        self.assertEqual(
+            environment["PATH"],
+            os.pathsep.join(
+                [
+                    "/run/work/sealed-tool-bin",
+                    str(SCC.SHARED_CARGO_HOME / "bin"),
+                    "/usr/bin",
+                    "/bin",
+                ]
+            ),
+        )
         self.assertEqual(environment["FEREG_GIT_COMMIT"], "0123456789ab")
         self.assertEqual(environment["FEREG_BUILD_DATE"], "2026-08-31")
         self.assertEqual(environment["CARGO_BUILD_JOBS"], "4")

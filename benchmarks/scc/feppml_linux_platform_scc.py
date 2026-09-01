@@ -169,7 +169,6 @@ ISOLATED_PYTHON_FLAGS = ("-I", "-B", "-S")
 CAPTURE_DIAGNOSTIC_LIMIT = 500
 FORMAL_BUILD_PASSTHROUGH = frozenset(
     {
-        "PATH",
         "CARGO_HOME",
         "CARGO_NET_OFFLINE",
         "RUSTUP_HOME",
@@ -181,9 +180,9 @@ FORMAL_BUILD_PASSTHROUGH = frozenset(
         "TMPDIR",
         "TMP",
         "TEMP",
-        "LD_LIBRARY_PATH",
     }
 )
+FORMAL_SYSTEM_PATHS = (Path("/usr/bin"), Path("/bin"))
 
 
 class BootstrapError(RuntimeError):
@@ -597,13 +596,22 @@ def _commit_build_date_utc(repo: Path, commit: str) -> str:
 
 
 def _formal_build_environment(
-    source: Mapping[str, Any], *, slots: str | int
+    source: Mapping[str, Any], *, slots: str | int, tool_bin: Path
 ) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
         if key in FORMAL_BUILD_PASSTHROUGH
     }
+    environment["PATH"] = os.pathsep.join(
+        str(path)
+        for path in (
+            tool_bin,
+            SHARED_CARGO_HOME / "bin",
+            *FORMAL_SYSTEM_PATHS,
+        )
+    )
+    environment["CC"] = "/usr/bin/cc"
     environment["LANG"] = "C"
     environment["LC_ALL"] = "C"
     environment["FEREG_GIT_COMMIT"] = str(source["embedded_git_commit"])
@@ -1028,7 +1036,7 @@ def run_job(run_root: Path) -> None:
     root = _run_root(run_root, remote=True)
     preparation = verify_input(root)
     verify_deployment(root)
-    _validate_run_owned_build_environment(root, os.environ)
+    _, tool_bin = _validate_run_owned_build_environment(root, os.environ)
     source_record = preparation["source"]
     source = root / "work/source"
     _run(
@@ -1083,10 +1091,12 @@ def run_job(run_root: Path) -> None:
     if rustc != EXPECTED_RUSTC or cargo != EXPECTED_CARGO:
         raise BootstrapError("SCC Rust toolchain differs from the frozen bootstrap")
     environment = _formal_build_environment(
-        source_record, slots=os.environ.get("NSLOTS", "1")
+        source_record,
+        slots=os.environ.get("NSLOTS", "1"),
+        tool_bin=tool_bin,
     )
     build = subprocess.run(
-        ["bash", "scripts/build_linux.sh"],
+        ["/bin/bash", "scripts/build_linux.sh"],
         cwd=source,
         env=environment,
         stdout=subprocess.PIPE,
