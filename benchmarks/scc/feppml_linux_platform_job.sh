@@ -38,5 +38,5 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-python3 "$RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py" \
+python3 -I -B -S "$RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py" \
     run --run-root "$RUN_ROOT"

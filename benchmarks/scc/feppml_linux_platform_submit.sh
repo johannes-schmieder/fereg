@@ -14,15 +14,15 @@ fi
 REMOTE_RUN_ROOT=/projectnb/welfgr/fereg/runs/$RUN_ID
 HARNESS="$LOCAL_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py"
 
-python3 "$HARNESS" verify-deployment --run-root "$LOCAL_RUN_ROOT"
-QSUB_COMMAND=$(python3 "$HARNESS" print-submission-command \
+python3 -I -B -S "$HARNESS" verify-deployment --run-root "$LOCAL_RUN_ROOT"
+QSUB_COMMAND=$(python3 -I -B -S "$HARNESS" print-submission-command \
     --run-root "$LOCAL_RUN_ROOT")
-RAW_JOB=$(ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 '$REMOTE_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py' verify-deployment --run-root '$REMOTE_RUN_ROOT' >/dev/null && cd '$REMOTE_RUN_ROOT' && $QSUB_COMMAND")
+RAW_JOB=$(ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 -I -B -S '$REMOTE_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py' verify-deployment --run-root '$REMOTE_RUN_ROOT' >/dev/null && cd '$REMOTE_RUN_ROOT' && $QSUB_COMMAND")
 JOB_ID=${RAW_JOB%%.*}
 case "$JOB_ID" in
     ''|*[!0-9]*) echo "invalid qsub response" >&2; exit 1 ;;
 esac
-python3 "$HARNESS" record-submission \
+python3 -I -B -S "$HARNESS" record-submission \
     --run-root "$LOCAL_RUN_ROOT" --job-id "$JOB_ID"
 rsync -av --partial --progress \
     "$LOCAL_RUN_ROOT/receipts/submission.json" \

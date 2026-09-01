@@ -5,6 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -25,6 +26,18 @@ def digest(path: Path) -> str:
 
 
 class CaptureFeppmlPlatformLoadTests(unittest.TestCase):
+    def test_direct_isolated_cli_bootstraps_reviewed_imports(self) -> None:
+        completed = subprocess.run(
+            [sys.executable, "-I", "-B", "-S", str(PROGRAM), "--help"],
+            cwd="/",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("Capture one exact plugin load", completed.stdout)
+
     def source(self, root: Path) -> tuple[Path, Path, str]:
         repo = root / "source"
         program = (

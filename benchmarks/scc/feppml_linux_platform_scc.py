@@ -13,7 +13,7 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shlex
 import shutil
@@ -85,6 +85,71 @@ SOURCE_IDENTITY_PATHS = (
     "tests/mock_spi/run_actual_unix_plugin_test.sh",
     "tests/mock_spi/actual_plugin_loader_test.c",
 )
+SEALED_INPUT_PATHS = frozenset(
+    {
+        "input/source.tar",
+        "input/source.bundle",
+        "input/controller.tar",
+        "input/controller.bundle",
+        *(f"input/harness/{relative}" for relative in HARNESS_PATHS),
+    }
+)
+POST_INVENTORY_INPUT_PATHS = frozenset(
+    {"input/preparation.json", "input/PREPARED"}
+)
+EXPECTED_INPUT_PATHS = SEALED_INPUT_PATHS | POST_INVENTORY_INPUT_PATHS
+EXPECTED_INPUT_DIRECTORIES = frozenset(
+    parent.as_posix()
+    for relative in EXPECTED_INPUT_PATHS
+    for parent in PurePosixPath(relative).parents
+    if parent.as_posix() != "."
+)
+PREPARATION_FIELDS = frozenset(
+    {
+        "schema_version",
+        "kind",
+        "run_id",
+        "platform",
+        "source",
+        "harness_source",
+        "source_files",
+        "harness",
+        "toolchain",
+        "files",
+        "complete_sentinel",
+    }
+)
+SOURCE_FIELDS = frozenset(
+    {
+        "commit",
+        "tree",
+        "archive_sha256",
+        "archive_size_bytes",
+        "bundle_sha256",
+        "bundle_size_bytes",
+        "embedded_git_commit",
+        "build_date_utc",
+    }
+)
+HARNESS_SOURCE_FIELDS = frozenset(
+    {
+        "commit",
+        "tree",
+        "archive_sha256",
+        "archive_size_bytes",
+        "bundle_sha256",
+        "bundle_size_bytes",
+    }
+)
+FILE_RECORD_FIELDS = frozenset({"sha256", "size_bytes"})
+EXPECTED_TOOLCHAIN = {
+    "rustc": EXPECTED_RUSTC,
+    "cargo": EXPECTED_CARGO,
+    "rustup_toolchain": "1.85.1-x86_64-unknown-linux-gnu",
+    "stata_module": "stata-mp/19",
+    "python_module": "python3/3.12.4",
+}
+ISOLATED_PYTHON_FLAGS = ("-I", "-B", "-S")
 
 
 class BootstrapError(RuntimeError):
@@ -191,6 +256,23 @@ def _run(
     return completed.stdout
 
 
+def _isolated_python(program: Path, *arguments: str) -> list[str]:
+    return [sys.executable, *ISOLATED_PYTHON_FLAGS, str(program), *arguments]
+
+
+def _run_isolated_python(
+    program: Path, arguments: Sequence[str], *, cwd: Path
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        _isolated_python(program, *arguments),
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        text=True,
+    )
+
+
 def _git(repo: Path, *arguments: str) -> bytes:
     return _run(["git", "-C", str(repo), *arguments])
 
@@ -258,6 +340,51 @@ def _verify_file_record(root: Path, value: Any, where: str) -> Path:
     ):
         raise BootstrapError(f"{where} bytes are absent or changed")
     return path
+
+
+def _verify_exact_input_file_set(root: Path) -> None:
+    input_root = root / "input"
+    if input_root.is_symlink() or not input_root.is_dir():
+        raise BootstrapError("prepared input root must be a regular directory")
+    observed_files: set[str] = set()
+    observed_directories = {"input"}
+    pending = [input_root]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = list(os.scandir(directory))
+        except OSError as error:
+            raise BootstrapError("cannot enumerate the prepared input") from error
+        for entry in entries:
+            path = Path(entry.path)
+            relative = path.relative_to(root).as_posix()
+            if entry.is_symlink():
+                observed_files.add(relative)
+            elif entry.is_dir(follow_symlinks=False):
+                observed_directories.add(relative)
+                pending.append(path)
+            else:
+                observed_files.add(relative)
+    if observed_directories != EXPECTED_INPUT_DIRECTORIES:
+        unexpected = sorted(observed_directories - EXPECTED_INPUT_DIRECTORIES)
+        missing = sorted(EXPECTED_INPUT_DIRECTORIES - observed_directories)
+        raise BootstrapError(
+            "prepared input directory set is not closed: "
+            f"unexpected={unexpected} missing={missing}"
+        )
+    if observed_files != EXPECTED_INPUT_PATHS:
+        unexpected = sorted(observed_files - EXPECTED_INPUT_PATHS)
+        missing = sorted(EXPECTED_INPUT_PATHS - observed_files)
+        raise BootstrapError(
+            "prepared input file set is not closed: "
+            f"unexpected={unexpected} missing={missing}"
+        )
+    for relative in EXPECTED_INPUT_PATHS:
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise BootstrapError(
+                f"prepared input must be a regular non-symlink file: {relative}"
+            )
 
 
 def _git_bundle(repo: Path, commit: str, branch: str) -> bytes:
@@ -455,6 +582,38 @@ def verify_input(run_root: Path) -> Mapping[str, Any]:
     root = _run_root(run_root)
     path = root / "input/preparation.json"
     payload = read_sealed(path, "feppml_linux_platform_bootstrap_preparation")
+    if set(payload) != PREPARATION_FIELDS:
+        raise BootstrapError("prepared input fields are not closed")
+    source = _read_record(payload.get("source"), "prepared target source")
+    harness_source = _read_record(
+        payload.get("harness_source"), "prepared controller source"
+    )
+    source_files = _read_record(
+        payload.get("source_files"), "prepared target source files"
+    )
+    harness_files = _read_record(
+        payload.get("harness"), "prepared controller files"
+    )
+    files = _read_record(payload.get("files"), "prepared input inventory")
+    if (
+        set(source) != SOURCE_FIELDS
+        or set(harness_source) != HARNESS_SOURCE_FIELDS
+        or set(source_files) != set(SOURCE_IDENTITY_PATHS)
+        or set(harness_files) != set(HARNESS_PATHS)
+        or set(files) != SEALED_INPUT_PATHS
+        or payload.get("toolchain") != EXPECTED_TOOLCHAIN
+    ):
+        raise BootstrapError("prepared input nested inventory is not closed")
+    for where, records in (
+        ("target source", source_files),
+        ("controller", harness_files),
+        ("input", files),
+    ):
+        for relative, record in records.items():
+            if set(_read_record(record, f"prepared {where} {relative}")) != FILE_RECORD_FIELDS:
+                raise BootstrapError(
+                    f"prepared {where} record is not closed: {relative}"
+                )
     prepared_marker = root / "input/PREPARED"
     if (
         payload.get("schema_version") != 1
@@ -467,11 +626,11 @@ def verify_input(run_root: Path) -> Mapping[str, Any]:
         != f"FEPPML_LINUX_PLATFORM_PREPARED|{digest_file(path)}\n"
     ):
         raise BootstrapError("prepared input identity/sentinel is invalid")
-    files = _read_record(payload.get("files"), "prepared input inventory")
+    _verify_exact_input_file_set(root)
     for relative, expected in files.items():
         try:
             expected_record = _read_record(expected, str(relative))
-            if set(expected_record) != {"sha256", "size_bytes"}:
+            if set(expected_record) != FILE_RECORD_FIELDS:
                 raise BootstrapError("prepared input file record is not closed")
             _verify_file_record(
                 root,
@@ -766,11 +925,7 @@ def run_job(run_root: Path) -> None:
         raise BootstrapError("licensed Stata is unavailable after module load")
     capture_path = root / "output/capture.json"
     attestation_path = root / "output/native-attestation.json"
-    capture_command = [
-        sys.executable,
-        str(
-            controller / "scripts/capture_feppml_platform_load.py"
-        ),
+    capture_arguments = (
         "--platform",
         "linux-x86_64",
         "--artifact",
@@ -795,14 +950,11 @@ def run_job(run_root: Path) -> None:
         str(root / "input/source.tar"),
         "--attestation",
         str(attestation_path),
-    ]
-    completed = subprocess.run(
-        capture_command,
+    )
+    completed = _run_isolated_python(
+        controller / "scripts/capture_feppml_platform_load.py",
+        capture_arguments,
         cwd=source,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-        text=True,
     )
     if (
         completed.returncode

@@ -16,8 +16,8 @@ fi
 REMOTE_RUN_ROOT=/projectnb/welfgr/fereg/runs/$RUN_ID
 HARNESS="$LOCAL_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py"
 
-python3 "$HARNESS" verify-submission --run-root "$LOCAL_RUN_ROOT"
-JOB_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["payload"]["job_id"])' \
+python3 -I -B -S "$HARNESS" verify-submission --run-root "$LOCAL_RUN_ROOT"
+JOB_ID=$(python3 -I -B -S -c 'import json,sys; print(json.load(open(sys.argv[1]))["payload"]["job_id"])' \
     "$LOCAL_RUN_ROOT/receipts/submission.json")
 case "$JOB_ID" in
     ''|*[!0-9]*) echo "invalid recorded job ID" >&2; exit 2 ;;
@@ -27,7 +27,7 @@ if ssh scc "qstat -j '$JOB_ID' >/dev/null 2>&1"; then
     exit 3
 fi
 
-ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 '$REMOTE_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py' verify-job --run-root '$REMOTE_RUN_ROOT'"
+ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 -I -B -S '$REMOTE_RUN_ROOT/input/harness/benchmarks/scc/feppml_linux_platform_scc.py' verify-job --run-root '$REMOTE_RUN_ROOT'"
 for target in \
     "$LOCAL_RUN_ROOT/output/fereg_linux.plugin" \
     "$LOCAL_RUN_ROOT/output/capture.json" \
@@ -88,7 +88,7 @@ fi
 mv "$QACCT_TMP" "$LOCAL_RUN_ROOT/receipts/qacct.txt"
 chmod 444 "$LOCAL_RUN_ROOT/receipts/qacct.txt"
 trap - EXIT
-python3 "$HARNESS" close --run-root "$LOCAL_RUN_ROOT" \
+python3 -I -B -S "$HARNESS" close --run-root "$LOCAL_RUN_ROOT" \
     --candidate-repo "$CANDIDATE_REPO" \
     --harness-repo "$HARNESS_REPO"
 printf 'FEPPML_LINUX_PLATFORM_COLLECT_COMPLETE run_root=%s\n' "$LOCAL_RUN_ROOT"

@@ -4,9 +4,11 @@ import argparse
 import contextlib
 import hashlib
 import importlib.util
+import inspect
 import io
 import json
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
@@ -91,6 +93,48 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             check=False,
         )
+
+    def assert_input_extras_rejected(self, run_root: Path, verifier) -> None:
+        cases = (
+            ("harness/scripts/ambient.py", "print('ambient')\n", None),
+            ("harness/ambient.sh", "#!/bin/sh\nexit 0\n", None),
+            ("ambient.data", "unsealed data\n", None),
+            ("harness/scripts/ambient-link", None, "../../source.tar"),
+        )
+        for relative, contents, link_target in cases:
+            with self.subTest(extra=relative):
+                extra = run_root / "input" / relative
+                if link_target is None:
+                    extra.write_text(contents, encoding="ascii")
+                else:
+                    extra.symlink_to(link_target)
+                try:
+                    with self.assertRaisesRegex(
+                        SCC.BootstrapError, "file set is not closed"
+                    ):
+                        verifier()
+                finally:
+                    extra.unlink()
+
+    def reseal_preparation(self, run_root: Path, payload: dict[str, object]) -> None:
+        preparation = run_root / "input/preparation.json"
+        marker = run_root / "input/PREPARED"
+        preparation.chmod(0o644)
+        preparation.write_text(
+            json.dumps(
+                SCC.qualification.seal_payload(payload), sort_keys=True, indent=2
+            )
+            + "\n",
+            encoding="ascii",
+        )
+        preparation.chmod(0o444)
+        marker.chmod(0o644)
+        marker.write_text(
+            "FEPPML_LINUX_PLATFORM_PREPARED|"
+            f"{SCC.digest_file(preparation)}\n",
+            encoding="ascii",
+        )
+        marker.chmod(0o444)
 
     def test_prepared_controller_import_closure_is_exact_and_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -484,6 +528,96 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             with self.assertRaisesRegex(SCC.BootstrapError, "changed"):
                 SCC.verify_input(run_root)
 
+    def test_prepared_input_rejects_every_unsealed_file_or_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            *_, run_root, _harness_commit, _project, _ = self.prepared(
+                Path(temporary)
+            )
+            self.assert_input_extras_rejected(
+                run_root, lambda: SCC.verify_input(run_root)
+            )
+            extra_directory = run_root / "input/harness/unsealed-empty"
+            extra_directory.mkdir()
+            try:
+                with self.assertRaisesRegex(
+                    SCC.BootstrapError, "directory set is not closed"
+                ):
+                    SCC.verify_input(run_root)
+            finally:
+                extra_directory.rmdir()
+
+    def test_prepared_input_rejects_symlink_replacements(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            *_, run_root, _harness_commit, _project, _ = self.prepared(
+                Path(temporary)
+            )
+            expected_file = run_root / "input/source.tar"
+            file_backup = run_root / "work/source.tar.backup"
+            expected_file.rename(file_backup)
+            expected_file.symlink_to(file_backup)
+            try:
+                with self.assertRaisesRegex(
+                    SCC.BootstrapError, "regular non-symlink file"
+                ):
+                    SCC.verify_input(run_root)
+            finally:
+                expected_file.unlink()
+                file_backup.rename(expected_file)
+
+            expected_directory = run_root / "input/harness/scripts"
+            directory_backup = run_root / "work/harness-scripts.backup"
+            expected_directory.rename(directory_backup)
+            expected_directory.symlink_to(directory_backup, target_is_directory=True)
+            try:
+                with self.assertRaisesRegex(
+                    SCC.BootstrapError, "directory set is not closed"
+                ):
+                    SCC.verify_input(run_root)
+            finally:
+                expected_directory.unlink()
+                directory_backup.rename(expected_directory)
+            SCC.verify_input(run_root)
+
+    def test_resealed_preparation_schema_and_inventory_mutations_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            *_, run_root, _harness_commit, _project, _ = self.prepared(
+                Path(temporary)
+            )
+            preparation = run_root / "input/preparation.json"
+            original = json.loads(preparation.read_text(encoding="ascii"))["payload"]
+            mutations = (
+                (
+                    "extra top-level field",
+                    lambda payload: payload.__setitem__("ambient", True),
+                    "fields are not closed",
+                ),
+                (
+                    "added inventory key",
+                    lambda payload: payload["files"].__setitem__(
+                        "input/ambient.data",
+                        {"sha256": "0" * 64, "size_bytes": 1},
+                    ),
+                    "nested inventory is not closed",
+                ),
+                (
+                    "removed inventory key",
+                    lambda payload: payload["files"].pop("input/source.bundle"),
+                    "nested inventory is not closed",
+                ),
+            )
+            for name, mutate, message in mutations:
+                with self.subTest(mutation=name):
+                    payload = json.loads(json.dumps(original))
+                    mutate(payload)
+                    self.reseal_preparation(run_root, payload)
+                    self.assertEqual(
+                        (run_root / "input/PREPARED").read_text(encoding="ascii"),
+                        "FEPPML_LINUX_PLATFORM_PREPARED|"
+                        f"{SCC.digest_file(preparation)}\n",
+                    )
+                    with self.assertRaisesRegex(SCC.BootstrapError, message):
+                        SCC.verify_input(run_root)
+
     def test_formal_build_date_is_commit_derived_not_wall_clock(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo, _harness_repo, commit, run_root, _harness_commit, _project, _ = (
@@ -605,6 +739,9 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             self.assertEqual(
                 portable_verified["close_sha256"], verified["close_sha256"]
             )
+            self.assert_input_extras_rejected(
+                portable, lambda: SCC.verify_closed_run(portable)
+            )
             stata_log = run_root / job["native_capture"]["stata_log"]["path"]
             stata_log.chmod(0o644)
             stata_log.write_text("hand-authored pass\n", encoding="ascii")
@@ -628,8 +765,55 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
             "native-attestation.json.invocation.json", "--harness-repo",
         ):
             self.assertIn(token, combined)
+        python_invocations = re.findall(
+            r"(?<![A-Za-z0-9_./-])python3(?=\s)", combined
+        )
+        isolated_invocations = re.findall(
+            r"(?<![A-Za-z0-9_./-])python3 -I -B -S(?=\s)", combined
+        )
+        self.assertGreater(len(python_invocations), 0)
+        self.assertEqual(len(isolated_invocations), len(python_invocations))
+        self.assertEqual(
+            SCC._isolated_python(Path("/controller/capture.py"), "--help"),
+            [
+                sys.executable,
+                "-I",
+                "-B",
+                "-S",
+                "/controller/capture.py",
+                "--help",
+            ],
+        )
         self.assertNotIn("--delete", combined)
         self.assertNotIn("--info=progress2", combined)
+
+    def test_run_job_capture_launch_is_formally_isolated(self) -> None:
+        run_job_source = inspect.getsource(SCC.run_job)
+        self.assertIn("completed = _run_isolated_python(", run_job_source)
+        result = subprocess.CompletedProcess([], 0, stdout="pass", stderr="")
+        with mock.patch.object(
+            SCC.subprocess, "run", return_value=result
+        ) as runner:
+            observed = SCC._run_isolated_python(
+                Path("/controller/capture_feppml_platform_load.py"),
+                ("--platform", "linux-x86_64"),
+                cwd=Path("/source"),
+            )
+        self.assertIs(observed, result)
+        self.assertEqual(
+            runner.call_args.args[0],
+            [
+                sys.executable,
+                "-I",
+                "-B",
+                "-S",
+                "/controller/capture_feppml_platform_load.py",
+                "--platform",
+                "linux-x86_64",
+            ],
+        )
+        self.assertEqual(runner.call_args.kwargs["cwd"], Path("/source"))
+        self.assertTrue(runner.call_args.kwargs["text"])
 
 
 if __name__ == "__main__":

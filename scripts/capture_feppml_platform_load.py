@@ -24,8 +24,20 @@ import platform as host_platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from typing import Any, Callable, Mapping, Sequence
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Formal callers use ``python -I -B -S`` from arbitrary working directories.
+# Make only the reviewed repository roots importable; ambient cwd and site
+# packages remain excluded by the interpreter flags.
+for import_root in (ROOT / "scripts", ROOT):
+    import_root_text = str(import_root)
+    if import_root_text not in sys.path:
+        sys.path.insert(0, import_root_text)
 
 try:
     from scripts import feppml_platform_load_receipt as platform_receipt
@@ -33,7 +45,6 @@ except ImportError:
     import feppml_platform_load_receipt as platform_receipt  # type: ignore[no-redef]
 
 
-ROOT = Path(__file__).resolve().parents[1]
 CAPTURE_PROGRAM = (
     ROOT / "tests/stata/installation/feppml_platform_load_capture.do"
 )

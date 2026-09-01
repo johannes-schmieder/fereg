@@ -36,7 +36,7 @@ repository.  Build the universal artifact with `FEREG_GIT_COMMIT` set to that
 full commit and `FEREG_BUILD_DATE` set to its commit-epoch UTC date, then run:
 
 ```text
-python3 scripts/capture_feppml_platform_load.py \
+python3 -I -B -S scripts/capture_feppml_platform_load.py \
   --platform macos-universal \
   --artifact /path/to/fereg_macos.plugin \
   --stata /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp \
@@ -80,7 +80,7 @@ contain today's trusted capture, receipt, or SCC controller code.
 Prepare a new local run directory from exact target and controller commits:
 
 ```text
-python3 benchmarks/scc/feppml_linux_platform_scc.py prepare \
+python3 -I -B -S benchmarks/scc/feppml_linux_platform_scc.py prepare \
   --run-root /private/tmp/fereg-platform-runs/RUN_ID \
   --candidate-repo /path/to/target/fereg \
   --candidate-commit <full-40-character-target-commit> \
@@ -155,7 +155,7 @@ native provenance.  The SCC verifier is authoritative for the outer
 scheduler proof:
 
 ```text
-python3 benchmarks/scc/feppml_linux_platform_scc.py verify-closed-run \
+python3 -I -B -S benchmarks/scc/feppml_linux_platform_scc.py verify-closed-run \
   --run-root LOCAL_RUN_ROOT \
   --candidate-repo /path/to/target/fereg \
   --harness-repo /path/to/controller/fereg \
