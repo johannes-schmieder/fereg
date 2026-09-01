@@ -1,15 +1,16 @@
 # Scientific contracts and OLS reference gate
 
 Architecture, source presence, and native unit tests are not estimator
-validation. Public `fereg` OLS is implemented for 0.5.0 but is not
-source-qualified until the exact candidate passes ADR-0007. `feppml` remains
-fail-closed and outside the candidate.
+validation. Public `fereg` OLS and `feppml` PPML are implemented for 0.5.0 but
+are not source-qualified until the exact candidate passes their release gates.
+Windows licensed-Stata testing and the formal activated aggregate are
+currently deferred.
 
 Accepted scientific decisions are recorded under `docs/adr/`. ADR 0006
 supersedes the temporary signed residual-DoF/negative-iid-variance
 absorbed-slope route: successful OLS inference requires positive residual DoF.
 
-## PPML pre-activation contracts
+## PPML public contracts
 
 PPML outcome, public weight, offset/exposure, initialization, IRLS,
 rank, DoF, robust/cluster VCE, prediction, and saved-effect policies are fixed by
@@ -23,12 +24,13 @@ The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
 explicit-dummy Poisson and recession-cone calculations are the independent
 authority. The old core is classified in
 [the stale PPML disposition inventory](ppml_stale_module_inventory.md) and is
-not activation evidence. The private prepared PPML transaction and hidden
-Stata fixtures make these contracts executable before activation; their
-presence alone is not scientific qualification. Public `feppml` remains
-fail-closed until the
-scientific, memory, transaction, platform, and `fereg` non-regression gates in
-ADRs 0016--0019 all pass on the final source.
+not activation evidence. The prepared PPML transaction, public and hidden
+Stata fixtures, and one-call wrapper make these contracts executable through
+`feppml`; source presence and activation alone are not scientific
+qualification. The scientific, memory, transaction, platform, and `fereg`
+non-regression gates in ADRs 0016--0020 remain the release boundary, with
+Windows and the final aggregate deferred by explicit testing-activation
+decision.
 
 ## Core contracts
 
@@ -137,7 +139,8 @@ diagnostic rather than release thresholds.
 
 ## Current boundary
 
-The OLS surface, public postestimation, saved outputs, and low-memory execution
-are implemented. Exact-SHA full scientific qualification, the governing
-performance/memory gates, deterministic packaging, and cross-platform release
-validation remain open. See `STATUS.md` for the current blocker inventory.
+The OLS and PPML surfaces, public postestimation, saved outputs, and low-memory
+execution are implemented. Exact-SHA full activated scientific qualification,
+the governing performance/memory gates, deterministic packaging, Windows
+licensed-Stata testing, and cross-platform release validation remain open. See
+`STATUS.md` for the current blocker inventory.

@@ -32,10 +32,10 @@ fereg.ado
 ```
 
 The hidden OLS adapter and test transaction remain qualification-only and are
-excluded from distribution archives. The public `feppml` command fails in ado
-with `r(498)` without a substantive plugin call.
+excluded from distribution archives. Public `feppml` is a one-call wrapper
+over the guarded PPML transaction; it neither reparses nor posts results.
 
-## Private PPML qualification architecture
+## Public PPML architecture
 
 The source now contains a private PPML path that reuses the prepared model,
 certified weighted-linear kernels, and sandwich reductions below the
@@ -63,7 +63,8 @@ private _fereg_ppml.ado syntax adapter
        -> validate shadows and receipt; protected post or full rollback
 
 public feppml.ado
-  -> r(498), before any substantive plugin call
+  -> one _fereg_ppml delegation
+       -> the guarded transaction above
 ```
 
 PPML transport is additive: its request/result wires and live-SPI action do
@@ -72,9 +73,10 @@ direct `fereg` baseline are governed by
 [ADR 0019](adr/0019-additive-ppml-transaction-and-fereg-regression-boundary.md).
 The pre-migration modules are classified in
 [the stale PPML disposition inventory](ppml_stale_module_inventory.md); they
-are not a second production engine. The hidden path and fixtures are
-qualification inputs, not evidence that the final scientific, platform,
-memory, performance, or activation gates have passed.
+are not a second production engine. Public activation does not by itself close
+the final scientific, platform, memory, performance, or release gates;
+Windows licensed-Stata testing and the formal activated aggregate remain
+deferred.
 
 The separation coordinator is the only production owner of sample mutation.
 Its bounded simplex detector covers the complete prepared model span: finite

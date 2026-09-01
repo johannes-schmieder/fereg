@@ -273,9 +273,10 @@ slope, explicit RHS base operators such as {cmd:ib2.region} and {cmd:fvset}
 base overrides are also unavailable in the current final-sample rebasing path.
 
 {pstd}
-The beta does not implement PPML, IV/GMM, group outcomes with individual fixed
-effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
-execution. Unsupported requests return an explicit error.
+{cmd:fereg} does not implement PPML; use {help feppml}. The beta does not
+implement IV/GMM, group outcomes with individual fixed effects, HAC or
+Driscoll--Kraay covariance estimators, other GLMs, or GPU execution.
+Unsupported requests return an explicit error.
 
 {marker utilities}
 {title:Installation diagnostics}
@@ -739,9 +740,10 @@ plugin on the ado-path: {cmd:fereg_windows.plugin},
 not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
 
 {pstd}
-Version 0.5.0 is unreleased beta source. Public OLS is active, while
-{cmd:feppml} deliberately returns {cmd:r(498)} without posting an estimate.
-See {cmd:STATUS.md} and {cmd:docs/compatibility_matrix.md} in the source
+Version 0.5.0 is unreleased beta source. Public OLS and the additive
+{cmd:feppml} testing surface are active. Windows licensed-Stata testing and the
+formal activated cross-platform aggregate remain deferred. See
+{cmd:STATUS.md} and {cmd:docs/compatibility_matrix.md} in the source
 distribution for exact-SHA qualification evidence and platform caveats.
 
 {marker sources}

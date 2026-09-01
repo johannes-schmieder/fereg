@@ -50,7 +50,6 @@
         "tests/stata/parser/string_sources.do",
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
-        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
         "tests/stata/installation/estimate_ols_categorical_interaction.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
@@ -205,14 +204,23 @@
         "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
-    "ppml-fail-closed": {
+    "ppml-scientific": {
       "driver": "fereg-fixtures",
-      "build_plugin": false,
+      "build_plugin": true,
       "fixtures": [
-        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do"
+        "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/feppml_time_series.do",
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do"
       ],
       "timeout_seconds": 900,
-      "required_outputs": []
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
     },
     "ppml-hidden": {
       "driver": "fereg-fixtures",
@@ -268,7 +276,6 @@
         "tests/stata/parser/string_sources.do",
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
-        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_allocation.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_runtime_validator.do",
@@ -298,7 +305,15 @@
         "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
-        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do"
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/feppml_time_series.do",
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "tests/stata/documentation/feppml_help_examples.do"
       ],
       "run_break_fixture": true,
       "run_ppml_break_fixture": true,

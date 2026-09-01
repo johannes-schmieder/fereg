@@ -7,11 +7,13 @@ removal, robust and multiway-clustered inference, and saved fixed-effect
 outputs. Estimation runs in one native call and publishes results only after
 the numerical and covariance checks pass.
 
-The current source is an unreleased 0.5.0 beta. The public `fereg` OLS command
-is active; `feppml` is installed only as a fail-closed `r(498)` placeholder.
-The repository contains a private end-to-end PPML qualification path, but it
-is not a supported command, adds no external runtime dependency, and does not
-make PPML publicly available.
+The current source is an unreleased 0.5.0 beta. Both the public `fereg` OLS
+command and the additive `feppml` command are active. `feppml` uses the same
+prepared-data, certified weighted-linear, covariance, memory-planning, and
+thread-team infrastructure without changing the public `fereg` path or OLS
+wire. Windows licensed-Stata testing and the formal cross-platform activation
+aggregate remain deferred, so this source is available for user testing but is
+not a tagged or source-qualified release.
 
 ## Quick start
 
@@ -47,6 +49,18 @@ examples, including categorical factor-variable models, string and interacted
 fixed effects, absorbed slopes, weights, multiway clustering, saved effects,
 prediction, low-memory execution, and a benchmark against `reghdfe` and Stata
 19's HDFE `areg`.
+
+For PPML with high-dimensional fixed effects, use for example:
+
+```stata
+feppml trade agreement log_distance, absorb(exporter_year importer_year) ///
+    vce(cluster pair_id)
+```
+
+Type `help feppml` for the complete implemented PPML syntax, saved-output and
+prediction contracts, separation methods, failure classes, and six
+self-contained examples. A simulated bilateral-trade comparison against
+`ppmlhdfe` is in `tests/manual/simple_PPML.do`.
 
 ## Command syntax
 

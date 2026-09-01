@@ -7,6 +7,9 @@ f _fereg_ols.ado
 f _fereg_estimate_ols.ado
 f _fereg_load.ado
 f feppml.ado
+f _fereg_ppml.ado
+f _fereg_estimate_ppml.ado
+f feppml_p.ado
 f fereg_parse.ado
 f fereg_p.ado
 f fereg_estat.ado

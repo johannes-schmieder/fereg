@@ -2,6 +2,13 @@
 
 ## 0.5.0 beta — unreleased
 
+- Activated public `feppml` as a one-call wrapper over the guarded PPML
+  transaction; packaged its syntax, transaction, and prediction ado files;
+  published the reviewed help contract; and added the public scientific and
+  staged-installation profiles. This changes no `fereg` command code, OLS
+  wire, shared numerical policy, solver route, or memory threshold. Windows
+  licensed-Stata testing and the formal cross-platform activated aggregate are
+  deferred, so this is a testing activation rather than a qualified release.
 - Standardized the installed help with the shared author header and contact
   footer, source acknowledgements, and one-click execution for all twelve
   documented examples.

@@ -18,7 +18,7 @@ on:
           - numerical-small
           - differential
           - fereg-regression
-          - ppml-fail-closed
+          - ppml-scientific
           - ppml-hidden
           - benchmark-small
           - full

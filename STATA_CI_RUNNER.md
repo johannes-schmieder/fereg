@@ -45,7 +45,7 @@ From the repository root:
 ./ci/run_stata_ci.sh numerical-small
 ./ci/run_stata_ci.sh differential
 ./ci/run_stata_ci.sh fereg-regression
-./ci/run_stata_ci.sh ppml-fail-closed
+./ci/run_stata_ci.sh ppml-scientific
 ./ci/run_stata_ci.sh ppml-hidden
 ./ci/run_stata_ci.sh benchmark-small
 ./ci/run_stata_ci.sh full
@@ -60,14 +60,13 @@ locations, binds fixtures to the freshly built plugin, and stores sanitized
 local output in the ignored `.ci/stata/run/` directory. Formal evidence rejects
 the `FEREG_TRACKED_FILES_MANIFEST` override.
 
-Before public PPML activation, `ppml-fail-closed` checks the installed
-`feppml` stub without building the plugin. `ppml-hidden` builds the plugin and
-exercises the guarded private transaction, scientific fixtures through
-`_fereg_ppml`, its 108-row result validator, and interactive Break rollback.
-Among PPML fixtures, `quick` includes only the public stub check; `full` runs
-both boundaries, and `fereg-regression` remains the complete PPML-free OLS
-verdict. Profile membership does not by itself establish that a qualification
-run passed.
+After public PPML activation, `ppml-scientific` builds the plugin and runs the
+seven shared public scientific fixtures. `ppml-hidden` continues to exercise
+the guarded transaction directly through `_fereg_ppml`, its 108-row result
+validator, and interactive Break rollback. `full` runs public and hidden PPML
+coverage; `quick` remains focused on `fereg`; and `fereg-regression` remains
+the complete PPML-free OLS verdict. Profile membership does not by itself
+establish that a qualification run passed.
 
 Stata can return shell status zero after an uncaught Stata error. Acceptance
 therefore requires the explicit Stata return code, per-fixture status files, and
@@ -78,13 +77,13 @@ target's 12-character prefix and `FEREG_BUILD_DATE` to the target commit's UTC
 date, so repeated licensed runs bind the same native artifact regardless of
 wall-clock date.
 
-The public PPML installation fixture is deliberately dormant before
-activation.  Phase 13 must run it through
+The public PPML installation fixture is run through
 `scripts/run_staged_stata_tests.py`, which consumes a checksum-bound binary
 release ZIP, safely extracts its sealed flat package, and supplies only that
 directory to Stata's isolated ado path.  A source-tree `which` check is not
 installation evidence.  See `docs/feppml_activation_checklist.md` for the
-exact activation command and required path assertions.
+exact command and required path assertions. Windows testing is currently
+deferred and must not be inferred from the macOS profile.
 
 ## Durable GitHub workflows
 

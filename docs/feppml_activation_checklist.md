@@ -1,10 +1,12 @@
 # feppml public-activation checklist
 
-This is an internal release checklist, not a statement that `feppml` is
-currently public.  Before Phase 13, `stata/feppml.ado` must remain the
-fail-closed `r(498)` stub; the three private PPML ado files must remain outside
-`fereg.pkg` and the binary release inventory; and the public PPML science
-profile must remain absent.
+This remains the formal no-waiver release checklist. Public `feppml` was
+activated for full user testing on 2026-09-01 by explicit decision while
+Windows licensed-Stata testing and the machine-enforced cross-platform
+aggregate were deferred. That exception changes the public testing state, not
+the evidence required for a tag, publication, or source-qualified release.
+Nothing in this checklist should be read as claiming that deferred evidence
+passed.
 
 ## Preconditions
 

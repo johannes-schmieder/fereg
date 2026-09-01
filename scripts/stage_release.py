@@ -30,6 +30,9 @@ PRODUCTION_STATA_FILES = (
     "_fereg_estimate_ols.ado",
     "_fereg_load.ado",
     "feppml.ado",
+    "_fereg_ppml.ado",
+    "_fereg_estimate_ppml.ado",
+    "feppml_p.ado",
     "fereg_parse.ado",
     "fereg_p.ado",
     "fereg_estat.ado",
@@ -53,8 +56,6 @@ SUPPORT_CAVEATS = (
     "qualified by hosted MSVC build, binary audit, and mock SPI only.",
     "Native Intel-host macOS Stata qualification is deferred; the x86_64 "
     "slice is exercised under Rosetta on Apple Silicon.",
-    "feppml is installed only as a fail-closed r(498) stub and is not part "
-    "of the OLS qualification.",
 )
 
 
@@ -293,6 +294,8 @@ def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
         "source_dirty": source_dirty,
         "action_protocol": "1.5",
         "ols_result_wire": "1.4",
+        "ppml_request_wire": "1.1",
+        "ppml_result_wire": "1.1",
         "model_wire": "2.1",
         "plugins": [
             {

@@ -5,6 +5,12 @@ boundary. It closes either the private `preactivation_stub` state or the
 public `activated` state for one exact committed source tree. It has no waiver
 path and does not turn a status boolean, summary, or free-form log into proof.
 
+The public command was enabled for user testing on 2026-09-01 with Windows and
+the formal aggregate explicitly deferred. The gate is intentionally unchanged:
+the source may report `activated`, but no aggregate PASS or release
+qualification may be recorded until every required input, including Windows,
+is present and independently verified.
+
 SHA-256 envelopes provide integrity and byte binding, not authentication. The
 authoritative value comes from reopening the retained raw inputs and invoking
 the committed verifier for each evidence family. Evidence storage therefore

@@ -6,10 +6,11 @@ requested outputs. A single native call constructs the final sample, absorbs
 the fixed effects, estimates the finite coefficients and covariance matrix,
 checks the result, and writes the requested outputs.
 
-This guide describes the public OLS command in the unreleased 0.5.0 beta.
-`feppml` remains a fail-closed placeholder and is not documented as an
-estimator. Private PPML source and fixtures exist for pre-activation
-qualification only; users cannot invoke them as a supported package surface.
+This guide describes the public OLS and PPML commands in the unreleased 0.5.0
+beta. `feppml` is active through the same guarded Rust-backed transaction and
+shared certified-linear engine as `fereg`. Windows licensed-Stata testing and
+the formal activated cross-platform aggregate are deferred; activation makes
+the command available for full user testing, not a qualified release claim.
 
 ## Syntax
 
@@ -19,10 +20,28 @@ fereg depvar [indepvars] [if] [in] [weight], [options]
 fereg, version
 fereg, doctor [threads(#) verbose]
 fereg, selftest [threads(#)]
+
+feppml depvar [indepvars] [if] [in] [fweight|pweight], [options]
 ```
 
 The estimation command accepts `aweight`, `fweight`, and `pweight`. It
 recognizes `iweight` only to return the pinned `r(101)` rejection.
+
+### PPML surface
+
+`feppml` fits a log-link Poisson pseudo-maximum-likelihood mean with zero or
+more absorbed effects. Robust inference is the default; one- through five-way
+clustering is supported. The public model options are `absorb()`,
+`keepsingletons`, `offset()` or `exposure()`, and
+`separation(fe simplex ir|none)`. Saved outputs include `residuals()`, `xb()`,
+`d()`, `eta()`/`xbd()`, `mu()`, `dropreason()`, and named absorbed channels.
+Execution uses `memory(auto|fast|low)`, `poolsize()`, `threads()`,
+`deterministic`, `tolerance()`, `iterate()`, and `timeit`. Frequency and
+probability weights are implemented; analytic and importance weights return
+the documented `r(101)` rejection. After estimation, `predict` supports
+`mu`, `eta`/`xbd`, `xb`, `d`, and the registered residual types when their
+required retained state is available. See `help feppml` for the exact syntax,
+drop codes, stored results, failure atomicity, and runnable examples.
 
 ### Model and inference options
 
@@ -193,11 +212,11 @@ Type `help fereg` for twelve self-contained examples. Each estimation example
 creates synthetic data and preserves/restores the caller's dataset. The
 benchmark additionally requires Stata 19 and an installed `reghdfe`.
 
-The public 0.5.0 beta does not expose PPML, IV/GMM, group outcomes with
-individual fixed effects, HAC or Driscoll--Kraay covariance estimators, other
-GLMs, or GPU execution. The source-only hidden PPML transaction is an
-activation test surface, not a user command. Fixed-width string categorical
-sources are supported, but
+The public 0.5.0 beta does not expose IV/GMM, group outcomes with individual
+fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
+execution. `feppml` does not expose a model-based IID covariance, public solver
+or DoF-policy controls, analytic/importance weights, or developer injection.
+Fixed-width string categorical sources are supported, but
 `strL` sources are not. When `absorb()` contains an interaction or absorbed
 slope, explicit RHS base operators such as `ib2.region` and `fvset` base
 overrides are not yet supported by final-sample factor rebasing. See

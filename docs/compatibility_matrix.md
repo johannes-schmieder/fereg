@@ -18,26 +18,29 @@ ADR-0007 and `STATUS.md`.
 | Memory/threading | `memory(fast|low|auto)`, bounded scratch cleanup, allocation/RSS/time reporting, deterministic per-action thread pools | Leak, modeled-allocation, constrained-memory, and SCC RSS gates |
 | CMG graph route | Explicit `solver(cmg)` supports two large categorical intercept effects plus at most 64 non-base nuisance-FE columns. `solver(auto)` selects CMG before its MAP pilot only for the frozen no-nuisance, 8-observations-per-high-level, 10:1-cardinality topology in fast and low modes. Setup and solve fallback remain certified and visible; used solver code is 7. | Full 1m/10m route freeze, non-macOS builds, cross-platform memory/performance receipts, and license-compatible distribution decision |
 
-`feppml` is installed only as a fail-closed `r(498)` stub and is outside the
-current OLS candidate. IV/GMM, group outcomes with individual FEs,
+`feppml` is active as an additive public testing surface. It supports the
+implemented PPML sample, fixed-effect and absorbed-slope grammar, robust and
+one- through five-way clustered inference, certified separation, saved
+outputs, prediction, memory modes, and native threading described by
+`help feppml`. IV/GMM, group outcomes with individual FEs,
 HAC/Driscoll–Kraay, other GLMs, GPU execution, and undocumented compatibility
 modes are not part of 0.5.0.
 
-## PPML pre-activation boundary
+## PPML activated testing boundary
 
-The repository contains a private `_fereg_ppml` syntax adapter, guarded
+The public wrapper delegates once to `_fereg_ppml`, which enters the guarded
 `_fereg_estimate_ppml` transaction, and additive `estimate-ppml` plugin action.
-They exercise the proposed public PPML semantics through independent request
-and result wires while the installed public command still returns `r(498)`
-before a native call. They are developer qualification interfaces and are not
-included as supported package commands.
+The three ado files are now part of the package inventory and exercise public
+PPML semantics through independent request and result wires without altering
+the OLS action or result layout.
 
 Activation requires exact-source scientific agreement with the pinned
 `ppmlhdfe` closure and independent oracles; transaction, interruption,
 allocation, memory, performance, and supported-platform qualification; and the
-direct F0 `fereg` non-regression gate. After the public adapter is enabled, the
-same full matrix must pass again on the activated source. Until then, no PPML
-row should be read as an implemented public compatibility promise.
+direct F0 `fereg` non-regression gate. The macOS and Linux implementation gates
+have been exercised, but Windows licensed-Stata testing and the formal
+cross-platform activated aggregate are explicitly deferred. The rows describe
+implemented behavior for testing, not a qualified release claim.
 
 ## Platform qualification
 

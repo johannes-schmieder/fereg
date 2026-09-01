@@ -1,12 +1,12 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-31
-**Development branch:** `main`; public OLS remains active while the additive private PPML qualification path, shared certified-linear session, independent PPML wires, and exact-source qualification tooling are integrated before any public activation
+**Last updated:** 2026-09-01
+**Development branch:** `main`; public OLS and the additive PPML testing surface are active, sharing the certified-linear session while retaining independent PPML wires and the unchanged OLS command path
 **Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** close the private PPML scientific, transaction, memory, performance, platform, and direct-F0 gates on one exact pre-activation source while keeping public `feppml` fail-closed
-**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE have historical SCC/Linux qualification; the current shared-engine/PPML worktree has no accepted exact-source release receipt and public PPML is not activated
+**Active milestone:** exercise the activated public PPML surface on macOS/Linux, preserve the complete `fereg` regression boundary, and defer Windows licensed-Stata and the formal cross-platform aggregate until after user testing
+**Release state:** public OLS and PPML beta testing surfaces are active; activation is not a tag or source-qualified release, Windows testing is deferred, and the formal activated aggregate remains open
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
@@ -37,11 +37,11 @@ preserves tasks 105--106. The accepted inventory, comparisons, scaling,
 overheads, and coverage limits are captured under
 `benchmarks/reports/captured/linux-x86_64/stata19/command-comparison-v2-partial-100/`.
 
-## PPML pre-activation state
+## PPML activated testing state
 
-- Public `feppml` is still the installed atomic `r(498)` stub. It returns
-  before a substantive plugin call and is intentionally separate from the
-  private implementation.
+- Public `feppml` is an eclass, sort-preserving one-call wrapper over
+  `_fereg_ppml`. The wrapper does not parse twice, call the plugin directly,
+  or post outside the guarded transaction.
 - The source contains private `_fereg_ppml` and `_fereg_estimate_ppml`
   adapters and one live-SPI `estimate-ppml` action. The action uses independent
   PPML request/result 1.1 wires and a receipt-last transaction. The bounded
@@ -52,9 +52,9 @@ overheads, and coverage limits are captured under
   separation/ledger rebasing, changing-weight IRLS, inference, certificates,
   result construction, and fit-lifetime memory planning. Legacy dense PPML
   fitting and VCE code is not a second production route.
-- `ppml-fail-closed` checks the public stub, `ppml-hidden` exercises the
-  private transaction and command-parameterized scientific fixtures, and
-  `fereg-regression` remains PPML-free. The frozen `ppmlhdfe` closure and
+- `ppml-scientific` exercises the seven shared public fixtures,
+  `ppml-hidden` exercises the transaction directly, and `fereg-regression`
+  remains PPML-free. The frozen `ppmlhdfe` closure and
   independent explicit-dummy/recession-cone tools are qualification oracles,
   not runtime dependencies.
 - These are implemented qualification surfaces, not accepted evidence. The
@@ -62,10 +62,11 @@ overheads, and coverage limits are captured under
   supported-build/ABI, memory/performance, transaction/Break, scientific,
   comparator/oracle, and direct-F0 receipts. The candidate F0 identity remains
   unsealed until its required platform evidence closes.
-- Public activation must be a small separately reviewable ado/help/package
-  change after the pre-activation gates pass. The complete gates must then be
-  rerun on the exact activated source; evidence cannot be inferred across the
-  activation commit.
+- The activation is a small separately reviewable ado/help/package/profile
+  change with no numerical, solver, memory-policy, OLS-wire, or `fereg.ado`
+  edit. Earlier evidence is not promoted across that commit. Windows licensed-
+  Stata testing and the machine-enforced cross-platform activated aggregate
+  are explicitly deferred rather than recorded as passed.
 
 ## Current accepted state
 
@@ -283,9 +284,8 @@ overheads, and coverage limits are captured under
   The complete local entry point passes repository checks, 269 Python tests,
   strict formatting/Clippy, 318 core tests, 53 FFI plugin tests, integration
   oracles, mock SPI, and portable static checks.
-- `feppml` remains installed but is an explicit `r(498)` stub. Private PPML
-  behavior and performance are under pre-activation qualification and are not
-  yet part of an accepted public 0.5.0 candidate.
+- `feppml` is active for public testing through the guarded PPML transaction.
+  This does not make the current 0.5.0 source a tagged or qualified release.
 - The reference closure remains pinned to reghdfe 6.14.1 (`29b2b203...`),
   ftools 2.50.0 (`d6e24d66...`), and require 1.3.1 (`f4760b86...`).
 - The normal Stata PLUS tree has the exact local comparator closure: reghdfe
@@ -404,18 +404,19 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Current blockers
 
-1. The private PPML implementation and qualification tooling still need one
-   clean exact-source local verdict and licensed hidden-profile receipt; a
-   changing worktree or collection of focused test runs is not acceptance.
-2. The direct `fereg` F0 manifest is not sealed across every required platform,
-   and the final pre-activation source has not completed the paired scientific,
-   allocation, leak, RSS, and timing gate against F0.
-3. The final PPML scientific/comparator/oracle, memory/performance,
-   transaction/Break, clean-install, SCC/Linux, and supported build/ABI matrix
-   is not yet closed on one source and artifact identity.
-4. Public `feppml` activation and its exact-source rerun remain intentionally
-   blocked until items 1--3 close. The package inventory and public help must
-   continue to describe the stub meanwhile.
+1. The activated source needs exact-commit public `ppml-scientific`, hidden,
+   Break, staged-install, and full-profile receipts; pre-activation runs are
+   diagnostic rather than transferable evidence.
+2. The direct `fereg` F0 manifest and final activated comparison are not sealed
+   across every required platform. The `fereg` command and OLS wire remain
+   frozen while this evidence is collected.
+3. Windows licensed-Stata testing is explicitly deferred. Consequently the
+   complete PPML scientific/comparator/oracle, memory/performance,
+   transaction/Break, clean-install, and platform matrix cannot yet close on
+   one activated source and artifact identity.
+4. The formal activation aggregate has no waiver path and remains open. Do not
+   tag, publish, or describe the source as qualified until Windows and all
+   exact-source aggregate inputs pass.
 5. The integrated ADR-0009/ADR-0010 route still needs a clean exact-commit
    rebuild, CI, fresh 1m/10m CMG holdouts, the broader release matrix, and
    immutable release receipts.
@@ -436,20 +437,16 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Development plan
 
-1. Finish the private PPML source integration and run the complete local Rust,
-   Python, repository, plugin, build, and licensed `ppml-hidden` screens without
-   changing the public stub.
-2. Seal the remaining F0 platform identity and run the final pre-activation
-   candidate against F0 with the frozen scientific-first performance and memory
-   contract. Preserve all existing OLS wire and public-command behavior.
+1. Run the repository, public `ppml-scientific`, hidden PPML, PPML Break,
+   `fereg-regression`, and manual trade-data tests on the activated source.
+2. Seal the activated F0 identity and run the scientific-first performance and
+   memory contract while preserving all existing OLS wire and public-command
+   behavior.
 3. Run the exact pinned `ppmlhdfe` closure plus independent-oracle PPML matrix,
-   constrained-memory and allocation gates, and SCC/Linux and supported-target
-   build/ABI qualification on the same source and artifacts.
-4. Only after those gates close, make the separately revertible public
-   activation change. Do not combine it with numerical, shared-engine, routing,
-   or OLS changes.
-5. Rerun the full local, F0, PPML, SCC, platform, clean-install, packaging, and
-   rollback/Break matrix on the exact activated source before recording any
-   public qualification claim.
-6. Preserve the frozen ADR-0009/ADR-0010 OLS routing, Decimal fixtures,
+   constrained-memory and allocation gates, SCC/Linux qualification, and
+   staged clean-install tests on the same activated source and artifacts.
+4. Complete Windows licensed-Stata qualification later, then close the formal
+   no-waiver cross-platform activation aggregate. Until then, activation is a
+   testing surface only.
+5. Preserve the frozen ADR-0009/ADR-0010 OLS routing, Decimal fixtures,
    observation-space audits, and unresolved explicit-CG/IT caveats throughout.

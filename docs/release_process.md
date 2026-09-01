@@ -28,7 +28,8 @@
    The binary archive includes exactly one checksum-verified plugin for each
    supported platform, production Stata files, checksums, release manifest,
    SBOM, dependency audit, licenses/notices, and explicit Windows/native-Intel
-   caveats. Exclude developer adapters, raw logs, reference PDFs, generated
+   caveats. The activated inventory includes the three guarded PPML ado files;
+   exclude other developer adapters, raw logs, reference PDFs, generated
    reference libraries, and build caches.
 8. Bind every receipt and archive to the exact beta SHA and update
    `STATUS.md`, compatibility matrix, and changelog. Do not tag or create a
@@ -44,20 +45,22 @@
 Sanitized qualification receipts may be committed. Generated archives and raw
 logs remain outside the repository.
 
-## PPML activation sequence
+## PPML activation and qualification sequence
 
-The public `feppml` stub is not replaced during ordinary PPML development.
-First, one exact pre-activation source must pass the private `ppml-hidden`
+The public `feppml` wrapper is active for full testing. The formal release
+sequence still requires one exact pre-activation source to pass `ppml-hidden`
 transaction/science matrix, pinned-comparator and independent-oracle gates,
 memory/performance and constrained-resource gates, supported build/ABI and
 licensed-platform checks, and the complete direct-F0 `fereg` regression
 contract. Every receipt must bind the same source, artifact, dependencies,
 datasets, and environment required by its manifest.
 
-Only then may a small separately revertible activation commit replace the
-public stub and update public help, package inventory, installation tests, and
-postestimation routing. That commit must contain no shared numerical refactor,
-solver or memory-policy change, OLS wire/syntax change, or unrelated release
-work. The full local, F0, PPML, SCC, platform, clean-install, transaction/Break,
-and deterministic-package gates must run again on the exact activated source.
-Pre-activation receipts cannot be inferred across the activation commit.
+The activation commit updates only the public wrapper, help, package inventory,
+installation profiles, and release metadata. It contains no shared numerical
+refactor, solver or memory-policy change, OLS wire/syntax change, or unrelated
+release work. The full local, F0, PPML, SCC, platform, clean-install,
+transaction/Break, and deterministic-package gates must run again on the exact
+activated source. Pre-activation receipts cannot be inferred across the
+activation commit. By explicit user decision, Windows licensed-Stata testing
+and the formal cross-platform activated aggregate are deferred; activation is
+therefore not a tag, publication, or source-qualified release decision.

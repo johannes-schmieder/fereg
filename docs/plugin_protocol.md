@@ -36,12 +36,10 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
   `fereg`.
 - `prepare-ols-test` and the hidden OLS adapter remain developer qualification
   actions and are excluded from distributions.
-- `estimate-ppml` is a private live-SPI qualification action. It is reachable
-  through the hidden `_fereg_estimate_ppml` transaction and `_fereg_ppml`
-  syntax adapter, but it is not a supported distribution interface.
-- The installed public `feppml` command remains a fail-closed ado stub and
-  returns `r(498)` before any substantive plugin call. Non-SPI dispatcher
-  attempts to invoke `estimate-ppml` are also rejected.
+- `estimate-ppml` is the live-SPI public estimation action used by `feppml`.
+  The public wrapper delegates once through `_fereg_ppml` and the guarded
+  `_fereg_estimate_ppml` transaction. Non-SPI dispatcher attempts to invoke
+  `estimate-ppml` are rejected.
 
 ## Public OLS transaction
 
@@ -65,10 +63,10 @@ and estimates only in its final protected block. Native error, store failure,
 panic, validation failure, or Control-C restores prior `e()`/named estimates
 and exposes no requested outputs.
 
-## Private PPML transaction
+## Public PPML transaction
 
-The hidden PPML adapter implements the same control-plane/data-plane boundary
-intended for eventual public activation. Stata parses syntax and model
+The PPML adapter implements the same control-plane/data-plane boundary used by
+the activated public command. Stata parses syntax and model
 metadata, constructs the candidate marker, allocates private shadows, and
 makes exactly one guarded `estimate-ppml` call. Rust validates the complete
 request, PPML request/result wire identities, source and output bindings,
@@ -87,12 +85,12 @@ separation trace and generation-hash sequence. Timing and process-local values
 are excluded from those digests. The receipt does not alias the OLS receipt,
 and its column 33 `COMPLETE` cell is the final native operation.
 
-The hidden ado transaction validates every private shadow and the completed
+The ado transaction validates every private shadow and the completed
 receipt before posting or renaming requested outputs. Syntax/domain error,
 protocol mismatch, nonconvergence, allocation/store failure, panic, or
 Control-C restores the prior estimation state and exposes no partial requested
-outputs. This private path is qualification machinery only; it does not make
-the public `feppml` command available.
+outputs. Public `feppml.ado` performs no second parse, native call, or posting
+outside this protected transaction.
 
 ## Return codes
 
