@@ -68,6 +68,111 @@ class FeppmlLinuxPlatformSccTests(unittest.TestCase):
         ).strip()
         return repo, commit
 
+    def isolated_prepared_controller(
+        self, run_root: Path
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-B",
+                "-S",
+                str(
+                    run_root
+                    / "input/harness/benchmarks/scc/feppml_linux_platform_scc.py"
+                ),
+                "verify-input",
+                "--run-root",
+                str(run_root),
+            ],
+            cwd="/",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+    def test_prepared_controller_import_closure_is_exact_and_isolated(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            f0_repo, f0_commit = self.repository(
+                root, "f0-source", SCC.SOURCE_IDENTITY_PATHS
+            )
+            harness_repo, harness_commit = self.repository(
+                root, "f0-harness", SCC.HARNESS_PATHS
+            )
+            candidate_paths = tuple(
+                dict.fromkeys(SCC.SOURCE_IDENTITY_PATHS + SCC.HARNESS_PATHS)
+            )
+            candidate_repo, candidate_commit = self.repository(
+                root, "candidate", candidate_paths
+            )
+            cases = (
+                (
+                    "20260831T175958Z-f0-linux-platform",
+                    f0_repo,
+                    f0_commit,
+                    harness_repo,
+                    harness_commit,
+                ),
+                (
+                    "20260831T175959Z-candidate-linux-platform",
+                    candidate_repo,
+                    candidate_commit,
+                    candidate_repo,
+                    candidate_commit,
+                ),
+            )
+            prepared_roots = []
+            for (
+                run_id,
+                source_repo,
+                source_commit,
+                controller_repo,
+                controller_commit,
+            ) in cases:
+                run_root = root / "runs" / run_id
+                SCC.prepare(
+                    argparse.Namespace(
+                        run_root=run_root,
+                        candidate_repo=source_repo,
+                        candidate_commit=source_commit,
+                        harness_repo=controller_repo,
+                        harness_commit=controller_commit,
+                    )
+                )
+                completed = self.isolated_prepared_controller(run_root)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(
+                    "FEPPML_LINUX_PLATFORM_VERIFY_INPUT_COMPLETE",
+                    completed.stdout,
+                )
+                prepared_roots.append(run_root)
+
+            missing = (
+                prepared_roots[0]
+                / "input/harness/scripts/ppml_legacy_boundary.py"
+            )
+            missing.chmod(0o644)
+            missing.unlink()
+            completed = self.isolated_prepared_controller(prepared_roots[0])
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("ppml_legacy_boundary", completed.stderr)
+
+            substituted = (
+                prepared_roots[1]
+                / "input/harness/scripts/prepare_windows_feppml_target.py"
+            )
+            substituted.chmod(0o644)
+            substituted.write_text("CONTRACT_PATHS = ()\n", encoding="ascii")
+            completed = self.isolated_prepared_controller(prepared_roots[1])
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn(
+                "prepared input changed: "
+                "input/harness/scripts/prepare_windows_feppml_target.py",
+                completed.stderr,
+            )
+
     def prepared(
         self, root: Path
     ) -> tuple[Path, Path, str, Path, str, Path, object]:

@@ -74,6 +74,8 @@ HARNESS_PATHS = (
     "scripts/capture_feppml_platform_load.py",
     "scripts/feppml_platform_load_receipt.py",
     "scripts/feppml_qualification.py",
+    "scripts/ppml_legacy_boundary.py",
+    "scripts/prepare_windows_feppml_target.py",
     "tests/stata/installation/feppml_platform_load_capture.do",
 )
 SOURCE_IDENTITY_PATHS = (
