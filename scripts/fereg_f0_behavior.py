@@ -71,6 +71,7 @@ OUTPUT_END = "FEREG_F0_OUTPUT_END|"
 UTILITY_ACTIONS = ("version", "doctor", "selftest")
 UTILITY_FIXTURE = "fereg_f0_public_contract"
 VOLATILE_OUTPUT_KEYS = {"fereg.git_commit", "fereg.build_date"}
+RUNTIME_PLUGIN_PATH_OUTPUT_VALUE = "<runtime-plugin-path>"
 F0_VERSION_OUTPUT_KEYS = (
     "fereg.plugin_version",
     "fereg.ado_contract",
@@ -615,7 +616,12 @@ def _normalize_fixture_output(fixture_id: str, log_text: str) -> dict[str, Any]:
             or not value
         ):
             raise BehaviorContractError("utility output contains a malformed machine line")
-        normalized_value = "<provenance>" if key in VOLATILE_OUTPUT_KEYS else value
+        if key in VOLATILE_OUTPUT_KEYS:
+            normalized_value = "<provenance>"
+        elif active == "doctor" and key == "fereg.plugin_filename":
+            normalized_value = RUNTIME_PLUGIN_PATH_OUTPUT_VALUE
+        else:
+            normalized_value = value
         lines.append(f"{active}|{key}={normalized_value}")
     if active is not None:
         raise BehaviorContractError("utility-output marker is unterminated")

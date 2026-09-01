@@ -105,6 +105,37 @@ class FeregF0BehaviorContractTests(unittest.TestCase):
     def _file(seed="a"):
         return {"sha256": seed * 64, "size_bytes": 100}
 
+    @staticmethod
+    def _utility_log(
+        *,
+        plugin_filename,
+        native_selftest="pass",
+        dependency_audit="build-time-required",
+    ):
+        return "\n".join(
+            (
+                "FEREG_F0_OUTPUT_BEGIN|version",
+                "fereg.plugin_version=0.5.0",
+                "fereg.ado_contract=0.5.0",
+                "fereg.action_protocol=1.5",
+                "fereg.model_wire=2.1",
+                "fereg.ols_result_wire=1.4",
+                "fereg.plugin_abi=3.0",
+                "fereg.git_commit=abc123",
+                "fereg.build_date=2026-01-01",
+                "FEREG_F0_OUTPUT_END|version",
+                "FEREG_F0_OUTPUT_BEGIN|doctor",
+                f"fereg.plugin_filename={plugin_filename}",
+                f"fereg.native_selftest={native_selftest}",
+                f"fereg.dependency_audit={dependency_audit}",
+                "FEREG_F0_OUTPUT_END|doctor",
+                "FEREG_F0_OUTPUT_BEGIN|selftest",
+                "fereg.selftest.overall=pass",
+                "FEREG_F0_OUTPUT_END|selftest",
+                "",
+            )
+        )
+
     def _source(self, *, baseline):
         if baseline:
             return copy.deepcopy(BEHAVIOR.F0_SOURCE)
@@ -189,25 +220,10 @@ class FeregF0BehaviorContractTests(unittest.TestCase):
             fixture_id = fixture["id"]
             log = ""
             if fixture_id == BEHAVIOR.UTILITY_FIXTURE:
-                log = "\n".join(
-                    (
-                        "FEREG_F0_OUTPUT_BEGIN|version",
-                        "fereg.plugin_version=0.5.0",
-                        "fereg.ado_contract=0.5.0",
-                        "fereg.action_protocol=1.5",
-                        "fereg.model_wire=2.1",
-                        "fereg.ols_result_wire=1.4",
-                        "fereg.plugin_abi=3.0",
-                        "fereg.git_commit=abc123",
-                        "fereg.build_date=2026-01-01",
-                        "FEREG_F0_OUTPUT_END|version",
-                        "FEREG_F0_OUTPUT_BEGIN|doctor",
-                        "fereg.native_selftest=pass",
-                        "FEREG_F0_OUTPUT_END|doctor",
-                        "FEREG_F0_OUTPUT_BEGIN|selftest",
-                        "fereg.selftest.overall=pass",
-                        "FEREG_F0_OUTPUT_END|selftest",
-                        "",
+                log = self._utility_log(
+                    plugin_filename=(
+                        f"/private/tmp/fereg-f0-{role}-capture/"
+                        "bundle/stata/fereg_macos.plugin"
                     )
                 )
             outcomes.append(
@@ -370,6 +386,131 @@ class FeregF0BehaviorContractTests(unittest.TestCase):
         )
         self.assertTrue(comparison["fixtures_equal"])
         self.assertEqual(comparison["package"]["package_member_policy"], "exact_f0")
+
+    def test_doctor_plugin_path_normalization_is_keyed_reproducible_and_closed(self):
+        baseline_path = (
+            "/private/tmp/f0-baseline-capture/bundle/stata/fereg_macos.plugin"
+        )
+        candidate_path = (
+            "/private/tmp/candidate-capture/bundle/stata/fereg_macos.plugin"
+        )
+        baseline = BEHAVIOR._normalize_fixture_output(
+            BEHAVIOR.UTILITY_FIXTURE,
+            self._utility_log(plugin_filename=baseline_path),
+        )
+        candidate = BEHAVIOR._normalize_fixture_output(
+            BEHAVIOR.UTILITY_FIXTURE,
+            self._utility_log(plugin_filename=candidate_path),
+        )
+
+        self.assertEqual(baseline, candidate)
+        self.assertIn(
+            "doctor|fereg.plugin_filename=<runtime-plugin-path>",
+            baseline["lines"],
+        )
+        self.assertNotIn(baseline_path, json.dumps(baseline))
+        self.assertNotIn(candidate_path, json.dumps(candidate))
+        BEHAVIOR._validate_normalized_output(
+            baseline,
+            BEHAVIOR.UTILITY_FIXTURE,
+            "normalized utility output",
+        )
+        self.assertEqual(
+            baseline,
+            BEHAVIOR._normalize_fixture_output(
+                BEHAVIOR.UTILITY_FIXTURE,
+                self._utility_log(plugin_filename=baseline_path),
+            ),
+        )
+
+        forged = copy.deepcopy(baseline)
+        index = forged["lines"].index(
+            "doctor|fereg.plugin_filename=<runtime-plugin-path>"
+        )
+        forged["lines"][index] = "doctor|fereg.plugin_filename=<forged>"
+        normalized_payload = {
+            "format": forged["format"],
+            "actions": forged["actions"],
+            "lines": forged["lines"],
+        }
+        forged["sha256"] = BEHAVIOR.sha256_bytes(
+            BEHAVIOR.canonical_json_bytes(normalized_payload)
+        )
+        with self.assertRaisesRegex(
+            BEHAVIOR.BehaviorContractError, "cannot be reproduced"
+        ):
+            BEHAVIOR._validate_normalized_output(
+                forged,
+                BEHAVIOR.UTILITY_FIXTURE,
+                "normalized utility output",
+            )
+
+    def test_other_doctor_output_mutations_remain_literal_and_fail(self):
+        baseline = self._observation(baseline=True)
+        mutations = (
+            (
+                "doctor|fereg.native_selftest=pass",
+                "doctor|fereg.native_selftest=fail",
+            ),
+            (
+                "doctor|fereg.dependency_audit=build-time-required",
+                "doctor|fereg.dependency_audit=/private/tmp/candidate-specific",
+            ),
+        )
+        for original, replacement in mutations:
+            candidate = self._observation(baseline=False)
+            output = candidate["fixture_outcomes"][0]["normalized_output"]
+            with self.subTest(replacement=replacement):
+                index = output["lines"].index(original)
+                output["lines"][index] = replacement
+                normalized_payload = {
+                    "format": output["format"],
+                    "actions": output["actions"],
+                    "lines": output["lines"],
+                }
+                output["sha256"] = BEHAVIOR.sha256_bytes(
+                    BEHAVIOR.canonical_json_bytes(normalized_payload)
+                )
+                BEHAVIOR._validate_observation(
+                    self.manifest, self.manifest_sha, candidate
+                )
+                with self.assertRaisesRegex(
+                    BEHAVIOR.BehaviorContractError,
+                    "normalized fixture outcomes differ",
+                ):
+                    BEHAVIOR.evaluate_receipts(
+                        self.manifest, self.manifest_sha, baseline, candidate
+                    )
+
+    def test_plugin_path_normalization_does_not_mask_identity_mutations(self):
+        cases = []
+
+        baseline = self._observation(baseline=True)
+        baseline["artifact"]["sha256"] = "0" * 64
+        cases.append(("artifact hash", baseline))
+
+        candidate = self._observation(baseline=False)
+        candidate["source"]["commit"] = "a" * 40
+        cases.append(("source commit", candidate))
+
+        candidate = self._observation(baseline=False)
+        candidate["artifact"]["embedded_git_commit"] = "0" * 12
+        cases.append(("artifact source identity", candidate))
+
+        candidate = self._observation(baseline=False)
+        plugin_index = candidate["package"]["staged_members"].index(
+            "fereg_macos.plugin"
+        )
+        candidate["package"]["staged_members"][plugin_index] = "renamed.plugin"
+        cases.append(("staged plugin package identity", candidate))
+
+        for label, observation in cases:
+            with self.subTest(label=label), self.assertRaises(
+                BEHAVIOR.BehaviorContractError
+            ):
+                BEHAVIOR._validate_observation(
+                    self.manifest, self.manifest_sha, observation
+                )
 
     def test_comparison_rejects_mixed_controller_generation(self):
         baseline = self._observation(baseline=True)
