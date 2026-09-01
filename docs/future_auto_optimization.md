@@ -6,13 +6,17 @@ candidate work, not a qualification decision or a frozen production contract.
 
 ## Current development route
 
-ADR-0021 currently routes ordinary categorical, intercept-only designs as
-follows:
+ADRs 0021 and 0022 currently route ordinary categorical, intercept-only
+designs as follows:
 
 - Select CMG before any MAP pilot when observations are at least three times
   the largest FE level count, the largest and second-largest FE counts have a
   ratio of at least 10:1, and additional effects contribute no more than nine
   non-base nuisance columns.
+- After that cheap screen admits CMG, build its graph and preconditioner. Keep
+  direct terminals. Keep iterative terminals only when repeat-weighted
+  hierarchy work is at most four finest-level passes; otherwise release the
+  hierarchy and use direct Schwarz-LSMR. This planned veto is not a fallback.
 - Route other categorical multiway designs directly to Schwarz-preconditioned
   LSMR. A finite uncertified LSMR candidate continues into certified CG without
   discarding its state.
@@ -114,18 +118,101 @@ For the auto-eligible profile:
 The proxy sums `vertices + matrix_nonzeros` for every retained hierarchy level,
 weighted by the product of all upstream recursive repeat counts. It tracks the
 observed cliff much better than N, the number of components, the largest
-component share, or PCG iteration count in isolation. It is still a diagnostic
-metric, not a calibrated routing threshold.
+component share, or PCG iteration count in isolation. ADR-0022 uses it only as
+a terminal-aware automatic safety veto; it is not a general solver-winner
+model.
+
+### Terminal-aware hierarchy-guard calibration
+
+A subsequent development calibration added a private, environment-gated Rust
+trace at the exact post-hierarchy/pre-nuisance boundary. It records component
+size summaries, terminal reason, hierarchy dimensions, effective repeat
+counts, terminal-factor size, and the repeat-weighted work proxy without
+changing the public Stata result or automatic route.
+
+The focused holdout used 37 worker--firm designs at the current 3-observation,
+10:1 auto-CMG boundary, including one or two material components plus many
+tiny components, all-tiny controls, and 0/4/9 nuisance columns. It recorded
+333 runs: three repetitions of auto, explicit Schwarz-LSMR, and explicit CMG
+per dataset. All 330 successful runs certified without fallback and matched
+on exported coefficients and RSS; explicit LSMR returned deterministic
+`r(459)` in the remaining three repetitions of one cell. The diagnostic also
+profiled 72 cases from the prior balanced AKM matrix and joined them to their
+existing three-repetition medians. Together with seven controlled component
+cells, the guard analysis contains 116 cells, 109 of which have directly
+eligible CMG and LSMR medians.
+
+The evidence rejects a single unconditional work ceiling. Several realistic
+sparse graphs end in a direct terminal, have work proxies between 6 and 20,
+and are strong CMG wins. The clean separator is terminal-aware:
+
+- every measured iterative-terminal CMG win had a work proxy at or below 2.30;
+- the first iterative-terminal loss occurred at 22.44;
+- all 17 comparable iterative-terminal cells above that gap were CMG losses,
+  with the worst CMG/LSMR ratio above 28; and
+- graph-plus-hierarchy construction cost only 0.0037 seconds at the median and
+  0.0046 seconds at the maximum in the focused holdout.
+
+The initial development candidate was therefore a safety veto, not a full
+winner model: after the existing topology screen accepts CMG, construct the
+graph and hierarchy; retain direct terminals; reject high-work iterative
+terminals to the existing direct auto-LSMR route with certified CG
+continuation. Thresholds 4 through 20 made the same decision in that first
+sample, so the provisional holdout value was 8.
+
+This terminal-aware candidate rejected 17 of 109 comparable cells and did not
+reject any measured CMG win. One remaining greater-than-twofold CMG loss had a
+direct terminal, work 6.40, and nine nuisance columns. It is a separate
+RHS/nuisance graph-solve-load problem. An additional nuisance rule can catch
+it, but current balanced nuisance cases show meaningful false rejections, so
+that rule should be calibrated separately from the hierarchy safety guard.
+
+The complete source, 333 run-level rows, medians, hierarchy profiles, joined
+cell table, threshold counterfactuals, and report are under
+`benchmarks/reports/development/cmg-hierarchy-guard-calibration-v1/`, with the
+runner in `scripts/cmg_hierarchy_guard_calibration.py`.
+
+### Fresh holdout and implemented guard
+
+The fresh holdout used 32 newly generated datasets with new material-component
+wiring at three, four, and five observations per worker. On three graphs it
+also crossed 0/4/16 controls with 1/8 threads. Auto, explicit CMG, and explicit
+Schwarz-LSMR each had exactly three recorded repetitions, with common saved
+data, rotated order, and unrecorded warm-ups. All 288 runs succeeded and
+certified. Three recorded fallback events belonged to one explicit LSMR
+comparator cell; auto had none.
+
+Only two fresh hierarchies had iterative terminals. Neither favored CMG by
+more than five percent. One had work 56.21 and CMG/LSMR 2.66; the other had
+work 5.68 and CMG/LSMR 1.18. The earlier calibration still puts every measured
+iterative-terminal CMG win at work no greater than 2.30. The combined measured
+gap is therefore 2.30 to 5.68, and the conservative round development cutoff
+is 4 rather than the provisional 8.
+
+ADR-0022 implements that cutoff only for `solver(auto)`. A rejected graph and
+preconditioner are released before nuisance-factor and PCG work. Their setup
+time is charged to the eventual LSMR report, but the planned route emits no
+warning, sets no fallback flag, and runs no MAP pilot. Explicit `solver(cmg)`
+is unchanged.
+
+The post-change rerun recorded another 288 runs: 288/288 succeeded and
+certified; auto used CMG in 90 runs and LSMR in the six guarded runs, with zero
+auto fallbacks, warnings, or MAP pilots. A separate 18-run check retained CMG
+for the low-work all-tiny iterative graph and selected LSMR for the high-work
+mixed graph in all three auto repetitions. The focused licensed Stata route
+fixture passed both sides plus explicit CMG. This remains development evidence,
+not qualification.
 
 ### RHS, thread, and memory opportunities
 
-CMG's bad hierarchy cost repeats with each right-hand side. Existing parallel
-execution across RHSs can mask this for small batches, but it does not remove
-the excessive work. A separate auto-eligible 16-control mixed cell remained
-CPU-bound for several minutes during an unrecorded warm-up even though its
-zero- and four-control counterparts took about 0.09--0.10 seconds. That event
-was stopped and excluded from the complete component matrix. It should be
-localized separately with bounded per-stage timing.
+CMG's graph-solve cost repeats with each right-hand side. The fresh bounded
+0/4/16-control cross completed, so it did not reproduce the earlier
+multi-minute warm-up. It did confirm a major direct-terminal cost interaction:
+on the W=12.12 mixed graph, CMG/LSMR rose from 3.01 with zero controls to 6.13
+with four and 8.18 with sixteen at one thread; at eight threads the ratios were
+2.65, 2.07, and 3.71. The current hierarchy guard deliberately retains that
+direct terminal. A second-stage cost model must therefore include RHS width
+and effective parallelism, not only graph hierarchy work or nuisance columns.
 
 The balanced diagnostic also found that low-memory Schwarz-LSMR repeatedly
 pays setup across RHS blocks. Relative to the matched ordinary-memory cell,
@@ -135,9 +222,9 @@ performance opportunity.
 
 ## Recommended development sequence
 
-### 1. Expose internal component and hierarchy diagnostics
+### 1. Completed: expose internal component and hierarchy diagnostics
 
-Add private Rust diagnostics sufficient for calibration:
+The private environment-gated trace now records:
 
 - connected component count;
 - largest component size and share;
@@ -147,21 +234,15 @@ Add private Rust diagnostics sufficient for calibration:
 - effective repeat counts; and
 - the repeat-weighted hierarchy-work proxy.
 
-Do not add a public Stata option or public estimation result solely for this
-work. A focused Rust test or development-only benchmark output is sufficient.
+No public Stata option or estimation result was added.
 
-### 2. Prototype a post-setup CMG safety gate
+### 2. Completed: implement the post-setup CMG safety gate
 
-For topology shapes that pass the cheap pre-routing rule, build the graph and
-hierarchy, inspect the predicted recursive work, and choose between CMG and
-Schwarz-LSMR before the first PCG iteration. Setup was only about 0.004 seconds
-in the worst controlled cells, so this can remove the cliff at low regret.
-
-Do not freeze a numerical work threshold from the controlled component matrix.
-First calibrate it on realistic worker mobility, worker--firm--year designs,
-third-FE nuisance columns, multiple N values, and several component-size
-mixtures. Measure false rejections of genuine CMG wins as well as avoided
-cliffs.
+The implementation retains direct terminals and iterative terminals with work
+at most 4. It rejects costly iterative terminals after cheap hierarchy setup
+and before nuisance-factor/PCG work. The fresh-seed, wiring, thread, and RHS
+holdout selected 4 from the measured 2.30--5.68 gap. The separate
+direct-terminal RHS/thread model was deliberately not folded into this guard.
 
 ### 3. Implement the component-aware CMG prototype
 
@@ -206,9 +287,9 @@ added runtime is small.
 
 Compare these candidates on the same generated datasets:
 
-1. current topology-only rule;
-2. topology rule plus hierarchy-work guard;
-3. component-aware CMG plus hierarchy-work guard; and
+1. historical topology-only rule;
+2. current topology rule plus hierarchy-work guard;
+3. component-aware CMG plus the hierarchy-work guard; and
 4. direct Schwarz-LSMR as the conservative reference.
 
 Use exactly three recorded repetitions, unchanged tolerance and iteration
@@ -218,17 +299,17 @@ threads, and 0/4/16 controls. Failed or uncertified runs remain ineligible
 winners. Do not run frozen matrices or qualification until a simple candidate
 rule has survived this development matrix.
 
-## Candidate routing shape to test, not implement yet
+## Current routing shape and next extension
 
-A promising deterministic design is:
+The implemented deterministic design is:
 
 1. Apply the cheap FE-count/nuisance topology screen.
 2. If it rejects CMG, use direct Schwarz-LSMR.
 3. If it accepts CMG, construct the CMG graph/hierarchy once.
-4. If predicted hierarchy work is moderate, run CMG.
-5. If predicted hierarchy work is excessive, retain any reusable graph
-   metadata but solve with Schwarz-LSMR.
-6. When the component-aware CMG prototype is available, replace the rejection
+4. Retain direct terminals; for iterative terminals run CMG only at `W <= 4`.
+5. If iterative hierarchy work exceeds 4, release the graph/preconditioner,
+   account for its setup, and solve with Schwarz-LSMR.
+6. If a component-aware CMG prototype succeeds, replace the rejection
    in step 5 with the hybrid component solve when its own cost estimate wins.
 
 This avoids a discontinuous PCG performance cliff while preserving the
@@ -245,8 +326,12 @@ all-tiny-component CMG wins that a component-count rule would lose.
 - Component report: `benchmarks/reports/development/cmg-component-diagnostic-v1/report.md`
 - Component hierarchy table: `benchmarks/reports/development/cmg-component-diagnostic-v1/hierarchy_table.csv`
 - Auto-eligible run-level data: `benchmarks/reports/development/cmg-component-autoeligible-v1/cmg_component_runs.csv`
+- Hierarchy calibration: `benchmarks/reports/development/cmg-hierarchy-guard-calibration-v1/report.md`
+- Fresh holdout: `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/report.md`
+- Post-change rerun: `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/report.md`
 - Mutable project state: `STATUS.md`
 
-The next session should begin with the internal hierarchy-work diagnostic and a
-bounded reproduction of the 16-control anomaly. No current evidence justifies
-a component-count cutoff or a frozen numeric hierarchy-work threshold.
+The next session should calibrate a direct-terminal RHS/thread cost model and,
+separately, prototype a component-aware CMG solve. No current evidence
+justifies a component-count cutoff or unconditional work veto. The cutoff 4 is
+a development safety threshold, not a frozen qualification constant.

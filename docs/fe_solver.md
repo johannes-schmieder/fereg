@@ -67,13 +67,17 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
-`solver(auto)` implements the ADR-0021 categorical AKM policy while retaining
-the ADR-0009 generic/slope policy:
+`solver(auto)` implements the ADR-0021 categorical AKM policy with the ADR-0022
+post-hierarchy safety guard, while retaining the ADR-0009 generic/slope policy:
 
 - categorical intercept-only graphs first select CMG, without a MAP pilot,
   when there are at most nine nuisance Schur columns, at least three
   observations per highest-cardinality level, and at least a 10:1 level-count
   ratio between the two core effects;
+- an auto-eligible CMG graph retains direct-terminal hierarchies and retains an
+  iterative-terminal hierarchy only when its deterministic repeat-weighted
+  work is at most four finest-level passes; a rejected hierarchy is released
+  before nuisance-factor/PCG work and the fit uses direct LSMR;
 - one FE: direct one-pass demeaning and immediate certification;
 - other categorical intercept-only graphs select direct
   Schwarz-preconditioned LSMR without a MAP pilot, with internal tolerance
@@ -95,6 +99,12 @@ use one-hundredth of the requested FE tolerance because their projection feeds
 the more sensitive OLS score certificate. CMG setup failure selects direct
 LSMR with a warning; a solve failure marks the fit-lifetime route failed and
 uses certified CG thereafter.
+
+The hierarchy veto is not a setup failure or fallback: it emits no warning,
+does not set the fallback flag, and reports LSMR as the used solver. The graph
+and hierarchy construction time is nevertheless charged to solver setup time.
+Explicit CMG bypasses this automatic guard. Direct-terminal wide-RHS and
+single-thread cost differences remain a separate development opportunity.
 
 The report retains requested solver `auto` and records used solver, pilot
 iterations, pilot contraction, total iterations, stop reason, setup/solve time,

@@ -8,8 +8,9 @@
 use std::time::Instant;
 
 use cmg::{
-    CmgMemoryEstimate, CmgOptions, CmgPreconditioner, CmgProblemSize, Laplacian, ParallelExecutor,
-    ParallelOptions, ParallelPcgPolicy, ParallelPcgSolver, ParallelPcgWorkspace, PcgOptions,
+    CmgMemoryEstimate, CmgOptions, CmgPreconditioner, CmgProblemSize, Components, Laplacian,
+    ParallelExecutor, ParallelOptions, ParallelPcgPolicy, ParallelPcgSolver, ParallelPcgWorkspace,
+    PcgOptions, TerminalReason,
 };
 
 use crate::data::DenseMatrix;
@@ -42,6 +43,11 @@ const PCG_TOLERANCE_FLOOR: f64 = 32.0 * f64::EPSILON;
 const AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL: usize = 3;
 const AUTO_MIN_CORE_CARDINALITY_RATIO: usize = 10;
 const AUTO_MAX_NUISANCE_COLUMNS: usize = 9;
+/// Fresh component-mixture, RHS-width, and thread holdouts put every measured
+/// iterative-terminal CMG win at or below 2.30 finest-level passes and the
+/// first loss at 5.68. Four is a conservative development safety boundary;
+/// direct terminals are deliberately outside this hierarchy-only veto.
+const AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST: f64 = 4.0;
 
 /// Internal execution policy for one prepared CMG absorption session.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -156,6 +162,13 @@ pub(crate) struct CmgAbsorber<'a> {
     structural_constant_if_empty: bool,
 }
 
+/// Private outcome of post-topology automatic CMG setup. A rejected hierarchy
+/// is a planned route decision, not a numerical fallback or setup failure.
+pub(crate) enum CmgAutoBuildOutcome<'a> {
+    Ready(CmgAbsorber<'a>),
+    HierarchyRejected { setup_seconds: f64 },
+}
+
 // The graph state is fit-lifetime and constructed once. Keeping it inline
 // avoids a second infallible heap allocation at the fail-closed setup boundary;
 // the roughly 800-byte session value is deliberately bounded.
@@ -164,6 +177,11 @@ enum CmgRoute {
     Direct,
     Graph(GraphCmg),
     Failed(String),
+}
+
+enum GraphBuildOutcome {
+    Ready(GraphCmg),
+    HierarchyRejected,
 }
 
 struct GraphCmg {
@@ -186,6 +204,65 @@ struct NuisanceColumn {
 struct CmgSolveMetrics {
     iterations: usize,
     backward_error: f64,
+}
+
+/// Private deterministic cost summary available immediately after CMG
+/// hierarchy construction. It deliberately depends only on retained hierarchy
+/// dimensions and effective recursive repeat counts, so the automatic safety
+/// gate can inspect it before nuisance-factor or PCG work begins.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CmgHierarchyWork {
+    estimated_recursive_work: u128,
+    finest_work: u128,
+    work_over_finest: f64,
+    deepest_visits: u128,
+    maximum_repeat: usize,
+}
+
+impl CmgHierarchyWork {
+    fn from_levels(
+        vertex_counts: &[usize],
+        matrix_nonzeros: &[usize],
+        repeat_counts: &[usize],
+    ) -> Self {
+        debug_assert_eq!(vertex_counts.len(), matrix_nonzeros.len());
+        debug_assert_eq!(vertex_counts.len(), repeat_counts.len());
+
+        let finest_work = vertex_counts
+            .first()
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(matrix_nonzeros.first().copied().unwrap_or(0))
+            as u128;
+        let mut visits = 1_u128;
+        let mut deepest_visits = visits;
+        let mut estimated_recursive_work = 0_u128;
+        let mut maximum_repeat = 0_usize;
+        for (level, (&vertices, &nonzeros)) in vertex_counts.iter().zip(matrix_nonzeros).enumerate()
+        {
+            let level_work = vertices.saturating_add(nonzeros) as u128;
+            estimated_recursive_work =
+                estimated_recursive_work.saturating_add(visits.saturating_mul(level_work));
+            if level + 1 < vertex_counts.len() {
+                let repeat = repeat_counts.get(level).copied().unwrap_or(1).max(1);
+                maximum_repeat = maximum_repeat.max(repeat);
+                visits = visits.saturating_mul(repeat as u128);
+                deepest_visits = deepest_visits.max(visits);
+            }
+        }
+        let work_over_finest = if finest_work == 0 {
+            f64::INFINITY
+        } else {
+            estimated_recursive_work as f64 / finest_work as f64
+        };
+        Self {
+            estimated_recursive_work,
+            finest_work,
+            work_over_finest,
+            deepest_visits,
+            maximum_repeat,
+        }
+    }
 }
 
 impl CmgSolveMetrics {
@@ -219,6 +296,51 @@ impl<'a> CmgAbsorber<'a> {
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
     ) -> Result<Self> {
+        match Self::build_profiled_internal(
+            design,
+            weights,
+            config,
+            structural_constant_if_empty,
+            profile,
+            false,
+        )? {
+            CmgAutoBuildOutcome::Ready(session) => Ok(session),
+            CmgAutoBuildOutcome::HierarchyRejected { .. } => {
+                unreachable!("unguarded CMG setup cannot reject a hierarchy")
+            }
+        }
+    }
+
+    pub(crate) fn build_profiled_auto_guarded(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+        profile: CmgTopologyProfile,
+    ) -> Result<CmgAutoBuildOutcome<'a>> {
+        if config.requested_solver != FeSolverKind::Auto {
+            return Err(invalid_argument(
+                "automatic CMG hierarchy guard requires solver(auto)",
+            ));
+        }
+        Self::build_profiled_internal(
+            design,
+            weights,
+            config,
+            structural_constant_if_empty,
+            profile,
+            true,
+        )
+    }
+
+    fn build_profiled_internal(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+        profile: CmgTopologyProfile,
+        apply_auto_hierarchy_guard: bool,
+    ) -> Result<CmgAutoBuildOutcome<'a>> {
         validate_config(config)?;
         let weight_scale = validate_weights(weights, design.nobs())?;
         let setup_started = Instant::now();
@@ -226,10 +348,23 @@ impl<'a> CmgAbsorber<'a> {
             CmgRoute::Direct
         } else {
             validate_nuisance_limit(&profile)?;
-            let graph = preflight_cmg_memory(&design, &profile, config)
-                .and_then(|()| build_graph_route(&design, weights, weight_scale, config, &profile));
+            let graph = preflight_cmg_memory(&design, &profile, config).and_then(|()| {
+                build_graph_route(
+                    &design,
+                    weights,
+                    weight_scale,
+                    config,
+                    &profile,
+                    apply_auto_hierarchy_guard,
+                )
+            });
             match graph {
-                Ok(graph) => CmgRoute::Graph(graph),
+                Ok(GraphBuildOutcome::Ready(graph)) => CmgRoute::Graph(graph),
+                Ok(GraphBuildOutcome::HierarchyRejected) => {
+                    return Ok(CmgAutoBuildOutcome::HierarchyRejected {
+                        setup_seconds: setup_started.elapsed().as_secs_f64(),
+                    });
+                }
                 Err(error) if config.requested_solver == FeSolverKind::Auto => return Err(error),
                 Err(error) => CmgRoute::Failed(error.to_string()),
             }
@@ -241,7 +376,7 @@ impl<'a> CmgAbsorber<'a> {
             },
             CmgRoute::Direct | CmgRoute::Failed(_) => CmgSolveMetrics::default(),
         };
-        Ok(Self {
+        Ok(CmgAutoBuildOutcome::Ready(Self {
             design,
             weights,
             weight_scale,
@@ -250,7 +385,7 @@ impl<'a> CmgAbsorber<'a> {
             pending_setup_seconds: setup_started.elapsed().as_secs_f64(),
             pending_setup_metrics,
             structural_constant_if_empty,
-        })
+        }))
     }
 
     /// Residualize one owned matrix. Failure never exposes a partially updated
@@ -641,11 +776,12 @@ fn build_graph_route(
     weight_scale: f64,
     config: CmgConfig,
     profile: &CmgTopologyProfile,
-) -> Result<GraphCmg> {
+    apply_auto_hierarchy_guard: bool,
+) -> Result<GraphBuildOutcome> {
+    let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
     let core_effects = profile
         .core_effects
         .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
-    let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
 
     let left_levels = design.effects()[core_effects[0]].n_levels();
     let right_levels = design.effects()[core_effects[1]].n_levels();
@@ -666,11 +802,47 @@ fn build_graph_route(
             normalized_weight(weights, weight_scale, row),
         )
     });
+    let graph_started = trace_enabled.then(Instant::now);
     let graph =
         Laplacian::from_edges_with_executor(vertices, edges, &executor).map_err(cmg_error)?;
+    let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+    let hierarchy_started = trace_enabled.then(Instant::now);
     let preconditioner =
         CmgPreconditioner::build_with_executor(&graph, CmgOptions::default(), &executor)
             .map_err(cmg_error)?;
+    let hierarchy_seconds =
+        hierarchy_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+    let hierarchy = preconditioner.hierarchy();
+    let report = hierarchy.report();
+    let work = CmgHierarchyWork::from_levels(
+        report.vertex_counts(),
+        report.matrix_nonzeros(),
+        preconditioner.repeat_counts(),
+    );
+    if trace_enabled {
+        trace_cmg_hierarchy(
+            &graph,
+            &preconditioner,
+            work,
+            graph_seconds,
+            hierarchy_seconds,
+        );
+    }
+    if apply_auto_hierarchy_guard
+        && auto_hierarchy_guard_rejects(report.terminal_reason(), work.work_over_finest)
+    {
+        if trace_enabled {
+            eprintln!(
+                "FEREG_CMG_GUARD|decision=reject|terminal={:?}|work_over_finest={:.17e}|threshold={:.17e}",
+                report.terminal_reason(),
+                work.work_over_finest,
+                AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST,
+            );
+        }
+        return Ok(GraphBuildOutcome::HierarchyRejected);
+    }
+    let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
+    let solver_started = trace_enabled.then(Instant::now);
     let solver = ParallelPcgSolver::from_preconditioner(
         preconditioner,
         executor,
@@ -678,6 +850,7 @@ fn build_graph_route(
     )
     .map_err(cmg_error)?;
     let workspace = solver.workspace();
+    let solver_seconds = solver_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     let mut route = GraphCmg {
         core_effects,
         nuisance,
@@ -687,13 +860,86 @@ fn build_graph_route(
         setup_iterations: 0,
         setup_backward_error: 0.0,
     };
+    let nuisance_started = trace_enabled.then(Instant::now);
     let (factor, metrics) =
         build_nuisance_factor(design, weights, weight_scale, &mut route, config)?;
+    let nuisance_seconds = nuisance_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     route.nuisance_factor = factor;
     ensure_cmg_exact_retained_memory_fits(&route, config)?;
     route.setup_iterations = metrics.iterations;
     route.setup_backward_error = metrics.backward_error;
-    Ok(route)
+    if trace_enabled {
+        eprintln!(
+            "FEREG_CMG_SETUP|graph={graph_seconds:.9}|hierarchy={hierarchy_seconds:.9}|solver_workspace={solver_seconds:.9}|nuisance={nuisance_seconds:.9}|nuisance_columns={}|nuisance_iterations={}",
+            route.nuisance.len(),
+            metrics.iterations,
+        );
+    }
+    Ok(GraphBuildOutcome::Ready(route))
+}
+
+fn auto_hierarchy_guard_rejects(terminal: TerminalReason, work_over_finest: f64) -> bool {
+    terminal.is_iterative() && !(work_over_finest <= AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST)
+}
+
+fn trace_cmg_hierarchy(
+    graph: &Laplacian,
+    preconditioner: &CmgPreconditioner,
+    work: CmgHierarchyWork,
+    graph_seconds: f64,
+    hierarchy_seconds: f64,
+) {
+    let hierarchy = preconditioner.hierarchy();
+    let report = hierarchy.report();
+    let repeats = preconditioner.repeat_counts();
+    let components = Components::from_laplacian(graph);
+    let mut component_sizes = components.sizes().to_vec();
+    component_sizes.sort_unstable();
+    let smallest_component = component_sizes.first().copied().unwrap_or(0);
+    let median_component = component_quantile(&component_sizes, 50);
+    let p90_component = component_quantile(&component_sizes, 90);
+    let largest_component = component_sizes.last().copied().unwrap_or(0);
+    let largest_component_share = if graph.vertex_count() == 0 {
+        0.0
+    } else {
+        largest_component as f64 / graph.vertex_count() as f64
+    };
+    let terminal_factor_dimension = preconditioner
+        .terminal_factor()
+        .map_or(0, cmg::GroundedLdl::active_dimension);
+    let terminal_factor_nonzeros = preconditioner
+        .terminal_factor()
+        .map_or(0, cmg::GroundedLdl::factor_nonzeros);
+    eprintln!(
+        "FEREG_CMG_HIERARCHY|components={}|component_min={smallest_component}|component_p50={median_component}|component_p90={p90_component}|component_max={largest_component}|component_max_share={largest_component_share:.17e}|terminal={:?}|levels={}|vertices={}|nonzeros={}|repeats={}|recursive_work={}|finest_work={}|work_over_finest={:.17e}|deepest_visits={}|max_repeat={}|terminal_factor_dimension={terminal_factor_dimension}|terminal_factor_nonzeros={terminal_factor_nonzeros}|graph_seconds={graph_seconds:.9}|hierarchy_seconds={hierarchy_seconds:.9}",
+        components.count(),
+        report.terminal_reason(),
+        report.vertex_counts().len(),
+        format_usize_series(report.vertex_counts()),
+        format_usize_series(report.matrix_nonzeros()),
+        format_usize_series(repeats),
+        work.estimated_recursive_work,
+        work.finest_work,
+        work.work_over_finest,
+        work.deepest_visits,
+        work.maximum_repeat,
+    );
+}
+
+fn component_quantile(sorted_sizes: &[usize], percentile: usize) -> usize {
+    if sorted_sizes.is_empty() {
+        return 0;
+    }
+    let index = (sorted_sizes.len() - 1).saturating_mul(percentile) / 100;
+    sorted_sizes[index]
+}
+
+fn format_usize_series(values: &[usize]) -> String {
+    values
+        .iter()
+        .map(usize::to_string)
+        .collect::<Vec<_>>()
+        .join(";")
 }
 
 fn build_nuisance_columns(
@@ -1452,6 +1698,132 @@ fn allocation(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use crate::fe::{absorb_borrowed_intercept_cg_certified, BorrowedInterceptEffect, LevelIndex};
+
+    #[test]
+    fn hierarchy_work_counts_recursive_level_visits() {
+        let work = CmgHierarchyWork::from_levels(&[100, 20, 5], &[300, 40, 0], &[4, 3, 0]);
+        assert_eq!(work.finest_work, 400);
+        assert_eq!(work.estimated_recursive_work, 700);
+        assert_eq!(work.deepest_visits, 12);
+        assert_eq!(work.maximum_repeat, 4);
+        assert!((work.work_over_finest - 1.75).abs() <= f64::EPSILON);
+    }
+
+    #[test]
+    fn component_quantiles_use_stable_nearest_lower_order_statistic() {
+        let sizes = [1, 2, 3, 4, 100];
+        assert_eq!(component_quantile(&sizes, 50), 3);
+        assert_eq!(component_quantile(&sizes, 90), 4);
+        assert_eq!(component_quantile(&[], 50), 0);
+    }
+
+    #[test]
+    fn auto_hierarchy_guard_applies_only_to_costly_iterative_terminals() {
+        assert!(!auto_hierarchy_guard_rejects(TerminalReason::Direct, 100.0));
+        assert!(!auto_hierarchy_guard_rejects(
+            TerminalReason::StagnatedVertexReduction,
+            2.30,
+        ));
+        assert!(!auto_hierarchy_guard_rejects(
+            TerminalReason::MaximumLevels,
+            AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST,
+        ));
+        assert!(auto_hierarchy_guard_rejects(
+            TerminalReason::StagnatedFill,
+            5.68,
+        ));
+        assert!(auto_hierarchy_guard_rejects(
+            TerminalReason::FullContraction,
+            f64::NAN,
+        ));
+    }
+
+    #[test]
+    fn auto_hierarchy_guard_rejects_mixed_cliff_but_retains_all_tiny_graph() {
+        let periods = 3;
+        let workers = 33_000;
+        let firms = 3_300;
+        let rows = periods * workers;
+
+        let build_codes = |components: usize, balanced: bool| {
+            let tiny_components = if balanced { components } else { components - 1 };
+            let small_workers = tiny_components * 30;
+            let small_firms = tiny_components * 3;
+            let remaining_workers = workers - small_workers;
+            let remaining_firms = firms - small_firms;
+            let worker_codes: Vec<u32> = (0..rows).map(|row| (row / periods) as u32).collect();
+            let firm_codes = (0..rows)
+                .map(|row| {
+                    let worker = row / periods;
+                    let period = row % periods;
+                    if worker < small_workers {
+                        (worker / 30) * 3 + ((worker % 3) + period) % 3
+                    } else {
+                        small_firms
+                            + ((worker - small_workers) % remaining_firms + period)
+                                % remaining_firms
+                    }
+                })
+                .map(|firm| firm as u32)
+                .collect::<Vec<_>>();
+            debug_assert!(balanced || remaining_workers == 9_030);
+            (worker_codes, firm_codes)
+        };
+
+        let (mixed_worker, mixed_firm) = build_codes(800, false);
+        let mixed_worker_index =
+            LevelIndex::from_codes(&mixed_worker, workers).expect("mixed worker index");
+        let mixed_firm_index =
+            LevelIndex::from_codes(&mixed_firm, firms).expect("mixed firm index");
+        let mixed_design = BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&mixed_worker, workers, &mixed_worker_index),
+                effect(&mixed_firm, firms, &mixed_firm_index),
+            ],
+        )
+        .expect("mixed design");
+        let mixed_profile = CmgTopologyProfile::analyze(&mixed_design).expect("mixed profile");
+        assert!(mixed_profile.auto_favorable());
+        let mut auto_config = config(5);
+        auto_config.requested_solver = FeSolverKind::Auto;
+        assert!(matches!(
+            CmgAbsorber::build_profiled_auto_guarded(
+                mixed_design,
+                BorrowedMapWeights::Unit,
+                auto_config,
+                false,
+                mixed_profile,
+            )
+            .expect("guarded mixed setup"),
+            CmgAutoBuildOutcome::HierarchyRejected { .. }
+        ));
+
+        let (tiny_worker, tiny_firm) = build_codes(1_100, true);
+        let tiny_worker_index =
+            LevelIndex::from_codes(&tiny_worker, workers).expect("tiny worker index");
+        let tiny_firm_index = LevelIndex::from_codes(&tiny_firm, firms).expect("tiny firm index");
+        let tiny_design = BorrowedInterceptFeDesign::new(
+            rows,
+            vec![
+                effect(&tiny_worker, workers, &tiny_worker_index),
+                effect(&tiny_firm, firms, &tiny_firm_index),
+            ],
+        )
+        .expect("tiny design");
+        let tiny_profile = CmgTopologyProfile::analyze(&tiny_design).expect("tiny profile");
+        assert!(matches!(
+            CmgAbsorber::build_profiled_auto_guarded(
+                tiny_design,
+                BorrowedMapWeights::Unit,
+                auto_config,
+                false,
+                tiny_profile,
+            )
+            .expect("guarded all-tiny setup"),
+            CmgAutoBuildOutcome::Ready(_)
+        ));
+    }
 
     fn config(batch_size: usize) -> CmgConfig {
         CmgConfig {

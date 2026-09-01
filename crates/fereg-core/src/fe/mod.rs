@@ -55,7 +55,7 @@ pub use categorical_request::{
 };
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
-pub(crate) use cmg::{CmgAbsorber, CmgConfig, CmgTopologyProfile};
+pub(crate) use cmg::{CmgAbsorber, CmgAutoBuildOutcome, CmgConfig, CmgTopologyProfile};
 pub(crate) use components::connected_components_all_fallible;
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;
