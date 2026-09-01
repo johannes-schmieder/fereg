@@ -843,24 +843,20 @@ impl EstimatePpmlSpec {
                 "prepared PPML currently requires finite_solver=auto",
             ));
         }
-        let config = PpmlConfig {
-            tolerance: self.tolerance,
-            score_tolerance: self.tolerance,
-            max_iterations: self.iterate,
-            ..PpmlConfig::default()
-        };
+        let config = PpmlConfig::with_outer_controls(self.tolerance, self.iterate)?;
         let threads = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let execution_mode = match self.memory {
             MemoryMode::Low => PreparedOlsExecutionMode::Low,
             MemoryMode::Auto | MemoryMode::Fast => PreparedOlsExecutionMode::Fast,
         };
+        let (absorb, fixed_effect_collinearity_tolerance) = config.shared_linear_policy();
         let linear = PreparedOlsFitConfig {
             // Separation projections and the final IRLS session must share
             // one exact FE/rank policy.  PreparedOlsFitConfig has OLS-tuned
             // defaults which intentionally differ from PpmlConfig, so copy
             // PPML's authoritative fields rather than accepting two defaults.
-            absorb: config.absorb,
-            fixed_effect_collinearity_tolerance: config.fixed_effect_collinearity_tolerance,
+            absorb,
+            fixed_effect_collinearity_tolerance,
             execution: PreparedOlsExecutionConfig {
                 mode: execution_mode,
                 poolsize: self.poolsize,
@@ -3514,10 +3510,11 @@ mod tests {
         let action = specification
             .decode_and_validate(&mut spi)
             .expect("default PPML request");
-        assert_eq!(action.linear.absorb, action.config.absorb);
+        let (absorb, fixed_effect_collinearity_tolerance) = action.config.shared_linear_policy();
+        assert_eq!(action.linear.absorb, absorb);
         assert_eq!(
             action.linear.fixed_effect_collinearity_tolerance,
-            action.config.fixed_effect_collinearity_tolerance,
+            fixed_effect_collinearity_tolerance,
         );
         assert_eq!(action.separation.methods, SeparationMethods::default());
     }

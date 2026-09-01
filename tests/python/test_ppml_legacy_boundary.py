@@ -98,6 +98,34 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
         messages = self.messages(documents)
         self.assertIn("legacy PPML token `fit_ppml` is reachable", messages)
 
+    def test_internal_ppml_numerical_policy_cannot_be_reopened(self) -> None:
+        for field in BOUNDARY.FROZEN_PPML_CONFIG_FIELDS:
+            with self.subTest(field=field):
+                documents = dict(self.documents)
+                documents[BOUNDARY.PPML_MOD] = documents[BOUNDARY.PPML_MOD].replace(
+                    f"pub(crate) {field}:", f"pub {field}:", 1
+                )
+                self.assertIn(
+                    f"frozen PPML config field `{field}` is externally configurable",
+                    self.messages(documents),
+                )
+
+        documents = dict(self.documents)
+        documents[BOUNDARY.PPML_MOD] += "\npub enum PpmlInitialization { OffsetOnly, Intercept }\n"
+        self.assertIn(
+            "PPML initialization policy is externally configurable",
+            self.messages(documents),
+        )
+
+        for name in BOUNDARY.FORBIDDEN_CRATE_ROOT_PPML_EXPORTS:
+            with self.subTest(export=name):
+                documents = dict(self.documents)
+                documents["crates/fereg-core/src/lib.rs"] += f"\npub use ppml::{name};\n"
+                self.assertIn(
+                    f"internal PPML numerical symbol `{name}` is re-exported",
+                    self.messages(documents),
+                )
+
     def test_alternate_runner_module_name_and_path_are_rejected(self) -> None:
         documents = dict(self.documents)
         documents[BOUNDARY.SEPARATION_MOD] = documents[BOUNDARY.SEPARATION_MOD].replace(

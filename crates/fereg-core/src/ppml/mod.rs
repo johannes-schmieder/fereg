@@ -20,9 +20,12 @@ mod result;
 mod vce;
 
 pub use certificate::PpmlCertificate;
+#[cfg(test)]
+pub(crate) use family::means_from_eta;
+pub(crate) use family::PoissonBounds;
 pub use family::{
-    means_from_eta, offset_from_exposure, poisson_null_objective, poisson_objective, PoissonBounds,
-    PoissonNullObjective, PoissonObjective,
+    offset_from_exposure, poisson_null_objective, poisson_objective, PoissonNullObjective,
+    PoissonObjective,
 };
 pub use memory::{
     certify_ppml_steady_state_allocation, estimate_ppml_memory, plan_ppml_memory,
@@ -84,12 +87,6 @@ use irls::{
 #[cfg(test)]
 use vce::{compute_ppml_vce, PpmlVceInput};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PpmlInitialization {
-    OffsetOnly,
-    Intercept,
-}
-
 #[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct PpmlStart {
@@ -100,18 +97,49 @@ pub(crate) struct PpmlStart {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PpmlConfig {
-    pub absorb: AbsorbConfig,
-    pub fixed_effect_collinearity_tolerance: f64,
-    pub tolerance: f64,
-    pub score_tolerance: f64,
-    pub inner_tolerance_initial: f64,
-    pub inner_tolerance_final: f64,
-    pub max_iterations: usize,
-    pub max_step_halvings: usize,
-    pub minimum_step: f64,
-    pub objective_slack: f64,
-    pub bounds: PoissonBounds,
-    pub initialization: PpmlInitialization,
+    pub(crate) absorb: AbsorbConfig,
+    pub(crate) fixed_effect_collinearity_tolerance: f64,
+    pub(crate) tolerance: f64,
+    pub(crate) score_tolerance: f64,
+    pub(crate) inner_tolerance_initial: f64,
+    pub(crate) inner_tolerance_final: f64,
+    pub(crate) max_iterations: usize,
+    pub(crate) max_step_halvings: usize,
+    pub(crate) minimum_step: f64,
+    pub(crate) objective_slack: f64,
+    pub(crate) bounds: PoissonBounds,
+}
+
+impl PpmlConfig {
+    /// Construct the frozen PPML numerical policy with the two sanctioned
+    /// command-level controls. All representability, initialization, line
+    /// search, score, and inner-solve policies remain crate-owned.
+    pub fn with_outer_controls(tolerance: f64, max_iterations: usize) -> crate::Result<Self> {
+        if !tolerance.is_finite() || tolerance <= 0.0 || tolerance > 1.0 {
+            return Err(crate::FeregError::new(
+                crate::ErrorCode::InvalidArgument,
+                "PPML tolerance must be finite and in (0, 1]",
+            ));
+        }
+        if max_iterations == 0 {
+            return Err(crate::FeregError::new(
+                crate::ErrorCode::InvalidArgument,
+                "PPML maximum iterations must be positive",
+            ));
+        }
+        Ok(Self {
+            tolerance,
+            score_tolerance: tolerance,
+            max_iterations,
+            ..Self::default()
+        })
+    }
+
+    /// Read-only shared absorption policy used to configure the certified
+    /// weighted-linear session. This does not expose a mutation surface.
+    pub fn shared_linear_policy(self) -> (AbsorbConfig, f64) {
+        (self.absorb, self.fixed_effect_collinearity_tolerance)
+    }
 }
 
 impl Default for PpmlConfig {
@@ -128,7 +156,6 @@ impl Default for PpmlConfig {
             minimum_step: 2.0_f64.powi(-25),
             objective_slack: 1e-12,
             bounds: PoissonBounds::default(),
-            initialization: PpmlInitialization::Intercept,
         }
     }
 }
@@ -522,6 +549,35 @@ mod tests {
 
     fn legacy_config() -> PpmlConfig {
         PpmlConfig::default()
+    }
+
+    #[test]
+    fn public_outer_controls_preserve_frozen_internal_policy() {
+        let defaults = PpmlConfig::default();
+        let configured = PpmlConfig::with_outer_controls(1e-10, 37).expect("outer controls");
+        assert_eq!(configured.tolerance, 1e-10);
+        assert_eq!(configured.score_tolerance, 1e-10);
+        assert_eq!(configured.max_iterations, 37);
+        assert_eq!(configured.absorb, defaults.absorb);
+        assert_eq!(
+            configured.fixed_effect_collinearity_tolerance,
+            defaults.fixed_effect_collinearity_tolerance
+        );
+        assert_eq!(
+            configured.inner_tolerance_initial,
+            defaults.inner_tolerance_initial
+        );
+        assert_eq!(
+            configured.inner_tolerance_final,
+            defaults.inner_tolerance_final
+        );
+        assert_eq!(configured.max_step_halvings, defaults.max_step_halvings);
+        assert_eq!(configured.minimum_step, defaults.minimum_step);
+        assert_eq!(configured.objective_slack, defaults.objective_slack);
+        assert_eq!(configured.bounds, defaults.bounds);
+        assert!(PpmlConfig::with_outer_controls(0.0, 1).is_err());
+        assert!(PpmlConfig::with_outer_controls(f64::NAN, 1).is_err());
+        assert!(PpmlConfig::with_outer_controls(1e-8, 0).is_err());
     }
 
     #[test]

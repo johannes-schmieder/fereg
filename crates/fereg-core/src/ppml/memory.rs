@@ -1629,7 +1629,7 @@ impl PpmlIterationWorkspace {
 
     /// Fill mean, Hessian weights, working response, and raw public score
     /// residuals without allocating.
-    pub fn refresh_working_state(
+    pub(crate) fn refresh_working_state(
         &mut self,
         outcome: &[f64],
         prior_weights: &[f64],
@@ -1692,7 +1692,11 @@ impl PpmlIterationWorkspace {
     /// Materialize one deterministic line-search trial in caller-owned
     /// buffers.  `trial_mean` is overwritten only after all eta values are
     /// finite; representability remains governed by `PoissonBounds`.
-    pub fn fill_line_search_trial(&mut self, step: f64, bounds: PoissonBounds) -> Result<()> {
+    pub(crate) fn fill_line_search_trial(
+        &mut self,
+        step: f64,
+        bounds: PoissonBounds,
+    ) -> Result<()> {
         if !step.is_finite() || !(0.0..=1.0).contains(&step) {
             return Err(invalid_argument(
                 "PPML line-search step must be finite and lie in [0, 1]",

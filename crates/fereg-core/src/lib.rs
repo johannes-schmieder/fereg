@@ -105,9 +105,9 @@ pub use ols::{
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
 pub use ppml::{
-    fit_prepared_ppml, means_from_eta, offset_from_exposure, poisson_objective, LoadedPpmlInput,
-    PoissonBounds, PoissonObjective, PpmlCertificate, PpmlConfig, PpmlInitialization,
-    PpmlIterationReport, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+    fit_prepared_ppml, offset_from_exposure, poisson_objective, LoadedPpmlInput, PoissonObjective,
+    PpmlCertificate, PpmlConfig, PpmlIterationReport, PreparedPpmlOutputRequest,
+    PreparedPpmlRequestV1,
 };
 pub use ppml_separation::{
     MethodStatus, SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,

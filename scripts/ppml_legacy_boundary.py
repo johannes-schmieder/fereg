@@ -77,6 +77,25 @@ MODULE_GATES: tuple[tuple[str, str], ...] = (
 
 CRATE_PRIVATE_TEST_ONLY_ITEMS = frozenset({(PPML_MOD, "struct", "PpmlStart")})
 
+FROZEN_PPML_CONFIG_FIELDS = (
+    "absorb",
+    "fixed_effect_collinearity_tolerance",
+    "tolerance",
+    "score_tolerance",
+    "inner_tolerance_initial",
+    "inner_tolerance_final",
+    "max_iterations",
+    "max_step_halvings",
+    "minimum_step",
+    "objective_slack",
+    "bounds",
+)
+FORBIDDEN_CRATE_ROOT_PPML_EXPORTS = (
+    "means_from_eta",
+    "PoissonBounds",
+    "PpmlInitialization",
+)
+
 # Exact token matching avoids false positives for the prepared production
 # engine (for example ``prepared_irls`` and ``CertifiedPpmlResult``).
 FORBIDDEN_PRODUCTION_IDENTIFIERS = frozenset(
@@ -333,6 +352,39 @@ def audit_documents(documents: Mapping[str, str]) -> list[Violation]:
         path: test_only_spans(source, masked=masked[path])
         for path, source in documents.items()
     }
+
+    ppml_source = documents.get(PPML_MOD, "")
+    for field in FROZEN_PPML_CONFIG_FIELDS:
+        match = re.search(rf"\bpub\s+{re.escape(field)}\s*:", ppml_source)
+        if match:
+            violations.append(
+                Violation(
+                    PPML_MOD,
+                    _line(ppml_source, match.start()),
+                    f"frozen PPML config field `{field}` is externally configurable",
+                )
+            )
+    initialization = re.search(r"\bpub(?:\s*\([^)]*\))?\s+enum\s+PpmlInitialization\b", ppml_source)
+    if initialization:
+        violations.append(
+            Violation(
+                PPML_MOD,
+                _line(ppml_source, initialization.start()),
+                "PPML initialization policy is externally configurable",
+            )
+        )
+    crate_root_path = "crates/fereg-core/src/lib.rs"
+    crate_root = documents.get(crate_root_path, "")
+    for name in FORBIDDEN_CRATE_ROOT_PPML_EXPORTS:
+        match = re.search(rf"\b{name}\b", mask_comments_and_literals(crate_root))
+        if match:
+            violations.append(
+                Violation(
+                    crate_root_path,
+                    _line(crate_root, match.start()),
+                    f"internal PPML numerical symbol `{name}` is re-exported",
+                )
+            )
 
     for path, module in MODULE_GATES:
         source = documents.get(path)

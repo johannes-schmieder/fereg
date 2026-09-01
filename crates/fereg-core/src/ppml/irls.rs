@@ -4,7 +4,7 @@ use super::family::{
     PoissonObjective,
 };
 #[cfg(test)]
-use super::{PpmlConfig, PpmlInitialization, PpmlStart};
+use super::{PpmlConfig, PpmlStart};
 #[cfg(test)]
 use crate::data::DenseMatrix;
 #[cfg(test)]
@@ -222,7 +222,7 @@ pub(crate) fn initialize(
         .is_some_and(|design| design.effects().iter().any(|effect| effect.has_intercept()));
     let constant_column = detect_constant_column(regressors);
     let can_shift = has_fe_intercept || constant_column.is_some();
-    let shift = if config.initialization == PpmlInitialization::Intercept && can_shift {
+    let shift = if can_shift {
         log_weighted_outcome_sum(outcome, prior_weights)?
             - log_weighted_offset_sum(offset, prior_weights)?
     } else {

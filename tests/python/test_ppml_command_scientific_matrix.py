@@ -221,6 +221,18 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
         self.assertNotRegex(body, r"\bpub\s+rank_tolerance\s*:")
         self.assertNotRegex(body, r"\bpub\s+vce\s*:")
         self.assertNotRegex(body, r"\bpub\s+dof\s*:")
+        for internal in (
+            "absorb", "fixed_effect_collinearity_tolerance", "score_tolerance",
+            "inner_tolerance_initial", "inner_tolerance_final", "max_step_halvings",
+            "minimum_step", "objective_slack", "bounds", "initialization",
+        ):
+            self.assertNotRegex(body, rf"\bpub\s+{internal}\s*:")
+        self.assertIn("pub fn with_outer_controls", core)
+        self.assertNotIn("pub enum PpmlInitialization", core)
+
+        crate_root = (ROOT / "crates/fereg-core/src/lib.rs").read_text(encoding="utf-8")
+        for stale_export in ("means_from_eta", "PoissonBounds", "PpmlInitialization"):
+            self.assertNotRegex(crate_root, rf"pub use ppml::\{{[^}}]*\b{stale_export}\b")
 
         driver = (
             ROOT / "crates" / "fereg-core" / "src" / "ppml" / "prepared_estimator.rs"

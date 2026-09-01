@@ -1,11 +1,11 @@
 use crate::error::{ErrorCode, FeregError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PoissonBounds {
-    pub eta_min: f64,
-    pub eta_max: f64,
-    pub mu_min: f64,
-    pub mu_max: f64,
+pub(crate) struct PoissonBounds {
+    pub(crate) eta_min: f64,
+    pub(crate) eta_max: f64,
+    pub(crate) mu_min: f64,
+    pub(crate) mu_max: f64,
 }
 
 impl Default for PoissonBounds {
@@ -63,7 +63,7 @@ fn numerical_nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
 }
 
-pub fn means_from_eta(eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
+pub(crate) fn means_from_eta(eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
     bounds.validate()?;
     if eta.len() != mean.len() {
         return Err(FeregError::new(

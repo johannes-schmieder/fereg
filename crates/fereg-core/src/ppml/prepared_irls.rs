@@ -28,7 +28,7 @@ use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
 use super::{
     scheduled_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe,
-    PpmlCertificate, PpmlConfig, PpmlFallbackKind, PpmlInitialization, PpmlIterationWorkspace,
+    PpmlCertificate, PpmlConfig, PpmlFallbackKind, PpmlIterationWorkspace,
     PpmlLinearWorkspaceCapacityReport, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan,
     PpmlMemoryRoute, PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock,
     PpmlSteadyStateAllocationObservation, PpmlWorkspaceCapacityReport,
@@ -1743,12 +1743,8 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         0.0,
         "unable to reserve prepared PPML initial coefficients",
     )?;
-    let shift = if config.ppml.initialization == PpmlInitialization::Intercept {
-        log_weighted_outcome_sum(outcome, prior_weights)?
-            - log_weighted_offset_sum(offset, prior_weights)?
-    } else {
-        0.0
-    };
+    let shift = log_weighted_outcome_sum(outcome, prior_weights)?
+        - log_weighted_offset_sum(offset, prior_weights)?;
     if prepared.fit_report_intercept() {
         let mut found = false;
         for (position, coefficient) in prepared.fit_model().coefficients.iter().enumerate() {
