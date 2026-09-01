@@ -10,6 +10,11 @@ The machine-readable authority is
 `benchmarks/manifests/fereg_f0_regression_v1.json`. The validator and receipt
 evaluator are `scripts/fereg_f0_regression.py`.
 
+The zero-overhead structural companion is
+`benchmarks/manifests/fereg_allocation_source_contract_v1.json`, enforced by
+`scripts/fereg_allocation_source_contract.py` from both repository checks and
+normal Python test discovery. It does not replace measured F0 evidence.
+
 The separately frozen public-command and staged-package surface is specified
 by the [direct F0 command and package contract](fereg_f0_behavior_contract.md).
 
@@ -126,13 +131,14 @@ rejected to prevent post-hoc selection.
 
 ## Allocation, leak, constrained-memory, and RSS gates
 
-For each arm, a cell records total native allocation, counts in the
-observation, observation-column, FE-level, and cluster size classes, retained
-bytes after repeated calls, and optional constrained-memory results.
+For each arm, a cell records total native allocation, the observation,
+observation-column, FE-level, and cluster dimensions that determine data-sized
+storage, retained bytes after repeated calls, and optional constrained-memory
+results. Those four fields seal the matched model shape; they are not tagged
+allocator-event counts.
 
-- Data-sized allocation-class counts must be exactly equal. This detects a new
-  O(N), O(NK), O(number of FE levels), or O(number of clusters) allocation even
-  when RSS noise masks it.
+- The four model dimensions must be exactly equal, so allocation and RSS
+  comparisons cannot substitute a smaller candidate problem.
 - Candidate native allocation may exceed F0 by at most one MiB of fixed-size
   bookkeeping.
 - Candidate retained bytes after repeated calls must be zero.
@@ -142,8 +148,62 @@ bytes after repeated calls, and optional constrained-memory results.
 - Candidate peak RSS may exceed matched F0 peak RSS by no more than the larger
   of two percent or 64 MiB.
 
-RSS is diagnostic noise until it crosses that registered allowance; explicit
-allocation classes remain the structural no-regression check.
+The independent static contract closes the source-level allocation-class gap.
+It keeps a closed inventory of both allocation-bearing syntax and complete
+production token structure across the shared OLS execution closure: the ABI
+dispatch, plugin adapter/input/result paths, and the core data, FE, linear
+algebra, OLS, error/return-code, memory, metadata, option, parallel, protocol,
+and sandwich modules. Core and plugin module wiring plus the complete plugin source-file
+inventory are closed, so a `#[path]` redirect or alternate helper module cannot
+substitute unwatched implementation bytes. The workspace, Cargo configuration,
+core/plugin target, feature, and dependency wiring are bound semantically, and
+the core build script is part of the exact source inventory; changing a crate
+root or compiled feature therefore cannot leave decoy guarded files on disk.
+The exact locked dependency graph is part of the Cargo wiring. The C ABI
+bridge/header, pinned Stata SPI sources, export maps, and all three
+platform build source lists are a second closed native-route inventory. This
+also rejects C-side `malloc`/copy work that Rust allocator telemetry cannot see.
+Allocation sites also carry automatic observation,
+observation-by-column, FE-level, cluster, and model/fixed scale hints. The
+complete token digest catches opaque constructors, cloning, and helper
+indirection even when a new allocation does not use a recognized standard
+container spelling. Ordered production string and character literals are
+bound separately, because action constants, `cfg` discriminants, and module
+paths can change the compiled route even when the normalized token stream is
+unchanged.
+
+The contract independently hashes the current ABI/OLS adapter, all six
+IID/robust/clustered prepared-fit adapters, and the one-shot weighted-linear
+entry seam. Ten adapter functions that already existed at exact F0 carry their
+F0 token hashes in the checker and cannot be accepted merely by regenerating
+the live manifest. Their ordered F0 literal payloads are pinned separately,
+as are the original OLS action and confirmation literals, so normalized string
+placeholders cannot weaken that guarantee. The original OLS conditional/call
+branch inside the now-expanded ABI dispatcher is pinned as its own F0 seam, so
+the new PPML sibling branch cannot redirect the old action. A new file, direct or helper-hidden
+allocation, changed adapter route or import alias, or transitive entry into the
+retained PPML session fails the ordinary repository gate until it is explicitly
+reviewed.
+Comments and whitespace do not alter the token contract. Production literal
+changes are conservative review events, including diagnostic wording, because
+Rust literals also select actions, features, targets, and source paths.
+Items whose `cfg` expression is provably false when `test=false` are excluded,
+including `all(test, ...)`; unknown feature/target expressions remain guarded.
+Private PPML implementation files and the retained session implementation are
+boundary-only: their PPML-only internal token/allocation inventories are
+excluded, while their file identities and the module wiring around them remain
+closed. The allocator phase guard fragment in the retained session is an
+explicit exception: public one-shot OLS executes its constructor and destructor,
+so that complete fragment has its own exact token, literal, and allocation-site
+inventory. Changes to any other shared file remain fully guarded even when
+their author believes the change is PPML-only. That conservative review is
+intentional because the same compiled module is reachable from public OLS.
+
+This static inventory is deliberately conservative and has no production
+instrumentation or runtime overhead. It proves structural continuity, while
+the matched F0 matrix independently adjudicates actual native peak bytes,
+retained bytes, constrained-memory behavior, RSS, science, and timing. Neither
+layer can stand in for the other.
 
 ## Evidence and receipt integrity
 
@@ -188,6 +248,19 @@ Validate the audited F0 object and manifest:
 
 ```bash
 python3 -I -B -S scripts/fereg_f0_regression.py validate-manifest
+```
+
+Audit the current structural allocation and one-shot route inventory:
+
+```bash
+python3 -I -B -S scripts/fereg_allocation_source_contract.py audit
+```
+
+After an intentional reviewed allocation or route change, inspect regenerated
+JSON before replacing the frozen companion manifest:
+
+```bash
+python3 -I -B -S scripts/fereg_allocation_source_contract.py render
 ```
 
 Capture a clean exact candidate identity:

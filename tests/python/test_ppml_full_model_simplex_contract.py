@@ -30,13 +30,15 @@ class PpmlFullModelSimplexContractTests(unittest.TestCase):
             "usize::from(spec.intercept)",
             "spec.slopes.len()",
             "levels.checked_mul(channels)",
-            "fit_column_value(column, row)",
+            "let fit_view = generation.fit_view()",
+            "fit_view.column_value(column, row)",
             "categorical.numeric_source_values(slope.source)",
             "DenseMatrix::from_row_major(rows, columns, values)",
             "model_simplex_interruptible(",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, body)
+        self.assertNotIn("&dyn PreparedOlsFitView", body)
         self.assertNotIn("SkippedUnsupported", body)
 
         module = SEPARATION_MOD.read_text(encoding="utf-8")

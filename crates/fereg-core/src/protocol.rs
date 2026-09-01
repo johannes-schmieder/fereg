@@ -390,11 +390,10 @@ impl PpmlResultReceiptV1 {
         if self.inference_rows != PPML_RESULT_INFERENCE_ROWS
             || self.drop_count_rows != PPML_RESULT_DROP_COUNT_ROWS
             || self.separation_sequence_rows != PPML_RESULT_SEPARATION_SEQUENCE_ROWS
-            || self.separation_generation_count > self.candidate_observations
+            || self.separation_generation_count >= self.candidate_observations
             || self.separation_execution_count
                 > self
                     .candidate_observations
-                    .saturating_add(1)
                     .saturating_mul(PPML_RESULT_SEPARATION_SEQUENCE_ROWS)
         {
             return Err(FeregError::new(
@@ -716,7 +715,7 @@ mod tests {
 
         let mut receipt = valid_ppml_receipt();
         receipt.separation_execution_count =
-            (receipt.candidate_observations + 1) * PPML_RESULT_SEPARATION_SEQUENCE_ROWS + 1;
+            receipt.candidate_observations * PPML_RESULT_SEPARATION_SEQUENCE_ROWS + 1;
         assert_eq!(
             receipt
                 .encode_incomplete()

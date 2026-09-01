@@ -44,7 +44,12 @@ and a reusable changing-weight IRLS session. The ownership, invalidation, and
 zero-cost OLS rules are fixed by
 [ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
 memory/routing rules by
-[ADR 0018](adr/0018-ppml-memory-routing-performance.md).
+[ADR 0018](adr/0018-ppml-memory-routing-performance.md). The concrete
+generation-zero admission envelope, single retained projected design,
+all-width guarded-Cholesky/retained-QR rank policy, strict RAII basis
+transaction, and worker-team reuse
+are fixed by
+[ADR 0020](adr/0020-retained-ppml-session-execution-boundary.md).
 
 The pre-activation call graph is:
 
@@ -104,10 +109,13 @@ confined to `crates/fereg-plugin/src/ffi.rs` for C argument access, platform
 RSS APIs, allocator instrumentation, display/error wrappers, and the exported
 ABI. `catch_unwind` converts panics to deterministic Stata errors.
 
-Each estimation creates an isolated Rayon pool at the effective requested
-thread count. Worker threads see only Rust-owned storage. Default solver routes
-must agree within registered scientific tolerances. Deterministic routes are
-tested for same-architecture, same-thread-count bitwise reproducibility.
+Each estimation freezes an effective requested thread count and installs its
+parallel phases through `ThreadTeam`. The team reuses one bounded process-local
+Rayon pool when the count matches and replaces it when a later action requests
+a different count; estimator and sample state remain action-local. Worker
+threads see only Rust-owned storage. Default solver routes must agree within
+registered scientific tolerances. Deterministic routes are tested for
+same-architecture, same-thread-count bitwise reproducibility.
 
 ## Artifact boundary
 

@@ -115,10 +115,16 @@ impl PpmlConfig {
     /// command-level controls. All representability, initialization, line
     /// search, score, and inner-solve policies remain crate-owned.
     pub fn with_outer_controls(tolerance: f64, max_iterations: usize) -> crate::Result<Self> {
-        if !tolerance.is_finite() || tolerance <= 0.0 || tolerance > 1.0 {
+        if !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
             return Err(crate::FeregError::new(
                 crate::ErrorCode::InvalidArgument,
-                "PPML tolerance must be finite and in (0, 1]",
+                "PPML tolerance must be finite and in (0, 1)",
+            ));
+        }
+        if 0.1 * tolerance == 0.0 {
+            return Err(crate::FeregError::new(
+                crate::ErrorCode::InvalidArgument,
+                "PPML tolerance is too small to admit a positive strict inner tolerance",
             ));
         }
         if max_iterations == 0 {
@@ -160,17 +166,79 @@ impl Default for PpmlConfig {
     }
 }
 
-/// Deterministic tolerance policy shared by the prepared production session
-/// and the cfg(test)-only dense oracle.
-pub(crate) fn scheduled_inner_tolerance(config: PpmlConfig, iteration: usize) -> f64 {
-    const STAGES: usize = 8;
-    if iteration >= STAGES {
-        return config.inner_tolerance_final;
+/// Accepted outer-state diagnostics that govern the next inexact weighted-
+/// linear solve. Both fields are independently recomputed after an accepted
+/// step rather than inferred from the inner solver.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct PpmlInnerToleranceProgress {
+    relative_deviance_change: f64,
+    score_relative_infinity_norm: f64,
+}
+
+impl PpmlInnerToleranceProgress {
+    pub(crate) fn new(relative_deviance_change: f64, score_relative_infinity_norm: f64) -> Self {
+        Self {
+            relative_deviance_change,
+            score_relative_infinity_norm,
+        }
     }
-    let fraction = iteration.saturating_sub(1) as f64 / (STAGES - 1) as f64;
-    ((1.0 - fraction) * config.inner_tolerance_initial.ln()
-        + fraction * config.inner_tolerance_final.ln())
-    .exp()
+
+    fn scale(self) -> Option<f64> {
+        (self.relative_deviance_change.is_finite()
+            && self.relative_deviance_change >= 0.0
+            && self.score_relative_infinity_norm.is_finite()
+            && self.score_relative_infinity_norm >= 0.0)
+            .then_some(
+                self.relative_deviance_change
+                    .max(self.score_relative_infinity_norm),
+            )
+    }
+}
+
+/// ADR 0016's strict weighted-linear publication tolerance.
+pub(crate) fn strict_inner_tolerance(config: PpmlConfig) -> f64 {
+    (0.1 * config.tolerance).min(1e-12)
+}
+
+/// Deterministic, monotone tolerance policy shared by the prepared production
+/// session and the cfg(test)-only dense oracle. The staged target preserves the
+/// bounded early-iteration policy, while accepted deviance and score progress
+/// can tighten the next solve sooner. It is deliberately route-independent so
+/// fast and low memory modes follow the same scientific path. Invalid progress
+/// fails closed to the strict floor instead of silently permitting a loose
+/// solve.
+pub(crate) fn scheduled_inner_tolerance(
+    config: PpmlConfig,
+    iteration: usize,
+    previous_tolerance: f64,
+    progress: Option<PpmlInnerToleranceProgress>,
+) -> f64 {
+    const STAGES: usize = 8;
+    let floor = config
+        .inner_tolerance_final
+        .min(strict_inner_tolerance(config));
+    let staged_target = if iteration >= STAGES {
+        floor
+    } else {
+        let fraction = iteration.saturating_sub(1) as f64 / (STAGES - 1) as f64;
+        ((1.0 - fraction) * config.inner_tolerance_initial.ln() + fraction * floor.ln()).exp()
+    };
+    let previous_target = if previous_tolerance.is_finite() && previous_tolerance > 0.0 {
+        previous_tolerance.clamp(floor, config.inner_tolerance_initial)
+    } else {
+        floor
+    };
+    let progress_target = match progress {
+        Some(progress) => progress
+            .scale()
+            .map(|scale| (0.1 * scale).clamp(floor, config.inner_tolerance_initial))
+            .unwrap_or(floor),
+        None => config.inner_tolerance_initial,
+    };
+    previous_target
+        .min(staged_target)
+        .min(progress_target)
+        .max(floor)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -313,9 +381,17 @@ pub(crate) fn fit_ppml_with_start(
         fixed_effects,
         config.score_tolerance,
     )?;
+    let mut previous_inner_tolerance = config.inner_tolerance_initial;
+    let mut previous_outer_progress = None;
 
     for iteration in 1..=config.max_iterations {
-        let inner_tolerance = scheduled_inner_tolerance(config, iteration);
+        let inner_tolerance = scheduled_inner_tolerance(
+            config,
+            iteration,
+            previous_inner_tolerance,
+            previous_outer_progress,
+        );
+        previous_inner_tolerance = inner_tolerance;
         let profile = profile_irls_step(
             outcome,
             regressors,
@@ -364,7 +440,8 @@ pub(crate) fn fit_ppml_with_start(
         };
         let wants_convergence = consecutive_converged_iterations >= 2;
         let strict_profile = if wants_convergence {
-            let strict_tolerance = (0.1 * config.tolerance).min(1e-12);
+            let strict_tolerance = strict_inner_tolerance(config);
+            previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
             let candidate = profile_irls_step(
                 outcome,
                 regressors,
@@ -404,6 +481,10 @@ pub(crate) fn fit_ppml_with_start(
             absorb_report: profile.absorb_report,
             certificate: final_certificate.clone(),
         });
+        previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
+            relative_change,
+            final_certificate.relative_infinity_norm,
+        ));
         if let Some(profile) = strict_profile {
             certified_final_profile = Some(profile);
             converged = true;
@@ -577,7 +658,88 @@ mod tests {
         assert_eq!(configured.bounds, defaults.bounds);
         assert!(PpmlConfig::with_outer_controls(0.0, 1).is_err());
         assert!(PpmlConfig::with_outer_controls(f64::NAN, 1).is_err());
+        assert!(PpmlConfig::with_outer_controls(1.0, 1).is_err());
+        assert!(PpmlConfig::with_outer_controls(f64::from_bits(1), 1).is_err());
+        assert!(PpmlConfig::with_outer_controls(f64::MIN_POSITIVE, 1).is_ok());
+        let below_one = f64::from_bits(1.0_f64.to_bits() - 1);
+        assert!(PpmlConfig::with_outer_controls(below_one, 1).is_ok());
         assert!(PpmlConfig::with_outer_controls(1e-8, 0).is_err());
+    }
+
+    #[test]
+    fn inner_tolerance_responds_to_outer_progress_at_a_fixed_iteration() {
+        let config = PpmlConfig::default();
+        let deviance_limited = scheduled_inner_tolerance(
+            config,
+            2,
+            config.inner_tolerance_initial,
+            Some(PpmlInnerToleranceProgress::new(1e-5, 1e-12)),
+        );
+        let score_limited = scheduled_inner_tolerance(
+            config,
+            2,
+            config.inner_tolerance_initial,
+            Some(PpmlInnerToleranceProgress::new(1e-12, 1e-5)),
+        );
+        let both_improved = scheduled_inner_tolerance(
+            config,
+            2,
+            config.inner_tolerance_initial,
+            Some(PpmlInnerToleranceProgress::new(1e-10, 1e-10)),
+        );
+        assert!(both_improved < deviance_limited);
+        assert!(both_improved < score_limited);
+        assert!(both_improved >= strict_inner_tolerance(config));
+    }
+
+    #[test]
+    fn inner_tolerance_is_monotone_and_reaches_the_outer_certificate_floor() {
+        let mut config = PpmlConfig::default();
+        config.tolerance = 1e-14;
+        config.score_tolerance = config.tolerance;
+        let floor = strict_inner_tolerance(config);
+        let first = scheduled_inner_tolerance(config, 1, config.inner_tolerance_initial, None);
+        let improved = scheduled_inner_tolerance(
+            config,
+            2,
+            first,
+            Some(PpmlInnerToleranceProgress::new(1e-9, 1e-9)),
+        );
+        let worsened = scheduled_inner_tolerance(
+            config,
+            3,
+            improved,
+            Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
+        );
+        let final_stage = scheduled_inner_tolerance(
+            config,
+            8,
+            worsened,
+            Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
+        );
+        assert!(improved <= first);
+        assert!(worsened <= improved);
+        assert_eq!(final_stage, floor);
+        assert_eq!(floor, 1e-15);
+        let resumed_after_strict = scheduled_inner_tolerance(
+            config,
+            3,
+            strict_inner_tolerance(config),
+            Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
+        );
+        assert_eq!(resumed_after_strict, floor);
+    }
+
+    #[test]
+    fn nonfinite_inner_tolerance_progress_fails_closed() {
+        let config = PpmlConfig::default();
+        let tolerance = scheduled_inner_tolerance(
+            config,
+            2,
+            config.inner_tolerance_initial,
+            Some(PpmlInnerToleranceProgress::new(f64::NAN, 1e-4)),
+        );
+        assert_eq!(tolerance, strict_inner_tolerance(config));
     }
 
     #[test]
@@ -736,7 +898,7 @@ mod tests {
             &eta,
             &mean,
             config,
-            scheduled_inner_tolerance(config, 1),
+            scheduled_inner_tolerance(config, 1, config.inner_tolerance_initial, None),
         )
         .expect("first profile");
         let accepted = accept_step(

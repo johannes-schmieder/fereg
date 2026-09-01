@@ -152,13 +152,13 @@ impl<R: PreparedSeparationRebuilder> PreparedSeparationCoordinator<R> {
     pub(crate) fn transact_validated_proposal<F>(
         &mut self,
         primary_reason: SeparationDropReason,
-        primary_rows: &[usize],
+        primary_rows: Vec<usize>,
         complete_cascade: F,
     ) -> Result<PreparedGenerationCommit>
     where
         F: FnOnce(&[bool]) -> Result<PreparedSeparationCascade>,
     {
-        validate_sorted_active_rows(primary_rows, &self.active, "primary")?;
+        validate_sorted_active_rows(&primary_rows, &self.active, "primary")?;
         if primary_rows.is_empty() {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -174,7 +174,7 @@ impl<R: PreparedSeparationRebuilder> PreparedSeparationCoordinator<R> {
             &self.reasons,
             "unable to reserve prepared separation staged reason ledger",
         )?;
-        for &row in primary_rows {
+        for &row in &primary_rows {
             staged_active[row] = false;
             staged_reasons[row] = Some(primary_reason);
         }
@@ -230,10 +230,10 @@ impl<R: PreparedSeparationRebuilder> PreparedSeparationCoordinator<R> {
         self.prepared = prepared;
         Ok(PreparedGenerationCommit {
             generation,
-            primary_rows: fallible_copy(
-                primary_rows,
-                "unable to reserve committed primary separation rows",
-            )?,
+            // The caller has already fallibly reserved and validated this
+            // exact-capacity proposal.  Move it into the commit instead of
+            // allocating a third simultaneously live copy at publication.
+            primary_rows,
             singleton_rows: cascade.singleton_rows,
             exact_fe_rows: cascade.exact_fe_rows,
         })
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(initial.prepared, &[0, 1, 2, 3, 4, 5]);
 
         let commit = coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, &[1], |primary_active| {
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1], |primary_active| {
                 assert!(!primary_active[1]);
                 Ok(PreparedSeparationCascade {
                     singleton_rows: vec![3],
@@ -367,6 +367,79 @@ mod tests {
             coordinator.reasons()[4],
             Some(SeparationDropReason::FixedEffectZeroLevel)
         );
+    }
+
+    #[test]
+    fn accepted_multi_round_rebase_keeps_candidate_owner_and_latest_generation_distinct() {
+        let mut coordinator = PreparedSeparationCoordinator::new(MockRebuilder {
+            original_nobs: 10,
+            candidate_rows: vec![0, 1, 2, 3, 4, 5, 6, 7],
+            fail_generation: None,
+        })
+        .expect("coordinator");
+        let candidate_owner = coordinator.candidate_original_rows();
+
+        let first = coordinator
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1], |_| {
+                Ok(PreparedSeparationCascade {
+                    singleton_rows: vec![2],
+                    exact_fe_rows: vec![3],
+                })
+            })
+            .expect("first accepted rebase");
+        assert_eq!(first.generation, 1);
+        assert_eq!(coordinator.view().original_rows, &[0, 4, 5, 6, 7]);
+        assert!(!Arc::ptr_eq(
+            &candidate_owner,
+            &coordinator.retained_original_rows
+        ));
+
+        let first_retained = Arc::clone(&coordinator.retained_original_rows);
+        let second = coordinator
+            .transact_validated_proposal(SeparationDropReason::Mu, vec![5], |_| {
+                Ok(PreparedSeparationCascade {
+                    singleton_rows: vec![6],
+                    exact_fe_rows: Vec::new(),
+                })
+            })
+            .expect("second accepted rebase");
+        assert_eq!(second.generation, 2);
+        assert_eq!(coordinator.view().original_rows, &[0, 4, 7]);
+        assert_eq!(coordinator.view().prepared, &[0, 4, 7]);
+        assert!(!Arc::ptr_eq(
+            &first_retained,
+            &coordinator.retained_original_rows
+        ));
+        assert_eq!(candidate_owner.as_ref(), &[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(
+            coordinator
+                .active()
+                .iter()
+                .filter(|active| **active)
+                .count(),
+            3
+        );
+    }
+
+    #[test]
+    fn accepted_commit_moves_the_reserved_primary_proposal_without_copying() {
+        let mut coordinator = PreparedSeparationCoordinator::new(MockRebuilder {
+            original_nobs: 6,
+            candidate_rows: vec![0, 1, 2, 3, 4, 5],
+            fail_generation: None,
+        })
+        .expect("coordinator");
+        let primary = vec![1_usize, 3];
+        let primary_pointer = primary.as_ptr();
+        let primary_capacity = primary.capacity();
+        let commit = coordinator
+            .transact_validated_proposal(SeparationDropReason::Simplex, primary, |_| {
+                Ok(PreparedSeparationCascade::default())
+            })
+            .expect("accepted transaction");
+        assert_eq!(commit.primary_rows, [1, 3]);
+        assert_eq!(commit.primary_rows.as_ptr(), primary_pointer);
+        assert_eq!(commit.primary_rows.capacity(), primary_capacity);
     }
 
     #[test]
@@ -404,7 +477,7 @@ mod tests {
         })
         .expect("coordinator");
         let error = coordinator
-            .transact_validated_proposal(SeparationDropReason::IteratedRectifier, &[1], |_| {
+            .transact_validated_proposal(SeparationDropReason::IteratedRectifier, vec![1], |_| {
                 Ok(PreparedSeparationCascade::default())
             })
             .expect_err("rebase failure");
@@ -424,7 +497,7 @@ mod tests {
         })
         .expect("coordinator");
         let error = coordinator
-            .transact_validated_proposal(SeparationDropReason::Mu, &[1], |_| {
+            .transact_validated_proposal(SeparationDropReason::Mu, vec![1], |_| {
                 Ok(PreparedSeparationCascade {
                     singleton_rows: vec![2, 2],
                     exact_fe_rows: Vec::new(),
@@ -445,9 +518,11 @@ mod tests {
         })
         .expect("coordinator");
         coordinator
-            .transact_validated_proposal(SeparationDropReason::FixedEffectZeroLevel, &[1], |_| {
-                Ok(PreparedSeparationCascade::default())
-            })
+            .transact_validated_proposal(
+                SeparationDropReason::FixedEffectZeroLevel,
+                vec![1],
+                |_| Ok(PreparedSeparationCascade::default()),
+            )
             .expect("transaction");
         let outcome = coordinator.into_outcome();
         assert_eq!(outcome.generation, 1);

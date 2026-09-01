@@ -10,6 +10,9 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use crate::data::{DenseMatrix, DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, LevelIndex};
@@ -17,11 +20,14 @@ use crate::ols::{
     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
     PreparedOlsFitConfig,
 };
-use crate::ppml_separation::{model_simplex_interruptible, simplex_workspace_peak_cells};
 use crate::ppml_separation::{
-    DetectionProposal, ExactFeSeparationCertificate, MethodStatus, PreparedSeparationCascade,
-    PreparedSeparationCoordinator, SeparationCertificate, SeparationConfig, SeparationDropReason,
-    SeparationMethod, SeparationMethodReport, SeparationReport,
+    model_simplex_interruptible, separation_method_count, simplex_workspace_peak_cells,
+};
+use crate::ppml_separation::{
+    DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
+    PreparedSeparationCascade, PreparedSeparationCoordinator, SeparationCertificate,
+    SeparationConfig, SeparationDropReason, SeparationMethod, SeparationMethodReport,
+    SeparationNote, SeparationReport,
 };
 
 use super::memory::{begin_phase_allocation, end_phase_allocation};
@@ -41,9 +47,49 @@ const SEPARATION_PHASES: [PpmlPhase; 4] = [
     PpmlPhase::SeparationMu,
 ];
 
+#[cfg(test)]
+thread_local! {
+    static FAIL_EXACT_FE_LEVEL_COMPACTION: Cell<bool> = const { Cell::new(false) };
+    static FAIL_REPORT_BANK_RESERVATION: Cell<bool> = const { Cell::new(false) };
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct PreparedSeparationPhasePeaks {
     values: [Option<u64>; SEPARATION_PHASES.len()],
+}
+
+/// Production numerical-detector handoff.
+///
+/// The numerical kernels are allowed to use compact row positions while they
+/// work, but compact positions never cross the immutable-generation boundary.
+/// This proposal binds the detector result to one prepared generation and
+/// carries only stable original-row identifiers.  In particular, binding
+/// preserves detector order verbatim: it must not sort or deduplicate a
+/// malformed result into something the coordinator could accept.
+#[derive(Debug, Clone, PartialEq)]
+struct PreparedNumericalProposal {
+    generation: usize,
+    generation_rows_digest: u64,
+    generation_outcome_digest: u64,
+    method: SeparationMethod,
+    dropped_original_rows: Vec<usize>,
+    iterations: usize,
+    status: MethodStatus,
+    certificate: Option<SeparationCertificate>,
+    exact_fe_certificate: Option<ExactFeSeparationCertificate>,
+    /// Observation-space direction on this proposal's compact generation.
+    direction: Option<Vec<f64>>,
+    note: SeparationNote,
+}
+
+/// Validation capability consumed by the atomic commit path.  Keeping this
+/// distinct from the detector proposal prevents a caller from pairing stable
+/// rows from one method/generation with a reason or certificate from another.
+#[derive(Debug, Clone, PartialEq)]
+struct ValidatedNumericalProposal {
+    proposal: PreparedNumericalProposal,
+    reason: SeparationDropReason,
+    certificate: SeparationCertificate,
 }
 
 impl PreparedSeparationPhasePeaks {
@@ -384,11 +430,22 @@ where
 {
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
+    let method_report_capacity =
+        checked_method_report_capacity(candidate_observations, separation_method_count(config))?;
+    #[cfg(test)]
+    if FAIL_REPORT_BANK_RESERVATION.replace(false) {
+        return Err(allocation(
+            "injected prepared separation report-bank allocation failure",
+        ));
+    }
     let mut reports = Vec::new();
+    reports
+        .try_reserve_exact(method_report_capacity)
+        .map_err(|_| allocation("unable to reserve prepared separation method reports"))?;
     let mut generation_hashes = Vec::new();
     generation_hashes
-        .try_reserve_exact(1)
-        .map_err(|_| allocation("unable to reserve prepared separation generation hash"))?;
+        .try_reserve_exact(candidate_observations)
+        .map_err(|_| allocation("unable to reserve prepared separation generation hashes"))?;
     generation_hashes.push(candidate_ledger_hash_original_axis(
         &candidate_original_rows,
         coordinator.active(),
@@ -415,27 +472,20 @@ where
                     let singleton_rows = {
                         let view = coordinator.view();
                         let topology = DetectorTopology::new(view.prepared.prepared())?;
-                        compact_to_original(
-                            singleton_fixed_point(
-                                &topology,
-                                view.prepared,
-                                &fallible_filled(
-                                    view.original_rows.len(),
-                                    true,
-                                    "unable to reserve prepared singleton activity mask",
-                                )?,
-                            )?,
+                        compact_to_original_exact_capacity(
+                            singleton_fixed_point_all(&topology, view.prepared)?,
                             view.original_rows,
                         )?
                     };
                     if !singleton_rows.is_empty() {
                         let commit = coordinator.transact_validated_proposal(
                             SeparationDropReason::InitialSingleton,
-                            &singleton_rows,
+                            singleton_rows,
                             |_| Ok(PreparedSeparationCascade::default()),
                         )?;
-                        fallible_push(
+                        bounded_push(
                             &mut reports,
+                            method_report_capacity,
                             method_report(
                                 commit.generation,
                                 SeparationMethod::Singletons,
@@ -447,12 +497,13 @@ where
                                 None,
                                 started,
                                 config,
-                                "prepared singleton pruning reached its fixed point",
+                                "prepared singleton pruning reached its fixed point".into(),
                             ),
                             "unable to reserve prepared separation method report",
                         )?;
-                        fallible_push(
+                        bounded_push(
                             &mut generation_hashes,
+                            candidate_observations,
                             candidate_ledger_hash_original_axis(
                                 &candidate_original_rows,
                                 coordinator.active(),
@@ -466,19 +517,12 @@ where
                     // report, making it impossible to distinguish an
                     // executed policy from a skipped one.  Replay it from the
                     // immutable generation and record the terminal evidence.
+                    drop(singleton_rows);
                     let replayed_singletons = {
                         let view = coordinator.view();
                         let topology = DetectorTopology::new(view.prepared.prepared())?;
                         compact_to_original(
-                            singleton_fixed_point(
-                                &topology,
-                                view.prepared,
-                                &fallible_filled(
-                                    view.original_rows.len(),
-                                    true,
-                                    "unable to reserve singleton certification replay mask",
-                                )?,
-                            )?,
+                            singleton_fixed_point_all(&topology, view.prepared)?,
                             view.original_rows,
                         )?
                     };
@@ -489,8 +533,9 @@ where
                         ));
                     }
                     final_generation_replay_mask |= replay_bit(SeparationMethod::Singletons);
-                    fallible_push(
+                    bounded_push(
                         &mut reports,
+                        method_report_capacity,
                         method_report(
                             coordinator.view().generation,
                             SeparationMethod::Singletons,
@@ -502,7 +547,7 @@ where
                             None,
                             started,
                             config,
-                            "prepared singleton pruning independently certified a stable fixed point",
+                            "prepared singleton pruning independently certified a stable fixed point".into(),
                         ),
                         "unable to reserve prepared singleton no-drop report",
                     )?;
@@ -512,25 +557,13 @@ where
                     let started = Instant::now();
                     let exact = {
                         let view = coordinator.view();
-                        exact_fe_proposal(
-                            view.prepared,
-                            &fallible_filled(
-                                view.original_rows.len(),
-                                true,
-                                "unable to reserve prepared exact-FE activity mask",
-                            )?,
-                        )?
+                        exact_fe_proposal_all(view.prepared)?
                     };
                     if !exact.rows.is_empty() {
                         let (primary_rows, cascade) = {
                             let view = coordinator.view();
-                            let primary_rows = compact_to_original(
-                                fallible_copy(
-                                    &exact.rows,
-                                    "unable to reserve prepared exact-FE proposal rows",
-                                )?,
-                                view.original_rows,
-                            )?;
+                            let primary_rows =
+                                compact_to_original_exact_capacity(exact.rows, view.original_rows)?;
                             let cascade = complete_cascade(view.prepared, &primary_rows, config)?;
                             (primary_rows, cascade)
                         };
@@ -540,11 +573,12 @@ where
                         } = cascade;
                         let commit = coordinator.transact_validated_proposal(
                             SeparationDropReason::FixedEffectZeroLevel,
-                            &primary_rows,
+                            primary_rows,
                             |_| Ok(cascade),
                         )?;
-                        fallible_push(
+                        bounded_push(
                             &mut reports,
+                            method_report_capacity,
                             method_report(
                                 commit.generation,
                                 SeparationMethod::FixedEffects,
@@ -556,13 +590,14 @@ where
                                 Some(exact.certificate),
                                 started,
                                 config,
-                                "prepared exact zero-only FE certificate passed",
+                                "prepared exact zero-only FE certificate passed".into(),
                             ),
                             "unable to reserve prepared separation method report",
                         )?;
                         if !commit.exact_fe_rows.is_empty() {
-                            fallible_push(
+                            bounded_push(
                                 &mut reports,
+                                method_report_capacity,
                                 exact_followup_report(
                                     commit.generation,
                                     commit.exact_fe_rows,
@@ -576,8 +611,9 @@ where
                                 "unable to reserve prepared exact-FE follow-up report",
                             )?;
                         }
-                        fallible_push(
+                        bounded_push(
                             &mut generation_hashes,
+                            candidate_observations,
                             candidate_ledger_hash_original_axis(
                                 &candidate_original_rows,
                                 coordinator.active(),
@@ -587,8 +623,9 @@ where
                         )?;
                         return Ok(true);
                     }
-                    fallible_push(
+                    bounded_push(
                         &mut reports,
+                        method_report_capacity,
                         method_report(
                             coordinator.view().generation,
                             SeparationMethod::FixedEffects,
@@ -600,20 +637,14 @@ where
                             Some(exact.certificate.clone()),
                             started,
                             config,
-                            "prepared exact FE scan found no zero-only intercept level",
+                            "prepared exact FE scan found no zero-only intercept level".into(),
                         ),
                         "unable to reserve prepared separation method report",
                     )?;
+                    drop(exact.rows);
                     let replay = {
                         let view = coordinator.view();
-                        exact_fe_proposal(
-                            view.prepared,
-                            &fallible_filled(
-                                view.original_rows.len(),
-                                true,
-                                "unable to reserve exact-FE certification replay mask",
-                            )?,
-                        )?
+                        exact_fe_proposal_all(view.prepared)?
                     };
                     if !replay.rows.is_empty() || replay.certificate != exact.certificate {
                         return Err(FeregError::new(
@@ -631,7 +662,12 @@ where
         }
 
         if !coordinator.view().prepared.outcome().contains(&0.0) {
-            append_no_boundary_reports(&mut reports, coordinator.view().generation, config)?;
+            append_no_boundary_reports(
+                &mut reports,
+                method_report_capacity,
+                coordinator.view().generation,
+                config,
+            )?;
             final_generation_replay_mask |= requested_numerical_replay_mask(config);
             for phase in [
                 PpmlPhase::SeparationSimplex,
@@ -666,7 +702,10 @@ where
                 let started = Instant::now();
                 let proposal = {
                     let view = coordinator.view();
-                    prepared_simplex_proposal(view.prepared, config, interrupt)?
+                    bind_numerical_proposal(
+                        view.prepared,
+                        prepared_simplex_proposal(view.prepared, config, interrupt)?,
+                    )?
                 };
                 let simplex_unresolved = matches!(
                     proposal.status,
@@ -675,19 +714,19 @@ where
                         | MethodStatus::Uncertified
                 )
                 .then_some(proposal.status);
-                if !proposal.dropped.is_empty() {
+                if !proposal.dropped_original_rows.is_empty() {
                     let certified = {
                         let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, &proposal, ppml, config, linear)?
+                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
                     };
                     commit_numerical(
                         &mut coordinator,
                         &mut reports,
                         &mut generation_hashes,
+                        method_report_capacity,
+                        candidate_observations,
                         &candidate_original_rows,
-                        proposal,
                         certified,
-                        SeparationDropReason::Simplex,
                         started,
                         ppml,
                         config,
@@ -704,15 +743,10 @@ where
                     None,
                 )?;
                 final_generation_replay_mask |= replay_bit(SeparationMethod::Simplex);
-                fallible_push(
+                bounded_push(
                     &mut reports,
-                    proposal_report(
-                        coordinator.view().generation,
-                        proposal,
-                        replayed_certificate,
-                        started,
-                        config,
-                    ),
+                    method_report_capacity,
+                    proposal_report(proposal, replayed_certificate, started, config),
                     "unable to reserve prepared simplex report",
                 )?;
                 Ok((simplex_unresolved, false))
@@ -734,22 +768,31 @@ where
                 let started = Instant::now();
                 let proposal = {
                     let view = coordinator.view();
-                    prepared_iterated_rectifier(view.prepared, ppml, config, linear, interrupt)?
+                    bind_numerical_proposal(
+                        view.prepared,
+                        prepared_iterated_rectifier(
+                            view.prepared,
+                            ppml,
+                            config,
+                            linear,
+                            interrupt,
+                        )?,
+                    )?
                 };
                 fail_closed_comprehensive(&proposal)?;
-                if !proposal.dropped.is_empty() {
+                if !proposal.dropped_original_rows.is_empty() {
                     let certified = {
                         let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, &proposal, ppml, config, linear)?
+                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
                     };
                     commit_numerical(
                         &mut coordinator,
                         &mut reports,
                         &mut generation_hashes,
+                        method_report_capacity,
+                        candidate_observations,
                         &candidate_original_rows,
-                        proposal,
                         certified,
-                        SeparationDropReason::IteratedRectifier,
                         started,
                         ppml,
                         config,
@@ -770,15 +813,10 @@ where
                         .as_ref()
                         .is_some_and(|certificate| certificate.passed);
                 final_generation_replay_mask |= replay_bit(SeparationMethod::IteratedRectifier);
-                fallible_push(
+                bounded_push(
                     &mut reports,
-                    proposal_report(
-                        coordinator.view().generation,
-                        proposal,
-                        replayed_certificate,
-                        started,
-                        config,
-                    ),
+                    method_report_capacity,
+                    proposal_report(proposal, replayed_certificate, started, config),
                     "unable to reserve prepared IR report",
                 )?;
                 Ok((comprehensive_certified, false))
@@ -822,13 +860,16 @@ where
                 }
                 let proposal = {
                     let view = coordinator.view();
-                    prepared_mu_from_mean(
+                    bind_numerical_proposal(
                         view.prepared,
-                        ppml,
-                        config,
-                        linear,
-                        exploration.mean(),
-                        exploration.certificate().accepted_iterations,
+                        prepared_mu_from_mean(
+                            view.prepared,
+                            ppml,
+                            config,
+                            linear,
+                            exploration.mean(),
+                            exploration.certificate().accepted_iterations,
+                        )?,
                     )?
                 };
                 if matches!(
@@ -840,19 +881,19 @@ where
                         "prepared mu separation did not produce a certified result",
                     ));
                 }
-                if !proposal.dropped.is_empty() {
+                if !proposal.dropped_original_rows.is_empty() {
                     let certified = {
                         let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, &proposal, ppml, config, linear)?
+                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
                     };
                     commit_numerical(
                         &mut coordinator,
                         &mut reports,
                         &mut generation_hashes,
+                        method_report_capacity,
+                        candidate_observations,
                         &candidate_original_rows,
-                        proposal,
                         certified,
-                        SeparationDropReason::Mu,
                         started,
                         ppml,
                         config,
@@ -869,15 +910,10 @@ where
                     Some(&exploration),
                 )?;
                 final_generation_replay_mask |= replay_bit(SeparationMethod::Mu);
-                fallible_push(
+                bounded_push(
                     &mut reports,
-                    proposal_report(
-                        coordinator.view().generation,
-                        proposal,
-                        replayed_certificate,
-                        started,
-                        config,
-                    ),
+                    method_report_capacity,
+                    proposal_report(proposal, replayed_certificate, started, config),
                     "unable to reserve prepared Mu report",
                 )?;
                 Ok(false)
@@ -994,52 +1030,74 @@ fn commit_numerical(
     coordinator: &mut PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
     reports: &mut Vec<SeparationMethodReport>,
     generation_hashes: &mut Vec<u64>,
+    method_report_capacity: usize,
+    generation_hash_capacity: usize,
     candidate_original_rows: &[usize],
-    proposal: DetectionProposal,
-    certificate: Option<SeparationCertificate>,
-    reason: SeparationDropReason,
+    validated: ValidatedNumericalProposal,
     started: Instant,
     _ppml: PpmlConfig,
     config: SeparationConfig,
 ) -> Result<()> {
-    let (primary_rows, cascade) = {
+    let ValidatedNumericalProposal {
+        proposal,
+        reason,
+        certificate,
+    } = validated;
+    if reason != numerical_drop_reason(proposal.method)? {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "validated numerical proposal reason does not derive from its detector method",
+        ));
+    }
+    {
         let view = coordinator.view();
-        let primary_rows = compact_to_original(
-            fallible_copy(
-                &proposal.dropped,
-                "unable to reserve committed numerical proposal rows",
-            )?,
-            view.original_rows,
-        )?;
-        let cascade = complete_cascade(view.prepared, &primary_rows, config)?;
-        (primary_rows, cascade)
+        validate_prepared_numerical_metadata(view.prepared, &proposal, config)?;
+    }
+    let PreparedNumericalProposal {
+        method,
+        dropped_original_rows: primary_rows,
+        iterations,
+        status,
+        exact_fe_certificate,
+        direction,
+        note,
+        ..
+    } = proposal;
+    // The direction has already passed the independent span/sign
+    // certificate. It is not needed to construct or publish the atomic
+    // deletion transaction, so release its N-vector before cascade/rebuild.
+    drop(direction);
+    let cascade = {
+        let view = coordinator.view();
+        complete_cascade(view.prepared, &primary_rows, config)?
     };
     let PreparedCascadeProposal {
         cascade,
         exact_fe_certificate: exact_followup_certificate,
     } = cascade;
-    let commit = coordinator.transact_validated_proposal(reason, &primary_rows, |_| Ok(cascade))?;
-    let method = proposal.method;
-    fallible_push(
+    let commit = coordinator.transact_validated_proposal(reason, primary_rows, |_| Ok(cascade))?;
+    bounded_push(
         reports,
+        method_report_capacity,
         method_report(
             commit.generation,
             method,
-            proposal.status,
-            proposal.iterations,
+            status,
+            iterations,
             commit.primary_rows,
             commit.singleton_rows,
-            certificate,
-            proposal.exact_fe_certificate,
+            Some(certificate),
+            exact_fe_certificate,
             started,
             config,
-            &proposal.note,
+            note,
         ),
         "unable to reserve committed separation method report",
     )?;
     if !commit.exact_fe_rows.is_empty() {
-        fallible_push(
+        bounded_push(
             reports,
+            method_report_capacity,
             exact_followup_report(
                 commit.generation,
                 commit.exact_fe_rows,
@@ -1053,8 +1111,9 @@ fn commit_numerical(
             "unable to reserve committed exact-FE follow-up report",
         )?;
     }
-    fallible_push(
+    bounded_push(
         generation_hashes,
+        generation_hash_capacity,
         candidate_ledger_hash_original_axis(
             candidate_original_rows,
             coordinator.active(),
@@ -1065,10 +1124,65 @@ fn commit_numerical(
     Ok(())
 }
 
+/// Convert detector-local compact positions to stable original identifiers
+/// without changing their order or multiplicity.  Any malformed ordering is
+/// rejected later as part of the atomic proposal validation; the adapter must
+/// never make an invalid detector result valid by normalization.
+fn bind_numerical_proposal(
+    generation: &PreparedPpmlModelGeneration,
+    proposal: DetectionProposal,
+) -> Result<PreparedNumericalProposal> {
+    let mut dropped_original_rows = Vec::new();
+    dropped_original_rows
+        .try_reserve_exact(proposal.dropped.len())
+        .map_err(|_| allocation("unable to reserve stable numerical proposal rows"))?;
+    for compact_row in proposal.dropped {
+        dropped_original_rows.push(*generation.original_rows().get(compact_row).ok_or_else(
+            || {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "prepared numerical detector returned an out-of-range compact row",
+                )
+            },
+        )?);
+    }
+    Ok(PreparedNumericalProposal {
+        generation: generation.generation(),
+        generation_rows_digest: stable_usize_slice_digest(
+            b"numerical-proposal-rows",
+            generation.original_rows(),
+        )?,
+        generation_outcome_digest: stable_f64_slice_digest(
+            b"numerical-proposal-outcome",
+            generation.outcome(),
+        )?,
+        method: proposal.method,
+        dropped_original_rows,
+        iterations: proposal.iterations,
+        status: proposal.status,
+        certificate: proposal.certificate,
+        exact_fe_certificate: proposal.exact_fe_certificate,
+        direction: proposal.direction,
+        note: proposal.note,
+    })
+}
+
+fn numerical_drop_reason(method: SeparationMethod) -> Result<SeparationDropReason> {
+    match method {
+        SeparationMethod::Simplex => Ok(SeparationDropReason::Simplex),
+        SeparationMethod::IteratedRectifier => Ok(SeparationDropReason::IteratedRectifier),
+        SeparationMethod::Mu => Ok(SeparationDropReason::Mu),
+        SeparationMethod::Singletons | SeparationMethod::FixedEffects => Err(FeregError::new(
+            ErrorCode::Internal,
+            "exact separation method cannot supply a numerical drop reason",
+        )),
+    }
+}
+
 struct DetectorTopology<'a> {
     sources: Vec<&'a LevelIndex>,
-    effect_to_source: Vec<usize>,
-    intercept_effect: Vec<bool>,
+    effect_to_source: &'a [usize],
+    effect_specs: &'a [crate::topology_dof::CategoricalTopologyDofEffectSpec],
 }
 
 impl<'a> DetectorTopology<'a> {
@@ -1089,19 +1203,9 @@ impl<'a> DetectorTopology<'a> {
             topology.registry().sources().len(),
             "unable to reserve prepared detector topology sources",
         )?;
-        let effect_to_source = fallible_copy(
-            topology.effect_to_topology(),
-            "unable to reserve prepared detector effect mapping",
-        )?;
-        let intercept_effect = fallible_collect(
-            categorical
-                .effect_specs()
-                .iter()
-                .map(|effect| effect.intercept),
-            categorical.effect_specs().len(),
-            "unable to reserve prepared detector intercept flags",
-        )?;
-        if effect_to_source.len() != intercept_effect.len()
+        let effect_to_source = topology.effect_to_topology();
+        let effect_specs = categorical.effect_specs();
+        if effect_to_source.len() != effect_specs.len()
             || effect_to_source
                 .iter()
                 .any(|source| *source >= sources.len())
@@ -1113,7 +1217,7 @@ impl<'a> DetectorTopology<'a> {
         Ok(Self {
             sources,
             effect_to_source,
-            intercept_effect,
+            effect_specs,
         })
     }
 }
@@ -1128,19 +1232,42 @@ fn singleton_fixed_point(
             "prepared singleton active mask is not compact-axis aligned",
         ));
     }
-    let mut active = fallible_copy(
+    let active = fallible_copy(
         initially_active,
         "unable to reserve prepared singleton working mask",
     )?;
+    singleton_fixed_point_owned(topology, generation, active)
+}
+
+/// Initial/replay singleton scans start from the complete immutable prepared
+/// generation. Construct that one working mask directly instead of first
+/// allocating a caller mask and then copying it inside the fixed-point scan.
+fn singleton_fixed_point_all(
+    topology: &DetectorTopology<'_>,
+    generation: &PreparedPpmlModelGeneration,
+) -> Result<Vec<usize>> {
+    let active = fallible_filled(
+        generation.original_rows().len(),
+        true,
+        "unable to reserve prepared singleton working mask",
+    )?;
+    singleton_fixed_point_owned(topology, generation, active)
+}
+
+fn singleton_fixed_point_owned(
+    topology: &DetectorTopology<'_>,
+    generation: &PreparedPpmlModelGeneration,
+    mut active: Vec<bool>,
+) -> Result<Vec<usize>> {
     let mut dropped = Vec::new();
     dropped
-        .try_reserve_exact(initially_active.len())
+        .try_reserve_exact(active.len())
         .map_err(|_| allocation("unable to reserve prepared singleton drop rows"))?;
     let mut pass = Vec::new();
-    pass.try_reserve_exact(initially_active.len())
+    pass.try_reserve_exact(active.len())
         .map_err(|_| allocation("unable to reserve prepared singleton pass rows"))?;
     let mut selected = fallible_filled(
-        initially_active.len(),
+        active.len(),
         false,
         "unable to reserve prepared singleton pass selection mask",
     )?;
@@ -1203,17 +1330,34 @@ fn exact_fe_proposal(
     generation: &PreparedPpmlModelGeneration,
     active: &[bool],
 ) -> Result<ExactFeProposal> {
-    let topology = DetectorTopology::new(generation.prepared())?;
     if active.len() != generation.original_rows().len() {
         return Err(invalid_argument(
             "prepared exact-FE active mask is not compact-axis aligned",
         ));
     }
+    exact_fe_proposal_with_activity(generation, Some(active))
+}
+
+/// Initial and replay exact-FE scans inspect the complete immutable prepared
+/// generation. Avoid allocating an all-true caller mask merely to read it in
+/// the scan; cascade scans still enter through `exact_fe_proposal` with their
+/// transaction-local activity mask.
+fn exact_fe_proposal_all(generation: &PreparedPpmlModelGeneration) -> Result<ExactFeProposal> {
+    exact_fe_proposal_with_activity(generation, None)
+}
+
+fn exact_fe_proposal_with_activity(
+    generation: &PreparedPpmlModelGeneration,
+    active: Option<&[bool]>,
+) -> Result<ExactFeProposal> {
+    let topology = DetectorTopology::new(generation.prepared())?;
+    let nobs = generation.original_rows().len();
+    let is_active = |row: usize| active.is_none_or(|mask| mask[row]);
     let mut rows = Vec::new();
-    rows.try_reserve_exact(active.len())
+    rows.try_reserve_exact(nobs)
         .map_err(|_| allocation("unable to reserve prepared exact-FE drop rows"))?;
     let mut selected = fallible_filled(
-        active.len(),
+        nobs,
         false,
         "unable to reserve prepared exact-FE row selection mask",
     )?;
@@ -1221,8 +1365,8 @@ fn exact_fe_proposal(
     let level_capacity = topology
         .effect_to_source
         .iter()
-        .zip(&topology.intercept_effect)
-        .filter(|(_, intercept)| **intercept)
+        .zip(topology.effect_specs)
+        .filter(|(_, effect)| effect.intercept)
         .try_fold(0_usize, |total, (source, _)| {
             total.checked_add(topology.sources[*source].n_levels())
         })
@@ -1232,7 +1376,8 @@ fn exact_fe_proposal(
         .map_err(|_| allocation("unable to reserve prepared exact-FE level certificate"))?;
     let mut checked = 0_usize;
     for (effect, &source_index) in topology.effect_to_source.iter().enumerate() {
-        if !topology.intercept_effect[effect] {
+        let effect_spec = &topology.effect_specs[effect];
+        if !effect_spec.intercept {
             continue;
         }
         checked += 1;
@@ -1241,11 +1386,14 @@ fn exact_fe_proposal(
             let members = source.checked_members(level)?;
             let mut any = false;
             let mut zero_only = true;
+            let mut representative_original_row = usize::MAX;
             for &row in members {
-                if !active[row] {
+                if !is_active(row) {
                     continue;
                 }
                 any = true;
+                representative_original_row =
+                    representative_original_row.min(generation.original_rows()[row]);
                 if generation.outcome()[row] > 0.0 {
                     zero_only = false;
                     break;
@@ -1254,11 +1402,14 @@ fn exact_fe_proposal(
             if any && zero_only {
                 fallible_push(
                     &mut levels,
-                    (effect, level as u32),
+                    ExactFeLevelIdentity {
+                        effect: effect_spec.term_id,
+                        representative_original_row,
+                    },
                     "prepared exact-FE level certificate capacity exhausted",
                 )?;
                 for &row in members {
-                    if active[row] && !selected[row] {
+                    if is_active(row) && !selected[row] {
                         selected[row] = true;
                         fallible_push(
                             &mut rows,
@@ -1273,7 +1424,29 @@ fn exact_fe_proposal(
     rows.sort_unstable();
     rows.dedup();
     levels.sort_unstable();
-    levels.dedup();
+    if levels.windows(2).any(|pair| pair[0] == pair[1]) {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared exact-FE scan produced a duplicate stable level identity",
+        ));
+    }
+    // Do not let the detector's construction pass certify itself. Reuse the
+    // already-owned selection mask for an allocation-free second scan that
+    // independently reconstructs the complete zero-only level identity set
+    // and its exact row union. This catches a missing/extra identity, a stale
+    // compact code, a non-minimal original-row anchor, and any row-union
+    // mismatch before `passed` can become authoritative or a transaction can
+    // mutate the separation ledger.
+    verify_exact_fe_proposal_with_activity(
+        generation,
+        &topology,
+        active,
+        &rows,
+        &levels,
+        checked,
+        &mut selected,
+    )?;
+    let levels = compact_exact_fe_levels(levels)?;
     Ok(ExactFeProposal {
         rows,
         certificate: ExactFeSeparationCertificate {
@@ -1282,6 +1455,107 @@ fn exact_fe_proposal(
             passed: true,
         },
     })
+}
+
+/// Independently replay one exact-FE detector result without allocating.
+///
+/// `selection_scratch` is the construction pass's N-bit workspace, cleared
+/// and rebuilt here from immutable prepared topology/outcome state. Stable
+/// identities are checked by binary search against the sorted proposal bank;
+/// the scratch mask then proves that `rows` is exactly (not merely a subset
+/// of) the union of all active members of every replayed zero-only level.
+fn verify_exact_fe_proposal_with_activity(
+    generation: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    active: Option<&[bool]>,
+    rows: &[usize],
+    identities: &[ExactFeLevelIdentity],
+    checked_intercept_effects: usize,
+    selection_scratch: &mut [bool],
+) -> Result<()> {
+    let nobs = generation.original_rows().len();
+    let replay_failed = || {
+        FeregError::new(
+            ErrorCode::NonConvergence,
+            "prepared exact-FE certificate failed allocation-free independent replay",
+        )
+    };
+    if generation.outcome().len() != nobs
+        || selection_scratch.len() != nobs
+        || active.is_some_and(|mask| mask.len() != nobs)
+        || rows.windows(2).any(|pair| pair[0] >= pair[1])
+        || rows.last().is_some_and(|row| *row >= nobs)
+        || identities.windows(2).any(|pair| pair[0] >= pair[1])
+    {
+        return Err(replay_failed());
+    }
+
+    selection_scratch.fill(false);
+    let is_active = |row: usize| active.is_none_or(|mask| mask[row]);
+    let mut replay_checked = 0_usize;
+    let mut replay_level_count = 0_usize;
+    for (effect, &source_index) in topology.effect_to_source.iter().enumerate() {
+        let effect_spec = &topology.effect_specs[effect];
+        if !effect_spec.intercept {
+            continue;
+        }
+        replay_checked = replay_checked.checked_add(1).ok_or_else(replay_failed)?;
+        let source = topology.sources[source_index];
+        for level in 0..source.n_levels() {
+            let members = source.checked_members(level)?;
+            let mut any = false;
+            let mut zero_only = true;
+            let mut representative_original_row = usize::MAX;
+            for &row in members {
+                if !is_active(row) {
+                    continue;
+                }
+                any = true;
+                representative_original_row =
+                    representative_original_row.min(generation.original_rows()[row]);
+                if generation.outcome()[row] > 0.0 {
+                    zero_only = false;
+                }
+            }
+            if !any || !zero_only {
+                continue;
+            }
+
+            replay_level_count = replay_level_count
+                .checked_add(1)
+                .ok_or_else(replay_failed)?;
+            let identity = ExactFeLevelIdentity {
+                effect: effect_spec.term_id,
+                representative_original_row,
+            };
+            if identities.binary_search(&identity).is_err() {
+                return Err(replay_failed());
+            }
+            for &row in members {
+                if is_active(row) {
+                    selection_scratch[row] = true;
+                }
+            }
+        }
+    }
+    if replay_checked != checked_intercept_effects || replay_level_count != identities.len() {
+        return Err(replay_failed());
+    }
+
+    let mut proposal_position = 0_usize;
+    for (row, selected) in selection_scratch.iter().copied().enumerate() {
+        if !selected {
+            continue;
+        }
+        if rows.get(proposal_position).copied() != Some(row) {
+            return Err(replay_failed());
+        }
+        proposal_position += 1;
+    }
+    if proposal_position != rows.len() {
+        return Err(replay_failed());
+    }
+    Ok(())
 }
 
 struct PreparedCascadeProposal {
@@ -1294,6 +1568,14 @@ fn complete_cascade(
     primary_original_rows: &[usize],
     config: SeparationConfig,
 ) -> Result<PreparedCascadeProposal> {
+    if !config.drop_singletons && !config.methods.fixed_effects {
+        return Ok(PreparedCascadeProposal {
+            cascade: PreparedSeparationCascade::default(),
+            exact_fe_certificate: None,
+        });
+    }
+    const CASCADE_SINGLETON: u8 = 1;
+    const CASCADE_EXACT_FE: u8 = 2;
     let mut active = fallible_filled(
         generation.original_rows().len(),
         true,
@@ -1307,36 +1589,45 @@ fn complete_cascade(
         active[position] = false;
     }
     let topology = DetectorTopology::new(generation.prepared())?;
-    let mut singleton = Vec::new();
-    let mut exact = Vec::new();
-    singleton
-        .try_reserve_exact(active.len())
-        .map_err(|_| allocation("unable to reserve prepared cascade singleton rows"))?;
-    exact
-        .try_reserve_exact(active.len())
-        .map_err(|_| allocation("unable to reserve prepared cascade exact-FE rows"))?;
+    // One byte per row records the eventual cascade reason.  Keeping two
+    // separately N-reserved row vectors would retain 2*N*usize throughout
+    // every inner scan even though singleton and exact rows are disjoint.
+    // Exact-capacity stable-row vectors are materialized only after the fixed
+    // point, when all inner scan workspaces have been released.
+    let mut cascade_reason = fallible_filled(
+        active.len(),
+        0_u8,
+        "unable to reserve prepared cascade reason tags",
+    )?;
     let mut exact_checked_effects = 0_usize;
     let mut exact_zero_only_levels = Vec::new();
-    let exact_level_capacity = topology
-        .effect_to_source
-        .iter()
-        .zip(&topology.intercept_effect)
-        .filter(|(_, intercept)| **intercept)
-        .try_fold(0_usize, |total, (source, _)| {
-            total.checked_add(topology.sources[*source].n_levels())
-        })
-        .ok_or_else(|| allocation("prepared cascade exact-FE level capacity overflowed"))?;
-    exact_zero_only_levels
-        .try_reserve_exact(exact_level_capacity)
-        .map_err(|_| allocation("unable to reserve prepared cascade exact-FE levels"))?;
+    let exact_level_capacity = if config.methods.fixed_effects {
+        topology
+            .effect_to_source
+            .iter()
+            .zip(topology.effect_specs)
+            .filter(|(_, effect)| effect.intercept)
+            .try_fold(0_usize, |total, (source, _)| {
+                total.checked_add(topology.sources[*source].n_levels())
+            })
+            .ok_or_else(|| allocation("prepared cascade exact-FE level capacity overflowed"))?
+    } else {
+        0
+    };
+    if exact_level_capacity > 0 {
+        exact_zero_only_levels
+            .try_reserve_exact(exact_level_capacity)
+            .map_err(|_| allocation("unable to reserve prepared cascade exact-FE levels"))?;
+    }
     loop {
-        let before = singleton.len() + exact.len();
+        let mut changed = false;
         if config.drop_singletons {
             let rows = singleton_fixed_point(&topology, generation, &active)?;
             for row in rows {
                 if active[row] {
                     active[row] = false;
-                    singleton.push(row);
+                    cascade_reason[row] = CASCADE_SINGLETON;
+                    changed = true;
                 }
             }
         }
@@ -1344,24 +1635,68 @@ fn complete_cascade(
             let proposal = exact_fe_proposal(generation, &active)?;
             exact_checked_effects =
                 exact_checked_effects.max(proposal.certificate.checked_intercept_effects);
-            exact_zero_only_levels
-                .try_reserve(proposal.certificate.zero_only_levels.len())
-                .map_err(|_| allocation("unable to extend prepared cascade exact-FE levels"))?;
+            let extended_len = exact_zero_only_levels
+                .len()
+                .checked_add(proposal.certificate.zero_only_levels.len())
+                .ok_or_else(|| allocation("prepared cascade exact-FE level count overflowed"))?;
+            if extended_len > exact_level_capacity {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    "prepared cascade exact-FE identities exceed the initial topology bound",
+                ));
+            }
             exact_zero_only_levels.extend(proposal.certificate.zero_only_levels);
             for row in proposal.rows {
                 if active[row] {
                     active[row] = false;
-                    exact.push(row);
+                    cascade_reason[row] = CASCADE_EXACT_FE;
+                    changed = true;
                 }
             }
         }
-        if singleton.len() + exact.len() == before {
+        if !changed {
             break;
         }
     }
     exact_zero_only_levels.sort_unstable();
-    exact_zero_only_levels.dedup();
-    let exact_fe_rows = compact_to_original(exact, generation.original_rows())?;
+    if exact_zero_only_levels
+        .windows(2)
+        .any(|pair| pair[0] == pair[1])
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared exact-FE cascade reused a stable level identity",
+        ));
+    }
+    let exact_zero_only_levels = compact_exact_fe_levels(exact_zero_only_levels)?;
+    let singleton_count = cascade_reason
+        .iter()
+        .filter(|reason| **reason == CASCADE_SINGLETON)
+        .count();
+    let exact_fe_count = cascade_reason
+        .iter()
+        .filter(|reason| **reason == CASCADE_EXACT_FE)
+        .count();
+    let singleton_rows = fallible_collect(
+        cascade_reason
+            .iter()
+            .enumerate()
+            .filter_map(|(row, reason)| {
+                (*reason == CASCADE_SINGLETON).then_some(generation.original_rows()[row])
+            }),
+        singleton_count,
+        "unable to reserve exact-capacity prepared cascade singleton rows",
+    )?;
+    let exact_fe_rows = fallible_collect(
+        cascade_reason
+            .iter()
+            .enumerate()
+            .filter_map(|(row, reason)| {
+                (*reason == CASCADE_EXACT_FE).then_some(generation.original_rows()[row])
+            }),
+        exact_fe_count,
+        "unable to reserve exact-capacity prepared cascade exact-FE rows",
+    )?;
     Ok(PreparedCascadeProposal {
         exact_fe_certificate: (!exact_fe_rows.is_empty()).then_some(ExactFeSeparationCertificate {
             checked_intercept_effects: exact_checked_effects,
@@ -1369,7 +1704,7 @@ fn complete_cascade(
             passed: true,
         }),
         cascade: PreparedSeparationCascade {
-            singleton_rows: compact_to_original(singleton, generation.original_rows())?,
+            singleton_rows,
             exact_fe_rows,
         },
     })
@@ -1434,7 +1769,7 @@ fn prepared_simplex_proposal(
         .sources
         .len()
         .checked_add(topology.effect_to_source.len())
-        .and_then(|value| value.checked_add(topology.intercept_effect.len()))
+        .and_then(|value| value.checked_add(topology.effect_specs.len()))
         .ok_or_else(|| allocation("prepared simplex topology workspace overflowed"))?;
     let construction_peak_cells = cells
         .checked_add(rows)
@@ -1445,9 +1780,9 @@ fn prepared_simplex_proposal(
         return Ok(DetectionProposal::empty(
             SeparationMethod::Simplex,
             MethodStatus::SkippedMemory,
-            format!(
-                "prepared full-model simplex requires at most {peak_cells} simultaneous design-plus-kernel cells, above the configured {} limit",
-                config.simplex_max_tableau_cells,
+            SeparationNote::with_detail(
+                "prepared full-model simplex exceeded its configured cell limit",
+                peak_cells,
             ),
         ));
     }
@@ -1570,7 +1905,7 @@ fn prepared_iterated_rectifier(
                 SeparationMethod::IteratedRectifier,
                 iteration,
                 0.0,
-                "prepared iterated rectifier converged to zero",
+                "prepared iterated rectifier converged to zero".into(),
             ));
         }
         let recurrence_scale = scale.max(1.0);
@@ -1611,7 +1946,7 @@ fn prepared_iterated_rectifier(
                 }),
                 exact_fe_certificate: None,
                 direction: None,
-                note: "prepared iterated rectifier certified no separation".to_owned(),
+                note: "prepared iterated rectifier certified no separation".into(),
             });
         }
         if minimum_boundary >= -threshold && maximum_boundary > threshold {
@@ -1629,15 +1964,21 @@ fn prepared_iterated_rectifier(
                 "unable to reserve prepared IR proposal rows",
             )?;
             if !dropped.is_empty() {
+                let certificate = detector_direction_certificate(
+                    outcome,
+                    &direction,
+                    &dropped,
+                    config.certificate_tolerance,
+                )?;
                 return Ok(DetectionProposal {
                     method: SeparationMethod::IteratedRectifier,
                     dropped,
                     iterations: iteration,
                     status: MethodStatus::Certified,
-                    certificate: None,
+                    certificate: Some(certificate),
                     exact_fe_certificate: None,
                     direction: Some(direction),
-                    note: "prepared iterated-rectifier candidate direction".to_owned(),
+                    note: "prepared iterated-rectifier candidate direction".into(),
                 });
             }
         }
@@ -1662,7 +2003,10 @@ fn prepared_iterated_rectifier(
         certificate: None,
         exact_fe_certificate: None,
         direction: None,
-        note: "prepared iterated rectifier exhausted its iteration budget".to_owned(),
+        note: SeparationNote::with_detail(
+            "prepared iterated rectifier exhausted its iteration budget",
+            config.max_ir_iterations,
+        ),
     })
 }
 
@@ -1744,15 +2088,28 @@ fn prepared_mu_from_mean(
         direction.len(),
         "unable to reserve prepared Mu proposal rows",
     )?;
+    if dropped.is_empty() {
+        return Ok(DetectionProposal::empty(
+            SeparationMethod::Mu,
+            MethodStatus::Uncertified,
+            "prepared mu direction has no certified strict-negative boundary row",
+        ));
+    }
+    let certificate = detector_direction_certificate(
+        generation.outcome(),
+        &direction,
+        &dropped,
+        config.certificate_tolerance,
+    )?;
     Ok(DetectionProposal {
         method: SeparationMethod::Mu,
         dropped,
         iterations: trajectory_iterations,
         status: MethodStatus::Certified,
-        certificate: None,
+        certificate: Some(certificate),
         exact_fe_certificate: None,
         direction: Some(direction),
-        note: "prepared mu candidate direction".to_owned(),
+        note: "prepared mu candidate direction".into(),
     })
 }
 
@@ -1841,14 +2198,15 @@ fn prepared_project(
 #[allow(clippy::too_many_arguments)]
 fn replay_numerical_no_drop(
     generation: &PreparedPpmlModelGeneration,
-    observed: &DetectionProposal,
+    observed: &PreparedNumericalProposal,
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mu_exploration: Option<&PreparedPpmlMuExploration>,
 ) -> Result<Option<SeparationCertificate>> {
-    if !observed.dropped.is_empty() || observed.direction.is_some() {
+    validate_prepared_numerical_metadata(generation, observed, config)?;
+    if !observed.dropped_original_rows.is_empty() || observed.direction.is_some() {
         return Err(FeregError::new(
             ErrorCode::Internal,
             "no-drop separation replay received a deletion direction",
@@ -1867,38 +2225,42 @@ fn replay_numerical_no_drop(
             "terminal numerical detector did not produce a replayable no-drop status",
         ));
     }
-    let replayed = match observed.method {
-        SeparationMethod::Simplex => prepared_simplex_proposal(generation, config, interrupt)?,
-        SeparationMethod::IteratedRectifier => {
-            prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?
-        }
-        SeparationMethod::Mu => {
-            let exploration = mu_exploration.ok_or_else(|| {
-                FeregError::new(
+    let replayed = bind_numerical_proposal(
+        generation,
+        match observed.method {
+            SeparationMethod::Simplex => prepared_simplex_proposal(generation, config, interrupt)?,
+            SeparationMethod::IteratedRectifier => {
+                prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?
+            }
+            SeparationMethod::Mu => {
+                let exploration = mu_exploration.ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "prepared Mu certification replay omitted its fitted generation state",
+                    )
+                })?;
+                prepared_mu_from_mean(
+                    generation,
+                    ppml,
+                    config,
+                    linear,
+                    exploration.mean(),
+                    exploration.certificate().accepted_iterations,
+                )?
+            }
+            SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
+                return Err(FeregError::new(
                     ErrorCode::Internal,
-                    "prepared Mu certification replay omitted its fitted generation state",
-                )
-            })?;
-            prepared_mu_from_mean(
-                generation,
-                ppml,
-                config,
-                linear,
-                exploration.mean(),
-                exploration.certificate().accepted_iterations,
-            )?
-        }
-        SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                "exact separation method entered the numerical replay path",
-            ));
-        }
-    };
+                    "exact separation method entered the numerical replay path",
+                ));
+            }
+        },
+    )?;
     if replayed.method != observed.method
         || replayed.status != observed.status
         || replayed.iterations != observed.iterations
-        || !replayed.dropped.is_empty()
+        || replayed.generation != observed.generation
+        || !replayed.dropped_original_rows.is_empty()
         || replayed.direction.is_some()
         || replayed.certificate != observed.certificate
         || replayed.exact_fe_certificate != observed.exact_fe_certificate
@@ -1914,14 +2276,209 @@ fn replay_numerical_no_drop(
     Ok(replayed.certificate)
 }
 
+fn validate_prepared_numerical_metadata(
+    generation: &PreparedPpmlModelGeneration,
+    proposal: &PreparedNumericalProposal,
+    config: SeparationConfig,
+) -> Result<()> {
+    if proposal.generation != generation.generation()
+        || proposal.generation_rows_digest
+            != stable_usize_slice_digest(b"numerical-proposal-rows", generation.original_rows())?
+        || proposal.generation_outcome_digest
+            != stable_f64_slice_digest(b"numerical-proposal-outcome", generation.outcome())?
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared numerical proposal is stale for the active generation",
+        ));
+    }
+    let enabled = match proposal.method {
+        SeparationMethod::Simplex => config.methods.simplex,
+        SeparationMethod::IteratedRectifier => config.methods.iterated_rectifier,
+        SeparationMethod::Mu => config.methods.mu,
+        SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "exact separation method entered the numerical proposal boundary",
+            ));
+        }
+    };
+    if !enabled {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared numerical proposal names a detector that was not requested",
+        ));
+    }
+    if proposal.note.is_empty() || proposal.exact_fe_certificate.is_some() {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared numerical proposal metadata is malformed",
+        ));
+    }
+    if proposal
+        .dropped_original_rows
+        .windows(2)
+        .any(|pair| pair[0] >= pair[1])
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared numerical proposal original rows are not sorted and unique",
+        ));
+    }
+    if proposal
+        .dropped_original_rows
+        .iter()
+        .any(|row| generation.original_rows().binary_search(row).is_err())
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared numerical proposal contains an inactive or out-of-range original row",
+        ));
+    }
+
+    let has_drops = !proposal.dropped_original_rows.is_empty();
+    if has_drops {
+        if proposal.status != MethodStatus::Certified || proposal.direction.is_none() {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "prepared numerical deletion proposal has an inconsistent method status",
+            ));
+        }
+        let claimed = proposal.certificate.as_ref().ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::NonConvergence,
+                "prepared numerical deletion proposal omitted its detector certificate",
+            )
+        })?;
+        if claimed.proof != crate::ppml_separation::SeparationCertificateProof::RecessionDirection
+            || !claimed.passed
+        {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "prepared numerical deletion proposal carries an inconsistent certificate",
+            ));
+        }
+    } else {
+        if proposal.direction.is_some() {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "prepared numerical no-drop proposal carries a deletion direction",
+            ));
+        }
+        let shape_valid = match proposal.status {
+            MethodStatus::NoCandidates => {
+                proposal.iterations == 0 && proposal.certificate.is_none()
+            }
+            MethodStatus::NoSeparation => proposal
+                .certificate
+                .as_ref()
+                .is_some_and(|certificate| {
+                    certificate.passed
+                        && matches!(
+                            (proposal.method, certificate.proof),
+                            (
+                                SeparationMethod::Simplex,
+                                crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank { .. }
+                                    | crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility { .. },
+                            ) | (
+                                SeparationMethod::IteratedRectifier,
+                                crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint,
+                            )
+                        )
+                }),
+            MethodStatus::SkippedMemory | MethodStatus::SkippedUnsupported => {
+                proposal.method == SeparationMethod::Simplex && proposal.certificate.is_none()
+            }
+            MethodStatus::Uncertified => {
+                proposal.method == SeparationMethod::Simplex && proposal.certificate.is_none()
+            }
+            MethodStatus::MaximumIterations => {
+                proposal.method == SeparationMethod::IteratedRectifier
+                    && proposal.certificate.is_none()
+            }
+            MethodStatus::Certified => false,
+        };
+        if !shape_valid {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "prepared numerical no-drop proposal has an inconsistent method status or certificate",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn detector_direction_certificate(
+    outcome: &[f64],
+    direction: &[f64],
+    dropped_compact_rows: &[usize],
+    tolerance: f64,
+) -> Result<SeparationCertificate> {
+    if outcome.len() != direction.len()
+        || direction.iter().any(|value| !value.is_finite())
+        || dropped_compact_rows
+            .iter()
+            .any(|row| *row >= outcome.len() || outcome[*row] != 0.0)
+    {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "prepared detector certificate inputs are not finite and aligned",
+        ));
+    }
+    let scale = infinity_norm(direction);
+    if !scale.is_finite() || scale <= f64::MIN_POSITIVE {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "prepared detector certificate direction is zero",
+        ));
+    }
+    let interior_zero_relative = outcome
+        .iter()
+        .zip(direction)
+        .filter(|(outcome, _)| **outcome > 0.0)
+        .fold(0.0_f64, |maximum, (_, value)| maximum.max(value.abs()))
+        / scale;
+    let positive_maximum = outcome
+        .iter()
+        .zip(direction)
+        .filter(|(outcome, _)| **outcome == 0.0)
+        .map(|(_, value)| *value)
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(0.0);
+    let negative_margin_relative = dropped_compact_rows
+        .iter()
+        .map(|row| -direction[*row] / scale)
+        .fold(f64::INFINITY, f64::min);
+    let certificate = SeparationCertificate {
+        proof: crate::ppml_separation::SeparationCertificateProof::RecessionDirection,
+        interior_zero_relative,
+        boundary_violation_relative: positive_maximum / scale,
+        span_residual_relative: 0.0,
+        negative_margin_relative,
+        direction_scale: scale,
+        positive_maximum,
+        passed: interior_zero_relative <= tolerance
+            && positive_maximum <= tolerance * scale
+            && negative_margin_relative >= tolerance,
+    };
+    if !certificate.passed {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "prepared detector's proposed direction failed its own sign certificate",
+        ));
+    }
+    Ok(certificate)
+}
+
 fn validate_numerical_proposal(
     generation: &PreparedPpmlModelGeneration,
-    proposal: &DetectionProposal,
+    proposal: PreparedNumericalProposal,
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-) -> Result<Option<SeparationCertificate>> {
-    if proposal.dropped.is_empty() {
+) -> Result<ValidatedNumericalProposal> {
+    validate_prepared_numerical_metadata(generation, &proposal, config)?;
+    if proposal.dropped_original_rows.is_empty() {
         return Err(FeregError::new(
             ErrorCode::Internal,
             "deletion-certificate validation received a no-drop separation proposal",
@@ -1946,6 +2503,28 @@ fn validate_numerical_proposal(
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "prepared numerical separation direction is zero",
+        ));
+    }
+    let compact_proposed_rows = fallible_collect(
+        proposal.dropped_original_rows.iter().map(|row| {
+            generation
+                .original_rows()
+                .binary_search(row)
+                .expect("metadata validation proved stable-row membership")
+        }),
+        proposal.dropped_original_rows.len(),
+        "unable to reserve numerical proposal certificate row map",
+    )?;
+    let detector_claim = detector_direction_certificate(
+        generation.outcome(),
+        direction,
+        &compact_proposed_rows,
+        config.certificate_tolerance,
+    )?;
+    if proposal.certificate.as_ref() != Some(&detector_claim) {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "prepared numerical proposal certificate is inconsistent with its direction and stable rows",
         ));
     }
     let unit = fallible_filled(
@@ -1977,12 +2556,12 @@ fn validate_numerical_proposal(
             .zip(direction)
             .enumerate()
             .filter_map(|(row, (outcome, value))| {
-                (*outcome == 0.0 && *value < -threshold).then_some(row)
+                (*outcome == 0.0 && *value < -threshold).then_some(generation.original_rows()[row])
             }),
         direction.len(),
         "unable to reserve prepared separation certified rows",
     )?;
-    if certified_rows != proposal.dropped {
+    if certified_rows != proposal.dropped_original_rows {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "prepared numerical proposal does not equal its strict-negative certificate set",
@@ -1990,7 +2569,13 @@ fn validate_numerical_proposal(
     }
     let negative_margin_relative = certified_rows
         .iter()
-        .map(|row| -direction[*row] / scale)
+        .map(|row| {
+            let compact = generation
+                .original_rows()
+                .binary_search(row)
+                .expect("validated stable row belongs to the generation");
+            -direction[compact] / scale
+        })
         .fold(f64::INFINITY, f64::min);
     let certificate = SeparationCertificate {
         proof: crate::ppml_separation::SeparationCertificateProof::RecessionDirection,
@@ -2016,14 +2601,18 @@ fn validate_numerical_proposal(
             ),
         ));
     }
-    Ok(Some(certificate))
+    Ok(ValidatedNumericalProposal {
+        reason: numerical_drop_reason(proposal.method)?,
+        proposal,
+        certificate,
+    })
 }
 
 fn no_separation_proposal(
     method: SeparationMethod,
     iterations: usize,
     scale: f64,
-    note: &str,
+    note: SeparationNote,
 ) -> DetectionProposal {
     DetectionProposal {
         method,
@@ -2042,19 +2631,18 @@ fn no_separation_proposal(
         }),
         exact_fe_certificate: None,
         direction: None,
-        note: note.to_owned(),
+        note,
     }
 }
 
 fn proposal_report(
-    generation: usize,
-    proposal: DetectionProposal,
+    proposal: PreparedNumericalProposal,
     certificate: Option<SeparationCertificate>,
     started: Instant,
     config: SeparationConfig,
 ) -> SeparationMethodReport {
     method_report(
-        generation,
+        proposal.generation,
         proposal.method,
         proposal.status,
         proposal.iterations,
@@ -2064,7 +2652,7 @@ fn proposal_report(
         proposal.exact_fe_certificate,
         started,
         config,
-        &proposal.note,
+        proposal.note,
     )
 }
 
@@ -2080,7 +2668,7 @@ fn method_report(
     exact_fe_certificate: Option<ExactFeSeparationCertificate>,
     started: Instant,
     config: SeparationConfig,
-    note: &str,
+    note: SeparationNote,
 ) -> SeparationMethodReport {
     SeparationMethodReport {
         generation,
@@ -2098,7 +2686,7 @@ fn method_report(
         } else {
             0
         },
-        note: note.to_owned(),
+        note,
     }
 }
 
@@ -2119,12 +2707,13 @@ fn exact_followup_report(
         elapsed_seconds: 0.0,
         workspace_observation_vectors: 1,
         simplex_tableau_cells: 0,
-        note: "prepared exact-FE follow-up in the same atomic generation".to_owned(),
+        note: "prepared exact-FE follow-up in the same atomic generation".into(),
     }
 }
 
 fn append_no_boundary_reports(
     reports: &mut Vec<SeparationMethodReport>,
+    method_report_capacity: usize,
     generation: usize,
     config: SeparationConfig,
 ) -> Result<()> {
@@ -2137,8 +2726,9 @@ fn append_no_boundary_reports(
         (config.methods.mu, SeparationMethod::Mu),
     ] {
         if enabled {
-            fallible_push(
+            bounded_push(
                 reports,
+                method_report_capacity,
                 SeparationMethodReport {
                     generation,
                     method,
@@ -2155,7 +2745,7 @@ fn append_no_boundary_reports(
                     } else {
                         0
                     },
-                    note: "no zero-outcome observations".to_owned(),
+                    note: "no zero-outcome observations".into(),
                 },
                 "unable to reserve prepared no-boundary method report",
             )?;
@@ -2164,7 +2754,7 @@ fn append_no_boundary_reports(
     Ok(())
 }
 
-fn fail_closed_comprehensive(proposal: &DetectionProposal) -> Result<()> {
+fn fail_closed_comprehensive(proposal: &PreparedNumericalProposal) -> Result<()> {
     if matches!(
         proposal.status,
         MethodStatus::MaximumIterations
@@ -2176,7 +2766,7 @@ fn fail_closed_comprehensive(proposal: &DetectionProposal) -> Result<()> {
             ErrorCode::NonConvergence,
             format!(
                 "prepared comprehensive separation did not certify: {}",
-                proposal.note
+                proposal.note.code
             ),
         ));
     }
@@ -2192,6 +2782,40 @@ fn compact_to_original(mut compact: Vec<usize>, original_rows: &[usize]) -> Resu
     compact.sort_unstable();
     compact.dedup();
     Ok(compact)
+}
+
+/// Convert a detector's deliberately over-reserved row workspace into a
+/// capacity-exact transaction/report vector.  Accepted reports persist across
+/// later separation generations, so moving an N-capacity cascade vector with
+/// only a handful of rows would make multi-round memory grow as generations*N
+/// rather than with the total number of deleted identities.
+fn compact_to_original_exact_capacity(
+    compact: Vec<usize>,
+    original_rows: &[usize],
+) -> Result<Vec<usize>> {
+    let compact = compact_to_original(compact, original_rows)?;
+    fallible_copy(
+        &compact,
+        "unable to reserve exact-capacity prepared cascade rows",
+    )
+}
+
+/// Persist accepted exact-FE level identities at their logical size. Detector
+/// scans intentionally reserve the complete intercept-level ceiling, but an
+/// accepted certificate may outlive multiple later generations. Moving that
+/// scan buffer into a report would make retained memory grow by generations
+/// times the full level count rather than by unique accepted identities.
+fn compact_exact_fe_levels(levels: Vec<ExactFeLevelIdentity>) -> Result<Vec<ExactFeLevelIdentity>> {
+    #[cfg(test)]
+    if FAIL_EXACT_FE_LEVEL_COMPACTION.replace(false) {
+        return Err(allocation(
+            "injected exact-FE level certificate compaction failure",
+        ));
+    }
+    fallible_copy(
+        &levels,
+        "unable to reserve exact-capacity exact-FE level certificate",
+    )
 }
 
 fn remap_original_rows_to_candidate(
@@ -2494,7 +3118,7 @@ fn stable_f64_slice_digest(domain: &[u8], values: &[f64]) -> Result<u64> {
 
 fn separation_report_digest(report: &SeparationReport) -> Result<u64> {
     let mut digest = SeparationDigest::new();
-    for byte in b"fereg.ppml.certified-separation.v1" {
+    for byte in b"fereg.ppml.certified-separation.v2" {
         digest.byte(*byte);
     }
     digest.usize(report.candidate_observations)?;
@@ -2556,9 +3180,9 @@ fn separation_report_digest(report: &SeparationReport) -> Result<u64> {
                 digest.byte(1);
                 digest.usize(certificate.checked_intercept_effects)?;
                 digest.usize(certificate.zero_only_levels.len())?;
-                for (effect, level) in &certificate.zero_only_levels {
-                    digest.usize(*effect)?;
-                    digest.u64(u64::from(*level));
+                for identity in &certificate.zero_only_levels {
+                    digest.u64(u64::from(identity.effect.get()));
+                    digest.usize(identity.representative_original_row)?;
                 }
                 digest.bool(certificate.passed);
             }
@@ -2583,6 +3207,14 @@ fn digest_certificate(
         crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank { columns } => {
             digest.byte(2);
             digest.usize(columns)?;
+        }
+        crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility {
+            boundary_rows,
+            nullity,
+        } => {
+            digest.byte(4);
+            digest.usize(boundary_rows)?;
+            digest.usize(nullity)?;
         }
         crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint => {
             digest.byte(3);
@@ -2631,6 +3263,15 @@ fn invalid_argument(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
 
+fn checked_method_report_capacity(
+    candidate_observations: usize,
+    method_count: usize,
+) -> Result<usize> {
+    candidate_observations
+        .checked_mul(method_count)
+        .ok_or_else(|| allocation("prepared separation method-report capacity overflowed"))
+}
+
 fn fallible_filled<T: Clone>(len: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
@@ -2664,6 +3305,23 @@ fn fallible_collect<T>(
 
 fn fallible_push<T>(output: &mut Vec<T>, value: T, message: &'static str) -> Result<()> {
     output.try_reserve(1).map_err(|_| allocation(message))?;
+    output.push(value);
+    Ok(())
+}
+
+/// Push into a vector whose complete publication capacity was admitted and
+/// reserved before detector execution. Crossing the logical ceiling is an
+/// execution-chain defect; silently using allocator spare capacity or growing
+/// here would invalidate the preflight receipt.
+fn bounded_push<T>(
+    output: &mut Vec<T>,
+    hard_limit: usize,
+    value: T,
+    message: &'static str,
+) -> Result<()> {
+    if output.len() >= hard_limit || output.len() >= output.capacity() {
+        return Err(FeregError::new(ErrorCode::Internal, message));
+    }
     output.push(value);
     Ok(())
 }
@@ -2708,6 +3366,55 @@ mod tests {
         .expect_err("an impossible data-sized reservation must fail");
         assert_eq!(error.code, ErrorCode::Allocation);
         assert_eq!(error.return_code(), 909);
+    }
+
+    #[test]
+    fn report_bank_overflow_or_allocation_failure_precedes_detector_execution() {
+        assert_eq!(
+            checked_method_report_capacity(usize::MAX, 2)
+                .expect_err("method bank overflow")
+                .code,
+            ErrorCode::Allocation,
+        );
+
+        let _guard = PHASE_PROBE_TEST_LOCK.lock().expect("phase-probe lock");
+        PHASE_PROBE_EVENTS
+            .lock()
+            .expect("phase-probe events")
+            .clear();
+        PHASE_PROBE_ENDS.store(0, Ordering::SeqCst);
+        let (request, clusters, loaded, uses) = fixture();
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("prepared owner");
+        FAIL_REPORT_BANK_RESERVATION.set(true);
+        let error = match detect_prepared_ppml_separation(
+            owner,
+            PpmlConfig::default(),
+            SeparationConfig {
+                methods: SeparationMethods {
+                    fixed_effects: false,
+                    simplex: false,
+                    iterated_rectifier: false,
+                    mu: false,
+                },
+                drop_singletons: false,
+                ..SeparationConfig::default()
+            },
+            Some(deterministic_phase_probe),
+            None,
+        ) {
+            Ok(_) => panic!("injected report-bank reservation must fail"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(
+            PHASE_PROBE_EVENTS
+                .lock()
+                .expect("phase-probe events")
+                .is_empty(),
+            "no detector phase may begin before both bounded report banks reserve",
+        );
     }
 
     fn deterministic_phase_probe(
@@ -2864,6 +3571,9 @@ mod tests {
             .iter()
             .find(|report| report.method == SeparationMethod::Mu)
             .expect("requested Mu report");
+        assert_eq!(mu.status, MethodStatus::NoCandidates);
+        assert_eq!(mu.iterations, 0);
+        assert!(mu.certificate.is_none());
         assert_ne!(mu.status, MethodStatus::SkippedUnsupported);
         assert!(
             mu.elapsed_seconds >= 0.004,
@@ -2922,6 +3632,251 @@ mod tests {
     }
 
     #[test]
+    fn numerical_proposal_boundary_rejects_every_identity_and_shape_forgery() {
+        let (request, clusters, mut loaded, uses) = fixture();
+        // Original row zero remains a real source observation but is inactive
+        // in generation zero, which distinguishes inactive from out-of-range.
+        loaded.candidate[0] = false;
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("prepared owner");
+        let coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
+        let generation = coordinator.view().prepared;
+        assert_eq!(generation.original_rows(), &[1, 2, 3, 4, 5]);
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: true,
+                iterated_rectifier: false,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let claimed = SeparationCertificate {
+            proof: crate::ppml_separation::SeparationCertificateProof::RecessionDirection,
+            interior_zero_relative: 0.0,
+            boundary_violation_relative: 0.0,
+            span_residual_relative: 0.0,
+            negative_margin_relative: 1.0,
+            direction_scale: 1.0,
+            positive_maximum: 0.0,
+            passed: true,
+        };
+        let raw = |dropped: Vec<usize>| DetectionProposal {
+            method: SeparationMethod::Simplex,
+            dropped,
+            iterations: 1,
+            status: MethodStatus::Certified,
+            certificate: Some(claimed.clone()),
+            exact_fe_certificate: None,
+            direction: Some(vec![-1.0; generation.original_rows().len()]),
+            note: "raw adversarial proposal".into(),
+        };
+        let descending = bind_numerical_proposal(generation, raw(vec![2, 0]))
+            .expect("binding must preserve a descending detector result");
+        assert_eq!(descending.dropped_original_rows, vec![3, 1]);
+        assert!(validate_prepared_numerical_metadata(generation, &descending, config).is_err());
+        let duplicate = bind_numerical_proposal(generation, raw(vec![0, 0]))
+            .expect("binding must preserve duplicate detector rows");
+        assert_eq!(duplicate.dropped_original_rows, vec![1, 1]);
+        assert!(validate_prepared_numerical_metadata(generation, &duplicate, config).is_err());
+        assert!(
+            bind_numerical_proposal(generation, raw(vec![generation.original_rows().len()]),)
+                .is_err()
+        );
+        let base = PreparedNumericalProposal {
+            generation: generation.generation(),
+            generation_rows_digest: stable_usize_slice_digest(
+                b"numerical-proposal-rows",
+                generation.original_rows(),
+            )
+            .expect("row binding"),
+            generation_outcome_digest: stable_f64_slice_digest(
+                b"numerical-proposal-outcome",
+                generation.outcome(),
+            )
+            .expect("outcome binding"),
+            method: SeparationMethod::Simplex,
+            dropped_original_rows: vec![1],
+            iterations: 1,
+            status: MethodStatus::Certified,
+            certificate: Some(claimed),
+            exact_fe_certificate: None,
+            direction: Some(vec![-1.0; generation.original_rows().len()]),
+            note: "adversarial proposal".into(),
+        };
+
+        let mut forgeries = Vec::new();
+        let mut unsorted = base.clone();
+        unsorted.dropped_original_rows = vec![3, 1];
+        forgeries.push(unsorted);
+        let mut duplicate = base.clone();
+        duplicate.dropped_original_rows = vec![1, 1];
+        forgeries.push(duplicate);
+        let mut inactive = base.clone();
+        inactive.dropped_original_rows = vec![0];
+        forgeries.push(inactive);
+        let mut out_of_range = base.clone();
+        out_of_range.dropped_original_rows = vec![usize::MAX];
+        forgeries.push(out_of_range);
+        let mut stale = base.clone();
+        stale.generation += 1;
+        forgeries.push(stale);
+        let mut wrong_generation_binding = base.clone();
+        wrong_generation_binding.generation_outcome_digest ^= 1;
+        forgeries.push(wrong_generation_binding);
+        let mut wrong_method = base.clone();
+        wrong_method.method = SeparationMethod::FixedEffects;
+        forgeries.push(wrong_method);
+        let mut wrong_status = base.clone();
+        wrong_status.status = MethodStatus::NoSeparation;
+        forgeries.push(wrong_status);
+        let mut wrong_certificate = base.clone();
+        wrong_certificate
+            .certificate
+            .as_mut()
+            .expect("certificate")
+            .proof = crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank {
+            columns: 1,
+        };
+        forgeries.push(wrong_certificate);
+
+        for forged in forgeries {
+            assert!(
+                validate_prepared_numerical_metadata(generation, &forged, config).is_err(),
+                "forged proposal crossed the prepared numerical boundary: {forged:?}"
+            );
+        }
+
+        let mu_config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: false,
+                mu: true,
+            },
+            drop_singletons: false,
+            ..config
+        };
+        let mut mu_no_candidates = base.clone();
+        mu_no_candidates.method = SeparationMethod::Mu;
+        mu_no_candidates.dropped_original_rows.clear();
+        mu_no_candidates.iterations = 0;
+        mu_no_candidates.status = MethodStatus::NoCandidates;
+        mu_no_candidates.certificate = None;
+        mu_no_candidates.direction = None;
+        validate_prepared_numerical_metadata(generation, &mu_no_candidates, mu_config)
+            .expect("Mu has one intentional proof-free no-drop grammar");
+
+        let mut false_mu_no_separation = mu_no_candidates.clone();
+        false_mu_no_separation.iterations = 1;
+        false_mu_no_separation.status = MethodStatus::NoSeparation;
+        false_mu_no_separation.certificate = base.certificate.clone();
+        assert!(validate_prepared_numerical_metadata(
+            generation,
+            &false_mu_no_separation,
+            mu_config,
+        )
+        .is_err());
+
+        let mut polluted_mu_no_candidates = mu_no_candidates;
+        polluted_mu_no_candidates.certificate = base.certificate.clone();
+        assert!(validate_prepared_numerical_metadata(
+            generation,
+            &polluted_mu_no_candidates,
+            mu_config,
+        )
+        .is_err());
+        assert_eq!(coordinator.view().generation, 0);
+        assert_eq!(coordinator.view().original_rows, &[1, 2, 3, 4, 5]);
+        assert!(coordinator.reasons().iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn independent_certificate_and_commit_token_are_both_required_atomically() {
+        let (request, clusters, loaded, uses) = fixture();
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("prepared owner");
+        let mut coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
+        let generation = coordinator.view().prepared;
+        let ppml = PpmlConfig::default();
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: true,
+                iterated_rectifier: false,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        let mut interrupt = |_| Ok(());
+        let proposal = bind_numerical_proposal(
+            generation,
+            prepared_simplex_proposal(generation, config, &mut interrupt)
+                .expect("simplex proposal"),
+        )
+        .expect("stable proposal");
+        assert!(!proposal.dropped_original_rows.is_empty());
+        let validated =
+            validate_numerical_proposal(generation, proposal.clone(), ppml, config, linear)
+                .expect("independent certificate");
+
+        let mut forged_certificate = proposal.clone();
+        forged_certificate
+            .certificate
+            .as_mut()
+            .expect("detector claim")
+            .negative_margin_relative += f64::EPSILON;
+        assert!(
+            validate_numerical_proposal(generation, forged_certificate, ppml, config, linear,)
+                .is_err()
+        );
+
+        let mut stale_token = validated.clone();
+        stale_token.proposal.generation += 1;
+        let mut wrong_reason_token = validated;
+        wrong_reason_token.reason = SeparationDropReason::IteratedRectifier;
+        let candidate_rows = coordinator.candidate_original_rows();
+        let mut reports = Vec::new();
+        reports.try_reserve_exact(8).expect("report capacity");
+        let mut hashes = vec![candidate_ledger_hash_original_axis(
+            &candidate_rows,
+            coordinator.active(),
+            coordinator.reasons(),
+        )
+        .expect("initial hash")];
+        for wrong_token in [stale_token, wrong_reason_token] {
+            let error = commit_numerical(
+                &mut coordinator,
+                &mut reports,
+                &mut hashes,
+                8,
+                candidate_rows.len(),
+                &candidate_rows,
+                wrong_token,
+                Instant::now(),
+                ppml,
+                config,
+            )
+            .expect_err("mismatched validation capability must fail");
+            assert_eq!(error.code, ErrorCode::Internal);
+        }
+        assert_eq!(coordinator.view().generation, 0);
+        assert_eq!(coordinator.view().original_rows, &[0, 1, 2, 3, 4, 5]);
+        assert!(coordinator.reasons().iter().all(Option::is_none));
+        assert!(reports.is_empty());
+        assert_eq!(hashes.len(), 1);
+    }
+
+    #[test]
     fn exact_fe_proposal_deduplicates_rows_across_absorbed_effects() {
         let (mut request, clusters, mut loaded, mut uses) = fixture();
         let h = SourceId::new(3).expect("h");
@@ -2947,7 +3902,192 @@ mod tests {
         // remains a unique, bounded original-row list.
         assert_eq!(proposal.rows, vec![0, 1, 2, 3, 4]);
         assert_eq!(proposal.certificate.zero_only_levels.len(), 3);
+        assert_eq!(
+            proposal.certificate.zero_only_levels.capacity(),
+            proposal.certificate.zero_only_levels.len(),
+            "persisted exact-FE evidence must not retain detector-wide capacity",
+        );
         assert!(proposal.certificate.passed);
+    }
+
+    #[test]
+    fn exact_fe_allocation_free_replay_rejects_a_deleted_level_identity() {
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        let h = SourceId::new(3).expect("h");
+        request.absorbed_terms.push(AbsorbedTerm {
+            id: AbsorbTermId::new(2).expect("second absorb"),
+            intercept: true,
+            categorical_sources: vec![h],
+            slope_sources: Vec::new(),
+            label: "h".to_owned(),
+            saved_name: String::new(),
+        });
+        uses[2].fixed_effect = true;
+        loaded.outcome = column(&[0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("two-way prepared owner");
+        let coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
+        let generation = coordinator.view().prepared;
+        let active = [true; 6];
+        let proposal = exact_fe_proposal(generation, &active).expect("exact FE proposal");
+        let topology = DetectorTopology::new(generation.prepared()).expect("topology");
+        let mut missing_identity = proposal.certificate.zero_only_levels.clone();
+        missing_identity.remove(1);
+        let mut replay_selection = vec![false; generation.original_rows().len()];
+
+        let error = verify_exact_fe_proposal_with_activity(
+            generation,
+            &topology,
+            Some(&active),
+            &proposal.rows,
+            &missing_identity,
+            proposal.certificate.checked_intercept_effects,
+            &mut replay_selection,
+        )
+        .expect_err("a strict subset of exact level identities must fail replay");
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+    }
+
+    #[test]
+    fn repeated_interaction_exact_ids_survive_rebase_code_reuse_and_shared_anchors() {
+        let (mut request, _clusters, mut loaded, mut uses) = fixture();
+        let g = SourceId::new(2).expect("g");
+        let h = SourceId::new(3).expect("h");
+        request.absorbed_terms = vec![
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("interaction one"),
+                intercept: true,
+                categorical_sources: vec![g, h],
+                slope_sources: Vec::new(),
+                label: "g#h".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(2).expect("interaction two"),
+                intercept: true,
+                categorical_sources: vec![h, g],
+                slope_sources: Vec::new(),
+                label: "h#g".to_owned(),
+                saved_name: String::new(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(3).expect("interaction three"),
+                intercept: true,
+                categorical_sources: vec![g, h, g, h],
+                slope_sources: Vec::new(),
+                label: "g#h#g#h".to_owned(),
+                saved_name: String::new(),
+            },
+        ];
+        uses[1].fixed_effect = true;
+        uses[2] = NumericSourceUse::fixed_effect();
+        loaded.outcome = column(&[0.0, 0.0, 1.0, 0.0, 1.0, 1.0]);
+        loaded.numeric_sources[1].1 = column(&[1.0, 1.0, 1.0, 1.0, 2.0, 2.0]);
+        loaded.numeric_sources[2].1 = column(&[10.0, 10.0, 20.0, 20.0, 10.0, 10.0]);
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, Vec::new(), loaded, numeric)
+            .expect("repeated-interaction prepared owner");
+        let mut coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
+
+        let first = {
+            let generation = coordinator.view().prepared;
+            let topology = DetectorTopology::new(generation.prepared()).expect("topology zero");
+            assert_eq!(
+                topology.sources.len(),
+                1,
+                "reordered/repeated recipes reuse one source"
+            );
+            assert!(topology.effect_to_source.iter().all(|source| *source == 0));
+            let code_zero_anchor = generation.original_rows()[topology.sources[0]
+                .checked_members(0)
+                .expect("initial code zero")[0]];
+            let proposal = exact_fe_proposal_all(generation).expect("initial exact proposal");
+            assert_eq!(code_zero_anchor, 0);
+            assert_eq!(proposal.rows, vec![0, 1]);
+            assert_eq!(proposal.certificate.zero_only_levels.len(), 3);
+            assert!(proposal
+                .certificate
+                .zero_only_levels
+                .iter()
+                .all(|identity| identity.representative_original_row == 0));
+            proposal
+        };
+        coordinator
+            .transact_validated_proposal(
+                SeparationDropReason::FixedEffectZeroLevel,
+                first.rows,
+                |_| Ok(PreparedSeparationCascade::default()),
+            )
+            .expect("first exact rebase");
+
+        {
+            let generation = coordinator.view().prepared;
+            let topology = DetectorTopology::new(generation.prepared()).expect("topology one");
+            assert_eq!(generation.original_rows(), &[2, 3, 4, 5]);
+            assert_eq!(topology.sources.len(), 1);
+            assert_eq!(
+                generation.original_rows()[topology.sources[0]
+                    .checked_members(0)
+                    .expect("rebased code zero")[0]],
+                2,
+                "compact interaction code zero is legitimately reused by a new stable level",
+            );
+        }
+        // Remove the sole positive member of the newly code-zero interaction
+        // level through a separately certified primary transaction. Its
+        // remaining zero member must then be identified by stable term/row
+        // evidence, not confused with the generation-zero code-zero level.
+        coordinator
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![2], |_| {
+                Ok(PreparedSeparationCascade::default())
+            })
+            .expect("positive-row rebase");
+        let second = {
+            let generation = coordinator.view().prepared;
+            let topology = DetectorTopology::new(generation.prepared()).expect("topology two");
+            assert_eq!(generation.original_rows(), &[3, 4, 5]);
+            assert_eq!(
+                generation.original_rows()[topology.sources[0]
+                    .checked_members(0)
+                    .expect("second rebased code zero")[0]],
+                3,
+            );
+            exact_fe_proposal_all(generation).expect("rebased exact proposal")
+        };
+        assert_eq!(second.rows, vec![0]);
+        assert_eq!(second.certificate.zero_only_levels.len(), 3);
+        assert!(second
+            .certificate
+            .zero_only_levels
+            .iter()
+            .all(|identity| identity.representative_original_row == 3));
+        assert!(first
+            .certificate
+            .zero_only_levels
+            .iter()
+            .zip(&second.certificate.zero_only_levels)
+            .all(|(old, new)| old.effect == new.effect
+                && old.representative_original_row != new.representative_original_row));
+    }
+
+    #[test]
+    fn exact_fe_level_compaction_failure_precedes_any_ledger_mutation() {
+        let (request, clusters, loaded, uses) = fixture();
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("prepared owner");
+        let coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
+        FAIL_EXACT_FE_LEVEL_COMPACTION.set(true);
+        let error = match exact_fe_proposal(coordinator.view().prepared, &[true; 6]) {
+            Ok(_) => panic!("injected certificate compaction must fail"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert_eq!(coordinator.view().generation, 0);
+        assert_eq!(coordinator.view().original_rows, &[0, 1, 2, 3, 4, 5]);
+        assert!(coordinator.active().iter().all(|active| *active));
+        assert!(coordinator.reasons().iter().all(Option::is_none));
     }
 
     #[test]
@@ -3020,6 +4160,55 @@ mod tests {
         );
         assert_eq!(result.separation.generations, 2);
         assert_eq!(result.separation.generation_hashes.len(), 3);
+        let admitted_report_records = result
+            .separation
+            .candidate_observations
+            .checked_mul(4)
+            .expect("small report envelope");
+        assert_eq!(
+            result.separation.methods.capacity(),
+            admitted_report_records,
+            "the pre-reserved method bank must not grow during multigeneration follow-ups",
+        );
+        assert_eq!(
+            result.separation.generation_hashes.capacity(),
+            result.separation.candidate_observations,
+            "the generation-hash bank must retain its admitted capacity",
+        );
+        let mut persisted_exact_levels = 0_usize;
+        let mut stable_exact_identities = std::collections::BTreeSet::new();
+        for report in &result.separation.methods {
+            assert_eq!(
+                report.dropped_observations.capacity(),
+                report.dropped_observations.len(),
+                "accepted method rows must not retain detector-wide capacity",
+            );
+            assert_eq!(
+                report.singleton_drops.capacity(),
+                report.singleton_drops.len(),
+                "accepted singleton rows must not retain detector-wide capacity",
+            );
+            if let Some(certificate) = &report.exact_fe_certificate {
+                assert_eq!(
+                    certificate.zero_only_levels.capacity(),
+                    certificate.zero_only_levels.len(),
+                    "multigeneration exact-FE reports must retain exact capacity",
+                );
+                if report.status == MethodStatus::Certified {
+                    persisted_exact_levels += certificate.zero_only_levels.len();
+                    for identity in &certificate.zero_only_levels {
+                        assert!(
+                            stable_exact_identities.insert(*identity),
+                            "a stable term/original-row identity cannot recur after rebasing",
+                        );
+                    }
+                }
+            }
+        }
+        assert!(
+            persisted_exact_levels <= 3,
+            "accepted exact-FE level identities are disjoint across generations",
+        );
         assert_eq!(
             result.separation.drop_reasons[0],
             Some(SeparationDropReason::FixedEffectZeroLevel)
@@ -3121,6 +4310,71 @@ mod tests {
         assert_ne!(simplex.status, MethodStatus::SkippedUnsupported);
         assert_ne!(simplex.status, MethodStatus::SkippedMemory);
         assert!(simplex.simplex_tableau_cells > 0);
+    }
+
+    #[test]
+    fn prepared_simplex_alone_closes_nontrivial_no_separation_with_dual_proof() {
+        let (mut request, mut clusters, mut loaded, mut uses) = fixture();
+        request.absorbed_terms.clear();
+        request.keep_singletons = true;
+        let g = SourceId::new(2).expect("g");
+        clusters.push(OlsClusterTermV1 {
+            label: "g".to_owned(),
+            sources: vec![g],
+        });
+        uses[1] = NumericSourceUse {
+            ordinary: false,
+            fixed_effect: false,
+            cluster: true,
+        };
+        loaded.outcome = column(&[1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        loaded.numeric_sources[0].1 = column(&[0.0, 1.0, -1.0, 1.0, -1.0, 1.0]);
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric)
+            .expect("finite-only prepared owner");
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: true,
+                iterated_rectifier: false,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let result =
+            detect_prepared_ppml_separation(owner, PpmlConfig::default(), config, None, None)
+                .expect("simplex-only Farkas closure");
+        assert_eq!(result.prepared.generation(), 0);
+        assert!(result.separation.dropped_observations.is_empty());
+        let simplex = result
+            .separation
+            .methods
+            .iter()
+            .find(|report| report.method == SeparationMethod::Simplex)
+            .expect("simplex report");
+        assert_eq!(simplex.status, MethodStatus::NoSeparation);
+        assert!(matches!(
+            simplex
+                .certificate
+                .as_ref()
+                .map(|certificate| certificate.proof),
+            Some(
+                crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility {
+                    boundary_rows: 5,
+                    nullity: 1,
+                }
+            )
+        ));
+        result
+            .certification_seal
+            .validate(
+                config,
+                &result.separation,
+                result.prepared.original_rows(),
+                result.prepared.outcome(),
+            )
+            .expect("dual proof replay seal");
     }
 
     #[test]
@@ -3340,6 +4594,16 @@ mod tests {
                     .as_ref()
                     .is_some_and(|value| value.passed)
         }));
+        let terminal_mu = result
+            .separation
+            .methods
+            .last()
+            .expect("terminal Mu replay");
+        assert_eq!(terminal_mu.method, SeparationMethod::Mu);
+        assert_eq!(terminal_mu.status, MethodStatus::NoCandidates);
+        assert_eq!(terminal_mu.iterations, 0);
+        assert!(terminal_mu.dropped_observations.is_empty());
+        assert!(terminal_mu.certificate.is_none());
     }
 
     #[test]
@@ -3415,7 +4679,7 @@ mod tests {
         let mut coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
 
         let error = coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, &[1, 3, 5], |_| {
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1, 3, 5], |_| {
                 Ok(PreparedSeparationCascade::default())
             })
             .expect_err("one cluster group must reject the staged generation");
@@ -3426,12 +4690,31 @@ mod tests {
         assert!(coordinator.active().iter().all(|active| *active));
 
         coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, &[0], |_| {
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![0], |_| {
                 Ok(PreparedSeparationCascade::default())
             })
             .expect("valid transaction after rollback");
         assert_eq!(coordinator.view().generation, 1);
         assert_eq!(coordinator.view().original_rows, &[1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn accepted_cascade_rows_do_not_retain_detector_sized_capacity() {
+        let mut detector_rows = Vec::new();
+        detector_rows
+            .try_reserve_exact(128)
+            .expect("detector row workspace");
+        detector_rows.extend([1_usize, 4, 7]);
+        assert!(detector_rows.capacity() >= 128);
+        let original_rows = (10_usize..18).collect::<Vec<_>>();
+        let accepted = compact_to_original_exact_capacity(detector_rows, &original_rows)
+            .expect("accepted exact-capacity cascade rows");
+        assert_eq!(accepted, [11, 14, 17]);
+        assert_eq!(
+            accepted.capacity(),
+            accepted.len(),
+            "persisted method reports must scale with deleted identities, not prior generation N",
+        );
     }
 
     #[test]

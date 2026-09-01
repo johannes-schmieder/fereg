@@ -12,9 +12,17 @@ import tomllib
 from pathlib import Path
 
 try:
+    from scripts.fereg_allocation_source_contract import (
+        ContractError as FeregAllocationContractError,
+        audit_repository as audit_fereg_allocation_contract,
+    )
     from scripts.ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
     from scripts.feppml_public_state import ACTIVATED, public_state
 except ModuleNotFoundError:
+    from fereg_allocation_source_contract import (
+        ContractError as FeregAllocationContractError,
+        audit_repository as audit_fereg_allocation_contract,
+    )
     from ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
     from feppml_public_state import ACTIVATED, public_state
 
@@ -477,6 +485,15 @@ for manifest in ROOT.glob("crates/*/Cargo.toml"):
 # plugin entry point, so aliases, wrappers, and renamed module inclusions fail.
 for violation in audit_ppml_legacy_boundary(ROOT):
     ERRORS.append(f"PPML legacy boundary: {violation}")
+
+# This costs nothing in the plugin: it freezes allocation-bearing syntax and
+# the exact public-OLS-to-one-shot seams.  Measured F0 allocation/RSS evidence
+# remains the independent runtime layer.
+try:
+    for violation in audit_fereg_allocation_contract(ROOT):
+        ERRORS.append(f"fereg allocation source contract: {violation}")
+except FeregAllocationContractError as error:
+    ERRORS.append(f"fereg allocation source contract is invalid: {error}")
 
 # Parse Python with its real grammar; use a cheap delimiter check only for Rust
 # when Cargo is unavailable.

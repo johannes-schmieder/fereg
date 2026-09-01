@@ -20,14 +20,23 @@ use crate::fe::FeSolverKind;
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
     FrozenLinearBasisSlot, PreparedOlsBreadCoordinate, PreparedOlsCoefficient, PreparedOlsColumn,
+    PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
 };
 use crate::options::MemoryMode;
-use crate::ppml_separation::SeparationDropReason;
+use crate::ppml_separation::{ExactFeLevelIdentity, SeparationDropReason, SeparationMethodReport};
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
 const ITERATION_VECTOR_COUNT: u128 = 8;
 const COEFFICIENT_VECTOR_COUNT: u128 = 3;
-const LINEAR_SQUARE_WORKSPACE_COUNT: u128 = 6;
+/// Must match the bounded byte tile owned by `PreparedOlsScratch`. The Low
+/// route may exceed this ceiling only when one complete row is wider.
+const LOW_SCRATCH_IO_BUFFER_CEILING_BYTES: u128 = 1 << 20;
+/// Simultaneously retained finite-session square workspaces. This includes
+/// the moment/certificate bank plus the frozen Gram, Cholesky factor,
+/// lower-triangular inverse, and final symmetric bread. The inverse-lower
+/// buffer is distinct: the exact canonical inverse path cannot overwrite the
+/// factor before it has formed and certified the final bread.
+const LINEAR_SQUARE_WORKSPACE_COUNT: u128 = 7;
 /// The frozen finite solve takes one observation-length residual buffer while
 /// the accepted-step residual is still retained.  Eight fallible 32-byte
 /// solver records are allocated at the same boundary before either residual
@@ -55,7 +64,10 @@ const _: () = assert!(size_of::<PreparedOlsCoefficient>() == 24);
 const _: () = assert!(size_of::<PreparedOlsColumn>() == 48);
 const _: () = assert!(size_of::<PreparedOlsBreadCoordinate>() == 16);
 const _: () = assert!(size_of::<FrozenLinearBasisSlot>() == 24);
+const _: () = assert!(size_of::<PreparedOlsFitStatus>() == 1);
+const _: () = assert!(size_of::<PreparedOlsFittedCoefficient>() == 40);
 const _: () = assert!(size_of::<Option<f64>>() == 16);
+const _: () = assert!(size_of::<ExactFeLevelIdentity>() == 16);
 // `CertifiedPpmlResult::new` independently validates the identified
 // covariance after sandwich temporaries have been released.  The optimized
 // PSD validator retains at most the extracted matrix, one current/output
@@ -112,14 +124,27 @@ pub struct PpmlMemoryDimensions {
     /// remain live. This can exceed `observations` after if/in or missing-data
     /// exclusions and is invariant across separation generations.
     pub original_observations: usize,
+    /// Rows admitted by if/in before numeric-domain and missing-value
+    /// exclusions. Canonical compaction reserves observation vectors and the
+    /// first retained-row map at this capacity, even when their final logical
+    /// length is only `observations`.
+    pub candidate_observations: usize,
     /// Retained numeric source columns, prior to generated finite terms.
     pub loaded_numeric_columns: usize,
-    /// Elements in the candidate-sample raw pweight vector retained by the
-    /// PPML owner. Every separation generation is normalized from these
-    /// supplied values rather than from an earlier rounded normalization.
-    /// This stays at the generation-zero length after separation shrinks N,
-    /// and is zero for unweighted and frequency-weighted fits.
-    pub retained_raw_candidate_probability_weight_elements: usize,
+    /// Candidate-capacity canonical offset retained by the raw prepared-model
+    /// owner across all separation generations.  Exposure is logged exactly
+    /// once into this same storage.  Zero means no offset/exposure was
+    /// supplied; otherwise this equals `candidate_observations` even when
+    /// numeric/domain preparation shrinks the generation-zero active sample.
+    pub retained_base_adjustment_capacity_elements: usize,
+    /// Elements in the generation-zero canonical-sample raw pweight vector
+    /// retained by the PPML owner. Rows rejected for missing or invalid
+    /// numeric data have no reusable raw weight and are not stored. Every
+    /// separation generation is normalized from these supplied values rather
+    /// than from an earlier rounded normalization. This stays at the initial
+    /// active length after separation shrinks N, and is zero for unweighted
+    /// and frequency-weighted fits.
+    pub retained_raw_preseparation_probability_weight_elements: usize,
     /// Canonical generated finite columns, including the structural constant.
     pub finite_columns: usize,
     /// Compact coefficient-slot axis in the final prepared generation.  It
@@ -148,6 +173,21 @@ pub struct PpmlMemoryDimensions {
     pub cluster_subset_groups: usize,
     /// Maximum observation-vector count required by any enabled detector.
     pub separation_workspace_vectors: usize,
+    /// Whether the exact singleton fixed-point policy is requested. It has a
+    /// mixed bool/usize workspace that cannot be inferred from the numerical
+    /// detector's f64-vector count.
+    pub separation_singleton_enabled: bool,
+    /// Frozen count of requested singleton/FE/simplex/IR/Mu policies (0..=5).
+    /// The exact retained execution-record ceiling is this count times the
+    /// generation-zero prepared observation count.
+    pub separation_method_count: usize,
+    /// Whether any requested singleton or separation method can accept rows
+    /// and therefore construct an atomic old-plus-new prepared generation.
+    /// This policy is frozen at generation-zero admission.
+    pub separation_rebase_enabled: bool,
+    /// Whether exact zero-only absorbed-intercept level certificates can be
+    /// produced and retained across separation generations.
+    pub separation_exact_fe_enabled: bool,
     /// Whether fitted-mean Mu exploration is enabled for this fit.
     pub separation_mu_enabled: bool,
     /// Registered hard ceiling for the simultaneous explicit-design plus
@@ -183,9 +223,23 @@ impl PpmlMemoryDimensions {
                 "PPML memory preflight requires at least one observation",
             ));
         }
-        if self.original_observations < self.observations {
+        if self.candidate_observations < self.observations
+            || self.original_observations < self.candidate_observations
+        {
             return Err(invalid_argument(
-                "PPML original observation count is smaller than the prepared sample",
+                "PPML observation counts must satisfy prepared <= candidate <= original",
+            ));
+        }
+        if self.retained_base_adjustment_capacity_elements != 0
+            && self.retained_base_adjustment_capacity_elements != self.candidate_observations
+        {
+            return Err(invalid_argument(
+                "PPML retained base adjustment must be absent or reserve the immutable candidate capacity",
+            ));
+        }
+        if self.separation_method_count > 5 {
+            return Err(invalid_argument(
+                "PPML separation method count exceeds the five registered policies",
             ));
         }
         if self.finite_columns > 0 && config.poolsize == 0 {
@@ -299,10 +353,17 @@ fn validate_final_dimensions_within_preflight(
         && final_dimensions.cluster_subset_groups <= preflight.cluster_subset_groups
         && final_dimensions.publication_matrix_cells <= preflight.publication_matrix_cells;
     let stable = final_dimensions.original_observations == preflight.original_observations
-        && final_dimensions.retained_raw_candidate_probability_weight_elements
-            == preflight.retained_raw_candidate_probability_weight_elements
+        && final_dimensions.candidate_observations == preflight.candidate_observations
+        && final_dimensions.retained_base_adjustment_capacity_elements
+            == preflight.retained_base_adjustment_capacity_elements
+        && final_dimensions.retained_raw_preseparation_probability_weight_elements
+            == preflight.retained_raw_preseparation_probability_weight_elements
         && final_dimensions.cluster_dimensions == preflight.cluster_dimensions
         && final_dimensions.separation_workspace_vectors == preflight.separation_workspace_vectors
+        && final_dimensions.separation_singleton_enabled == preflight.separation_singleton_enabled
+        && final_dimensions.separation_method_count == preflight.separation_method_count
+        && final_dimensions.separation_rebase_enabled == preflight.separation_rebase_enabled
+        && final_dimensions.separation_exact_fe_enabled == preflight.separation_exact_fe_enabled
         && final_dimensions.separation_mu_enabled == preflight.separation_mu_enabled
         && final_dimensions.simplex_tableau_cells == preflight.simplex_tableau_cells
         && final_dimensions.requested_output_columns == preflight.requested_output_columns
@@ -369,10 +430,15 @@ pub struct PpmlMemoryInventory {
     /// allocator baseline immediately before entering the core fit.
     pub embedding_resident_bytes: u128,
     pub canonical_numeric_bytes: u128,
-    /// Candidate-sample raw pweights retained by the prepared owner across
-    /// all separation generations.  This storage is distinct from both the
+    /// Owner-side candidate-capacity offset/logged-exposure storage.  The
+    /// generation-local compact offset remains separately included in
+    /// `canonical_numeric_bytes`.
+    pub retained_base_adjustment_bytes: u128,
+    /// Generation-zero canonical-row raw pweights retained by the prepared
+    /// owner across all separation generations. Missing/domain-excluded
+    /// if/in candidates are absent. This storage is distinct from both the
     /// loaded weight column and each generation's canonical prior weights.
-    pub retained_raw_candidate_probability_weight_bytes: u128,
+    pub retained_raw_preseparation_probability_weight_bytes: u128,
     pub topology_bytes: u128,
     /// Fixed-topology copy owned by the reusable FE solver.  It is distinct
     /// from the canonical prepared topology and never rebuilt per iteration.
@@ -389,17 +455,40 @@ pub struct PpmlMemoryInventory {
     /// Original-axis `Option<SeparationDropReason>` payload.
     pub separation_reason_bytes: u128,
     pub row_ledger_bytes: u128,
-    /// Control blocks for the two steady Arc<Vec<_>> row axes: strong/weak
-    /// counts plus the moved Vec header. Their preexisting N-sized Vec
-    /// payloads are charged in `row_ledger_bytes` without an Arc-slice copy.
+    /// Control blocks for immutable candidate rows and initial drop reasons,
+    /// plus the distinct current retained-row axis whenever rebasing is
+    /// enabled: strong/weak counts and one moved Vec header per allocation.
+    /// Their Vec payloads are charged in `row_ledger_bytes` without a slice
+    /// copy; the no-rebase path shares candidate and current row authority.
     pub row_axis_arc_header_bytes: u128,
     /// Retained coefficient/column/report-plan metadata prepared before the
     /// numerical fit. This is K/slot-sized, never N-by-K.
     pub prepared_model_metadata_bytes: u128,
-    /// Transactional row-axis overlap while an accepted separation proposal
-    /// retains the old prepared map alongside the staged retained map and the
-    /// newly rebuilt generation map. The two ordinary steady maps are already
-    /// included in `row_ledger_bytes`.
+    /// Complete replacement-generation payload held beside the old prepared
+    /// generation during an accepted atomic rebase: canonical numerics,
+    /// categorical/cluster topology, model metadata, its original-axis drop
+    /// ledger, and its compact prepared row map.
+    pub separation_replacement_generation_bytes: u128,
+    /// Incremental duplicate of the current primary proposal during commit.
+    /// Certified prepared execution moves the exact-capacity primary directly
+    /// into the commit, so this is zero; the explicit field makes that
+    /// no-copy invariant visible in telemetry.
+    pub separation_rebase_proposal_bytes: u128,
+    /// Numerical recession direction retained into the accepted replacement
+    /// build. Independent certification completes first and releases it before
+    /// cascade/rebuild, so certified execution reports zero here.
+    pub separation_rebase_direction_bytes: u128,
+    /// Transactional payload beyond the replacement generation: cloned
+    /// original-axis activity/reason ledgers, the staged retained-row map, the
+    /// owner's temporary candidate mask, probability-weight source positions,
+    /// and (for a numerical method) the validated recession direction. This
+    /// is the maximum of the build and post-build lifetimes; ordinary steady
+    /// owners remain in `row_ledger_bytes`.
+    pub separation_rebase_staging_bytes: u128,
+    /// Total accepted-rebase overlap beyond the ordinary steady `common`
+    /// payload. This equals replacement generation plus its simultaneously
+    /// live ledger/staging/direction bound. Detector-only workspaces are a
+    /// separate, mutually exclusive phase and are not summed into this value.
     pub separation_rebase_bytes: u128,
     /// Arc<Vec<_>> control block of the newly allocated retained-row ledger
     /// used by an accepted atomic rebase. Rebuild clones share it.
@@ -412,16 +501,55 @@ pub struct PpmlMemoryInventory {
     pub separation_report_row_bytes: u128,
     /// Candidate-axis `Option<SeparationDropReason>` report payload.
     pub separation_report_reason_bytes: u128,
+    /// Stable original-row identities retained across accepted method reports.
+    /// Each deleted row is published exactly once across primary, singleton,
+    /// and exact-FE follow-up vectors, so exact-capacity report vectors are
+    /// jointly bounded by the generation-zero prepared sample.
+    pub separation_method_report_row_bytes: u128,
+    /// Exact-capacity accepted term/original-row level witnesses across every
+    /// persisted exact-FE report. Once a zero-only level is accepted all of
+    /// its active rows leave the ledger, so the identities are disjoint across
+    /// generations and jointly bounded by the initial total FE levels.
+    pub separation_method_report_level_bytes: u128,
+    /// Pre-reserved `SeparationMethodReport` record bank. Payloads owned by
+    /// those records (accepted rows/levels) are charged separately above.
+    pub separation_method_report_record_bytes: u128,
+    /// Initial plus every committed generation hash. Since a valid commit
+    /// leaves at least one row, at most generation-zero N hashes persist.
+    pub separation_generation_hash_bytes: u128,
+    /// Incremental detector/cascade level capacity beyond the retained report
+    /// envelope. An outer cascade accumulator, an inner full-level scan, and
+    /// the inner exact-capacity copy peak at three total-level banks including
+    /// the one bank already charged in `common`.
+    pub separation_exact_level_transient_bytes: u128,
+    /// Initial/replay singleton fixed-point workspace beyond retained report
+    /// payloads: working/selection bool masks plus dropped/pass row banks.
+    pub separation_singleton_workspace_bytes: u128,
+    /// Fixed-point cascade workspace beyond retained report payloads after the
+    /// row-reason compaction: outer active/reason bytes plus the larger of one
+    /// singleton or exact-FE inner scan.
+    pub separation_cascade_workspace_bytes: u128,
     pub iteration_buffer_bytes: u128,
     pub coefficient_buffer_bytes: u128,
     pub retained_within_resident_bytes: u128,
+    /// Resident byte buffer owned by the low route's row-major scratch file.
+    /// It is byte-addressed storage, not an f64 element count, and is large
+    /// enough for either the bounded I/O tile or one complete retained row.
+    pub retained_within_io_buffer_bytes: u128,
     pub retained_within_scratch_bytes: u128,
     pub linear_vector_bytes: u128,
     pub fe_workspace_bytes: u128,
     pub linear_workspace_bytes: u128,
-    /// Retained rank/bread/frozen-basis metadata plus the bounded reported
-    /// coefficient workspace owned by the shared linear session.
+    /// Retained rank/bread/frozen-basis metadata, accepted fitted coefficient
+    /// records, and the bounded reported-coefficient workspace owned by the
+    /// shared linear session.
     pub linear_result_metadata_bytes: u128,
+    /// Maximum incremental detector/replay workspace before an accepted
+    /// transaction. Explicit simplex storage and shared-linear numerical
+    /// validation plus the registered f64 detector-vector bank are alternative
+    /// method peaks. The proposal/certificate allowance is added once to
+    /// their maximum; accepted-rebase ownership is modeled separately by
+    /// `separation_rebase_bytes`.
     pub separation_workspace_bytes: u128,
     /// Joint ceiling for the live explicit N-by-P design plus nullspace,
     /// cone, tableau, FE-code, and solver scratch. The detector checks their
@@ -464,9 +592,14 @@ pub struct PpmlMemoryInventory {
     /// Candidate line-search peak after the qualification equivalence solve;
     /// normal fits equal `post_solve_peak_bytes` exactly.
     pub objective_line_search_peak_bytes: u128,
-    /// Four N-length vectors retained only while the canonical strict solve
-    /// independently recertifies the accepted reusable-session result.
+    /// Total strict-only transient: four N-length residual/predictor vectors
+    /// plus `strict_final_metadata_transient_bytes`.
     pub strict_final_transient_bytes: u128,
+    /// Candidate fit/basis records and the second frozen coefficient vector
+    /// staged beside the accepted fit, basis, and rollback identities.
+    /// Candidate bread is already one of the modeled square banks; this field
+    /// is the exact additional K/slot-sized phase maximum.
+    pub strict_final_metadata_transient_bytes: u128,
     pub strict_final_peak_bytes: u128,
     pub inference_peak_bytes: u128,
     /// Peak while certifying saved FE outputs.  This is distinct from
@@ -668,6 +801,7 @@ fn estimate_route(
 ) -> Result<PpmlMemoryInventory> {
     let n = dimensions.observations as u128;
     let original_n = dimensions.original_observations as u128;
+    let candidate_n = dimensions.candidate_observations as u128;
     let loaded = dimensions.loaded_numeric_columns as u128;
     let k = dimensions.finite_columns as u128;
     let coefficient_slots = dimensions.coefficient_slots as u128;
@@ -690,8 +824,10 @@ fn estimate_route(
         bytes_f64(checked_mul(n, 3, "canonical PPML scalar columns")?)?,
         bytes_f64(k)?,
     ])?;
-    let retained_raw_candidate_probability_weight_bytes =
-        bytes_f64(dimensions.retained_raw_candidate_probability_weight_elements as u128)?;
+    let retained_base_adjustment_bytes =
+        bytes_f64(dimensions.retained_base_adjustment_capacity_elements as u128)?;
+    let retained_raw_preseparation_probability_weight_bytes =
+        bytes_f64(dimensions.retained_raw_preseparation_probability_weight_elements as u128)?;
     let topology_bytes = checked_sum(&[
         checked_mul(
             checked_mul(n, fe, "PPML observation-FE codes")?,
@@ -743,13 +879,17 @@ fn estimate_route(
         )?,
         checked_mul(subset_groups, 2 * word, "PPML cluster group topology")?,
     ])?;
-    // The immutable candidate axis and current prepared-generation map are
-    // distinct N-sized usize allocations. Original-axis ledgers use their
-    // concrete enum widths, including the byte-wide Vec<bool> activity mask.
+    // The immutable candidate axis keeps the capacity reserved during
+    // numeric compaction, while the current prepared-generation map keeps
+    // only active rows. Original-axis ledgers use their concrete enum widths,
+    // including the byte-wide Vec<bool> activity mask.
     let steady_row_map_bytes = checked_mul(
-        checked_mul(n, 2, "PPML steady row maps")?,
+        checked_sum(&[
+            candidate_n,
+            checked_mul(n, 2, "PPML retained and prepared generation row maps")?,
+        ])?,
         word,
-        "PPML steady row-map bytes",
+        "PPML candidate, retained, and prepared row-map capacity bytes",
     )?;
     let prepared_drop_reason_bytes = checked_mul(
         checked_mul(
@@ -780,8 +920,13 @@ fn estimate_route(
         checked_mul(2, word, "PPML Arc strong/weak counters")?,
         size_of::<Vec<usize>>() as u128,
     ])?;
+    // Immutable candidate rows and initial numeric drop reasons each own one
+    // Arc allocation. After the first accepted rebase, the current retained
+    // row map owns a third allocation; without any drop-capable policy it
+    // continues to share the candidate Arc.
+    let steady_arc_count = 2 + u128::from(dimensions.separation_rebase_enabled);
     let row_axis_arc_header_bytes = checked_mul(
-        2,
+        steady_arc_count,
         arc_vec_control_block_bytes,
         "PPML steady Arc<Vec> row-axis control blocks",
     )?;
@@ -800,6 +945,90 @@ fn estimate_route(
         size_of::<Option<SeparationDropReason>>() as u128,
         "PPML separation report reasons",
     )?;
+    let separation_method_report_row_bytes =
+        checked_mul(n, word, "PPML accepted separation method row identities")?;
+    let separation_method_report_level_bytes = if dimensions.separation_exact_fe_enabled {
+        checked_mul(
+            levels,
+            size_of::<ExactFeLevelIdentity>() as u128,
+            "PPML accepted exact-FE level identities",
+        )?
+    } else {
+        0
+    };
+    let separation_method_report_record_bytes = checked_mul(
+        checked_mul(
+            n,
+            dimensions.separation_method_count as u128,
+            "PPML separation method execution records",
+        )?,
+        size_of::<SeparationMethodReport>() as u128,
+        "PPML separation method execution-record bytes",
+    )?;
+    let separation_generation_hash_bytes = checked_mul(
+        n,
+        size_of::<u64>() as u128,
+        "PPML separation generation-hash bytes",
+    )?;
+    let separation_exact_level_transient_bytes = checked_mul(
+        separation_method_report_level_bytes,
+        2,
+        "PPML exact-FE cascade level workspaces",
+    )?;
+    let separation_singleton_workspace_bytes = if dimensions.separation_singleton_enabled {
+        checked_sum(&[
+            checked_mul(
+                checked_mul(n, 2, "PPML singleton row workspaces")?,
+                word,
+                "PPML singleton row-workspace bytes",
+            )?,
+            checked_mul(
+                n,
+                checked_mul(
+                    2,
+                    size_of::<bool>() as u128,
+                    "PPML singleton bool-mask width",
+                )?,
+                "PPML singleton bool-mask bytes",
+            )?,
+        ])?
+    } else {
+        0
+    };
+    let separation_cascade_workspace_bytes = if dimensions.separation_rebase_enabled
+        && (dimensions.separation_singleton_enabled || dimensions.separation_exact_fe_enabled)
+    {
+        let outer_active_and_reason = checked_mul(
+            n,
+            checked_mul(
+                2,
+                size_of::<bool>() as u128,
+                "PPML cascade outer byte-mask width",
+            )?,
+            "PPML cascade outer active/reason bytes",
+        )?;
+        let singleton_inner = if dimensions.separation_singleton_enabled {
+            separation_singleton_workspace_bytes
+        } else {
+            0
+        };
+        let exact_inner = if dimensions.separation_exact_fe_enabled {
+            checked_sum(&[
+                checked_mul(n, word, "PPML cascade exact-FE row workspace")?,
+                checked_mul(
+                    n,
+                    size_of::<bool>() as u128,
+                    "PPML cascade exact-FE selection mask",
+                )?,
+                separation_exact_level_transient_bytes,
+            ])?
+        } else {
+            0
+        };
+        checked_sum(&[outer_active_and_reason, singleton_inner.max(exact_inner)])?
+    } else {
+        0
+    };
     let prepared_model_metadata_bytes = checked_sum(&[
         checked_mul(
             reported_coefficient_slots,
@@ -820,15 +1049,117 @@ fn estimate_route(
             "PPML prepared finite-column metadata",
         )?,
     ])?;
-    // Atomic rebase constructs the staged retained Arc and the new prepared
-    // generation map before releasing the old prepared generation. Each is
-    // bounded by the generation-zero candidate count.
-    let separation_rebase_bytes = checked_mul(
-        checked_mul(n, 2, "PPML separation rebase row maps")?,
-        word,
-        "PPML separation rebase row-map bytes",
+    // Atomic rebase is a true old-plus-new transaction.  The ordinary
+    // `common` payload below already owns the raw owner, current generation,
+    // and steady ledgers.  A replacement generation is built in full before
+    // any of those old owners can be released.
+    let replacement_drop_reason_bytes = checked_mul(
+        original_n,
+        size_of::<DropReason>() as u128,
+        "PPML replacement generation drop reasons",
     )?;
-    let separation_rebase_arc_header_bytes = arc_vec_control_block_bytes;
+    let replacement_row_map_bytes = checked_mul(n, word, "PPML replacement generation row map")?;
+    let separation_replacement_generation_bytes = if dimensions.separation_rebase_enabled {
+        checked_sum(&[
+            canonical_numeric_bytes,
+            topology_bytes,
+            cluster_topology_bytes,
+            prepared_model_metadata_bytes,
+            replacement_drop_reason_bytes,
+            replacement_row_map_bytes,
+        ])?
+    } else {
+        0
+    };
+    // Historical accepted rows (D) and current primary/singleton/exact rows
+    // (M) are disjoint, so D+M<=N and fit the ordinary method-report row
+    // envelope. The validated numerical primary is moved directly into the
+    // commit, and its certified direction is released before cascade/rebuild.
+    // Consequently neither payload needs a second transaction allowance.
+    let separation_rebase_proposal_bytes = 0;
+    let separation_rebase_direction_bytes = 0;
+    let staged_ledger_bytes = if dimensions.separation_rebase_enabled {
+        checked_sum(&[
+            checked_mul(
+                original_n,
+                size_of::<bool>() as u128,
+                "PPML staged separation activity",
+            )?,
+            checked_mul(
+                original_n,
+                size_of::<Option<SeparationDropReason>>() as u128,
+                "PPML staged separation reasons",
+            )?,
+            checked_mul(n, word, "PPML staged retained row map")?,
+            separation_rebase_proposal_bytes,
+        ])?
+    } else {
+        0
+    };
+    let staged_candidate_mask_bytes = if dimensions.separation_rebase_enabled {
+        checked_mul(
+            original_n,
+            size_of::<bool>() as u128,
+            "PPML staged loaded candidate mask",
+        )?
+    } else {
+        0
+    };
+    let staged_probability_position_bytes = if !dimensions.separation_rebase_enabled
+        || dimensions.retained_raw_preseparation_probability_weight_elements == 0
+    {
+        0
+    } else {
+        checked_mul(n, word, "PPML staged raw pweight positions")?
+    };
+    let staged_probability_value_bytes = if !dimensions.separation_rebase_enabled
+        || dimensions.retained_raw_preseparation_probability_weight_elements == 0
+    {
+        0
+    } else {
+        bytes_f64(n)?
+    };
+    // Probability staging first owns positions+values without a replacement.
+    // During the new model build the values have moved into the loaded column,
+    // while positions remain for exact restoration.  The completed-generation
+    // lifetime follows after the temporary candidate mask/positions are gone.
+    // Every generation allocates its compact offset after that restoration, so
+    // the build-phase generation is bounded by the completed payload minus one
+    // guaranteed N-vector.
+    let generation_offset_bytes = bytes_f64(n)?;
+    let replacement_during_build_bytes = if dimensions.separation_rebase_enabled {
+        separation_replacement_generation_bytes
+            .checked_sub(generation_offset_bytes)
+            .ok_or_else(|| allocation("PPML replacement generation build bound underflows"))?
+    } else {
+        0
+    };
+    let probability_stage_only_bytes = checked_sum(&[
+        staged_candidate_mask_bytes,
+        staged_probability_position_bytes,
+        staged_probability_value_bytes,
+    ])?;
+    let replacement_build_bytes = checked_sum(&[
+        replacement_during_build_bytes,
+        staged_candidate_mask_bytes,
+        staged_probability_position_bytes,
+    ])?;
+    let staged_or_replacement_bytes = probability_stage_only_bytes
+        .max(replacement_build_bytes)
+        .max(separation_replacement_generation_bytes);
+    let separation_rebase_bytes = checked_sum(&[
+        staged_ledger_bytes,
+        staged_or_replacement_bytes,
+        separation_rebase_direction_bytes,
+    ])?;
+    let separation_rebase_staging_bytes = separation_rebase_bytes
+        .checked_sub(separation_replacement_generation_bytes)
+        .ok_or_else(|| allocation("PPML rebase staging bound underflows"))?;
+    let separation_rebase_arc_header_bytes = if dimensions.separation_rebase_enabled {
+        arc_vec_control_block_bytes
+    } else {
+        0
+    };
     let iteration_buffer_bytes = bytes_f64(checked_mul(
         n,
         ITERATION_VECTOR_COUNT,
@@ -840,10 +1171,30 @@ fn estimate_route(
         "PPML reusable coefficient vectors",
     )?)?;
     let retained_within_cells = match route {
-        PpmlMemoryRoute::Fast => checked_mul(n, k, "PPML fast retained within design")?,
+        // Fast storage is a strided N-by-(K+1) matrix before in-place
+        // structural-constant compaction. Truncation changes logical length,
+        // not Vec capacity, so the fit-lifetime resident charge must retain
+        // the complete allocation.
+        PpmlMemoryRoute::Fast => checked_mul(
+            n,
+            k.checked_add(1)
+                .ok_or_else(|| allocation("PPML fast retained stride overflows"))?,
+            "PPML fast retained within design capacity",
+        )?,
         PpmlMemoryRoute::Low => checked_mul(n, pool, "PPML low within-design pool")?,
     };
     let retained_within_resident_bytes = bytes_f64(retained_within_cells)?;
+    let retained_within_io_buffer_bytes = match route {
+        PpmlMemoryRoute::Fast => 0,
+        PpmlMemoryRoute::Low => {
+            let scratch_bytes = bytes_f64(checked_mul(n, k, "PPML low scratch cells")?)?;
+            let complete_row_bytes = bytes_f64(k)?;
+            scratch_bytes
+                .min(LOW_SCRATCH_IO_BUFFER_CEILING_BYTES)
+                .max(complete_row_bytes)
+                .max(size_of::<f64>() as u128)
+        }
+    };
     let retained_within_scratch_bytes = match route {
         PpmlMemoryRoute::Fast => 0,
         PpmlMemoryRoute::Low => bytes_f64(checked_mul(n, k, "PPML low retained within scratch")?)?,
@@ -851,7 +1202,12 @@ fn estimate_route(
 
     let square = checked_mul(k, k, "PPML finite square workspace")?;
     let projection_rhs = match route {
-        PpmlMemoryRoute::Fast => k.max(1),
+        // Initial Fast absorption owns response plus every generated column
+        // in one N-by-(K+1) matrix. The reusable MAP projector must accept
+        // that complete simultaneous RHS width.
+        PpmlMemoryRoute::Fast => k
+            .checked_add(1)
+            .ok_or_else(|| allocation("PPML fast projection RHS width overflows"))?,
         PpmlMemoryRoute::Low => pool.max(1),
     };
     let effective_maximum_channels = maximum_fe_channels.max(1);
@@ -886,23 +1242,46 @@ fn estimate_route(
     let fe_workspace_bytes = bytes_f64(fe_workspace_cells)?;
     // Session response, owned weights, two predictors, frozen response and
     // residual, and normalized reusable-MAP weights remain live together.
+    // The rank-vector bank is separately exact: retained reference/within
+    // norms consume two K vectors, while rhs/row/solve/scores/scales and the
+    // accepted frozen-step coefficients consume six more. Strict's second
+    // coefficient bank is charged only in its transient below.
     let linear_vector_bytes = checked_sum(&[
         bytes_f64(checked_mul(n, 7, "PPML linear observation vectors")?)?,
-        bytes_f64(checked_mul(k, 5, "PPML linear rank vectors")?)?,
+        bytes_f64(checked_mul(k, 8, "PPML linear rank vectors")?)?,
         checked_mul(
             coefficient_slots,
             checked_mul(4, word, "PPML linear slot bookkeeping width")?,
             "PPML linear slot bookkeeping",
         )?,
     ])?;
-    let reduction_chunks = n.div_ceil(32_768).max(threads);
+    // Reusable-session moments never enter the one-shot PreparedFixedBlocks
+    // bank. Dense retained storage writes disjoint Gram rows directly and
+    // needs no partials. Row-major scratch owns one complete stored-K row per
+    // actual selected-column partition. Rank is not known at preflight, so K
+    // is the exact generation-zero upper bound for both selected and stored
+    // width.
+    let retained_moment_partial_cells = match route {
+        PpmlMemoryRoute::Fast => 0,
+        PpmlMemoryRoute::Low if k == 0 => 0,
+        PpmlMemoryRoute::Low => {
+            let requested_partitions = threads.min(k).max(1);
+            let columns_per_partition = k.div_ceil(requested_partitions);
+            let actual_partitions = k.div_ceil(columns_per_partition);
+            checked_mul(
+                actual_partitions,
+                k,
+                "PPML retained scratch moment row workspaces",
+            )?
+        }
+    };
     let linear_workspace_bytes = checked_sum(&[
         bytes_f64(checked_mul(
             square,
             LINEAR_SQUARE_WORKSPACE_COUNT,
-            "PPML moment/factor/inverse/bread workspaces",
+            "PPML moment/factor/inverse-lower/bread workspaces",
         )?)?,
-        bytes_f64(checked_mul(k, reduction_chunks, "PPML moment reductions")?)?,
+        bytes_f64(retained_moment_partial_cells)?,
     ])?;
     let reported_coefficient_workspace_slots = if coefficient_slots == 0 {
         0
@@ -911,11 +1290,16 @@ fn estimate_route(
     };
     let linear_result_metadata_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(k, 3, "PPML retained linear rank indices")?,
+            checked_mul(k, 4, "PPML retained linear rank indices")?,
             word,
             "PPML retained linear rank-index bytes",
         )?,
         bytes_f64(square)?,
+        checked_mul(
+            coefficient_slots,
+            size_of::<PreparedOlsFittedCoefficient>() as u128,
+            "PPML accepted fitted coefficient records",
+        )?,
         checked_mul(
             coefficient_slots,
             size_of::<PreparedOlsBreadCoordinate>() as u128,
@@ -939,11 +1323,57 @@ fn estimate_route(
         "PPML separation detector vectors",
     )?;
     let simplex_combined_bytes = bytes_f64(dimensions.simplex_tableau_cells as u128)?;
+    let detector_vector_bytes = bytes_f64(detector_vector_cells)?;
+    let has_detector =
+        dimensions.separation_workspace_vectors > 0 || dimensions.simplex_tableau_cells > 0;
+    let has_numerical_detector =
+        dimensions.separation_workspace_vectors >= 8 || dimensions.simplex_tableau_cells > 0;
+    let detector_proposal_bytes = if has_detector {
+        checked_mul(
+            n,
+            checked_sum(&[word, 1])?,
+            "PPML separation detector proposal",
+        )?
+    } else {
+        0
+    };
+    let detector_certificate_bytes = if has_numerical_detector {
+        bytes_f64(checked_mul(square, 2, "PPML separation certificates")?)?
+    } else {
+        0
+    };
+    let separation_linear_projection_bytes = if has_numerical_detector {
+        checked_sum(&[
+            coefficient_buffer_bytes,
+            retained_within_resident_bytes,
+            retained_within_io_buffer_bytes,
+            fe_solver_topology_bytes,
+            linear_vector_bytes,
+            fe_workspace_bytes,
+            linear_workspace_bytes,
+            linear_result_metadata_bytes,
+        ])?
+    } else {
+        0
+    };
+    // Detectors run sequentially. The bounded explicit simplex design/tableau
+    // is released before numerical direction validation enters the shared
+    // linear projection, and IR/Mu use that projection while their registered
+    // vector bank and two-square span certificate are live. Thus the exact
+    // method envelope is max(simplex, shared-linear + detector-vectors +
+    // numerical-certificate), not the sum of those alternatives. The simplex
+    // ceiling already includes its own certificate/result vectors. A detector
+    // may return one N-sized row proposal plus its activity mask outside that
+    // method maximum.
     let separation_workspace_bytes = checked_sum(&[
-        bytes_f64(detector_vector_cells)?,
-        simplex_combined_bytes,
-        checked_mul(n, checked_sum(&[word, 1])?, "PPML separation proposals")?,
-        bytes_f64(checked_mul(square, 2, "PPML separation certificates")?)?,
+        simplex_combined_bytes
+            .max(checked_sum(&[
+                separation_linear_projection_bytes,
+                detector_vector_bytes,
+                detector_certificate_bytes,
+            ])?)
+            .max(separation_exact_level_transient_bytes),
+        detector_proposal_bytes,
     ])?;
     let mu_exploration_retained_bytes = if dimensions.separation_mu_enabled {
         checked_sum(&[bytes_f64(n)?, MU_EXPLORATION_RECORD_BYTES])?
@@ -1043,20 +1473,25 @@ fn estimate_route(
     let common = checked_sum(&[
         config.embedding_resident_bytes,
         canonical_numeric_bytes,
-        retained_raw_candidate_probability_weight_bytes,
+        retained_base_adjustment_bytes,
+        retained_raw_preseparation_probability_weight_bytes,
         topology_bytes,
         cluster_topology_bytes,
         row_ledger_bytes,
         row_axis_arc_header_bytes,
         prepared_model_metadata_bytes,
+        separation_method_report_row_bytes,
+        separation_method_report_level_bytes,
+        separation_method_report_record_bytes,
+        separation_generation_hash_bytes,
         diagnostic_bytes,
     ])?;
     let input_preparation_peak_bytes = checked_sum(&[
         common,
         bytes_f64(checked_mul(
-            n,
+            candidate_n,
             checked_sum(&[loaded, 3])?,
-            "PPML preparation staging",
+            "PPML candidate-capacity preparation staging",
         )?)?,
     ])?;
     let fitted_common = checked_sum(&[
@@ -1064,6 +1499,7 @@ fn estimate_route(
         iteration_buffer_bytes,
         coefficient_buffer_bytes,
         retained_within_resident_bytes,
+        retained_within_io_buffer_bytes,
         linear_result_metadata_bytes,
     ])?;
     let iteration_peak_bytes = checked_sum(&[
@@ -1102,41 +1538,132 @@ fn estimate_route(
     // peak must remain attributed to the same phase rather than appearing as
     // unexplained preparation growth.
     let preparation_peak_bytes = input_preparation_peak_bytes.max(iteration_peak_bytes);
-    // Numerical separation uses the same selected shared-linear route as
-    // IRLS. It does not retain PPML's eight-vector iteration workspace, but
-    // detector vectors/tableau coexist with the projection session.
-    let separation_peak_bytes = checked_sum(&[
+    // A detector completes before its accepted atomic transaction begins.
+    // Historical report rows D and current primary/cascade rows M are
+    // disjoint (D+M<=N) and share `separation_method_report_row_bytes` in
+    // `common`.  During commit, only one exact-capacity primary copy and (for
+    // numerical methods) its one direction survive beside the staged ledgers
+    // and replacement generation.  Taking the phase maximum prevents the
+    // detector's N-sized proposal and shared-linear validation workspaces from
+    // being charged again during the old-plus-new generation transaction.
+    let separation_detection_peak_bytes = checked_sum(&[
         common,
-        coefficient_buffer_bytes,
-        retained_within_resident_bytes,
-        fe_solver_topology_bytes,
-        linear_vector_bytes,
-        fe_workspace_bytes,
-        linear_workspace_bytes,
-        linear_result_metadata_bytes,
-        separation_workspace_bytes,
+        separation_workspace_bytes.max(separation_singleton_workspace_bytes),
+    ])?;
+    let separation_cascade_peak_bytes = checked_sum(&[common, separation_cascade_workspace_bytes])?;
+    let separation_transaction_peak_bytes = checked_sum(&[
+        common,
         separation_rebase_bytes,
         separation_rebase_arc_header_bytes,
     ])?;
-    // Mu's exploratory IRLS peak and its detector-projection peak are
-    // sequential. Exploration moves only mean plus an inline certificate;
-    // eta, score, coefficients, and line-search buffers are dropped first.
+    let separation_peak_bytes = separation_detection_peak_bytes
+        .max(separation_cascade_peak_bytes)
+        .max(separation_transaction_peak_bytes);
+    // Mu's exploratory IRLS fit is sequential with its detector. The moved
+    // mean plus inline certificate remain live only through the Mu numerical
+    // detector and, for an accepted proposal, its rebase transaction. They do
+    // not overlap an unrelated simplex tableau that may dominate the global
+    // non-Mu detector maximum.
     let separation_mu_peak_bytes = if dimensions.separation_mu_enabled {
-        iteration_peak_bytes.max(checked_sum(&[
-            separation_peak_bytes,
+        let mu_detection_peak = checked_sum(&[
+            common,
+            separation_linear_projection_bytes,
+            detector_vector_bytes,
+            detector_proposal_bytes,
+            detector_certificate_bytes,
             mu_exploration_retained_bytes,
-        ])?)
+        ])?;
+        let mu_transaction_peak = checked_sum(&[
+            common,
+            separation_rebase_bytes,
+            separation_rebase_arc_header_bytes,
+            mu_exploration_retained_bytes,
+        ])?;
+        let mu_cascade_peak = checked_sum(&[
+            common,
+            separation_cascade_workspace_bytes,
+            mu_exploration_retained_bytes,
+        ])?;
+        iteration_peak_bytes
+            .max(separation_peak_bytes)
+            .max(mu_detection_peak)
+            .max(mu_cascade_peak)
+            .max(mu_transaction_peak)
     } else {
         separation_peak_bytes
     };
-    // The strict solve does not rebuild an N-by-K design, but canonical
-    // recertification overlaps four N-length response/residual/comparison
-    // vectors with the retained reusable session.
-    let strict_final_transient_bytes = bytes_f64(checked_mul(
+    // The strict solve does not rebuild an N-by-K design. During candidate
+    // assembly the six working/result squares plus accepted fit and frozen
+    // step breads total eight K-by-K banks, already covered by the seven
+    // `linear_workspace_bytes` banks plus the one square in
+    // `linear_result_metadata_bytes`. Four N-length residual/predictor banks
+    // are additionally live, as is one second K-length frozen coefficient
+    // bank.
+    //
+    // Two mutually exclusive non-square candidate boundaries must both fit.
+    // The installed/pre-install stage owns candidate fit kept+dropped,
+    // candidate basis kept+dropped, candidate active positions, and the
+    // outer rollback copy (four K index banks), plus one complete set of
+    // fitted coefficient, bread-coordinate, and basis-slot records. Earlier,
+    // fit assembly instead overlaps final fitted coefficients/coordinates
+    // with generated Option/status vectors, reference/score norms, rollback
+    // and candidate active positions, selected candidate positions, fit
+    // kept+dropped, and canonical candidate identities. Take their maximum;
+    // neither boundary may borrow storage from the accepted baseline.
+    let strict_final_vector_transient_bytes = bytes_f64(checked_mul(
         n,
         STRICT_FINAL_OVERLAP_VECTOR_COUNT,
         "PPML strict-final canonical vector overlap",
     )?)?;
+    let strict_installed_metadata_bytes = checked_sum(&[
+        checked_mul(
+            checked_mul(k, 4, "PPML strict installed rank-index banks")?,
+            word,
+            "PPML strict installed rank-index bytes",
+        )?,
+        checked_mul(
+            coefficient_slots,
+            checked_sum(&[
+                size_of::<PreparedOlsFittedCoefficient>() as u128,
+                size_of::<PreparedOlsBreadCoordinate>() as u128,
+                size_of::<FrozenLinearBasisSlot>() as u128,
+            ])?,
+            "PPML strict candidate coefficient/bread/basis records",
+        )?,
+    ])?;
+    let strict_assembly_per_generated_bytes = checked_sum(&[
+        size_of::<Option<f64>>() as u128,
+        size_of::<PreparedOlsFitStatus>() as u128,
+        checked_mul(
+            2,
+            size_of::<f64>() as u128,
+            "PPML strict assembly norm widths",
+        )?,
+        checked_mul(5, word, "PPML strict assembly index widths")?,
+    ])?;
+    let strict_assembly_metadata_bytes = checked_sum(&[
+        checked_mul(
+            coefficient_slots,
+            checked_sum(&[
+                size_of::<PreparedOlsFittedCoefficient>() as u128,
+                size_of::<PreparedOlsBreadCoordinate>() as u128,
+            ])?,
+            "PPML strict assembly fitted coefficient/bread records",
+        )?,
+        checked_mul(
+            k,
+            strict_assembly_per_generated_bytes,
+            "PPML strict assembly generated-column records",
+        )?,
+    ])?;
+    let strict_final_metadata_transient_bytes = checked_sum(&[
+        bytes_f64(k)?,
+        strict_installed_metadata_bytes.max(strict_assembly_metadata_bytes),
+    ])?;
+    let strict_final_transient_bytes = checked_sum(&[
+        strict_final_vector_transient_bytes,
+        strict_final_metadata_transient_bytes,
+    ])?;
     let strict_final_peak_bytes = checked_sum(&[
         iteration_peak_bytes,
         strict_final_transient_bytes,
@@ -1181,7 +1708,8 @@ fn estimate_route(
     Ok(PpmlMemoryInventory {
         embedding_resident_bytes: config.embedding_resident_bytes,
         canonical_numeric_bytes,
-        retained_raw_candidate_probability_weight_bytes,
+        retained_base_adjustment_bytes,
+        retained_raw_preseparation_probability_weight_bytes,
         topology_bytes,
         fe_solver_topology_bytes,
         cluster_topology_bytes,
@@ -1192,14 +1720,26 @@ fn estimate_route(
         row_ledger_bytes,
         row_axis_arc_header_bytes,
         prepared_model_metadata_bytes,
+        separation_replacement_generation_bytes,
+        separation_rebase_proposal_bytes,
+        separation_rebase_direction_bytes,
+        separation_rebase_staging_bytes,
         separation_rebase_bytes,
         separation_rebase_arc_header_bytes,
         final_drop_reason_bytes,
         separation_report_row_bytes,
         separation_report_reason_bytes,
+        separation_method_report_row_bytes,
+        separation_method_report_level_bytes,
+        separation_method_report_record_bytes,
+        separation_generation_hash_bytes,
+        separation_exact_level_transient_bytes,
+        separation_singleton_workspace_bytes,
+        separation_cascade_workspace_bytes,
         iteration_buffer_bytes,
         coefficient_buffer_bytes,
         retained_within_resident_bytes,
+        retained_within_io_buffer_bytes,
         retained_within_scratch_bytes,
         linear_vector_bytes,
         fe_workspace_bytes,
@@ -1224,6 +1764,7 @@ fn estimate_route(
         post_solve_peak_bytes,
         objective_line_search_peak_bytes,
         strict_final_transient_bytes,
+        strict_final_metadata_transient_bytes,
         strict_final_peak_bytes,
         inference_peak_bytes,
         fe_recovery_peak_bytes,
@@ -2567,8 +3108,10 @@ mod tests {
         PpmlMemoryDimensions {
             observations: 100_000,
             original_observations: 100_000,
+            candidate_observations: 100_000,
             loaded_numeric_columns: 6,
-            retained_raw_candidate_probability_weight_elements: 0,
+            retained_base_adjustment_capacity_elements: 0,
+            retained_raw_preseparation_probability_weight_elements: 0,
             finite_columns: 20,
             coefficient_slots: 20,
             reported_coefficient_slots: 20,
@@ -2583,6 +3126,10 @@ mod tests {
             cluster_dimensions: 2,
             cluster_subset_groups: 35_000,
             separation_workspace_vectors: 8,
+            separation_singleton_enabled: true,
+            separation_method_count: 4,
+            separation_rebase_enabled: true,
+            separation_exact_fe_enabled: true,
             separation_mu_enabled: false,
             simplex_tableau_cells: 1_000_000,
             requested_output_columns: 0,
@@ -2643,12 +3190,75 @@ mod tests {
             estimate.low.retained_within_resident_bytes
                 < estimate.fast.retained_within_resident_bytes
         );
+        assert_eq!(
+            estimate.fast.retained_within_resident_bytes,
+            100_000_u128 * (20 + 1) * size_of::<f64>() as u128,
+            "fast retains the pre-compaction N-by-(K+1) strided capacity",
+        );
+        assert_eq!(
+            estimate.low.retained_within_resident_bytes,
+            100_000_u128 * 4 * size_of::<f64>() as u128,
+            "low retains only its bounded resident pool",
+        );
+        assert_eq!(
+            estimate.fast.fe_workspace_bytes,
+            (21_u128 * 7 + 1 + 21 + 2 * 20) * size_of::<f64>() as u128,
+            "fast MAP capacity covers the combined response-plus-K projection",
+        );
+        assert_eq!(
+            estimate.low.fe_workspace_bytes,
+            (4_u128 * 7 + 1 + 4 + 2 * 20 + 100_000 * 4) * size_of::<f64>() as u128,
+            "low projects pool-width design blocks and the response separately",
+        );
+        assert_eq!(estimate.fast.retained_within_io_buffer_bytes, 0);
+        assert_eq!(
+            estimate.low.retained_within_io_buffer_bytes, LOW_SCRATCH_IO_BUFFER_CEILING_BYTES,
+            "low retains its bounded row-major scratch I/O tile",
+        );
         assert_eq!(estimate.fast.retained_within_scratch_bytes, 0);
         assert_eq!(
             estimate.low.retained_within_scratch_bytes,
             100_000_u128 * 20 * 8
         );
         assert!(estimate.low.peak_bytes < estimate.fast.peak_bytes);
+    }
+
+    #[test]
+    fn low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly() {
+        let mut empty = dimensions();
+        empty.observations = 1;
+        empty.candidate_observations = 1;
+        empty.original_observations = 1;
+        empty.loaded_numeric_columns = 0;
+        empty.finite_columns = 0;
+        empty.coefficient_slots = 0;
+        empty.reported_coefficient_slots = 0;
+        empty.fe_max_level_members = 1;
+        let empty_inventory = estimate_ppml_memory(empty, PpmlMemoryConfig::default())
+            .expect("rank-zero low scratch estimate")
+            .low;
+        assert_eq!(empty_inventory.retained_within_io_buffer_bytes, 8);
+
+        let bounded_inventory = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+            .expect("bounded low scratch estimate")
+            .low;
+        assert_eq!(
+            bounded_inventory.retained_within_io_buffer_bytes,
+            LOW_SCRATCH_IO_BUFFER_CEILING_BYTES,
+        );
+
+        let mut wide = empty;
+        wide.finite_columns = 200_000;
+        wide.coefficient_slots = 200_000;
+        wide.reported_coefficient_slots = 200_000;
+        let wide_inventory = estimate_ppml_memory(wide, PpmlMemoryConfig::default())
+            .expect("wide-row low scratch estimate")
+            .low;
+        assert_eq!(
+            wide_inventory.retained_within_io_buffer_bytes,
+            200_000_u128 * size_of::<f64>() as u128,
+            "one complete scratch row dominates the one-MiB tile ceiling",
+        );
     }
 
     #[test]
@@ -2748,22 +3358,46 @@ mod tests {
     #[test]
     fn simplex_preflight_charges_joint_live_design_and_kernel_ceiling() {
         let mut without_simplex = dimensions();
+        // Isolate the simplex branch from the sequential IR/Mu vector bank.
+        // When both are enabled the planner correctly takes their maximum.
+        without_simplex.separation_workspace_vectors = 0;
         without_simplex.simplex_tableau_cells = 0;
+        without_simplex.separation_singleton_enabled = false;
+        without_simplex.separation_method_count = 0;
+        without_simplex.separation_rebase_enabled = false;
+        without_simplex.separation_exact_fe_enabled = false;
         let base = estimate_ppml_memory(without_simplex, PpmlMemoryConfig::default())
             .expect("non-simplex memory estimate");
         let mut with_simplex = without_simplex;
         with_simplex.simplex_tableau_cells = 12_345;
+        with_simplex.separation_method_count = 1;
+        with_simplex.separation_rebase_enabled = true;
         let bounded = estimate_ppml_memory(with_simplex, PpmlMemoryConfig::default())
             .expect("bounded full-model simplex estimate");
         let one_ceiling = 12_345_u128 * size_of::<f64>() as u128;
 
         for (plain, simplex) in [(base.fast, bounded.fast), (base.low, bounded.low)] {
             assert_eq!(simplex.simplex_combined_bytes, one_ceiling);
+            let linear_validation = simplex.coefficient_buffer_bytes
+                + simplex.retained_within_resident_bytes
+                + simplex.retained_within_io_buffer_bytes
+                + simplex.fe_solver_topology_bytes
+                + simplex.linear_vector_bytes
+                + simplex.fe_workspace_bytes
+                + simplex.linear_workspace_bytes
+                + simplex.linear_result_metadata_bytes;
+            let proposal = with_simplex.observations as u128
+                * (size_of::<usize>() as u128 + size_of::<bool>() as u128);
+            let certificates = 2_u128
+                * with_simplex.finite_columns as u128
+                * with_simplex.finite_columns as u128
+                * size_of::<f64>() as u128;
             assert_eq!(
-                simplex.separation_workspace_bytes - plain.separation_workspace_bytes,
-                one_ceiling,
-                "the detector gates the simultaneous design-plus-kernel sum before allocation",
+                simplex.separation_workspace_bytes,
+                one_ceiling.max(linear_validation + certificates) + proposal,
+                "simplex storage and shared-linear validation are sequential method alternatives",
             );
+            assert_eq!(plain.separation_workspace_bytes, 0);
             assert_eq!(plain.simplex_combined_bytes, 0);
         }
 
@@ -2786,25 +3420,34 @@ mod tests {
     }
 
     #[test]
-    fn retained_candidate_pweights_are_charged_by_generation_zero_preflight() {
-        let unweighted = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+    fn retained_generation_zero_active_pweights_are_charged_exactly() {
+        let mut unweighted_dimensions = dimensions();
+        unweighted_dimensions.candidate_observations = unweighted_dimensions.observations + 10_000;
+        unweighted_dimensions.original_observations =
+            unweighted_dimensions.candidate_observations + 10_000;
+        let unweighted = estimate_ppml_memory(unweighted_dimensions, PpmlMemoryConfig::default())
             .expect("unweighted estimate");
-        let mut probability_dimensions = dimensions();
-        probability_dimensions.retained_raw_candidate_probability_weight_elements =
+        let mut probability_dimensions = unweighted_dimensions;
+        probability_dimensions.retained_raw_preseparation_probability_weight_elements =
             probability_dimensions.observations;
         let probability = estimate_ppml_memory(probability_dimensions, PpmlMemoryConfig::default())
             .expect("probability-weight estimate");
         let expected = probability_dimensions.observations as u128 * size_of::<f64>() as u128;
+        assert!(
+            probability_dimensions.retained_raw_preseparation_probability_weight_elements
+                < probability_dimensions.candidate_observations,
+            "missing/domain-excluded candidate rows must not create retained raw-weight storage",
+        );
         assert_eq!(
             probability
                 .fast
-                .retained_raw_candidate_probability_weight_bytes,
+                .retained_raw_preseparation_probability_weight_bytes,
             expected,
         );
         assert_eq!(
             probability
                 .low
-                .retained_raw_candidate_probability_weight_bytes,
+                .retained_raw_preseparation_probability_weight_bytes,
             expected,
         );
         assert_eq!(
@@ -2822,18 +3465,18 @@ mod tests {
         assert_eq!(
             rebased
                 .preflight_dimensions
-                .retained_raw_candidate_probability_weight_elements,
+                .retained_raw_preseparation_probability_weight_elements,
             probability_dimensions.observations,
         );
         assert_eq!(
             rebased
                 .selected_inventory()
-                .retained_raw_candidate_probability_weight_bytes,
+                .retained_raw_preseparation_probability_weight_bytes,
             expected,
-            "the retained owner vector remains candidate-sized after separation",
+            "the retained owner vector remains generation-zero-active-sized after separation",
         );
 
-        final_dimensions.retained_raw_candidate_probability_weight_elements = 0;
+        final_dimensions.retained_raw_preseparation_probability_weight_elements = 0;
         assert_eq!(
             preliminary
                 .with_final_dimensions(final_dimensions)
@@ -3001,23 +3644,60 @@ mod tests {
     }
 
     #[test]
-    fn strict_final_solve_charges_canonical_four_vector_overlap() {
-        let estimate = estimate_ppml_memory(dimensions(), PpmlMemoryConfig::default())
-            .expect("memory estimate");
-        let expected_transient = dimensions().observations as u128
-            * STRICT_FINAL_OVERLAP_VECTOR_COUNT
-            * size_of::<f64>() as u128;
-        for inventory in [estimate.fast, estimate.low] {
-            assert_eq!(inventory.strict_final_transient_bytes, expected_transient);
-            assert_eq!(
-                inventory.strict_final_peak_bytes,
-                inventory.iteration_peak_bytes + expected_transient,
-            );
-            assert!(inventory.peak_bytes >= inventory.strict_final_peak_bytes);
+    fn strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum() {
+        let expected_phase_metadata = |dimensions: PpmlMemoryDimensions| {
+            let k = dimensions.finite_columns as u128;
+            let slots = dimensions.coefficient_slots as u128;
+            let installed = k * 4 * size_of::<usize>() as u128
+                + slots
+                    * (size_of::<PreparedOlsFittedCoefficient>()
+                        + size_of::<PreparedOlsBreadCoordinate>()
+                        + size_of::<FrozenLinearBasisSlot>()) as u128;
+            let assembly = slots
+                * (size_of::<PreparedOlsFittedCoefficient>()
+                    + size_of::<PreparedOlsBreadCoordinate>()) as u128
+                + k * (size_of::<Option<f64>>()
+                    + size_of::<PreparedOlsFitStatus>()
+                    + 2 * size_of::<f64>()
+                    + 5 * size_of::<usize>()) as u128;
+            (
+                installed,
+                assembly,
+                k * size_of::<f64>() as u128 + installed.max(assembly),
+            )
+        };
+        let ordinary = dimensions();
+        let mut slot_heavy = ordinary;
+        slot_heavy.coefficient_slots *= 2;
+        slot_heavy.reported_coefficient_slots *= 2;
+        let (ordinary_installed, ordinary_assembly, _) = expected_phase_metadata(ordinary);
+        let (heavy_installed, heavy_assembly, _) = expected_phase_metadata(slot_heavy);
+        assert!(ordinary_assembly > ordinary_installed);
+        assert!(heavy_installed > heavy_assembly);
+
+        for memory_dimensions in [ordinary, slot_heavy] {
+            let estimate = estimate_ppml_memory(memory_dimensions, PpmlMemoryConfig::default())
+                .expect("memory estimate");
+            let expected_vectors = memory_dimensions.observations as u128
+                * STRICT_FINAL_OVERLAP_VECTOR_COUNT
+                * size_of::<f64>() as u128;
+            let (_, _, expected_metadata) = expected_phase_metadata(memory_dimensions);
+            let expected_transient = expected_vectors + expected_metadata;
+            for inventory in [estimate.fast, estimate.low] {
+                assert_eq!(
+                    inventory.strict_final_metadata_transient_bytes,
+                    expected_metadata,
+                );
+                assert_eq!(inventory.strict_final_transient_bytes, expected_transient);
+                assert_eq!(
+                    inventory.strict_final_peak_bytes,
+                    inventory.iteration_peak_bytes + expected_transient,
+                );
+                assert!(inventory.peak_bytes >= inventory.strict_final_peak_bytes);
+            }
         }
 
-        let plan =
-            plan_ppml_memory(dimensions(), PpmlMemoryConfig::default()).expect("memory plan");
+        let plan = plan_ppml_memory(ordinary, PpmlMemoryConfig::default()).expect("memory plan");
         assert_eq!(
             plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve),
             plan.selected_inventory().strict_final_peak_bytes,
@@ -3028,17 +3708,63 @@ mod tests {
     fn fitted_start_mu_peak_retains_fit_and_detector_workspace() {
         let mut mu_dimensions = dimensions();
         mu_dimensions.separation_mu_enabled = true;
+        mu_dimensions.separation_method_count = 5;
         let inventory = estimate_ppml_memory(mu_dimensions, PpmlMemoryConfig::default())
             .expect("memory estimate")
             .fast;
         let expected_retained = mu_dimensions.observations as u128 * size_of::<f64>() as u128
             + MU_EXPLORATION_RECORD_BYTES;
         assert_eq!(inventory.mu_exploration_retained_bytes, expected_retained,);
+        let common = inventory.embedding_resident_bytes
+            + inventory.canonical_numeric_bytes
+            + inventory.retained_base_adjustment_bytes
+            + inventory.retained_raw_preseparation_probability_weight_bytes
+            + inventory.topology_bytes
+            + inventory.cluster_topology_bytes
+            + inventory.row_ledger_bytes
+            + inventory.row_axis_arc_header_bytes
+            + inventory.prepared_model_metadata_bytes
+            + inventory.separation_method_report_row_bytes
+            + inventory.separation_method_report_level_bytes
+            + inventory.separation_method_report_record_bytes
+            + inventory.separation_generation_hash_bytes
+            + inventory.diagnostic_bytes;
+        let linear_validation = inventory.coefficient_buffer_bytes
+            + inventory.retained_within_resident_bytes
+            + inventory.retained_within_io_buffer_bytes
+            + inventory.fe_solver_topology_bytes
+            + inventory.linear_vector_bytes
+            + inventory.fe_workspace_bytes
+            + inventory.linear_workspace_bytes
+            + inventory.linear_result_metadata_bytes;
+        let detector_vectors = mu_dimensions.observations as u128
+            * mu_dimensions.separation_workspace_vectors as u128
+            * size_of::<f64>() as u128;
+        let proposal = mu_dimensions.observations as u128
+            * (size_of::<usize>() as u128 + size_of::<bool>() as u128);
+        let certificates = 2_u128
+            * mu_dimensions.finite_columns as u128
+            * mu_dimensions.finite_columns as u128
+            * size_of::<f64>() as u128;
+        let mu_detection = common
+            + linear_validation
+            + detector_vectors
+            + proposal
+            + certificates
+            + expected_retained;
+        let mu_transaction = common
+            + inventory.separation_rebase_bytes
+            + inventory.separation_rebase_arc_header_bytes
+            + expected_retained;
+        let mu_cascade = common + inventory.separation_cascade_workspace_bytes + expected_retained;
         assert_eq!(
             inventory.separation_mu_peak_bytes,
             inventory
                 .iteration_peak_bytes
-                .max(inventory.separation_peak_bytes + expected_retained),
+                .max(inventory.separation_peak_bytes)
+                .max(mu_detection)
+                .max(mu_cascade)
+                .max(mu_transaction),
         );
         assert_eq!(
             plan_ppml_memory(mu_dimensions, PpmlMemoryConfig::default())
@@ -3053,6 +3779,7 @@ mod tests {
     fn row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap() {
         let mut row_dimensions = dimensions();
         row_dimensions.observations = 80_000;
+        row_dimensions.candidate_observations = 90_000;
         row_dimensions.original_observations = 100_000;
         let inventory = estimate_ppml_memory(row_dimensions, PpmlMemoryConfig::default())
             .expect("row-axis estimate")
@@ -3062,7 +3789,11 @@ mod tests {
         assert_eq!(size_of::<Option<SeparationDropReason>>(), 1);
         assert_eq!(size_of::<bool>(), 1);
         let expected_activity = 100_000_u128;
-        assert_eq!(inventory.steady_row_map_bytes, 2 * 80_000_u128 * word);
+        assert_eq!(
+            inventory.steady_row_map_bytes,
+            (90_000_u128 + 2 * 80_000_u128) * word,
+            "the owner candidate, coordinator retained, and prepared-generation maps are distinct",
+        );
         assert_eq!(inventory.prepared_drop_reason_bytes, 2 * 100_000_u128);
         assert_eq!(inventory.separation_activity_bytes, expected_activity);
         assert_eq!(inventory.separation_reason_bytes, 100_000_u128);
@@ -3076,8 +3807,8 @@ mod tests {
         );
         assert_eq!(
             inventory.row_axis_arc_header_bytes,
-            2 * (2 * word + size_of::<Vec<usize>>() as u128),
-            "two Arc<Vec> row axes each retain counters plus a moved Vec header",
+            3 * (2 * word + size_of::<Vec<usize>>() as u128),
+            "candidate rows, current retained rows, and initial drop reasons own three Arc control blocks after rebase",
         );
         assert_eq!(inventory.final_drop_reason_bytes, 100_000_u128);
         assert_eq!(
@@ -3086,14 +3817,73 @@ mod tests {
         );
         assert_eq!(inventory.separation_report_reason_bytes, 80_000_u128);
         assert_eq!(
-            inventory.separation_rebase_bytes,
-            2 * 80_000_u128 * word,
-            "atomic rebase retains staged and replacement maps with the old generation",
+            inventory.separation_method_report_row_bytes,
+            80_000_u128 * word
+        );
+        let expected_replacement = inventory.canonical_numeric_bytes
+            + inventory.topology_bytes
+            + inventory.cluster_topology_bytes
+            + inventory.prepared_model_metadata_bytes
+            + 100_000_u128
+            + 80_000_u128 * word;
+        assert_eq!(
+            inventory.separation_replacement_generation_bytes, expected_replacement,
+            "the complete replacement generation overlaps the still-owned current generation",
+        );
+        assert_eq!(
+            inventory.separation_rebase_proposal_bytes, 0,
+            "the exact-capacity primary moves directly into the commit",
+        );
+        assert_eq!(
+            inventory.separation_rebase_direction_bytes, 0,
+            "the independently certified direction is released before cascade/rebuild",
+        );
+        let staged_ledgers =
+            2 * 100_000_u128 + 80_000_u128 * word + inventory.separation_rebase_proposal_bytes;
+        let staged_candidate = 100_000_u128;
+        let completed_or_build = expected_replacement
+            .max(expected_replacement - 80_000_u128 * size_of::<f64>() as u128 + staged_candidate);
+        let expected_rebase =
+            staged_ledgers + completed_or_build + inventory.separation_rebase_direction_bytes;
+        assert_eq!(
+            inventory.separation_rebase_bytes, expected_rebase,
+            "atomic rebase owns staged ledgers and one full replacement beside the old generation",
+        );
+        assert_eq!(
+            inventory.separation_rebase_staging_bytes,
+            expected_rebase - expected_replacement,
         );
         assert_eq!(
             inventory.separation_rebase_arc_header_bytes,
             2 * word + size_of::<Vec<usize>>() as u128,
             "only the new retained-row Arc<Vec> owns a fresh control block",
+        );
+        let separation_base = inventory.embedding_resident_bytes
+            + inventory.canonical_numeric_bytes
+            + inventory.retained_base_adjustment_bytes
+            + inventory.retained_raw_preseparation_probability_weight_bytes
+            + inventory.topology_bytes
+            + inventory.cluster_topology_bytes
+            + inventory.row_ledger_bytes
+            + inventory.row_axis_arc_header_bytes
+            + inventory.prepared_model_metadata_bytes
+            + inventory.separation_method_report_row_bytes
+            + inventory.separation_method_report_level_bytes
+            + inventory.separation_method_report_record_bytes
+            + inventory.separation_generation_hash_bytes
+            + inventory.diagnostic_bytes;
+        let detector_peak = separation_base
+            + inventory
+                .separation_workspace_bytes
+                .max(inventory.separation_singleton_workspace_bytes);
+        let cascade_peak = separation_base + inventory.separation_cascade_workspace_bytes;
+        let transaction_peak = separation_base
+            + inventory.separation_rebase_bytes
+            + inventory.separation_rebase_arc_header_bytes;
+        assert_eq!(
+            inventory.separation_peak_bytes,
+            detector_peak.max(cascade_peak).max(transaction_peak),
+            "detector, cascade, and accepted old-plus-new rebase are sequential phase alternatives",
         );
 
         let mut malformed = row_dimensions;
@@ -3101,6 +3891,25 @@ mod tests {
         assert_eq!(
             estimate_ppml_memory(malformed, PpmlMemoryConfig::default())
                 .expect_err("short original axis")
+                .code,
+            ErrorCode::InvalidArgument,
+        );
+
+        let mut short_candidate = row_dimensions;
+        short_candidate.candidate_observations = short_candidate.observations - 1;
+        assert_eq!(
+            estimate_ppml_memory(short_candidate, PpmlMemoryConfig::default())
+                .expect_err("candidate axis shorter than prepared sample")
+                .code,
+            ErrorCode::InvalidArgument,
+        );
+
+        let mut candidate_beyond_original = row_dimensions;
+        candidate_beyond_original.candidate_observations =
+            candidate_beyond_original.original_observations + 1;
+        assert_eq!(
+            estimate_ppml_memory(candidate_beyond_original, PpmlMemoryConfig::default())
+                .expect_err("candidate axis longer than original sample")
                 .code,
             ErrorCode::InvalidArgument,
         );
@@ -3116,6 +3925,138 @@ mod tests {
                 .code,
             ErrorCode::InvalidArgument,
         );
+
+        let mut mismatched_candidate = row_dimensions;
+        mismatched_candidate.observations -= 1;
+        mismatched_candidate.candidate_observations -= 1;
+        assert_eq!(
+            plan.with_final_dimensions(mismatched_candidate)
+                .expect_err("candidate axis must be stable after route selection")
+                .code,
+            ErrorCode::InvalidArgument,
+        );
+    }
+
+    #[test]
+    fn probability_rebase_build_retains_only_source_positions_until_exact_restore() {
+        let mut probability = dimensions();
+        probability.observations = 80_000;
+        probability.candidate_observations = 90_000;
+        probability.original_observations = 100_000;
+        probability.retained_raw_preseparation_probability_weight_elements = 80_000;
+        probability.fe_max_level_members = probability
+            .fe_max_level_members
+            .min(probability.observations);
+        let inventory = estimate_ppml_memory(probability, PpmlMemoryConfig::default())
+            .expect("probability rebase estimate")
+            .fast;
+        let n = probability.observations as u128;
+        let original = probability.original_observations as u128;
+        let word = size_of::<usize>() as u128;
+        let staged_ledgers = 2 * original + n * word + inventory.separation_rebase_proposal_bytes;
+        let staged_candidate = original;
+        let retained_positions = n * word;
+        let staged_values = n * size_of::<f64>() as u128;
+        let stage_only = staged_candidate + retained_positions + staged_values;
+        let build = inventory.separation_replacement_generation_bytes
+            - n * size_of::<f64>() as u128
+            + staged_candidate
+            + retained_positions;
+        let expected = staged_ledgers
+            + stage_only
+                .max(build)
+                .max(inventory.separation_replacement_generation_bytes)
+            + inventory.separation_rebase_direction_bytes;
+        assert_eq!(inventory.separation_rebase_bytes, expected);
+        assert_eq!(
+            inventory.separation_rebase_staging_bytes,
+            expected - inventory.separation_replacement_generation_bytes,
+        );
+        assert!(build > inventory.separation_replacement_generation_bytes);
+    }
+
+    #[test]
+    fn preparation_staging_uses_exact_candidate_capacity() {
+        let mut compact = dimensions();
+        compact.observations = 40_000;
+        compact.candidate_observations = 60_000;
+        compact.retained_base_adjustment_capacity_elements = 60_000;
+        compact.original_observations = 100_000;
+        compact.fe_max_level_members = compact.fe_max_level_members.min(compact.observations);
+        let compact_inventory = estimate_ppml_memory(compact, PpmlMemoryConfig::default())
+            .expect("compact candidate estimate")
+            .fast;
+
+        let mut wider_candidate = compact;
+        wider_candidate.candidate_observations = 90_000;
+        wider_candidate.retained_base_adjustment_capacity_elements = 90_000;
+        let wider_inventory = estimate_ppml_memory(wider_candidate, PpmlMemoryConfig::default())
+            .expect("wider candidate estimate")
+            .fast;
+        let candidate_delta =
+            (wider_candidate.candidate_observations - compact.candidate_observations) as u128;
+        let word = size_of::<usize>() as u128;
+        assert_eq!(
+            wider_inventory.steady_row_map_bytes - compact_inventory.steady_row_map_bytes,
+            candidate_delta * word,
+        );
+        assert_eq!(
+            wider_inventory.separation_rebase_bytes - compact_inventory.separation_rebase_bytes,
+            0,
+            "atomic replacement generations are bounded by active/original axes, not if/in capacity",
+        );
+        assert_eq!(
+            wider_inventory.retained_base_adjustment_bytes
+                - compact_inventory.retained_base_adjustment_bytes,
+            candidate_delta * size_of::<f64>() as u128,
+            "the owner-side offset/logged exposure retains immutable candidate capacity",
+        );
+
+        let staging_columns = compact.loaded_numeric_columns as u128 + 3;
+        let compact_staging =
+            compact.candidate_observations as u128 * staging_columns * size_of::<f64>() as u128;
+        let wider_staging = wider_candidate.candidate_observations as u128
+            * staging_columns
+            * size_of::<f64>() as u128;
+        let compact_common = compact_inventory.embedding_resident_bytes
+            + compact_inventory.canonical_numeric_bytes
+            + compact_inventory.retained_base_adjustment_bytes
+            + compact_inventory.retained_raw_preseparation_probability_weight_bytes
+            + compact_inventory.topology_bytes
+            + compact_inventory.cluster_topology_bytes
+            + compact_inventory.row_ledger_bytes
+            + compact_inventory.row_axis_arc_header_bytes
+            + compact_inventory.prepared_model_metadata_bytes
+            + compact_inventory.separation_method_report_row_bytes
+            + compact_inventory.separation_method_report_level_bytes
+            + compact_inventory.diagnostic_bytes;
+        let wider_common = wider_inventory.embedding_resident_bytes
+            + wider_inventory.canonical_numeric_bytes
+            + wider_inventory.retained_base_adjustment_bytes
+            + wider_inventory.retained_raw_preseparation_probability_weight_bytes
+            + wider_inventory.topology_bytes
+            + wider_inventory.cluster_topology_bytes
+            + wider_inventory.row_ledger_bytes
+            + wider_inventory.row_axis_arc_header_bytes
+            + wider_inventory.prepared_model_metadata_bytes
+            + wider_inventory.separation_method_report_row_bytes
+            + wider_inventory.separation_method_report_level_bytes
+            + wider_inventory.diagnostic_bytes;
+        // Preparation can be dominated by the preallocated iteration bank,
+        // so assert the planner's maximum from its exact candidate-capacity
+        // staging term rather than assuming which side wins.
+        assert_eq!(
+            wider_staging - compact_staging,
+            candidate_delta * staging_columns * size_of::<f64>() as u128,
+        );
+        assert_eq!(
+            compact_inventory.preparation_peak_bytes,
+            (compact_common + compact_staging).max(compact_inventory.iteration_peak_bytes),
+        );
+        assert_eq!(
+            wider_inventory.preparation_peak_bytes,
+            (wider_common + wider_staging).max(wider_inventory.iteration_peak_bytes),
+        );
     }
 
     #[test]
@@ -3126,6 +4067,8 @@ mod tests {
         assert_eq!(size_of::<PreparedOlsColumn>(), 48);
         assert_eq!(size_of::<PreparedOlsBreadCoordinate>(), 16);
         assert_eq!(size_of::<FrozenLinearBasisSlot>(), 24);
+        assert_eq!(size_of::<PreparedOlsFitStatus>(), 1);
+        assert_eq!(size_of::<PreparedOlsFittedCoefficient>(), 40);
         assert_eq!(size_of::<Option<f64>>(), 16);
 
         let mut metadata_dimensions = dimensions();
@@ -3142,8 +4085,48 @@ mod tests {
         );
         assert_eq!(
             inventory.linear_result_metadata_bytes,
-            3 * 8 + 8 + 16 + 24 + 4 * 16,
-            "rank indices, bread, basis, and bounded reported workspace match the traced K=1 fit",
+            4 * 8 + 8 + 40 + 16 + 24 + 4 * 16,
+            "rank indices, accepted fit, bread, basis, and bounded reported workspace match the traced K=1 fit",
+        );
+        assert_eq!(
+            inventory.linear_vector_bytes,
+            metadata_dimensions.observations as u128 * 7 * size_of::<f64>() as u128
+                + 8 * size_of::<f64>() as u128
+                + 4 * size_of::<usize>() as u128,
+            "observation vectors, eight retained rank vectors, and four reusable index banks are all resident",
+        );
+    }
+
+    #[test]
+    fn finite_session_charges_inverse_lower_and_exact_route_moment_storage() {
+        let memory_dimensions = dimensions();
+        let estimate = estimate_ppml_memory(memory_dimensions, PpmlMemoryConfig::default())
+            .expect("finite-session estimate");
+        let k = memory_dimensions.finite_columns as u128;
+        let requested = (memory_dimensions.threads as u128).min(k).max(1);
+        let columns_per_partition = k.div_ceil(requested);
+        let actual_partitions = k.div_ceil(columns_per_partition);
+        let fast_expected = LINEAR_SQUARE_WORKSPACE_COUNT * k * k * size_of::<f64>() as u128;
+        let low_expected = (LINEAR_SQUARE_WORKSPACE_COUNT * k * k + actual_partitions * k)
+            * size_of::<f64>() as u128;
+        assert_eq!(LINEAR_SQUARE_WORKSPACE_COUNT, 7);
+        assert_eq!(estimate.fast.linear_workspace_bytes, fast_expected);
+        assert_eq!(estimate.low.linear_workspace_bytes, low_expected);
+        assert!(estimate.fast.iteration_peak_bytes >= estimate.fast.linear_workspace_bytes);
+        assert!(estimate.low.strict_final_peak_bytes >= estimate.low.linear_workspace_bytes);
+
+        let mut uneven = memory_dimensions;
+        uneven.finite_columns = 5;
+        uneven.coefficient_slots = 5;
+        uneven.reported_coefficient_slots = 5;
+        uneven.threads = 4;
+        let uneven_low = estimate_ppml_memory(uneven, PpmlMemoryConfig::default())
+            .expect("uneven retained partition estimate")
+            .low;
+        assert_eq!(
+            uneven_low.linear_workspace_bytes,
+            (LINEAR_SQUARE_WORKSPACE_COUNT * 25 + 3 * 5) * size_of::<f64>() as u128,
+            "K=5 across four requested workers creates three actual two-column partitions",
         );
     }
 
@@ -3156,6 +4139,7 @@ mod tests {
 
         let mut more_rows = base_dimensions;
         more_rows.observations += 1_000;
+        more_rows.candidate_observations += 1_000;
         more_rows.original_observations += 1_000;
         let rows = estimate_ppml_memory(more_rows, PpmlMemoryConfig::default())
             .expect("row estimate")
@@ -3287,16 +4271,22 @@ mod tests {
 
         let fitted_common = |inventory: PpmlMemoryInventory| {
             inventory.canonical_numeric_bytes
-                + inventory.retained_raw_candidate_probability_weight_bytes
+                + inventory.retained_base_adjustment_bytes
+                + inventory.retained_raw_preseparation_probability_weight_bytes
                 + inventory.topology_bytes
                 + inventory.cluster_topology_bytes
                 + inventory.row_ledger_bytes
                 + inventory.row_axis_arc_header_bytes
                 + inventory.prepared_model_metadata_bytes
+                + inventory.separation_method_report_row_bytes
+                + inventory.separation_method_report_level_bytes
+                + inventory.separation_method_report_record_bytes
+                + inventory.separation_generation_hash_bytes
                 + inventory.diagnostic_bytes
                 + inventory.iteration_buffer_bytes
                 + inventory.coefficient_buffer_bytes
                 + inventory.retained_within_resident_bytes
+                + inventory.retained_within_io_buffer_bytes
                 + inventory.linear_result_metadata_bytes
         };
         assert_eq!(
@@ -3412,6 +4402,7 @@ mod tests {
         let mut saved = dimensions();
         saved.observations = 1_000;
         saved.original_observations = 1_000;
+        saved.candidate_observations = 1_000;
         saved.loaded_numeric_columns = 0;
         saved.finite_columns = 0;
         saved.coefficient_slots = 0;
@@ -3904,6 +4895,7 @@ mod tests {
         let mut overflowing = dimensions();
         overflowing.observations = usize::MAX;
         overflowing.original_observations = usize::MAX;
+        overflowing.candidate_observations = usize::MAX;
         overflowing.loaded_numeric_columns = usize::MAX;
         assert_eq!(
             estimate_ppml_memory(overflowing, PpmlMemoryConfig::default())
@@ -3918,6 +4910,7 @@ mod tests {
         let mut rank_zero_candidate = dimensions();
         rank_zero_candidate.observations = 100;
         rank_zero_candidate.original_observations = 100;
+        rank_zero_candidate.candidate_observations = 100;
         rank_zero_candidate.finite_columns = 1;
         rank_zero_candidate.coefficient_slots = 1;
         rank_zero_candidate.reported_coefficient_slots = 1;

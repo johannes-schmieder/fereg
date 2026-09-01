@@ -2,12 +2,24 @@ use crate::error::{ErrorCode, FeregError, Result};
 
 use super::{fallible_filled, reserve};
 
+#[derive(Debug, Clone, PartialEq)]
+pub(super) enum PhaseOneConeOutcome {
+    Feasible {
+        coordinates: Vec<f64>,
+        iterations: usize,
+    },
+    /// Candidate Farkas multiplier for the *original* cone-feasibility
+    /// equations.  The tableau is not trusted to certify this vector; the
+    /// caller independently rechecks it against the immutable cone.
+    Infeasible { dual: Vec<f64>, iterations: usize },
+}
+
 #[cfg(test)]
 pub(super) fn phase_one_cone(
     cone: &[Vec<f64>],
     max_iterations: usize,
     tolerance: f64,
-) -> Result<Option<(Vec<f64>, usize)>> {
+) -> Result<PhaseOneConeOutcome> {
     phase_one_cone_interruptible(cone, max_iterations, tolerance, &mut || Ok(()))
 }
 
@@ -16,11 +28,14 @@ pub(super) fn phase_one_cone_interruptible(
     max_iterations: usize,
     tolerance: f64,
     interrupt: &mut dyn FnMut() -> Result<()>,
-) -> Result<Option<(Vec<f64>, usize)>> {
+) -> Result<PhaseOneConeOutcome> {
     let boundary = cone.len();
     let dimension = cone.first().map_or(0, Vec::len);
     if boundary == 0 || dimension == 0 {
-        return Ok(None);
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "simplex phase-I requires a nonempty boundary cone",
+        ));
     }
     if cone.iter().any(|row| row.len() != dimension) {
         return Err(FeregError::new(
@@ -119,7 +134,36 @@ pub(super) fn phase_one_cone_interruptible(
                 costs[basis[row]].mul_add(tableau[row * width + rhs_column], sum)
             });
             if objective < -100.0 * tolerance {
-                return Ok(None);
+                // Artificial-variable columns form the identity in the
+                // original augmented system.  Their canonical tableau block
+                // is therefore B^{-1}; c_B^T B^{-1} is the candidate dual.
+                // Extraction uses the final basis/tableau, while acceptance
+                // is an algebraically separate check against `cone` in the
+                // caller.
+                let mut dual = fallible_filled(
+                    rows,
+                    0.0_f64,
+                    "unable to reserve model-simplex phase-I dual certificate",
+                )?;
+                for constraint in 0..rows {
+                    let artificial_column = original_variables + constraint;
+                    let mut value = 0.0_f64;
+                    for row in 0..rows {
+                        value = costs[basis[row]]
+                            .mul_add(tableau[row * width + artificial_column], value);
+                    }
+                    dual[constraint] = value;
+                }
+                if dual.iter().any(|value| !value.is_finite()) {
+                    return Err(FeregError::new(
+                        ErrorCode::NonConvergence,
+                        "simplex phase-I dual certificate became nonfinite",
+                    ));
+                }
+                return Ok(PhaseOneConeOutcome::Infeasible {
+                    dual,
+                    iterations: iteration,
+                });
             }
             let mut solution = fallible_filled(
                 original_variables,
@@ -139,7 +183,10 @@ pub(super) fn phase_one_cone_interruptible(
             for column in 0..dimension {
                 coordinates[column] = solution[column] - solution[dimension + column];
             }
-            return Ok(Some((coordinates, iteration)));
+            return Ok(PhaseOneConeOutcome::Feasible {
+                coordinates,
+                iterations: iteration,
+            });
         };
 
         let mut leaving = None;

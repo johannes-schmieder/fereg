@@ -435,6 +435,61 @@ pub fn prepare_numeric_sample_with_source_uses<P: NumericDomainPolicy>(
     prepare_numeric_sample_with_plan(input, Some(source_uses), policy, &mut SystemReserve)
 }
 
+/// Allocation-free shape classification for an estimator that must decide
+/// whether its complete fit can be admitted before compacting observation
+/// data.
+///
+/// The visitor observes the same authoritative row decision and precedence as
+/// [`prepare_numeric_sample_with_source_uses`].  It must remain
+/// allocation-free: callers use this boundary inside an action-wide allocator
+/// window whose purpose is to prove that a rejected memory route never
+/// constructs the canonical numeric sample.
+pub(crate) fn classify_numeric_sample_with_source_uses<
+    P: NumericDomainPolicy,
+    F: FnMut(usize, DropReason) -> Result<()>,
+>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: &[NumericSourceUse],
+    policy: &P,
+    mut visit: F,
+) -> Result<NumericSampleClassification> {
+    let n_original = input.candidate.len();
+    validate_input(input, n_original)?;
+    validate_source_uses(input, Some(source_uses))?;
+    let n_candidate = input
+        .candidate
+        .iter()
+        .filter(|candidate| **candidate)
+        .count();
+    // Retain the same checked output-shape boundary as materialization.  This
+    // is scalar arithmetic only and therefore cannot create a large buffer.
+    check_output_dimensions(input, n_original, n_candidate)?;
+
+    let mut n_active = 0_usize;
+    for original_row in 0..n_original {
+        let reason = classify_row(input, Some(source_uses), policy, original_row)?;
+        visit(original_row, reason)?;
+        if reason == DropReason::Retained {
+            n_active = n_active
+                .checked_add(1)
+                .ok_or_else(|| allocation_error("active observation count overflows"))?;
+        }
+    }
+    Ok(NumericSampleClassification {
+        n_original,
+        n_candidate,
+        n_active,
+    })
+}
+
+/// Scalar-only result of the allocation-free numeric classification pass.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct NumericSampleClassification {
+    pub(crate) n_original: usize,
+    pub(crate) n_candidate: usize,
+    pub(crate) n_active: usize,
+}
+
 #[cfg(test)]
 fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
     input: &NumericPreparationInput<'_>,

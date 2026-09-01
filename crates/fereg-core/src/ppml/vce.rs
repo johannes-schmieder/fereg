@@ -6,6 +6,8 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::ols::CertifiedLinearWithinDesign;
 #[cfg(test)]
 use crate::ols::{ClusterSubsetReport, VceKind, VceReport};
+use crate::options::ThreadConfig;
+use crate::parallel::ThreadTeam;
 use crate::sandwich::{
     bread_meat_bread, reduce_clustered_score_meats, reduce_dense_score_meats, standard_errors,
     FixedBlockReductionPolicy, SandwichClusters, SandwichCorrectionPolicy, SandwichDesign,
@@ -244,14 +246,19 @@ pub fn compute_ppml_inference<D>(input: PpmlInferenceInput<'_, D>) -> Result<Ppm
 where
     D: PpmlInferenceDesign + Copy + Sync,
 {
-    compute_ppml_inference_interruptible(input, &mut || Ok(()))
+    compute_ppml_inference_interruptible_with_threads(
+        input,
+        ThreadConfig::default(),
+        &mut || Ok(()),
+    )
 }
 
-/// Caller-thread interruptible inference boundary.  The callback is invoked
-/// only between complete serial stages or after a parallel sandwich kernel
-/// has rejoined; it is never captured by a Rayon closure.
-pub(crate) fn compute_ppml_inference_interruptible<D>(
+/// Configured-team PPML inference boundary. The caller-owned interrupt probe
+/// remains on the caller thread; only complete robust or clustered sandwich
+/// reductions enter the bounded Rayon team.
+pub(crate) fn compute_ppml_inference_interruptible_with_threads<D>(
     input: PpmlInferenceInput<'_, D>,
+    threads: ThreadConfig,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<PpmlInferenceResult>
 where
@@ -297,12 +304,14 @@ where
         interrupt()?;
         match effective_kind {
             PpmlVceKind::Robust => {
-                let meats = ppml_sandwich_result(reduce_dense_score_meats(
-                    design,
-                    multipliers,
-                    PPML_SANDWICH_REDUCTION,
-                    &mut reservation,
-                ))?;
+                let meats = ThreadTeam::new(threads).install(|| {
+                    ppml_sandwich_result(reduce_dense_score_meats(
+                        design,
+                        multipliers,
+                        PPML_SANDWICH_REDUCTION,
+                        &mut reservation,
+                    ))
+                })??;
                 interrupt()?;
                 (meats.production, meats.certificate, Vec::new())
             }
@@ -318,13 +327,15 @@ where
                     })?;
                 cluster_slices.extend(input.clusters.iter().copied());
                 let clusters = SandwichClusters::new(&cluster_slices, rows, 5)?;
-                let meats = ppml_sandwich_result(reduce_clustered_score_meats(
-                    design,
-                    multipliers,
-                    clusters,
-                    PPML_SANDWICH_REDUCTION,
-                    &mut reservation,
-                ))?;
+                let meats = ThreadTeam::new(threads).install(|| {
+                    ppml_sandwich_result(reduce_clustered_score_meats(
+                        design,
+                        multipliers,
+                        clusters,
+                        PPML_SANDWICH_REDUCTION,
+                        &mut reservation,
+                    ))
+                })??;
                 interrupt()?;
                 let mut reports = Vec::new();
                 reports
@@ -1473,6 +1484,7 @@ pub(crate) fn compute_ppml_vce(input: PpmlVceInput<'_>) -> Result<VceReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
     #[derive(Debug, Clone, Copy)]
     struct InvalidDataInferenceDesign;
@@ -1491,6 +1503,40 @@ mod tests {
                 ErrorCode::InvalidData,
                 "malformed PPML inference design",
             ))
+        }
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    struct PoolObservedInferenceDesign<'a> {
+        rows: usize,
+        pool_width: &'a AtomicUsize,
+        workers: &'a AtomicU64,
+    }
+
+    impl PpmlInferenceDesign for PoolObservedInferenceDesign<'_> {
+        fn nrows(&self) -> usize {
+            self.rows
+        }
+
+        fn dimension(&self) -> usize {
+            1
+        }
+
+        fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+            if output.len() != 1 || row >= self.rows {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidArgument,
+                    "observed PPML inference row is out of range",
+                ));
+            }
+            let width = rayon::current_num_threads();
+            self.pool_width.fetch_max(width, Ordering::SeqCst);
+            if let Some(worker) = rayon::current_thread_index() {
+                let bit = 1_u64.checked_shl(worker as u32).unwrap_or(0);
+                self.workers.fetch_or(bit, Ordering::SeqCst);
+            }
+            output[0] = 1.0 + (row % 7) as f64 / 8.0;
+            Ok(())
         }
     }
 
@@ -1519,6 +1565,103 @@ mod tests {
             raw_to_prepared_multiplier: Some(1.0),
             log_raw_to_prepared_multiplier: 0.0,
         }
+    }
+
+    #[test]
+    fn configured_ppml_sandwich_uses_requested_team_against_global_pool() {
+        const CHILD_ENV: &str = "FEREG_PPML_THREAD_TEAM_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let executable = std::env::current_exe().expect("current Rust test executable");
+            let output = std::process::Command::new(executable)
+                .arg("configured_ppml_sandwich_uses_requested_team_against_global_pool")
+                .arg("--nocapture")
+                .env(CHILD_ENV, "1")
+                .output()
+                .expect("spawn isolated Rayon-global child");
+            assert!(
+                output.status.success(),
+                "isolated thread-team child failed:\nstdout:\n{}\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr),
+            );
+            return;
+        }
+
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(7)
+            .build_global()
+            .expect("install mismatched seven-thread global pool");
+        assert_eq!(rayon::current_num_threads(), 7);
+
+        let rows = 3 * PPML_SANDWICH_REDUCTION.rows_per_block;
+        let residuals = (0..rows)
+            .map(|row| if row % 2 == 0 { -0.75 } else { 0.5 })
+            .collect::<Vec<_>>();
+        let prior_weights = vec![1.0; rows];
+        let cluster_codes = (0..rows).map(|row| (row % 101) as u32).collect::<Vec<_>>();
+
+        let run = |requested: usize, requested_vce| {
+            let pool_width = AtomicUsize::new(0);
+            let workers = AtomicU64::new(0);
+            let clusters: Vec<&[u32]> = if requested_vce == PpmlVceRequest::Clustered {
+                vec![cluster_codes.as_slice()]
+            } else {
+                Vec::new()
+            };
+            let result = compute_ppml_inference_interruptible_with_threads(
+                PpmlInferenceInput {
+                    coefficients: &[0.0],
+                    full_dimension: 1,
+                    within_design: PoolObservedInferenceDesign {
+                        rows,
+                        pool_width: &pool_width,
+                        workers: &workers,
+                    },
+                    reported_finite_rank: 1,
+                    score_residuals: &residuals,
+                    prior_weights: &prior_weights,
+                    weight_report: unweighted_report(rows),
+                    identified_bread: &[1.0],
+                    kept_full_slots: &[0],
+                    absorbed_rank: 0,
+                    connected_components: 0,
+                    absorbed_rank_is_approximate: false,
+                    clusters: &clusters,
+                    requested_vce,
+                    wald_columns: &[],
+                    certificate_tolerance: 1e-9,
+                },
+                ThreadConfig::from_requested(requested, true).expect("thread config"),
+                &mut || Ok(()),
+            )
+            .expect("observed PPML inference");
+            assert!(result.vce.certificate.passed);
+            (pool_width.into_inner(), workers.into_inner())
+        };
+
+        let (serial_width, serial_workers) = run(1, PpmlVceRequest::Robust);
+        assert_eq!(
+            serial_width,
+            1,
+            "serial PPML inference escaped configured pool; observed participants={}",
+            serial_workers.count_ones(),
+        );
+
+        let (robust_width, robust_workers) = run(3, PpmlVceRequest::Robust);
+        assert_eq!(
+            robust_width,
+            3,
+            "robust PPML inference escaped configured pool; observed participants={}",
+            robust_workers.count_ones(),
+        );
+
+        let (clustered_width, clustered_workers) = run(3, PpmlVceRequest::Clustered);
+        assert_eq!(
+            clustered_width,
+            3,
+            "clustered PPML inference escaped configured pool; observed participants={}",
+            clustered_workers.count_ones(),
+        );
     }
 
     #[test]

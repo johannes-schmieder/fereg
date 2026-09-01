@@ -1,6 +1,7 @@
 //! Certified Frisch-Waugh-Lovell OLS core.
 
 mod dof;
+mod finite_wls_kernel;
 mod fit;
 mod linear_session;
 mod prepared;
@@ -21,6 +22,11 @@ mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
+#[cfg(test)]
+pub(crate) use linear_session::{
+    begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
+    inject_frozen_linear_failure, FrozenLinearFailureInjection,
+};
 #[allow(unused_imports)]
 pub(crate) use linear_session::{
     classify_frozen_linear_fallback, CertifiedFrozenLinearOutput, CertifiedLinearSession,
@@ -30,8 +36,6 @@ pub(crate) use linear_session::{
     LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
     LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
 };
-#[cfg(test)]
-pub(crate) use linear_session::{inject_frozen_linear_failure, FrozenLinearFailureInjection};
 #[doc(hidden)]
 pub use linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,

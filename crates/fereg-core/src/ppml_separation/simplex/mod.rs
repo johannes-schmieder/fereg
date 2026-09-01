@@ -2,7 +2,7 @@
 
 use super::{
     DetectionProposal, MethodStatus, SeparationCertificate, SeparationCertificateProof,
-    SeparationMethod,
+    SeparationMethod, SeparationNote,
 };
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -13,7 +13,7 @@ mod tableau;
 use nullspace::nullspace_basis;
 #[cfg(test)]
 use tableau::phase_one_cone;
-use tableau::phase_one_cone_interruptible;
+use tableau::{phase_one_cone_interruptible, PhaseOneConeOutcome};
 
 #[cfg(test)]
 std::thread_local! {
@@ -193,8 +193,9 @@ pub(crate) fn model_simplex_interruptible(
         return Ok(DetectionProposal::empty(
             SeparationMethod::Simplex,
             MethodStatus::SkippedMemory,
-            format!(
-                "model simplex requires at most {peak_cells} simultaneous design-plus-kernel cells, above the configured {max_tableau_cells} limit"
+            SeparationNote::with_detail(
+                "model simplex exceeded its configured cell limit",
+                peak_cells,
             ),
         ));
     }
@@ -225,8 +226,7 @@ pub(crate) fn model_simplex_interruptible(
             certificate: Some(no_separation_certificate(regressors.ncols())),
             exact_fe_certificate: None,
             direction: None,
-            note: "finite regressors have full column rank on the positive-outcome sample"
-                .to_owned(),
+            note: "finite regressors have full column rank on the positive-outcome sample".into(),
         });
     }
     let cone = boundary_cone(regressors, &boundary, &basis)?;
@@ -240,7 +240,7 @@ pub(crate) fn model_simplex_interruptible(
             gamma,
             0,
             certificate_tolerance,
-            "single null-space direction has a common sign on boundary observations",
+            "single null-space direction has a common sign on boundary observations".into(),
         );
     }
 
@@ -272,19 +272,41 @@ pub(crate) fn model_simplex_interruptible(
         })?;
     debug_assert!(cells <= peak_cells);
 
-    let feasible = phase_one_cone_interruptible(&cone, max_iterations, tolerance, interrupt)?;
-    let Some((coordinates, iterations)) = feasible else {
-        return Ok(DetectionProposal {
-            method: SeparationMethod::Simplex,
-            dropped: Vec::new(),
-            iterations: max_iterations,
-            status: MethodStatus::Uncertified,
-            certificate: None,
-            exact_fe_certificate: None,
-            direction: None,
-            note: "model simplex phase-I infeasibility lacks an independently checked dual certificate"
-                .to_owned(),
-        });
+    let phase_one = phase_one_cone_interruptible(&cone, max_iterations, tolerance, interrupt)?;
+    let (coordinates, iterations) = match phase_one {
+        PhaseOneConeOutcome::Feasible {
+            coordinates,
+            iterations,
+        } => (coordinates, iterations),
+        PhaseOneConeOutcome::Infeasible { dual, iterations } => {
+            let Some(certificate) =
+                verify_phase_one_farkas_certificate(&cone, &dual, certificate_tolerance)?
+            else {
+                return Ok(DetectionProposal {
+                    method: SeparationMethod::Simplex,
+                    dropped: Vec::new(),
+                    iterations,
+                    status: MethodStatus::Uncertified,
+                    certificate: None,
+                    exact_fe_certificate: None,
+                    direction: None,
+                    note: "model simplex phase-I dual failed independent Farkas verification"
+                        .into(),
+                });
+            };
+            return Ok(DetectionProposal {
+                method: SeparationMethod::Simplex,
+                dropped: Vec::new(),
+                iterations,
+                status: MethodStatus::NoSeparation,
+                certificate: Some(certificate),
+                exact_fe_certificate: None,
+                direction: None,
+                note:
+                    "model simplex phase-I infeasibility passed an independent Farkas certificate"
+                        .into(),
+            });
+        }
     };
     let gamma = combine_basis(&basis, &coordinates)?;
     drop(coordinates);
@@ -296,8 +318,86 @@ pub(crate) fn model_simplex_interruptible(
         gamma,
         iterations,
         certificate_tolerance,
-        "model simplex phase-I certificate passed",
+        "model simplex phase-I certificate passed".into(),
     )
+}
+
+/// Independently verify the phase-I Farkas multiplier against the original
+/// cone feasibility system
+///
+/// ```text
+/// A c - s = 0,   1's = 1,   c free, s >= 0.
+/// ```
+///
+/// For `y = (u, v)`, infeasibility follows from `A'u = 0`,
+/// `v - u_i >= 0`, and `v < 0`.  These conditions imply `y'M >= 0` but
+/// `y'b < 0`, which is impossible for any nonnegative primal solution.  This
+/// routine consumes neither the final tableau nor its reduced costs.
+fn verify_phase_one_farkas_certificate(
+    cone: &[Vec<f64>],
+    dual: &[f64],
+    tolerance: f64,
+) -> Result<Option<SeparationCertificate>> {
+    let boundary = cone.len();
+    let nullity = cone.first().map_or(0, Vec::len);
+    if boundary == 0
+        || nullity == 0
+        || dual.len() != boundary + 1
+        || cone.iter().any(|row| row.len() != nullity)
+        || cone
+            .iter()
+            .flat_map(|row| row.iter())
+            .chain(dual)
+            .any(|value| !value.is_finite())
+    {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "model-simplex Farkas certificate is not finite and dimensionally aligned",
+        ));
+    }
+    let scale = dual
+        .iter()
+        .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+    if !scale.is_finite() || scale <= f64::MIN_POSITIVE {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "model-simplex Farkas certificate is zero",
+        ));
+    }
+    let normalization_dual = dual[boundary];
+    let mut stationarity = 0.0_f64;
+    for column in 0..nullity {
+        let mut value = 0.0_f64;
+        for row in 0..boundary {
+            value = cone[row][column].mul_add(dual[row], value);
+        }
+        stationarity = stationarity.max(value.abs());
+    }
+    let inequality_violation = (0..boundary)
+        .map(|row| (dual[row] - normalization_dual).max(0.0))
+        .fold(0.0_f64, f64::max);
+    let stationarity_relative = stationarity / scale;
+    let inequality_violation_relative = inequality_violation / scale;
+    let infeasibility_margin_relative = -normalization_dual / scale;
+    let certificate = SeparationCertificate {
+        proof: SeparationCertificateProof::SimplexDualInfeasibility {
+            boundary_rows: boundary,
+            nullity,
+        },
+        interior_zero_relative: stationarity_relative,
+        boundary_violation_relative: inequality_violation_relative,
+        span_residual_relative: 0.0,
+        negative_margin_relative: infeasibility_margin_relative,
+        direction_scale: scale,
+        positive_maximum: 0.0,
+        passed: stationarity_relative <= tolerance
+            && inequality_violation_relative <= tolerance
+            && infeasibility_margin_relative >= tolerance,
+    };
+    if !certificate.passed {
+        return Ok(None);
+    }
+    Ok(Some(certificate))
 }
 
 fn no_separation_certificate(columns: usize) -> SeparationCertificate {
@@ -319,7 +419,7 @@ fn certified_result(
     gamma: Vec<f64>,
     iterations: usize,
     tolerance: f64,
-    note: &str,
+    note: SeparationNote,
 ) -> Result<DetectionProposal> {
     if gamma.iter().any(|value| !value.is_finite()) {
         return Err(FeregError::new(
@@ -395,7 +495,7 @@ fn certified_result(
         span_residual_relative: 0.0,
         negative_margin_relative: negative_margin / scale,
         direction_scale: scale,
-        positive_maximum,
+        positive_maximum: positive_maximum.max(0.0),
         passed: interior_zero <= threshold
             && positive_maximum <= threshold
             && most_negative > threshold
@@ -418,7 +518,7 @@ fn certified_result(
         certificate: Some(certificate),
         exact_fe_certificate: None,
         direction: Some(z),
-        note: note.to_owned(),
+        note,
     })
 }
 

@@ -1,6 +1,7 @@
 use crate::data::{
-    prepare_numeric_sample_with_source_uses, AdjustmentInput, DomainDecision, NumericColumnView,
-    NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedAdjustment,
+    classify_numeric_sample_with_source_uses, prepare_numeric_sample_with_source_uses,
+    AdjustmentInput, DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy,
+    NumericPreparationInput, NumericSampleClassification, NumericSourceUse, PreparedAdjustment,
     PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, FeregError, Result};
@@ -98,6 +99,16 @@ pub struct PreparedPpmlNumericData {
     adjustment: PreparedPpmlAdjustmentReport,
 }
 
+/// Scalar shape certified by the same row-domain policy as canonical numeric
+/// preparation, without allocating an observation-sized ledger or compacted
+/// column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PpmlNumericClassification {
+    pub(crate) n_original: usize,
+    pub(crate) n_candidate: usize,
+    pub(crate) n_active: usize,
+}
+
 impl PreparedPpmlNumericData {
     #[must_use]
     pub const fn sample(&self) -> &PreparedNumericSample {
@@ -129,28 +140,103 @@ impl PreparedPpmlNumericData {
     }
 }
 
-/// Construct the PPML numeric sample without building categorical topology.
+/// Validate and count the authoritative PPML numeric sample without
+/// materializing it.
 ///
-/// The generic preparation seam remains authoritative for row order, missing
-/// data precedence, compact-axis alignment, and the original-row drop ledger.
-/// This wrapper supplies only PPML scientific-domain decisions and canonical
-/// post-compaction weight/adjustment representations.
-pub fn prepare_ppml_numeric_data(
+/// This pass exists solely so fit-lifetime memory routing can fail closed
+/// before canonical compaction. It invokes the shared row classifier and the
+/// same PPML domain policy as [`prepare_ppml_numeric_data`]. The sole retained
+/// state is a few scalar counts and the first deferred nonfinite-weight row.
+pub(crate) fn classify_ppml_numeric_data(
     input: &PpmlNumericPreparationInput<'_>,
-) -> Result<PreparedPpmlNumericData> {
-    let adjustment_kind = match (input.offset, input.exposure) {
-        (Some(_), Some(_)) => {
-            return Err(FeregError::new(
-                ErrorCode::Syntax,
-                "PPML offset and exposure are mutually exclusive",
-            ));
-        }
-        (Some(_), None) => PreparedPpmlAdjustmentKind::Offset,
-        (None, Some(_)) => PreparedPpmlAdjustmentKind::Exposure,
-        (None, None) => PreparedPpmlAdjustmentKind::None,
+) -> Result<PpmlNumericClassification> {
+    let (_, adjustment) = ppml_adjustment(input)?;
+    validate_ppml_weight_kind(input.weights)?;
+    let generic = NumericPreparationInput {
+        candidate: input.candidate,
+        outcome: input.outcome,
+        regressors: input.numeric_sources,
+        weights: input.weights,
+        adjustment,
     };
+    let mut has_positive_outcome = false;
+    let mut first_nonfinite_domain = None;
+    let mut first_nonfinite_weight = None;
+    let NumericSampleClassification {
+        n_original,
+        n_candidate,
+        n_active,
+    } = classify_numeric_sample_with_source_uses(
+        &generic,
+        input.source_uses,
+        &PpmlNumericDomainPolicy,
+        |original_row, reason| {
+            if first_nonfinite_domain.is_none()
+                && is_unmasked_nonfinite_ppml_domain_row(input, original_row, reason)
+            {
+                first_nonfinite_domain = Some((original_row, reason));
+            }
+            if reason == DropReason::Retained && input.outcome.values[original_row] > 0.0 {
+                has_positive_outcome = true;
+            }
+            if first_nonfinite_weight.is_none()
+                && reason == DropReason::InvalidOrMissingWeight
+                && matches!(
+                    input.weights,
+                    WeightInput::Provided { column, .. }
+                        if !column.missing.is_some_and(|mask| mask[original_row])
+                            && !column.values[original_row].is_finite()
+                )
+            {
+                first_nonfinite_weight = Some(original_row);
+            }
+            Ok(())
+        },
+    )?;
+    if let Some((original_row, reason)) = first_nonfinite_domain {
+        validate_unmasked_nonfinite_ppml_domain_row(input, original_row, reason)?;
+        unreachable!("recorded nonfinite PPML domain must fail validation");
+    }
+    if let Some(original_row) = first_nonfinite_weight {
+        validate_unmasked_nonfinite_weight_row(input.weights, original_row)?;
+        unreachable!("recorded nonfinite PPML weight must fail validation");
+    }
+    if n_active == 0 || !has_positive_outcome {
+        return Err(FeregError::new(
+            ErrorCode::InsufficientObservations,
+            "PPML final numeric sample has no positive weighted outcome",
+        ));
+    }
+    Ok(PpmlNumericClassification {
+        n_original,
+        n_candidate,
+        n_active,
+    })
+}
+
+fn ppml_adjustment<'a>(
+    input: &PpmlNumericPreparationInput<'a>,
+) -> Result<(PreparedPpmlAdjustmentKind, AdjustmentInput<'a>)> {
+    match (input.offset, input.exposure) {
+        (Some(_), Some(_)) => Err(FeregError::new(
+            ErrorCode::Syntax,
+            "PPML offset and exposure are mutually exclusive",
+        )),
+        (Some(offset), None) => Ok((
+            PreparedPpmlAdjustmentKind::Offset,
+            AdjustmentInput::Offset(offset),
+        )),
+        (None, Some(exposure)) => Ok((
+            PreparedPpmlAdjustmentKind::Exposure,
+            AdjustmentInput::Exposure(exposure),
+        )),
+        (None, None) => Ok((PreparedPpmlAdjustmentKind::None, AdjustmentInput::None)),
+    }
+}
+
+fn validate_ppml_weight_kind(weights: WeightInput<'_>) -> Result<()> {
     if matches!(
-        input.weights,
+        weights,
         WeightInput::Provided {
             kind: WeightKind::Analytic | WeightKind::Importance,
             ..
@@ -161,13 +247,20 @@ pub fn prepare_ppml_numeric_data(
             "PPML numeric preparation supports only fweights and pweights",
         ));
     }
+    Ok(())
+}
 
-    let adjustment = match (input.offset, input.exposure) {
-        (Some(offset), None) => AdjustmentInput::Offset(offset),
-        (None, Some(exposure)) => AdjustmentInput::Exposure(exposure),
-        (None, None) => AdjustmentInput::None,
-        (Some(_), Some(_)) => unreachable!("mutual exclusion checked above"),
-    };
+/// Construct the PPML numeric sample without building categorical topology.
+///
+/// The generic preparation seam remains authoritative for row order, missing
+/// data precedence, compact-axis alignment, and the original-row drop ledger.
+/// This wrapper supplies only PPML scientific-domain decisions and canonical
+/// post-compaction weight/adjustment representations.
+pub fn prepare_ppml_numeric_data(
+    input: &PpmlNumericPreparationInput<'_>,
+) -> Result<PreparedPpmlNumericData> {
+    let (adjustment_kind, adjustment) = ppml_adjustment(input)?;
+    validate_ppml_weight_kind(input.weights)?;
     let generic = NumericPreparationInput {
         candidate: input.candidate,
         outcome: input.outcome,
@@ -210,49 +303,77 @@ fn validate_unmasked_nonfinite_ppml_domains(
     sample: &PreparedNumericSample,
 ) -> Result<()> {
     for (original_row, reason) in sample.drop_reasons.iter().copied().enumerate() {
-        if reason == crate::data::DropReason::MissingOutcome
-            && !input.outcome.missing.is_some_and(|mask| mask[original_row])
-            && !input.outcome.values[original_row].is_finite()
-        {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!(
-                    "PPML outcome at observation {} must be finite and nonnegative",
-                    original_row + 1
-                ),
-            ));
-        }
+        validate_unmasked_nonfinite_ppml_domain_row(input, original_row, reason)?;
+    }
+    Ok(())
+}
 
-        if reason != crate::data::DropReason::MissingOffsetOrExposure {
-            continue;
-        }
-        let (kind, column) = match (input.offset, input.exposure) {
-            (Some(column), None) => ("offset", column),
-            (None, Some(column)) => ("exposure", column),
-            (None, None) => continue,
-            (Some(_), Some(_)) => unreachable!("mutual exclusion checked before preparation"),
-        };
-        if column.missing.is_some_and(|mask| mask[original_row])
-            || column.values[original_row].is_finite()
-        {
-            continue;
-        }
+fn validate_unmasked_nonfinite_ppml_domain_row(
+    input: &PpmlNumericPreparationInput<'_>,
+    original_row: usize,
+    reason: DropReason,
+) -> Result<()> {
+    if reason == DropReason::MissingOutcome
+        && !input.outcome.missing.is_some_and(|mask| mask[original_row])
+        && !input.outcome.values[original_row].is_finite()
+    {
         return Err(FeregError::new(
             ErrorCode::InvalidData,
             format!(
-                "PPML {kind} at observation {} must be finite",
+                "PPML outcome at observation {} must be finite and nonnegative",
                 original_row + 1
             ),
         ));
     }
-    Ok(())
+
+    if reason != DropReason::MissingOffsetOrExposure {
+        return Ok(());
+    }
+    let (kind, column) = match (input.offset, input.exposure) {
+        (Some(column), None) => ("offset", column),
+        (None, Some(column)) => ("exposure", column),
+        (None, None) => return Ok(()),
+        (Some(_), Some(_)) => unreachable!("mutual exclusion checked before preparation"),
+    };
+    if column.missing.is_some_and(|mask| mask[original_row])
+        || column.values[original_row].is_finite()
+    {
+        return Ok(());
+    }
+    Err(FeregError::new(
+        ErrorCode::InvalidData,
+        format!(
+            "PPML {kind} at observation {} must be finite",
+            original_row + 1
+        ),
+    ))
+}
+
+fn is_unmasked_nonfinite_ppml_domain_row(
+    input: &PpmlNumericPreparationInput<'_>,
+    original_row: usize,
+    reason: DropReason,
+) -> bool {
+    if reason == DropReason::MissingOutcome {
+        return !input.outcome.missing.is_some_and(|mask| mask[original_row])
+            && !input.outcome.values[original_row].is_finite();
+    }
+    if reason != DropReason::MissingOffsetOrExposure {
+        return false;
+    }
+    let column = match (input.offset, input.exposure) {
+        (Some(column), None) | (None, Some(column)) => column,
+        (None, None) | (Some(_), Some(_)) => return false,
+    };
+    !column.missing.is_some_and(|mask| mask[original_row])
+        && !column.values[original_row].is_finite()
 }
 
 fn validate_unmasked_nonfinite_weights(
     input: WeightInput<'_>,
     sample: &PreparedNumericSample,
 ) -> Result<()> {
-    let WeightInput::Provided { kind, column } = input else {
+    let WeightInput::Provided { column, .. } = input else {
         return Ok(());
     };
     for (original_row, reason) in sample.drop_reasons.iter().copied().enumerate() {
@@ -263,28 +384,38 @@ fn validate_unmasked_nonfinite_weights(
         {
             continue;
         }
-        return match kind {
-            WeightKind::Frequency => Err(FeregError::new(
-                ErrorCode::InvalidFrequencyWeight,
-                format!(
-                    "PPML frequency weight at observation {} must be finite",
-                    original_row + 1
-                ),
-            )),
-            WeightKind::Probability => Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!(
-                    "PPML probability weight at observation {} must be finite",
-                    original_row + 1
-                ),
-            )),
-            WeightKind::Analytic | WeightKind::Importance => Err(FeregError::new(
-                ErrorCode::UnsupportedWeight,
-                "PPML numeric preparation supports only fweights and pweights",
-            )),
-        };
+        return validate_unmasked_nonfinite_weight_row(input, original_row);
     }
     Ok(())
+}
+
+fn validate_unmasked_nonfinite_weight_row(
+    input: WeightInput<'_>,
+    original_row: usize,
+) -> Result<()> {
+    let WeightInput::Provided { kind, .. } = input else {
+        return Ok(());
+    };
+    match kind {
+        WeightKind::Frequency => Err(FeregError::new(
+            ErrorCode::InvalidFrequencyWeight,
+            format!(
+                "PPML frequency weight at observation {} must be finite",
+                original_row + 1
+            ),
+        )),
+        WeightKind::Probability => Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!(
+                "PPML probability weight at observation {} must be finite",
+                original_row + 1
+            ),
+        )),
+        WeightKind::Analytic | WeightKind::Importance => Err(FeregError::new(
+            ErrorCode::UnsupportedWeight,
+            "PPML numeric preparation supports only fweights and pweights",
+        )),
+    }
 }
 
 struct PpmlNumericDomainPolicy;
@@ -694,6 +825,76 @@ mod tests {
             (left - right).abs() <= 64.0 * f64::EPSILON * left.abs().max(right.abs()).max(1.0),
             "{left:.17e} != {right:.17e}"
         );
+    }
+
+    #[test]
+    fn allocation_free_classification_matches_materialized_shape_and_error_precedence() {
+        let candidate = [true, true, false, true, true];
+        let outcome = [1.0, 9.0, -7.0, 0.0, 3.0];
+        let outcome_missing = [false, true, false, false, false];
+        let regressor = [2.0, 3.0, f64::NAN, 4.0, 5.0];
+        let regressor_missing = [false, false, false, true, false];
+        let sources = [NumericColumnView::with_missing(
+            &regressor,
+            &regressor_missing,
+        )];
+        let uses = [NumericSourceUse::ordinary()];
+        let input = PpmlNumericPreparationInput {
+            candidate: &candidate,
+            outcome: NumericColumnView::with_missing(&outcome, &outcome_missing),
+            numeric_sources: &sources,
+            source_uses: &uses,
+            weights: WeightInput::None,
+            offset: None,
+            exposure: None,
+        };
+        let classification =
+            classify_ppml_numeric_data(&input).expect("allocation-free classification");
+        let prepared = prepare_ppml_numeric_data(&input).expect("materialized sample");
+        assert_eq!(classification.n_original, prepared.sample().n_original);
+        assert_eq!(classification.n_candidate, prepared.sample().n_candidate);
+        assert_eq!(classification.n_active, prepared.sample().n_active());
+        assert_eq!(prepared.sample().retained_rows(), &[0, 4]);
+
+        // Historical preparation validates unmasked outcome/adjustment
+        // domains before deferred unmasked nonfinite-weight diagnostics. The
+        // early classifier must retain that exact failure ordering.
+        let candidate = [true, true];
+        let outcome = [1.0, 1.0];
+        let weight = [f64::NAN, 1.0];
+        let offset = [0.0, f64::NAN];
+        let invalid = PpmlNumericPreparationInput {
+            candidate: &candidate,
+            outcome: NumericColumnView::new(&outcome),
+            numeric_sources: &[],
+            source_uses: &[],
+            weights: WeightInput::Provided {
+                kind: WeightKind::Probability,
+                column: NumericColumnView::new(&weight),
+            },
+            offset: Some(NumericColumnView::new(&offset)),
+            exposure: None,
+        };
+        let classified_error = classify_ppml_numeric_data(&invalid)
+            .expect_err("classification must reject the nonfinite offset first");
+        let prepared_error = prepare_ppml_numeric_data(&invalid)
+            .expect_err("materialization must reject the same nonfinite offset first");
+        assert_eq!(classified_error.code, prepared_error.code);
+        assert_eq!(classified_error.message, prepared_error.message);
+        assert!(classified_error.message.contains("offset at observation 2"));
+
+        // Policy failures raised during the authoritative row scan precede
+        // the post-scan diagnostics for an earlier unmasked nonfinite value.
+        // The count pass must defer the latter just as materialization does.
+        let outcome = [f64::NAN, -1.0];
+        let invalid = unweighted_input(&candidate, &outcome);
+        let classified_error = classify_ppml_numeric_data(&invalid)
+            .expect_err("classification must reject the later negative outcome first");
+        let prepared_error = prepare_ppml_numeric_data(&invalid)
+            .expect_err("materialization must reject the same negative outcome first");
+        assert_eq!(classified_error.code, prepared_error.code);
+        assert_eq!(classified_error.message, prepared_error.message);
+        assert!(classified_error.message.contains("observation 2"));
     }
 
     #[test]

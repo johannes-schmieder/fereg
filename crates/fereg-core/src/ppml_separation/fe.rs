@@ -1,5 +1,9 @@
-use super::{DetectionProposal, ExactFeSeparationCertificate, MethodStatus, SeparationMethod};
+use super::{
+    DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
+    SeparationMethod,
+};
 use crate::fe::FeDesign;
+use crate::metadata::AbsorbTermId;
 
 pub(crate) fn propose_zero_only_fixed_effect_levels(
     outcome: &[f64],
@@ -50,7 +54,19 @@ pub(crate) fn propose_zero_only_fixed_effect_levels(
         }
         for (level, &level_is_active) in active_in_level.iter().enumerate() {
             if level_is_active && !positive_by_effect[position][level] {
-                zero_only_levels.push((*effect_index, level as u32));
+                let representative_original_row = active
+                    .iter()
+                    .zip(effect.codes())
+                    .enumerate()
+                    .find_map(|(row, (&is_active, &code))| {
+                        (is_active && code as usize == level).then_some(row)
+                    })
+                    .expect("active exact-FE level has a representative row");
+                zero_only_levels.push(ExactFeLevelIdentity {
+                    effect: AbsorbTermId::new((*effect_index + 1) as u32)
+                        .expect("test-oracle effect ordinal is one-based"),
+                    representative_original_row,
+                });
             }
         }
     }
@@ -83,7 +99,7 @@ pub(crate) fn propose_zero_only_fixed_effect_levels(
             passed: true,
         }),
         direction: None,
-        note: "exact zero-only absorbed-intercept levels".to_owned(),
+        note: "exact zero-only absorbed-intercept levels".into(),
     }
 }
 
@@ -108,7 +124,10 @@ mod tests {
                 .exact_fe_certificate
                 .expect("exact certificate")
                 .zero_only_levels,
-            vec![(0, 0)]
+            vec![ExactFeLevelIdentity {
+                effect: AbsorbTermId::new(1).expect("effect identity"),
+                representative_original_row: 0,
+            }]
         );
     }
 

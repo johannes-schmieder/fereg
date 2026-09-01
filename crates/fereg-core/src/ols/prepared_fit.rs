@@ -13,6 +13,13 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::time::Instant;
 
+use super::finite_wls_kernel::{
+    certify_normal_equations, factor_guarded_cholesky_in_place, fill_finite_wls_moments,
+    finite_wls_moment_layout,
+    inverse_relative_infinity_norm as kernel_inverse_relative_infinity_norm,
+    invert_guarded_cholesky, solve_guarded_cholesky, CholeskyPivotPolicy, FixedBlockMomentSource,
+    NormalEquationScale,
+};
 use super::linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationGuard,
     LinearSessionPhaseAllocationObservation, LinearSessionPhaseAllocatorProbe,
@@ -497,12 +504,12 @@ impl CertifiedPreparedOlsFit {
         }
     }
 
-    pub(super) fn take_any_fast_score_cache(&mut self) -> Option<PreparedOlsFastScoreCache> {
-        self.fast_score_cache.take()
-    }
-
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
         self.execution.scratch_bytes = self.execution.scratch_bytes.max(bytes);
+    }
+
+    pub(super) fn into_session_residual_storage(self) -> Vec<f64> {
+        self.residuals.into_row_major()
     }
 }
 
@@ -766,6 +773,34 @@ struct QrFit {
     standardized_within_is_reusable: bool,
 }
 
+/// Complete retained-design solve products assembled by the reusable PPML
+/// session. The session owns projection/rank workspaces; this adapter keeps
+/// all OLS-compatible slot, intercept, residual, score, and bread publication
+/// policy in one place without reconstructing another observation-by-column
+/// design.
+pub(super) struct RetainedFiniteFitDraft<'a> {
+    pub(super) generated_coefficients: Vec<Option<f64>>,
+    pub(super) generated_statuses: Vec<PreparedOlsFitStatus>,
+    pub(super) kept: Vec<usize>,
+    pub(super) dropped: Vec<usize>,
+    pub(super) rank_certificate: PreparedOlsRankCertificate,
+    pub(super) canonical_candidates: Vec<usize>,
+    pub(super) standardized_gram: &'a [f64],
+    pub(super) standardized_rhs: &'a [f64],
+    pub(super) finite_bread_generated_columns: Vec<usize>,
+    pub(super) finite_bread_values: Vec<f64>,
+    pub(super) finite_reference_crossproduct: Vec<f64>,
+    pub(super) left_inverse_relative_infinity_norm: f64,
+    pub(super) right_inverse_relative_infinity_norm: f64,
+    pub(super) reference_norms: Vec<f64>,
+    pub(super) score_norms: Vec<f64>,
+    pub(super) within_outcome_norm: f64,
+    pub(super) normalized_initial_within_sum_of_squares: f64,
+    pub(super) within_residuals: Vec<f64>,
+    pub(super) absorption_report: SolveReport,
+    pub(super) scratch_bytes: u64,
+}
+
 #[derive(Debug)]
 struct RawMomentCache {
     means: Vec<f64>,
@@ -884,6 +919,189 @@ pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync
             ),
         }
     })?
+}
+
+pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+    draft: RetainedFiniteFitDraft<'_>,
+) -> Result<CertifiedPreparedOlsFit> {
+    frame.validate_for(prepared)?;
+    validate_config(prepared, config)?;
+    let generated_columns = prepared.fit_model().columns.len();
+    if draft.generated_coefficients.len() != generated_columns
+        || draft.generated_statuses.len() != generated_columns
+        || draft.reference_norms.len() != generated_columns
+        || draft.score_norms.len() != generated_columns
+        || draft.within_residuals.len() != prepared.fit_sample().n_active()
+        || draft.finite_bread_generated_columns.len() != draft.kept.len()
+    {
+        return Err(invalid_argument(
+            "retained weighted-linear fit draft dimensions are inconsistent",
+        ));
+    }
+    let rank = draft.kept.len();
+    let rank_square = checked_square(
+        rank,
+        "retained weighted-linear bread dimensions overflow usize",
+    )?;
+    if draft.finite_bread_values.len() != rank_square
+        || draft.finite_reference_crossproduct.len() != rank_square
+        || draft.standardized_rhs.len() != draft.canonical_candidates.len()
+        || draft.standardized_gram.len()
+            != checked_square(
+                draft.canonical_candidates.len(),
+                "retained weighted-linear Gram dimensions overflow usize",
+            )?
+    {
+        return Err(invalid_argument(
+            "retained weighted-linear fit draft moments are inconsistent",
+        ));
+    }
+    let finite_score = build_finite_score_draft(
+        &draft.canonical_candidates,
+        draft.standardized_gram,
+        draft.standardized_rhs,
+        &draft.generated_coefficients,
+        &draft.generated_statuses,
+        &draft.reference_norms,
+        &draft.score_norms,
+    )?;
+    let mut qr = QrFit {
+        generated_coefficients: draft.generated_coefficients,
+        generated_statuses: draft.generated_statuses,
+        kept: draft.kept,
+        dropped: draft.dropped,
+        rank,
+        certificate: draft.rank_certificate,
+        finite_score,
+        bread: Some(FiniteBreadDraft {
+            generated_columns: draft.finite_bread_generated_columns,
+            values: draft.finite_bread_values,
+            reference_crossproduct: draft.finite_reference_crossproduct,
+            weight_scale: frame.bread_weight_scale(),
+            left_inverse_relative_infinity_norm: draft.left_inverse_relative_infinity_norm,
+            right_inverse_relative_infinity_norm: draft.right_inverse_relative_infinity_norm,
+        }),
+        within_residuals: Some(draft.within_residuals),
+        standardized_within_is_reusable: false,
+    };
+    let weights = frame.weights();
+    let mut raw_residuals = reserved_filled(
+        &mut SystemFitReservation,
+        prepared.fit_sample().n_active(),
+        0.0_f64,
+        "unable to reserve retained weighted-linear raw residual",
+    )?;
+    raw_residuals
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(row, residual)| -> Result<()> {
+            let mut value = frame.response()[row];
+            for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
+                if let Some(coefficient) = coefficient {
+                    value =
+                        (-*coefficient).mul_add(prepared.fit_column_value(generated, row)?, value);
+                }
+            }
+            if value.is_finite() {
+                *residual = value;
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "retained weighted-linear raw residual is not finite",
+                ))
+            }
+        })?;
+    let bread = finalize_reported_bread_and_intercept(
+        prepared,
+        frame.response(),
+        &mut qr,
+        Some(&mut raw_residuals),
+        weights,
+        config.bread_tolerance,
+        &mut SystemFitReservation,
+        FitPerturbations::default(),
+        None,
+        None,
+    )?;
+    let initial_absorbed_outcome_sum_of_squares = draft.normalized_initial_within_sum_of_squares
+        * frame.bread_weight_scale().reference_weight_multiplier;
+    if !initial_absorbed_outcome_sum_of_squares.is_finite()
+        || initial_absorbed_outcome_sum_of_squares < 0.0
+    {
+        return Err(invalid_data(
+            "retained weighted-linear initial absorbed outcome sum of squares is invalid",
+        ));
+    }
+    let within_residuals = qr.within_residuals.take().ok_or_else(|| {
+        invalid_argument("retained weighted-linear fit did not retain its within residual")
+    })?;
+    let residual_matrix =
+        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
+    let residual_absorbed =
+        prepared.fit_absorb_matrix(frame.raw_weights(), residual_matrix, config.absorb)?;
+    if !residual_absorbed.report().certified() {
+        return Err(invalid_data(
+            "retained weighted-linear residual absorption did not certify",
+        ));
+    }
+    let (residuals, mut residual_absorption_report) = residual_absorbed.into_parts();
+    // A retained PPML session may own the accepted fit beside one speculative
+    // strict candidate. Solver warnings are diagnostic strings with no
+    // scientific authority and no finite heap bound, so they cannot become
+    // persistent session state. Drop both warning banks here, without
+    // changing the public one-shot fereg result path.
+    residual_absorption_report.warnings = Vec::new();
+    let mut absorption_report = draft.absorption_report;
+    absorption_report.warnings = Vec::new();
+    let score_certificate = certify_scores(
+        prepared,
+        residuals.as_slice(),
+        weights,
+        &draft.reference_norms,
+        &draft.score_norms,
+        qr.finite_score,
+        &qr.generated_statuses,
+        draft.within_outcome_norm,
+        config.score_tolerance,
+    )?;
+    if !score_certificate.passed {
+        return Err(invalid_data(
+            "retained weighted-linear score certificate did not pass",
+        ));
+    }
+    let coefficients = build_coefficient_slots(prepared, &qr, &mut SystemFitReservation)?;
+    qr.kept.sort_unstable();
+    qr.dropped.sort_unstable();
+    Ok(CertifiedPreparedOlsFit {
+        coefficients,
+        kept_generated_columns: qr.kept,
+        dropped_generated_columns: qr.dropped,
+        finite_rank: qr.rank,
+        rank_certificate: qr.certificate,
+        score_certificate,
+        bread,
+        absorption_report,
+        residual_absorption_report,
+        initial_absorbed_outcome_sum_of_squares,
+        residuals,
+        recovered_fe_coefficients: None,
+        fast_score_cache: None,
+        execution: PreparedOlsExecutionReport {
+            mode: config.execution.mode,
+            poolsize: config.execution.poolsize,
+            scratch_bytes: draft.scratch_bytes,
+            requested_threads: config
+                .execution
+                .threads
+                .requested
+                .map_or(0, |value| value.get()),
+            effective_threads: config.execution.threads.resolved(),
+            deterministic: config.execution.threads.deterministic,
+        },
+    })
 }
 
 /// Canonical finite-plus-FE projection without covariance/report publication.
@@ -2227,7 +2445,7 @@ fn fit_with_controls_low_internal_with_frame<
     })
 }
 
-fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
+pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
     let cmg_fallback_mix = target.requested_solver == FeSolverKind::Cmg
         && source.requested_solver == FeSolverKind::Cmg
         && matches!(target.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg)
@@ -2429,95 +2647,25 @@ fn build_standardized_moments<R: FitReservation>(
     if candidate_count == 0 {
         return Ok((Vec::new(), Vec::new()));
     }
-    if candidate_count > FUSED_MOMENT_MAX_COLUMNS {
-        return build_standardized_moments_columnwise(within, canonical_candidates, reservation);
-    }
     let gram_elements = checked_square(
         candidate_count,
         "prepared OLS standardized Gram dimensions overflow usize",
     )?;
-    let partial_stride = candidate_count
-        .checked_add(gram_elements)
-        .ok_or_else(|| allocation("prepared OLS moment-partial dimensions overflow usize"))?;
-    let chunks = within
-        .nrows()
-        .div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS)
-        .clamp(1, FUSED_MOMENT_MAX_BLOCKS);
-    let partial_elements = chunks
-        .checked_mul(partial_stride)
-        .ok_or_else(|| allocation("prepared OLS moment-partial allocation overflows usize"))?;
-    let mut partials = reserved_filled(
-        reservation,
-        partial_elements,
-        0.0_f64,
-        "unable to reserve prepared OLS moment partials",
-    )?;
-    let ncols = within.ncols();
-    let contiguous_matrix_start = canonical_candidates
-        .first()
-        .copied()
-        .filter(|start| {
-            canonical_candidates
-                .iter()
-                .copied()
-                .enumerate()
-                .all(|(offset, generated)| start.checked_add(offset) == Some(generated))
-        })
-        .and_then(|start| start.checked_add(1))
-        .filter(|start| {
-            start
-                .checked_add(candidate_count)
-                .is_some_and(|end| end <= ncols)
-        });
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let rows_per_chunk = within.nrows() / chunks;
-            let remainder = within.nrows() % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            if let Some(matrix_start) = contiguous_matrix_start {
-                for row in start..end {
-                    let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
-                    let outcome = values[0];
-                    let candidates = &values[matrix_start..matrix_start + candidate_count];
-                    for left in 0..candidate_count {
-                        let left_value = candidates[left];
-                        partial[left] += left_value * outcome;
-                        for (offset, right_value) in candidates[left..].iter().copied().enumerate()
-                        {
-                            let right = left + offset;
-                            let position = candidate_count + left * candidate_count + right;
-                            partial[position] += left_value * right_value;
-                        }
-                    }
-                }
-            } else {
-                for row in start..end {
-                    let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
-                    let outcome = values[0];
-                    for (left, generated) in canonical_candidates.iter().copied().enumerate() {
-                        let left_value = values[generated + 1];
-                        partial[left] += left_value * outcome;
-                        for (right, other_generated) in
-                            canonical_candidates.iter().copied().enumerate().skip(left)
-                        {
-                            let position = candidate_count + left * candidate_count + right;
-                            partial[position] += left_value * values[other_generated + 1];
-                        }
-                    }
-                }
-            }
-            if partial.iter().all(|value| value.is_finite()) {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "prepared OLS standardized moment partial is not finite",
-                ))
-            }
-        })?;
-
+    let source = FixedBlockMomentSource::PreparedStandardized {
+        within,
+        canonical_candidates,
+    };
+    let layout = finite_wls_moment_layout(source)?;
+    let mut partials = if layout.partial_elements == 0 {
+        Vec::new()
+    } else {
+        reserved_filled(
+            reservation,
+            layout.partial_elements,
+            0.0_f64,
+            "unable to reserve prepared OLS moment partials",
+        )?
+    };
     let mut standardized_rhs = reserved_filled(
         reservation,
         candidate_count,
@@ -2530,35 +2678,19 @@ fn build_standardized_moments<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS standardized Gram",
     )?;
-    for position in 0..candidate_count {
-        let mut sum = 0.0_f64;
-        let mut correction = 0.0_f64;
-        for partial in partials.chunks_exact(partial_stride) {
-            compensated_add(partial[position], &mut sum, &mut correction)?;
-        }
-        standardized_rhs[position] = sum + correction;
-    }
-    for left in 0..candidate_count {
-        for right in left..candidate_count {
-            let partial_position = candidate_count + left * candidate_count + right;
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for partial in partials.chunks_exact(partial_stride) {
-                compensated_add(partial[partial_position], &mut sum, &mut correction)?;
-            }
-            let value = sum + correction;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS standardized Gram entry is not finite",
-                ));
-            }
-            standardized_gram[left * candidate_count + right] = value;
-            standardized_gram[right * candidate_count + left] = value;
-        }
-    }
+    fill_finite_wls_moments(
+        source,
+        layout,
+        &mut partials,
+        &mut standardized_rhs,
+        &mut standardized_gram,
+    )?;
     Ok((standardized_rhs, standardized_gram))
 }
 
+/// Scalar reference retained only by the regression test for the shared
+/// production moment dispatcher.
+#[cfg(test)]
 fn build_standardized_moments_columnwise<R: FitReservation>(
     within: &DenseMatrix,
     canonical_candidates: &[usize],
@@ -2714,55 +2846,17 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
     if !pivot_guard.is_finite() || pivot_guard <= 0.0 {
         return Ok(None);
     }
-    let mut largest_diagonal = 0.0_f64;
-    let mut smallest_diagonal = f64::INFINITY;
-    for step in 0..candidate_count {
-        let mut pivot_position = step;
-        let mut pivot_value = gram[step * candidate_count + step];
-        for candidate in (step + 1)..candidate_count {
-            let value = gram[candidate * candidate_count + candidate];
-            if value > pivot_value {
-                pivot_position = candidate;
-                pivot_value = value;
-            }
-        }
-        if !pivot_value.is_finite() || pivot_value <= pivot_guard {
-            return Ok(None);
-        }
-        if pivot_position != step {
-            swap_symmetric_block(&mut gram, candidate_count, step, pivot_position);
-            rhs.swap(step, pivot_position);
-            permutation.swap(step, pivot_position);
-            for column in 0..step {
-                factor.swap(
-                    step * candidate_count + column,
-                    pivot_position * candidate_count + column,
-                );
-            }
-        }
-        let diagonal = gram[step * candidate_count + step].sqrt();
-        if !diagonal.is_finite() || diagonal <= 0.0 {
-            return Ok(None);
-        }
-        factor[step * candidate_count + step] = diagonal;
-        largest_diagonal = largest_diagonal.max(diagonal);
-        smallest_diagonal = smallest_diagonal.min(diagonal);
-        for row in (step + 1)..candidate_count {
-            factor[row * candidate_count + step] = gram[row * candidate_count + step] / diagonal;
-        }
-        for row in (step + 1)..candidate_count {
-            for column in row..candidate_count {
-                let updated = gram[column * candidate_count + row]
-                    - factor[row * candidate_count + step]
-                        * factor[column * candidate_count + step];
-                if !updated.is_finite() {
-                    return Ok(None);
-                }
-                gram[column * candidate_count + row] = updated;
-                gram[row * candidate_count + column] = updated;
-            }
-        }
-    }
+    let Some(factor_report) = factor_guarded_cholesky_in_place(
+        &mut gram,
+        &mut rhs,
+        &mut factor,
+        &mut permutation,
+        CholeskyPivotPolicy::MaximumDiagonal,
+        pivot_guard,
+    )?
+    else {
+        return Ok(None);
+    };
 
     let mut forward = reserved_filled(
         reservation,
@@ -2770,32 +2864,14 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS Cholesky forward solve",
     )?;
-    for row in 0..candidate_count {
-        let mut value = rhs[row];
-        for column in 0..row {
-            value = (-factor[row * candidate_count + column]).mul_add(forward[column], value);
-        }
-        forward[row] = value / factor[row * candidate_count + row];
-        if !forward[row].is_finite() {
-            return Ok(None);
-        }
-    }
     let mut pivot_coefficients = reserved_filled(
         reservation,
         candidate_count,
         0.0_f64,
         "unable to reserve prepared OLS Cholesky coefficients",
     )?;
-    for row in (0..candidate_count).rev() {
-        let mut value = forward[row];
-        for column in (row + 1)..candidate_count {
-            value = (-factor[column * candidate_count + row])
-                .mul_add(pivot_coefficients[column], value);
-        }
-        pivot_coefficients[row] = value / factor[row * candidate_count + row];
-        if !pivot_coefficients[row].is_finite() {
-            return Ok(None);
-        }
+    if !solve_guarded_cholesky(&factor, &rhs, &mut forward, &mut pivot_coefficients)? {
+        return Ok(None);
     }
     let mut standardized_coefficients = reserved_filled(
         reservation,
@@ -2814,44 +2890,19 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
             0.0_f64,
             "unable to reserve prepared OLS inverse Cholesky factor",
         )?;
-        for column in 0..candidate_count {
-            for row in 0..candidate_count {
-                let mut value = f64::from(row == column);
-                for inner in 0..row {
-                    value = (-factor[row * candidate_count + inner])
-                        .mul_add(inverse_lower[inner * candidate_count + column], value);
-                }
-                inverse_lower[row * candidate_count + column] =
-                    value / factor[row * candidate_count + row];
-            }
-        }
         let mut canonical_inverse = reserved_filled(
             reservation,
             square,
             0.0_f64,
             "unable to reserve prepared OLS canonical Cholesky inverse",
         )?;
-        for left in 0..candidate_count {
-            for right in left..candidate_count {
-                let mut sum = 0.0_f64;
-                let mut correction = 0.0_f64;
-                for inner in 0..candidate_count {
-                    compensated_add(
-                        inverse_lower[inner * candidate_count + left]
-                            * inverse_lower[inner * candidate_count + right],
-                        &mut sum,
-                        &mut correction,
-                    )?;
-                }
-                let value = sum + correction;
-                if !value.is_finite() {
-                    return Ok(None);
-                }
-                let canonical_left = permutation[left];
-                let canonical_right = permutation[right];
-                canonical_inverse[canonical_left * candidate_count + canonical_right] = value;
-                canonical_inverse[canonical_right * candidate_count + canonical_left] = value;
-            }
+        if !invert_guarded_cholesky(
+            &factor,
+            &permutation,
+            &mut inverse_lower,
+            &mut canonical_inverse,
+        )? {
+            return Ok(None);
         }
         canonical_inverse
     } else {
@@ -2981,7 +3032,7 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
         certificate: PreparedOlsRankCertificate {
             relative_threshold,
             maximum_dropped_trailing_norm: 0.0,
-            condition_proxy: largest_diagonal / smallest_diagonal,
+            condition_proxy: factor_report.maximum_diagonal / factor_report.minimum_diagonal,
             passed: true,
         },
         finite_score,
@@ -2989,18 +3040,6 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
         within_residuals: Some(residuals),
         standardized_within_is_reusable: true,
     }))
-}
-
-fn swap_symmetric_block(matrix: &mut [f64], dimension: usize, left: usize, right: usize) {
-    if left == right {
-        return;
-    }
-    for column in 0..dimension {
-        matrix.swap(left * dimension + column, right * dimension + column);
-    }
-    for row in 0..dimension {
-        matrix.swap(row * dimension + left, row * dimension + right);
-    }
 }
 
 const fn valid_unit_tolerance(value: f64) -> bool {
@@ -4192,8 +4231,7 @@ fn build_finite_score_draft(
         ));
     }
 
-    let mut draft = FiniteScoreDraft::default();
-    for (left, generated) in canonical_candidates.iter().copied().enumerate() {
+    for generated in canonical_candidates.iter().copied() {
         let status = generated_statuses[generated];
         if !matches!(
             status,
@@ -4214,44 +4252,22 @@ fn build_finite_score_draft(
                 "prepared OLS finite-score regressor scale is not finite and positive",
             ));
         }
-
-        let mut fitted = 0.0_f64;
-        let mut correction = 0.0_f64;
-        for (right, other_generated) in canonical_candidates.iter().copied().enumerate() {
-            if let Some(coefficient) = generated_coefficients[other_generated] {
-                let standardized_coefficient = coefficient * reference_norms[other_generated];
-                if !standardized_coefficient.is_finite() {
-                    return Err(invalid_data(
-                        "prepared OLS standardized coefficient is not finite",
-                    ));
-                }
-                compensated_add(
-                    standardized_gram[left * candidate_count + right] * standardized_coefficient,
-                    &mut fitted,
-                    &mut correction,
-                )?;
-            }
-        }
-        let standardized_score = (standardized_rhs[left] - (fitted + correction)).abs();
-        let scale = standardized_score * reference_norm / score_norm;
-        if !scale.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS finite-score normal-equation scale is not finite",
-            ));
-        }
-        draft.infinity_scale = draft.infinity_scale.max(scale);
-        draft.square_sum_scale = scale.mul_add(scale, draft.square_sum_scale);
-        if !draft.square_sum_scale.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS finite-score two-norm scale is not finite",
-            ));
-        }
-        draft.moments = draft
-            .moments
-            .checked_add(1)
-            .ok_or_else(|| allocation("prepared OLS finite-score moment count overflows"))?;
     }
-    Ok(draft)
+    let certificate = certify_normal_equations(
+        standardized_gram,
+        standardized_rhs,
+        NormalEquationScale::Prepared {
+            generated_columns: canonical_candidates,
+            generated_coefficients,
+            reference_norms,
+            score_norms,
+        },
+    )?;
+    Ok(FiniteScoreDraft {
+        infinity_scale: certificate.relative_infinity_norm,
+        square_sum_scale: certificate.relative_square_sum,
+        moments: certificate.moments,
+    })
 }
 
 fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -4559,68 +4575,14 @@ fn inverse_relative_infinity_norm(
     rank: usize,
     reverse: bool,
 ) -> Result<f64> {
-    let gram_square = checked_square(
+    kernel_inverse_relative_infinity_norm(
+        gram,
         gram_dimension,
-        "prepared OLS bread Gram dimensions overflow usize",
-    )?;
-    let rank_square = checked_square(rank, "prepared OLS bread dimensions overflow usize")?;
-    if gram.len() != gram_square
-        || gram_positions.len() != rank
-        || inverse.len() != rank_square
-        || gram_positions
-            .iter()
-            .any(|position| *position >= gram_dimension)
-    {
-        return Err(invalid_argument(
-            "prepared OLS inverse-certificate dimensions are inconsistent",
-        ));
-    }
-    let mut maximum = 0.0_f64;
-    for row in 0..rank {
-        let mut row_error = 0.0_f64;
-        let mut row_scale = 1.0_f64;
-        for column in 0..rank {
-            let mut product = 0.0_f64;
-            let mut correction = 0.0_f64;
-            let mut absolute_products = 0.0_f64;
-            for inner in 0..rank {
-                let gram_value = gram[gram_positions[row] * gram_dimension + gram_positions[inner]];
-                let inverse_value = inverse[inner * rank + column];
-                let (left, right) = if reverse {
-                    (
-                        inverse[row * rank + inner],
-                        gram[gram_positions[inner] * gram_dimension + gram_positions[column]],
-                    )
-                } else {
-                    (gram_value, inverse_value)
-                };
-                let term = left * right;
-                compensated_add(term, &mut product, &mut correction)?;
-                absolute_products += term.abs();
-                if !absolute_products.is_finite() {
-                    return Err(invalid_data(
-                        "prepared OLS inverse-certificate scale is not finite",
-                    ));
-                }
-            }
-            let delta = f64::from(row == column);
-            row_error += (product + correction - delta).abs();
-            row_scale += absolute_products;
-            if !row_error.is_finite() || !row_scale.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS inverse-certificate accumulation is not finite",
-                ));
-            }
-        }
-        maximum = maximum.max(row_error / row_scale);
-    }
-    if maximum.is_finite() {
-        Ok(maximum)
-    } else {
-        Err(invalid_data(
-            "prepared OLS inverse certificate is not finite",
-        ))
-    }
+        gram_positions,
+        inverse,
+        rank,
+        reverse,
+    )
 }
 
 fn prepared_bread_weight_scale<P: PreparedOlsFitView + ?Sized>(
@@ -6314,7 +6276,11 @@ mod tests {
         LevelState, MetadataFlag, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
         TermOrder, TimeSeriesState,
     };
+    use crate::ols::finite_wls_kernel::{
+        begin_retained_moment_worker_observation, finish_retained_moment_worker_observation,
+    };
     use crate::ols::{
+        begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
         prepare_ols_data, CertifiedLinearSession, CertifiedLinearWithinDesign,
         LinearSessionAllocationPhase, LinearSessionGenerations, LinearSessionPhaseAllocationEvent,
         LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
@@ -6325,6 +6291,15 @@ mod tests {
     static ACTIVE_LINEAR_ALLOCATION_PHASE: AtomicUsize = AtomicUsize::new(0);
     static LINEAR_PROJECTION_ENDS: AtomicUsize = AtomicUsize::new(0);
     static LINEAR_FINITE_ENDS: AtomicUsize = AtomicUsize::new(0);
+
+    fn assert_retained_moment_team(observed: (usize, u64), expected: usize) {
+        assert_eq!(
+            observed.0,
+            expected,
+            "retained kernel escaped configured pool; observed participants={}",
+            observed.1.count_ones(),
+        );
+    }
 
     fn observed_linear_allocation_phase(
         phase: LinearSessionAllocationPhase,
@@ -6887,7 +6862,7 @@ mod tests {
 
     #[test]
     fn guarded_cholesky_accepts_well_conditioned_wide_finite_design() {
-        let rows = 512_usize;
+        let rows = 32_768_usize;
         let columns = 12_usize;
         let mut regressors = vec![vec![0.0_f64; rows]; columns];
         let mut state = 0x9e37_79b9_7f4a_7c15_u64;
@@ -7863,9 +7838,14 @@ mod tests {
                     .finite_solve_peak_bytes,
                 Some(23)
             );
-            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 2);
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 1);
             assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 1);
-            assert_eq!(fresh.fit().finite_rank(), 2);
+            assert_eq!(
+                fresh.fit().finite_rank(),
+                2,
+                "retained coefficients: {:?}",
+                fresh.fit().coefficients()
+            );
             assert!(fresh.fit().coefficients().iter().any(|coefficient| {
                 coefficient.status == PreparedOlsFitStatus::Kept
                     && coefficient.generated_column_index.is_some_and(|generated| {
@@ -7910,7 +7890,7 @@ mod tests {
                     .finite_solve_peak_bytes,
                 Some(23)
             );
-            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 3);
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 2);
             assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 2);
             assert_frozen_matches_fit(&frozen, &expected);
             assert_eq!(frozen.basis().kept_generated_columns().len(), 2);
@@ -7926,7 +7906,7 @@ mod tests {
                     .finite_solve_peak_bytes,
                 Some(23)
             );
-            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 5);
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 3);
             assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 3);
             assert_eq!(ACTIVE_LINEAR_ALLOCATION_PHASE.load(Ordering::SeqCst), 0);
             assert_fit_science_equal(strict.fit(), &expected);
@@ -7994,6 +7974,36 @@ mod tests {
         assert!(!prepared.has_absorbed_intercept());
         assert!(prepared.structural_intercept());
         assert!(prepared.report_intercept());
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared).expect("slope-only frame");
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 2,
+                    threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let expected =
+                fit_prepared_ols_coefficients_view_map_with_frame(&prepared, frame, config)
+                    .expect("slope-only one-shot fit");
+            let mut session = CertifiedLinearSession::new(
+                &prepared,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .expect("slope-only retained session");
+            let fresh = session.solve_fresh().expect("slope-only fresh");
+            assert_fit_science_equal(fresh.fit(), &expected);
+            assert_fit_science_equal(
+                session.strictify().expect("slope-only strict").fit(),
+                &expected,
+            );
+        }
     }
 
     #[test]
@@ -8177,7 +8187,41 @@ mod tests {
             expected.dropped_generated_columns()
         );
         assert_eq!(actual.finite_rank(), expected.finite_rank());
-        assert_eq!(actual.rank_certificate(), expected.rank_certificate());
+        assert_eq!(
+            actual.rank_certificate().relative_threshold,
+            expected.rank_certificate().relative_threshold
+        );
+        // The retained observation-space reduction compresses rows through a
+        // streaming Givens factor before CPQR; one-shot fallback applies CPQR
+        // directly to N rows.  The selected basis/rank and certificate pass
+        // remain exact, while this descriptive trailing-residual magnitude can
+        // differ by final-rounding noise.
+        assert_close(
+            actual.rank_certificate().maximum_dropped_trailing_norm,
+            expected.rank_certificate().maximum_dropped_trailing_norm,
+            512.0 * f64::EPSILON,
+        );
+        assert_eq!(
+            actual.rank_certificate().passed,
+            expected.rank_certificate().passed
+        );
+        // Retained rank revelation may compress rows through Givens before
+        // CPQR while the one-shot fallback factors N rows directly. Basis and
+        // rank decisions remain exact above. The descriptive diagonal-ratio
+        // condition proxy is perturbation-sensitive on deliberately weak
+        // full-rank designs, so its machine-precision comparison scales by
+        // sqrt(kappa); no certificate threshold or publication value does.
+        let condition_scale = actual
+            .rank_certificate()
+            .condition_proxy
+            .max(expected.rank_certificate().condition_proxy)
+            .max(1.0)
+            .sqrt();
+        assert_close(
+            actual.rank_certificate().condition_proxy,
+            expected.rank_certificate().condition_proxy,
+            512.0 * f64::EPSILON * condition_scale,
+        );
         assert_eq!(
             actual.score_certificate().passed,
             expected.score_certificate().passed
@@ -8215,20 +8259,11 @@ mod tests {
         }
         assert!(actual.bread().certificate().passed);
         assert!(expected.bread().certificate().passed);
-        let mut actual_absorption = actual.absorption_report().clone();
-        let mut expected_absorption = expected.absorption_report().clone();
-        actual_absorption.setup_seconds = 0.0;
-        actual_absorption.solve_seconds = 0.0;
-        expected_absorption.setup_seconds = 0.0;
-        expected_absorption.solve_seconds = 0.0;
-        assert_eq!(actual_absorption, expected_absorption);
-        let mut actual_residual = actual.residual_absorption_report().clone();
-        let mut expected_residual = expected.residual_absorption_report().clone();
-        actual_residual.setup_seconds = 0.0;
-        actual_residual.solve_seconds = 0.0;
-        expected_residual.setup_seconds = 0.0;
-        expected_residual.solve_seconds = 0.0;
-        assert_eq!(actual_residual, expected_residual);
+        assert_solve_report_science_equal(actual.absorption_report(), expected.absorption_report());
+        assert_solve_report_science_equal(
+            actual.residual_absorption_report(),
+            expected.residual_absorption_report(),
+        );
         assert_close(
             actual.initial_absorbed_outcome_sum_of_squares(),
             expected.initial_absorbed_outcome_sum_of_squares(),
@@ -8242,7 +8277,502 @@ mod tests {
             actual.recovered_fe_coefficients().is_some(),
             expected.recovered_fe_coefficients().is_some()
         );
-        assert_eq!(actual.execution(), expected.execution());
+        assert_eq!(actual.execution().mode, expected.execution().mode);
+        assert_eq!(actual.execution().poolsize, expected.execution().poolsize);
+        assert_eq!(
+            actual.execution().requested_threads,
+            expected.execution().requested_threads
+        );
+        assert_eq!(
+            actual.execution().effective_threads,
+            expected.execution().effective_threads
+        );
+        assert_eq!(
+            actual.execution().deterministic,
+            expected.execution().deterministic
+        );
+        // Low retained execution owns only the final row-major N-by-rank
+        // inference artifact; the one-shot reference also reports its
+        // response-bearing N-by-(K+1) scratch. This is the intended lower
+        // retained footprint, not a scientific-result difference.
+        assert!(actual.execution().scratch_bytes <= expected.execution().scratch_bytes);
+    }
+
+    fn assert_solve_report_science_equal(actual: &SolveReport, expected: &SolveReport) {
+        assert_eq!(actual.requested_solver, expected.requested_solver);
+        assert_eq!(actual.used_solver, expected.used_solver);
+        // Iterations and the stop label describe work actually performed on
+        // different, independently certified projection inputs.  Fresh
+        // one-shot absorption owns a combined matrix and its QR routes may
+        // reverse destructive Householder storage; retained warm/strict work
+        // projects the response and preserves the sole row-stream design.
+        // Their scientific equivalence is established below by both passing
+        // FE certificates and by the exact fit/residual checks at the caller.
+        assert!(actual.certified());
+        assert!(expected.certified());
+        assert_eq!(actual.fallback_used, expected.fallback_used);
+        assert_eq!(
+            actual.requested_preconditioner,
+            expected.requested_preconditioner
+        );
+        assert_eq!(actual.used_preconditioner, expected.used_preconditioner);
+        assert_eq!(actual.pilot_iterations, expected.pilot_iterations);
+        // Pilot iteration counts and routing are exact above.  Once both
+        // independently certified FE residuals are at the roundoff floor,
+        // the reported contraction is a ratio of two vanishing diagnostics:
+        // a one-shot Householder route (always in Low mode and for wide or
+        // rank-deficient Fast designs) and the retained row stream may report
+        // any finite ratio in [0, 1] even when their published residuals are
+        // bit-identical. Outside that explicitly degenerate regime the
+        // contraction remains a machine-precision comparison.
+        let pilot_floor = 64.0 * f64::EPSILON;
+        if actual.certificate.relative_two_norm <= pilot_floor
+            && expected.certificate.relative_two_norm <= pilot_floor
+            && actual.normal_equation_residual <= pilot_floor
+            && expected.normal_equation_residual <= pilot_floor
+        {
+            assert!(actual.pilot_contraction.is_finite());
+            assert!((0.0..=1.0).contains(&actual.pilot_contraction));
+            assert!(expected.pilot_contraction.is_finite());
+            assert!((0.0..=1.0).contains(&expected.pilot_contraction));
+        } else {
+            assert_close(
+                actual.pilot_contraction,
+                expected.pilot_contraction,
+                512.0 * f64::EPSILON,
+            );
+        }
+        assert_eq!(actual.warnings, expected.warnings);
+        assert_eq!(actual.certificate.passed, expected.certificate.passed);
+        // The retained route uses its owned reusable MAP workspace while the
+        // one-shot reference uses the borrowed MAP adapter. They execute the
+        // same solver and stop policy, but their independent certificate
+        // reductions can differ in the final rounding bits. Keep this at a
+        // machine-precision bound; neither publication tolerance is relaxed.
+        let diagnostic_tolerance = 512.0 * f64::EPSILON;
+        assert_close(
+            actual.certificate.absolute_infinity_norm,
+            expected.certificate.absolute_infinity_norm,
+            diagnostic_tolerance,
+        );
+        assert_close(
+            actual.certificate.relative_infinity_norm,
+            expected.certificate.relative_infinity_norm,
+            diagnostic_tolerance,
+        );
+        assert_close(
+            actual.certificate.relative_two_norm,
+            expected.certificate.relative_two_norm,
+            diagnostic_tolerance,
+        );
+        assert_close(
+            actual.normal_equation_residual,
+            expected.normal_equation_residual,
+            diagnostic_tolerance,
+        );
+    }
+
+    fn assert_retained_report_has_no_warning_storage(report: &SolveReport) {
+        assert!(report.warnings.is_empty());
+        assert_eq!(report.warnings.capacity(), 0);
+    }
+
+    fn assert_retained_fit_has_no_warning_storage(fit: &CertifiedPreparedOlsFit) {
+        assert_retained_report_has_no_warning_storage(fit.absorption_report());
+        assert_retained_report_has_no_warning_storage(fit.residual_absorption_report());
+    }
+
+    #[test]
+    fn retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool() {
+        const CHILD_ENV: &str = "FEREG_RETAINED_THREAD_TEAM_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let executable = std::env::current_exe().expect("current Rust test executable");
+            let output = std::process::Command::new(executable)
+                .arg("retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool")
+                .arg("--nocapture")
+                .env(CHILD_ENV, "1")
+                .output()
+                .expect("spawn isolated Rayon-global child");
+            assert!(
+                output.status.success(),
+                "isolated retained-team child failed:\nstdout:\n{}\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr),
+            );
+            return;
+        }
+
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(7)
+            .build_global()
+            .expect("install mismatched seven-thread global pool");
+        assert_eq!(rayon::current_num_threads(), 7);
+
+        let rows = 512_usize;
+        let regressors = (0..4)
+            .map(|column| {
+                (0..rows)
+                    .map(|row| (((row >> column) & 1) as f64) * 2.0 - 1.0)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let response = (0..rows)
+            .map(|row| {
+                regressors
+                    .iter()
+                    .enumerate()
+                    .map(|(column, values)| (column + 1) as f64 * values[row])
+                    .sum::<f64>()
+                    + (row % 11) as f64 / 17.0
+            })
+            .collect::<Vec<_>>();
+        let prepared_data = prepared(
+            &response,
+            &regressors,
+            &[false; 4],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("session frame");
+
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for requested in [1_usize, 4] {
+                let config = PreparedOlsFitConfig {
+                    execution: PreparedOlsExecutionConfig {
+                        mode,
+                        poolsize: 2,
+                        threads: ThreadConfig::from_requested(requested, true)
+                            .expect("thread config"),
+                    },
+                    ..PreparedOlsFitConfig::default()
+                };
+                let mut session = CertifiedLinearSession::new(
+                    &prepared_data,
+                    frame,
+                    config,
+                    LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                )
+                .expect("retained session");
+
+                begin_retained_moment_worker_observation();
+                session.solve_fresh().expect("observed fresh solve");
+                assert_retained_moment_team(finish_retained_moment_worker_observation(), requested);
+
+                session
+                    .refresh_response(&response, 1)
+                    .expect("response generation refresh");
+                begin_retained_moment_worker_observation();
+                session.solve_frozen().expect("observed frozen solve");
+                assert_retained_moment_team(finish_retained_moment_worker_observation(), requested);
+
+                begin_retained_moment_worker_observation();
+                let candidate = session
+                    .strict_candidate()
+                    .expect("observed strict candidate");
+                assert!(candidate.candidate().fit().rank_certificate().passed);
+                let observed = finish_retained_moment_worker_observation();
+                assert_retained_moment_team(observed, requested);
+                candidate.commit();
+            }
+        }
+    }
+
+    #[test]
+    fn retained_session_matches_one_shot_above_sixty_four_columns_with_exact_deficiency() {
+        let rows = 128_usize;
+        let mut regressors = (1..=65_usize)
+            .map(|mask| {
+                (0..rows)
+                    .map(|row| {
+                        if (row & mask).count_ones() % 2 == 0 {
+                            1.0
+                        } else {
+                            -1.0
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        regressors.push(regressors[0].clone());
+        let response = (0..rows)
+            .map(|row| {
+                regressors[..65]
+                    .iter()
+                    .enumerate()
+                    .map(|(column, values)| (column + 1) as f64 / 67.0 * values[row])
+                    .sum::<f64>()
+            })
+            .collect::<Vec<_>>();
+        let prepared_data = prepared(
+            &response,
+            &regressors,
+            &vec![false; regressors.len()],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("wide frame");
+
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 8,
+                    threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let expected =
+                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
+                    .expect("wide one-shot reference");
+            assert_eq!(expected.finite_rank(), 65);
+            assert_eq!(expected.dropped_generated_columns(), &[65]);
+
+            let mut session = CertifiedLinearSession::new(
+                &prepared_data,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .expect("wide retained session");
+            let fresh = session.solve_fresh().expect("wide retained fresh solve");
+            assert_fit_science_equal(fresh.fit(), &expected);
+            session
+                .refresh_response(&response, 1)
+                .expect("wide response refresh");
+            let frozen = session.solve_frozen().expect("wide retained frozen solve");
+            assert_frozen_matches_fit(&frozen, &expected);
+            let strict = session
+                .strict_candidate()
+                .expect("wide retained strict solve");
+            assert!(strict.basis_unchanged());
+            assert_fit_science_equal(strict.candidate().fit(), &expected);
+            strict.commit();
+        }
+    }
+
+    #[test]
+    fn retained_session_drops_general_and_scaled_exact_linear_combinations() {
+        let first = vec![-5.0_f64, 7.0, 8.0, -3.0, 4.0, 9.0, -6.0, 2.0];
+        let second = vec![-1.0_f64, 4.0, -10.0, 6.0, 2.0, -7.0, 5.0, 3.0];
+        let combination = first
+            .iter()
+            .copied()
+            .zip(second.iter().copied())
+            .map(|(left, right)| 2.0 * left - 3.0 * right)
+            .collect::<Vec<_>>();
+        let scaled = first
+            .iter()
+            .copied()
+            .map(|value| 6.285_119_033_872_249_f64 * value)
+            .collect::<Vec<_>>();
+        let response = first
+            .iter()
+            .copied()
+            .zip(second.iter().copied())
+            .map(|(left, right)| 2.0 * left - 3.0 * right)
+            .collect::<Vec<_>>();
+        let regressors = vec![first, second, combination, scaled];
+        let prepared_data = prepared(
+            &response,
+            &regressors,
+            &[false; 4],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("exact frame");
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 3,
+                    threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let expected =
+                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
+                    .expect("exact-combination one-shot fit");
+            assert_eq!(expected.finite_rank(), 2);
+            let mut session = CertifiedLinearSession::new(
+                &prepared_data,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .expect("exact-combination retained session");
+            assert_fit_science_equal(
+                session
+                    .solve_fresh()
+                    .expect("exact-combination fresh")
+                    .fit(),
+                &expected,
+            );
+            assert_fit_science_equal(
+                session.strictify().expect("exact-combination strict").fit(),
+                &expected,
+            );
+        }
+    }
+
+    #[test]
+    fn retained_session_covers_zero_and_single_finite_rank_through_final_handoff() {
+        let response = vec![1.0_f64, -2.0, 3.0, 0.5, 4.0, -1.5];
+        let regressor = vec![-3.0_f64, -1.0, 0.5, 2.0, 4.0, 6.0];
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for finite_columns in 0..=1_usize {
+                let regressors = if finite_columns == 0 {
+                    Vec::new()
+                } else {
+                    vec![regressor.clone()]
+                };
+                let prepared_data = prepared(
+                    &response,
+                    &regressors,
+                    &vec![false; finite_columns],
+                    None,
+                    false,
+                    TestWeights::Unit,
+                );
+                let config = PreparedOlsFitConfig {
+                    execution: PreparedOlsExecutionConfig {
+                        mode,
+                        poolsize: 2,
+                        threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+                    },
+                    ..PreparedOlsFitConfig::default()
+                };
+                let frame =
+                    LinearSolveFrame::from_prepared_ols(&prepared_data).expect("rank edge frame");
+                let expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                    &prepared_data,
+                    frame,
+                    config,
+                )
+                .expect("rank edge one-shot");
+                assert_eq!(expected.finite_rank(), finite_columns);
+                let mut session = CertifiedLinearSession::new(
+                    &prepared_data,
+                    frame,
+                    config,
+                    LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                )
+                .expect("rank edge retained session");
+                assert_fit_science_equal(
+                    session.solve_fresh().expect("rank edge fresh").fit(),
+                    &expected,
+                );
+                session
+                    .refresh_response(&response, 1)
+                    .expect("rank edge response refresh");
+                assert_frozen_matches_fit(
+                    &session.solve_frozen().expect("rank edge frozen"),
+                    &expected,
+                );
+                assert_fit_science_equal(
+                    session.strictify().expect("rank edge strict").fit(),
+                    &expected,
+                );
+                let products = session
+                    .into_current_products()
+                    .expect("rank edge final products");
+                assert_eq!(products.fit().finite_rank(), finite_columns);
+                assert_eq!(products.finite_within_design().dimension(), finite_columns);
+            }
+        }
+    }
+
+    #[test]
+    fn frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank() {
+        let rows = 64_usize;
+        let first = (0..rows)
+            .map(|row| row as f64 - (rows - 1) as f64 / 2.0)
+            .collect::<Vec<_>>();
+        let second = first
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(row, value)| value + 5.0e-4 * if row % 2 == 0 { 1.0 } else { -1.0 })
+            .collect::<Vec<_>>();
+        let response = first
+            .iter()
+            .copied()
+            .zip(second.iter().copied())
+            .map(|(left, right)| 1.25 * left - 0.75 * right)
+            .collect::<Vec<_>>();
+        let prepared_data = prepared(
+            &response,
+            &[first, second],
+            &[false, false],
+            None,
+            false,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("weak-rank frame");
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 4,
+                    threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let expected =
+                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
+                    .expect("weak-rank one-shot");
+            assert_eq!(expected.finite_rank(), 2);
+            let mut session = CertifiedLinearSession::new(
+                &prepared_data,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .expect("weak-rank retained session");
+            assert_fit_science_equal(
+                session.solve_fresh().expect("weak-rank fresh").fit(),
+                &expected,
+            );
+            session
+                .strict_candidate()
+                .expect("weak-rank initial strict")
+                .commit();
+            session
+                .refresh_response(&response, 1)
+                .expect("weak-rank response refresh");
+            begin_frozen_qr_fallback_observation();
+            let frozen = session.solve_frozen().expect("weak-rank frozen fallback");
+            assert!(
+                finish_frozen_qr_fallback_observation(),
+                "weak but clearly full-rank frozen basis must use QR fallback"
+            );
+            assert_frozen_matches_fit(&frozen, &expected);
+            assert_fit_science_equal(
+                session.strictify().expect("weak-rank final strict").fit(),
+                &expected,
+            );
+            let products = session
+                .into_current_products()
+                .expect("weak-rank final products");
+            assert_eq!(products.fit().finite_rank(), 2);
+        }
     }
 
     #[test]
@@ -8312,6 +8842,7 @@ mod tests {
                     .expect("session");
                     let initial = session.solve_fresh().expect("fresh session fit");
                     assert_fit_science_equal(initial.fit(), &initial_expected);
+                    assert_retained_fit_has_no_warning_storage(initial.fit());
 
                     session
                         .refresh_response(&refreshed_y, 1)
@@ -8332,6 +8863,9 @@ mod tests {
                     assert_fit_science_equal(response_warm.fit(), &response_expected);
                     let response_frozen = session.solve_frozen().expect("response frozen solve");
                     assert_frozen_matches_fit(&response_frozen, &response_expected);
+                    assert_retained_report_has_no_warning_storage(
+                        response_frozen.response_absorption_report(),
+                    );
 
                     let refreshed_prepared = prepared(
                         &refreshed_y,
@@ -8435,6 +8969,7 @@ mod tests {
                     }
 
                     let strict = session.strictify().expect("strict session fit");
+                    assert_retained_fit_has_no_warning_storage(strict.fit());
                     let final_weights = if weight_case == 2 {
                         TestWeights::Frequency(&frequency_refresh)
                     } else {
@@ -8495,6 +9030,63 @@ mod tests {
     }
 
     #[test]
+    fn retained_low_residual_report_preserves_actual_work_without_changing_one_shot() {
+        let group = [1.0_f64, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x = [-2.0_f64, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
+        let z = [1.0_f64, -1.0, 0.5, 2.5, -2.0, 1.5, 3.0, -0.5];
+        let outcome = [1.2_f64, 4.0, -0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
+        let prepared_data = prepared(
+            &outcome,
+            &[x.to_vec(), z.to_vec()],
+            &[false, false],
+            Some(&group),
+            true,
+            TestWeights::Unit,
+        );
+        let config = PreparedOlsFitConfig {
+            absorb: AbsorbConfig {
+                solver: FeSolverKind::Map,
+                ..AbsorbConfig::default()
+            },
+            execution: PreparedOlsExecutionConfig {
+                mode: PreparedOlsExecutionMode::Low,
+                poolsize: 1,
+                threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+            },
+            ..PreparedOlsFitConfig::default()
+        };
+        let expected = fit_prepared_ols_coefficients_map(&prepared_data, config)
+            .expect("one-shot Low reference");
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("session frame");
+        let mut session = CertifiedLinearSession::new(
+            &prepared_data,
+            frame,
+            config,
+            LinearSessionGenerations::new(0, 0, 0, 0, 0),
+        )
+        .expect("retained Low session");
+        let retained = session.solve_fresh().expect("retained Low fit");
+
+        // The public fereg Low route destroys and reverses its one-shot
+        // Householder scratch, leaving a real one-sweep residual cleanup on
+        // this fixture.  The retained PPML row stream must preserve its sole
+        // design; direct subtraction is already FE-certified and truthfully
+        // reports zero cleanup iterations.  Both are independent, passing
+        // certificates at the roundoff floor.
+        assert_eq!(expected.residual_absorption_report().iterations, 1);
+        assert_eq!(retained.fit().residual_absorption_report().iterations, 0);
+        for report in [
+            expected.residual_absorption_report(),
+            retained.fit().residual_absorption_report(),
+        ] {
+            assert!(report.certified());
+            assert!(report.certificate.relative_two_norm <= 64.0 * f64::EPSILON);
+            assert!(report.normal_equation_residual <= 64.0 * f64::EPSILON);
+        }
+        assert_fit_science_equal(retained.fit(), &expected);
+    }
+
+    #[test]
     fn certified_linear_session_generation_invalidation_is_fail_closed() {
         let x = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
         let y = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
@@ -8551,33 +9143,174 @@ mod tests {
             TestWeights::Unit,
         );
         let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
-        let mut session = CertifiedLinearSession::new(
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 1,
+                    ..PreparedOlsExecutionConfig::default()
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let mut session = CertifiedLinearSession::new(
+                &prepared_data,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 7),
+            )
+            .expect("session");
+            let initial = session.solve_fresh().expect("initial canonical fit");
+            assert!(
+                initial.fit().fast_score_cache.is_none(),
+                "session solves must not retain a duplicate N-by-K score cache"
+            );
+            let original_kept = initial.fit().kept_generated_columns().to_vec();
+            let original_dropped = initial.fit().dropped_generated_columns().to_vec();
+            assert!(!original_dropped.is_empty());
+
+            let mut strict = session.strict_candidate().expect("speculative strict fit");
+            // Model the caller's uncertified strict-output branch: candidate
+            // values are inspected but are not accepted as estimator state.
+            assert!(strict.candidate().fit().finite_rank() > 0);
+            assert!(strict.candidate().fit().fast_score_cache.is_none());
+            assert!(strict.inject_same_rank_basis_pivot());
+            assert_eq!(strict.basis_generation_for_test(), 8);
+            strict.rollback();
+            assert_eq!(session.basis_generation_for_test(), 7);
+
+            let recovered = session
+                .solve_frozen()
+                .expect("rollback reconstruction must support the next frozen solve");
+            assert!(recovered.certified());
+            assert_eq!(recovered.basis().kept_generated_columns(), original_kept);
+            let rebuilt = session
+                .solve_fresh()
+                .expect("canonical solve after rejected strict candidate");
+            assert_eq!(rebuilt.fit().kept_generated_columns(), original_kept);
+            assert_eq!(rebuilt.fit().dropped_generated_columns(), original_dropped);
+        }
+    }
+
+    #[test]
+    fn strict_rollback_is_allocation_free_and_preserves_retained_storage() {
+        let x = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
+        let y = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
+        let prepared_data = prepared(
+            &y,
+            &[x.clone(), x],
+            &[false, false],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 1,
+                    ..PreparedOlsExecutionConfig::default()
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let mut session = CertifiedLinearSession::new(
+                &prepared_data,
+                frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 7),
+            )
+            .expect("session");
+            session.solve_fresh().expect("initial canonical fit");
+            let original_dense_identity = session.retained_dense_identity();
+            let original_scratch_identity = session
+                .retained_scratch_identity()
+                .map(std::path::Path::to_path_buf);
+            let mut strict = session.strict_candidate().expect("speculative strict fit");
+            assert!(strict.candidate().fit().finite_rank() > 0);
+            assert!(strict.inject_same_rank_basis_pivot());
+            let before_rollback = strict.workspace_capacities();
+            strict.rollback();
+            assert_eq!(
+                session.workspace_capacities(),
+                before_rollback,
+                "rollback must not grow any session workspace"
+            );
+            assert_eq!(session.retained_dense_identity(), original_dense_identity);
+            assert_eq!(
+                session.retained_scratch_identity(),
+                original_scratch_identity.as_deref()
+            );
+            assert!(session.output().is_ok());
+            assert!(session
+                .solve_frozen()
+                .expect("rolled-back state must remain usable")
+                .certified());
+        }
+    }
+
+    #[test]
+    fn strided_session_cache_compacts_in_place_and_reports_retained_capacity() {
+        let x1 = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
+        let x2 = vec![3.0, -4.0, 1.5, 2.0, -0.5, 5.0];
+        let y = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
+        let weights = vec![1.0, 4.0, 2.0, 9.0, 3.0, 16.0];
+        let prepared_data = prepared(
+            &y,
+            &[x1, x2],
+            &[false, false],
+            None,
+            false,
+            TestWeights::Analytic(&weights),
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
+        let session = CertifiedLinearSession::new(
             &prepared_data,
             frame,
             PreparedOlsFitConfig::default(),
-            LinearSessionGenerations::new(0, 0, 0, 0, 7),
+            LinearSessionGenerations::new(0, 0, 0, 0, 0),
         )
         .expect("session");
-        let initial = session.solve_fresh().expect("initial canonical fit");
-        let original_kept = initial.fit().kept_generated_columns().to_vec();
-        let original_dropped = initial.fit().dropped_generated_columns().to_vec();
-        assert!(!original_dropped.is_empty());
-
-        let (strict, _basis_unchanged, rollback) =
-            session.strict_candidate().expect("speculative strict fit");
-        // Model the caller's uncertified strict-output branch: candidate values
-        // are inspected but are not accepted as estimator state.
-        assert!(strict.fit().finite_rank() > 0);
-        assert!(session.inject_same_rank_strict_basis_pivot());
-        assert_eq!(session.basis_generation_for_test(), 8);
-        session.rollback_strict_candidate(rollback);
-        assert_eq!(session.basis_generation_for_test(), 7);
-
-        let rebuilt = session
-            .solve_fresh()
-            .expect("solve after rejected strict candidate");
-        assert_eq!(rebuilt.fit().kept_generated_columns(), original_kept);
-        assert_eq!(rebuilt.fit().dropped_generated_columns(), original_dropped);
+        let rows = prepared_data.fit_sample().n_active();
+        let stride = prepared_data.fit_model().columns.len() + 1;
+        let logical_elements = rows * stride;
+        let expected = vec![1.25, -2.5, 3.75, -4.0, 5.5, 6.25];
+        let selected_norm = 3.5;
+        let mut values = vec![0.0; logical_elements];
+        for (row, expected) in expected.iter().copied().enumerate() {
+            values[row * stride] = row as f64 + 1.0;
+            values[row * stride + 1] = 100.0 + row as f64;
+            values[row * stride + 2] =
+                expected * frame.weights().root(row).expect("root weight") / selected_norm;
+        }
+        let source_capacity = values.capacity();
+        assert!(source_capacity >= logical_elements);
+        let cache = PreparedOlsFastScoreCache::Strided {
+            generated_columns: vec![0, 1],
+            within: DenseMatrix::from_row_major(rows, stride, values).expect("strided cache"),
+            reference_norms: vec![2.0, selected_norm],
+            means: vec![0.0, 0.0],
+        };
+        let (memory, pointer_preserved, compacted) = session
+            .compact_fast_cache_memory_for_test(cache, &[1])
+            .expect("in-place strided compaction");
+        assert!(
+            pointer_preserved,
+            "strided compaction allocated a second design"
+        );
+        assert_eq!(memory.rows, rows);
+        assert_eq!(memory.columns, 1);
+        assert_eq!(compacted, expected);
+        assert_eq!(memory.resident_bytes, source_capacity as u128 * 8);
+        assert!(
+            memory.resident_bytes > (rows * memory.columns * 8) as u128,
+            "telemetry must report retained capacity, not truncated logical length"
+        );
     }
 
     #[test]

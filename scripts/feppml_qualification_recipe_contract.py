@@ -9,8 +9,10 @@ from typing import Any, Mapping
 
 try:
     from scripts import ppml_memory_performance as performance
+    from scripts import feppml_separation_recipe_contract as separation_contract
 except ImportError:
     import ppml_memory_performance as performance  # type: ignore[no-redef]
+    import feppml_separation_recipe_contract as separation_contract  # type: ignore[no-redef]
 
 
 class QualificationRecipeContractError(RuntimeError):
@@ -49,8 +51,9 @@ ORACLE_GENERATOR_SHA256 = dict(zip(ORACLE_IDS, (
     "7c900396def19bf8ee6b86d5751f8cc9b7890787f4459775302489049872b8bc",
 )))
 EXECUTABLE_SOURCES_ROOT_SHA256 = (
-    "f4ce343465449e99ef55273cfd0b01087b12bae3812b677a931d086f69512644"
+    "308c1ef826bc6217af91d66fb4a14922b5313db8c6241aebc35f34e6d0376988"
 )
+SEPARATION_AUDIT_CELL_ID = "dev_n100k_no_fe_k0_t1"
 
 
 def _status(cell: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -222,6 +225,23 @@ def validate_executable_sources(
     if root_sha256 != profile.get("executable_sources_root_sha256"):
         raise QualificationRecipeContractError(
             "executable science/timing bytes differ from the frozen canonical identity"
+        )
+    expected_audit = separation_contract.stata_comparator_audit(
+        separation_contract.load_manifest()
+    )
+    audit_hits: list[str] = []
+    for record in records:
+        relative = record["comparator_science_do"]
+        source = (generated_root / relative).read_text(encoding="ascii")
+        if "PHASE7_COMPARATOR_BEGIN|" in source:
+            audit_hits.append(record["cell_id"])
+            if expected_audit not in source:
+                raise QualificationRecipeContractError(
+                    "pinned comparator science arm differs from the exact separation audit"
+                )
+    if audit_hits != [SEPARATION_AUDIT_CELL_ID]:
+        raise QualificationRecipeContractError(
+            "exact separation comparator audit is missing or executes more than once"
         )
 
 

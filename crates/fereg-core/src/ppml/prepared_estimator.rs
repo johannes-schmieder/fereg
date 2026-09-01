@@ -12,16 +12,16 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeSolverKind;
 use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
-    OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsColumnKind, PreparedOlsFitConfig,
-    PreparedOlsFitStatus,
+    OlsRequestV1, PreparedOlsColumnKind, PreparedOlsFitConfig, PreparedOlsFitStatus,
 };
 use crate::ppml_separation::{
-    separation_workspace_requirements, SeparationConfig, SeparationMethod,
+    separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
 };
 
 use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
 use super::prepared::{
-    prepare_ppml_numeric_data, PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
+    classify_ppml_numeric_data, prepare_ppml_numeric_data, PpmlNumericClassification,
+    PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
 };
 use super::prepared_irls::{
     explore_prepared_ppml_mu_interruptible, fit_prepared_ppml_irls_interruptible,
@@ -36,7 +36,7 @@ use super::prepared_separation::{
 use super::result::{
     prepare_ppml_fixed_effect_report, recover_ppml_fixed_effects, PreparedPpmlFixedEffectReport,
 };
-use super::vce::compute_ppml_inference_interruptible;
+use super::vce::compute_ppml_inference_interruptible_with_threads;
 use super::{
     CertifiedPpmlResult, CertifiedPpmlResultInput, PpmlAllocatorSnapshot,
     PpmlAllocatorSnapshotProbe, PpmlClusterDimensionResult, PpmlCoefficientOutput,
@@ -190,18 +190,13 @@ pub fn fit_prepared_ppml_interruptible(
     // Singleton policy belongs to the model request.  Derive the detector
     // switch here so two caller-controlled booleans cannot silently disagree.
     request.separation.drop_singletons = !request.ols.keep_singletons;
-    let requested_saved_channels = requested_saved_channels(&request.ols)?;
-    request.output.validate(
-        requested_saved_channels
-            .iter()
-            .filter(|requested| **requested)
-            .count(),
-    )?;
+    let requested_saved_channel_count = requested_saved_channel_count(&request.ols)?;
+    request.output.validate(requested_saved_channel_count)?;
     // Resolve the PPML absorption policy exactly once before handing it to
     // either separation or IRLS. In particular, leaving PPML at `Auto` while
     // resolving only the linear copy to `Map` creates two nominally valid but
     // unequal numerical policies at the production boundary.
-    let retain_coefficients = requested_saved_channels.iter().any(|requested| *requested);
+    let retain_coefficients = requested_saved_channel_count > 0;
     if request.inject_fe_recovery_allocation_failure && !retain_coefficients {
         return Err(invalid_argument(
             "PPML FE-recovery allocation injection requires a requested saved fixed effect",
@@ -215,22 +210,45 @@ pub fn fit_prepared_ppml_interruptible(
         request.ppml.fixed_effect_collinearity_tolerance;
     request.linear.absorb = request.ppml.absorb;
 
-    begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
+    // Preparation timing includes the allocation-free classification and
+    // fit-lifetime route decision as well as the later materialization. The
+    // allocator phase begins only after admission, so a rejected route still
+    // proves that no fit workspace was opened.
     let preparation_clock = PpmlPhaseClock::start();
-    let numeric = prepare_numeric_input(&request, &loaded)?;
-    let preflight_dimensions = conservative_preflight_dimensions(
+
+    // Build only borrowed column views and model-sized role metadata, then
+    // classify the numeric sample without constructing any observation-sized
+    // compact column. ADR 0018 freezes route selection at this boundary.
+    let numeric_input = borrowed_numeric_input(&request, &loaded)?;
+    let numeric_classification = classify_ppml_numeric_data(&numeric_input.as_input())?;
+    let preflight_dimensions = conservative_preflight_dimensions_from_classification(
         &request,
-        &numeric,
-        requested_saved_channels
-            .iter()
-            .filter(|saved| **saved)
-            .count(),
+        numeric_classification,
+        numeric_input.numeric_sources.len(),
+        numeric_input.offset.is_some() || numeric_input.exposure.is_some(),
+        matches!(
+            numeric_input.weights,
+            WeightInput::Provided {
+                kind: WeightKind::Probability,
+                ..
+            }
+        ),
+        requested_saved_channel_count,
     )?;
     let preliminary_plan = plan_ppml_memory_with_probe(
         preflight_dimensions,
         request.memory,
         request.memory_preflight_probe,
     )?;
+
+    begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
+    let numeric = prepare_ppml_numeric_data(&numeric_input.as_input())?;
+    validate_materialized_numeric_classification(&numeric, numeric_classification)?;
+    let prepared_dimensions =
+        conservative_preflight_dimensions(&request, &numeric, requested_saved_channel_count)?;
+    // The exact materialized shape may only bind within the earlier envelope;
+    // it cannot silently reselect a route after canonical allocation.
+    let preliminary_plan = preliminary_plan.with_final_dimensions(prepared_dimensions)?;
     let mut resolved_linear = request.linear;
     resolved_linear.execution.mode = match preliminary_plan.selected {
         PpmlMemoryRoute::Fast => crate::ols::PreparedOlsExecutionMode::Fast,
@@ -241,6 +259,18 @@ pub fn fit_prepared_ppml_interruptible(
         preliminary_plan,
         linear: resolved_linear,
     };
+    let requested_saved_channels = requested_saved_channels(&request.ols)?;
+    if requested_saved_channels
+        .iter()
+        .filter(|saved| **saved)
+        .count()
+        != requested_saved_channel_count
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "PPML saved-channel materialization disagrees with its preflight count",
+        ));
+    }
     let omission_statuses = original_omission_statuses(&request.ols)?;
     let owner = PreparedPpmlModelOwner::new(request.ols, request.clusters, loaded.ols, numeric)?;
     let preparation_elapsed = preparation_clock.elapsed();
@@ -335,11 +365,8 @@ pub fn fit_prepared_ppml_interruptible(
     )?;
     let final_drop_reasons = separation_outcome.final_drop_reasons()?;
     let prepared = &separation_outcome.prepared;
-    let fixed_effect_report = prepare_ppml_fixed_effect_report(
-        prepared.prepared(),
-        PreparedOlsAbsorbedDofPolicy::Pairwise,
-        &requested_saved_channels,
-    )?;
+    let fixed_effect_report =
+        prepare_ppml_fixed_effect_report(prepared.prepared(), &requested_saved_channels)?;
     let cluster_codes = cluster_code_views(prepared)?;
 
     let coefficients = map_coefficients(prepared.prepared(), &fit, &omission_statuses)?;
@@ -360,7 +387,7 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt(PpmlInterruptPoint::Inference)?;
     let inference = {
         let mut poll_subset = || interrupt(PpmlInterruptPoint::InferenceSubset);
-        compute_ppml_inference_interruptible(
+        compute_ppml_inference_interruptible_with_threads(
             super::PpmlInferenceInput {
                 coefficients: coefficients.values(),
                 full_dimension: coefficients.values().len(),
@@ -379,6 +406,7 @@ pub fn fit_prepared_ppml_interruptible(
                 wald_columns: &wald_columns,
                 certificate_tolerance: request.ppml.tolerance,
             },
+            resolved_linear.execution.threads,
             &mut poll_subset,
         )?
     };
@@ -558,10 +586,34 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
     Ok(())
 }
 
-fn prepare_numeric_input(
+struct BorrowedPpmlNumericInput<'a> {
+    candidate: &'a [bool],
+    outcome: NumericColumnView<'a>,
+    numeric_sources: Vec<NumericColumnView<'a>>,
+    source_uses: Vec<NumericSourceUse>,
+    weights: WeightInput<'a>,
+    offset: Option<NumericColumnView<'a>>,
+    exposure: Option<NumericColumnView<'a>>,
+}
+
+impl BorrowedPpmlNumericInput<'_> {
+    fn as_input(&self) -> PpmlNumericPreparationInput<'_> {
+        PpmlNumericPreparationInput {
+            candidate: self.candidate,
+            outcome: self.outcome,
+            numeric_sources: &self.numeric_sources,
+            source_uses: &self.source_uses,
+            weights: self.weights,
+            offset: self.offset,
+            exposure: self.exposure,
+        }
+    }
+}
+
+fn borrowed_numeric_input<'a>(
     request: &PreparedPpmlRequestV1,
-    loaded: &LoadedPpmlInput,
-) -> Result<super::PreparedPpmlNumericData> {
+    loaded: &'a LoadedPpmlInput,
+) -> Result<BorrowedPpmlNumericInput<'a>> {
     if loaded.ols.numeric_sources.len() != request.ols.model.sources.len()
         || loaded
             .ols
@@ -620,18 +672,27 @@ fn prepare_numeric_input(
         PreparedPpmlAdjustmentKind::Offset => (adjustment, None),
         PreparedPpmlAdjustmentKind::Exposure => (None, adjustment),
     };
-    prepare_ppml_numeric_data(&PpmlNumericPreparationInput {
+    Ok(BorrowedPpmlNumericInput {
         candidate: &loaded.ols.candidate,
         outcome: NumericColumnView::with_missing(
             &loaded.ols.outcome.values,
             &loaded.ols.outcome.missing,
         ),
-        numeric_sources: &numeric_sources,
-        source_uses: &source_uses,
+        numeric_sources,
+        source_uses,
         weights,
         offset,
         exposure,
     })
+}
+
+#[cfg(test)]
+fn prepare_numeric_input(
+    request: &PreparedPpmlRequestV1,
+    loaded: &LoadedPpmlInput,
+) -> Result<super::PreparedPpmlNumericData> {
+    let borrowed = borrowed_numeric_input(request, loaded)?;
+    prepare_ppml_numeric_data(&borrowed.as_input())
 }
 
 fn source_uses(request: &PreparedPpmlRequestV1) -> Result<Vec<NumericSourceUse>> {
@@ -667,6 +728,24 @@ fn source_uses(request: &PreparedPpmlRequestV1) -> Result<Vec<NumericSourceUse>>
         uses.push(use_plan);
     }
     Ok(uses)
+}
+
+fn requested_saved_channel_count(request: &OlsRequestV1) -> Result<usize> {
+    request
+        .absorbed_terms
+        .iter()
+        .try_fold(0_usize, |total, term| {
+            let channels = usize::from(term.intercept)
+                .checked_add(term.slope_sources.len())
+                .ok_or_else(|| allocation("PPML saved-channel count overflows"))?;
+            total
+                .checked_add(if term.saved_name.is_empty() {
+                    0
+                } else {
+                    channels
+                })
+                .ok_or_else(|| allocation("PPML requested saved-channel count overflows"))
+        })
 }
 
 fn requested_saved_channels(request: &OlsRequestV1) -> Result<Vec<bool>> {
@@ -735,15 +814,56 @@ fn cluster_code_views(prepared: &PreparedPpmlModelGeneration) -> Result<Vec<&[u3
     Ok(output)
 }
 
-/// Allocation-bounded conservative dimensions available after numeric/domain
-/// preparation but before the PPML owner, original-axis ledgers, categorical
-/// topology, or generation-zero rebuild exist.
+fn validate_materialized_numeric_classification(
+    numeric: &super::prepared::PreparedPpmlNumericData,
+    classification: PpmlNumericClassification,
+) -> Result<()> {
+    let sample = numeric.sample();
+    if sample.n_original != classification.n_original
+        || sample.n_candidate != classification.n_candidate
+        || sample.n_active() != classification.n_active
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "materialized PPML numeric sample disagrees with its allocation-free classification",
+        ));
+    }
+    Ok(())
+}
+
+/// Conservative dimensions re-derived after numeric preparation. This exact
+/// shape is used only to validate and bind the already-selected route.
 fn conservative_preflight_dimensions(
     request: &PreparedPpmlRequestV1,
     numeric: &super::prepared::PreparedPpmlNumericData,
     requested_saved_fe_channels: usize,
 ) -> Result<PpmlMemoryDimensions> {
-    let observations = numeric.sample().n_active();
+    conservative_preflight_dimensions_from_classification(
+        request,
+        PpmlNumericClassification {
+            n_original: numeric.sample().n_original,
+            n_candidate: numeric.sample().n_candidate,
+            n_active: numeric.sample().n_active(),
+        },
+        numeric.sample().regressors.len(),
+        numeric.adjustment().input_kind != PreparedPpmlAdjustmentKind::None,
+        numeric.weights().kind == Some(WeightKind::Probability),
+        requested_saved_fe_channels,
+    )
+}
+
+/// Allocation-bounded conservative dimensions available after authoritative
+/// row classification but before canonical numeric compaction, original-axis
+/// ledgers, categorical topology, or the generation-zero owner exist.
+fn conservative_preflight_dimensions_from_classification(
+    request: &PreparedPpmlRequestV1,
+    numeric: PpmlNumericClassification,
+    loaded_numeric_columns: usize,
+    adjusted: bool,
+    probability_weighted: bool,
+    requested_saved_fe_channels: usize,
+) -> Result<PpmlMemoryDimensions> {
+    let observations = numeric.n_active;
     // This is a conservative pre-owner reservation boundary, not a second
     // compilation authority.  Counting every expanded term plus a requested
     // intercept safely dominates the final compact columns and reported
@@ -787,11 +907,15 @@ fn conservative_preflight_dimensions(
     let separation_workspace = separation_workspace_requirements(request.separation);
     Ok(PpmlMemoryDimensions {
         observations,
-        original_observations: numeric.sample().n_original,
-        loaded_numeric_columns: numeric.sample().regressors.len(),
-        retained_raw_candidate_probability_weight_elements: usize::from(
-            numeric.weights().kind == Some(WeightKind::Probability),
-        ) * observations,
+        original_observations: numeric.n_original,
+        candidate_observations: numeric.n_candidate,
+        loaded_numeric_columns,
+        retained_base_adjustment_capacity_elements: usize::from(adjusted) * numeric.n_candidate,
+        // The owner copies raw pweights only for generation-zero canonical
+        // rows. Missing/domain-excluded if/in candidates have no reusable
+        // weight, while separation cannot shrink this retained base vector.
+        retained_raw_preseparation_probability_weight_elements: usize::from(probability_weighted)
+            * observations,
         finite_columns: conservative_coefficient_slots,
         coefficient_slots: conservative_coefficient_slots,
         reported_coefficient_slots: conservative_coefficient_slots,
@@ -806,6 +930,10 @@ fn conservative_preflight_dimensions(
         cluster_dimensions: request.clusters.len(),
         cluster_subset_groups,
         separation_workspace_vectors: separation_workspace.observation_vectors,
+        separation_singleton_enabled: request.separation.drop_singletons,
+        separation_method_count: separation_method_count(request.separation),
+        separation_rebase_enabled: separation_can_rebase(request.separation),
+        separation_exact_fe_enabled: request.separation.methods.fixed_effects,
         separation_mu_enabled: request.separation.methods.mu,
         simplex_tableau_cells: separation_workspace.simplex_tableau_cells,
         requested_output_columns: request.output.requested_observation_columns,
@@ -872,9 +1000,16 @@ fn final_memory_dimensions(
     Ok(PpmlMemoryDimensions {
         observations: prepared.original_rows().len(),
         original_observations: prepared.original_observations(),
+        // The owner retains the generation-zero if/in capacity even though
+        // each rebuilt OLS sample reports only that generation's staged
+        // candidate mask. Route binding therefore uses the immutable numeric
+        // candidate count, never the shrinking generation-local count.
+        candidate_observations: prepared.requested_candidate_observations(),
         loaded_numeric_columns: prepared.prepared().sample().regressors.len(),
-        retained_raw_candidate_probability_weight_elements: prepared
-            .retained_raw_candidate_probability_weight_elements(),
+        retained_base_adjustment_capacity_elements: prepared
+            .retained_base_adjustment_capacity_elements(),
+        retained_raw_preseparation_probability_weight_elements: prepared
+            .retained_raw_preseparation_probability_weight_elements(),
         finite_columns: prepared.model().columns.len(),
         coefficient_slots: prepared.model().coefficients.len(),
         reported_coefficient_slots: categorical.report_plan().original_coefficient_count(),
@@ -889,6 +1024,10 @@ fn final_memory_dimensions(
         cluster_dimensions: clusters.len(),
         cluster_subset_groups,
         separation_workspace_vectors: separation_workspace.observation_vectors,
+        separation_singleton_enabled: separation.drop_singletons,
+        separation_method_count: separation_method_count(separation),
+        separation_rebase_enabled: separation_can_rebase(separation),
+        separation_exact_fe_enabled: separation.methods.fixed_effects,
         separation_mu_enabled: separation.methods.mu,
         simplex_tableau_cells: separation_workspace.simplex_tableau_cells,
         requested_output_columns: output.requested_observation_columns,
@@ -898,6 +1037,14 @@ fn final_memory_dimensions(
         threads: linear.execution.threads.resolved(),
         allocation_audit_enabled,
     })
+}
+
+const fn separation_can_rebase(config: SeparationConfig) -> bool {
+    config.drop_singletons
+        || config.methods.fixed_effects
+        || config.methods.simplex
+        || config.methods.iterated_rectifier
+        || config.methods.mu
 }
 
 fn cluster_subset_groups(clusters: &[&[u32]]) -> Result<usize> {
@@ -1257,7 +1404,6 @@ mod tests {
     use std::rc::Rc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    static SEPARATION_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
 
     #[test]
@@ -1281,24 +1427,6 @@ mod tests {
                 .expect_err("impossible publication string capacity must fail before allocation");
         assert_eq!(string_error.code, ErrorCode::Allocation);
         assert_eq!(string_error.return_code(), 909);
-    }
-
-    fn count_separation_phase_begins(
-        phase: PpmlPhase,
-        event: super::super::PpmlPhaseAllocatorEvent,
-    ) -> u64 {
-        if matches!(event, super::super::PpmlPhaseAllocatorEvent::Begin)
-            && matches!(
-                phase,
-                PpmlPhase::SeparationFe
-                    | PpmlPhase::SeparationSimplex
-                    | PpmlPhase::SeparationIr
-                    | PpmlPhase::SeparationMu
-            )
-        {
-            SEPARATION_PHASE_BEGINS.fetch_add(1, Ordering::SeqCst);
-        }
-        0
     }
 
     fn count_fit_phase_begins(
@@ -1459,6 +1587,44 @@ mod tests {
             }
             assert!(result.output().certificate().passed);
         }
+    }
+
+    #[test]
+    fn ppml_result_freezes_pairwise_shared_topology_dof() {
+        let (request, mut loaded) = fixture(3, false, false, false, false, false);
+        let repeated_g = loaded
+            .ols
+            .numeric_sources
+            .iter()
+            .find(|(source, _)| source.get() == 2)
+            .expect("first absorbed source")
+            .1
+            .clone();
+        loaded
+            .ols
+            .numeric_sources
+            .iter_mut()
+            .find(|(source, _)| source.get() == 4)
+            .expect("third absorbed source")
+            .1 = repeated_g;
+
+        let result = fit_prepared_ppml(request, loaded)
+            .expect("pairwise-topology PPML result with a repeated third FE");
+        let effect_ranks = result
+            .fixed_effects()
+            .iter()
+            .map(|effect| effect.absorbed_rank)
+            .collect::<Vec<_>>();
+
+        // Pairwise mobility detects that the third partition repeats the
+        // first. First-pair policy would leave five spurious absorbed
+        // directions here after structural-constant normalization.
+        assert_eq!(effect_ranks, [5, 1, 0]);
+        assert_eq!(result.inference().dof.absorbed_rank, 6);
+        assert!(!result.fixed_effects()[2].nested);
+        assert!(!result.fixed_effects()[2].redundancy_exact);
+        assert!(result.inference().dof.absorbed_rank_is_approximate);
+        assert!(result.certificate().passed);
     }
 
     #[test]
@@ -1970,7 +2136,7 @@ mod tests {
                 .memory()
                 .plan
                 .preflight_dimensions
-                .retained_raw_candidate_probability_weight_elements,
+                .retained_raw_preseparation_probability_weight_elements,
             12,
         );
         assert_eq!(
@@ -1978,7 +2144,7 @@ mod tests {
                 .memory()
                 .plan
                 .selected_inventory()
-                .retained_raw_candidate_probability_weight_bytes,
+                .retained_raw_preseparation_probability_weight_bytes,
             12_u128 * size_of::<f64>() as u128,
         );
         assert!((result.weights().prepared_weight_sum - 12.0).abs() < 1e-12);
@@ -2069,14 +2235,14 @@ mod tests {
 
         let (mut request, loaded) = fixture(0, false, false, false, false, false);
         request.memory.available_bytes = Some(1);
-        request.phase_allocation_probe = Some(count_separation_phase_begins);
-        SEPARATION_PHASE_BEGINS.store(0, Ordering::SeqCst);
+        request.phase_allocation_probe = Some(count_fit_phase_begins);
+        FIT_PHASE_BEGINS.store(0, Ordering::SeqCst);
         let error = fit_prepared_ppml(request, loaded).expect_err("preflight must fail");
         assert_eq!(error.code, ErrorCode::Allocation);
         assert_eq!(
-            SEPARATION_PHASE_BEGINS.load(Ordering::SeqCst),
+            FIT_PHASE_BEGINS.load(Ordering::SeqCst),
             0,
-            "generation-zero preflight must fail before any detector phase",
+            "generation-zero preflight must fail before canonical preparation or any later phase",
         );
 
         let (mut request, loaded) = fixture(0, false, false, false, false, false);

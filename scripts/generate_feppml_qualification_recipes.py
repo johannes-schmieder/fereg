@@ -16,12 +16,22 @@ from typing import Any, Mapping, Sequence
 
 try:
     from scripts import ppml_memory_performance as performance
+    from scripts import feppml_separation_recipe_contract as separation_contract
 except ImportError:
     import ppml_memory_performance as performance  # type: ignore[no-redef]
+    import feppml_separation_recipe_contract as separation_contract  # type: ignore[no-redef]
 
 
 class RecipeError(RuntimeError):
     pass
+
+
+SEPARATION_AUDIT_CELL_ID = "dev_n100k_no_fe_k0_t1"
+
+
+def separation_comparator_audit() -> str:
+    document = separation_contract.load_manifest()
+    return separation_contract.stata_comparator_audit(document)
 
 
 def _write_new(path: Path, text: str) -> None:
@@ -185,7 +195,9 @@ def generator_do(cell: Mapping[str, Any], seed: int) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _child_preamble(command: str, *, candidate: bool) -> list[str]:
+def _child_preamble(
+    command: str, *, candidate: bool, separation_audit: bool = False,
+) -> list[str]:
     lines = [
         "version 19.0", "clear all", "set more off",
         "args data artifact result ready start done requested comparator_limit pair temperature cell arm",
@@ -229,6 +241,17 @@ def _child_preamble(command: str, *, candidate: bool) -> list[str]:
             "local __q_comparator_processors = min(`requested', `comparator_limit')",
             "set processors `__q_comparator_processors'",
         ])
+    if separation_audit:
+        if candidate:
+            raise RecipeError("pinned comparator audit cannot run in the candidate arm")
+        lines.extend(
+            ["", *separation_comparator_audit().splitlines(), ""]
+            + [
+                "use \"`data'\", clear",
+                "assert obs_id == _n",
+                "generate byte __q_eligible = 1",
+            ]
+        )
     lines.extend([
         "file open __resolution using \"RESOLUTION\", write text",
         "file write __resolution \"ADO|`__q_resolved_ado'\" _n",
@@ -302,7 +325,11 @@ def science_do(
     statuses: Sequence[Mapping[str, Any]], probe_rows: int,
 ) -> str:
     """Emit one native science arm using the closed line protocol."""
-    lines = _child_preamble(command, candidate=candidate)
+    lines = _child_preamble(
+        command,
+        candidate=candidate,
+        separation_audit=(not candidate and cell["cell_id"] == SEPARATION_AUDIT_CELL_ID),
+    )
     expected_names = " ".join(str(record["name"]) for record in statuses)
     expected_codes = [int(record["status_code"]) for record in statuses]
     clusters = _clusters(str(cell["vce"]))

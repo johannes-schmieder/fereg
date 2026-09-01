@@ -27,12 +27,12 @@ use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
 use super::{
-    scheduled_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe,
-    PpmlCertificate, PpmlConfig, PpmlFallbackKind, PpmlIterationWorkspace,
-    PpmlLinearWorkspaceCapacityReport, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan,
-    PpmlMemoryRoute, PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock,
-    PpmlSteadyStateAllocationObservation, PpmlWorkspaceCapacityReport,
-    PPML_STEADY_STATE_AUDIT_ITERATIONS,
+    scheduled_inner_tolerance, strict_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot,
+    PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlConfig, PpmlFallbackKind,
+    PpmlInnerToleranceProgress, PpmlIterationWorkspace, PpmlLinearWorkspaceCapacityReport,
+    PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan, PpmlMemoryRoute, PpmlMemoryTelemetry,
+    PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlSteadyStateAllocationObservation,
+    PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
@@ -585,15 +585,21 @@ fn summarize_linear_workspace(
         capacity.frozen_response_elements,
         capacity.frozen_gram_elements,
         capacity.frozen_factor_elements,
+        capacity.frozen_inverse_lower_elements,
         capacity.frozen_rhs_elements,
+        capacity.frozen_moment_partial_elements,
         capacity.frozen_row_elements,
         capacity.frozen_solve_elements,
+        capacity.frozen_permutation_elements,
         capacity.frozen_score_elements,
         capacity.frozen_coefficient_elements,
         capacity.frozen_bread_elements,
         capacity.frozen_residual_elements,
         capacity.frozen_reported_coefficient_elements,
         capacity.frozen_kept_elements,
+        capacity.frozen_candidate_position_elements,
+        capacity.frozen_candidate_identity_elements,
+        capacity.frozen_candidate_scale_elements,
         capacity.frozen_basis_slot_elements,
         capacity.map_weight_elements,
         capacity.projection_block_elements,
@@ -806,7 +812,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut objective =
         poisson_objective_from_eta(outcome, workspace.eta(), workspace.mean(), prior_weights)?;
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design)?;
-    let initial_tolerance = scheduled_inner_tolerance(config.ppml, 1);
+    let initial_tolerance =
+        scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
     let initial_config = ppml_linear_config(config, initial_tolerance)?;
     let frame = LinearSolveFrame::from_parts(
         workspace.working_response(),
@@ -840,6 +847,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         config.ppml.score_tolerance,
         &mut score_workspace,
     )?;
+    let mut previous_inner_tolerance = initial_tolerance;
+    let mut previous_outer_progress = None;
     let mut converged = false;
     let mut two_consecutive_convergence = false;
     let mut rank_frozen = false;
@@ -865,7 +874,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         // avoids even an extra clock read.
         let audited_iteration_clock = allocation_audit.is_measuring().then(Instant::now);
         completed_iterations = iteration;
-        let inner_tolerance = scheduled_inner_tolerance(config.ppml, iteration);
+        let inner_tolerance = scheduled_inner_tolerance(
+            config.ppml,
+            iteration,
+            previous_inner_tolerance,
+            previous_outer_progress,
+        );
+        previous_inner_tolerance = inner_tolerance;
         begin_phase_allocation(
             config.phase_allocation_probe,
             PpmlPhase::WeightResponseRefresh,
@@ -1165,21 +1180,32 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
             frame_generation = next_frame_generation(frame_generation)?;
             refresh_linear_frame(&mut session, &workspace, frame_generation)?;
-            let strict_tolerance = (0.1 * config.ppml.tolerance).min(1e-12);
+            let strict_tolerance = strict_inner_tolerance(config.ppml);
+            previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
             session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
-            let (strict, strict_basis_unchanged, strict_rollback) = session.strict_candidate()?;
+            let strict_transaction = session.strict_candidate()?;
+            let strict_basis_unchanged = strict_transaction.basis_unchanged();
             #[cfg(test)]
             let strict_basis_unchanged = strict_basis_unchanged && !take_strict_basis_change(1);
-            let strict_certified = strict.certified();
-            accumulate_inner_iterations(
-                &mut total_inner_iterations,
-                strict.fit().absorption_report(),
-            )?;
-            fill_candidate_eta_from_linear_output(&strict, offset, workspace.candidate_eta_mut())?;
-            fill_candidate_coefficients_from_linear_output(
-                &strict,
-                workspace.candidate_coefficients_mut(),
-            )?;
+            let (strict_certified, strict_rank) = {
+                let strict = strict_transaction.candidate();
+                let strict_certified = strict.certified();
+                let strict_rank = strict.fit().finite_rank();
+                accumulate_inner_iterations(
+                    &mut total_inner_iterations,
+                    strict.fit().absorption_report(),
+                )?;
+                fill_candidate_eta_from_linear_output(
+                    &strict,
+                    offset,
+                    workspace.candidate_eta_mut(),
+                )?;
+                fill_candidate_coefficients_from_linear_output(
+                    &strict,
+                    workspace.candidate_coefficients_mut(),
+                )?;
+                (strict_certified, strict_rank)
+            };
             #[cfg(test)]
             let injected_strict_movement = take_strict_resume(1);
             #[cfg(test)]
@@ -1199,7 +1225,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 strict_certified,
                 strict_basis_unchanged,
                 finite_rank,
-                strict.fit().finite_rank(),
+                strict_rank,
                 workspace.eta(),
                 workspace.coefficients(),
                 objective,
@@ -1210,13 +1236,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             ) == FinalHessianSynchronization::Certified;
 
             if strict_consistent {
-                session.commit_strict_candidate(strict_rollback);
                 // Publish the strict state itself. A unit trial copies the
                 // already-certified strict eta/beta and its evaluated means
                 // into the accepted buffers without allocating.
                 workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
                 workspace.accept_trial()?;
                 objective = strict_objective.expect("consistent strict objective is present");
+                strict_transaction.commit();
             } else {
                 // ADR 0016 requires a changed strict solution to become the
                 // next IRLS state. Preserve the stable-objective invariant by
@@ -1238,9 +1264,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 };
                 match strict_step {
                     Ok(strict_step) => {
-                        session.commit_strict_candidate(strict_rollback);
-                        objective = strict_step.objective;
-                        total_step_halvings = total_step_halvings
+                        let updated_step_halvings = total_step_halvings
                             .checked_add(strict_step.step_halvings)
                             .ok_or_else(|| {
                                 FeregError::new(
@@ -1248,9 +1272,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                                     "prepared PPML strict step-halving count overflowed",
                                 )
                             })?;
+                        objective = strict_step.objective;
+                        total_step_halvings = updated_step_halvings;
+                        strict_transaction.commit();
                     }
                     Err(error) if error.code == ErrorCode::NonConvergence => {
-                        session.rollback_strict_candidate(strict_rollback);
+                        strict_transaction.rollback();
                         // The last accepted PPML state remains authoritative.
                         // A strict profile that cannot improve it invalidates
                         // convergence, not the fit transaction; the bounded
@@ -1373,6 +1400,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         } else if audit_can_start {
             allocation_audit.start_after(&session, &workspace)?;
         }
+        previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
+            relative_deviance_change(previous_objective, objective),
+            final_score.relative_infinity_norm,
+        ));
     }
 
     if matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. }) {
@@ -1609,23 +1640,32 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     workspace.prepare_final_hessian_response(offset)?;
     *frame_generation = next_frame_generation(*frame_generation)?;
     refresh_linear_frame(session, workspace, *frame_generation)?;
-    let strict_tolerance = (0.1 * config.ppml.tolerance).min(1e-12);
+    let strict_tolerance = strict_inner_tolerance(config.ppml);
     session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
-    let (synchronized, synchronized_basis_unchanged, synchronized_rollback) =
-        session.strict_candidate()?;
+    let synchronized_transaction = session.strict_candidate()?;
+    let synchronized_basis_unchanged = synchronized_transaction.basis_unchanged();
     #[cfg(test)]
     let synchronized_basis_unchanged = synchronized_basis_unchanged && !take_strict_basis_change(2);
-    let synchronized_certified = synchronized.certified();
-    accumulate_inner_iterations(
-        total_inner_iterations,
-        synchronized.fit().absorption_report(),
-    )?;
-    fill_candidate_eta_from_linear_output(&synchronized, offset, workspace.candidate_eta_mut())?;
-    fill_candidate_coefficients_from_linear_output(
-        &synchronized,
-        workspace.candidate_coefficients_mut(),
-    )?;
-    if !synchronized_basis_unchanged || expected_rank != synchronized.fit().finite_rank() {
+    let (synchronized_certified, synchronized_rank) = {
+        let synchronized = synchronized_transaction.candidate();
+        let synchronized_certified = synchronized.certified();
+        let synchronized_rank = synchronized.fit().finite_rank();
+        accumulate_inner_iterations(
+            total_inner_iterations,
+            synchronized.fit().absorption_report(),
+        )?;
+        fill_candidate_eta_from_linear_output(
+            &synchronized,
+            offset,
+            workspace.candidate_eta_mut(),
+        )?;
+        fill_candidate_coefficients_from_linear_output(
+            &synchronized,
+            workspace.candidate_coefficients_mut(),
+        )?;
+        (synchronized_certified, synchronized_rank)
+    };
+    if !synchronized_basis_unchanged || expected_rank != synchronized_rank {
         return Err(numerical_nonconvergence(
             "prepared PPML final Hessian changed the canonical rank basis",
         ));
@@ -1644,7 +1684,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
             Ok(objective) => objective,
             Err(error) if error.code == ErrorCode::NonConvergence => {
-                session.rollback_strict_candidate(synchronized_rollback);
+                synchronized_transaction.rollback();
                 return Ok(FinalHessianSynchronization::ResumeAcceptedState);
             }
             Err(error) => return Err(error),
@@ -1653,7 +1693,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         synchronized_certified,
         synchronized_basis_unchanged,
         expected_rank,
-        synchronized.fit().finite_rank(),
+        synchronized_rank,
         workspace.eta(),
         workspace.coefficients(),
         accepted_objective,
@@ -1671,9 +1711,9 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         decision
     };
     if decision == FinalHessianSynchronization::Certified {
-        session.commit_strict_candidate(synchronized_rollback);
+        synchronized_transaction.commit();
     } else {
-        session.rollback_strict_candidate(synchronized_rollback);
+        synchronized_transaction.rollback();
     }
     Ok(decision)
 }
@@ -2615,8 +2655,10 @@ mod tests {
         PpmlMemoryDimensions {
             observations: prepared.fit_sample().n_active(),
             original_observations: prepared.fit_sample().n_original,
+            candidate_observations: prepared.fit_sample().n_candidate,
             loaded_numeric_columns: prepared.fit_sample().regressors.len(),
-            retained_raw_candidate_probability_weight_elements: 0,
+            retained_base_adjustment_capacity_elements: 0,
+            retained_raw_preseparation_probability_weight_elements: 0,
             finite_columns: prepared.fit_model().columns.len(),
             coefficient_slots: prepared.fit_model().coefficients.len(),
             reported_coefficient_slots: prepared.fit_model().coefficients.len(),
@@ -2631,6 +2673,10 @@ mod tests {
             cluster_dimensions: 0,
             cluster_subset_groups: 0,
             separation_workspace_vectors: 0,
+            separation_singleton_enabled: false,
+            separation_method_count: 0,
+            separation_rebase_enabled: false,
+            separation_exact_fe_enabled: false,
             separation_mu_enabled: false,
             simplex_tableau_cells: 0,
             requested_output_columns: 4,
@@ -2768,8 +2814,10 @@ mod tests {
         let dimensions = PpmlMemoryDimensions {
             observations: 2,
             original_observations: 2,
+            candidate_observations: 2,
             loaded_numeric_columns: 0,
-            retained_raw_candidate_probability_weight_elements: 0,
+            retained_base_adjustment_capacity_elements: 0,
+            retained_raw_preseparation_probability_weight_elements: 0,
             finite_columns: 1,
             coefficient_slots: 1,
             reported_coefficient_slots: 1,
@@ -2784,6 +2832,10 @@ mod tests {
             cluster_dimensions: 0,
             cluster_subset_groups: 0,
             separation_workspace_vectors: 0,
+            separation_singleton_enabled: false,
+            separation_method_count: 0,
+            separation_rebase_enabled: false,
+            separation_exact_fe_enabled: false,
             separation_mu_enabled: false,
             simplex_tableau_cells: 0,
             requested_output_columns: 0,
@@ -2862,6 +2914,22 @@ mod tests {
         assert!(fitted.diagnostics().converged);
         assert!(fitted.diagnostics().iterations >= 2);
         assert!(fitted.diagnostics().final_score.passed);
+        let mut previous_inner_tolerance = config.ppml.inner_tolerance_initial;
+        let mut previous_outer_progress = None;
+        for report in &fitted.diagnostics().retained_iterations {
+            let expected = scheduled_inner_tolerance(
+                config.ppml,
+                report.iteration,
+                previous_inner_tolerance,
+                previous_outer_progress,
+            );
+            assert_eq!(report.inner_tolerance.to_bits(), expected.to_bits());
+            previous_inner_tolerance = report.inner_tolerance;
+            previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
+                report.relative_deviance_change,
+                report.score.relative_infinity_norm,
+            ));
+        }
         assert!(fitted.linear().generations().response > fitted.diagnostics().iterations as u64);
         assert!(fitted
             .coefficients()
@@ -3245,6 +3313,122 @@ mod tests {
             let reconstructed =
                 workspace.coefficients()[intercept_slot] + workspace.coefficients()[0] * value;
             assert!((workspace.eta()[row] - reconstructed).abs() <= 1e-12);
+        }
+    }
+
+    #[test]
+    fn strict_caller_error_and_unwind_restore_a_usable_prior_session() {
+        let x = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
+        let outcome = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
+        let prepared = prepared(&outcome, &[x.clone(), x]);
+        let frame = LinearSolveFrame::from_parts(
+            &outcome,
+            BorrowedMapWeights::Unit,
+            PreparedOlsBreadWeightScale {
+                weight_kind: None,
+                solver_weight_divisor: 1.0,
+                reference_weight_multiplier: 1.0,
+                reference_weight_sum: outcome.len() as f64,
+            },
+        )
+        .expect("strict caller frame");
+
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let mut linear_config = PreparedOlsFitConfig::default();
+            linear_config.execution.mode = mode;
+            linear_config.execution.poolsize = 1;
+            let mut session = CertifiedLinearSession::new(
+                &prepared,
+                frame,
+                linear_config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 7),
+            )
+            .expect("strict caller session");
+            let initial = session.solve_fresh().expect("strict caller initial fit");
+            let original_kept = initial.fit().kept_generated_columns().to_vec();
+            let original_dropped = initial.fit().dropped_generated_columns().to_vec();
+            let original_dense_identity = session.retained_dense_identity();
+            let original_scratch_identity = session
+                .retained_scratch_identity()
+                .map(std::path::Path::to_path_buf);
+
+            let before_error_capacities = session.workspace_capacities();
+            let mut candidate_eta = vec![0.0; outcome.len()];
+            let error = (|| -> Result<()> {
+                let transaction = session.strict_candidate()?;
+                let candidate = transaction.candidate();
+                // This is a real fallible caller edge after candidate
+                // construction. `?` must drop the still-live transaction.
+                fill_candidate_eta_from_linear_output(&candidate, &[], &mut candidate_eta)?;
+                transaction.commit();
+                Ok(())
+            })()
+            .expect_err("misaligned candidate fill must fail");
+            assert_eq!(error.code, ErrorCode::Internal);
+            assert_eq!(session.basis_generation_for_test(), 7);
+            assert_eq!(
+                session.workspace_capacities(),
+                before_error_capacities,
+                "error rollback must not allocate or discard reusable capacity",
+            );
+            assert_eq!(session.retained_dense_identity(), original_dense_identity);
+            assert_eq!(
+                session.retained_scratch_identity(),
+                original_scratch_identity.as_deref(),
+            );
+            let restored = session
+                .output()
+                .expect("error rollback restores prior output");
+            assert_eq!(restored.fit().kept_generated_columns(), original_kept);
+            assert_eq!(restored.fit().dropped_generated_columns(), original_dropped);
+            assert!(session
+                .solve_frozen()
+                .expect("error rollback supports the next frozen solve")
+                .certified());
+            let fresh_prior = session
+                .solve_fresh()
+                .expect("establish a certified fresh state before unwind");
+            assert_eq!(fresh_prior.fit().kept_generated_columns(), original_kept);
+            assert_eq!(
+                fresh_prior.fit().dropped_generated_columns(),
+                original_dropped
+            );
+
+            let before_unwind_capacities = session.workspace_capacities();
+            let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let mut transaction = session.strict_candidate().expect("strict unwind candidate");
+                assert!(
+                    transaction.inject_same_rank_basis_pivot(),
+                    "duplicate columns provide a speculative same-rank pivot",
+                );
+                let candidate = transaction.candidate();
+                assert!(candidate.certified());
+                panic!("injected strict caller unwind");
+            }));
+            assert!(unwind.is_err());
+            assert_eq!(session.basis_generation_for_test(), 7);
+            assert_eq!(
+                session.workspace_capacities(),
+                before_unwind_capacities,
+                "unwind rollback must not allocate or discard reusable capacity",
+            );
+            assert_eq!(session.retained_dense_identity(), original_dense_identity);
+            assert_eq!(
+                session.retained_scratch_identity(),
+                original_scratch_identity.as_deref(),
+            );
+            let restored = session
+                .output()
+                .expect("unwind rollback restores prior output");
+            assert_eq!(restored.fit().kept_generated_columns(), original_kept);
+            assert_eq!(restored.fit().dropped_generated_columns(), original_dropped);
+            assert!(session
+                .solve_frozen()
+                .expect("unwind rollback supports the next frozen solve")
+                .certified());
         }
     }
 

@@ -37,15 +37,64 @@ fn reservation_failure_maps_to_allocation() {
 fn phase_one_combines_nullspace_directions() {
     // No single direction is nonnegative, but their sum is.
     let cone = vec![vec![2.0, -1.0], vec![-1.0, 2.0]];
-    let (coordinates, _) = phase_one_cone(&cone, 1000, 1e-10)
-        .expect("phase one")
-        .expect("feasible");
+    let PhaseOneConeOutcome::Feasible { coordinates, .. } =
+        phase_one_cone(&cone, 1000, 1e-10).expect("phase one")
+    else {
+        panic!("cone must be feasible");
+    };
     let values = cone
         .iter()
         .map(|row| row[0] * coordinates[0] + row[1] * coordinates[1])
         .collect::<Vec<_>>();
     assert!(values.iter().all(|value| *value >= -1e-8));
     assert!((values.iter().sum::<f64>() - 1.0).abs() < 1e-8);
+}
+
+#[test]
+fn simplex_alone_certifies_nontrivial_infeasibility() {
+    // The positive row leaves the second coefficient unidentified.  On the
+    // two boundary rows it has opposite signs, so the only nonnegative cone
+    // direction is zero and the unit-slack normalization is infeasible.
+    let outcome = vec![1.0, 0.0, 0.0];
+    let x =
+        DenseMatrix::from_columns(&[vec![1.0, 1.0, 1.0], vec![0.0, 1.0, -1.0]]).expect("matrix");
+    let result =
+        model_simplex(&outcome, &x, 1e-10, 1e-8, 1000, 1_000_000).expect("simplex dual closure");
+    assert_eq!(result.status, MethodStatus::NoSeparation);
+    let certificate = result.certificate.expect("Farkas certificate");
+    assert!(matches!(
+        certificate.proof,
+        SeparationCertificateProof::SimplexDualInfeasibility {
+            boundary_rows: 2,
+            nullity: 1,
+        }
+    ));
+    assert!(certificate.passed);
+    assert!(certificate.negative_margin_relative > 0.0);
+}
+
+#[test]
+fn degenerate_duplicate_constraints_still_produce_a_verified_dual() {
+    // Duplicate opposite constraints force degenerate zero-RHS pivots. Bland
+    // ordering must still terminate with a dual that verifies against every
+    // original (including duplicate) row.
+    let cone = vec![vec![1.0], vec![-1.0], vec![1.0], vec![-1.0]];
+    let PhaseOneConeOutcome::Infeasible { dual, iterations } =
+        phase_one_cone(&cone, 1000, 1e-10).expect("degenerate phase one")
+    else {
+        panic!("opposite duplicate rays cannot satisfy unit normalization");
+    };
+    assert!(iterations < 1000);
+    let certificate = verify_phase_one_farkas_certificate(&cone, &dual, 1e-8)
+        .expect("dual verification execution")
+        .expect("independently verified degenerate dual");
+    assert!(certificate.passed);
+
+    let mut forged = dual;
+    *forged.last_mut().expect("normalization multiplier") = 1.0;
+    assert!(verify_phase_one_farkas_certificate(&cone, &forged, 1e-8)
+        .expect("forged verification execution")
+        .is_none());
 }
 
 #[test]

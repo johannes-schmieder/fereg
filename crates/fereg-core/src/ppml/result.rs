@@ -13,7 +13,7 @@ use super::{
     PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind, PreparedPpmlAdjustmentReport,
     PreparedPpmlWeightReport,
 };
-use crate::data::DropReason;
+use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::FeSolverKind;
@@ -21,10 +21,10 @@ use crate::fe::{
     connected_components_all_fallible, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig,
     MapConfig,
 };
-use crate::ols::PreparedOlsAbsorbedDofPolicy;
 use crate::ppml_separation::{
-    MethodStatus, SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
-    SeparationMethodReport, SeparationMethods, SeparationReport,
+    separation_method_count, separation_workspace_requirements, MethodStatus,
+    SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
+    SeparationMethodReport, SeparationMethods, SeparationNote, SeparationReport,
 };
 use crate::topology_dof::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy};
 use std::sync::Arc;
@@ -539,7 +539,6 @@ pub(crate) struct PreparedPpmlRecoveredFixedEffects {
 /// intercept-then-slopes order as the prepared DoF rows.
 pub(crate) fn prepare_ppml_fixed_effect_report(
     model: &PreparedPpmlModel,
-    policy: PreparedOlsAbsorbedDofPolicy,
     requested_saved_channels: &[bool],
 ) -> Result<PreparedPpmlFixedEffectReport> {
     let prepared = match model {
@@ -575,15 +574,11 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
             cluster_dimensions.push(model.cluster_codes(dimension)?);
         }
     }
-    let mut report = prepared.absorbed_dof(
-        match policy {
-            PreparedOlsAbsorbedDofPolicy::None => CategoricalTopologyDofPolicy::None,
-            PreparedOlsAbsorbedDofPolicy::FirstPair => CategoricalTopologyDofPolicy::FirstPair,
-            PreparedOlsAbsorbedDofPolicy::Pairwise => CategoricalTopologyDofPolicy::Pairwise,
-            PreparedOlsAbsorbedDofPolicy::Continuous => CategoricalTopologyDofPolicy::Continuous,
-        },
-        &cluster_dimensions,
-    )?;
+    // ADR 0016 freezes PPML to the shared pairwise topology calculation. The
+    // OLS policy adapter is deliberately absent from this boundary: PPML owns
+    // the subsequent structural-normalization and inference corrections.
+    let mut report =
+        prepared.absorbed_dof(CategoricalTopologyDofPolicy::Pairwise, &cluster_dimensions)?;
     // In PPML the structural normalization is a reported finite coordinate,
     // even though the shared linear solve obtains it from the absorbed span.
     // Transfer exactly one estimable intercept direction from df_a into that
@@ -1426,6 +1421,7 @@ impl CertifiedPpmlResult {
         memory
             .validate()
             .map_err(|error| composed_result_error("PPML final memory report is invalid", error))?;
+        validate_memory_sample_axes(&sample, weights, adjustment, separation_config, &memory)?;
         separation_seal.validate(
             separation_config,
             &separation,
@@ -1459,6 +1455,8 @@ impl CertifiedPpmlResult {
                         "PPML full separation dimension overflowed",
                     )
                 })?,
+            &fixed_effects,
+            memory.plan.preflight_dimensions.fe_total_levels,
         )?;
 
         let recomputed_objective =
@@ -1676,6 +1674,67 @@ impl CertifiedPpmlResult {
         let compact = self.prediction(kind)?;
         self.output.scatter_to_original(&compact, missing_value)
     }
+}
+
+fn validate_memory_sample_axes(
+    sample: &PpmlFinalSample,
+    weights: PreparedPpmlWeightReport,
+    adjustment: PreparedPpmlAdjustmentReport,
+    separation: SeparationConfig,
+    memory: &PpmlMemoryTelemetry,
+) -> Result<()> {
+    let dimensions = memory.plan.dimensions;
+    let retained_base_adjustment = if adjustment.input_kind == PreparedPpmlAdjustmentKind::None {
+        0
+    } else {
+        sample.candidate_observations()
+    };
+    let retained_raw_probability_weights = if weights.kind == Some(WeightKind::Probability) {
+        sample.prepared_original_rows().len()
+    } else {
+        0
+    };
+    let workspace = separation_workspace_requirements(separation);
+    let rebase_enabled = separation.drop_singletons
+        || separation.methods.fixed_effects
+        || separation.methods.simplex
+        || separation.methods.iterated_rectifier
+        || separation.methods.mu;
+    let policy_matches = |dimensions: crate::ppml::PpmlMemoryDimensions| {
+        dimensions.separation_workspace_vectors == workspace.observation_vectors
+            && dimensions.separation_singleton_enabled == separation.drop_singletons
+            && dimensions.separation_method_count == separation_method_count(separation)
+            && dimensions.separation_rebase_enabled == rebase_enabled
+            && dimensions.separation_exact_fe_enabled == separation.methods.fixed_effects
+            && dimensions.separation_mu_enabled == separation.methods.mu
+            && dimensions.simplex_tableau_cells == workspace.simplex_tableau_cells
+    };
+    if dimensions.original_observations != sample.original_observations()
+        || dimensions.candidate_observations != sample.candidate_observations()
+        || dimensions.observations != sample.original_rows().len()
+        || memory.plan.preflight_dimensions.observations != sample.prepared_original_rows().len()
+        || dimensions.retained_base_adjustment_capacity_elements != retained_base_adjustment
+        || memory
+            .plan
+            .preflight_dimensions
+            .retained_base_adjustment_capacity_elements
+            != retained_base_adjustment
+        || dimensions.retained_raw_preseparation_probability_weight_elements
+            != retained_raw_probability_weights
+        || memory
+            .plan
+            .preflight_dimensions
+            .retained_raw_preseparation_probability_weight_elements
+            != retained_raw_probability_weights
+        || !policy_matches(dimensions)
+        || !policy_matches(memory.plan.preflight_dimensions)
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "PPML frozen memory-route axes or retained pre-separation adjustment/weight capacity disagree with the certified final sample",
+        ));
+    }
+    Ok(())
 }
 
 /// Reclassify failures after raw-domain preparation has completed. At this
@@ -2553,15 +2612,29 @@ fn validate_separation_report(
     config: SeparationConfig,
     candidate_original_rows: &[usize],
     full_model_columns: usize,
+    fixed_effects: &[PpmlFixedEffectResult],
+    exact_level_capacity: usize,
 ) -> Result<bool> {
     validate_separation_config(config)?;
+    let method_capacity = report
+        .candidate_observations
+        .checked_mul(separation_method_count(config))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "PPML separation method-report capacity overflows",
+            )
+        })?;
     if report.active.len() != report.candidate_observations
         || report.drop_reasons.len() != report.candidate_observations
         || candidate_original_rows.len() != report.candidate_observations
         || candidate_original_rows
             .windows(2)
             .any(|rows| rows[0] >= rows[1])
+        || report.generations >= report.candidate_observations
         || report.generation_hashes.len() != report.generations.saturating_add(1)
+        || report.generation_hashes.len() > report.candidate_observations
+        || report.methods.len() > method_capacity
         || report.retained_observations.len() + report.dropped_observations.len()
             != report.candidate_observations
         || report.singleton_count + report.separated_count != report.dropped_observations.len()
@@ -2638,6 +2711,7 @@ fn validate_separation_report(
     )?;
     validate_requested_separation_chain(report, config)?;
     let mut previous_generation = 0_usize;
+    let mut exact_level_events = 0_usize;
     for method in &report.methods {
         if method.generation > report.generations || method.generation < previous_generation {
             return Err(FeregError::new(
@@ -2646,7 +2720,25 @@ fn validate_separation_report(
             ));
         }
         previous_generation = method.generation;
-        validate_separation_method(method, report.candidate_observations, full_model_columns)?;
+        exact_level_events = exact_level_events
+            .checked_add(validate_separation_method(
+                method,
+                candidate_original_rows,
+                full_model_columns,
+                fixed_effects,
+            )?)
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "PPML exact-FE certificate event count overflows",
+                )
+            })?;
+        if exact_level_events > exact_level_capacity {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "PPML exact-FE certificates exceed the generation-zero level envelope",
+            ));
+        }
         for &row in method
             .dropped_observations
             .iter()
@@ -2881,10 +2973,11 @@ fn validate_requested_separation_chain(
                 )?;
                 continue;
             }
-            if !matches!(
-                execution.status,
-                MethodStatus::NoCandidates | MethodStatus::NoSeparation
-            ) {
+            // Mu is a one-sided heuristic: it may certify a concrete
+            // deletion, but an empty candidate screen is not evidence that
+            // separation is absent. Its sole no-drop grammar is therefore
+            // the proof-free `NoCandidates` status.
+            if execution.status != MethodStatus::NoCandidates {
                 return Err(chain_error(
                     "requested Mu detector did not produce a terminal no-drop status",
                 ));
@@ -3002,9 +3095,11 @@ fn chain_error(message: &'static str) -> FeregError {
 
 fn validate_separation_method(
     method: &SeparationMethodReport,
-    candidate_observations: usize,
+    candidate_original_rows: &[usize],
     full_model_columns: usize,
-) -> Result<()> {
+    fixed_effects: &[PpmlFixedEffectResult],
+) -> Result<usize> {
+    let candidate_observations = candidate_original_rows.len();
     let stable_unique = |rows: &[usize]| {
         rows.iter().enumerate().all(|(position, row)| {
             *row < candidate_observations && (position == 0 || rows[position - 1] < *row)
@@ -3036,6 +3131,14 @@ fn validate_separation_method(
                 SeparationCertificateProof::SimplexFullPositiveRank { columns },
             ) => columns == full_model_columns && columns > 0,
             (
+                SeparationMethod::Simplex,
+                MethodStatus::NoSeparation,
+                SeparationCertificateProof::SimplexDualInfeasibility {
+                    boundary_rows,
+                    nullity,
+                },
+            ) => boundary_rows > 0 && nullity > 0 && nullity <= full_model_columns,
+            (
                 SeparationMethod::IteratedRectifier,
                 MethodStatus::NoSeparation,
                 SeparationCertificateProof::IteratedRectifierFixedPoint,
@@ -3045,11 +3148,6 @@ fn validate_separation_method(
                 | SeparationMethod::IteratedRectifier
                 | SeparationMethod::Mu,
                 MethodStatus::Certified,
-                SeparationCertificateProof::RecessionDirection,
-            ) => true,
-            (
-                SeparationMethod::Mu,
-                MethodStatus::NoSeparation,
                 SeparationCertificateProof::RecessionDirection,
             ) => true,
             _ => false,
@@ -3062,22 +3160,48 @@ fn validate_separation_method(
         }
         validate_separation_certificate(certificate, method.status == MethodStatus::NoSeparation)?;
     }
-    if method
-        .exact_fe_certificate
-        .as_ref()
-        .is_some_and(|certificate| {
-            !certificate.passed
-                || certificate
-                    .zero_only_levels
-                    .windows(2)
-                    .any(|pair| pair[0] >= pair[1])
-        })
-    {
-        return Err(FeregError::new(
-            ErrorCode::Internal,
-            "PPML exact-FE separation certificate is malformed or failed",
-        ));
-    }
+    let exact_level_events = if let Some(certificate) = method.exact_fe_certificate.as_ref() {
+        let checked_intercept_effects = fixed_effects
+            .iter()
+            .filter(|effect| effect.kind == PpmlFixedEffectChannelKind::Intercept)
+            .count();
+        let invalid_identity = certificate.zero_only_levels.iter().any(|identity| {
+            let valid_effect = fixed_effects.iter().any(|effect| {
+                effect.kind == PpmlFixedEffectChannelKind::Intercept
+                    && effect.term_id == identity.effect.get()
+            });
+            let valid_anchor = candidate_original_rows
+                .binary_search(&identity.representative_original_row)
+                .ok()
+                .is_some_and(|candidate_row| {
+                    method
+                        .dropped_observations
+                        .binary_search(&candidate_row)
+                        .is_ok()
+                });
+            !valid_effect || !valid_anchor
+        });
+        if method.method != SeparationMethod::FixedEffects
+            || !certificate.passed
+            || certificate.checked_intercept_effects != checked_intercept_effects
+            || certificate
+                .zero_only_levels
+                .windows(2)
+                .any(|pair| pair[0] >= pair[1])
+            || invalid_identity
+            || (method.status == MethodStatus::NoSeparation
+                && !certificate.zero_only_levels.is_empty())
+            || (method.status == MethodStatus::Certified && certificate.zero_only_levels.is_empty())
+        {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "PPML exact-FE separation certificate is malformed or failed",
+            ));
+        }
+        certificate.zero_only_levels.len()
+    } else {
+        0
+    };
     let any_drops = !method.dropped_observations.is_empty() || !method.singleton_drops.is_empty();
     let expected_certificate_shape = match method.status {
         MethodStatus::NoCandidates => {
@@ -3154,7 +3278,122 @@ fn validate_separation_method(
             "PPML separation method status, drops, and certificate shape disagree",
         ));
     }
-    Ok(())
+    if !separation_note_compatible(method.method, method.status, method.note) {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "PPML separation note code does not match its method and status",
+        ));
+    }
+    Ok(exact_level_events)
+}
+
+/// Accept only the allocation-free note codes emitted by the certified
+/// prepared detector for this exact method/status pair. Diagnostic prose is
+/// deliberately not part of a digest, but an arbitrary static string must not
+/// be able to masquerade as a registered execution state.
+fn separation_note_compatible(
+    method: SeparationMethod,
+    status: MethodStatus,
+    note: SeparationNote,
+) -> bool {
+    let code_matches = match (method, status, note.code) {
+        (
+            SeparationMethod::Singletons,
+            MethodStatus::Certified,
+            "prepared singleton pruning reached its fixed point",
+        )
+        | (
+            SeparationMethod::Singletons,
+            MethodStatus::NoSeparation,
+            "prepared singleton pruning independently certified a stable fixed point",
+        )
+        | (
+            SeparationMethod::FixedEffects,
+            MethodStatus::Certified,
+            "prepared exact zero-only FE certificate passed",
+        )
+        | (
+            SeparationMethod::FixedEffects,
+            MethodStatus::Certified,
+            "prepared exact-FE follow-up in the same atomic generation",
+        )
+        | (
+            SeparationMethod::FixedEffects,
+            MethodStatus::NoSeparation,
+            "prepared exact FE scan found no zero-only intercept level",
+        )
+        | (
+            SeparationMethod::Simplex | SeparationMethod::IteratedRectifier | SeparationMethod::Mu,
+            MethodStatus::NoCandidates,
+            "no zero-outcome observations",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::NoCandidates,
+            "model simplex found no zero-outcome observations",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::NoSeparation,
+            "finite regressors have full column rank on the positive-outcome sample",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::NoSeparation,
+            "model simplex phase-I infeasibility passed an independent Farkas certificate",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::Certified,
+            "single null-space direction has a common sign on boundary observations",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::Certified,
+            "model simplex phase-I certificate passed",
+        )
+        | (
+            SeparationMethod::Simplex,
+            MethodStatus::Uncertified,
+            "model simplex phase-I dual failed independent Farkas verification",
+        )
+        | (
+            SeparationMethod::IteratedRectifier,
+            MethodStatus::NoSeparation,
+            "prepared iterated rectifier converged to zero",
+        )
+        | (
+            SeparationMethod::IteratedRectifier,
+            MethodStatus::NoSeparation,
+            "prepared iterated rectifier certified no separation",
+        )
+        | (
+            SeparationMethod::IteratedRectifier,
+            MethodStatus::Certified,
+            "prepared iterated-rectifier candidate direction",
+        )
+        | (
+            SeparationMethod::Mu,
+            MethodStatus::NoCandidates,
+            "prepared mu found no small zero-outcome means",
+        )
+        | (SeparationMethod::Mu, MethodStatus::Certified, "prepared mu candidate direction") => {
+            true
+        }
+        (
+            SeparationMethod::Simplex,
+            MethodStatus::SkippedMemory,
+            "prepared full-model simplex exceeded its configured cell limit"
+            | "model simplex exceeded its configured cell limit",
+        ) => note.detail > 0,
+        _ => false,
+    };
+    code_matches
+        && (note.detail == 0
+            || matches!(
+                (method, status),
+                (SeparationMethod::Simplex, MethodStatus::SkippedMemory)
+            ))
 }
 
 fn validate_separation_certificate(
@@ -3179,10 +3418,23 @@ fn validate_separation_certificate(
                     && certificate.direction_scale == 0.0
                     && nonnegative.iter().all(|value| *value == 0.0)
             }
+            SeparationCertificateProof::SimplexDualInfeasibility {
+                boundary_rows,
+                nullity,
+            } => {
+                boundary_rows > 0
+                    && nullity > 0
+                    && certificate.direction_scale > 0.0
+                    && certificate.negative_margin_relative > 0.0
+            }
             SeparationCertificateProof::IteratedRectifierFixedPoint => true,
         };
     let valid_nonzero_direction = certificate.direction_scale > 0.0
-        && certificate.proof == SeparationCertificateProof::RecessionDirection;
+        && matches!(
+            certificate.proof,
+            SeparationCertificateProof::RecessionDirection
+                | SeparationCertificateProof::SimplexDualInfeasibility { .. }
+        );
     if !certificate.passed
         || !certificate.direction_scale.is_finite()
         || certificate.direction_scale < 0.0
@@ -3670,8 +3922,10 @@ mod tests {
         let dimensions = PpmlMemoryDimensions {
             observations: outcome.len(),
             original_observations: outcome.len(),
+            candidate_observations: outcome.len(),
             loaded_numeric_columns: 1,
-            retained_raw_candidate_probability_weight_elements: 0,
+            retained_base_adjustment_capacity_elements: 0,
+            retained_raw_preseparation_probability_weight_elements: 0,
             finite_columns: 1,
             coefficient_slots: 1,
             reported_coefficient_slots: 1,
@@ -3686,6 +3940,10 @@ mod tests {
             cluster_dimensions: 0,
             cluster_subset_groups: 0,
             separation_workspace_vectors: 0,
+            separation_singleton_enabled: false,
+            separation_method_count: 0,
+            separation_rebase_enabled: false,
+            separation_exact_fe_enabled: false,
             separation_mu_enabled: false,
             simplex_tableau_cells: 0,
             requested_output_columns: 0,
@@ -4118,6 +4376,107 @@ mod tests {
     }
 
     #[test]
+    fn frozen_memory_route_axes_remain_bound_to_the_certified_final_sample() {
+        let mut original = certified_composite_input();
+        original.sample.original_observations += 1;
+        let error = CertifiedPpmlResult::new(original)
+            .expect_err("memory route must retain the certified original axis");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("frozen memory-route axes"));
+
+        let mut candidate = certified_composite_input();
+        candidate.sample.candidate_observations -= 1;
+        let error = CertifiedPpmlResult::new(candidate)
+            .expect_err("memory route must retain the certified if/in candidate axis");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("frozen memory-route axes"));
+
+        let mut generation_zero = certified_composite_input();
+        Arc::make_mut(&mut generation_zero.sample.prepared_original_rows).pop();
+        let error = CertifiedPpmlResult::new(generation_zero)
+            .expect_err("memory route must retain the certified generation-zero active axis");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("frozen memory-route axes"));
+
+        let mut uncharged_probability_weights = certified_composite_input();
+        let prepared_rows = uncharged_probability_weights
+            .sample
+            .prepared_original_rows()
+            .len();
+        uncharged_probability_weights.weights.kind = Some(WeightKind::Probability);
+        uncharged_probability_weights.weights.raw_weight_sum = Some(prepared_rows as f64);
+        uncharged_probability_weights.weights.log_raw_weight_sum =
+            Some((prepared_rows as f64).ln());
+        let error = CertifiedPpmlResult::new(uncharged_probability_weights)
+            .expect_err("pweights require one retained raw value per generation-zero active row");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("retained pre-separation"));
+
+        let mut spurious_unweighted_capacity = certified_composite_input();
+        spurious_unweighted_capacity
+            .memory
+            .plan
+            .preflight_dimensions
+            .retained_raw_preseparation_probability_weight_elements = prepared_rows;
+        let error = validate_memory_sample_axes(
+            &spurious_unweighted_capacity.sample,
+            spurious_unweighted_capacity.weights,
+            spurious_unweighted_capacity.adjustment,
+            spurious_unweighted_capacity.separation_config,
+            &spurious_unweighted_capacity.memory,
+        )
+        .expect_err("unweighted fits cannot claim retained raw-pweight capacity");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("retained pre-separation"));
+
+        let mut uncharged_offset = certified_composite_input();
+        uncharged_offset.adjustment = PreparedPpmlAdjustmentReport {
+            input_kind: PreparedPpmlAdjustmentKind::Offset,
+            prepared_as_offset: true,
+            exposure_log_transformed: false,
+        };
+        let error = CertifiedPpmlResult::new(uncharged_offset)
+            .expect_err("offset fits require immutable candidate-capacity owner storage");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("retained pre-separation"));
+
+        let mut spurious_adjustment_capacity = certified_composite_input();
+        let candidate_rows = spurious_adjustment_capacity.sample.candidate_observations();
+        spurious_adjustment_capacity
+            .memory
+            .plan
+            .dimensions
+            .retained_base_adjustment_capacity_elements = candidate_rows;
+        spurious_adjustment_capacity
+            .memory
+            .plan
+            .preflight_dimensions
+            .retained_base_adjustment_capacity_elements = candidate_rows;
+        let error = validate_memory_sample_axes(
+            &spurious_adjustment_capacity.sample,
+            spurious_adjustment_capacity.weights,
+            spurious_adjustment_capacity.adjustment,
+            spurious_adjustment_capacity.separation_config,
+            &spurious_adjustment_capacity.memory,
+        )
+        .expect_err("unadjusted fits cannot claim retained base-adjustment capacity");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("retained pre-separation"));
+
+        let mut active = certified_composite_input();
+        active.sample.original_rows.pop();
+        active.sample.outcome.pop();
+        active.sample.prior_weights.pop();
+        active.weights.physical_observations -= 1;
+        active.weights.effective_observations -= 1;
+        active.weights.prepared_weight_sum -= 1.0;
+        let error = CertifiedPpmlResult::new(active)
+            .expect_err("memory route must retain the certified active axis");
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error.message.contains("frozen memory-route axes"));
+    }
+
+    #[test]
     fn composite_result_rejects_mutated_dof_vce_wald_certificate_and_memory_families() {
         let mut dof = certified_composite_input();
         dof.inference.dof.reported -= 1;
@@ -4258,7 +4617,7 @@ mod tests {
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 0,
             simplex_tableau_cells: 0,
-            note: "adversarial out-of-range row".to_owned(),
+            note: "adversarial out-of-range row".into(),
         });
         let candidate_original_rows = (0..out_of_range.candidate_observations).collect::<Vec<_>>();
         let disabled = SeparationConfig {
@@ -4271,10 +4630,15 @@ mod tests {
             drop_singletons: false,
             ..SeparationConfig::default()
         };
-        assert!(
-            validate_separation_report(&out_of_range, disabled, &candidate_original_rows, 1)
-                .is_err()
-        );
+        assert!(validate_separation_report(
+            &out_of_range,
+            disabled,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .is_err());
     }
 
     #[test]
@@ -4325,7 +4689,7 @@ mod tests {
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 8,
             simplex_tableau_cells: 0,
-            note: "self-minted fixed-point certificate".to_owned(),
+            note: "self-minted fixed-point certificate".into(),
         });
         assert_eq!(
             CertifiedPpmlResult::new(report_mutation)
@@ -4380,6 +4744,237 @@ mod tests {
     }
 
     #[test]
+    fn separation_report_envelope_is_exact_for_all_policy_subsets() {
+        let candidate_original_rows = vec![7_usize];
+        let identity_hash =
+            candidate_ledger_hash_candidate_axis(&candidate_original_rows, &[true], &[None])
+                .expect("identity candidate ledger hash");
+        for policy_bits in 0_u8..32 {
+            let config = SeparationConfig {
+                methods: SeparationMethods {
+                    fixed_effects: policy_bits & 0b0_0010 != 0,
+                    simplex: policy_bits & 0b0_0100 != 0,
+                    iterated_rectifier: policy_bits & 0b0_1000 != 0,
+                    mu: policy_bits & 0b1_0000 != 0,
+                },
+                drop_singletons: policy_bits & 0b0_0001 != 0,
+                ..SeparationConfig::default()
+            };
+            let expected_policies = policy_bits.count_ones() as usize;
+            assert_eq!(separation_method_count(config), expected_policies);
+            let mut report = SeparationReport {
+                candidate_observations: 1,
+                active: vec![true],
+                retained_observations: vec![0],
+                dropped_observations: Vec::new(),
+                drop_reasons: vec![None],
+                singleton_count: 0,
+                separated_count: 0,
+                generations: 0,
+                generation_hashes: vec![identity_hash],
+                methods: Vec::new(),
+            };
+            if expected_policies == 0 {
+                validate_separation_report(&report, config, &candidate_original_rows, 1, &[], 0)
+                    .expect("keepsingletons plus separation(none) has a zero-report envelope");
+                continue;
+            }
+            report
+                .methods
+                .resize_with(expected_policies + 1, || SeparationMethodReport {
+                    generation: 0,
+                    method: SeparationMethod::Singletons,
+                    status: MethodStatus::NoSeparation,
+                    iterations: 1,
+                    dropped_observations: Vec::new(),
+                    singleton_drops: Vec::new(),
+                    certificate: None,
+                    exact_fe_certificate: None,
+                    elapsed_seconds: 0.0,
+                    workspace_observation_vectors: 0,
+                    simplex_tableau_cells: 0,
+                    note: "prepared singleton pruning independently certified a stable fixed point"
+                        .into(),
+                });
+            assert!(validate_separation_report(
+                &report,
+                config,
+                &candidate_original_rows,
+                1,
+                &[],
+                0,
+            )
+            .is_err());
+        }
+
+        let mut impossible_generation = SeparationReport {
+            candidate_observations: 1,
+            active: vec![true],
+            retained_observations: vec![0],
+            dropped_observations: Vec::new(),
+            drop_reasons: vec![None],
+            singleton_count: 0,
+            separated_count: 0,
+            generations: 1,
+            generation_hashes: vec![identity_hash, identity_hash],
+            methods: Vec::new(),
+        };
+        let disabled = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: false,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        assert!(validate_separation_report(
+            &impossible_generation,
+            disabled,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .is_err());
+        impossible_generation.generations = 0;
+        assert!(validate_separation_report(
+            &impossible_generation,
+            disabled,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn exact_fe_identities_bind_intercept_terms_and_direct_drop_anchors() {
+        use crate::metadata::AbsorbTermId;
+        use crate::ppml_separation::{ExactFeLevelIdentity, ExactFeSeparationCertificate};
+
+        let fixed_effect = |declared_channel, term_id, kind| PpmlFixedEffectResult {
+            declared_channel,
+            term_id,
+            source_ids: vec![term_id],
+            kind,
+            slope_source_id: (kind == PpmlFixedEffectChannelKind::Slope).then_some(term_id),
+            levels: 3,
+            categories: 3,
+            redundant_parameters: 0,
+            absorbed_rank: 2,
+            redundancy_exact: true,
+            nested: false,
+            saved_channel: None,
+            normalization_applied: true,
+            normalization_certified: true,
+            reconstruction_certified: true,
+        };
+        let fixed_effects = vec![
+            fixed_effect(0, 1, PpmlFixedEffectChannelKind::Intercept),
+            fixed_effect(1, 1, PpmlFixedEffectChannelKind::Slope),
+            fixed_effect(2, 2, PpmlFixedEffectChannelKind::Intercept),
+            fixed_effect(3, 3, PpmlFixedEffectChannelKind::Slope),
+        ];
+        let candidate_original_rows = vec![10_usize, 20, 30];
+        let mut method = SeparationMethodReport {
+            generation: 1,
+            method: SeparationMethod::FixedEffects,
+            status: MethodStatus::Certified,
+            iterations: 1,
+            dropped_observations: vec![0, 1],
+            singleton_drops: Vec::new(),
+            certificate: None,
+            exact_fe_certificate: Some(ExactFeSeparationCertificate {
+                checked_intercept_effects: 2,
+                zero_only_levels: vec![
+                    ExactFeLevelIdentity {
+                        effect: AbsorbTermId::new(1).expect("first intercept term"),
+                        representative_original_row: 10,
+                    },
+                    ExactFeLevelIdentity {
+                        effect: AbsorbTermId::new(2).expect("second intercept term"),
+                        representative_original_row: 20,
+                    },
+                ],
+                passed: true,
+            }),
+            elapsed_seconds: 0.0,
+            workspace_observation_vectors: 1,
+            simplex_tableau_cells: 0,
+            note: "prepared exact zero-only FE certificate passed".into(),
+        };
+        assert_eq!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .expect("stable exact-FE identities"),
+            2
+        );
+
+        let certificate = method
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate");
+        certificate.zero_only_levels[1].representative_original_row = 30;
+        assert!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .is_err()
+        );
+        method
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels[1] = ExactFeLevelIdentity {
+            effect: AbsorbTermId::new(3).expect("slope-only term"),
+            representative_original_row: 20,
+        };
+        assert!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .is_err()
+        );
+        let first = method
+            .exact_fe_certificate
+            .as_ref()
+            .expect("exact-FE certificate")
+            .zero_only_levels[0];
+        method
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels[1] = first;
+        assert!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .is_err()
+        );
+
+        method.status = MethodStatus::NoSeparation;
+        method.dropped_observations.clear();
+        method.note = "prepared exact FE scan found no zero-only intercept level".into();
+        method
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels
+            .clear();
+        assert_eq!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .expect("empty exact-FE set proves no separation"),
+            0
+        );
+        method
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels
+            .push(first);
+        assert!(
+            validate_separation_method(&method, &candidate_original_rows, 1, &fixed_effects)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn simplex_full_positive_rank_proof_is_bound_to_the_final_finite_dimension() {
         use crate::ppml_separation::SeparationCertificateProof;
 
@@ -4405,7 +5000,7 @@ mod tests {
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 0,
             simplex_tableau_cells: 1,
-            note: "positive-outcome finite design has full column rank".to_owned(),
+            note: "finite regressors have full column rank on the positive-outcome sample".into(),
         });
         let candidate_original_rows = (0..report.candidate_observations).collect::<Vec<_>>();
         let simplex_only = SeparationConfig {
@@ -4418,7 +5013,7 @@ mod tests {
             drop_singletons: false,
             ..SeparationConfig::default()
         };
-        validate_separation_report(&report, simplex_only, &candidate_original_rows, 1)
+        validate_separation_report(&report, simplex_only, &candidate_original_rows, 1, &[], 0)
             .expect("full-positive-rank proof closes simplex exactly");
 
         let mut wrong_dimension = report.clone();
@@ -4427,9 +5022,15 @@ mod tests {
             .as_mut()
             .expect("simplex certificate")
             .proof = SeparationCertificateProof::SimplexFullPositiveRank { columns: 2 };
-        let error =
-            validate_separation_report(&wrong_dimension, simplex_only, &candidate_original_rows, 1)
-                .expect_err("proof must bind the final finite dimension");
+        let error = validate_separation_report(
+            &wrong_dimension,
+            simplex_only,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .expect_err("proof must bind the final finite dimension");
         assert_eq!(error.code, ErrorCode::Internal);
         assert_eq!(error.return_code(), 3499);
 
@@ -4439,8 +5040,9 @@ mod tests {
             .as_mut()
             .expect("simplex certificate")
             .passed = false;
-        let error = validate_separation_report(&failed, simplex_only, &candidate_original_rows, 1)
-            .expect_err("failed exact proof is not publishable");
+        let error =
+            validate_separation_report(&failed, simplex_only, &candidate_original_rows, 1, &[], 0)
+                .expect_err("failed exact proof is not publishable");
         assert_eq!(error.code, ErrorCode::NonConvergence);
         assert_eq!(error.return_code(), 430);
     }
@@ -4462,7 +5064,7 @@ mod tests {
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 0,
             simplex_tableau_cells: 1,
-            note: "phase-I infeasibility lacks an independent dual certificate".to_owned(),
+            note: "model simplex phase-I dual failed independent Farkas verification".into(),
         });
         let candidate_original_rows = (0..unresolved.candidate_observations).collect::<Vec<_>>();
         let simplex_only = SeparationConfig {
@@ -4475,9 +5077,15 @@ mod tests {
             drop_singletons: false,
             ..SeparationConfig::default()
         };
-        let error =
-            validate_separation_report(&unresolved, simplex_only, &candidate_original_rows, 1)
-                .expect_err("terminal simplex uncertainty must fail closed");
+        let error = validate_separation_report(
+            &unresolved,
+            simplex_only,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .expect_err("terminal simplex uncertainty must fail closed");
         assert_eq!(error.code, ErrorCode::NonConvergence);
         assert_eq!(error.return_code(), 430);
 
@@ -4502,7 +5110,7 @@ mod tests {
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 8,
             simplex_tableau_cells: 0,
-            note: "IR independently certified its fixed point".to_owned(),
+            note: "prepared iterated rectifier certified no separation".into(),
         });
         let simplex_ir = SeparationConfig {
             methods: SeparationMethods {
@@ -4511,7 +5119,7 @@ mod tests {
             },
             ..simplex_only
         };
-        validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1)
+        validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1, &[], 0)
             .expect("same-generation comprehensive IR closes simplex uncertainty");
     }
 
@@ -4565,7 +5173,8 @@ mod tests {
                     elapsed_seconds: 0.0,
                     workspace_observation_vectors: 0,
                     simplex_tableau_cells: 1,
-                    note: "simplex deferred to the comprehensive detector".to_owned(),
+                    note: "model simplex phase-I dual failed independent Farkas verification"
+                        .into(),
                 },
                 SeparationMethodReport {
                     generation: 1,
@@ -4588,7 +5197,7 @@ mod tests {
                     elapsed_seconds: 0.0,
                     workspace_observation_vectors: 8,
                     simplex_tableau_cells: 0,
-                    note: "IR committed a certified recession-direction drop".to_owned(),
+                    note: "prepared iterated-rectifier candidate direction".into(),
                 },
             ],
         };
@@ -4602,8 +5211,9 @@ mod tests {
             drop_singletons: false,
             ..SeparationConfig::default()
         };
-        let error = validate_separation_report(&report, simplex_ir, &candidate_original_rows, 1)
-            .expect_err("an IR deletion cannot certify the restarted generation");
+        let error =
+            validate_separation_report(&report, simplex_ir, &candidate_original_rows, 1, &[], 0)
+                .expect_err("an IR deletion cannot certify the restarted generation");
         assert_eq!(error.code, ErrorCode::NonConvergence);
 
         report.methods.extend([
@@ -4628,7 +5238,8 @@ mod tests {
                 elapsed_seconds: 0.0,
                 workspace_observation_vectors: 0,
                 simplex_tableau_cells: 1,
-                note: "restarted simplex independently found full positive rank".to_owned(),
+                note: "finite regressors have full column rank on the positive-outcome sample"
+                    .into(),
             },
             SeparationMethodReport {
                 generation: 1,
@@ -4651,17 +5262,23 @@ mod tests {
                 elapsed_seconds: 0.0,
                 workspace_observation_vectors: 8,
                 simplex_tableau_cells: 0,
-                note: "restarted IR certified the stable generation".to_owned(),
+                note: "prepared iterated rectifier certified no separation".into(),
             },
         ]);
-        validate_separation_report(&report, simplex_ir, &candidate_original_rows, 1)
+        validate_separation_report(&report, simplex_ir, &candidate_original_rows, 1, &[], 0)
             .expect("the restarted generation has its own complete detector chain");
 
         let mut missing_commit = report;
         missing_commit.generation_hashes.pop();
-        let error =
-            validate_separation_report(&missing_commit, simplex_ir, &candidate_original_rows, 1)
-                .expect_err("IR closure requires the committed generation receipt");
+        let error = validate_separation_report(
+            &missing_commit,
+            simplex_ir,
+            &candidate_original_rows,
+            1,
+            &[],
+            0,
+        )
+        .expect_err("IR closure requires the committed generation receipt");
         assert_eq!(error.code, ErrorCode::Internal);
         assert_eq!(error.return_code(), 3499);
     }
@@ -4685,6 +5302,59 @@ mod tests {
         let mut nonzero_diagnostic = certificate;
         nonzero_diagnostic.span_residual_relative = f64::EPSILON;
         assert!(validate_separation_certificate(&nonzero_diagnostic, true).is_err());
+    }
+
+    #[test]
+    fn mu_no_drop_grammar_is_proof_free_no_candidates_only() {
+        use crate::ppml_separation::SeparationCertificateProof;
+
+        let mut report = certified_composite_input().separation;
+        report.methods.push(SeparationMethodReport {
+            generation: 0,
+            method: SeparationMethod::Mu,
+            status: MethodStatus::NoSeparation,
+            iterations: 1,
+            dropped_observations: Vec::new(),
+            singleton_drops: Vec::new(),
+            certificate: Some(SeparationCertificate {
+                proof: SeparationCertificateProof::RecessionDirection,
+                interior_zero_relative: 0.0,
+                boundary_violation_relative: 0.0,
+                span_residual_relative: 0.0,
+                negative_margin_relative: 0.0,
+                direction_scale: 0.0,
+                positive_maximum: 0.0,
+                passed: true,
+            }),
+            exact_fe_certificate: None,
+            elapsed_seconds: 0.0,
+            workspace_observation_vectors: 8,
+            simplex_tableau_cells: 0,
+            note: "forged Mu no-separation claim".into(),
+        });
+        let candidate_original_rows = (0..report.candidate_observations).collect::<Vec<_>>();
+        let mu_only = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: false,
+                mu: true,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let error =
+            validate_separation_report(&report, mu_only, &candidate_original_rows, 1, &[], 0)
+                .expect_err("Mu cannot certify absence of separation");
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+
+        let terminal_mu = report.methods.last_mut().expect("Mu report");
+        terminal_mu.status = MethodStatus::NoCandidates;
+        terminal_mu.iterations = 0;
+        terminal_mu.certificate = None;
+        terminal_mu.note = "prepared mu found no small zero-outcome means".into();
+        validate_separation_report(&report, mu_only, &candidate_original_rows, 1, &[], 0)
+            .expect("proof-free Mu no-candidate result is the sole no-drop grammar");
     }
 
     #[test]

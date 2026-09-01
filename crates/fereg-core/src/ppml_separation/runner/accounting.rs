@@ -414,7 +414,7 @@ mod tests {
             }),
             exact_fe_certificate: None,
             direction: Some(vec![-1.0, 0.0]),
-            note: String::new(),
+            note: "".into(),
         };
         let error = validate_proposal(
             &proposal,

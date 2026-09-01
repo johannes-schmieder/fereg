@@ -2655,6 +2655,31 @@ mod tests {
     use fereg_core::protocol::{ADO_VERSION, MODEL_WIRE_VERSION};
     use std::collections::BTreeMap;
     use std::panic::{catch_unwind, AssertUnwindSafe};
+    #[cfg(feature = "ffi")]
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[cfg(feature = "ffi")]
+    static EARLY_PREFLIGHT_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
+    #[cfg(feature = "ffi")]
+    static EARLY_PREFLIGHT_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
+    #[cfg(feature = "ffi")]
+    static EARLY_PREFLIGHT_EVENTS: AtomicU64 = AtomicU64::new(0);
+
+    #[cfg(feature = "ffi")]
+    fn record_early_preflight_allocator(
+        event: fereg_core::ppml::PpmlMemoryPreflightEvent,
+    ) -> Result<()> {
+        if matches!(
+            event,
+            fereg_core::ppml::PpmlMemoryPreflightEvent::Decision(_)
+        ) {
+            let snapshot = crate::ffi::allocation_usage();
+            EARLY_PREFLIGHT_CURRENT_BYTES.store(snapshot.current_bytes, Ordering::Relaxed);
+            EARLY_PREFLIGHT_PEAK_BYTES.store(snapshot.peak_bytes, Ordering::Relaxed);
+            EARLY_PREFLIGHT_EVENTS.store(snapshot.events, Ordering::Relaxed);
+        }
+        Ok(())
+    }
 
     #[derive(Debug, Clone, PartialEq)]
     enum StoreEvent {
@@ -3650,6 +3675,118 @@ mod tests {
             assert!(spi.stores.is_empty());
             assert_eq!(spi.receipt_complete(), 0.0);
         });
+    }
+
+    #[cfg(feature = "ffi")]
+    #[test]
+    fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
+        const CHILD_ENV: &str = "FEREG_PPML_EARLY_PREFLIGHT_TEST_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let status = std::process::Command::new(
+                std::env::current_exe().expect("current plugin test executable"),
+            )
+            .env(CHILD_ENV, "1")
+            .env("FEREG_MEMORY_LIMIT_BYTES", "1")
+            .arg(
+                "ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing",
+            )
+            .arg("--exact")
+            .arg("--nocapture")
+            .arg("--test-threads=1")
+            .status()
+            .expect("launch isolated early-preflight allocator test");
+            assert!(status.success(), "isolated early-preflight test failed");
+            return;
+        }
+
+        {
+            let _guard = crate::instrumentation::lock_action_observation();
+            let (args, mut spi) = allocation_audit_n100k_no_fe_k0_fixture();
+            let specification = EstimatePpmlSpec::parse(&args).expect("N=100,000 specification");
+            let action = specification
+                .decode_and_validate(&mut spi)
+                .expect("N=100,000 decoded action");
+            let loaded = load_ols_input(
+                &action.request,
+                action.candidate_all,
+                action.input_complete,
+                &mut spi,
+            )
+            .expect("N=100,000 loaded input");
+            let adjustment = load_adjustment(action.adjustment, &loaded.candidate, &mut spi)
+                .expect("N=100,000 adjustment");
+            let mut memory = action.memory;
+            memory.available_bytes = Some(1);
+            memory.embedding_resident_bytes = 0;
+            let prepared_request = PreparedPpmlRequestV1 {
+                ols: fallible_clone_ols_request(&action.request).expect("request copy"),
+                clusters: fallible_clone_clusters(&action.clusters).expect("cluster copy"),
+                vce: action.vce,
+                ppml: action.config,
+                linear: action.linear,
+                memory,
+                memory_preflight_probe: Some(record_early_preflight_allocator),
+                allocation_snapshot_probe: None,
+                phase_allocation_probe: None,
+                linear_phase_allocation_probe: None,
+                action_allocation_snapshot_probe: None,
+                action_allocation_start: None,
+                action_allocation_previous_baseline_bytes: None,
+                separation: action.separation,
+                output: PreparedPpmlOutputRequest {
+                    residual: action.residual,
+                    xb: action.outputs.xb.is_some(),
+                    absorbed: action.outputs.absorbed.is_some(),
+                    eta: action.outputs.eta.is_some(),
+                    mean: action.outputs.mean.is_some(),
+                    requested_observation_columns: action.requested_observation_columns,
+                    publication_matrix_cells: action.publication_matrix_cells,
+                },
+                inject_fe_recovery_allocation_failure: false,
+            };
+            let prepared_input = LoadedPpmlInput {
+                ols: loaded,
+                adjustment,
+                adjustment_kind: action.adjustment.kind(),
+            };
+
+            EARLY_PREFLIGHT_CURRENT_BYTES.store(0, Ordering::Relaxed);
+            EARLY_PREFLIGHT_PEAK_BYTES.store(0, Ordering::Relaxed);
+            EARLY_PREFLIGHT_EVENTS.store(0, Ordering::Relaxed);
+            let (start, _) = crate::ffi::begin_allocation_observation();
+            let error = fit_prepared_ppml(prepared_request, prepared_input)
+                .expect_err("one-byte budget must reject every PPML route");
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(error.return_code(), 909);
+            assert_eq!(
+                EARLY_PREFLIGHT_EVENTS.load(Ordering::Relaxed),
+                start.events,
+                "classification and route decision must allocate no canonical or temporary buffer",
+            );
+            assert_eq!(
+                EARLY_PREFLIGHT_CURRENT_BYTES.load(Ordering::Relaxed),
+                start.current_bytes,
+                "no memory may remain allocated at the no-route decision",
+            );
+            assert_eq!(
+                EARLY_PREFLIGHT_PEAK_BYTES.load(Ordering::Relaxed),
+                start.peak_bytes,
+                "no observation-sized canonical allocation may precede rejection",
+            );
+        }
+
+        // Exercise the complete plugin transaction under the same imposed
+        // one-byte limit. The direct core observation above proves timing;
+        // this second arm proves that the ordinary error path cannot publish
+        // a prefix or completion receipt.
+        let (args, mut spi) = allocation_audit_n100k_no_fe_k0_fixture();
+        let error = estimate_ppml_test(&args, &mut spi)
+            .expect_err("the plugin transaction must propagate no-route rejection");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert_eq!(error.return_code(), 909);
+        assert_eq!(spi.store_calls, 0);
+        assert!(spi.stores.is_empty());
+        assert_eq!(spi.receipt_complete(), 0.0);
     }
 
     #[cfg(feature = "ffi")]

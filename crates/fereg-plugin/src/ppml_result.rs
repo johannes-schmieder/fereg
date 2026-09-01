@@ -1531,7 +1531,7 @@ impl StableDigest {
 
 fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
     let mut digest = StableDigest::new();
-    digest.framed_bytes(b"fereg.ppml.separation-trace.v1.1", "trace digest domain")?;
+    digest.framed_bytes(b"fereg.ppml.separation-trace.v1.2", "trace digest domain")?;
     digest.usize(report.candidate_observations, "trace candidate count")?;
     digest.usize(report.singleton_count, "trace singleton count")?;
     digest.usize(report.separated_count, "trace separated count")?;
@@ -1568,6 +1568,14 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         digest.usize(columns, "trace simplex positive rank")?;
                     }
                     SeparationCertificateProof::IteratedRectifierFixedPoint => digest.word(3),
+                    SeparationCertificateProof::SimplexDualInfeasibility {
+                        boundary_rows,
+                        nullity,
+                    } => {
+                        digest.word(4);
+                        digest.usize(boundary_rows, "trace simplex dual boundary rows")?;
+                        digest.usize(nullity, "trace simplex dual nullity")?;
+                    }
                 }
                 for value in [
                     certificate.interior_zero_relative,
@@ -1594,9 +1602,12 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                     certificate.zero_only_levels.len(),
                     "trace exact-FE zero-level count",
                 )?;
-                for (effect, level) in &certificate.zero_only_levels {
-                    digest.usize(*effect, "trace exact-FE effect")?;
-                    digest.word(u64::from(*level));
+                for identity in &certificate.zero_only_levels {
+                    digest.word(u64::from(identity.effect.get()));
+                    digest.usize(
+                        identity.representative_original_row,
+                        "trace exact-FE representative original row",
+                    )?;
                 }
                 digest.word(u64::from(certificate.passed));
             }
@@ -2303,7 +2314,7 @@ mod tests {
                     elapsed_seconds: 0.25,
                     workspace_observation_vectors: 0,
                     simplex_tableau_cells: 0,
-                    note: "singleton fixture".to_owned(),
+                    note: "singleton fixture".into(),
                 },
                 fereg_core::ppml_separation::SeparationMethodReport {
                     generation: 2,
@@ -2326,7 +2337,7 @@ mod tests {
                     elapsed_seconds: 0.5,
                     workspace_observation_vectors: 0,
                     simplex_tableau_cells: 128,
-                    note: "simplex fixture".to_owned(),
+                    note: "simplex fixture".into(),
                 },
             ],
         }
@@ -2463,13 +2474,81 @@ mod tests {
             hashes
         );
 
+        let mut dual_proof = report.clone();
+        dual_proof.methods[1]
+            .certificate
+            .as_mut()
+            .expect("simplex certificate")
+            .proof = SeparationCertificateProof::SimplexDualInfeasibility {
+            boundary_rows: 3,
+            nullity: 2,
+        };
+        let dual_trace = separation_trace_digest(&dual_proof).expect("simplex dual trace");
+        assert_ne!(dual_trace, trace, "the dual proof tag is part of the trace");
+        dual_proof.methods[1]
+            .certificate
+            .as_mut()
+            .expect("simplex dual certificate")
+            .proof = SeparationCertificateProof::SimplexDualInfeasibility {
+            boundary_rows: 4,
+            nullity: 2,
+        };
+        assert_ne!(
+            separation_trace_digest(&dual_proof).expect("mutated simplex dual trace"),
+            dual_trace,
+            "simplex dual dimensions are canonical digest identity"
+        );
+
         let mut process_only = report;
         process_only.methods[0].elapsed_seconds = 999.0;
-        process_only.methods[1].note = "different diagnostic prose".to_owned();
+        process_only.methods[1].note = "different diagnostic prose".into();
         assert_eq!(
             separation_trace_digest(&process_only).expect("process-only mutation"),
             trace,
             "timing and prose are not deterministic ledger identity"
+        );
+    }
+
+    #[test]
+    fn separation_trace_binds_stable_exact_fe_term_and_original_row_identity() {
+        use fereg_core::ppml_separation::{ExactFeLevelIdentity, ExactFeSeparationCertificate};
+        use fereg_core::AbsorbTermId;
+
+        let mut report = ledger_digest_fixture();
+        report.methods[0].exact_fe_certificate = Some(ExactFeSeparationCertificate {
+            checked_intercept_effects: 1,
+            zero_only_levels: vec![ExactFeLevelIdentity {
+                effect: AbsorbTermId::new(7).expect("stable absorbed term"),
+                representative_original_row: 103,
+            }],
+            passed: true,
+        });
+        let trace = separation_trace_digest(&report).expect("stable exact-FE trace");
+
+        let mut reused_compact_code = report.clone();
+        reused_compact_code.methods[0]
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels[0]
+            .representative_original_row = 104;
+        assert_ne!(
+            separation_trace_digest(&reused_compact_code).expect("mutated original-row anchor"),
+            trace,
+            "a reused detector-local level code cannot preserve public evidence identity",
+        );
+
+        let mut different_interaction = report;
+        different_interaction.methods[0]
+            .exact_fe_certificate
+            .as_mut()
+            .expect("exact-FE certificate")
+            .zero_only_levels[0]
+            .effect = AbsorbTermId::new(8).expect("different absorbed term");
+        assert_ne!(
+            separation_trace_digest(&different_interaction).expect("mutated absorbed term"),
+            trace,
+            "interaction term identity is part of the stable witness",
         );
     }
 

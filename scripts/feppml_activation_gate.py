@@ -1227,10 +1227,14 @@ def _source_module(
         raise GateError(f"cannot load authoritative verifier: {relative}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
+    previous_dont_write_bytecode = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
     try:
         spec.loader.exec_module(module)
     except Exception as error:
         raise GateError(f"cannot initialize authoritative verifier {relative}: {error}") from error
+    finally:
+        sys.dont_write_bytecode = previous_dont_write_bytecode
     return module
 
 
@@ -1890,12 +1894,14 @@ def run_closed_argv_result(
     if toolchain != expected_toolchain:
         raise GateError("closed local producer toolchain is not exact")
     sentinel = result_sentinel(check_id).encode("ascii")
+    producer_environment = os.environ.copy()
+    producer_environment["PYTHONDONTWRITEBYTECODE"] = "1"
     try:
         with stdout_path.open("xb") as stdout, stderr_path.open("xb") as stderr:
             completed = subprocess.run(
                 list(argv), cwd=source_root, stdin=subprocess.DEVNULL,
                 stdout=stdout, stderr=stderr, check=False, timeout=timeout_seconds,
-                shell=False,
+                shell=False, env=producer_environment,
             )
         stdout_record, stdout_sentinels = _stream_record(stdout_path, sentinel)
         stderr_record, stderr_sentinels = _stream_record(stderr_path, sentinel)

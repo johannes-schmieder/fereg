@@ -1,4 +1,6 @@
-use super::{DetectionProposal, MethodStatus, SeparationCertificate, SeparationMethod};
+use super::{
+    DetectionProposal, MethodStatus, SeparationCertificate, SeparationMethod, SeparationNote,
+};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
@@ -92,7 +94,7 @@ pub(crate) fn iterated_rectifier(
             return Ok(zero_result(
                 iteration,
                 0.0,
-                "iterated rectifier converged to the exact zero direction",
+                "iterated rectifier converged to the exact zero direction".into(),
             ));
         }
 
@@ -137,7 +139,7 @@ pub(crate) fn iterated_rectifier(
                 }),
                 exact_fe_certificate: None,
                 direction: None,
-                note: "iterated rectifier converged to the zero certificate".to_owned(),
+                note: "iterated rectifier converged to the zero certificate".into(),
             });
         }
 
@@ -200,7 +202,7 @@ pub(crate) fn iterated_rectifier(
                     }),
                     exact_fe_certificate: None,
                     direction: Some(direction),
-                    note: "iterated-rectifier separation certificate passed".to_owned(),
+                    note: "iterated-rectifier separation certificate passed".into(),
                 });
             }
         }
@@ -231,11 +233,14 @@ pub(crate) fn iterated_rectifier(
         certificate: None,
         exact_fe_certificate: None,
         direction: None,
-        note: format!("iterated-rectifier separation check exhausted {max_iterations} iterations"),
+        note: SeparationNote::with_detail(
+            "iterated-rectifier separation check exhausted its iteration limit",
+            max_iterations,
+        ),
     })
 }
 
-fn zero_result(iteration: usize, direction_scale: f64, note: &str) -> DetectionProposal {
+fn zero_result(iteration: usize, direction_scale: f64, note: SeparationNote) -> DetectionProposal {
     DetectionProposal {
         method: SeparationMethod::IteratedRectifier,
         dropped: Vec::new(),
@@ -253,6 +258,6 @@ fn zero_result(iteration: usize, direction_scale: f64, note: &str) -> DetectionP
         }),
         exact_fe_certificate: None,
         direction: None,
-        note: note.to_owned(),
+        note,
     }
 }

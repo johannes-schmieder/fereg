@@ -186,7 +186,12 @@ class PreparedFitViewContractTests(unittest.TestCase):
         self.assertIn("pub(crate) struct CertifiedLinearWithinDesign", session)
         self.assertIn("impl SandwichDesign for CertifiedLinearWithinDesign", session)
         self.assertIn("#[derive(Debug, Clone, Copy)]", session)
-        self.assertIn("pub(crate) const fn finite_within_design", session)
+        self.assertIn("pub(crate) fn finite_within_design", session)
+        accessor = session.split("pub(crate) fn finite_within_design", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("storage: &self.within.storage", accessor)
+        self.assertIn("active_positions: &self.within.active_positions", accessor)
+        for allocation in ("clone(", "to_vec(", "Vec::", "collect("):
+            self.assertNotIn(allocation, accessor)
         self.assertIn("read_linear_shared", scratch)
         self.assertIn("read_at(output, offset)", scratch)
         self.assertNotIn("Scratch(RefCell<PreparedOlsScratch>)", session)

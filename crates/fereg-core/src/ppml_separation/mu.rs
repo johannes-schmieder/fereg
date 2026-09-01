@@ -169,7 +169,7 @@ pub(super) fn detect_mu(
             certificate: Some(certificate),
             exact_fe_certificate: None,
             direction: None,
-            note,
+            note: "mu direction failed its independent certificate".into(),
         });
     }
     Ok(DetectionProposal {
@@ -180,6 +180,6 @@ pub(super) fn detect_mu(
         certificate: Some(certificate),
         exact_fe_certificate: None,
         direction: Some(z),
-        note: "mu candidates passed an independent column-space/sign certificate".to_owned(),
+        note: "mu candidates passed an independent column-space/sign certificate".into(),
     })
 }

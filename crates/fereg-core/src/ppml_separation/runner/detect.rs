@@ -79,7 +79,7 @@ pub(crate) fn detect_separation_with_multiplicity(
                     elapsed_seconds: 0.0,
                     workspace_observation_vectors: 0,
                     simplex_tableau_cells: 0,
-                    note: "singleton pruning reached its queue fixed point".to_owned(),
+                    note: "singleton pruning reached its queue fixed point".into(),
                 },
                 singleton_started,
                 config,
@@ -343,7 +343,7 @@ fn append_committed_reports(
             elapsed_seconds: 0.0,
             workspace_observation_vectors: 0,
             simplex_tableau_cells: 0,
-            note: "exact zero-only FE follow-up in the same atomic ledger generation".to_owned(),
+            note: "exact zero-only FE follow-up in the same atomic ledger generation".into(),
         });
     }
 }
@@ -485,7 +485,7 @@ fn append_boundary_empty_reports(
                 } else {
                     0
                 },
-                note: note.to_owned(),
+                note: note.into(),
             });
         }
     }

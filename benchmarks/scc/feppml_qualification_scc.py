@@ -148,6 +148,7 @@ HARNESS_PATHS = (
     "scripts/generate_feppml_qualification_spec.py",
     "scripts/generate_feppml_qualification_recipes.py",
     "scripts/feppml_qualification_recipe_contract.py",
+    "scripts/feppml_separation_recipe_contract.py",
     "scripts/generate_feppml_oracle_fixtures.py",
     "scripts/generate_feppml_constrained_recipes.py",
     "scripts/materialize_feppml_capture_plan.py",

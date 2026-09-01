@@ -109,9 +109,16 @@ pub(crate) struct PreparedPpmlModelGeneration {
     unit_prior_weights: Option<Vec<f64>>,
     original_observations: usize,
     requested_candidate_observations: usize,
-    /// Capacity-bearing length of the owner's immutable raw pweight subset.
-    /// It remains candidate-sized after separation generations shrink.
-    retained_raw_candidate_probability_weight_elements: usize,
+    /// Immutable capacity reserved by numeric preparation for the owner-side
+    /// canonical offset (including a logged exposure).  Every prepared
+    /// generation owns a separate compact `offset`, so this candidate-axis
+    /// buffer remains live beside the generation-local N-vector throughout
+    /// separation and fitting.  Zero means the request had no adjustment.
+    retained_base_adjustment_capacity_elements: usize,
+    /// Length of the owner's immutable raw pweight subset on the
+    /// generation-zero canonical active axis. It remains at that initial
+    /// active N after separation generations shrink.
+    retained_raw_preseparation_probability_weight_elements: usize,
     initial_drop_reasons: Arc<Vec<DropReason>>,
     weight_report: PreparedPpmlWeightReport,
     adjustment_report: PreparedPpmlAdjustmentReport,
@@ -164,8 +171,12 @@ impl PreparedPpmlModelGeneration {
         self.requested_candidate_observations
     }
 
-    pub(crate) const fn retained_raw_candidate_probability_weight_elements(&self) -> usize {
-        self.retained_raw_candidate_probability_weight_elements
+    pub(crate) const fn retained_base_adjustment_capacity_elements(&self) -> usize {
+        self.retained_base_adjustment_capacity_elements
+    }
+
+    pub(crate) const fn retained_raw_preseparation_probability_weight_elements(&self) -> usize {
+        self.retained_raw_preseparation_probability_weight_elements
     }
 
     pub(crate) const fn weight_report(&self) -> PreparedPpmlWeightReport {
@@ -365,6 +376,15 @@ impl PreparedPpmlModelOwner {
         let target = self.loaded.probability_weight.as_ref().ok_or_else(|| {
             invalid_argument("prepared PPML probability-weight owner lost its loaded column")
         })?;
+        if base_weights.len() != self.candidate_original_rows.len()
+            || target.values.len() != self.original_observations
+            || target.missing.len() != self.original_observations
+        {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "prepared PPML probability-weight rollback owners are misaligned",
+            ));
+        }
         let mut positions = fallible_filled(
             retained_original_rows.len(),
             0_usize,
@@ -395,33 +415,27 @@ impl PreparedPpmlModelOwner {
             staged_values.push(base_weights[position]);
         }
         let subset_scale = canonicalize_probability_weights(&mut staged_values, physical)?;
-        let mut prior_bits = Vec::new();
-        prior_bits
-            .try_reserve_exact(retained_original_rows.len())
-            .map_err(|_| allocation("unable to reserve PPML pweight rollback state"))?;
-        for &original_row in retained_original_rows {
-            prior_bits.push(ProbabilityWeightBits {
-                original_row,
-                value: target.values[original_row],
-                missing: target.missing[original_row],
-            });
-        }
-
         // No fallible operation occurs after publication to the loaded owner;
-        // `rebuild_generation` restores these exact bits immediately after its
-        // build attempt, irrespective of that attempt's result.
+        // `rebuild_generation` restores the immutable raw values addressed by
+        // `positions` immediately after its build attempt, irrespective of
+        // that attempt's result.  Retaining the compact positions rather than
+        // a padded `(row, value, missing)` rollback record also makes the
+        // accepted-rebase peak exactly one usize per staged probability row.
         let target = self.loaded.probability_weight.as_mut().ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Internal,
                 "prepared PPML probability-weight column vanished during staging",
             )
         })?;
-        for ((&original_row, value), bits) in retained_original_rows
+        for ((&original_row, value), &position) in retained_original_rows
             .iter()
             .zip(staged_values)
-            .zip(&prior_bits)
+            .zip(&positions)
         {
-            debug_assert_eq!(original_row, bits.original_row);
+            debug_assert_eq!(
+                self.candidate_original_rows.get(position),
+                Some(&original_row)
+            );
             target.values[original_row] = value;
             target.missing[original_row] = false;
         }
@@ -432,28 +446,48 @@ impl PreparedPpmlModelOwner {
                 raw_to_prepared_multiplier: subset_scale.raw_to_prepared_multiplier,
                 log_raw_to_prepared_multiplier: subset_scale.log_raw_to_prepared_multiplier,
             },
-            prior_bits,
+            positions,
         }))
     }
 
     fn restore_generation_probability_weights(
         &mut self,
         stage: Option<ProbabilityGenerationStage>,
-    ) -> Result<()> {
+    ) {
         let Some(stage) = stage else {
-            return Ok(());
+            return;
         };
-        let target = self.loaded.probability_weight.as_mut().ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "prepared PPML probability-weight column vanished before rollback",
-            )
-        })?;
-        for bits in stage.prior_bits {
-            target.values[bits.original_row] = bits.value;
-            target.missing[bits.original_row] = bits.missing;
+        // All three owners and every position were certified before the first
+        // loaded value was changed. `build_prepared_model` borrows `self`
+        // immutably, so those invariants cannot change before this rollback.
+        // Restoration is consequently allocation-free and structurally
+        // infallible after publication of the temporary normalized values.
+        let base_weights = self
+            .base_probability_weights
+            .as_deref()
+            .expect("staged PPML pweights retain immutable raw values");
+        let target = self
+            .loaded
+            .probability_weight
+            .as_mut()
+            .expect("staged PPML pweights retain their loaded target");
+        for position in stage.positions {
+            let raw = *base_weights
+                .get(position)
+                .expect("staged PPML pweight position was prevalidated");
+            let original_row = *self
+                .candidate_original_rows
+                .get(position)
+                .expect("staged PPML pweight row position was prevalidated");
+            *target
+                .values
+                .get_mut(original_row)
+                .expect("staged PPML pweight value target was prevalidated") = raw;
+            *target
+                .missing
+                .get_mut(original_row)
+                .expect("staged PPML pweight missing target was prevalidated") = false;
         }
-        Ok(())
     }
 }
 
@@ -467,13 +501,10 @@ struct ProbabilityGenerationScale {
 
 struct ProbabilityGenerationStage {
     scale: ProbabilityGenerationScale,
-    prior_bits: Vec<ProbabilityWeightBits>,
-}
-
-struct ProbabilityWeightBits {
-    original_row: usize,
-    value: f64,
-    missing: bool,
+    /// Positions on the immutable generation-zero numeric row axis.  These
+    /// address both the owner row map and its raw pweight vector for exact,
+    /// allocation-free restoration after a generation build attempt.
+    positions: Vec<usize>,
 }
 
 impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
@@ -508,7 +539,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         let baseline_candidate = std::mem::replace(&mut self.loaded.candidate, staged_candidate);
         let prepared_result = self.build_prepared_model();
         self.loaded.candidate = baseline_candidate;
-        self.restore_generation_probability_weights(probability_stage)?;
+        self.restore_generation_probability_weights(probability_stage);
         let prepared = prepared_result?;
 
         validate_prepared_generation(&prepared, retained_original_rows)?;
@@ -535,8 +566,12 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             .transpose()?;
         let weight_report =
             generation_weight_report(self.weight_report, prepared.sample(), probability_scale)?;
-        let retained_raw_candidate_probability_weight_elements =
+        let retained_raw_preseparation_probability_weight_elements =
             self.base_probability_weights.as_ref().map_or(0, Vec::len);
+        let retained_base_adjustment_capacity_elements = self
+            .base_offset
+            .as_ref()
+            .map_or(0, |_| self.requested_candidate_observations);
         Ok(PreparedPpmlModelGeneration {
             generation,
             prepared,
@@ -544,7 +579,8 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             unit_prior_weights,
             original_observations: self.original_observations,
             requested_candidate_observations: self.requested_candidate_observations,
-            retained_raw_candidate_probability_weight_elements,
+            retained_base_adjustment_capacity_elements,
+            retained_raw_preseparation_probability_weight_elements,
             initial_drop_reasons: Arc::clone(&self.initial_drop_reasons),
             weight_report,
             adjustment_report: self.adjustment_report,
@@ -1002,6 +1038,13 @@ mod tests {
         let initial = coordinator.view();
         assert_eq!(initial.original_rows, &[0, 1, 2, 3, 4, 5, 6]);
         assert_eq!(initial.prepared.generation(), 0);
+        assert_eq!(
+            initial
+                .prepared
+                .retained_base_adjustment_capacity_elements(),
+            7,
+            "the owner-side offset keeps the immutable if/in candidate capacity",
+        );
         assert!(matches!(
             initial.prepared.prepared(),
             PreparedPpmlModel::CategoricalClustered(_)
@@ -1026,7 +1069,7 @@ mod tests {
         );
 
         coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, &[1], |_| {
+            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1], |_| {
                 Ok(PreparedSeparationCascade {
                     singleton_rows: vec![4],
                     exact_fe_rows: Vec::new(),
@@ -1035,6 +1078,13 @@ mod tests {
             .expect("rebased transaction");
         let outcome = coordinator.into_outcome();
         assert_eq!(outcome.prepared.generation(), 1);
+        assert_eq!(
+            outcome
+                .prepared
+                .retained_base_adjustment_capacity_elements(),
+            7,
+            "separation must not shrink the owner-side adjustment reservation",
+        );
         assert_eq!(outcome.prepared.original_rows(), &[0, 2, 3, 5, 6]);
         assert_eq!(outcome.prepared.offset(), &[0.0, 0.2, 0.3, 0.5, 0.6]);
         assert_eq!(outcome.prepared.outcome(), &[1.0, 2.0, 0.0, 0.0, 4.0]);
@@ -1056,6 +1106,13 @@ mod tests {
         let mut owner = fixture.into_owner(numeric);
         let baseline = owner.loaded.candidate.clone();
         let baseline_probability = owner.loaded.probability_weight.clone();
+        let baseline_probability_bits = baseline_probability
+            .as_ref()
+            .expect("fixture probability weights")
+            .values
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>();
 
         let error = owner
             .rebuild_generation(&[0, 2, 4, 6], 1)
@@ -1063,6 +1120,19 @@ mod tests {
         assert_eq!(error.code, ErrorCode::InvalidData);
         assert_eq!(owner.loaded.candidate, baseline);
         assert_eq!(owner.loaded.probability_weight, baseline_probability);
+        assert_eq!(
+            owner
+                .loaded
+                .probability_weight
+                .as_ref()
+                .expect("restored probability weights")
+                .values
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            baseline_probability_bits,
+            "a failed build restores every supplied probability weight bit-for-bit",
+        );
 
         let recovered = owner
             .rebuild_generation(&[0, 1, 2, 3, 4, 5, 6], 2)
@@ -1171,10 +1241,14 @@ mod tests {
         assert_eq!(stage.scale.raw_sum, Some(f64::from_bits(2)));
         assert!(stage.scale.log_raw_sum.is_finite());
         assert!(stage.scale.log_raw_to_prepared_multiplier.is_finite());
+        assert_eq!(stage.positions, [1, 2]);
+        assert_eq!(
+            stage.positions.capacity(),
+            2,
+            "rollback retains only one exact-capacity source position per staged row",
+        );
 
-        owner
-            .restore_generation_probability_weights(Some(stage))
-            .expect("rollback");
+        owner.restore_generation_probability_weights(Some(stage));
         assert_eq!(owner.loaded.probability_weight, baseline);
     }
 

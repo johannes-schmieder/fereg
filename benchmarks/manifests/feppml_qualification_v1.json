@@ -61,13 +61,13 @@
   ],
   "recipe_contract": {
     "path": "scripts/feppml_qualification_recipe_contract.py",
-    "sha256": "cee2d01260224b4ea1984b699306e1d2f929ccd49dfeee0f940941df2a988eb6",
-    "profile_sha256": "709f119450b3df485c6c0b15f9fd53ab034529bf698095b57b2d13a0fb0952b6",
+    "sha256": "699ea32a828ba0ee018ebbdb75980292ab501a02b591ca594a9117acbfcfa842",
+    "profile_sha256": "6591419b15adf0768372a86a1014d15fa183feb9c0adf6e2c43eef19e8b7088b",
     "compilers": [
       {
         "id": "main",
         "path": "scripts/generate_feppml_qualification_recipes.py",
-        "sha256": "57545f4d62d12c1c5ab449d58445f578b66236cb1096ea89fc2df781d07b5205"
+        "sha256": "a21e45b8f69143518198de5c6ef732a532f6f9494ef0d65c7abd0b15a2925c4e"
       },
       {
         "id": "oracle",

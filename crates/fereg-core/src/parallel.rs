@@ -17,6 +17,23 @@ pub struct ThreadTeam {
     deterministic: bool,
 }
 
+/// A successfully acquired cached Rayon team. Acquisition owns every
+/// fallible lock/build step; installing work afterward is infallible.
+#[derive(Debug, Clone)]
+pub(crate) struct InstalledThreadTeam {
+    pool: Arc<rayon::ThreadPool>,
+}
+
+impl InstalledThreadTeam {
+    pub(crate) fn install<T, F>(&self, function: F) -> T
+    where
+        T: Send,
+        F: FnOnce() -> T + Send,
+    {
+        self.pool.install(function)
+    }
+}
+
 impl ThreadTeam {
     #[must_use]
     pub fn new(config: ThreadConfig) -> Self {
@@ -45,6 +62,12 @@ impl ThreadTeam {
         T: Send,
         F: FnOnce() -> T + Send,
     {
+        Ok(self.acquire()?.install(function))
+    }
+
+    /// Resolve/cache the requested pool before entering a transaction that
+    /// cannot tolerate another fallible exit.
+    pub(crate) fn acquire(self) -> Result<InstalledThreadTeam> {
         let cache = THREAD_POOL.get_or_init(|| Mutex::new(None));
         let pool = {
             let mut guard = cache.lock().map_err(|_| {
@@ -78,7 +101,7 @@ impl ThreadTeam {
                     .pool,
             )
         };
-        Ok(pool.install(function))
+        Ok(InstalledThreadTeam { pool })
     }
 
     #[must_use]

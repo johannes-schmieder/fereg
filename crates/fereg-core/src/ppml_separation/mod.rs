@@ -108,6 +108,49 @@ pub enum MethodStatus {
     Uncertified,
 }
 
+/// Allocation-free diagnostic identity attached to one detector execution.
+/// `code` is always a static registered message; `detail` carries at most one
+/// bounded integer such as an exhausted iteration limit. Diagnostic prose is
+/// deliberately excluded from certification digests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeparationNote {
+    pub code: &'static str,
+    pub detail: usize,
+}
+
+impl SeparationNote {
+    #[must_use]
+    pub const fn new(code: &'static str) -> Self {
+        Self { code, detail: 0 }
+    }
+
+    #[must_use]
+    pub const fn with_detail(code: &'static str, detail: usize) -> Self {
+        Self { code, detail }
+    }
+
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.code.is_empty()
+    }
+}
+
+impl From<&'static str> for SeparationNote {
+    fn from(code: &'static str) -> Self {
+        Self::new(code)
+    }
+}
+
+impl std::fmt::Display for SeparationNote {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.detail == 0 {
+            formatter.write_str(self.code)
+        } else {
+            write!(formatter, "{} ({})", self.code, self.detail)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeparationDropReason {
     InitialSingleton,
@@ -122,15 +165,19 @@ pub enum SeparationDropReason {
 pub struct SeparationCertificate {
     pub proof: SeparationCertificateProof,
     /// Maximum absolute direction value on positive-outcome observations,
-    /// divided by the direction scale.
+    /// divided by the direction scale.  For a simplex dual proof, this is the
+    /// normalized free-coordinate stationarity residual `||A'u||_inf`.
     pub interior_zero_relative: f64,
     /// Largest positive value on a zero-outcome observation, divided by the
     /// direction scale.  The canonical recession direction is nonpositive on
-    /// the boundary.
+    /// the boundary.  For a simplex dual proof, this is the normalized
+    /// nonnegative-variable dual-inequality violation.
     pub boundary_violation_relative: f64,
     pub span_residual_relative: f64,
-    /// Smallest `-z_i / ||z||_inf` among proposed rows.
+    /// Smallest `-z_i / ||z||_inf` among proposed rows, or the normalized
+    /// strict Farkas objective margin for a simplex dual proof.
     pub negative_margin_relative: f64,
+    /// Infinity norm of the recession direction or dual multiplier.
     pub direction_scale: f64,
     pub positive_maximum: f64,
     pub passed: bool,
@@ -144,17 +191,38 @@ pub enum SeparationCertificateProof {
     SimplexFullPositiveRank {
         columns: usize,
     },
+    /// Phase-I proved that the nonnegative boundary cone with unit slack
+    /// normalization is infeasible.  The raw dual stays detector-private;
+    /// these dimensions and the scalar residuals bind the independently
+    /// verified Farkas proof carried by the report.
+    SimplexDualInfeasibility {
+        boundary_rows: usize,
+        nullity: usize,
+    },
     /// The iterated-rectifier recurrence reached its certified zero fixed
     /// point under the registered recurrence and projection tolerances.
     IteratedRectifierFixedPoint,
 }
 
-/// Exact evidence for zero-only absorbed-intercept levels.  Level identifiers
-/// refer to the immutable input design, not to detector-local compact order.
+/// Collision-free identity of one accepted zero-only absorbed-intercept
+/// level.  The term id is invariant across prepared generations and the
+/// representative is the least immutable original-row id among the active
+/// members of that level.  The representative row is deleted by the same
+/// atomic transaction, so an accepted identity cannot recur after rebasing,
+/// even when a different source level reuses the same compact code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ExactFeLevelIdentity {
+    pub effect: crate::metadata::AbsorbTermId,
+    pub representative_original_row: usize,
+}
+
+/// Exact evidence for zero-only absorbed-intercept levels.  Identities bind
+/// immutable input rows and requested absorbed terms, never detector-local
+/// compact level codes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExactFeSeparationCertificate {
     pub checked_intercept_effects: usize,
-    pub zero_only_levels: Vec<(usize, u32)>,
+    pub zero_only_levels: Vec<ExactFeLevelIdentity>,
     pub passed: bool,
 }
 
@@ -180,7 +248,7 @@ pub struct SeparationMethodReport {
     /// Registered simplex-tableau cell ceiling for this execution; zero for
     /// non-simplex methods or when simplex is disabled.
     pub simplex_tableau_cells: usize,
-    pub note: String,
+    pub note: SeparationNote,
 }
 
 /// Allocation-free detector workspace requirements for PPML preflight.
@@ -220,6 +288,19 @@ pub const fn separation_workspace_requirements(
     }
 }
 
+/// Number of independently requested separation policies. Each immutable
+/// generation executes a policy at most once before either committing a
+/// deletion or reaching the terminal stable generation. This count freezes
+/// the exact `policies * generation_zero_rows` report-record envelope.
+#[must_use]
+pub const fn separation_method_count(config: SeparationConfig) -> usize {
+    config.drop_singletons as usize
+        + config.methods.fixed_effects as usize
+        + config.methods.simplex as usize
+        + config.methods.iterated_rectifier as usize
+        + config.methods.mu as usize
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SeparationReport {
     pub candidate_observations: usize,
@@ -249,14 +330,14 @@ pub(crate) struct DetectionProposal {
     /// Canonically signed observation-space direction on the immutable
     /// detector view.  It is required for every numerical deletion proposal.
     pub direction: Option<Vec<f64>>,
-    pub note: String,
+    pub note: SeparationNote,
 }
 
 impl DetectionProposal {
     pub(crate) fn empty(
         method: SeparationMethod,
         status: MethodStatus,
-        note: impl Into<String>,
+        note: impl Into<SeparationNote>,
     ) -> Self {
         Self {
             method,
