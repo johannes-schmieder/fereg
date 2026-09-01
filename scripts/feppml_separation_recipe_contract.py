@@ -726,9 +726,18 @@ def validate_stata_and_formal_binding(document: Mapping[str, Any], root: Path = 
         raise SeparationRecipeError(
             "qualification comparator audit differs from the exact separation manifest"
         )
-    public = (root / "stata/feppml.ado").read_text(encoding="utf-8")
-    if "exit 498" not in public or "_fereg_ppml" in public:
-        raise SeparationRecipeError("public feppml is no longer the fail-closed stub")
+    public_state = _load_module(
+        root / "scripts/feppml_public_state.py",
+        "feppml_phase7_public_state_binding",
+    )
+    try:
+        state = public_state.public_state(root)
+    except Exception as error:
+        raise SeparationRecipeError(
+            "public feppml is neither the closed stub nor activated wrapper"
+        ) from error
+    if state not in {public_state.PREACTIVATION, public_state.ACTIVATED}:
+        raise SeparationRecipeError("public feppml state is invalid")
 
 
 def main() -> int:
