@@ -9,7 +9,8 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{factorize_code_interaction, CategoricalCodeView};
 use crate::prepared_categorical_data::{
-    prepare_categorical_ols_data_with_cluster_sources, PreparedCategoricalOlsData,
+    prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
+    PreparedCategoricalOlsData,
 };
 
 use super::prepared_clusters::{
@@ -117,6 +118,20 @@ pub fn prepare_categorical_ols_clustered_data(
     let cluster_sources = validate_request(request)?;
     let ols =
         prepare_categorical_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    let mut reservation = SystemCategoricalClusterReservation;
+    let clusters = build_cluster_design(request, &ols, &mut reservation)?;
+    let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };
+    certify_prepared_clusters(&prepared)?;
+    Ok(prepared)
+}
+
+/// PPML-only clustered wrapper that admits a truly empty absorbed topology.
+pub(crate) fn prepare_ppml_categorical_ols_clustered_data(
+    request: &OlsClusteredRequestV1,
+    loaded: &LoadedOlsInput,
+) -> Result<PreparedCategoricalOlsClusteredData> {
+    let cluster_sources = validate_request(request)?;
+    let ols = prepare_ppml_categorical_ols_data(&request.ols, loaded, &cluster_sources)?;
     let mut reservation = SystemCategoricalClusterReservation;
     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
     let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };

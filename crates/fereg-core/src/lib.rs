@@ -27,6 +27,7 @@ mod prepared_categorical_topology;
 #[path = "ols/prepared_fit_view.rs"]
 pub(crate) mod prepared_fit_view;
 pub mod protocol;
+mod sandwich;
 pub mod selftest;
 #[path = "ols/topology_dof.rs"]
 pub mod topology_dof;
@@ -79,38 +80,38 @@ pub use ols::{
     CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
     CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
     ClusterSubsetReport, DofConfig, DofMethod, DofReport, FiniteSolver, FitStatistics,
-    LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1, OlsClusteredRequestV1, OlsConfig,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult, PreparedCategoricalOlsClusteredData,
-    PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect, PreparedOlsAbsorbedDofEffectIdentity,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport, PreparedOlsBread,
-    PreparedOlsBreadCertificate, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
-    PreparedOlsBreadWeightScale, PreparedOlsCategoricalComponent, PreparedOlsClusterDesign,
-    PreparedOlsClusterDimension, PreparedOlsClusterSubsetCertificate,
-    PreparedOlsClusteredCertificate, PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance,
-    PreparedOlsClusteredData, PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport,
-    PreparedOlsClusteredPsdState, PreparedOlsCoefficient, PreparedOlsCoefficientStatus,
-    PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData, PreparedOlsEffect,
-    PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsExecutionReport,
-    PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology, PreparedOlsFeTopologySource,
-    PreparedOlsFitConfig, PreparedOlsFitStatistics, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient, PreparedOlsModel, PreparedOlsRankCertificate,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport, PreparedOlsRhs,
-    PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
-    PreparedOlsScoreCertificate, PreparedOlsSingletons, PreparedOlsUnadjustedCertificate,
-    PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance, RankSolve, RegressorStatus,
-    VceKind, VceReport,
+    LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
+    LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
+    OlsClusteredRequestV1, OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult,
+    PreparedCategoricalOlsClusteredData, PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect,
+    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsAbsorbedDofReport, PreparedOlsBread, PreparedOlsBreadCertificate,
+    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
+    PreparedOlsCategoricalComponent, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
+    PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredData,
+    PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
+    PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
+    PreparedOlsData, PreparedOlsEffect, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
+    PreparedOlsExecutionReport, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
+    PreparedOlsFeTopologySource, PreparedOlsFitConfig, PreparedOlsFitStatistics,
+    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsModel,
+    PreparedOlsRankCertificate, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    PreparedOlsRhs, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
+    PreparedOlsRobustCovariance, PreparedOlsScoreCertificate, PreparedOlsSingletons,
+    PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
+    RankSolve, RegressorStatus, VceKind, VceReport,
 };
 pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
 pub use ppml::{
-    fit_ppml, fit_ppml_with_start, means_from_eta, offset_from_exposure, poisson_objective,
-    PoissonBounds, PoissonObjective, PpmlCertificate, PpmlConfig, PpmlDiagnostics,
-    PpmlFitStatistics, PpmlInitialization, PpmlIterationReport, PpmlResult, PpmlStart,
+    fit_prepared_ppml, means_from_eta, offset_from_exposure, poisson_objective, LoadedPpmlInput,
+    PoissonBounds, PoissonObjective, PpmlCertificate, PpmlConfig, PpmlInitialization,
+    PpmlIterationReport, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
 };
 pub use ppml_separation::{
-    detect_separation, fit_ppml_separated, fit_ppml_separated_with_start, MethodStatus,
-    SeparatedPpmlResult, SeparationCertificate, SeparationConfig, SeparationDropReason,
-    SeparationMethod, SeparationMethodReport, SeparationMethods, SeparationReport,
+    MethodStatus, SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
+    SeparationMethodReport, SeparationMethods, SeparationReport,
 };
 pub use prepared_categorical_data::{
     prepare_categorical_ols_data, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
@@ -123,8 +124,11 @@ pub use prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;
 pub use prepared_categorical_singleton::prune_prepared_categorical_singletons;
 pub use prepared_categorical_topology::PreparedCategoricalFeTopology;
 pub use protocol::{
-    Handshake, ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
+    Handshake, PpmlAdjustmentV1, PpmlResultReceiptFieldV1, PpmlResultReceiptV1, PpmlResultVceV1,
+    ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION, PPML_RESULT_MAGIC,
+    PPML_RESULT_RECEIPT_COLUMNS, PPML_RESULT_RECEIPT_COMPLETE_COLUMN,
+    PPML_RESULT_RECEIPT_COMPLETE_VALUE, PPML_RESULT_WIRE_VERSION,
 };
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
 pub use topology_dof::{

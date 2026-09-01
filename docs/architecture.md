@@ -31,9 +31,58 @@ fereg.ado
   -> fereg_p.ado / fereg_estat.ado for public postestimation
 ```
 
-The hidden adapter and test transaction remain qualification-only and are
-excluded from distribution archives. `feppml` fails in ado with `r(498)`
-without a substantive plugin call.
+The hidden OLS adapter and test transaction remain qualification-only and are
+excluded from distribution archives. The public `feppml` command fails in ado
+with `r(498)` without a substantive plugin call.
+
+## Private PPML qualification architecture
+
+The source now contains a private PPML path that reuses the prepared model,
+certified weighted-linear kernels, and sandwich reductions below the
+estimator-policy boundary. OLS remains a one-shot caller; PPML owns separation
+and a reusable changing-weight IRLS session. The ownership, invalidation, and
+zero-cost OLS rules are fixed by
+[ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
+memory/routing rules by
+[ADR 0018](adr/0018-ppml-memory-routing-performance.md).
+
+The pre-activation call graph is:
+
+```text
+private _fereg_ppml.ado syntax adapter
+  -> one _fereg_estimate_ppml.ado transaction
+       -> one plugin call __fereg_plugin, estimate-ppml <framed request>
+            -> private PPML request/result wire validation
+            -> preparation, separation, topology rebase, IRLS, inference
+            -> complete private shadows; PPML receipt COMPLETE last
+       -> validate shadows and receipt; protected post or full rollback
+
+public feppml.ado
+  -> r(498), before any substantive plugin call
+```
+
+PPML transport is additive: its request/result wires and live-SPI action do
+not alter the OLS action or result layout. Receipt-last publication and the
+direct `fereg` baseline are governed by
+[ADR 0019](adr/0019-additive-ppml-transaction-and-fereg-regression-boundary.md).
+The pre-migration modules are classified in
+[the stale PPML disposition inventory](ppml_stale_module_inventory.md); they
+are not a second production engine. The hidden path and fixtures are
+qualification inputs, not evidence that the final scientific, platform,
+memory, performance, or activation gates have passed.
+
+The separation coordinator is the only production owner of sample mutation.
+Its bounded simplex detector covers the complete prepared model span: finite
+columns, finalized intercept-FE indicators, and level-by-raw-slope columns for
+absorbed slope channels. This detector is the deliberate bounded exception to
+the estimator's matrix-free/data-streaming rule. Checked preflight covers the
+jointly live explicit detector design, FE construction scratch, null-space
+work, phase-I tableau, and certificate buffers before the N-by-P design or
+tableau is allocated. An over-cap simplex may be skipped only when
+comprehensive IR certifies no unhandled separation on that same ledger
+generation; a simplex-only over-cap request fails with `r(909)`. The explicit
+detector design is released before IRLS and is never a fitting or inference
+route.
 
 ## Atomicity and interruption
 

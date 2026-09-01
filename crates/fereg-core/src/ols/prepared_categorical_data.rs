@@ -166,8 +166,23 @@ impl PreparedCategoricalOlsData {
     /// Build one observation-major `[Y, X]` batch directly from prepared
     /// recipes. No intermediate N-row ordinary columns are allocated.
     pub fn build_rhs(&self) -> Result<PreparedCategoricalOlsRhs> {
+        self.build_rhs_with_response(&self.sample.outcome)
+    }
+
+    /// Build one observation-major `[response, X]` batch while borrowing a
+    /// caller-supplied working response. The generated-column fill and sole
+    /// dense allocation are identical to [`Self::build_rhs`].
+    pub(crate) fn build_rhs_with_response(
+        &self,
+        response: &[f64],
+    ) -> Result<PreparedCategoricalOlsRhs> {
         self.validate()?;
         let nrows = self.sample.n_active();
+        if response.len() != nrows {
+            return Err(invalid(
+                "categorical OLS response is not aligned on the active observation axis",
+            ));
+        }
         let ncols = self
             .model
             .columns
@@ -188,7 +203,7 @@ impl PreparedCategoricalOlsData {
         }
         values.resize(elements, 0.0);
         for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
-            destination[0] = self.sample.outcome[row];
+            destination[0] = response[row];
             for generated_column in 0..self.model.columns.len() {
                 destination[generated_column + 1] = self.column_value(generated_column, row)?;
             }
@@ -243,12 +258,25 @@ impl PreparedCategoricalOlsData {
         requested_channels: &[bool],
         config: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
-        self.validate()?;
-        let effects = self.effect_views()?;
         let weights = match &self.sample.weights {
             PreparedWeights::None => BorrowedMapWeights::Unit,
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
+        self.recover_absorbed_effects_map_with_weights(weights, target, requested_channels, config)
+    }
+
+    /// Crate-private recovery boundary for estimators whose final curvature
+    /// weights differ from the preparation weights. Public OLS continues to
+    /// call the wrapper above with the prepared weights.
+    pub(crate) fn recover_absorbed_effects_map_with_weights(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        target: &[f64],
+        requested_channels: &[bool],
+        config: MapConfig,
+    ) -> Result<RecoveredCategoricalEffects> {
+        self.validate()?;
+        let effects = self.effect_views()?;
         recover_finalized_categorical_effects_map_certified(
             &self.fe_topology,
             &effects,
@@ -275,27 +303,116 @@ impl PreparedCategoricalOlsData {
         lsmr: LsmrConfig,
         map: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
-        self.validate()?;
-        let effects = self.effect_views()?;
         let weights = match &self.sample.weights {
             PreparedWeights::None => BorrowedMapWeights::Unit,
             PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
         };
+        self.recover_absorbed_effects_fast_with_weights(
+            weights,
+            target,
+            requested_channels,
+            retained,
+            known_connected,
+            materialize_absorbed_sum,
+            lsmr,
+            map,
+        )
+    }
+
+    /// Explicit-weight counterpart retaining the ordinary OLS recovery policy,
+    /// including the shared LSMR routes.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn recover_absorbed_effects_fast_with_weights(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        target: &[f64],
+        requested_channels: &[bool],
+        retained: Option<&FeCoefficientBatch>,
+        known_connected: bool,
+        materialize_absorbed_sum: bool,
+        lsmr: LsmrConfig,
+        map: MapConfig,
+    ) -> Result<RecoveredCategoricalEffects> {
+        self.recover_absorbed_effects_fast_with_weights_inner(
+            weights,
+            target,
+            requested_channels,
+            retained,
+            known_connected,
+            materialize_absorbed_sum,
+            lsmr,
+            map,
+            false,
+            true,
+        )
+    }
+
+    /// PPML saved-FE recovery boundary. Allocation failures from a preferred
+    /// recovery route are terminal r909 errors rather than reasons to attempt a
+    /// second solver whose allocator behavior could mask the original failure.
+    /// PPML also skips the pinned external LSMR implementation, whose upstream
+    /// workspaces are not yet fallibly allocated, and uses the certified
+    /// repository-owned MAP recovery fallback instead. Ordinary OLS retains
+    /// the existing LSMR-first recovery policy above.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn recover_ppml_absorbed_effects_fast_with_weights(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        target: &[f64],
+        requested_channels: &[bool],
+        retained: Option<&FeCoefficientBatch>,
+        known_connected: bool,
+        materialize_absorbed_sum: bool,
+        lsmr: LsmrConfig,
+        map: MapConfig,
+    ) -> Result<RecoveredCategoricalEffects> {
+        self.recover_absorbed_effects_fast_with_weights_inner(
+            weights,
+            target,
+            requested_channels,
+            retained,
+            known_connected,
+            materialize_absorbed_sum,
+            lsmr,
+            map,
+            true,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn recover_absorbed_effects_fast_with_weights_inner(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        target: &[f64],
+        requested_channels: &[bool],
+        retained: Option<&FeCoefficientBatch>,
+        known_connected: bool,
+        materialize_absorbed_sum: bool,
+        lsmr: LsmrConfig,
+        map: MapConfig,
+        propagate_allocation: bool,
+        allow_lsmr: bool,
+    ) -> Result<RecoveredCategoricalEffects> {
+        self.validate()?;
+        let effects = self.effect_views()?;
         if let Some(coefficients) = retained {
-            if let Ok(recovered) =
-                recover_finalized_categorical_effects_from_coefficients_selected_certified(
-                    &self.fe_topology,
-                    &effects,
-                    weights,
-                    target,
-                    requested_channels,
-                    coefficients,
-                    map.tolerance,
-                    known_connected,
-                    materialize_absorbed_sum,
-                )
-            {
-                return Ok(recovered);
+            match recover_finalized_categorical_effects_from_coefficients_selected_certified(
+                &self.fe_topology,
+                &effects,
+                weights,
+                target,
+                requested_channels,
+                coefficients,
+                map.tolerance,
+                known_connected,
+                materialize_absorbed_sum,
+            ) {
+                Ok(recovered) => return Ok(recovered),
+                Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                    return Err(error);
+                }
+                Err(_) => {}
             }
         }
         if effects
@@ -303,7 +420,7 @@ impl PreparedCategoricalOlsData {
             .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
         {
             if effects.len() > 1 {
-                if let Ok(recovered) = recover_finalized_categorical_effects_cg_certified(
+                match recover_finalized_categorical_effects_cg_certified(
                     &self.fe_topology,
                     &effects,
                     weights,
@@ -316,40 +433,56 @@ impl PreparedCategoricalOlsData {
                         ..categorical_slope_map_config(map)
                     },
                 ) {
-                    return Ok(recovered);
+                    Ok(recovered) => return Ok(recovered),
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                        return Err(error);
+                    }
+                    Err(_) => {}
                 }
             }
-            if let Ok(recovered) = recover_finalized_categorical_effects_sd_lsmr_certified(
+            if allow_lsmr {
+                match recover_finalized_categorical_effects_sd_lsmr_certified(
+                    &self.fe_topology,
+                    &effects,
+                    weights,
+                    target,
+                    requested_channels,
+                    lsmr,
+                    categorical_slope_map_config(map),
+                ) {
+                    Ok(recovered) => return Ok(recovered),
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                        return Err(error);
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+        if allow_lsmr {
+            match recover_finalized_categorical_effects_lsmr_certified(
                 &self.fe_topology,
                 &effects,
                 weights,
                 target,
                 requested_channels,
                 lsmr,
-                categorical_slope_map_config(map),
+                map.tolerance,
             ) {
-                return Ok(recovered);
+                Ok(recovered) => return Ok(recovered),
+                Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                    return Err(error);
+                }
+                Err(_) => {}
             }
         }
-        match recover_finalized_categorical_effects_lsmr_certified(
+        recover_finalized_categorical_effects_map_certified(
             &self.fe_topology,
             &effects,
             weights,
             target,
             requested_channels,
-            lsmr,
-            map.tolerance,
-        ) {
-            Ok(recovered) => Ok(recovered),
-            Err(_) => recover_finalized_categorical_effects_map_certified(
-                &self.fe_topology,
-                &effects,
-                weights,
-                target,
-                requested_channels,
-                categorical_slope_map_config(map),
-            ),
-        }
+            categorical_slope_map_config(map),
+        )
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.
@@ -412,21 +545,7 @@ impl PreparedCategoricalOlsData {
                 .try_reserve_exact(effect.slopes.len())
                 .map_err(|_| allocation("unable to reserve prepared absorbed-slope views"))?;
             for slope in &effect.slopes {
-                let source_index = usize::try_from(slope.source.get() - 1)
-                    .map_err(|_| invalid("absorbed-slope source index overflows"))?;
-                let values = self
-                    .sample
-                    .regressors
-                    .get(source_index)
-                    .map(Vec::as_slice)
-                    .ok_or_else(|| invalid("absorbed-slope source is out of range"))?;
-                if values.len() != self.sample.n_active()
-                    || values.iter().any(|value| !value.is_finite())
-                {
-                    return Err(invalid_data(
-                        "prepared absorbed-slope source is not finite and aligned",
-                    ));
-                }
+                let values = self.numeric_source_values(slope.source)?;
                 if slopes.len() == slopes.capacity() {
                     return Err(allocation(
                         "prepared absorbed-slope view capacity exhausted",
@@ -445,6 +564,23 @@ impl PreparedCategoricalOlsData {
             )?);
         }
         Ok(output)
+    }
+
+    pub(crate) fn numeric_source_values(&self, source: SourceId) -> Result<&[f64]> {
+        let source_index = usize::try_from(source.get() - 1)
+            .map_err(|_| invalid("prepared numeric source index overflows"))?;
+        let values = self
+            .sample
+            .regressors
+            .get(source_index)
+            .map(Vec::as_slice)
+            .ok_or_else(|| invalid("prepared numeric source is out of range"))?;
+        if values.len() != self.sample.n_active() || values.iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data(
+                "prepared numeric source is not finite and final-sample aligned",
+            ));
+        }
+        Ok(values)
     }
 
     fn categorical_indicator(
@@ -645,10 +781,88 @@ pub fn prepare_categorical_ols_data(
     prepare_categorical_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
+/// PPML preparation boundary that also admits an empty absorbed topology.
+///
+/// The public categorical OLS constructor continues to require explicit
+/// absorbed terms. With no absorbed terms this path preserves `_cons` as the
+/// ordinary generated intercept column produced by categorical rebasing; it
+/// never synthesizes an absorbed constant or reclassifies the coefficient
+/// after fitting.
+pub(crate) fn prepare_ppml_categorical_ols_data(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<PreparedCategoricalOlsData> {
+    if !request.absorbed_terms.is_empty() {
+        return prepare_categorical_ols_data_with_cluster_sources_policy(
+            request,
+            loaded,
+            cluster_sources,
+            true,
+        );
+    }
+
+    let availability = prepare_ols_data_with_cluster_sources(request, loaded, cluster_sources)?;
+    if availability.singletons.num_singletons != 0 || availability.singletons.cascade_events != 0 {
+        return Err(invalid(
+            "empty categorical PPML topology unexpectedly applied singleton deletion",
+        ));
+    }
+    let candidate_views = categorical_views(&availability.categorical_sources)?;
+    let active = fallible_filled_bool(availability.sample.n_active(), true)?;
+    let fe_topology = finalize_categorical_topology(&candidate_views, &[], &active)?;
+
+    let PreparedOlsData {
+        model: availability_model,
+        sample,
+        categorical_sources: candidate_sources,
+        singletons,
+        ..
+    } = availability;
+    let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
+    let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
+    let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
+    let report_intercept = request.include_intercept;
+    let rebased = rebase_categorical_model(
+        &request.model,
+        &availability_model,
+        &categorical_sources,
+        &fe_topology,
+        report_intercept,
+    )?;
+    let prepared = PreparedCategoricalOlsData {
+        model: rebased.model,
+        sample,
+        categorical_sources,
+        fe_topology,
+        effect_specs: Vec::new(),
+        structural_intercept: report_intercept,
+        report_intercept,
+        singletons,
+        report_plan: rebased.report_plan,
+    };
+    prepared.validate()?;
+    Ok(prepared)
+}
+
 pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
+) -> Result<PreparedCategoricalOlsData> {
+    prepare_categorical_ols_data_with_cluster_sources_policy(
+        request,
+        loaded,
+        cluster_sources,
+        false,
+    )
+}
+
+fn prepare_categorical_ols_data_with_cluster_sources_policy(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+    ppml_structural_constant: bool,
 ) -> Result<PreparedCategoricalOlsData> {
     let plan = plan_categorical_absorbed_request(request)?;
     let availability = prepare_ols_data_with_cluster_sources(
@@ -704,7 +918,8 @@ pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
         ));
     }
     let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
-    let structural_intercept = request.absorbed_terms.is_empty()
+    let structural_intercept = ppml_structural_constant
+        || request.absorbed_terms.is_empty()
         || request.absorbed_terms.iter().any(|term| term.intercept);
     let report_intercept = request.include_intercept && structural_intercept;
     let rebased = rebase_categorical_model(

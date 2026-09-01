@@ -73,6 +73,55 @@ memory model reports the code/membership copy avoided relative to the former
 owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping
 peaks, and setup-only buffers may be dropped before the OLS/VCE stages.
 
+## PPML result and saved-FE ownership
+
+PPML publication retains observation-scale products strictly from the request
+mask. A fit-only transaction returns no `xb`, absorbed predictor, `eta`, `mu`,
+or residual vector. A requested `xb` is formed once rather than retaining its
+offset and finite-predictor inputs, and the plugin publication shadow borrows
+every retained prediction, residual, and saved FE channel from the certified
+core result. It does not construct a second observation-length shadow copy.
+
+The composite result constructor needs one final-mean vector to replay the
+accepted objective independently. Requested `mu` reuses that same vector. If
+`mu` was not requested, the vector is released immediately after the composite
+certificate closes; a requested residual already owns only its exact final
+residual vector. The publication plan therefore charges outcome, prepared
+weights, and the one certification mean, plus exactly one vector for every
+distinct requested output other than `mu`.
+
+Saving any absorbed channel triggers recovery of the complete normalized FE
+decomposition under the accepted final Hessian weights. During that phase the
+planner charges one transient total absorbed predictor and every declared
+intercept/slope channel, even when only a subset was requested. Recovery
+compares that transient total with the strict fit's authoritative absorbed
+predictor and certifies the sum of all channels, retaining only the two scalar
+errors afterward. The transient total and unrequested channels are released;
+publication owns only the requested channels (and the authoritative absorbed
+predictor only when it was itself requested). Preflight and final planning use
+the same saved-channel and requested-output dimensions, so a saved intercept
+or slope cannot create an uncharged post-preflight vector.
+
+## PPML pre-activation separation memory
+
+The private PPML path adds its own fit-lifetime plan without changing OLS
+memory modes or thresholds. Its simplex detector operates on the complete
+prepared model span, including finite columns, one indicator per finalized
+intercept-FE level, and one level-by-raw-slope column per absorbed slope
+channel. Before allocating the detector's explicit N-by-P design or phase-I
+tableau, checked arithmetic bounds the maximum jointly live design,
+topology/FE-code construction scratch, null-space work, tableau, and
+certificate/result vectors in eight-byte cells.
+
+An over-cap detector records `SkippedMemory`. It may continue only when a
+requested comprehensive iterated-rectifier run certifies no unhandled
+separation on the same sample-ledger generation. If IR accepts rows, the
+coordinator rebases and restarts the full chain; if comprehensive IR is absent
+or cannot close that final generation, the request fails. A simplex-only
+over-cap request returns `r(909)` before the N-by-P design or tableau is
+allocated. The bounded explicit design is detector scratch and is released
+before PPML IRLS, inference, or publication.
+
 ## Instrumentation and acceptance
 
 The public result wire records requested/selected memory mode, estimated fast

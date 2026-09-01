@@ -5,6 +5,8 @@ import tomllib
 import unittest
 from pathlib import Path
 
+from scripts.feppml_public_state import ACTIVATED, public_state
+
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "crates/fereg-core/src"
 PLUGIN = ROOT / "crates/fereg-plugin/src"
@@ -63,7 +65,7 @@ class RustSourceContractTests(unittest.TestCase):
         self.assertIn("local:\n    *;", linux)
         self.assertEqual([line.strip() for line in macos if line.strip()], ["_pginit", "_stata_call"])
 
-    def test_public_ols_uses_the_guarded_spi_path_and_ppml_stays_disabled(self):
+    def test_public_commands_use_the_guarded_spi_paths(self):
         dispatch = (PLUGIN / "dispatch.rs").read_text(encoding="utf-8")
         estimate = (PLUGIN / "estimate.rs").read_text(encoding="utf-8")
         fereg = (ROOT / "stata/fereg.ado").read_text(encoding="utf-8")
@@ -72,7 +74,12 @@ class RustSourceContractTests(unittest.TestCase):
         self.assertIn("ErrorCode::Unsupported", dispatch)
         self.assertIn("ACTION_ESTIMATE_OLS", estimate)
         self.assertIn("_fereg_estimate_public `0'", fereg)
-        self.assertIn("exit 498", feppml)
+        if public_state(ROOT) == ACTIVATED:
+            self.assertIn("_fereg_ppml `0'", feppml)
+            self.assertNotIn("exit 498", feppml)
+        else:
+            self.assertIn("exit 498", feppml)
+            self.assertNotIn("_fereg_ppml `0'", feppml)
         self.assertNotIn("plugin call", feppml)
 
     def test_final_native_builds_audit_then_load_before_hashing(self):

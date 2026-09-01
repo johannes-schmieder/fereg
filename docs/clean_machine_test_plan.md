@@ -23,9 +23,19 @@ plugin from the audited 0.5.0 archive.
 
 Linux qualification uses SCC licensed Stata 18 and 19 and the glibc 2.28+
 x86-64 artifact. macOS qualification uses licensed Stata 18 natively on arm64
-and exercises the x86_64 universal slice under Rosetta. Windows x64 receives
-hosted MSVC build/audit/mock qualification; licensed Windows Stata is deferred.
-Rosetta is not native Intel-host certification, which is also deferred.
+and exercises the x86_64 universal slice under Rosetta. Windows x64 has a
+private, bounded licensed-Stata driver described in
+`docs/windows_qualification.md`; it remains deferred until that driver has an
+accepted exact-source controller receipt. Rosetta is not native Intel-host
+certification, which is also deferred.
+
+The private `ppml-hidden` profile runs from the source tree before activation;
+it is not a clean-install package surface. A pre-activation archive must still
+contain the public stub and exclude the private adapters and qualification
+fixtures. After a separately approved activation change, replace the stub
+check with the full public PPML installation/postestimation matrix and rerun
+this plan on that exact archive rather than inferring success from hidden-path
+evidence.
 
 Every do-file prints `END_FIXTURE|<name>|rc=0` only after its final assertion.
 Process exit, Stata code, fixture status, and the unique sentinel must agree.

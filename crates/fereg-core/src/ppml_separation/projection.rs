@@ -6,6 +6,11 @@ use crate::fe::{
 };
 use crate::ols::{solve_rank_revealing, FiniteSolver};
 
+/// Fixed policy for the demoted dense separation test/oracle path.  Production
+/// prepared PPML rank selection is owned by `PreparedOlsFitConfig` instead of
+/// exposing a second, ineffective control through `PpmlConfig`.
+pub(crate) const LEGACY_PROJECTION_RANK_TOLERANCE: f64 = 1e-10;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ProjectionConfig {
     pub absorb: AbsorbConfig,
@@ -62,7 +67,7 @@ pub(crate) fn project_onto_model(
             let report = absorb_fixed_effects(design, weights, &mut transformed, absorb)?;
             if !report.certified() {
                 return Err(FeregError::new(
-                    ErrorCode::InvalidData,
+                    ErrorCode::NonConvergence,
                     format!(
                         "separation projection failed its FE certificate: {:?}",
                         report.stop_reason
@@ -145,7 +150,7 @@ pub(crate) fn project_onto_model(
     }
     if !finite_relative.is_finite() {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             "separation projection certificate became nonfinite",
         ));
     }
@@ -157,7 +162,7 @@ pub(crate) fn project_onto_model(
     };
     if !certificate.passed {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             format!(
                 "separation projection did not certify: finite={:.3e}, FE={:.3e}",
                 certificate.finite_relative_infinity_norm,
@@ -227,7 +232,7 @@ pub(crate) fn weighted_norm(values: &[f64], weights: &[f64]) -> Result<f64> {
         Ok(norm)
     } else {
         Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             "weighted norm overflowed during separation",
         ))
     }
@@ -248,7 +253,7 @@ fn weighted_matrix_column_norm(
         Ok(norm)
     } else {
         Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             "weighted column norm overflowed during separation",
         ))
     }

@@ -213,6 +213,10 @@ pub trait SpiApi {
         column: usize,
         value: f64,
     ) -> Result<()>;
+    /// Emit a caller-thread synchronization marker.  Estimation callbacks use
+    /// this only at explicitly serial native boundaries; worker code never
+    /// receives an SPI session.
+    fn display(&mut self, message: &str) -> Result<()>;
     fn check_interrupted(&mut self) -> Result<()>;
 }
 
@@ -1132,6 +1136,10 @@ mod tests {
                 .and_then(|values| values.get_mut(column.saturating_sub(1)))
                 .ok_or_else(|| invalid("matrix store coordinate is out of range"))?;
             *destination = value;
+            Ok(())
+        }
+
+        fn display(&mut self, _message: &str) -> Result<()> {
             Ok(())
         }
 

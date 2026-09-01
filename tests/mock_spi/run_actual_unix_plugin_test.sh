@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 if [[ $# -ne 1 ]]; then
   printf 'usage: %s PATH_TO_PLUGIN\n' "$0" >&2

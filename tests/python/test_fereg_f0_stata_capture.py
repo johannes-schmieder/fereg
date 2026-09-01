@@ -82,6 +82,11 @@ class FeregF0StataCaptureTests(unittest.TestCase):
         self.assertIn("__fereg_f0_capture_sample", rendered)
         self.assertIn("__fereg_f0_capture_saved", rendered)
 
+    def test_encoder_removes_syntax_delimiters_before_percent_encoding(self) -> None:
+        helper = capture.HELPERS.read_text(encoding="utf-8")
+        self.assertIn("    local encoded `value'\n", helper)
+        self.assertNotIn("    local encoded `\"`value'\"'\n", helper)
+
     def test_file_contract_and_writer_create_only_arm_scoped_runtime_files(self) -> None:
         contract = capture.file_contract(self.spec)
         self.assertEqual(contract["schema_version"], 1)

@@ -10,6 +10,9 @@ The machine-readable authority is
 `benchmarks/manifests/fereg_f0_regression_v1.json`. The validator and receipt
 evaluator are `scripts/fereg_f0_regression.py`.
 
+The separately frozen public-command and staged-package surface is specified
+by the [direct F0 command and package contract](fereg_f0_behavior_contract.md).
+
 ## F0 state and identity
 
 The current F0 entry is deliberately `candidate_unsealed`, not frozen. It is
@@ -38,12 +41,14 @@ their original manifest hash and cannot silently follow the change.
 
 The manifest owns two non-overlapping inventories:
 
-- `local_screen`: 18 cells at 100,000 and one million observations, covering
-  dense and sparse two-way FE designs, absorbed slopes, clustered VCE,
-  moderate K, `memory(fast)`, `memory(low)`, one/eight threads, fit-only, and
-  saved fixed effects.
-- `scc_governing`: 14 ten-million-observation cells covering the same main
-  shapes plus the governing constrained-memory case.
+- `local_screen`: 46 cells at 100,000 and one million observations. In
+  addition to the original dense/sparse, slope, moderate-K, memory, thread,
+  fit, and saved-FE shapes, it directly covers robust VCE, fweights and
+  pweights, one through five cluster dimensions, the parallel moderate-K
+  clustered reducer, disconnected saved FEs, saved slopes, and every explicit
+  solver/preconditioner route.
+- `scc_governing`: 42 ten-million-observation cells covering the corresponding
+  routes plus the governing constrained-memory case.
 
 Evidence names one profile and must contain every cell in manifest order,
 exactly once. Local evidence cannot satisfy the SCC profile, and evidence may
@@ -150,6 +155,25 @@ substitution. Local scientific certificate digests also expose the exact
 preparation receipt, input config, dataset, and command SHA-256 identities, so
 the final evaluator receipt remains auditable without trusting a loose path.
 
+The governing result deliberately contains two source-bound comparisons, not
+one cross-platform binary comparison. Licensed direct-command/package behavior
+reopens baseline and candidate bundles on one identical native host/platform
+(macOS is valid), and its baseline artifact must be the exact frozen F0
+artifact for that platform. SCC science, performance, and memory compare the
+Linux baseline/candidate artifacts on the same node. Both comparisons must
+name the same exact source commit/tree, but their platform plugin bytes are
+expected to differ. The Phase 12 aggregate cross-binds each candidate artifact
+to its own authoritative platform build/load receipt, including the same
+source archive and toolchain contract.
+
+The direct command comparison reopens canonical USTAR bundles containing the
+exact fixture sources, sanitized Stata logs, raw process/Stata status,
+terminal-sentinel counts, the complete staged package/plugin inventory, and
+resources; normalized result rows cannot be hand-authored independently of
+those bytes. SCC task receipts likewise inventory every retained raw run file,
+and the offline verifier reparses those files to reconstruct each scientific,
+timing, RSS, and memory record.
+
 An evaluation receipt contains the complete raw evidence and derived metrics.
 It is canonical-JSON sealed with SHA-256. Verification recomputes the evidence
 hash and the entire evaluation against the currently named manifest. An
@@ -163,16 +187,16 @@ identity records when the relevant gate is accepted.
 Validate the audited F0 object and manifest:
 
 ```bash
-python3 scripts/fereg_f0_regression.py validate-manifest
+python3 -I -B -S scripts/fereg_f0_regression.py validate-manifest
 ```
 
 Capture a clean exact candidate identity:
 
 ```bash
-python3 scripts/fereg_f0_regression.py source-identity --repository . --revision HEAD
+python3 -I -B -S scripts/fereg_f0_regression.py source-identity --repository . --revision HEAD
 ```
 
-Prepare the four immutable local datasets and the exact 18-cell command map
+Prepare the six immutable local datasets and the exact 46-cell command map
 in a new directory. This is an untimed licensed-Stata phase. It verifies the
 generator and OLS manifest from a clean exact-F0 checkout, adds and validates
 the stable `obs_id`, hashes every dataset, and writes a canonical sealed
@@ -218,7 +242,7 @@ Evaluate platform-produced evidence and write both receipt and external
 identity:
 
 ```bash
-python3 scripts/fereg_f0_regression.py evaluate \
+python3 -I -B -S scripts/fereg_f0_regression.py evaluate \
   --evidence /path/to/evidence.json \
   --output /path/to/receipt.json \
   --identity-output /path/to/receipt.identity.json
@@ -229,12 +253,35 @@ unsealed baseline, while still writing the diagnostic receipt. Verify a stored
 receipt independently with:
 
 ```bash
-python3 scripts/fereg_f0_regression.py verify-receipt \
+python3 -I -B -S scripts/fereg_f0_regression.py verify-receipt \
   --receipt /path/to/receipt.json \
   --identity /path/to/receipt.identity.json
 ```
 
-F0 may change from `candidate_unsealed` to `frozen` only after every missing
-manifest requirement has exact-SHA evidence, all three baseline platform
-artifacts are qualified, and the governing SCC profile passes. Freezing is a
-manifest and evidence milestone; it is not inferred from a process exit code.
+F0 advances through four explicit states; no command may skip one:
+
+1. `candidate_unsealed` permits artifact discovery only.
+2. `seal-artifacts` reopens the exact local receipt, baseline behavior bundle,
+   target-native macOS/Linux/Windows load evidence, source archives, and the
+   separately reviewed controller source. It writes an immutable artifact
+   seal plus an `artifacts_sealed` manifest.
+3. An exact `artifacts_sealed` F0-versus-F0 SCC run closes all 42 tasks, raw
+   Stata captures, submitted script/qsub ledger, and live qacct records. Its
+   evaluator verdict is deliberately `blocked`; it can publish only
+   `complete_nonqualifying`, never `RUN.SUCCESS`. `freeze-baseline` reopens
+   that entire diagnostic run and writes the qualification seal.
+4. Only the resulting `frozen` manifest may govern the final exact
+   candidate-versus-F0 SCC run. That run also requires the independently
+   verified candidate-versus-F0 behavior comparison and can publish
+   `RUN.SUCCESS` only after a recomputed passing receipt.
+
+The SCC preparation copies the manifest-referenced external seal closure into
+`input/seal-evidence` and seals a complete SHA-256/size inventory. Evaluator
+code still comes from the exact harness git archive; seal bytes do not need to
+be committed or smuggled into that archive. The closed verifier reopens both
+roots. This separation keeps licensed raw evidence outside Git without
+creating a synthetic frozen path.
+
+Freezing is a manifest and evidence milestone, not an inference from a process
+exit code. The complete executable sequence and evidence-spec schema are in
+`benchmarks/scc/README.md`.

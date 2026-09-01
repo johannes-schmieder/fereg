@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="x86_64-unknown-linux-gnu"
 BUILD="$ROOT/target/native-linux"
+CARGO_TARGET_ROOT="${CARGO_TARGET_DIR:-$ROOT/target}"
 DIST="$ROOT/dist"
 CC_BIN="${CC:-cc}"
 mkdir -p "$BUILD" "$DIST"
@@ -22,7 +23,7 @@ COMMON_CFLAGS=(-std=c11 -O3 -fPIC -Wall -Wextra -Wpedantic -Wconversion -Wshadow
   -Wl,--version-script="$ROOT/plugin/exports_linux.map" \
   -Wl,--exclude-libs,ALL \
   "$BUILD/stplugin.o" "$BUILD/stata_bridge.o" \
-  "$ROOT/target/$TARGET/release/libfereg_plugin.a" \
+  "$CARGO_TARGET_ROOT/$TARGET/release/libfereg_plugin.a" \
   -ldl -lpthread -lm -lrt -lutil \
   -o "$DIST/fereg_linux.plugin"
 

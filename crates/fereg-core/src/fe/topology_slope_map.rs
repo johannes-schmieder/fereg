@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 use super::{
     absorb_borrowed_intercept_cg_recovery_certified, borrow_categorical_topology_design,
-    connected_components_all, recover_borrowed_intercept_sd_lsmr_coefficients,
+    connected_components_all_fallible, recover_borrowed_intercept_sd_lsmr_coefficients,
     BorrowedInterceptRecoveryMethod, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate,
     FeCoefficientBatch, FeSolverKind, FinalizedCategoricalTopology, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
@@ -415,7 +415,10 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_selected_c
         ));
     }
     let weights = validate_weights(weights, target.len())?;
-    let mut normalized = coefficients.rhs(0)?.to_vec();
+    let mut normalized = fallible_copy(
+        coefficients.rhs(0)?,
+        "unable to reserve categorical recovery normalized coefficients",
+    )?;
     normalize_intercept_components(topology, effects, weights, &mut normalized, known_connected)?;
     finish_channel_major_recovery(
         topology,
@@ -562,7 +565,14 @@ pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
         &mut reservation,
     )?;
     weighted_norms(
-        &DenseMatrix::from_row_major(target.len(), 1, target.to_vec())?,
+        &DenseMatrix::from_row_major(
+            target.len(),
+            1,
+            fallible_copy(
+                target,
+                "unable to reserve categorical recovery reference target",
+            )?,
+        )?,
         validated_weights,
         &mut workspace.reference_norms,
         &mut workspace.value_scales,
@@ -582,7 +592,10 @@ pub(crate) fn recover_finalized_categorical_effects_lsmr_certified(
         ));
     }
     let coefficients = FeCoefficientBatch::from_values(effect_channels, level_counts, 1, solved.x)?;
-    let mut normalized = coefficients.rhs(0)?.to_vec();
+    let mut normalized = fallible_copy(
+        coefficients.rhs(0)?,
+        "unable to reserve categorical recovery LSMR normalized coefficients",
+    )?;
     normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     finish_channel_major_recovery(
         topology,
@@ -635,7 +648,10 @@ pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
         recovery_reconstruction_threshold(map.tolerance),
     )?;
     let validated_weights = validate_weights(weights, target.len())?;
-    let mut normalized = recovered.coefficients.rhs(0)?.to_vec();
+    let mut normalized = fallible_copy(
+        recovered.coefficients.rhs(0)?,
+        "unable to reserve categorical recovery SD-LSMR normalized coefficients",
+    )?;
     normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     let method = match recovered.method {
         BorrowedInterceptRecoveryMethod::Direct => CategoricalRecoveryMethod::Direct,
@@ -701,7 +717,10 @@ pub(crate) fn recover_finalized_categorical_effects_cg_certified(
         invalid_data("CG recovery did not retain its certified coefficient product")
     })?;
     let validated_weights = validate_weights(weights, target.len())?;
-    let mut normalized = coefficients.rhs(0)?.to_vec();
+    let mut normalized = fallible_copy(
+        coefficients.rhs(0)?,
+        "unable to reserve categorical recovery CG normalized coefficients",
+    )?;
     normalize_intercept_components(topology, effects, validated_weights, &mut normalized, false)?;
     finish_channel_major_recovery(
         topology,
@@ -751,24 +770,25 @@ fn validate_coefficient_layout(
     effects: &[CategoricalAbsorbedEffectView<'_>],
     coefficients: &FeCoefficientBatch,
 ) -> Result<()> {
-    let channels = effects
-        .iter()
-        .map(CategoricalAbsorbedEffectView::channels)
-        .collect::<Vec<_>>();
-    let levels = topology
-        .effect_to_topology()
-        .iter()
-        .map(|source| {
-            topology
-                .registry()
-                .source(*source)
-                .map(|source| source.n_levels())
-        })
-        .collect::<Result<Vec<_>>>()?;
-    if coefficients.effect_channels() != channels || coefficients.level_counts() != levels {
+    if coefficients.effect_channels().len() != effects.len()
+        || coefficients.level_counts().len() != topology.effect_to_topology().len()
+    {
         return Err(invalid_argument(
             "categorical recovery coefficient layout differs from the finalized effects",
         ));
+    }
+    for (effect_index, effect) in effects.iter().enumerate() {
+        let levels = topology
+            .registry()
+            .source(topology.effect_to_topology()[effect_index])?
+            .n_levels();
+        if coefficients.effect_channels()[effect_index] != effect.channels()
+            || coefficients.level_counts()[effect_index] != levels
+        {
+            return Err(invalid_argument(
+                "categorical recovery coefficient layout differs from the finalized effects",
+            ));
+        }
     }
     Ok(())
 }
@@ -793,11 +813,15 @@ fn normalize_intercept_components(
     coefficients: &mut [f64],
     known_connected: bool,
 ) -> Result<()> {
-    let intercept_effects = effects
-        .iter()
-        .enumerate()
-        .filter_map(|(index, effect)| effect.has_intercept().then_some(index))
-        .collect::<Vec<_>>();
+    let mut intercept_effects = fallible_with_capacity(
+        effects.len(),
+        "unable to reserve categorical recovery intercept-effect indices",
+    )?;
+    for (index, effect) in effects.iter().enumerate() {
+        if effect.has_intercept() {
+            intercept_effects.push(index);
+        }
+    }
     if intercept_effects.len() <= 1 {
         return Ok(());
     }
@@ -811,8 +835,14 @@ fn normalize_intercept_components(
         );
     }
     let source_table = topology_source_table(topology)?;
-    let mut codes = Vec::with_capacity(intercept_effects.len());
-    let mut levels = Vec::with_capacity(intercept_effects.len());
+    let mut codes = fallible_with_capacity(
+        intercept_effects.len(),
+        "unable to reserve categorical recovery component code views",
+    )?;
+    let mut levels = fallible_with_capacity(
+        intercept_effects.len(),
+        "unable to reserve categorical recovery component level counts",
+    )?;
     for &effect_index in &intercept_effects {
         let source = topology
             .registry()
@@ -820,8 +850,12 @@ fn normalize_intercept_components(
         codes.push(source.codes(&source_table)?);
         levels.push(source.n_levels());
     }
-    let components = connected_components_all(&codes, &levels)?;
-    let mut component_weights = vec![0.0_f64; components.n_components];
+    let components = connected_components_all_fallible(&codes, &levels)?;
+    let mut component_weights = fallible_filled(
+        components.n_components,
+        0.0_f64,
+        "unable to reserve categorical recovery component weights",
+    )?;
     let anchor_components = &components.component_by_effect_level[0];
     for (level, &component) in anchor_components.iter().enumerate() {
         if component == usize::MAX {
@@ -840,12 +874,20 @@ fn normalize_intercept_components(
         }
     }
     let effect_offsets = channel_major_effect_offsets(topology, effects)?;
-    let mut anchor_adjustments = vec![0.0_f64; components.n_components];
+    let mut anchor_adjustments = fallible_filled(
+        components.n_components,
+        0.0_f64,
+        "unable to reserve categorical recovery component adjustments",
+    )?;
     for (local_effect, &effect_index) in intercept_effects.iter().enumerate().skip(1) {
         let source = topology
             .registry()
             .source(topology.effect_to_topology()[effect_index])?;
-        let mut numerators = vec![0.0_f64; components.n_components];
+        let mut means = fallible_filled(
+            components.n_components,
+            0.0_f64,
+            "unable to reserve categorical recovery component means",
+        )?;
         for level in 0..source.n_levels() {
             let component = components.component_by_effect_level[local_effect][level];
             if component == usize::MAX {
@@ -854,24 +896,16 @@ fn normalize_intercept_components(
             let coefficient = coefficients[effect_offsets[effect_index] + level];
             let members = source.members(level)?;
             if weights.values.is_none() {
-                numerators[component] += members.len() as f64 * coefficient;
+                means[component] += members.len() as f64 * coefficient;
             } else {
                 for &row in members {
-                    numerators[component] += weights.value(row) * coefficient;
+                    means[component] += weights.value(row) * coefficient;
                 }
             }
         }
-        let means = numerators
-            .iter()
-            .zip(&component_weights)
-            .map(|(&numerator, &weight)| {
-                if weight > 0.0 {
-                    numerator / weight
-                } else {
-                    0.0
-                }
-            })
-            .collect::<Vec<_>>();
+        for (mean, &weight) in means.iter_mut().zip(&component_weights) {
+            *mean = if weight > 0.0 { *mean / weight } else { 0.0 };
+        }
         for level in 0..source.n_levels() {
             let component = components.component_by_effect_level[local_effect][level];
             if component != usize::MAX {
@@ -1000,7 +1034,11 @@ fn finish_channel_major_recovery(
             materialize_absorbed_sum,
         );
     }
-    let mut absorbed_sum = vec![0.0_f64; target.len()];
+    let mut absorbed_sum = fallible_filled(
+        target.len(),
+        0.0_f64,
+        "unable to reserve categorical recovery absorbed sum",
+    )?;
     let mut channels = Vec::new();
     channels
         .try_reserve_exact(requested_channels.len())
@@ -1011,8 +1049,15 @@ fn finish_channel_major_recovery(
             .registry()
             .source(topology.effect_to_topology()[effect_index])?;
         for channel in 0..effect.channels() {
-            let mut contribution =
-                requested_channels[flat_channel].then(|| vec![0.0_f64; target.len()]);
+            let mut contribution = if requested_channels[flat_channel] {
+                Some(fallible_filled(
+                    target.len(),
+                    0.0_f64,
+                    "unable to reserve categorical recovery channel contribution",
+                )?)
+            } else {
+                None
+            };
             for level in 0..source.n_levels() {
                 let alpha = coefficients
                     [effect_offsets[effect_index] + channel * source.n_levels() + level];
@@ -1176,7 +1221,11 @@ fn finish_intercept_only_recovery(
         .map_err(|_| allocation("unable to reserve recovered channel registry"))?;
     for effect_index in 0..effects.len() {
         if requested_channels[effect_index] {
-            let mut values = vec![0.0_f64; target.len()];
+            let mut values = fallible_filled(
+                target.len(),
+                0.0_f64,
+                "unable to reserve categorical recovery intercept channel",
+            )?;
             let effect_codes = codes[effect_index];
             let coefficient_offset = effect_offsets[effect_index];
             let effect_levels = levels[effect_index];
@@ -1204,8 +1253,20 @@ fn finish_intercept_only_recovery(
         }
     }
 
-    let mut residual_values = vec![0.0_f64; target.len()];
-    let mut absorbed_sum = materialize_absorbed_sum.then(|| vec![0.0_f64; target.len()]);
+    let mut residual_values = fallible_filled(
+        target.len(),
+        0.0_f64,
+        "unable to reserve categorical recovery intercept residual",
+    )?;
+    let mut absorbed_sum = if materialize_absorbed_sum {
+        Some(fallible_filled(
+            target.len(),
+            0.0_f64,
+            "unable to reserve categorical recovery intercept absorbed sum",
+        )?)
+    } else {
+        None
+    };
     if let Some(absorbed) = absorbed_sum.as_mut() {
         absorbed
             .par_iter_mut()
@@ -1255,66 +1316,72 @@ fn finish_intercept_only_recovery(
         )?;
     }
 
-    let partials = target
-        .par_chunks(RECOVERY_CHUNK_ROWS)
-        .zip(residual_values.par_chunks(RECOVERY_CHUNK_ROWS))
+    let partial_count = target.len().div_ceil(RECOVERY_CHUNK_ROWS);
+    let mut partials = fallible_filled(
+        partial_count,
+        (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64),
+        "unable to reserve categorical recovery row partials",
+    )?;
+    partials
+        .par_iter_mut()
         .enumerate()
-        .map(
-            |(chunk, (expected_values, remainder_values))| -> Result<(f64, f64, f64, f64)> {
-                let row_start = chunk * RECOVERY_CHUNK_ROWS;
-                let mut target_infinity = 0.0_f64;
-                let mut residual_infinity = 0.0_f64;
-                let mut target_norm_scale = 0.0_f64;
-                let mut target_norm_sum = 1.0_f64;
-                let mut residual_norm_scale = 0.0_f64;
-                let mut residual_norm_sum = 1.0_f64;
-                for (local_row, (&expected, &remainder)) in
-                    expected_values.iter().zip(remainder_values).enumerate()
-                {
-                    target_infinity = target_infinity.max(expected.abs());
-                    residual_infinity = residual_infinity.max(remainder.abs());
-                    let weighted_target = weights.value(row_start + local_row).sqrt() * expected;
-                    if !weighted_target.is_finite() {
-                        return Err(invalid_data(
-                            "categorical recovery weighted target is nonfinite",
-                        ));
-                    }
-                    let weighted_residual = weights.value(row_start + local_row).sqrt() * remainder;
-                    if !weighted_residual.is_finite() {
-                        return Err(invalid_data(
-                            "categorical recovery weighted residual is nonfinite",
-                        ));
-                    }
-                    update_scaled_sum(
-                        weighted_target,
-                        &mut target_norm_scale,
-                        &mut target_norm_sum,
-                    );
-                    update_scaled_sum(
-                        weighted_residual,
-                        &mut residual_norm_scale,
-                        &mut residual_norm_sum,
-                    );
+        .try_for_each(|(chunk, partial)| -> Result<()> {
+            let row_start = chunk * RECOVERY_CHUNK_ROWS;
+            let row_end = (row_start + RECOVERY_CHUNK_ROWS).min(target.len());
+            let expected_values = &target[row_start..row_end];
+            let remainder_values = &residual_values[row_start..row_end];
+            let mut target_infinity = 0.0_f64;
+            let mut residual_infinity = 0.0_f64;
+            let mut target_norm_scale = 0.0_f64;
+            let mut target_norm_sum = 1.0_f64;
+            let mut residual_norm_scale = 0.0_f64;
+            let mut residual_norm_sum = 1.0_f64;
+            for (local_row, (&expected, &remainder)) in
+                expected_values.iter().zip(remainder_values).enumerate()
+            {
+                target_infinity = target_infinity.max(expected.abs());
+                residual_infinity = residual_infinity.max(remainder.abs());
+                let weighted_target = weights.value(row_start + local_row).sqrt() * expected;
+                if !weighted_target.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery weighted target is nonfinite",
+                    ));
                 }
-                let target_norm = if target_norm_scale == 0.0 {
-                    0.0
-                } else {
-                    target_norm_scale * target_norm_sum.sqrt()
-                };
-                let residual_norm = if residual_norm_scale == 0.0 {
-                    0.0
-                } else {
-                    residual_norm_scale * residual_norm_sum.sqrt()
-                };
-                Ok((
-                    target_infinity,
-                    residual_infinity,
-                    target_norm,
-                    residual_norm,
-                ))
-            },
-        )
-        .collect::<Result<Vec<_>>>()?;
+                let weighted_residual = weights.value(row_start + local_row).sqrt() * remainder;
+                if !weighted_residual.is_finite() {
+                    return Err(invalid_data(
+                        "categorical recovery weighted residual is nonfinite",
+                    ));
+                }
+                update_scaled_sum(
+                    weighted_target,
+                    &mut target_norm_scale,
+                    &mut target_norm_sum,
+                );
+                update_scaled_sum(
+                    weighted_residual,
+                    &mut residual_norm_scale,
+                    &mut residual_norm_sum,
+                );
+            }
+            let target_norm = if target_norm_scale == 0.0 {
+                0.0
+            } else {
+                target_norm_scale * target_norm_sum.sqrt()
+            };
+            let residual_norm = if residual_norm_scale == 0.0 {
+                0.0
+            } else {
+                residual_norm_scale * residual_norm_sum.sqrt()
+            };
+            *partial = (
+                target_infinity,
+                residual_infinity,
+                target_norm,
+                residual_norm,
+            );
+            Ok(())
+        })?;
     let mut target_infinity = 0.0_f64;
     let mut residual_infinity = 0.0_f64;
     let mut target_norm_scale = 0.0_f64;
@@ -1419,7 +1486,15 @@ fn finish_one_intercept_recovery(
     let levels = source.n_levels();
     let coefficient_offset = effect_offsets[0];
     let needs_publication = requested_channels[0] || materialize_absorbed_sum;
-    let mut publication = needs_publication.then(|| vec![0.0_f64; target.len()]);
+    let mut publication = if needs_publication {
+        Some(fallible_filled(
+            target.len(),
+            0.0_f64,
+            "unable to reserve one-intercept recovery publication",
+        )?)
+    } else {
+        None
+    };
 
     let compute_rows = |chunk: usize,
                         expected_values: &[f64],
@@ -1488,20 +1563,32 @@ fn finish_one_intercept_recovery(
             residual_norm,
         ))
     };
-    let row_partials = if let Some(values) = publication.as_mut() {
+    let row_partial_count = target.len().div_ceil(ROW_CHUNK);
+    let mut row_partials = fallible_filled(
+        row_partial_count,
+        (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64),
+        "unable to reserve one-intercept recovery row partials",
+    )?;
+    if let Some(values) = publication.as_mut() {
         target
             .par_chunks(ROW_CHUNK)
             .zip(values.par_chunks_mut(ROW_CHUNK))
+            .zip(row_partials.par_iter_mut())
             .enumerate()
-            .map(|(chunk, (expected, output))| compute_rows(chunk, expected, Some(output)))
-            .collect::<Result<Vec<_>>>()?
+            .try_for_each(|(chunk, ((expected, output), partial))| -> Result<()> {
+                *partial = compute_rows(chunk, expected, Some(output))?;
+                Ok(())
+            })?;
     } else {
         target
             .par_chunks(ROW_CHUNK)
+            .zip(row_partials.par_iter_mut())
             .enumerate()
-            .map(|(chunk, expected)| compute_rows(chunk, expected, None))
-            .collect::<Result<Vec<_>>>()?
-    };
+            .try_for_each(|(chunk, (expected, partial))| -> Result<()> {
+                *partial = compute_rows(chunk, expected, None)?;
+                Ok(())
+            })?;
+    }
     let mut target_infinity = 0.0_f64;
     let mut residual_infinity = 0.0_f64;
     let mut target_norm_scale = 0.0_f64;
@@ -1553,9 +1640,14 @@ fn finish_one_intercept_recovery(
     }
 
     let denominator = target_norm.max(residual_norm);
-    let level_partials = (0..levels.div_ceil(LEVEL_CHUNK))
-        .into_par_iter()
-        .map(|chunk| -> Result<InterceptRecoveryCertificatePartial> {
+    let level_partial_count = levels.div_ceil(LEVEL_CHUNK);
+    let mut level_partials = fallible_filled(
+        level_partial_count,
+        InterceptRecoveryCertificatePartial::default(),
+        "unable to reserve one-intercept recovery certificate partials",
+    )?;
+    level_partials.par_iter_mut().enumerate().try_for_each(
+        |(chunk, destination)| -> Result<()> {
             let start = chunk * LEVEL_CHUNK;
             let end = (start + LEVEL_CHUNK).min(levels);
             let mut partial = InterceptRecoveryCertificatePartial {
@@ -1633,9 +1725,10 @@ fn finish_one_intercept_recovery(
                     f64::INFINITY
                 });
             }
-            Ok(partial)
-        })
-        .collect::<Result<Vec<_>>>()?;
+            *destination = partial;
+            Ok(())
+        },
+    )?;
     let mut certificate_total = InterceptRecoveryCertificatePartial {
         absolute_infinity: 0.0,
         relative_infinity: 0.0,
@@ -1677,13 +1770,20 @@ fn finish_one_intercept_recovery(
         ));
     }
 
-    let mut channels = vec![None];
+    let mut channels = fallible_filled(
+        1,
+        None,
+        "unable to reserve one-intercept recovery channel registry",
+    )?;
     let absorbed_sum = match (requested_channels[0], materialize_absorbed_sum) {
         (true, true) => {
             let values = publication
                 .take()
                 .expect("one-intercept publication buffer was requested");
-            let absorbed = values.clone();
+            let absorbed = fallible_copy(
+                &values,
+                "unable to reserve one-intercept recovery absorbed sum",
+            )?;
             channels[0] = Some(values);
             Some(absorbed)
         }
@@ -1703,7 +1803,7 @@ fn finish_one_intercept_recovery(
     })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct InterceptRecoveryCertificatePartial {
     absolute_infinity: f64,
     relative_infinity: f64,
@@ -1740,9 +1840,15 @@ fn certify_intercept_only_recovery(
     for &source_index in topology.effect_to_topology() {
         let source = topology.registry().source(source_index)?;
         let chunk_count = source.n_levels().div_ceil(LEVEL_CHUNK);
-        let partials = (0..chunk_count)
-            .into_par_iter()
-            .map(|chunk| -> Result<InterceptRecoveryCertificatePartial> {
+        let mut partials = fallible_filled(
+            chunk_count,
+            InterceptRecoveryCertificatePartial::default(),
+            "unable to reserve intercept recovery certificate partials",
+        )?;
+        partials
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(chunk, destination)| -> Result<()> {
                 let start = chunk * LEVEL_CHUNK;
                 let end = (start + LEVEL_CHUNK).min(source.n_levels());
                 let mut partial = InterceptRecoveryCertificatePartial {
@@ -1823,9 +1929,9 @@ fn certify_intercept_only_recovery(
                         f64::INFINITY
                     });
                 }
-                Ok(partial)
-            })
-            .collect::<Result<Vec<_>>>()?;
+                *destination = partial;
+                Ok(())
+            })?;
         for partial in partials {
             total.absolute_infinity = total.absolute_infinity.max(partial.absolute_infinity);
             total.relative_infinity = total.relative_infinity.max(partial.relative_infinity);
@@ -1863,7 +1969,14 @@ fn channel_major_effect_offsets(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
 ) -> Result<Vec<usize>> {
-    let mut offsets = Vec::with_capacity(effects.len() + 1);
+    let offset_count = effects
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| allocation("categorical recovery offset count overflows"))?;
+    let mut offsets = fallible_with_capacity(
+        offset_count,
+        "unable to reserve categorical recovery coefficient offsets",
+    )?;
     offsets.push(0);
     for (effect_index, effect) in effects.iter().enumerate() {
         let levels = topology
@@ -2908,6 +3021,26 @@ fn update_scaled_sum(value: f64, scale: &mut f64, sum: &mut f64) {
     }
 }
 
+fn fallible_with_capacity<T>(elements: usize, label: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(elements)
+        .map_err(|_| allocation(label))?;
+    Ok(output)
+}
+
+fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
+    let mut output = fallible_with_capacity(elements, label)?;
+    output.resize(elements, value);
+    Ok(output)
+}
+
+fn fallible_copy<T: Clone>(source: &[T], label: &'static str) -> Result<Vec<T>> {
+    let mut output = fallible_with_capacity(source.len(), label)?;
+    output.extend_from_slice(source);
+    Ok(output)
+}
+
 fn reserved_zeros<R: SlopeWorkspaceReservation>(
     elements: usize,
     reservation: &mut R,
@@ -3772,5 +3905,16 @@ mod tests {
             .expect_err("undersized allocation");
             assert_eq!(error.code, ErrorCode::Allocation, "call {call}");
         }
+    }
+
+    #[test]
+    fn recovery_output_capacity_overflow_is_an_allocation_error() {
+        let error = fallible_filled(
+            usize::MAX,
+            0.0_f64,
+            "injected categorical recovery output overflow",
+        )
+        .expect_err("oversized recovery output");
+        assert_eq!(error.code, ErrorCode::Allocation);
     }
 }

@@ -22,4 +22,4 @@ module load python3/3.12.4
 # -hold_jid proves completion only. The collector accepts the array only when
 # every registered task receipt, sentinel, artifact identity, and cell hash is
 # present; post-job closure separately requires complete qacct evidence.
-python3 "$RUN_ROOT/input/harness/fereg_f0_scc.py" collect --run-root "$RUN_ROOT"
+python3 -I -B -S "$RUN_ROOT/input/harness/fereg_f0_scc.py" collect --run-root "$RUN_ROOT"

@@ -78,7 +78,7 @@ pruning, topology rebasing, and finite-regressor rank.
 
     1. iterative singleton pruning unless `keepsingletons`;
     2. exact zero-only intercept-FE deletion to a fixed point;
-    3. finite-regressor simplex;
+    3. bounded full-model simplex over the finite-plus-FE model span;
     4. comprehensive iterated rectifier; and
     5. optional `mu` detection when its required fitted start exists.
 
@@ -106,11 +106,22 @@ pruning, topology rebasing, and finite-regressor rank.
 14. Nonconverged or uncertified default IR is fatal. The comprehensive method
     cannot be treated as an optional best-effort warning when it was requested
     or is part of the default.
-15. A memory planner may skip simplex before allocating its bounded tableau
-    only when a later requested comprehensive IR run completes and certifies
-    the final no-unhandled-separation state. A simplex-only request that cannot
-    fit returns allocation failure rather than silently continuing.
-16. Optional `mu` may use a fitted predictor to propose rows. Any accepted
+15. Before materializing simplex storage, checked arithmetic constructs the
+    full-model width from the finite columns plus every finalized absorbed
+    level and channel. Intercept effects contribute one indicator per level;
+    slope channels contribute the corresponding level indicator times the raw
+    slope source. The preflight bounds the jointly live explicit design,
+    topology/FE-code construction scratch, null-space work, phase-I tableau,
+    and certificate/result buffers in eight-byte cells. If that peak exceeds
+    the configured cap, the detector reports `SkippedMemory` without
+    allocating its N-by-P design or tableau.
+16. A memory planner may skip simplex only when a later requested
+    comprehensive IR run completes on the same ledger generation and
+    certifies the final no-unhandled-separation state. A simplex-only request
+    that cannot fit returns allocation failure (`r(909)`) rather than silently
+    continuing. An IR drop restarts the complete method chain; it does not
+    retroactively certify a skipped simplex on the prior generation.
+17. Optional `mu` may use a fitted predictor to propose rows. Any accepted
     `mu` proposal invalidates the complete fitted session, triggers the same
     ledger/rebase transaction, and restarts separation and PPML from canonical
     prepared inputs. It must supply the same model-span and sign certificate as
@@ -118,30 +129,35 @@ pruning, topology rebasing, and finite-regressor rank.
 
 ### Final-sample handoff
 
-17. When the separation fixed point is reached, the coordinator verifies that
+18. When the separation fixed point is reached, the coordinator verifies that
     at least one observation and positive weighted outcome remain. Failure
     returns `r(2001)` atomically.
-18. The final prepared model is built at a new sample/topology generation. No
+19. The final prepared model is built at a new sample/topology generation. No
     projected design, FE warm state, cluster subset, rank decision, bread,
     score, or saved-effect product from a prior generation is reusable.
-19. Canonical finite-regressor status and rank are recalculated once on the
+20. Canonical finite-regressor status and rank are recalculated once on the
     final sample as required by ADR 0016. Separation can turn a previously
     identified regressor into an omitted or FE-collinear column; the
     post-separation decision is authoritative.
-20. IRLS begins from a fresh certified-linear session. A successful finite
+21. IRLS begins from a fresh certified-linear session. A successful finite
     fit and final score certificate are still required; a separation
     certificate does not certify the estimator.
 
 ### Reporting and atomicity
 
-21. Public results report physical candidate count, final physical and
+22. Public results report physical candidate count, final physical and
     effective N, singleton count, separated count, requested/executed method
-    sequence, method statuses, and aggregate iterations. The private
-    diagnostic receipt retains per-method counts, reason counts, certificate
-    norms, and ledger-generation hashes.
-22. `e(sample)` and every prediction or saved-output mapping derive from the
+    sequence, method statuses, and aggregate iterations. The fixed-size result
+    evidence retains all 14 reason counts and bounded per-method aggregates.
+    The receipt binds the exact execution count, initial and final generation
+    hashes, and versioned deterministic digests over the complete ordered
+    scientific execution trace and every generation hash. Timing and process
+    observations are excluded from ledger identity. Full execution and hash
+    vectors remain core-internal and test-only; no observation-sized
+    diagnostic matrix crosses the Stata result boundary.
+23. `e(sample)` and every prediction or saved-output mapping derive from the
     final ledger. Dropped rows are missing in requested outputs.
-23. Detection, union, cascade, compaction, or rebase failure leaves the prior
+24. Detection, union, cascade, compaction, or rebase failure leaves the prior
     private generation logically invalid and commits no partial public sample
     or output.
 
@@ -156,9 +172,12 @@ row results across thread counts.
 
 Each accepted fixture must agree with an independently implemented
 explicit-design recession-cone oracle and, where the public semantics overlap,
-the exact pinned `ppmlhdfe` closure. Tests must prove that an invalid detector
-proposal cannot partially mutate production state and that final arrays
-reconstruct exactly through stable original-row identities.
+the exact pinned `ppmlhdfe` closure. Simplex evidence must include finite-only,
+FE-only, mixed finite/FE, absorbed-slope, full-positive-rank, degenerate-pivot,
+and over-budget cases, and must bind the reported peak to the full explicit
+model width rather than only the finite regressors. Tests must prove that an
+invalid detector proposal cannot partially mutate production state and that
+final arrays reconstruct exactly through stable original-row identities.
 
 ## Consequences
 

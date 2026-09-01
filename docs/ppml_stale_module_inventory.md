@@ -27,7 +27,8 @@ existing unit tests.
 
 | Source and symbols | Disposition | Replacement and gate |
 |---|---|---|
-| `ppml/mod.rs`: `PpmlInitialization`, `PpmlStart`, `PpmlConfig` | Rewrite | Replace arbitrary bounds and OLS-owned policy fields with the ADR 0016 initialization, convergence, PPML rank/DoF/VCE, route, and generation contracts. Warm starts must bind the final sample, topology, basis, offset, and weight semantics. |
+| `ppml/mod.rs`: `PpmlInitialization`, `PpmlConfig` | Rewrite | Replace arbitrary bounds and OLS-owned policy fields with the ADR 0016 initialization, convergence, PPML rank/DoF/VCE, route, and generation contracts. |
+| `ppml/mod.rs`: `PpmlStart` | Oracle-only | The pre-prepared warm-start carrier is now `cfg(test)` and crate-private, with no crate-root re-export. Any future production warm start must instead bind the final sample, topology, basis, offset, and weight semantics. |
 | `ppml/mod.rs`: iteration, diagnostic, fit-statistic, and result structs | Adapt | Preserve useful diagnostic concepts, but separate certified weighted-linear products from PPML results and align public fields with the independent PPML wire. Do not expose stale OLS DoF/VCE types as policy. |
 | `ppml/mod.rs`: `fit_ppml`, `fit_ppml_with_start` | Rewrite | Replace orchestration with preparation -> certified separation -> fresh session -> buffered IRLS -> strict final solve -> PPML inference/output. The old final profiling pass and accepted-state mismatch are forbidden. |
 | `ppml/family.rs`: `PoissonObjective`, deviance and log-likelihood formulas | Adapt | Preserve independently checked Poisson identities. Reimplement with reusable buffered/compensated stable eta-form sums, exact zero handling, fweight replication, and normalized pweights. |
@@ -53,9 +54,9 @@ existing unit tests.
 | `ppml_separation/fe.rs`: `zero_only_fixed_effect_levels` | Retain after audit | Retain the exact intercept-FE criterion after moving it to prepared topology, excluding slope-only channels, adding fweight multiplicity tests, and returning sorted stable row IDs without mutation. |
 | `ppml_separation/ir.rs`: `IteratedRectifierConfig`, `iterated_rectifier` | Oracle-only, then rewrite | Existing fixtures remain useful. Production requires the ADR 0017 immutable proposal interface, restart/fixed-point semantics, strict nonconvergence policy, reusable projections, and an independently recomputed span/sign/margin certificate. |
 | `ppml_separation/projection.rs`: projection types, `project_onto_model`, weighted norms | Rewrite | Use the shared certified weighted-linear projection/session and its memory planner. Remove the separate legacy FE absorption and finite-rank implementation; preserve old cases only as differential tests. |
-| `ppml_separation/simplex/mod.rs`: `finite_simplex` and certificate helpers | Quarantine/oracle-only | The current finite-only custom simplex skips FE directions and lacks complete allocation and numerical qualification. Keep primer/nullspace cases as oracle tests. A production simplex must operate on the correctly profiled cone, return immutable stable-row proposals, and pass independent certificates. |
-| `ppml_separation/simplex/nullspace.rs` and `tableau.rs` | Quarantine/oracle-only | Retain bounded small-problem test value. Do not call from a public/default path until rank, pivot, degeneracy, deterministic, overflow, and tableau-memory gates pass. |
-| `ppml_separation/simplex/tests.rs` | Retain as tests | Keep the primer and full-rank negative cases, but they are not sufficient scientific evidence and must be complemented by explicit-design cone oracles and FE cases. |
+| `ppml_separation/simplex/mod.rs`: workspace planner, simplex kernel, and certificate helpers | Rewrite | The prepared production coordinator now supplies one bounded explicit design spanning every finite column and finalized FE intercept/slope channel. Checked joint design/kernel preflight precedes its N-by-P and tableau allocations; the detector returns an immutable proposal and the coordinator independently recertifies it against the prepared full-model span. This implementation status does not substitute for the exact-source activation evidence in ADR 0017. |
+| `ppml_separation/simplex/nullspace.rs` and `tableau.rs` | Retain after audit | These are now fallible production internals of the bounded full-model detector. Checked dimensions and reservations, scaled complete-pivot null-space construction, deterministic Bland pivots/tie-breaking, nonfinite/zero-pivot rejection, iteration limits, and the joint tableau-memory bound are covered by focused tests. They remain detector internals rather than a general fitting route. |
+| `ppml_separation/simplex/tests.rs` | Retain as tests | The primer and full-rank negative cases remain. Production coverage also exercises prepared finite/FE and absorbed-slope construction, overflow and allocation injection, deterministic restart order, and constrained-memory behavior. The complete FE-only/mixed-model, degeneracy, independent explicit-design cone, and pinned-comparator evidence required by ADR 0017 remains an activation gate. |
 | `ppml_separation/mu.rs`: `detect_mu` | Quarantine | `mu` remains default-off. Production use requires a fitted generation-bound start, a certified recession direction rather than low-mean evidence, atomic full-session invalidation, and a complete separation/fit restart. |
 | `ppml_separation/runner/accounting.rs`: validation, masks, singleton and reason application | Rewrite | Make the prepared sample ledger the only mutator. Singleton pruning uses prepared topology and literal fweight multiplicity. Proposal validation/union, reason precedence, cascade, compaction, and topology rebase occur atomically. |
 | `ppml_separation/runner/detect.rs`: `detect_separation` | Rewrite | Replace the one-pass mutable sequence with the authoritative restart-to-fixed-point coordinator in ADR 0017. Every direct drop triggers singleton/exact-FE follow-up, atomic rebase, and a restart from method one. |
@@ -64,11 +65,10 @@ existing unit tests.
 
 ## Crate exports and removal order
 
-The legacy exports in `fereg-core/src/lib.rs` for direct stale PPML and
-separated-fit entry points are quarantined internal development surface. The
-plugin must call only the new prepared PPML transaction. Remove or redirect
-those exports after the new driver and oracle suite are green; do not maintain
-two production PPML engines for compatibility.
+The legacy crate-root exports for direct PPML, `PpmlStart`, separation
+detection, and separated-fit wrappers have been removed. Their retained oracle
+implementations are exact-`cfg(test)` crate internals. The plugin calls only the
+new prepared PPML transaction; two production PPML engines are forbidden.
 
 Removal proceeds in dependency order:
 
@@ -77,8 +77,12 @@ Removal proceeds in dependency order:
 3. route inference through the shared sandwich engine;
 4. route the hidden plugin action through the new driver;
 5. delete dense subset, legacy rank/absorption, legacy VCE, and wrapper paths;
-6. run a source-contract test that rejects any reachable duplicate production
-   WLS, VCE, or separated-fit route.
+6. keep the exact-SHA structural source contract green. It verifies the exact
+   test-only module/item inventory and scans every non-test Rust token in both
+   crates, rejecting ungated oracle modules, legacy symbol references
+   (including wrapper calls), alternate `#[path]` aliases, or dynamic
+   `include!` edges that could conceal a duplicate WLS, VCE, or separated-fit
+   route. Negative mutation tests remove `cfg(test)` and add an indirect wrapper.
 
 At every step, stale unit tests may be retained only when their expected value
 agrees with ADRs 0016--0018 or is clearly labeled as negative/oracle-only

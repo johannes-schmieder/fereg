@@ -15,11 +15,36 @@ pub struct FeCertificate {
     pub passed: bool,
 }
 
+fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(elements)
+        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
+    output.resize(elements, value);
+    Ok(output)
+}
+
+fn fallible_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(elements)
+        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
+    Ok(output)
+}
+
 /// Weighted Euclidean norm of each matrix column.
 pub(crate) fn weighted_column_norms(values: &DenseMatrix, weights: &[f64]) -> Result<Vec<f64>> {
     validate_common(values, weights)?;
-    let mut scales = vec![0.0_f64; values.ncols()];
-    let mut scaled_square_sums = vec![1.0_f64; values.ncols()];
+    let mut scales = fallible_filled(
+        values.ncols(),
+        0.0_f64,
+        "unable to reserve weighted certificate scales",
+    )?;
+    let mut scaled_square_sums = fallible_filled(
+        values.ncols(),
+        1.0_f64,
+        "unable to reserve weighted certificate square sums",
+    )?;
     for row in 0..values.nrows() {
         let square_root_weight = weights[row].sqrt();
         for column in 0..values.ncols() {
@@ -37,25 +62,22 @@ pub(crate) fn weighted_column_norms(values: &DenseMatrix, weights: &[f64]) -> Re
             );
         }
     }
-    scales
-        .into_iter()
-        .zip(scaled_square_sums)
-        .map(|(scale, scaled_square_sum)| {
-            let norm = if scale == 0.0 {
-                0.0
-            } else {
-                scale * scaled_square_sum.sqrt()
-            };
-            if norm.is_finite() {
-                Ok(norm)
-            } else {
-                Err(FeregError::new(
-                    ErrorCode::InvalidData,
-                    "weighted certificate norm is not finite",
-                ))
-            }
-        })
-        .collect()
+    for column in 0..scales.len() {
+        let scale = scales[column];
+        let norm = if scale == 0.0 {
+            0.0
+        } else {
+            scale * scaled_square_sums[column].sqrt()
+        };
+        if !norm.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "weighted certificate norm is not finite",
+            ));
+        }
+        scales[column] = norm;
+    }
+    Ok(scales)
 }
 
 /// Recompute weighted fixed-effect span projections from returned residuals.
@@ -115,11 +137,13 @@ pub(crate) fn certify_residuals_with_reference_norms(
     }
 
     let residual_norms = weighted_column_norms(residuals, weights)?;
-    let rhs_scales = reference_norms
-        .iter()
-        .zip(&residual_norms)
-        .map(|(&reference, &residual)| reference.max(residual))
-        .collect::<Vec<_>>();
+    let mut rhs_scales = fallible_empty(
+        reference_norms.len(),
+        "unable to reserve fixed-effect certificate RHS scales",
+    )?;
+    for (&reference, &residual) in reference_norms.iter().zip(&residual_norms) {
+        rhs_scales.push(reference.max(residual));
+    }
 
     let mut absolute_infinity_norm = 0.0_f64;
     let mut relative_infinity_norm = 0.0_f64;
@@ -129,9 +153,15 @@ pub(crate) fn certify_residuals_with_reference_norms(
         let channels = effect.channels();
         for level in 0..effect.n_levels() {
             let observations = effect.level_index().members(level);
-            let mut normalized_columns = Vec::with_capacity(channels);
+            let mut normalized_columns = fallible_empty(
+                channels,
+                "unable to reserve fixed-effect certificate normalized columns",
+            )?;
             for channel in 0..channels {
-                let mut column = Vec::with_capacity(observations.len());
+                let mut column = fallible_empty(
+                    observations.len(),
+                    "unable to reserve fixed-effect certificate level column",
+                )?;
                 let mut column_scale = 0.0_f64;
                 for &observation in observations {
                     let value =
@@ -164,7 +194,7 @@ pub(crate) fn certify_residuals_with_reference_norms(
                 normalized_columns.push(column);
             }
 
-            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns);
+            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns)?;
             for rhs in 0..residuals.ncols() {
                 let denominator = rhs_scales[rhs];
                 let mut projected_square_norm = 0.0_f64;
@@ -227,11 +257,14 @@ pub(crate) fn certify_residuals_with_reference_norms(
 /// rank selection insensitive to FE channel units. The cutoff is tied only to
 /// machine precision and block dimensions, never to the user's convergence
 /// tolerance.
-fn pivoted_reorthogonalized_qr(mut columns: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+fn pivoted_reorthogonalized_qr(mut columns: Vec<Vec<f64>>) -> Result<Vec<Vec<f64>>> {
     let nrows = columns.first().map_or(0, Vec::len);
     let ncols = columns.len();
     let rank_threshold = f64::EPSILON * nrows.max(ncols).max(1) as f64 * 8.0;
-    let mut basis = Vec::with_capacity(nrows.min(ncols));
+    let mut basis = fallible_empty(
+        nrows.min(ncols),
+        "unable to reserve fixed-effect certificate orthonormal basis",
+    )?;
 
     while !columns.is_empty() && basis.len() < nrows {
         let (pivot, pivot_norm) = columns
@@ -260,7 +293,7 @@ fn pivoted_reorthogonalized_qr(mut columns: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         }
         basis.push(candidate);
     }
-    basis
+    Ok(basis)
 }
 
 fn reorthogonalize(candidate: &mut [f64], basis: &[Vec<f64>]) {
@@ -385,6 +418,14 @@ fn validate_common(values: &DenseMatrix, weights: &[f64]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn certificate_capacity_overflow_is_an_allocation_error() {
+        let error = fallible_empty::<f64>(usize::MAX, "injected certificate allocation")
+            .expect_err("capacity overflow");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert_eq!(error.return_code(), 909);
+    }
 
     #[test]
     fn certificate_is_invariant_to_common_weight_scaling() {

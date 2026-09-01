@@ -19,9 +19,25 @@ ADR-0007 and `STATUS.md`.
 | CMG graph route | Explicit `solver(cmg)` supports two large categorical intercept effects plus at most 64 non-base nuisance-FE columns. `solver(auto)` selects CMG before its MAP pilot only for the frozen no-nuisance, 8-observations-per-high-level, 10:1-cardinality topology in fast and low modes. Setup and solve fallback remain certified and visible; used solver code is 7. | Full 1m/10m route freeze, non-macOS builds, cross-platform memory/performance receipts, and license-compatible distribution decision |
 
 `feppml` is installed only as a fail-closed `r(498)` stub and is outside the
-OLS candidate. IV/GMM, group outcomes with individual FEs, HAC/Driscoll–Kraay,
-other GLMs, GPU execution, and undocumented compatibility modes are not part of
-0.5.0.
+current OLS candidate. IV/GMM, group outcomes with individual FEs,
+HAC/Driscoll–Kraay, other GLMs, GPU execution, and undocumented compatibility
+modes are not part of 0.5.0.
+
+## PPML pre-activation boundary
+
+The repository contains a private `_fereg_ppml` syntax adapter, guarded
+`_fereg_estimate_ppml` transaction, and additive `estimate-ppml` plugin action.
+They exercise the proposed public PPML semantics through independent request
+and result wires while the installed public command still returns `r(498)`
+before a native call. They are developer qualification interfaces and are not
+included as supported package commands.
+
+Activation requires exact-source scientific agreement with the pinned
+`ppmlhdfe` closure and independent oracles; transaction, interruption,
+allocation, memory, performance, and supported-platform qualification; and the
+direct F0 `fereg` non-regression gate. After the public adapter is enabled, the
+same full matrix must pass again on the activated source. Until then, no PPML
+row should be read as an implemented public compatibility promise.
 
 ## Platform qualification
 

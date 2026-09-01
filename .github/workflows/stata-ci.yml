@@ -17,6 +17,9 @@ on:
           - plugin-load
           - numerical-small
           - differential
+          - fereg-regression
+          - ppml-fail-closed
+          - ppml-hidden
           - benchmark-small
           - full
         default: smoke

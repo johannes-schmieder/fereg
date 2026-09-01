@@ -367,6 +367,8 @@ static int check_version(stata_call_function call)
         strstr(display_buffer, "fereg.action_protocol=1.5") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
         strstr(display_buffer, "fereg.ols_result_wire=1.4") == NULL ||
+        strstr(display_buffer, "fereg.ppml_request_wire=") != NULL ||
+        strstr(display_buffer, "fereg.ppml_result_wire=") != NULL ||
         error_buffer[0] != '\0') {
         return 2;
     }
@@ -426,7 +428,8 @@ static int check_estimator_action_routing(stata_call_function call)
     clear_output();
     if (call(1, ols) != 198 || strstr(error_buffer, "syntax") == NULL) return 1;
     clear_output();
-    if (call(1, ppml) != 498 || strstr(error_buffer, "unsupported") == NULL) return 2;
+    if (call(1, ppml) != 198 || strstr(error_buffer, "syntax") == NULL ||
+        strstr(error_buffer, "missing required protocol field ado") == NULL) return 2;
     return 0;
 }
 
@@ -1170,7 +1173,7 @@ int main(int argc, char *argv[])
     }
     result = check_estimator_action_routing(call);
     if (result != 0) {
-        fprintf(stderr, "disabled estimator path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        fprintf(stderr, "estimator action routing failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 50 + result;
     }

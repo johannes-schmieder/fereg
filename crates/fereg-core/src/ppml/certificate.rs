@@ -1,5 +1,8 @@
+#[cfg(test)]
 use crate::data::DenseMatrix;
+#[cfg(test)]
 use crate::error::{ErrorCode, FeregError, Result};
+#[cfg(test)]
 use crate::fe::FeDesign;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +14,7 @@ pub struct PpmlCertificate {
     pub passed: bool,
 }
 
+#[cfg(test)]
 pub(crate) fn score_certificate(
     outcome: &[f64],
     mean: &[f64],
@@ -138,6 +142,7 @@ pub(crate) fn score_certificate(
     })
 }
 
+#[cfg(test)]
 fn add_relative(
     moment: f64,
     basis_norm: f64,

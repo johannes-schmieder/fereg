@@ -52,9 +52,11 @@ static int check_version(stata_call_function call)
     clear_output();
     if (call(1, arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
-        strstr(display_buffer, "fereg.action_protocol=1.1") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.5") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.1") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.4") == NULL ||
+        strstr(display_buffer, "fereg.ppml_request_wire=") != NULL ||
+        strstr(display_buffer, "fereg.ppml_result_wire=") != NULL ||
         error_buffer[0] != '\0') return 2;
     return 0;
 }
@@ -95,6 +97,22 @@ static int check_panic_boundary(stata_call_function call)
     return 0;
 }
 
+static int check_estimator_action_routing(
+    stata_call_function call,
+    int candidate_mode
+)
+{
+    char *ols[] = {"estimate-ols"};
+    char *ppml[] = {"estimate-ppml"};
+    clear_output();
+    if (call(1, ols) != 198 || strstr(error_buffer, "syntax") == NULL) return 1;
+    if (!candidate_mode) return 0;
+    clear_output();
+    if (call(1, ppml) != 198 || strstr(error_buffer, "syntax") == NULL ||
+        strstr(error_buffer, "missing required protocol field ado") == NULL) return 2;
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     HMODULE library;
@@ -102,10 +120,19 @@ int main(int argc, char *argv[])
     stata_call_function call = NULL;
     ST_plugin plugin;
     int result;
+    int candidate_mode = 1;
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: actual_plugin_loader_test_windows PATH\n");
+    if (argc != 2 && argc != 3) {
+        fprintf(stderr, "usage: actual_plugin_loader_test_windows PATH [candidate|f0-baseline]\n");
         return 2;
+    }
+    if (argc == 3) {
+        if (strcmp(argv[2], "candidate") == 0) candidate_mode = 1;
+        else if (strcmp(argv[2], "f0-baseline") == 0) candidate_mode = 0;
+        else {
+            fprintf(stderr, "unsupported actual-plugin loader mode\n");
+            return 2;
+        }
     }
     library = LoadLibraryA(argv[1]);
     if (library == NULL) {
@@ -141,6 +168,8 @@ int main(int argc, char *argv[])
     if (result != 0) { result += 20; goto failure; }
     result = check_panic_boundary(call);
     if (result != 0) { result += 30; goto failure; }
+    result = check_estimator_action_routing(call, candidate_mode);
+    if (result != 0) { result += 40; goto failure; }
 
     FreeLibrary(library);
     puts("actual-plugin ABI/self-test harness: PASS");

@@ -9,6 +9,9 @@ the numerical and covariance checks pass.
 
 The current source is an unreleased 0.5.0 beta. The public `fereg` OLS command
 is active; `feppml` is installed only as a fail-closed `r(498)` placeholder.
+The repository contains a private end-to-end PPML qualification path, but it
+is not a supported command, adds no external runtime dependency, and does not
+make PPML publicly available.
 
 ## Quick start
 

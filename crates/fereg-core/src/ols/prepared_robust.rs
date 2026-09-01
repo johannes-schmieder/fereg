@@ -2,6 +2,11 @@ use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::parallel::ThreadTeam;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+use crate::sandwich::{
+    bread_meat_bread, reduce_dense_score_meats, reduce_serial_influence_covariance,
+    standard_errors, FixedBlockReductionPolicy, SandwichCorrectionPolicy, SandwichProductMode,
+    SandwichScoreMultiplier, SandwichScorePair,
+};
 use crate::topology_dof::CategoricalTopologyDofReport;
 use rayon::prelude::*;
 use std::time::Instant;
@@ -225,6 +230,96 @@ struct PreparedOlsRobustCovarianceBuild {
     /// The production covariance is accumulated from bread-transformed
     /// influences, so this remains an algebraically distinct certificate path.
     dense_certificate_meat: Option<Vec<f64>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OlsRobustScoreMultiplier<'a> {
+    residuals: &'a [f64],
+    weights: ReferenceWeightView<'a>,
+    weight_kind: Option<WeightKind>,
+    perturb_production: bool,
+}
+
+impl SandwichScoreMultiplier for OlsRobustScoreMultiplier<'_> {
+    fn nrows(&self) -> usize {
+        self.residuals.len()
+    }
+
+    fn score_pair(&self, row: usize) -> Result<SandwichScorePair> {
+        let reference_weight = self.weights.value(row)?;
+        let certificate_root = meat_root_multiplier(self.weight_kind, reference_weight)?;
+        let production_root = if self.perturb_production {
+            match self.weight_kind {
+                Some(WeightKind::Analytic | WeightKind::Probability) => reference_weight.sqrt(),
+                Some(WeightKind::Frequency) => reference_weight,
+                _ => 1.0,
+            }
+        } else {
+            certificate_root
+        };
+        let residual = *self
+            .residuals
+            .get(row)
+            .ok_or_else(|| invalid_argument("prepared robust residual row is out of range"))?;
+        let production = production_root * residual;
+        let certificate = certificate_root * residual;
+        if production.is_finite() && certificate.is_finite() {
+            Ok(SandwichScorePair {
+                production,
+                certificate,
+            })
+        } else {
+            Err(invalid_data(
+                "prepared robust dense influence scale is not finite",
+            ))
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OlsRobustSerialScoreMultiplier<'a> {
+    residuals: &'a [f64],
+    weights: ReferenceWeightView<'a>,
+    weight_kind: Option<WeightKind>,
+    perturb_production: bool,
+    correction_root: f64,
+}
+
+impl SandwichScoreMultiplier for OlsRobustSerialScoreMultiplier<'_> {
+    fn nrows(&self) -> usize {
+        self.residuals.len()
+    }
+
+    fn score_pair(&self, row: usize) -> Result<SandwichScorePair> {
+        let reference_weight = self.weights.value(row)?;
+        let certificate_root = meat_root_multiplier(self.weight_kind, reference_weight)?;
+        let production_root = if self.perturb_production {
+            match self.weight_kind {
+                Some(WeightKind::Analytic | WeightKind::Probability) => reference_weight.sqrt(),
+                Some(WeightKind::Frequency) => reference_weight,
+                _ => 1.0,
+            }
+        } else {
+            certificate_root
+        };
+        let residual = *self
+            .residuals
+            .get(row)
+            .ok_or_else(|| invalid_argument("prepared robust residual row is out of range"))?;
+        // This is the frozen low-memory OLS evaluation order.
+        let production = self.correction_root * production_root * residual;
+        let certificate = certificate_root * residual;
+        if production.is_finite() && certificate.is_finite() {
+            Ok(SandwichScorePair {
+                production,
+                certificate,
+            })
+        } else {
+            Err(invalid_data(
+                "prepared robust influence scale is not finite",
+            ))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -630,103 +725,21 @@ fn build_covariance<R: PreparedInferenceReservation>(
             reservation,
         );
     }
-    let mut values = reserved_filled(
+    let values = reduce_serial_influence_covariance(
+        scores,
+        OlsRobustSerialScoreMultiplier {
+            residuals: fit.residuals(),
+            weights: weight_view,
+            weight_kind: weights.kind,
+            perturb_production: perturb_meat_multiplier,
+            // Preserve the accepted OLS evaluation order exactly:
+            // `(sqrt(HC1) * weight_root) * residual`.
+            correction_root: hc1_correction.sqrt(),
+        },
+        fit.bread().values(),
         reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust covariance",
     )?;
-    let mut corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust covariance corrections",
-    )?;
-    let mut influence = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve prepared robust influence row",
-    )?;
-    let mut score = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve prepared robust reported score row",
-    )?;
-    for row in 0..scores.nrows() {
-        scores.fill_reported_row(row, &mut score)?;
-        let reference_weight = weight_view.value(row)?;
-        let root_multiplier = if perturb_meat_multiplier {
-            match weights.kind {
-                Some(WeightKind::Analytic | WeightKind::Probability) => reference_weight.sqrt(),
-                Some(WeightKind::Frequency) => reference_weight,
-                _ => 1.0,
-            }
-        } else {
-            meat_root_multiplier(weights.kind, reference_weight)?
-        };
-        let scale = hc1_correction.sqrt() * root_multiplier * fit.residuals()[row];
-        if !scale.is_finite() {
-            return Err(invalid_data(
-                "prepared robust influence scale is not finite",
-            ));
-        }
-        for (left, influence_value) in influence.iter_mut().enumerate() {
-            let mut product = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for (right, score_value) in score.iter().copied().enumerate() {
-                compensated_add(
-                    fit.bread().values()[left * dimension + right] * score_value,
-                    &mut product,
-                    &mut correction,
-                )?;
-            }
-            *influence_value = scale * (product + correction);
-            if !influence_value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust influence row contains a nonfinite value",
-                ));
-            }
-        }
-        for left in 0..dimension {
-            for right in left..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    influence[left] * influence[right],
-                    &mut values[position],
-                    &mut corrections[position],
-                )?;
-            }
-        }
-    }
-    for left in 0..dimension {
-        for right in left..dimension {
-            let position = left * dimension + right;
-            values[position] += corrections[position];
-            if !values[position].is_finite() {
-                return Err(invalid_data(
-                    "prepared robust covariance contains a nonfinite value",
-                ));
-            }
-            values[right * dimension + left] = values[position];
-        }
-    }
-    let mut standard_errors = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve prepared robust standard errors",
-    )?;
-    for position in 0..dimension {
-        let diagonal = values[position * dimension + position];
-        if !diagonal.is_finite() || diagonal < 0.0 {
-            return Err(invalid_data(
-                "prepared robust covariance diagonal is invalid",
-            ));
-        }
-        standard_errors[position] = diagonal.sqrt();
-    }
+    let standard_errors = standard_errors(&values, dimension, reservation)?;
     Ok(PreparedOlsRobustCovarianceBuild {
         covariance: PreparedOlsRobustCovariance {
             hc1_correction,
@@ -747,7 +760,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
     reservation: &mut R,
 ) -> Result<PreparedOlsRobustCovarianceBuild> {
     let dimension = fit.bread().dimension();
-    let square = checked_square(
+    let _square = checked_square(
         dimension,
         "prepared robust dense covariance dimensions overflow usize",
     )?;
@@ -766,258 +779,38 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
             dense_certificate_meat: Some(Vec::new()),
         });
     }
-    let workspace = dimension
-        .checked_mul(2)
-        .ok_or_else(|| allocation("prepared robust dense covariance workspace overflows"))?;
-    let partial_stride = square
-        .checked_mul(2)
-        .and_then(|meats| meats.checked_add(workspace))
-        .ok_or_else(|| allocation("prepared robust dense covariance partial stride overflows"))?;
-    let chunks = robust_reduction_chunks(scores.nrows(), partial_stride)?;
-    let partial_elements = chunks
-        .checked_mul(partial_stride)
-        .ok_or_else(|| allocation("prepared robust dense covariance partials overflow usize"))?;
-    let mut partials = reserved_filled(
+    let meats = reduce_dense_score_meats(
+        scores,
+        OlsRobustScoreMultiplier {
+            residuals: fit.residuals(),
+            weights: weight_view,
+            weight_kind: weights.kind,
+            perturb_production: perturb_meat_multiplier,
+        },
+        FixedBlockReductionPolicy {
+            rows_per_block: ROBUST_REDUCTION_ROWS,
+            maximum_blocks: ROBUST_MAX_BLOCKS,
+            partial_budget_bytes: ROBUST_PARTIAL_BUDGET_BYTES,
+        },
         reservation,
-        partial_elements,
-        0.0_f64,
-        "unable to reserve prepared robust dense covariance partials",
     )?;
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (production_meat, tail) = partial.split_at_mut(square);
-            let (certificate_meat, workspace) = tail.split_at_mut(square);
-            let (production_score, certificate_score) = workspace.split_at_mut(dimension);
-            let rows_per_chunk = scores.nrows() / chunks;
-            let remainder = scores.nrows() % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                scores.fill_reported_row(row, production_score)?;
-                let reference_weight = weight_view.value(row)?;
-                let certificate_root = meat_root_multiplier(weights.kind, reference_weight)?;
-                let production_root = if perturb_meat_multiplier {
-                    match weights.kind {
-                        Some(WeightKind::Analytic | WeightKind::Probability) => {
-                            reference_weight.sqrt()
-                        }
-                        Some(WeightKind::Frequency) => reference_weight,
-                        _ => 1.0,
-                    }
-                } else {
-                    certificate_root
-                };
-                let residual = fit.residuals()[row];
-                let production_scale = production_root * residual;
-                let certificate_scale = certificate_root * residual;
-                if !production_scale.is_finite() || !certificate_scale.is_finite() {
-                    return Err(invalid_data(
-                        "prepared robust dense influence scale is not finite",
-                    ));
-                }
-                for coordinate in 0..dimension {
-                    let raw = production_score[coordinate];
-                    production_score[coordinate] = production_scale * raw;
-                    certificate_score[coordinate] = certificate_scale * raw;
-                    if !production_score[coordinate].is_finite()
-                        || !certificate_score[coordinate].is_finite()
-                    {
-                        return Err(invalid_data(
-                            "prepared robust dense scaled score is not finite",
-                        ));
-                    }
-                }
-                for left in 0..dimension {
-                    let production_left = production_score[left];
-                    let certificate_left = certificate_score[left];
-                    for right in left..dimension {
-                        let position = left * dimension + right;
-                        production_meat[position] += production_left * production_score[right];
-                        // Keep both hot reductions contiguous.  The
-                        // certificate remains independent through separate
-                        // storage, scale, and reverse fixed-block merge order;
-                        // a transposed/strided write here is catastrophically
-                        // expensive for wide designs at observation scale.
-                        certificate_meat[position] += certificate_score[right] * certificate_left;
-                    }
-                }
-            }
-            if production_meat.iter().all(|value| value.is_finite())
-                && certificate_meat.iter().all(|value| value.is_finite())
-            {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "prepared robust dense covariance partial contains a nonfinite value",
-                ))
-            }
-        })?;
-    let mut production_meat = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust dense production meat",
-    )?;
-    let mut corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust dense covariance corrections",
-    )?;
-    let mut certificate_meat = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust dense certificate meat",
-    )?;
-    let mut certificate_corrections = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust dense certificate meat corrections",
-    )?;
-    for partial in partials.chunks_exact(partial_stride) {
-        let production = &partial[..square];
-        for left in 0..dimension {
-            for right in left..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    production[position],
-                    &mut production_meat[position],
-                    &mut corrections[position],
-                )?;
-            }
-        }
-    }
-    // Reverse the fixed-block order for the certificate reconstruction.  This
-    // provides a distinct accumulation path without turning every hot
-    // observation-level write into a cache-hostile column stride.
-    for partial in partials.rchunks_exact(partial_stride) {
-        let certificate = &partial[square..2 * square];
-        for left in 0..dimension {
-            for right in left..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    certificate[position],
-                    &mut certificate_meat[position],
-                    &mut certificate_corrections[position],
-                )?;
-            }
-        }
-    }
-    for left in 0..dimension {
-        for right in left..dimension {
-            let position = left * dimension + right;
-            production_meat[position] += corrections[position];
-            if !production_meat[position].is_finite() {
-                return Err(invalid_data(
-                    "prepared robust dense production meat contains a nonfinite value",
-                ));
-            }
-            production_meat[right * dimension + left] = production_meat[position];
-            certificate_meat[position] += certificate_corrections[position];
-            if !certificate_meat[position].is_finite() {
-                return Err(invalid_data(
-                    "prepared robust dense certificate meat is not finite",
-                ));
-            }
-            certificate_meat[right * dimension + left] = certificate_meat[position];
-        }
-    }
-    let values = sandwich_covariance_from_meat(
+    let values = bread_meat_bread(
         fit.bread().values(),
-        &production_meat,
+        &meats.production,
         dimension,
-        hc1_correction,
+        SandwichCorrectionPolicy::Scale(hc1_correction),
+        SandwichProductMode::OrdinaryUpperTriangle,
         reservation,
     )?;
-    let mut standard_errors = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve prepared robust dense standard errors",
-    )?;
-    for position in 0..dimension {
-        let diagonal = values[position * dimension + position];
-        if !diagonal.is_finite() || diagonal < 0.0 {
-            return Err(invalid_data(
-                "prepared robust dense covariance diagonal is invalid",
-            ));
-        }
-        standard_errors[position] = diagonal.sqrt();
-    }
+    let standard_errors = standard_errors(&values, dimension, reservation)?;
     Ok(PreparedOlsRobustCovarianceBuild {
         covariance: PreparedOlsRobustCovariance {
             hc1_correction,
             values,
             standard_errors,
         },
-        dense_certificate_meat: Some(certificate_meat),
+        dense_certificate_meat: Some(meats.certificate),
     })
-}
-
-fn sandwich_covariance_from_meat<R: PreparedInferenceReservation>(
-    bread: &[f64],
-    meat: &[f64],
-    dimension: usize,
-    correction: f64,
-    reservation: &mut R,
-) -> Result<Vec<f64>> {
-    let square = checked_square(
-        dimension,
-        "prepared robust sandwich dimensions overflow usize",
-    )?;
-    if bread.len() != square || meat.len() != square || !correction.is_finite() || correction <= 0.0
-    {
-        return Err(invalid_argument(
-            "prepared robust sandwich dimensions or correction are invalid",
-        ));
-    }
-    let mut left = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust production bread-meat product",
-    )?;
-    for row in 0..dimension {
-        for column in 0..dimension {
-            let mut value = 0.0_f64;
-            for inner in 0..dimension {
-                value += bread[row * dimension + inner] * meat[inner * dimension + column];
-            }
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust production bread-meat product is not finite",
-                ));
-            }
-            left[row * dimension + column] = value;
-        }
-    }
-    let mut covariance = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared robust production sandwich",
-    )?;
-    for row in 0..dimension {
-        for column in row..dimension {
-            let mut value = 0.0_f64;
-            for inner in 0..dimension {
-                value += left[row * dimension + inner] * bread[column * dimension + inner];
-            }
-            value *= correction;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust production sandwich is not finite",
-                ));
-            }
-            covariance[row * dimension + column] = value;
-            covariance[column * dimension + row] = value;
-        }
-    }
-    Ok(covariance)
 }
 
 /// Independent sandwich reconstruction. Dense production uses its
@@ -1791,6 +1584,7 @@ mod tests {
         calls: usize,
         fail_at: Option<usize>,
         undersize: bool,
+        labels: Vec<&'static str>,
     }
 
     impl PreparedInferenceReservation for CountingReservation {
@@ -1798,9 +1592,10 @@ mod tests {
             &mut self,
             target: &mut Vec<T>,
             elements: usize,
-            _label: &'static str,
+            label: &'static str,
         ) -> Result<()> {
             self.calls += 1;
+            self.labels.push(label);
             if self.fail_at == Some(self.calls) {
                 return Err(allocation("injected prepared robust reservation failure"));
             }
@@ -1870,6 +1665,138 @@ mod tests {
                 assert_close(*actual, *expected, 2e-11);
             }
         }
+    }
+
+    fn legacy_scratch_covariance(
+        fit: &CertifiedPreparedOlsFit,
+        scores: &CertifiedPreparedOlsScoreDesign<'_>,
+        weight_view: ReferenceWeightView<'_>,
+        weights: PreparedOlsReferenceWeightReport,
+        dof: PreparedOlsResidualDofReport,
+    ) -> Vec<f64> {
+        let dimension = fit.bread().dimension();
+        let square = dimension * dimension;
+        let hc1_correction = weights.effective_observations as f64 / dof.residual_dof as f64;
+        let mut values = vec![0.0_f64; square];
+        let mut corrections = vec![0.0_f64; square];
+        let mut influence = vec![0.0_f64; dimension];
+        let mut score = vec![0.0_f64; dimension];
+        for row in 0..scores.nrows() {
+            scores
+                .fill_reported_row(row, &mut score)
+                .expect("legacy scratch score row");
+            let reference_weight = weight_view.value(row).expect("legacy reference weight");
+            let root_multiplier = meat_root_multiplier(weights.kind, reference_weight)
+                .expect("legacy meat multiplier");
+            let scale = hc1_correction.sqrt() * root_multiplier * fit.residuals()[row];
+            for (left, influence_value) in influence.iter_mut().enumerate() {
+                let mut product = 0.0_f64;
+                let mut correction = 0.0_f64;
+                for (right, score_value) in score.iter().copied().enumerate() {
+                    compensated_add(
+                        fit.bread().values()[left * dimension + right] * score_value,
+                        &mut product,
+                        &mut correction,
+                    )
+                    .expect("legacy scratch bread product");
+                }
+                *influence_value = scale * (product + correction);
+            }
+            for left in 0..dimension {
+                for right in left..dimension {
+                    let position = left * dimension + right;
+                    compensated_add(
+                        influence[left] * influence[right],
+                        &mut values[position],
+                        &mut corrections[position],
+                    )
+                    .expect("legacy scratch influence accumulation");
+                }
+            }
+        }
+        for left in 0..dimension {
+            for right in left..dimension {
+                let position = left * dimension + right;
+                values[position] += corrections[position];
+                values[right * dimension + left] = values[position];
+            }
+        }
+        values
+    }
+
+    #[test]
+    fn low_memory_robust_covariance_routes_through_bit_exact_shared_serial_reducer() {
+        let groups = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0];
+        let regressors = vec![
+            vec![-2.0, 0.0, 1.0, -1.0, 2.0, 4.0, -3.0, 1.5, 5.0],
+            vec![0.25, -1.0, 2.5, 3.0, -0.5, 1.0, 4.0, -2.0, 0.75],
+        ];
+        let analytic = [0.5, 2.0, 1.5, 3.0, 0.75, 4.0, 2.5, 1.25, 3.5];
+        let outcome = (0..groups.len())
+            .map(|row| {
+                1.7 * regressors[0][row] - 0.35 * regressors[1][row]
+                    + groups[row]
+                    + 0.07 * (row as f64).sin()
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared(
+            &outcome,
+            &regressors,
+            Some(&groups),
+            true,
+            TestWeights::Analytic(&analytic),
+        );
+        let mut config = PreparedOlsRobustConfig::default();
+        config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
+        config.fit.execution.poolsize = 1;
+        let mut fit = fit_prepared_ols_coefficients_view_map(&prepared, config.fit)
+            .expect("low-memory coefficient fit");
+        assert_eq!(
+            fit.execution().mode,
+            super::super::PreparedOlsExecutionMode::Low
+        );
+        let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+            .expect("low-memory absorbed DoF");
+        let absorbed_summary = prepared
+            .inference_absorbed_dof_summary(&absorbed, config.absorbed_dof)
+            .expect("low-memory absorbed DoF summary");
+        let (weights, weight_view, _) =
+            build_reference_weight_report_view(&prepared, &fit, config.certificate_tolerance, true)
+                .expect("low-memory reference weights");
+        let dof = build_residual_dof_view(&prepared, &fit, absorbed_summary, weights)
+            .expect("low-memory residual DoF");
+        let mut reservation = CountingReservation::default();
+        let scores = build_prepared_ols_score_design(
+            &prepared,
+            &mut fit,
+            weight_view,
+            config.fit.absorb,
+            config.certificate_tolerance,
+            &mut reservation,
+        )
+        .expect("low-memory score design");
+        assert!(scores.dense_view().is_none());
+        let expected = legacy_scratch_covariance(&fit, &scores, weight_view, weights, dof);
+        let label_start = reservation.labels.len();
+        let actual = build_covariance(
+            &fit,
+            &scores,
+            weight_view,
+            weights,
+            dof,
+            false,
+            &mut reservation,
+        )
+        .expect("shared low-memory covariance");
+        assert_eq!(actual.covariance.values(), expected);
+        let covariance_labels = &reservation.labels[label_start..];
+        assert!(covariance_labels.contains(&"unable to reserve serial sandwich covariance"));
+        assert!(
+            covariance_labels.contains(&"unable to reserve serial sandwich covariance corrections")
+        );
+        assert!(covariance_labels.contains(&"unable to reserve serial sandwich influence row"));
+        assert!(covariance_labels.contains(&"unable to reserve serial sandwich score row"));
+        assert!(!covariance_labels.contains(&"unable to reserve dense sandwich partials"));
     }
 
     #[test]
@@ -2057,6 +1984,20 @@ mod tests {
         assert_eq!(reported.fit().finite_rank(), 0);
         assert_eq!(reported.covariance().dimension(), 1);
         assert!(reported.certificate().passed);
+
+        let mut low_config = PreparedOlsRobustConfig::default();
+        low_config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
+        let hidden_low = fit_prepared_ols_robust_map(
+            &prepared(&y, &[], None, false, TestWeights::Unit),
+            low_config,
+        )
+        .expect("low-memory hidden no-X robust inference");
+        assert_eq!(
+            hidden_low.fit().execution().mode,
+            super::super::PreparedOlsExecutionMode::Low
+        );
+        assert_eq!(hidden_low.covariance().dimension(), 0);
+        assert!(hidden_low.certificate().passed);
     }
 
     #[test]

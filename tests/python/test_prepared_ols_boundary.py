@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from scripts.feppml_public_state import ACTIVATED, public_state
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -41,14 +43,19 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn("PhantomData<Rc<()>>", ffi)
         self.assertIn("fereg_spi_is_main_thread", ffi)
 
-    def test_public_fereg_is_wired_and_feppml_remains_fail_closed(self):
+    def test_public_fereg_and_feppml_wiring_matches_public_state(self):
         dispatch = (ROOT / "crates/fereg-plugin/src/dispatch.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn('"estimate-ppml"', dispatch)
         self.assert_public_fereg_is_wired()
         feppml = (ROOT / "stata/feppml.ado").read_text(encoding="utf-8").lower()
-        self.assertIn("exit 498", feppml)
+        if public_state(ROOT) == ACTIVATED:
+            self.assertIn("_fereg_ppml `0'", feppml)
+            self.assertNotIn("exit 498", feppml)
+        else:
+            self.assertIn("exit 498", feppml)
+            self.assertNotIn("_fereg_ppml `0'", feppml)
         self.assertNotIn("plugin call", feppml)
 
     def test_licensed_fixture_locks_missing_rows_and_retained_count(self):

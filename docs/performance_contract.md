@@ -3,13 +3,39 @@
 Performance is an acceptance gate for the 0.5.0 OLS beta, not a
 marketing claim. Timing or memory comparisons count only after exact sample,
 omission, coefficient, VCE, DoF, fit, output, and certificate parity passes
-against the pinned `reghdfe` closure. PPML is outside this contract.
+against the pinned `reghdfe` closure. PPML is outside this OLS comparator
+contract and has a separate additive gate under ADR 0018.
+
+Shared-engine and PPML-development checkpoints also require the direct
+candidate-versus-F0 gate in `fereg_regression_contract.md`. That gate uses the
+same `fereg` command in both arms, a scientific-first nine-pair AB/BA design,
+and stricter 1.02 aggregate, 1.05 confirmed-cell, allocation-class, leak, and
+RSS limits. It supplements rather than replaces the external comparisons here.
+
+## PPML pre-activation performance gate
+
+PPML timing is inadmissible until the same cell passes the frozen candidate,
+exact pinned `ppmlhdfe`, and independent-oracle scientific checks. The PPML
+matrix, memory model, route calibration, warm/fresh equivalence, leak checks,
+and constrained-memory behavior are governed by ADR 0018 and
+`benchmarks/manifests/ppml_memory_performance_v1.json`. The final
+pre-activation source must also pass the direct candidate-versus-F0 `fereg`
+gate so shared-engine reuse cannot hide an OLS regression.
+
+The PPML runtime threshold is evaluated only from source-, artifact-, dataset-,
+comparator-, and environment-bound receipts on the registered cells. Profile
+definitions, benchmark scripts, or successful unit tests are not performance
+evidence. No PPML timing or memory result authorizes public activation until
+the complete scientific, transaction, platform, and `fereg` non-regression
+matrix is exact-green on the same source.
 
 Required benchmark reporting:
 
 - wall-clock median and dispersion across warm runs;
 - peak resident memory;
 - effective sample and singleton/separation deletion counts;
+- full-model simplex width, checked peak-cell bound, executed/skipped status,
+  and any same-generation comprehensive-IR closure;
 - FE/IRLS iteration counts and final certificates;
 - thread count, CPU model, OS, Stata edition/version, and plugin hash;
 - comparison against the pinned reference versions in `references.lock.toml`.
@@ -31,6 +57,11 @@ The governing runtime gates apply to default `solver(auto)`:
 The governing memory gates are:
 
 - observed native allocation within 25 percent of the registered model;
+- bounded full-model simplex execution within its joint explicit-design,
+  construction-scratch, null-space, tableau, and certificate estimate;
+- an over-cap simplex case that allocates neither its N-by-P design nor its
+  tableau and is closed by comprehensive IR on the same ledger generation,
+  plus simplex-only `r(909)` behavior;
 - clean constrained-memory solver fallback or pre-allocation failure;
 - a constrained execution-mode case where `memory(low)` succeeds while
   `memory(fast)` fails preflight; and

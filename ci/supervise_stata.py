@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,29 @@ import subprocess
 import sys
 import tempfile
 import time
+
+
+GOVERNING_ENVIRONMENT = (
+    "FEREG_BUILD_DATE", "FEREG_GIT_COMMIT", "PATH", "RUSTUP_BIN",
+    "RUST_TOOLCHAIN", "STATA_BIN",
+)
+
+
+def environment_record() -> list[dict[str, object]]:
+    records = []
+    for name in GOVERNING_ENVIRONMENT:
+        value = os.environ.get(name)
+        records.append(
+            {
+                "name": name,
+                "present": value is not None,
+                "value_sha256": (
+                    hashlib.sha256(value.encode("utf-8")).hexdigest()
+                    if value is not None else None
+                ),
+            }
+        )
+    return records
 
 
 def utc_now() -> str:
@@ -58,6 +82,7 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", required=True, type=int)
     parser.add_argument("--process-json", required=True, type=Path)
     parser.add_argument("--stdout-log", required=True, type=Path)
+    parser.add_argument("--stderr-log", required=True, type=Path)
     parser.add_argument("--cwd", required=True, type=Path)
     parser.add_argument(
         "--lock-file",
@@ -78,23 +103,30 @@ def main() -> int:
         "schema_version": 1,
         "started_at": started_at,
         "command_executable": command[0],
+        "argv": command,
+        "cwd": str(args.cwd.resolve()),
+        "environment": environment_record(),
         "launch_error": None,
         "timed_out": False,
         "process_rc": None,
     }
 
     args.stdout_log.parent.mkdir(parents=True, exist_ok=True)
+    args.stderr_log.parent.mkdir(parents=True, exist_ok=True)
     args.lock_file.parent.mkdir(parents=True, exist_ok=True)
     with args.lock_file.open("a+", encoding="utf-8") as lock_handle:
         fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
-        with args.stdout_log.open("wb") as output_handle:
+        with (
+            args.stdout_log.open("wb") as output_handle,
+            args.stderr_log.open("wb") as error_handle,
+        ):
             try:
                 process = subprocess.Popen(
                     command,
                     cwd=args.cwd,
                     stdin=subprocess.DEVNULL,
                     stdout=output_handle,
-                    stderr=subprocess.STDOUT,
+                    stderr=error_handle,
                     start_new_session=True,
                 )
             except OSError as exc:

@@ -6,20 +6,23 @@ validation remain in Rust.
 
 ## 0.5.0 versions
 
-The action handshake, model metadata, and OLS result layout are independently
-versioned:
+The action handshake, model metadata, OLS result layout, and additive PPML
+request/result layouts are independently versioned:
 
-| Contract | Public 0.5.0 version |
+| Contract | 0.5.0 version |
 |---|---:|
 | Action protocol | 1.5 |
 | Model wire | 2.1 |
 | OLS result wire | 1.4 |
+| PPML request wire | 1.1 |
+| PPML result wire | 1.1 |
 
-Public estimation requires the exact action/result versions. Diagnostic
-`doctor` and `selftest` callers retain the action protocol's same-major,
-not-newer-minor compatibility rule. ADO identity must be exactly 0.5.0. Model
-wire 2.0 remains readable only for the bounded legacy no-absorbed-metadata
-case; model wire v1, unknown majors, and newer minors are rejected.
+Estimation requires the exact action and estimator-specific request/result
+versions. Diagnostic `doctor` and `selftest` callers retain the action
+protocol's same-major, not-newer-minor compatibility rule. ADO identity must be
+exactly 0.5.0. Model wire 2.0 remains readable only for the bounded legacy
+no-absorbed-metadata case; model wire v1, unknown majors, and newer minors are
+rejected. The additive PPML wires do not alter or alias the OLS result wire.
 
 ## Actions
 
@@ -33,8 +36,12 @@ case; model wire v1, unknown majors, and newer minors are rejected.
   `fereg`.
 - `prepare-ols-test` and the hidden OLS adapter remain developer qualification
   actions and are excluded from distributions.
-- `estimate-ppml` is unsupported in 0.5.0; `feppml` fails in ado before a
-  substantive plugin call.
+- `estimate-ppml` is a private live-SPI qualification action. It is reachable
+  through the hidden `_fereg_estimate_ppml` transaction and `_fereg_ppml`
+  syntax adapter, but it is not a supported distribution interface.
+- The installed public `feppml` command remains a fail-closed ado stub and
+  returns `r(498)` before any substantive plugin call. Non-SPI dispatcher
+  attempts to invoke `estimate-ppml` are also rejected.
 
 ## Public OLS transaction
 
@@ -58,6 +65,35 @@ and estimates only in its final protected block. Native error, store failure,
 panic, validation failure, or Control-C restores prior `e()`/named estimates
 and exposes no requested outputs.
 
+## Private PPML transaction
+
+The hidden PPML adapter implements the same control-plane/data-plane boundary
+intended for eventual public activation. Stata parses syntax and model
+metadata, constructs the candidate marker, allocates private shadows, and
+makes exactly one guarded `estimate-ppml` call. Rust validates the complete
+request, PPML request/result wire identities, source and output bindings,
+dimensions, nonaliasing destinations, memory/thread controls, and initially
+incomplete receipt before reading observations.
+
+The live action owns sample construction, singleton and separation processing,
+topology rebasing, IRLS, inference, certificates, saved-output preparation,
+and complete result validation. All result values are certified in Rust-owned
+memory before the first SPI store. Result wire 1.1 includes fixed 16-row
+inference/PSD evidence, a 14x2 drop-reason count table, and a 5x13
+separation-sequence table. Its independent 33-column receipt binds those
+tables, execution/generation counts, and uint32 limbs for the initial/final
+generation hashes plus deterministic digests of the complete ordered
+separation trace and generation-hash sequence. Timing and process-local values
+are excluded from those digests. The receipt does not alias the OLS receipt,
+and its column 33 `COMPLETE` cell is the final native operation.
+
+The hidden ado transaction validates every private shadow and the completed
+receipt before posting or renaming requested outputs. Syntax/domain error,
+protocol mismatch, nonconvergence, allocation/store failure, panic, or
+Control-C restores the prior estimation state and exposes no partial requested
+outputs. This private path is qualification machinery only; it does not make
+the public `feppml` command available.
+
 ## Return codes
 
 | Class | Stata code |
@@ -69,6 +105,7 @@ and exposes no requested outputs.
 | Invalid frequency-weight domain | 401 |
 | Insufficient observations or residual DoF | 2001 |
 | Invalid data | 459 |
+| Numerical nonconvergence | 430 |
 | Allocation | 909 |
 | User interruption | 1 |
 | Native self-test failure | 3498 |

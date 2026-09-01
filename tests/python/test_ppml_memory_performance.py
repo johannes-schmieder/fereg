@@ -71,41 +71,103 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
             },
         }
 
+    def test_individual_fe_channel_order_cardinality_and_coordinates_are_compared(self) -> None:
+        candidate = self._result(1000, "individual_fe")
+        candidate["outputs"]["individual_fe_probe"] = [1.0, 2.0, 3.0, 10.0, 20.0, 30.0]
+        mutations = {
+            "omitted": [1.0, 2.0, 3.0],
+            "swapped": [10.0, 20.0, 30.0, 1.0, 2.0, 3.0],
+            "equal_opposite_shift": [1.5, 2.5, 3.5, 9.5, 19.5, 29.5],
+        }
+        for name, probes in mutations.items():
+            reference = copy.deepcopy(candidate)
+            reference["outputs"]["individual_fe_probe"] = probes
+            with self.subTest(name=name):
+                self.assertIn(
+                    "outputs.individual_fe_probe",
+                    PERF.compare_science(self.manifest, candidate, reference),
+                )
+
+    def test_nominal_scale_and_weight_aware_effective_n_are_exact(self) -> None:
+        cells = PERF.expand_cells(self.manifest)
+        for cell in cells:
+            physical, effective = PERF._expected_sample_sizes(cell)
+            result = self._result(physical, "fit")
+            result["dof"]["N_effective"] = effective
+            self.assertEqual(PERF._sample_size_failures(cell, result), [])
+            result["dof"]["N_physical"] = 256
+            result["dof"]["N_effective"] = 256
+            self.assertTrue(PERF._sample_size_failures(cell, result))
+
     @staticmethod
     def _constrained() -> list[dict]:
+        def attempt(
+            mode: str,
+            *,
+            status: str,
+            rc: int,
+            decision: str,
+            selected: str | None,
+            available: int,
+            fast: int,
+            low: int,
+        ) -> dict:
+            headroom = max(512 * 1024 * 1024, available // 5)
+            preflight = {
+                "schema_version": 1,
+                "receipt_type": "feppml-memory-preflight-v1",
+                "requested": mode,
+                "decision": decision,
+                "selected_route": selected,
+                "fast_peak_bytes": fast,
+                "low_peak_bytes": low,
+                "available_bytes": available,
+                "embedding_resident_bytes": 100_000,
+                "safety_headroom_bytes": headroom,
+                "usable_bytes": available - headroom,
+                "planner_allocator_event_growth": 0,
+                "planner_allocator_current_growth_bytes": 0,
+                "planner_allocator_peak_growth_bytes": 4096,
+                "allocation_bytes": 4096,
+                "workspace_allocation_started": False,
+                "embedded_git_commit": "3" * 12,
+                "complete_sentinel": "FEPPML_MEMORY_PREFLIGHT_COMPLETE",
+            }
+            return {
+                "id": mode,
+                "status": status,
+                "rc": rc,
+                "preflight_receipt_sha256": "9" * 64,
+                "preflight_payload_sha256": hashlib.sha256(
+                    PERF.canonical_json_bytes(preflight)
+                ).hexdigest(),
+                "preflight": preflight,
+            }
+
         return [
             {
                 "id": "low_succeeds_fast_fails",
                 "attempts": [
-                    {
-                        "id": "low",
-                        "status": "success",
-                        "rc": 0,
-                        "selected_route": "low",
-                        "large_allocation_started": True,
-                        "allocation_bytes": 100_000_000,
-                    },
-                    {
-                        "id": "fast",
-                        "status": "preflight_failure",
-                        "rc": 909,
-                        "selected_route": None,
-                        "large_allocation_started": False,
-                        "allocation_bytes": 4096,
-                    },
+                    attempt(
+                        "low", status="success", rc=0, decision="selected",
+                        selected="low", available=4_000_000_000,
+                        fast=3_500_000_000, low=3_000_000_000,
+                    ),
+                    attempt(
+                        "fast", status="failure", rc=909, decision="rejected",
+                        selected=None, available=4_000_000_000,
+                        fast=3_500_000_000, low=3_000_000_000,
+                    ),
                 ],
             },
             {
                 "id": "no_route_fits",
                 "attempts": [
-                    {
-                        "id": "auto",
-                        "status": "preflight_failure",
-                        "rc": 909,
-                        "selected_route": None,
-                        "large_allocation_started": False,
-                        "allocation_bytes": 4096,
-                    }
+                    attempt(
+                        "auto", status="failure", rc=909, decision="rejected",
+                        selected=None, available=1_500_000_000,
+                        fast=1_200_000_000, low=1_000_000_000,
+                    )
                 ],
             },
         ]
@@ -138,6 +200,9 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                 separators=(",", ":"),
             ).encode("ascii")
             result = self._result(n, plan["output"])
+            expected_physical, expected_effective = PERF._expected_sample_sizes(plan)
+            result["dof"]["N_physical"] = expected_physical
+            result["dof"]["N_effective"] = expected_effective
             cluster_dimensions = (
                 0 if plan["vce"] == "robust" else int(plan["vce"].removeprefix("cluster"))
             )
@@ -164,16 +229,27 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                         },
                     },
                     "execution": {
-                        "job_id": "job-1",
+                        "scheduler_job_id": "job-1",
                         "node_id": "node-1",
+                        "plugin_sha256": "7" * 64,
+                        "comparator_bundle_sha256": "9" * 64,
+                        "os": "Linux",
+                        "cpu": "test-cpu",
+                        "stata_version": "19.0",
+                        "stata_flavor": "MP",
+                        "rustc_version": "rustc-test",
                         "candidate_process_ids": [base_pid + index for index in range(repetitions)],
                         "comparator_process_ids": [
                             base_pid + repetitions + index for index in range(repetitions)
                         ],
                         "arm_order": [
-                            arm
-                            for _ in range(repetitions)
-                            for arm in ("candidate", "comparator")
+                            ["candidate", "comparator"],
+                            *(
+                                ["candidate", "comparator"]
+                                if index % 2 == 0
+                                else ["comparator", "candidate"]
+                                for index in range(repetitions - 1)
+                            ),
                         ],
                         "requested_threads": plan["requested_threads"],
                         "candidate_effective_threads": plan["requested_threads"],
@@ -185,10 +261,13 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                         "effective_threads": plan["requested_threads"],
                         "requested_memory": plan["memory"],
                         "effective_route": "fast" if plan["memory"] in {"fast", "auto"} else "low",
+                        "linear_route": "map",
                         "fallbacks": [],
                         "outer_iterations": 8,
                         "inner_iterations": 64,
                         "step_halvings": 0,
+                        "workspace_allocation_free": True,
+                        "whole_iteration_allocation_free": True,
                         "phase_seconds": {
                             phase: 0.01 for phase in active["instrumentation"]["phases"]
                         },
@@ -196,16 +275,30 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                     "memory": {
                         "modeled_peak_bytes": 100_000_000,
                         "native_peak_bytes": 100_000_000,
-                        "scratch_peak_bytes": 0,
-                        "allocator_start_bytes": 1024,
-                        "allocator_current_bytes": 1024,
-                        "allocator_peak_bytes": 100_001_024,
+                        "phase_modeled_peak_bytes": {
+                            phase: 10_000_000
+                            for phase in active["instrumentation"]["phases"]
+                        },
+                        "phase_observed_peak_bytes": {
+                            phase: 10_000_000
+                            for phase in active["instrumentation"]["phases"]
+                        },
                         "process_peak_rss_bytes": 200_000_000,
                         "repeated_call_retained_bytes": 0,
-                        "steady_state_data_sized_allocations": 0,
-                        "workspace_capacity_before": 50_000_000,
-                        "workspace_capacity_after": 50_000_000,
+                        "measured_steady_state_iterations": 16,
+                        "allocator_event_count_start": 100,
+                        "allocator_event_count_end": 100,
+                        "allocator_current_bytes_start": 1024,
+                        "allocator_current_bytes_end": 1024,
+                        "allocator_peak_bytes_start": 100_001_024,
+                        "allocator_peak_bytes_end": 100_001_024,
+                        "workspace_capacity_start": 50_000_000,
+                        "workspace_capacity_end": 50_000_000,
+                        "scratch_bytes_start": 0,
+                        "scratch_bytes_end": 0,
                         "scratch_files_after": 0,
+                        "linear_session_allocation_free": True,
+                        "fresh_warm_equivalent": True,
                         "median_steady_iteration_seconds": n * 1e-8,
                     },
                     "slowdown_explanation": None,
@@ -220,17 +313,8 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                 "source_tree": "4" * 40,
                 "cargo_lock_sha256": "5" * 64,
                 "references_lock_sha256": "6" * 64,
-                "plugin_sha256": "7" * 64,
                 "manifest_sha256": manifest_sha,
                 "generator_sha256": "8" * 64,
-                "comparator_bundle_sha256": "9" * 64,
-                "os": "Linux",
-                "cpu": "test-cpu",
-                "stata_version": "19.0",
-                "stata_flavor": "MP",
-                "rustc_version": "rustc-test",
-                "scheduler_job_id": "job-1",
-                "node_id": "node-1",
                 "reference_commits": pins,
             },
             "cells": cells,
@@ -268,6 +352,51 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
             "b85665d8f674e93c1e07446a9a2b29be7f797910",
         )
         self.assertFalse(self.manifest["qualification_eligible"])
+        self.assertEqual(
+            self.manifest["capture_contract"]["required_identity_fields"],
+            [
+                "source_commit",
+                "source_tree",
+                "cargo_lock_sha256",
+                "references_lock_sha256",
+                "manifest_sha256",
+                "generator_sha256",
+            ],
+        )
+        self.assertEqual(
+            self.manifest["capture_contract"][
+                "required_cell_execution_identity_fields"
+            ],
+            [
+                "scheduler_job_id",
+                "node_id",
+                "plugin_sha256",
+                "comparator_bundle_sha256",
+                "os",
+                "cpu",
+                "stata_version",
+                "stata_flavor",
+                "rustc_version",
+            ],
+        )
+        self.assertEqual(
+            self.manifest["instrumentation"]["phases"],
+            [
+                "preparation",
+                "separation_fe",
+                "separation_simplex",
+                "separation_ir",
+                "separation_mu",
+                "weight_response_refresh",
+                "fe_projection",
+                "finite_solve",
+                "objective_line_search",
+                "strict_final_solve",
+                "inference",
+                "fe_recovery",
+                "publication",
+            ],
+        )
 
     def test_manifest_mutations_fail_closed(self) -> None:
         changed = copy.deepcopy(self.manifest)
@@ -277,6 +406,12 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
         changed = copy.deepcopy(self.manifest)
         changed["cases"].pop()
         with self.assertRaisesRegex(PERF.ContractError, "inventory or order"):
+            PERF.validate_manifest(changed)
+        changed = copy.deepcopy(self.manifest)
+        changed["instrumentation"]["phases"][3:5] = reversed(
+            changed["instrumentation"]["phases"][3:5]
+        )
+        with self.assertRaisesRegex(PERF.ContractError, "phase order"):
             PERF.validate_manifest(changed)
 
     def test_green_development_evidence_is_blocked_not_qualified(self) -> None:
@@ -293,6 +428,85 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
         result = PERF.evaluate_evidence(manifest, self._evidence(manifest))
         self.assertEqual(result["status"], "pass")
         self.assertEqual(result["reasons"], [])
+
+    def test_closed_small_oracle_bundle_is_science_only_and_fail_closed(self) -> None:
+        evidence = self._evidence()
+        plans = {cell["cell_id"]: cell for cell in PERF.expand_cells(self.manifest)}
+        record = next(
+            cell for cell in evidence["cells"] if plans[cell["cell_id"]]["oracle_required"]
+        )
+        fixture_result = copy.deepcopy(record["scientific"]["candidate"])
+        fixture_result["dof"]["N_physical"] = 128
+        fixture_result["dof"]["N_effective"] = 128
+        record["scientific"]["oracle"] = {
+            "schema_version": 1,
+            "check_type": "ppml-explicit-dummy-oracle-v1",
+            "cell_id": record["cell_id"],
+            "fixture": {
+                "fixture_id": "bounded-explicit-dummy-v1",
+                "data_sha256": "a" * 64,
+                "canonical_export_sha256": "b" * 64,
+                "model_sha256": "c" * 64,
+                "generator_sha256": "d" * 64,
+                "row_count": 128,
+            },
+            "candidate": copy.deepcopy(fixture_result),
+            "comparator": copy.deepcopy(fixture_result),
+            "independent": copy.deepcopy(fixture_result),
+            "complete_sentinel": "FEPPML_ORACLE_CHECK_COMPLETE",
+        }
+        self.assertEqual(
+            PERF.evaluate_science_evidence(
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha256,
+            ),
+            [],
+        )
+        self.assertEqual(
+            PERF.evaluate_evidence(
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha256,
+            )["status"],
+            "blocked",
+        )
+        record["scientific"]["oracle"]["independent"]["coefficients"][0] += 1.0
+        reasons = PERF.evaluate_science_evidence(
+            self.manifest,
+            evidence,
+            manifest_sha256=self.manifest_sha256,
+        )
+        self.assertTrue(
+            any("oracle_bundle:independent:coefficients" in reason for reason in reasons)
+        )
+        record["scientific"]["oracle"]["fixture"]["unexpected"] = True
+        with self.assertRaisesRegex(PERF.ContractError, "fields are not closed"):
+            PERF.evaluate_science_evidence(
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha256,
+            )
+
+    def test_science_preflight_ignores_timing_and_execution_cadence(self) -> None:
+        evidence = self._evidence()
+        for cell in evidence["cells"]:
+            cell["timing"] = {"placeholder": "not a timing capture"}
+            cell["execution"] = {"placeholder": "not an execution capture"}
+        self.assertEqual(
+            PERF.evaluate_science_evidence(
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha256,
+            ),
+            [],
+        )
+        with self.assertRaises(PERF.ContractError):
+            PERF.evaluate_evidence(
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha256,
+            )
 
     def test_science_failure_preempts_malformed_timing(self) -> None:
         evidence = self._evidence()
@@ -381,12 +595,12 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
         mutations = {
             "native_peak_bytes": (140_000_000, "allocation_model_error"),
             "repeated_call_retained_bytes": (1, "repeated_call_leak"),
-            "steady_state_data_sized_allocations": (
-                1,
-                "steady_state_data_sized_allocation",
-            ),
-            "workspace_capacity_after": (50_000_001, "workspace_capacity_growth"),
+            "allocator_current_bytes_end": (1025, "allocator_current_growth"),
+            "workspace_capacity_end": (50_000_001, "workspace_capacity_growth"),
+            "scratch_bytes_end": (1, "scratch_bytes_growth"),
             "scratch_files_after": (1, "scratch_leak"),
+            "linear_session_allocation_free": (False, "linear_session_allocation"),
+            "fresh_warm_equivalent": (False, "fresh_warm_mismatch"),
         }
         for field, (value, expected) in mutations.items():
             with self.subTest(field=field):
@@ -397,9 +611,70 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
                 )
                 self.assertTrue(any(reason.endswith(expected) for reason in result["reasons"]))
 
+    def test_map_event_counter_catches_net_zero_allocate_free(self) -> None:
+        evidence = self._evidence()
+        memory = evidence["cells"][0]["memory"]
+        self.assertEqual(
+            memory["allocator_current_bytes_start"],
+            memory["allocator_current_bytes_end"],
+        )
+        memory["allocator_event_count_end"] += 2
+        result = PERF.evaluate_evidence(
+            self.manifest, evidence, manifest_sha256=self.manifest_sha256
+        )
+        self.assertIn("dev_n100k_no_fe_k0_t1:allocator_event_growth", result["reasons"])
+
+    def test_explicit_lsmr_cannot_claim_map_allocation_qualification(self) -> None:
+        evidence = self._evidence()
+        cell = evidence["cells"][0]
+        cell["diagnostics"]["linear_route"] = "lsmr"
+        result = PERF.evaluate_evidence(
+            self.manifest, evidence, manifest_sha256=self.manifest_sha256
+        )
+        self.assertIn(
+            "dev_n100k_no_fe_k0_t1:whole_iteration_allocation_claim_unqualified_route:lsmr",
+            result["reasons"],
+        )
+
+        cell["diagnostics"]["whole_iteration_allocation_free"] = False
+        cell["diagnostics"]["workspace_allocation_free"] = False
+        cell["memory"]["linear_session_allocation_free"] = False
+        cell["memory"]["measured_steady_state_iterations"] = 1
+        cell["memory"]["allocator_event_count_end"] += 4
+        cell["memory"]["allocator_peak_bytes_end"] += 4096
+        result = PERF.evaluate_evidence(
+            self.manifest, evidence, manifest_sha256=self.manifest_sha256
+        )
+        self.assertEqual(
+            result["reasons"], ["development_manifest_not_qualification_eligible"]
+        )
+
+    def test_phase_peak_maps_are_closed_and_enforce_twenty_five_percent(self) -> None:
+        evidence = self._evidence()
+        memory = evidence["cells"][0]["memory"]
+        memory["phase_observed_peak_bytes"]["finite_solve"] = 13_000_001
+        result = PERF.evaluate_evidence(
+            self.manifest, evidence, manifest_sha256=self.manifest_sha256
+        )
+        self.assertIn(
+            "dev_n100k_no_fe_k0_t1:phase_allocation_model_error:finite_solve",
+            result["reasons"],
+        )
+        evidence = self._evidence()
+        del evidence["cells"][0]["memory"]["phase_modeled_peak_bytes"]["separation_mu"]
+        with self.assertRaisesRegex(PERF.ContractError, "phase_modeled_peak_bytes fields are not closed"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
+
     def test_constrained_memory_fixtures_fail_before_large_allocation(self) -> None:
         evidence = self._evidence()
-        evidence["constrained_memory"][0]["attempts"][1]["large_allocation_started"] = True
+        fast = evidence["constrained_memory"][0]["attempts"][1]
+        fast["preflight"]["allocation_bytes"] = 1_048_577
+        fast["preflight"]["planner_allocator_peak_growth_bytes"] = 1_048_577
+        fast["preflight_payload_sha256"] = hashlib.sha256(
+            PERF.canonical_json_bytes(fast["preflight"])
+        ).hexdigest()
         result = PERF.evaluate_evidence(
             self.manifest, evidence, manifest_sha256=self.manifest_sha256
         )
@@ -408,7 +683,9 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
             result["reasons"],
         )
         evidence = self._evidence()
-        evidence["constrained_memory"][1]["attempts"][0]["rc"] = 0
+        auto = evidence["constrained_memory"][1]["attempts"][0]
+        auto["status"] = "success"
+        auto["rc"] = 0
         result = PERF.evaluate_evidence(
             self.manifest, evidence, manifest_sha256=self.manifest_sha256
         )
@@ -416,6 +693,36 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
             "constrained_memory:no_route_did_not_fail_before_large_allocation",
             result["reasons"],
         )
+
+    def test_constrained_nonzero_rc_cannot_mint_preflight_evidence(self) -> None:
+        evidence = self._evidence()
+        fast = evidence["constrained_memory"][0]["attempts"][1]
+        fast["preflight"]["workspace_allocation_started"] = True
+        fast["preflight_payload_sha256"] = hashlib.sha256(
+            PERF.canonical_json_bytes(fast["preflight"])
+        ).hexdigest()
+        with self.assertRaisesRegex(PERF.ContractError, "preflight identity"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
+
+        evidence = self._evidence()
+        del evidence["constrained_memory"][0]["attempts"][1]["preflight"]
+        with self.assertRaisesRegex(PERF.ContractError, "fields are not closed"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
+
+        evidence = self._evidence()
+        fast = evidence["constrained_memory"][0]["attempts"][1]
+        fast["preflight"]["embedded_git_commit"] = "f" * 12
+        fast["preflight_payload_sha256"] = hashlib.sha256(
+            PERF.canonical_json_bytes(fast["preflight"])
+        ).hexdigest()
+        with self.assertRaisesRegex(PERF.ContractError, "preflight identity"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
 
     def test_saved_output_and_scaling_gates(self) -> None:
         evidence = self._evidence()
@@ -457,6 +764,58 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
         execution = evidence["cells"][0]["execution"]
         execution["candidate_process_ids"][1] = execution["candidate_process_ids"][0]
         with self.assertRaisesRegex(PERF.ContractError, "fresh isolated processes"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
+        evidence = self._evidence()
+        evidence["cells"][0]["execution"]["arm_order"][1] = [
+            "comparator",
+            "candidate",
+        ]
+        with self.assertRaisesRegex(PERF.ContractError, "ordered warm AB/BA pairs"):
+            PERF.evaluate_evidence(
+                self.manifest, evidence, manifest_sha256=self.manifest_sha256
+            )
+
+    def test_each_cell_captures_its_actual_job_node_and_platform(self) -> None:
+        manifest = self._qualification_manifest()
+        evidence = self._evidence(manifest)
+        local = evidence["cells"][0]["execution"]
+        local.update(
+            {
+                "scheduler_job_id": "local-run-1",
+                "node_id": "mac-node",
+                "plugin_sha256": "a" * 64,
+                "comparator_bundle_sha256": "b" * 64,
+                "os": "macOS 15",
+                "cpu": "Apple M4",
+                "stata_version": "19.0",
+                "stata_flavor": "MP",
+                "rustc_version": "rustc 1.85.1",
+            }
+        )
+        scc = evidence["cells"][1]["execution"]
+        scc.update(
+            {
+                "scheduler_job_id": "sge-7337350",
+                "node_id": "scc-node-42",
+                "plugin_sha256": "c" * 64,
+                "comparator_bundle_sha256": "d" * 64,
+                "os": "Rocky Linux 9",
+                "cpu": "AMD EPYC",
+                "stata_version": "18.0",
+                "stata_flavor": "SE",
+                "rustc_version": "rustc 1.85.1",
+            }
+        )
+        self.assertEqual(PERF.evaluate_evidence(manifest, evidence)["status"], "pass")
+
+    def test_missing_per_cell_execution_identity_fails_closed(self) -> None:
+        evidence = self._evidence()
+        del evidence["cells"][0]["execution"]["plugin_sha256"]
+        with self.assertRaisesRegex(
+            PERF.ContractError, "execution fields are not closed"
+        ):
             PERF.evaluate_evidence(
                 self.manifest, evidence, manifest_sha256=self.manifest_sha256
             )

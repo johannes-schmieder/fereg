@@ -30,6 +30,7 @@ class FixtureResult:
     error: str | None
     failure_kind: str | None
     metadata: dict[str, str]
+    process_output: str
 
 
 def fixture_name(path: Path) -> str:
@@ -134,6 +135,73 @@ def write_json_atomic(path: Path, payload: dict[str, object]) -> None:
     temporary.replace(path)
 
 
+def render_fixture_wrapper(
+    *, path: Path, root: Path, run_dir: Path,
+    bound_plugin: Path | None, bound_ado_root: Path | None,
+) -> bytes:
+    status_path = run_dir / "fixture.status"
+    lines = ["version 18.0", "clear all", "set more off"]
+    if bound_plugin is not None:
+        isolated = run_dir / "sysdirs"
+        for name in ("PERSONAL", "PLUS", "OLDPLACE", "SITE"):
+            lines.append(f"sysdir set {name} {stata_string(isolated / name.lower())}")
+        lines.extend(
+            [
+                f"adopath ++ {stata_string(bound_ado_root or root / 'stata')}",
+                f"adopath ++ {stata_string(path.parent)}",
+                *([] if bound_ado_root is not None else [f"adopath ++ {stata_string(bound_plugin.parent)}"]),
+                "capture program __fereg_runner_provenance, plugin "
+                f"using({stata_string(bound_plugin)})",
+                "local provenance_load_rc = _rc",
+                "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 exit `provenance_load_rc'",
+                "plugin call __fereg_runner_provenance, version",
+            ]
+        )
+        if bound_ado_root is not None:
+            lines.extend(
+                [
+                    "global FEREG_STAGED_PACKAGE_ROOT " f"{stata_string(bound_ado_root)}",
+                    "global FEREG_STAGED_PLUGIN_NAME " f'"{bound_plugin.name}"',
+                ]
+            )
+    else:
+        lines.extend(
+            [
+                f"adopath ++ {stata_string(root / 'stata')}",
+                f"adopath ++ {stata_string(path.parent)}",
+                f"adopath ++ {stata_string(root / 'dist')}",
+            ]
+        )
+    lines.extend(
+        [
+            f"capture noisily do {stata_string(path)}",
+            "local fixture_rc = _rc",
+            "local fixture_stata_version = c(stata_version)",
+            "local fixture_stata_edition `\"`c(edition_real)'\"'",
+            "local fixture_stata_os `\"`c(os)'\"'",
+            "local fixture_stata_machine_type `\"`c(machine_type)'\"'",
+            "local fixture_stata_processors = c(processors)",
+            "tempname fixture_status_handle",
+            f"capture file open `fixture_status_handle' using {stata_string(status_path)}, write text replace",
+            "local fixture_status_open_rc = _rc",
+            "if `fixture_status_open_rc' == 0 {",
+            "    file write `fixture_status_handle' \"schema_version=1\" _n",
+            "    file write `fixture_status_handle' \"completed=1\" _n",
+            "    file write `fixture_status_handle' \"stata_rc=`fixture_rc'\" _n",
+            "    file write `fixture_status_handle' \"stata_version=`fixture_stata_version'\" _n",
+            "    file write `fixture_status_handle' \"stata_edition=`fixture_stata_edition'\" _n",
+            "    file write `fixture_status_handle' \"stata_os=`fixture_stata_os'\" _n",
+            "    file write `fixture_status_handle' \"stata_machine_type=`fixture_stata_machine_type'\" _n",
+            "    file write `fixture_status_handle' \"stata_processors=`fixture_stata_processors'\" _n",
+            "    file close `fixture_status_handle'",
+            "}",
+            "exit `fixture_rc'",
+            "",
+        ]
+    )
+    return "\n".join(lines).encode("utf-8")
+
+
 def run_fixture(
     stata: str,
     path: Path,
@@ -144,6 +212,8 @@ def run_fixture(
     plugin_sha256: str | None = None,
     log_dir: Path | None = None,
     require_status: bool = False,
+    ado_root: Path | None = None,
+    environment: dict[str, str] | None = None,
 ) -> FixtureResult:
     path = path.resolve()
     bound_plugin = None
@@ -151,78 +221,48 @@ def run_fixture(
         if plugin is None or plugin_sha256 is None:
             raise ValueError("candidate plugin path and SHA-256 must be supplied together")
         bound_plugin = validate_candidate_plugin(plugin, plugin_sha256)
+    bound_ado_root = None
+    if ado_root is not None:
+        bound_ado_root = ado_root.resolve()
+        if not bound_ado_root.is_dir():
+            raise ValueError("staged package ado root is not a directory")
+        for required in ("fereg.pkg", "stata.toc"):
+            if not (bound_ado_root / required).is_file():
+                raise ValueError(f"staged package ado root omits {required}")
+        if bound_plugin is None:
+            raise ValueError("staged package execution requires an exact plugin binding")
+        if bound_plugin.parent != bound_ado_root:
+            raise ValueError("staged package plugin is outside the extracted ado root")
     with tempfile.TemporaryDirectory(prefix="fereg-stata-") as temp_name:
-        run_dir = Path(temp_name)
+        # Freeze the lexical path used in wrapper bytes, argv, cwd, and retained
+        # invocation.  On macOS /var is a symlink to /private/var; mixing the
+        # unresolved cwd with Path.resolve() inside the renderer is not portable.
+        run_dir = Path(temp_name).resolve()
         wrapper = run_dir / "run.do"
         status_path = run_dir / "fixture.status"
-        lines = ["version 18.0", "clear all", "set more off"]
         if bound_plugin is not None:
             isolated = run_dir / "sysdirs"
             for name in ("PERSONAL", "PLUS", "OLDPLACE", "SITE"):
                 target = isolated / name.lower()
                 target.mkdir(parents=True)
-                lines.append(f"sysdir set {name} {stata_string(target)}")
-            lines.extend(
-                [
-                    f"adopath ++ {stata_string(root / 'stata')}",
-                    f"adopath ++ {stata_string(bound_plugin.parent)}",
-                    "capture program __fereg_runner_provenance, plugin "
-                    f"using({stata_string(bound_plugin)})",
-                    "local provenance_load_rc = _rc",
-                    "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
-                    "exit `provenance_load_rc'",
-                    "plugin call __fereg_runner_provenance, version",
-                ]
-            )
-        else:
-            lines.extend(
-                [
-                    f"adopath ++ {stata_string(root / 'stata')}",
-                    f"adopath ++ {stata_string(root / 'dist')}",
-                ]
-            )
-        lines.extend(
-            [
-                f"capture noisily do {stata_string(path)}",
-                "local fixture_rc = _rc",
-                "local fixture_stata_version = c(stata_version)",
-                "local fixture_stata_edition `\"`c(edition_real)'\"'",
-                "local fixture_stata_os `\"`c(os)'\"'",
-                "local fixture_stata_machine_type `\"`c(machine_type)'\"'",
-                "local fixture_stata_processors = c(processors)",
-                "tempname fixture_status_handle",
-                f"capture file open `fixture_status_handle' using {stata_string(status_path)}, write text replace",
-                "local fixture_status_open_rc = _rc",
-                "if `fixture_status_open_rc' == 0 {",
-                "    file write `fixture_status_handle' \"schema_version=1\" _n",
-                "    file write `fixture_status_handle' \"completed=1\" _n",
-                "    file write `fixture_status_handle' \"stata_rc=`fixture_rc'\" _n",
-                "    file write `fixture_status_handle' \"stata_version=`fixture_stata_version'\" _n",
-                "    file write `fixture_status_handle' \"stata_edition=`fixture_stata_edition'\" _n",
-                "    file write `fixture_status_handle' \"stata_os=`fixture_stata_os'\" _n",
-                "    file write `fixture_status_handle' \"stata_machine_type=`fixture_stata_machine_type'\" _n",
-                "    file write `fixture_status_handle' \"stata_processors=`fixture_stata_processors'\" _n",
-                "    file close `fixture_status_handle'",
-                "}",
-                "exit `fixture_rc'",
-                "",
-            ]
-        )
-        wrapper.write_text(
-            "\n".join(lines),
-            encoding="utf-8",
-        )
+        wrapper.write_bytes(render_fixture_wrapper(
+            path=path, root=root, run_dir=run_dir,
+            bound_plugin=bound_plugin, bound_ado_root=bound_ado_root,
+        ))
         launch_error = None
+        process_output = ""
         try:
             completed = runner(
                 [stata, "-q", "-b", "do", str(wrapper)],
                 cwd=run_dir,
+                env=(dict(environment) if environment is not None else None),
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
             )
             process_returncode = completed.returncode
+            process_output = completed.stdout
         except OSError as exc:
             launch_error = f"{type(exc).__name__}: {exc}"
             process_returncode = None
@@ -268,6 +308,24 @@ def run_fixture(
             log_dir.mkdir(parents=True, exist_ok=True)
             stable_name = path.relative_to(root).as_posix().replace("/", "__")
             (log_dir / f"{stable_name}.log").write_text(log_text, encoding="utf-8")
+            shutil.copy2(wrapper, log_dir / f"{stable_name}.wrapper.do")
+            (log_dir / f"{stable_name}.invocation.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "argv": [stata, "-q", "-b", "do", str(wrapper)],
+                        "cwd": str(run_dir),
+                        "environment": (
+                            dict(sorted(environment.items()))
+                            if environment is not None else None
+                        ),
+                        "stdout_stderr": "merged",
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ) + "\n",
+                encoding="ascii",
+            )
             if status_path.is_file():
                 shutil.copy2(status_path, log_dir / f"{stable_name}.status")
         return FixtureResult(
@@ -278,6 +336,7 @@ def run_fixture(
             error=error,
             failure_kind=failure_kind,
             metadata=metadata,
+            process_output=process_output,
         )
 
 

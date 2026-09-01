@@ -30,6 +30,37 @@ impl Default for LsmrConfig {
     }
 }
 
+fn reserved_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(elements)
+        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
+    Ok(output)
+}
+
+fn build_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
+    let mut effects = reserved_empty(
+        design.effects().len(),
+        "unable to reserve LSMR fixed-effect views",
+    )?;
+    for effect in design.effects() {
+        effects.push(
+            Effect::new(
+                effect.codes(),
+                effect.has_intercept(),
+                effect.slopes().iter().map(Vec::as_slice),
+            )
+            .map_err(|error| {
+                FeregError::new(
+                    ErrorCode::InvalidData,
+                    format!("unable to construct LSMR fixed-effect term: {error}"),
+                )
+            })?,
+        );
+    }
+    Ok(effects)
+}
+
 /// Residualize one or more right-hand sides with the pinned `within` modified-LSMR core.
 ///
 /// All input materialization and all output writes occur on the caller thread.
@@ -85,28 +116,18 @@ pub fn absorb_lsmr(
         });
     }
 
-    let effects = design
-        .effects()
-        .iter()
-        .map(|effect| {
-            Effect::new(
-                effect.codes(),
-                effect.has_intercept(),
-                effect.slopes().iter().map(Vec::as_slice),
-            )
-            .map_err(|error| {
-                FeregError::new(
-                    ErrorCode::InvalidData,
-                    format!("unable to construct LSMR fixed-effect term: {error}"),
-                )
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    let rhs = (0..values.ncols())
-        .map(|column| values.column(column))
-        .collect::<Result<Vec<_>>>()?;
-    let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
+    let effects = build_effects(design)?;
+    let mut rhs = reserved_empty(values.ncols(), "unable to reserve LSMR right-hand sides")?;
+    for column in 0..values.ncols() {
+        rhs.push(values.column(column)?);
+    }
+    let mut rhs_views = reserved_empty(
+        rhs.len(),
+        "unable to reserve borrowed LSMR right-hand-side views",
+    )?;
+    for column in &rhs {
+        rhs_views.push(column.as_slice());
+    }
     let options = LsmrOptions {
         tol: config.tolerance,
         maxiter: config.max_iterations,
@@ -115,7 +136,7 @@ pub fn absorb_lsmr(
     let resolved_preconditioner = resolve_preconditioner_kind(design, config.preconditioner);
     let preconditioner = within_preconditioner(resolved_preconditioner);
     let initial = within::solve_batch(
-        effects.clone(),
+        effects,
         &rhs_views,
         Some(weights),
         Some(&options),
@@ -128,7 +149,7 @@ pub fn absorb_lsmr(
                 && is_preconditioner_positivity_breakdown(&error) =>
         {
             let solved = within::solve_batch(
-                effects,
+                build_effects(design)?,
                 &rhs_views,
                 Some(weights),
                 Some(&options),
@@ -173,11 +194,20 @@ pub fn absorb_lsmr(
     } else {
         SolveStopReason::MaximumIterations
     };
-    let mut warnings = solved
+    let warning_capacity = solved
         .warnings
-        .iter()
-        .map(|warning| format!("within preconditioner: {warning:?}"))
-        .collect::<Vec<_>>();
+        .len()
+        .checked_add(usize::from(preconditioner_fallback))
+        .and_then(|count| {
+            count.checked_add(usize::from(recurrence_converged && !certificate.passed))
+        })
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "LSMR warning count overflows usize")
+        })?;
+    let mut warnings = reserved_empty(warning_capacity, "unable to reserve LSMR warnings")?;
+    for warning in &solved.warnings {
+        warnings.push(format!("within preconditioner: {warning:?}"));
+    }
     if preconditioner_fallback {
         warnings.insert(
             0,
@@ -274,6 +304,14 @@ fn validate_config(config: LsmrConfig) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn lsmr_setup_capacity_overflow_is_an_allocation_error() {
+        let error = reserved_empty::<u8>(usize::MAX, "injected LSMR allocation")
+            .expect_err("capacity overflow");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert_eq!(error.return_code(), 909);
+    }
 
     #[test]
     fn lsmr_matches_two_way_additive_projection() {

@@ -50,6 +50,7 @@
         "tests/stata/parser/string_sources.do",
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
+        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
         "tests/stata/installation/estimate_ols_categorical_interaction.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
@@ -158,19 +159,7 @@
         "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
-    "benchmark-small": {
-      "driver": "fereg-fixtures",
-      "build_plugin": true,
-      "fixtures": [
-        "ci/stata_benchmark_small.do"
-      ],
-      "timeout_seconds": 3600,
-      "required_outputs": [
-        "plugin-evidence/{platform_plugin}",
-        "plugin-evidence/{platform_plugin}.sha256"
-      ]
-    },
-    "full": {
+    "fereg-regression": {
       "driver": "fereg-fixtures",
       "build_plugin": true,
       "fixtures": [
@@ -210,6 +199,109 @@
         "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do"
       ],
       "run_break_fixture": true,
+      "timeout_seconds": 13800,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
+    "ppml-fail-closed": {
+      "driver": "fereg-fixtures",
+      "build_plugin": false,
+      "fixtures": [
+        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do"
+      ],
+      "timeout_seconds": 900,
+      "required_outputs": []
+    },
+    "ppml-hidden": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_allocation.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_runtime_validator.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_scientific_contract.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_weights_inference.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_time_series.do",
+        "tests/stata/documentation/estimate_ppml_hidden_help_examples.do"
+      ],
+      "run_ppml_break_fixture": true,
+      "timeout_seconds": 5400,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
+    "benchmark-small": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/stata_benchmark_small.do"
+      ],
+      "timeout_seconds": 3600,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
+    "full": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/fereg_smoke.do",
+        "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "tests/stata/installation/installation_smoke.do",
+        "tests/stata/documentation/help_examples.do",
+        "tests/stata/installation/prepare_ols_boundary.do",
+        "tests/stata/installation/reload_loop.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do",
+        "tests/stata/postestimation/fail_closed.do",
+        "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_allocation.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_runtime_validator.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_scientific_contract.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_weights_inference.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_time_series.do",
+        "tests/stata/documentation/estimate_ppml_hidden_help_examples.do",
+        "tests/stata/parity_reghdfe/estimate_ols_hidden_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do"
+      ],
+      "run_break_fixture": true,
+      "run_ppml_break_fixture": true,
       "timeout_seconds": 13800,
       "required_outputs": [
         "plugin-evidence/{platform_plugin}",

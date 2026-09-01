@@ -71,6 +71,14 @@ impl DenseMatrix {
         &mut self.data
     }
 
+    pub(crate) fn storage_capacity(&self) -> usize {
+        self.data.capacity()
+    }
+
+    pub(crate) fn into_row_major(self) -> Vec<f64> {
+        self.data
+    }
+
     pub fn column(&self, column: usize) -> Result<Vec<f64>> {
         if column >= self.ncols {
             return Err(FeregError::new(
@@ -78,7 +86,17 @@ impl DenseMatrix {
                 "matrix column is out of bounds",
             ));
         }
-        Ok((0..self.nrows).map(|row| self[(row, column)]).collect())
+        let mut values = Vec::new();
+        values.try_reserve_exact(self.nrows).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve dense matrix column",
+            )
+        })?;
+        for row in 0..self.nrows {
+            values.push(self[(row, column)]);
+        }
+        Ok(values)
     }
 }
 

@@ -2,6 +2,7 @@
 
 mod dof;
 mod fit;
+mod linear_session;
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;
@@ -20,6 +21,22 @@ mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
+#[allow(unused_imports)]
+pub(crate) use linear_session::{
+    classify_frozen_linear_fallback, CertifiedFrozenLinearOutput, CertifiedLinearSession,
+    CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, CertifiedLinearWithinDesign,
+    FrozenLinearBasis, FrozenLinearBasisSlot, FrozenLinearFallbackKind,
+    FrozenLinearSolveCertificate, LinearReconstructionCertificate, LinearSessionGenerations,
+    LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
+    LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
+};
+#[cfg(test)]
+pub(crate) use linear_session::{inject_frozen_linear_failure, FrozenLinearFailureInjection};
+#[doc(hidden)]
+pub use linear_session::{
+    LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
+    LinearSessionPhaseAllocatorProbe,
+};
 pub(crate) use prepared::prepare_ols_data_with_cluster_sources;
 pub use prepared::{
     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
@@ -28,6 +45,7 @@ pub use prepared::{
     PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
     PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
 };
+pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
 pub use prepared_categorical_clusters::{
     prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
 };
@@ -55,6 +73,13 @@ pub use prepared_fit::{
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
     PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
+#[allow(unused_imports)]
+pub(crate) use prepared_fit::{
+    fit_prepared_ols_coefficients_view_map_with_frame,
+    fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
+    LinearSolveFrame, PreparedLinearProjectionReconstructionCertificate,
+};
+pub(crate) use prepared_rhs::build_prepared_ols_rhs_with_response;
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub use prepared_robust::{
     fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,

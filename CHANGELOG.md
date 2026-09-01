@@ -93,8 +93,19 @@
 - Identified the beta consistently as 0.5.0 and added deterministic
   source/release staging, checksum, dependency, SBOM/license, and platform-
   caveat requirements.
-- Kept `feppml` as an explicit fail-closed `r(498)` stub. PPML is not part of
-  the 0.5.0 beta acceptance gate.
+- Added a private pre-activation PPML qualification path with independent
+  request/result 1.1 wires, fixed bounded inference/drop/separation evidence,
+  one guarded live-SPI `estimate-ppml` action,
+  prepared separation and changing-weight IRLS, shared certified-linear and
+  sandwich kernels, PPML-specific inference/result validation, fit-lifetime
+  memory planning, and receipt-last rollback-safe publication. Added separate
+  public-stub, hidden-transaction, scientific, oracle, F0 non-regression, and
+  platform/performance qualification inputs. The installed public `feppml`
+  command remains an explicit fail-closed `r(498)` stub until every activation
+  gate passes on one exact source; no qualification result is claimed here.
+  The stale experimental Rust `fit_ppml*` entry points and legacy result
+  wrappers were removed in favor of the prepared internal path; ADR 0015 does
+  not make the common kernel a public Rust stability promise.
 
 No tag or GitHub release is created by this checkpoint. Qualification status
 and exact accepted receipts are recorded in `STATUS.md`.

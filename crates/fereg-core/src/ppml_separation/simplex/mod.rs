@@ -1,63 +1,239 @@
 #![allow(clippy::needless_range_loop)]
 
-use super::{DetectionResult, MethodStatus, SeparationCertificate};
+use super::{
+    DetectionProposal, MethodStatus, SeparationCertificate, SeparationCertificateProof,
+    SeparationMethod,
+};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::FeDesign;
 
 mod nullspace;
 mod tableau;
 
 use nullspace::nullspace_basis;
+#[cfg(test)]
 use tableau::phase_one_cone;
+use tableau::phase_one_cone_interruptible;
 
-pub(crate) fn finite_simplex(
+#[cfg(test)]
+std::thread_local! {
+    static TEST_RESERVATIONS_UNTIL_FAILURE: std::cell::Cell<Option<usize>> =
+        const { std::cell::Cell::new(None) };
+}
+
+fn reserve<T>(target: &mut Vec<T>, additional: usize, label: &'static str) -> Result<()> {
+    #[cfg(test)]
+    if TEST_RESERVATIONS_UNTIL_FAILURE.with(|remaining| match remaining.get() {
+        None => false,
+        Some(0) => {
+            remaining.set(None);
+            true
+        }
+        Some(value) => {
+            remaining.set(Some(value - 1));
+            false
+        }
+    }) {
+        return Err(FeregError::new(
+            ErrorCode::Allocation,
+            "injected model-simplex reservation failure",
+        ));
+    }
+    target
+        .try_reserve_exact(additional)
+        .map_err(|_| FeregError::new(ErrorCode::Allocation, label))
+}
+
+fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    reserve(&mut output, elements, label)?;
+    output.resize(elements, value);
+    Ok(output)
+}
+
+fn fallible_collect<T>(
+    values: impl IntoIterator<Item = T>,
+    capacity: usize,
+    label: &'static str,
+) -> Result<Vec<T>> {
+    let mut output = Vec::new();
+    reserve(&mut output, capacity, label)?;
+    output.extend(values);
+    Ok(output)
+}
+
+#[cfg(test)]
+fn inject_reservation_failure(after_successful_reservations: usize) {
+    TEST_RESERVATIONS_UNTIL_FAILURE.with(|remaining| {
+        remaining.set(Some(after_successful_reservations));
+    });
+}
+
+fn workspace_overflow() -> FeregError {
+    FeregError::new(
+        ErrorCode::Allocation,
+        "model-simplex workspace dimensions overflowed",
+    )
+}
+
+fn checked_cells_add(left: usize, right: usize) -> Result<usize> {
+    left.checked_add(right).ok_or_else(workspace_overflow)
+}
+
+fn checked_cells_mul(left: usize, right: usize) -> Result<usize> {
+    left.checked_mul(right).ok_or_else(workspace_overflow)
+}
+
+/// Conservative peak of simultaneously live model-simplex storage in
+/// eight-byte cells. The bound includes the caller-owned dense design, exact
+/// positive/boundary row buffers, `Vec<Vec<f64>>` headers, null-space work,
+/// phase-I work, and certified-result vectors. It uses the worst possible
+/// nullity (`columns`) so it can be checked before the first kernel allocation.
+pub(crate) fn simplex_workspace_peak_cells(
+    rows: usize,
+    positive: usize,
+    boundary: usize,
+    columns: usize,
+) -> Result<usize> {
+    if checked_cells_add(positive, boundary)? > rows {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "model-simplex outcome partition exceeds the observation count",
+        ));
+    }
+    let design = checked_cells_mul(rows, columns)?;
+    let positive_matrix = checked_cells_mul(positive, columns)?;
+    let square_basis = checked_cells_mul(columns, columns)?;
+
+    // Both exact row lists remain live during elimination. At the final basis
+    // direction, the matrix, scales, permutation, completed basis directions,
+    // current permuted/original directions, and three-cell Vec headers overlap.
+    let nullspace = checked_cells_add(positive, boundary)?;
+    let nullspace = checked_cells_add(nullspace, positive_matrix)?;
+    let nullspace = checked_cells_add(nullspace, square_basis)?;
+    let nullspace = checked_cells_add(nullspace, checked_cells_mul(6, columns)?)?;
+
+    // At the feasible phase-I exit, the retained basis and boundary cone
+    // overlap the tableau, basic-index vector, costs, primal solution, and
+    // returned coordinates. A Vec header is three eight-byte cells on every
+    // supported 64-bit target.
+    let tableau_rows = checked_cells_add(boundary, 1)?;
+    let tableau_width = checked_cells_add(
+        checked_cells_add(
+            checked_cells_mul(2, columns)?,
+            checked_cells_mul(2, boundary)?,
+        )?,
+        2,
+    )?;
+    let tableau = checked_cells_mul(tableau_rows, tableau_width)?;
+    let phase_one = checked_cells_add(square_basis, checked_cells_mul(boundary, columns)?)?;
+    let phase_one = checked_cells_add(phase_one, tableau)?;
+    let phase_one = checked_cells_add(phase_one, checked_cells_mul(8, columns)?)?;
+    let phase_one = checked_cells_add(phase_one, checked_cells_mul(7, boundary)?)?;
+    let phase_one = checked_cells_add(phase_one, 2)?;
+
+    // `gamma` overlaps the observation direction during multiplication; after
+    // that, the observation direction overlaps the exact boundary-sized drops.
+    let result = checked_cells_add(rows, columns)?.max(checked_cells_add(rows, boundary)?);
+    checked_cells_add(design, nullspace.max(phase_one).max(result))
+}
+
+#[cfg(test)]
+pub(crate) fn model_simplex(
     outcome: &[f64],
     regressors: &DenseMatrix,
-    fixed_effects: Option<&FeDesign>,
     tolerance: f64,
     certificate_tolerance: f64,
     max_iterations: usize,
     max_tableau_cells: usize,
-) -> Result<DetectionResult> {
-    if fixed_effects.is_some_and(|design| !design.effects().is_empty()) {
-        return Ok(DetectionResult::empty(
-            MethodStatus::SkippedUnsupported,
-            "finite simplex is skipped with absorbed effects; iterated rectifier handles the full design",
-        ));
-    }
-    if regressors.ncols() == 0 {
-        return Ok(DetectionResult::empty(
-            MethodStatus::NoCandidates,
-            "finite simplex requires at least one finite regressor",
-        ));
-    }
-    let positive = outcome
-        .iter()
-        .enumerate()
-        .filter_map(|(row, value)| (*value > 0.0).then_some(row))
-        .collect::<Vec<_>>();
-    let boundary = outcome
-        .iter()
-        .enumerate()
-        .filter_map(|(row, value)| (*value == 0.0).then_some(row))
-        .collect::<Vec<_>>();
-    if boundary.is_empty() {
-        return Ok(DetectionResult::empty(
-            MethodStatus::NoCandidates,
-            "finite simplex found no zero-outcome observations",
-        ));
-    }
+) -> Result<DetectionProposal> {
+    model_simplex_interruptible(
+        outcome,
+        regressors,
+        tolerance,
+        certificate_tolerance,
+        max_iterations,
+        max_tableau_cells,
+        &mut || Ok(()),
+    )
+}
 
-    let basis = nullspace_basis(regressors, &positive, tolerance)?;
-    if basis.is_empty() {
-        return Ok(DetectionResult::empty(
-            MethodStatus::NoSeparation,
-            "finite regressors have full column rank on the positive-outcome sample",
+pub(crate) fn model_simplex_interruptible(
+    outcome: &[f64],
+    regressors: &DenseMatrix,
+    tolerance: f64,
+    certificate_tolerance: f64,
+    max_iterations: usize,
+    max_tableau_cells: usize,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<DetectionProposal> {
+    if regressors.ncols() == 0 {
+        return Ok(DetectionProposal::empty(
+            SeparationMethod::Simplex,
+            MethodStatus::NoCandidates,
+            "model simplex requires at least one explicit model column",
         ));
     }
-    let cone = boundary_cone(regressors, &boundary, &basis);
-    if let Some(gamma) = signed_basis_certificate(&basis, &cone, tolerance) {
+    let positive_count = outcome.iter().filter(|value| **value > 0.0).count();
+    let boundary_count = outcome.iter().filter(|value| **value == 0.0).count();
+    if boundary_count == 0 {
+        return Ok(DetectionProposal::empty(
+            SeparationMethod::Simplex,
+            MethodStatus::NoCandidates,
+            "model simplex found no zero-outcome observations",
+        ));
+    }
+    let peak_cells = simplex_workspace_peak_cells(
+        outcome.len(),
+        positive_count,
+        boundary_count,
+        regressors.ncols(),
+    )?;
+    if peak_cells > max_tableau_cells {
+        return Ok(DetectionProposal::empty(
+            SeparationMethod::Simplex,
+            MethodStatus::SkippedMemory,
+            format!(
+                "model simplex requires at most {peak_cells} simultaneous design-plus-kernel cells, above the configured {max_tableau_cells} limit"
+            ),
+        ));
+    }
+    let positive = fallible_collect(
+        outcome
+            .iter()
+            .enumerate()
+            .filter_map(|(row, value)| (*value > 0.0).then_some(row)),
+        positive_count,
+        "unable to reserve model-simplex positive rows",
+    )?;
+    let boundary = fallible_collect(
+        outcome
+            .iter()
+            .enumerate()
+            .filter_map(|(row, value)| (*value == 0.0).then_some(row)),
+        boundary_count,
+        "unable to reserve model-simplex boundary rows",
+    )?;
+    let basis = nullspace_basis(regressors, &positive, tolerance)?;
+    drop(positive);
+    if basis.is_empty() {
+        return Ok(DetectionProposal {
+            method: SeparationMethod::Simplex,
+            dropped: Vec::new(),
+            iterations: 0,
+            status: MethodStatus::NoSeparation,
+            certificate: Some(no_separation_certificate(regressors.ncols())),
+            exact_fe_certificate: None,
+            direction: None,
+            note: "finite regressors have full column rank on the positive-outcome sample"
+                .to_owned(),
+        });
+    }
+    let cone = boundary_cone(regressors, &boundary, &basis)?;
+    drop(boundary);
+    if let Some(gamma) = signed_basis_certificate(&basis, &cone, tolerance)? {
+        drop(cone);
+        drop(basis);
         return certified_result(
             outcome,
             regressors,
@@ -68,45 +244,73 @@ pub(crate) fn finite_simplex(
         );
     }
 
-    let rows = boundary.len() + 1;
-    let original_variables = 2 * basis.len() + boundary.len();
-    let total_variables = original_variables + rows;
+    let rows = boundary_count
+        .checked_add(1)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "simplex row count overflowed"))?;
+    let original_variables = basis
+        .len()
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(boundary_count))
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "simplex variable count overflowed")
+        })?;
+    let total_variables = original_variables.checked_add(rows).ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Allocation,
+            "simplex total variable count overflowed",
+        )
+    })?;
     let cells = rows
-        .checked_mul(total_variables.saturating_add(1))
+        .checked_mul(total_variables.checked_add(1).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "simplex tableau width overflowed")
+        })?)
         .ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Allocation,
                 "simplex tableau dimensions overflowed",
             )
         })?;
-    if cells > max_tableau_cells {
-        return Ok(DetectionResult::empty(
-            MethodStatus::SkippedUnsupported,
-            format!(
-                "finite simplex tableau requires {cells} cells, above the configured {max_tableau_cells} limit"
-            ),
-        ));
-    }
+    debug_assert!(cells <= peak_cells);
 
-    let feasible = phase_one_cone(&cone, max_iterations, tolerance)?;
+    let feasible = phase_one_cone_interruptible(&cone, max_iterations, tolerance, interrupt)?;
     let Some((coordinates, iterations)) = feasible else {
-        return Ok(DetectionResult {
+        return Ok(DetectionProposal {
+            method: SeparationMethod::Simplex,
             dropped: Vec::new(),
             iterations: max_iterations,
-            status: MethodStatus::NoSeparation,
+            status: MethodStatus::Uncertified,
             certificate: None,
-            note: "finite simplex phase-I problem is infeasible".to_owned(),
+            exact_fe_certificate: None,
+            direction: None,
+            note: "model simplex phase-I infeasibility lacks an independently checked dual certificate"
+                .to_owned(),
         });
     };
-    let gamma = combine_basis(&basis, &coordinates);
+    let gamma = combine_basis(&basis, &coordinates)?;
+    drop(coordinates);
+    drop(cone);
+    drop(basis);
     certified_result(
         outcome,
         regressors,
         gamma,
         iterations,
         certificate_tolerance,
-        "finite simplex phase-I certificate passed",
+        "model simplex phase-I certificate passed",
     )
+}
+
+fn no_separation_certificate(columns: usize) -> SeparationCertificate {
+    SeparationCertificate {
+        proof: SeparationCertificateProof::SimplexFullPositiveRank { columns },
+        interior_zero_relative: 0.0,
+        boundary_violation_relative: 0.0,
+        span_residual_relative: 0.0,
+        negative_margin_relative: 0.0,
+        direction_scale: 0.0,
+        positive_maximum: 0.0,
+        passed: true,
+    }
 }
 
 fn certified_result(
@@ -116,73 +320,104 @@ fn certified_result(
     iterations: usize,
     tolerance: f64,
     note: &str,
-) -> Result<DetectionResult> {
+) -> Result<DetectionProposal> {
     if gamma.iter().any(|value| !value.is_finite()) {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "finite simplex coefficient direction became nonfinite",
+            ErrorCode::NonConvergence,
+            "model simplex coefficient direction became nonfinite",
         ));
     }
-    let z = multiply(regressors, &gamma);
+    // The simplex construction uses the comparator's nonnegative cone.  Flip
+    // it once at the detector boundary to the package-wide nonpositive sign.
+    let mut z = multiply(regressors, &gamma)?;
+    drop(gamma);
+    for value in &mut z {
+        *value = -*value;
+    }
     if z.iter().any(|value| !value.is_finite()) {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "finite simplex certificate became nonfinite",
+            ErrorCode::NonConvergence,
+            "model simplex certificate became nonfinite",
         ));
     }
     let scale = z
         .iter()
-        .fold(1.0_f64, |maximum, value| maximum.max(value.abs()));
+        .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+    if !scale.is_finite() || scale <= f64::MIN_POSITIVE {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "model simplex returned a zero recession direction",
+        ));
+    }
     let threshold = tolerance * scale;
     let interior_zero = outcome
         .iter()
         .zip(&z)
         .filter(|(outcome, _)| **outcome > 0.0)
         .fold(0.0_f64, |maximum, (_, value)| maximum.max(value.abs()));
-    let minimum_boundary = outcome
-        .iter()
-        .zip(&z)
-        .filter(|(outcome, _)| **outcome == 0.0)
-        .map(|(_, value)| *value)
-        .fold(f64::INFINITY, f64::min);
     let positive_maximum = outcome
         .iter()
         .zip(&z)
         .filter(|(outcome, _)| **outcome == 0.0)
         .map(|(_, value)| *value)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let dropped = fallible_collect(
+        outcome
+            .iter()
+            .zip(&z)
+            .enumerate()
+            .filter_map(|(row, (outcome, value))| {
+                (*outcome == 0.0 && *value < -threshold).then_some(row)
+            }),
+        outcome.iter().filter(|value| **value == 0.0).count(),
+        "unable to reserve model-simplex certified drops",
+    )?;
+    let negative_margin = dropped
+        .iter()
+        .map(|row| -z[*row])
+        .fold(f64::INFINITY, f64::min);
+    if dropped.is_empty() {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "model simplex feasible direction has no strict-negative boundary row",
+        ));
+    }
+    let most_negative = outcome
+        .iter()
+        .zip(&z)
+        .filter(|(outcome, _)| **outcome == 0.0)
+        .map(|(_, value)| -*value)
         .fold(0.0_f64, f64::max);
     let certificate = SeparationCertificate {
+        proof: SeparationCertificateProof::RecessionDirection,
         interior_zero_relative: interior_zero / scale,
-        boundary_violation_relative: (-minimum_boundary).max(0.0) / scale,
+        boundary_violation_relative: positive_maximum.max(0.0) / scale,
         span_residual_relative: 0.0,
+        negative_margin_relative: negative_margin / scale,
+        direction_scale: scale,
         positive_maximum,
         passed: interior_zero <= threshold
-            && minimum_boundary >= -threshold
-            && positive_maximum > threshold,
+            && positive_maximum <= threshold
+            && most_negative > threshold
+            && negative_margin > threshold,
     };
     if !certificate.passed {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             format!(
-                "finite simplex returned an uncertified direction: interior={:.3e}, boundary={:.3e}",
-                certificate.interior_zero_relative,
-                certificate.boundary_violation_relative
+                "model simplex returned an uncertified direction: interior={:.3e}, boundary={:.3e}",
+                certificate.interior_zero_relative, certificate.boundary_violation_relative
             ),
         ));
     }
-    let dropped = outcome
-        .iter()
-        .zip(&z)
-        .enumerate()
-        .filter_map(|(row, (outcome, value))| {
-            (*outcome == 0.0 && *value > threshold).then_some(row)
-        })
-        .collect();
-    Ok(DetectionResult {
+    Ok(DetectionProposal {
+        method: SeparationMethod::Simplex,
         dropped,
         iterations,
         status: MethodStatus::Certified,
         certificate: Some(certificate),
+        exact_fe_certificate: None,
+        direction: Some(z),
         note: note.to_owned(),
     })
 }
@@ -191,62 +426,104 @@ fn boundary_cone(
     regressors: &DenseMatrix,
     boundary: &[usize],
     basis: &[Vec<f64>],
-) -> Vec<Vec<f64>> {
-    boundary
-        .iter()
-        .map(|row| {
-            basis
-                .iter()
-                .map(|direction| {
-                    (0..regressors.ncols()).fold(0.0_f64, |sum, column| {
-                        regressors[(*row, column)].mul_add(direction[column], sum)
-                    })
-                })
-                .collect()
-        })
-        .collect()
+) -> Result<Vec<Vec<f64>>> {
+    let mut cone = Vec::new();
+    reserve(
+        &mut cone,
+        boundary.len(),
+        "unable to reserve model-simplex boundary cone rows",
+    )?;
+    for &row in boundary {
+        let mut values = fallible_filled(
+            basis.len(),
+            0.0_f64,
+            "unable to reserve model-simplex boundary cone row",
+        )?;
+        for (column, direction) in basis.iter().enumerate() {
+            values[column] = (0..regressors.ncols()).fold(0.0_f64, |sum, regressor| {
+                regressors[(row, regressor)].mul_add(direction[regressor], sum)
+            });
+        }
+        cone.push(values);
+    }
+    Ok(cone)
 }
 
 fn signed_basis_certificate(
     basis: &[Vec<f64>],
     cone: &[Vec<f64>],
     tolerance: f64,
-) -> Option<Vec<f64>> {
+) -> Result<Option<Vec<f64>>> {
     for column in 0..basis.len() {
         for sign in [1.0_f64, -1.0_f64] {
-            let values = cone
-                .iter()
-                .map(|row| sign * row[column])
-                .collect::<Vec<_>>();
-            let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
-            let maximum = values.iter().copied().fold(0.0_f64, f64::max);
+            let mut minimum = f64::INFINITY;
+            let mut maximum = 0.0_f64;
+            for row in cone {
+                let value = sign * row[column];
+                minimum = minimum.min(value);
+                maximum = maximum.max(value);
+            }
             let scale = maximum.abs().max(minimum.abs()).max(1.0);
             if minimum >= -tolerance * scale && maximum > tolerance * scale {
-                return Some(basis[column].iter().map(|value| sign * value).collect());
+                let mut direction = fallible_filled(
+                    basis[column].len(),
+                    0.0_f64,
+                    "unable to reserve model-simplex signed basis direction",
+                )?;
+                for (output, value) in direction.iter_mut().zip(&basis[column]) {
+                    *output = sign * *value;
+                }
+                return Ok(Some(direction));
             }
         }
     }
-    None
+    Ok(None)
 }
 
-fn combine_basis(basis: &[Vec<f64>], coordinates: &[f64]) -> Vec<f64> {
-    let mut gamma = vec![0.0_f64; basis[0].len()];
+fn combine_basis(basis: &[Vec<f64>], coordinates: &[f64]) -> Result<Vec<f64>> {
+    if basis.is_empty() || basis.len() != coordinates.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "model-simplex basis and coordinates are misaligned",
+        ));
+    }
+    let mut gamma = fallible_filled(
+        basis[0].len(),
+        0.0_f64,
+        "unable to reserve model-simplex coefficient direction",
+    )?;
     for (direction, coefficient) in basis.iter().zip(coordinates) {
+        if direction.len() != gamma.len() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "model-simplex basis dimensions are inconsistent",
+            ));
+        }
         for column in 0..gamma.len() {
             gamma[column] = coefficient.mul_add(direction[column], gamma[column]);
         }
     }
-    gamma
+    Ok(gamma)
 }
 
-fn multiply(regressors: &DenseMatrix, gamma: &[f64]) -> Vec<f64> {
-    (0..regressors.nrows())
-        .map(|row| {
-            (0..regressors.ncols()).fold(0.0_f64, |sum, column| {
-                regressors[(row, column)].mul_add(gamma[column], sum)
-            })
-        })
-        .collect()
+fn multiply(regressors: &DenseMatrix, gamma: &[f64]) -> Result<Vec<f64>> {
+    if regressors.ncols() != gamma.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "model-simplex direction and design are misaligned",
+        ));
+    }
+    let mut output = fallible_filled(
+        regressors.nrows(),
+        0.0_f64,
+        "unable to reserve model-simplex observation direction",
+    )?;
+    for row in 0..regressors.nrows() {
+        output[row] = (0..regressors.ncols()).fold(0.0_f64, |sum, column| {
+            regressors[(row, column)].mul_add(gamma[column], sum)
+        });
+    }
+    Ok(output)
 }
 
 #[cfg(test)]

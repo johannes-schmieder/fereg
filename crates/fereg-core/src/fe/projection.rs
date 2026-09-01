@@ -27,6 +27,10 @@ impl ProjectionWorkspace {
             right_hand_sides: vec![0.0; rhs_length],
         })
     }
+
+    pub(crate) fn storage_capacities(&self) -> (usize, usize) {
+        (self.gram.capacity(), self.right_hand_sides.capacity())
+    }
 }
 
 /// Subtract the weighted least-squares projection onto one effect term.

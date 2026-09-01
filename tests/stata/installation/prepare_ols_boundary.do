@@ -364,8 +364,5 @@ assert _rc == 459
 capture noisily fereg y x
 assert _rc == 0
 assert `"`e(cmd)'"' == "fereg"
-capture noisily feppml y x
-assert _rc == 498
-
 di as result "prepare_ols_boundary.do: PASS"
 di as result "END_FIXTURE|prepare_ols_boundary|rc=0"

@@ -30,7 +30,8 @@ use crate::options::ThreadConfig;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
 
-use super::{build_prepared_ols_rhs, PreparedOlsData, PreparedOlsModel};
+use super::{PreparedOlsData, PreparedOlsModel};
+use crate::ols::build_prepared_ols_rhs_with_response;
 
 /// Common scientific input boundary for the prepared coefficient engine.
 ///
@@ -80,15 +81,40 @@ pub(crate) trait PreparedOlsFitView: Sync {
             })
     }
 
-    fn fit_build_rhs(&self) -> Result<DenseMatrix>;
+    #[allow(dead_code)]
+    fn fit_build_rhs(&self) -> Result<DenseMatrix> {
+        self.fit_build_rhs_with_response(&self.fit_sample().outcome)
+    }
+
+    /// Build the complete generated design beside a borrowed working
+    /// response. Implementations retain their layout-specific hot path.
+    fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
 
     /// Build a bounded contiguous block of generated columns. The outcome is
     /// included as column zero only when requested.
+    #[allow(dead_code)]
     fn fit_build_rhs_block(
         &self,
         start: usize,
         end: usize,
         include_outcome: bool,
+    ) -> Result<DenseMatrix> {
+        self.fit_build_rhs_block_with_response(
+            start,
+            end,
+            include_outcome,
+            &self.fit_sample().outcome,
+        )
+    }
+
+    /// Build a bounded generated-column block beside a borrowed response.
+    /// The response is read only when `include_response` is true.
+    fn fit_build_rhs_block_with_response(
+        &self,
+        start: usize,
+        end: usize,
+        include_response: bool,
+        response: &[f64],
     ) -> Result<DenseMatrix> {
         let generated = self.fit_model().columns.len();
         if start > end || end > generated {
@@ -99,7 +125,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         }
         let block = end - start;
         let columns = block
-            .checked_add(usize::from(include_outcome))
+            .checked_add(usize::from(include_response))
             .ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Allocation,
@@ -107,6 +133,12 @@ pub(crate) trait PreparedOlsFitView: Sync {
                 )
             })?;
         let rows = self.fit_sample().n_active();
+        if include_response && response.len() != rows {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "prepared OLS response block is not aligned on the active observation axis",
+            ));
+        }
         let elements = rows.checked_mul(columns).ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Allocation,
@@ -129,9 +161,9 @@ pub(crate) trait PreparedOlsFitView: Sync {
         values.resize(elements, 0.0);
         values.par_chunks_mut(columns).enumerate().try_for_each(
             |(row, destination)| -> Result<()> {
-                let offset = usize::from(include_outcome);
-                if include_outcome {
-                    destination[0] = self.fit_sample().outcome[row];
+                let offset = usize::from(include_response);
+                if include_response {
+                    destination[0] = response[row];
                 }
                 for (position, generated_column) in (start..end).enumerate() {
                     destination[offset + position] =
@@ -418,8 +450,8 @@ impl PreparedOlsFitView for PreparedOlsData {
         Ok(())
     }
 
-    fn fit_build_rhs(&self) -> Result<DenseMatrix> {
-        Ok(build_prepared_ols_rhs(self)?.into_values())
+    fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
+        Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values())
     }
 
     fn fit_absorb_map(
@@ -570,8 +602,8 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         self.column_value(column, row)
     }
 
-    fn fit_build_rhs(&self) -> Result<DenseMatrix> {
-        Ok(self.build_rhs()?.into_values())
+    fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
+        Ok(self.build_rhs_with_response(response)?.into_values())
     }
 
     fn fit_absorb_map(

@@ -2,78 +2,17 @@ from __future__ import annotations
 
 import math
 import unittest
-from collections.abc import Hashable, Sequence
 
 from ppml_explicit_dummy_oracle import (
     fit_explicit_ppml,
-    invert,
-    matmul,
-    outer,
+)
+from ppml_multiway_cluster_oracle import (
+    _repair_multiway_psd,
+    explicit_multiway_cluster_covariance,
 )
 
 
 Matrix = list[list[float]]
-
-
-def add_scaled(target: Matrix, source: Matrix, scale: float) -> None:
-    for row, increment in zip(target, source):
-        for column, value in enumerate(increment):
-            row[column] += scale * value
-
-
-def explicit_multiway_cluster_covariance(
-    design: Sequence[Sequence[float]],
-    outcome: Sequence[float],
-    mean: Sequence[float],
-    hessian: Matrix,
-    cluster_dimensions: Sequence[Sequence[Hashable]],
-    *,
-    correction: float = 1.0,
-) -> tuple[Matrix, list[tuple[int, int]]]:
-    """Independent Cameron--Gelbach--Miller inclusion--exclusion oracle.
-
-    This intentionally does not import a production fereg covariance path.
-    The returned diagnostics contain (subset mask, distinct group count) in
-    deterministic mask order, which mirrors the observable contract expected
-    from the Stata subset table.
-    """
-
-    rows = len(design)
-    columns = len(design[0])
-    dimensions = len(cluster_dimensions)
-    if not 1 <= dimensions <= 5:
-        raise ValueError("the PPML contract supports one through five dimensions")
-    if any(len(dimension) != rows for dimension in cluster_dimensions):
-        raise ValueError("cluster dimension and design lengths differ")
-    if not math.isfinite(correction) or correction <= 0.0:
-        raise ValueError("cluster correction must be finite and positive")
-
-    score_rows = [
-        [(y_value - mu_value) * value for value in row]
-        for row, y_value, mu_value in zip(design, outcome, mean)
-    ]
-    meat = [[0.0] * columns for _ in range(columns)]
-    diagnostics: list[tuple[int, int]] = []
-
-    for mask in range(1, 1 << dimensions):
-        selected = [index for index in range(dimensions) if mask & (1 << index)]
-        grouped: dict[tuple[Hashable, ...], list[float]] = {}
-        for row_index, score in enumerate(score_rows):
-            key = tuple(cluster_dimensions[index][row_index] for index in selected)
-            aggregate = grouped.setdefault(key, [0.0] * columns)
-            for column, value in enumerate(score):
-                aggregate[column] += value
-
-        subset_meat = [[0.0] * columns for _ in range(columns)]
-        for aggregate in grouped.values():
-            add_scaled(subset_meat, outer(aggregate, aggregate), 1.0)
-        sign = 1.0 if len(selected) % 2 else -1.0
-        add_scaled(meat, subset_meat, sign)
-        diagnostics.append((mask, len(grouped)))
-
-    bread = invert(hessian)
-    covariance = matmul(matmul(bread, meat), bread)
-    return [[correction * value for value in row] for row in covariance], diagnostics
 
 
 def assert_matrix_close(
@@ -119,10 +58,21 @@ class MultiwayClusterOracleTests(unittest.TestCase):
             self.outcome,
             self.fit.mean,
             self.fit.hessian,
+            [1.0] * len(self.design),
             self.cluster_dimensions[:1],
         )
         assert_matrix_close(self, covariance, clustered.compact_covariance)
         self.assertEqual(diagnostics, [(1, 10)])
+
+    def test_post_inclusion_psd_repair_clips_a_material_negative_direction(self) -> None:
+        raw = [[1.0, 2.0], [2.0, 1.0]]
+        repaired = _repair_multiway_psd(raw)
+        self.assertNotEqual(repaired, raw)
+        self.assertGreaterEqual(
+            repaired[0][0] * repaired[1][1] - repaired[0][1] * repaired[1][0],
+            -1e-14,
+        )
+        self.assertAlmostEqual(repaired[0][0], repaired[1][1])
 
     def test_every_supported_dimension_has_all_nonempty_subsets(self) -> None:
         for dimensions in range(1, 6):
@@ -132,6 +82,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
                     self.outcome,
                     self.fit.mean,
                     self.fit.hessian,
+                    [1.0] * len(self.design),
                     self.cluster_dimensions[:dimensions],
                 )
                 self.assertEqual([mask for mask, _ in diagnostics], list(range(1, 2**dimensions)))
@@ -147,6 +98,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
             self.outcome,
             self.fit.mean,
             self.fit.hessian,
+            [1.0] * len(self.design),
             self.cluster_dimensions[:1],
         )
         repeated = [self.cluster_dimensions[0]] * 5
@@ -157,6 +109,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
                     self.outcome,
                     self.fit.mean,
                     self.fit.hessian,
+                    [1.0] * len(self.design),
                     repeated[:dimensions],
                 )
                 assert_matrix_close(self, covariance, one_way)
@@ -169,6 +122,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
             self.outcome,
             self.fit.mean,
             self.fit.hessian,
+            [1.0] * len(self.design),
             dimensions,
         )
         minimum_groups = min(len(set(dimension)) for dimension in dimensions)
@@ -178,6 +132,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
             self.outcome,
             self.fit.mean,
             self.fit.hessian,
+            [1.0] * len(self.design),
             dimensions,
             correction=correction,
         )
@@ -194,6 +149,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
                 self.outcome,
                 self.fit.mean,
                 self.fit.hessian,
+                [1.0] * len(self.design),
                 [],
             )
         with self.assertRaisesRegex(ValueError, "one through five"):
@@ -202,6 +158,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
                 self.outcome,
                 self.fit.mean,
                 self.fit.hessian,
+                [1.0] * len(self.design),
                 [self.cluster_dimensions[0]] * 6,
             )
         with self.assertRaisesRegex(ValueError, "finite and positive"):
@@ -210,6 +167,7 @@ class MultiwayClusterOracleTests(unittest.TestCase):
                 self.outcome,
                 self.fit.mean,
                 self.fit.hessian,
+                [1.0] * len(self.design),
                 self.cluster_dimensions[:1],
                 correction=0.0,
             )

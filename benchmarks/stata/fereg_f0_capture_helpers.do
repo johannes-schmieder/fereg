@@ -9,7 +9,7 @@ capture program drop __fereg_f0_encode
 program define __fereg_f0_encode, rclass
     version 18.0
     syntax , VALUE(string asis)
-    local encoded `"`value'"'
+    local encoded `value'
     local encoded = subinstr(`"`encoded'"', "%", "%25", .)
     local encoded = subinstr(`"`encoded'"', "|", "%7C", .)
     local encoded = subinstr(`"`encoded'"', char(34), "%22", .)

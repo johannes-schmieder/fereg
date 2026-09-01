@@ -132,6 +132,61 @@ class StataRunnerSentinelTests(unittest.TestCase):
                     plugin_sha256="0" * 64,
                 )
 
+    def test_staged_package_binding_excludes_source_ado_and_dist(self):
+        observed_wrapper = ""
+
+        def fake_runner(args, *, cwd, **kwargs):
+            nonlocal observed_wrapper
+            observed_wrapper = Path(cwd, "run.do").read_text(encoding="utf-8")
+            Path(cwd, "run.log").write_text(
+                expected_sentinel(self.fixture) + "\n", encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(args, 0)
+
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as raw:
+            package = Path(raw) / "fereg-0.5.0"
+            package.mkdir()
+            (package / "fereg.pkg").write_text("v 3\n", encoding="utf-8")
+            (package / "stata.toc").write_text("v 3\n", encoding="utf-8")
+            plugin = package / expected_plugin_filename()
+            plugin.write_bytes(b"exact staged package plugin")
+            result = run_fixture(
+                "stata",
+                root / self.fixture,
+                root,
+                runner=fake_runner,
+                plugin=plugin,
+                plugin_sha256=sha256_file(plugin),
+                ado_root=package,
+            )
+            self.assertIsNone(result.error)
+            self.assertIn(f"adopath ++ \"{package.resolve()}\"", observed_wrapper)
+            self.assertNotIn(f"adopath ++ \"{(root / 'stata').resolve()}\"", observed_wrapper)
+            self.assertNotIn(f"adopath ++ \"{(root / 'dist').resolve()}\"", observed_wrapper)
+            self.assertIn("global FEREG_STAGED_PACKAGE_ROOT", observed_wrapper)
+            self.assertIn("global FEREG_STAGED_PLUGIN_NAME", observed_wrapper)
+
+    def test_staged_package_rejects_plugin_outside_ado_root(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as raw:
+            temporary = Path(raw)
+            package = temporary / "package"
+            package.mkdir()
+            (package / "fereg.pkg").write_text("v 3\n", encoding="utf-8")
+            (package / "stata.toc").write_text("v 3\n", encoding="utf-8")
+            plugin = temporary / expected_plugin_filename()
+            plugin.write_bytes(b"outside")
+            with self.assertRaisesRegex(ValueError, "outside"):
+                run_fixture(
+                    "stata",
+                    root / self.fixture,
+                    root,
+                    plugin=plugin,
+                    plugin_sha256=sha256_file(plugin),
+                    ado_root=package,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

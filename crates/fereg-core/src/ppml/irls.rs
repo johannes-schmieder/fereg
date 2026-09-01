@@ -1,10 +1,23 @@
-use super::family::{means_from_eta, pairwise_sum, poisson_objective, PoissonObjective};
+#[cfg(test)]
+use super::family::{
+    fill_poisson_working_state, means_from_eta, poisson_objective_from_eta, CompensatedSum,
+    PoissonObjective,
+};
+#[cfg(test)]
 use super::{PpmlConfig, PpmlInitialization, PpmlStart};
+#[cfg(test)]
 use crate::data::DenseMatrix;
+#[cfg(test)]
 use crate::error::{ErrorCode, FeregError, Result};
+#[cfg(test)]
 use crate::fe::{absorb_fixed_effects, AbsorbConfig, FeDesign, SolveReport};
-use crate::ols::{solve_rank_revealing, RegressorStatus};
+#[cfg(test)]
+use crate::ols::{solve_rank_revealing, FiniteSolver, RegressorStatus};
 
+#[cfg(test)]
+const LEGACY_TEST_RANK_TOLERANCE: f64 = 1e-10;
+
+#[cfg(test)]
 #[derive(Debug)]
 pub(crate) struct ProfileStep {
     pub candidate_eta: Vec<f64>,
@@ -16,6 +29,7 @@ pub(crate) struct ProfileStep {
     pub absorb_report: Option<SolveReport>,
 }
 
+#[cfg(test)]
 #[derive(Debug)]
 pub(crate) struct AcceptedStep {
     pub eta: Vec<f64>,
@@ -26,6 +40,7 @@ pub(crate) struct AcceptedStep {
     pub step_halvings: usize,
 }
 
+#[cfg(test)]
 pub(crate) fn validate_inputs(
     outcome: &[f64],
     regressors: &DenseMatrix,
@@ -81,7 +96,7 @@ pub(crate) fn validate_inputs(
         ));
     }
     config.bounds.validate()?;
-    let valid = valid_unit(config.rank_tolerance)
+    let valid = valid_unit(LEGACY_TEST_RANK_TOLERANCE)
         && valid_unit(config.fixed_effect_collinearity_tolerance)
         && valid_unit(config.tolerance)
         && valid_unit(config.score_tolerance)
@@ -104,12 +119,17 @@ pub(crate) fn validate_inputs(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn validate_start(
     start: &PpmlStart,
-    nrows: usize,
-    ncols: usize,
+    regressors: &DenseMatrix,
+    prior_weights: &[f64],
+    offset: &[f64],
+    fixed_effects: Option<&FeDesign>,
     config: PpmlConfig,
 ) -> Result<()> {
+    let nrows = regressors.nrows();
+    let ncols = regressors.ncols();
     if start.coefficients.len() != ncols || start.linear_predictor.len() != nrows {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -123,9 +143,72 @@ pub(crate) fn validate_start(
         ));
     }
     let mut mean = vec![0.0_f64; nrows];
-    means_from_eta(&start.linear_predictor, config.bounds, &mut mean)
+    means_from_eta(&start.linear_predictor, config.bounds, &mut mean)?;
+
+    let finite_predictor = multiply(regressors, &start.coefficients)?;
+    let mut absorbed_predictor = Vec::with_capacity(nrows);
+    let mut reference_scale = 1.0_f64;
+    for row in 0..nrows {
+        let remainder = start.linear_predictor[row] - offset[row] - finite_predictor[row];
+        if !remainder.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                format!("PPML warm-start decomposition is nonfinite at observation {row}"),
+            ));
+        }
+        reference_scale = reference_scale
+            .max(start.linear_predictor[row].abs())
+            .max(offset[row].abs())
+            .max(finite_predictor[row].abs())
+            .max(remainder.abs());
+        absorbed_predictor.push(remainder);
+    }
+
+    let has_fixed_effects = fixed_effects.is_some_and(|design| !design.effects().is_empty());
+    let residual_infinity_norm = if has_fixed_effects {
+        let mut residualized = DenseMatrix::from_columns(&[absorbed_predictor])?;
+        let report = absorb_fixed_effects(
+            fixed_effects.expect("fixed-effect presence checked"),
+            prior_weights,
+            &mut residualized,
+            absorb_with_tolerance(config.absorb, config.inner_tolerance_final),
+        )?;
+        if !report.certified() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                format!(
+                    "PPML warm-start fixed-effect decomposition did not certify: {:?}",
+                    report.stop_reason
+                ),
+            ));
+        }
+        residualized
+            .as_slice()
+            .iter()
+            .fold(0.0_f64, |maximum, value| maximum.max(value.abs()))
+    } else {
+        absorbed_predictor
+            .iter()
+            .fold(0.0_f64, |maximum, value| maximum.max(value.abs()))
+    };
+    let consistency_tolerance = config
+        .tolerance
+        .max(config.inner_tolerance_final)
+        .max(256.0 * f64::EPSILON);
+    if residual_infinity_norm <= consistency_tolerance * reference_scale {
+        Ok(())
+    } else {
+        Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!(
+                "PPML warm start is inconsistent with offset, regressors, and fixed effects: relative decomposition residual {:.3e}",
+                residual_infinity_norm / reference_scale
+            ),
+        ))
+    }
 }
 
+#[cfg(test)]
 pub(crate) fn initialize(
     outcome: &[f64],
     regressors: &DenseMatrix,
@@ -165,6 +248,7 @@ pub(crate) fn initialize(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(crate) fn profile_irls_step(
     outcome: &[f64],
     regressors: &DenseMatrix,
@@ -180,19 +264,15 @@ pub(crate) fn profile_irls_step(
     let ncols = regressors.ncols();
     let mut working_weights = vec![0.0_f64; nrows];
     let mut working_response = vec![0.0_f64; nrows];
-    for row in 0..nrows {
-        working_weights[row] = prior_weights[row] * mean[row];
-        working_response[row] = eta[row] - offset[row] + (outcome[row] - mean[row]) / mean[row];
-        if !working_weights[row].is_finite()
-            || working_weights[row] <= 0.0
-            || !working_response[row].is_finite()
-        {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid PPML working state at observation {row}"),
-            ));
-        }
-    }
+    fill_poisson_working_state(
+        outcome,
+        mean,
+        prior_weights,
+        eta,
+        offset,
+        &mut working_weights,
+        &mut working_response,
+    )?;
 
     let original_norms = weighted_regressor_norms(regressors, &working_weights)?;
     let mut columns = Vec::with_capacity(ncols + 1);
@@ -255,8 +335,8 @@ pub(crate) fn profile_irls_step(
         &candidate_matrix,
         &within_response,
         &working_weights,
-        config.rank_tolerance,
-        config.finite_solver,
+        LEGACY_TEST_RANK_TOLERANCE,
+        FiniteSolver::Auto,
     )?;
 
     let mut coefficients = vec![0.0_f64; ncols];
@@ -300,6 +380,7 @@ pub(crate) fn profile_irls_step(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(crate) fn accept_step(
     current_eta: &[f64],
     current_coefficients: &[f64],
@@ -332,27 +413,31 @@ pub(crate) fn accept_step(
             .collect::<Vec<_>>();
         let mut mean = vec![0.0_f64; eta.len()];
         if means_from_eta(&eta, config.bounds, &mut mean).is_ok() {
-            let objective = poisson_objective(outcome, &mean, prior_weights)?;
-            if objective.deviance <= allowed {
-                let coefficients = current_coefficients
-                    .iter()
-                    .zip(candidate_coefficients)
-                    .map(|(old, candidate)| old + step * (candidate - old))
-                    .collect();
-                return Ok(AcceptedStep {
-                    eta,
-                    coefficients,
-                    mean,
-                    objective,
-                    step,
-                    step_halvings,
-                });
+            // A proposed predictor can have representable means while its
+            // objective still overflows.  Both conditions reject this trial and
+            // let the caller's deterministic backtracking reduce the step.
+            if let Ok(objective) = poisson_objective_from_eta(outcome, &eta, &mean, prior_weights) {
+                if objective.deviance <= allowed {
+                    let coefficients = current_coefficients
+                        .iter()
+                        .zip(candidate_coefficients)
+                        .map(|(old, candidate)| old + step * (candidate - old))
+                        .collect();
+                    return Ok(AcceptedStep {
+                        eta,
+                        coefficients,
+                        mean,
+                        objective,
+                        step,
+                        step_halvings,
+                    });
+                }
             }
         }
         step *= 0.5;
     }
     Err(FeregError::new(
-        ErrorCode::InvalidData,
+        ErrorCode::NonConvergence,
         format!(
             "PPML step-halving found no finite deviance-improving step after {} halvings",
             config.max_step_halvings
@@ -360,17 +445,7 @@ pub(crate) fn accept_step(
     ))
 }
 
-pub(crate) fn scheduled_inner_tolerance(config: PpmlConfig, iteration: usize) -> f64 {
-    const STAGES: usize = 8;
-    if iteration >= STAGES {
-        return config.inner_tolerance_final;
-    }
-    let fraction = iteration.saturating_sub(1) as f64 / (STAGES - 1) as f64;
-    ((1.0 - fraction) * config.inner_tolerance_initial.ln()
-        + fraction * config.inner_tolerance_final.ln())
-    .exp()
-}
-
+#[cfg(test)]
 pub(crate) fn multiply(matrix: &DenseMatrix, coefficients: &[f64]) -> Result<Vec<f64>> {
     if matrix.ncols() != coefficients.len() {
         return Err(FeregError::new(
@@ -387,13 +462,26 @@ pub(crate) fn multiply(matrix: &DenseMatrix, coefficients: &[f64]) -> Result<Vec
     Ok(output)
 }
 
+#[cfg(test)]
 pub(crate) fn weighted_outcome_sum(outcome: &[f64], weights: &[f64]) -> Result<f64> {
-    let terms = outcome
-        .iter()
-        .zip(weights)
-        .map(|(value, weight)| value * weight)
-        .collect::<Vec<_>>();
-    let sum = pairwise_sum(&terms);
+    if outcome.len() != weights.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "weighted PPML outcome inputs have inconsistent lengths",
+        ));
+    }
+    let mut accumulator = CompensatedSum::default();
+    for (row, (value, weight)) in outcome.iter().zip(weights).enumerate() {
+        let term = value * weight;
+        if !term.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                format!("weighted PPML outcome overflows at observation {row}"),
+            ));
+        }
+        accumulator.add(term);
+    }
+    let sum = accumulator.total();
     if sum.is_finite() {
         Ok(sum)
     } else {
@@ -404,6 +492,7 @@ pub(crate) fn weighted_outcome_sum(outcome: &[f64], weights: &[f64]) -> Result<f
     }
 }
 
+#[cfg(test)]
 fn detect_constant_column(regressors: &DenseMatrix) -> Option<(usize, f64)> {
     for column in 0..regressors.ncols() {
         let first = regressors[(0, column)];
@@ -419,38 +508,53 @@ fn detect_constant_column(regressors: &DenseMatrix) -> Option<(usize, f64)> {
     None
 }
 
+#[cfg(test)]
 fn log_weighted_outcome_sum(outcome: &[f64], weights: &[f64]) -> Result<f64> {
-    let terms = outcome
-        .iter()
-        .zip(weights)
-        .filter(|(value, _)| **value > 0.0)
-        .map(|(value, weight)| value.ln() + weight.ln())
-        .collect::<Vec<_>>();
-    log_sum_exp(&terms, "weighted PPML outcome sum")
-}
-
-fn log_weighted_offset_sum(offset: &[f64], weights: &[f64]) -> Result<f64> {
-    let terms = offset
-        .iter()
-        .zip(weights)
-        .map(|(value, weight)| value + weight.ln())
-        .collect::<Vec<_>>();
-    log_sum_exp(&terms, "weighted PPML exposure sum")
-}
-
-fn log_sum_exp(terms: &[f64], label: &str) -> Result<f64> {
-    if terms.is_empty() || terms.iter().any(|value| !value.is_finite()) {
+    let mut maximum = f64::NEG_INFINITY;
+    let mut positive = false;
+    for (value, weight) in outcome.iter().zip(weights) {
+        if *value > 0.0 {
+            maximum = maximum.max(value.ln() + weight.ln());
+            positive = true;
+        }
+    }
+    if !positive || !maximum.is_finite() {
         return Err(FeregError::new(
             ErrorCode::InvalidData,
-            format!("{label} is empty or nonfinite"),
+            "weighted PPML outcome sum is empty or nonfinite",
         ));
     }
-    let maximum = terms.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    let scaled = terms
-        .iter()
-        .map(|value| (value - maximum).exp())
-        .collect::<Vec<_>>();
-    let result = maximum + pairwise_sum(&scaled).ln();
+    let mut scaled_sum = CompensatedSum::default();
+    for (value, weight) in outcome.iter().zip(weights) {
+        if *value > 0.0 {
+            scaled_sum.add((value.ln() + weight.ln() - maximum).exp());
+        }
+    }
+    finish_log_sum_exp(maximum, scaled_sum, "weighted PPML outcome sum")
+}
+
+#[cfg(test)]
+fn log_weighted_offset_sum(offset: &[f64], weights: &[f64]) -> Result<f64> {
+    let mut maximum = f64::NEG_INFINITY;
+    for (value, weight) in offset.iter().zip(weights) {
+        maximum = maximum.max(value + weight.ln());
+    }
+    if offset.is_empty() || !maximum.is_finite() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            "weighted PPML exposure sum is empty or nonfinite",
+        ));
+    }
+    let mut scaled_sum = CompensatedSum::default();
+    for (value, weight) in offset.iter().zip(weights) {
+        scaled_sum.add((value + weight.ln() - maximum).exp());
+    }
+    finish_log_sum_exp(maximum, scaled_sum, "weighted PPML exposure sum")
+}
+
+#[cfg(test)]
+fn finish_log_sum_exp(maximum: f64, scaled: CompensatedSum, label: &str) -> Result<f64> {
+    let result = maximum + scaled.total().ln();
     if result.is_finite() {
         Ok(result)
     } else {
@@ -461,6 +565,7 @@ fn log_sum_exp(terms: &[f64], label: &str) -> Result<f64> {
     }
 }
 
+#[cfg(test)]
 fn weighted_regressor_norms(regressors: &DenseMatrix, weights: &[f64]) -> Result<Vec<f64>> {
     let mut norms = vec![0.0_f64; regressors.ncols()];
     for row in 0..regressors.nrows() {
@@ -481,6 +586,7 @@ fn weighted_regressor_norms(regressors: &DenseMatrix, weights: &[f64]) -> Result
     Ok(norms)
 }
 
+#[cfg(test)]
 fn weighted_vector_norm(values: &[f64], weights: &[f64]) -> Result<f64> {
     let mut square_sum = 0.0_f64;
     for (value, weight) in values.iter().zip(weights) {
@@ -497,6 +603,7 @@ fn weighted_vector_norm(values: &[f64], weights: &[f64]) -> Result<f64> {
     }
 }
 
+#[cfg(test)]
 fn matrix_without_first_column(matrix: &DenseMatrix) -> Result<DenseMatrix> {
     if matrix.ncols() <= 1 {
         return DenseMatrix::zeros(matrix.nrows(), 0);
@@ -507,12 +614,96 @@ fn matrix_without_first_column(matrix: &DenseMatrix) -> Result<DenseMatrix> {
     DenseMatrix::from_columns(&columns)
 }
 
+#[cfg(test)]
 fn absorb_with_tolerance(mut config: AbsorbConfig, tolerance: f64) -> AbsorbConfig {
     config.map.tolerance = tolerance;
     config.lsmr.tolerance = tolerance;
     config
 }
 
+#[cfg(test)]
 fn valid_unit(value: f64) -> bool {
     value.is_finite() && value > 0.0 && value < 1.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fe::EffectTerm;
+    use crate::ppml::PoissonBounds;
+
+    #[test]
+    fn intercept_initialization_is_offset_aware_and_deterministic() {
+        let outcome = [0.25_f64, 2.0, 8.0, 1.5];
+        let weights = [3.0_f64, 0.5, 2.0, 4.0];
+        let offset = [-300.0_f64, -5.0, 0.0, 300.0];
+        let regressors =
+            DenseMatrix::from_columns(&[vec![1.0; outcome.len()]]).expect("regressors");
+        let first = initialize(
+            &outcome,
+            &regressors,
+            &weights,
+            &offset,
+            None,
+            PpmlConfig::default(),
+        )
+        .expect("first initialization");
+        let second = initialize(
+            &outcome,
+            &regressors,
+            &weights,
+            &offset,
+            None,
+            PpmlConfig::default(),
+        )
+        .expect("second initialization");
+        assert_eq!(first, second);
+
+        let mut mean = vec![0.0_f64; outcome.len()];
+        means_from_eta(&first.1, PoissonBounds::default(), &mut mean).expect("initial means");
+        let outcome_total = weighted_outcome_sum(&outcome, &weights).expect("outcome total");
+        let mean_total = weighted_outcome_sum(&mean, &weights).expect("mean total");
+        assert!((outcome_total - mean_total).abs() <= 2e-13 * outcome_total.max(1.0));
+        assert!(first.1.iter().all(|value| value.is_finite()));
+    }
+
+    #[test]
+    fn warm_start_rejects_an_inconsistent_finite_predictor() {
+        let regressors = DenseMatrix::from_columns(&[vec![1.0; 4]]).expect("regressors");
+        let start = PpmlStart {
+            coefficients: vec![0.0],
+            linear_predictor: vec![1.0; 4],
+        };
+        let error = validate_start(
+            &start,
+            &regressors,
+            &[1.0; 4],
+            &[0.0; 4],
+            None,
+            PpmlConfig::default(),
+        )
+        .expect_err("eta and beta must describe the same predictor");
+        assert!(error.message.contains("warm start is inconsistent"));
+    }
+
+    #[test]
+    fn warm_start_rejects_a_remainder_outside_the_fixed_effect_span() {
+        let regressors = DenseMatrix::from_columns(&[vec![0.0; 4]]).expect("regressors");
+        let effect = EffectTerm::new(vec![0, 0, 1, 1], 2, true, vec![]).expect("effect");
+        let fixed_effects = FeDesign::new(4, vec![effect]).expect("design");
+        let start = PpmlStart {
+            coefficients: vec![0.0],
+            linear_predictor: vec![0.0, 1.0, 0.0, 1.0],
+        };
+        let error = validate_start(
+            &start,
+            &regressors,
+            &[1.0; 4],
+            &[0.0; 4],
+            Some(&fixed_effects),
+            PpmlConfig::default(),
+        )
+        .expect_err("within-level variation is not an FE contribution");
+        assert!(error.message.contains("warm start is inconsistent"));
+    }
 }

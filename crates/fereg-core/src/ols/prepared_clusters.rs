@@ -30,6 +30,14 @@ impl OlsClusteredRequestV1 {
         self.ols
             .validate_and_compile_with_cluster_sources(&cluster_sources)
     }
+
+    /// PPML metadata validation admits the categorical absorbed slopes owned
+    /// by its prepared topology while preserving exact cluster-source checks.
+    pub fn validate_ppml_and_compile(&self) -> Result<super::PreparedOlsModel> {
+        let cluster_sources = validate_request(self)?;
+        self.ols
+            .validate_ppml_and_compile_with_cluster_sources(&cluster_sources)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -508,9 +516,9 @@ fn allocation(message: impl Into<String>) -> FeregError {
 pub(super) mod tests {
     use super::*;
     use crate::metadata::{
-        CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-        LevelState, MetadataFlag, RawTermKind, SourceEntry, TermComponent, TermId, TermOrder,
-        TimeSeriesState,
+        AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
+        ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, RawTermKind, SourceEntry,
+        TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use crate::ols::{LoadedNumericColumn, OlsInputBinding, OlsInputRole};
 
@@ -701,6 +709,41 @@ pub(super) mod tests {
         let error = certify_prepared_clusters(&prepared)
             .expect_err("noncontiguous group metadata must fail");
         assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn ppml_metadata_validation_admits_intercept_slope_plus_intercept() {
+        let (mut request, _) = fixture();
+        let x = SourceId::new(1).expect("x");
+        let first = SourceId::new(2).expect("first FE");
+        let second = SourceId::new(3).expect("second FE");
+        request.ols.include_intercept = true;
+        request.ols.absorbed_terms = vec![
+            AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("first absorb term"),
+                intercept: true,
+                categorical_sources: vec![first],
+                slope_sources: vec![x],
+                label: "first##c.x".to_owned(),
+                saved_name: "saved_first".to_owned(),
+            },
+            AbsorbedTerm {
+                id: AbsorbTermId::new(2).expect("second absorb term"),
+                intercept: true,
+                categorical_sources: vec![second],
+                slope_sources: Vec::new(),
+                label: "second".to_owned(),
+                saved_name: String::new(),
+            },
+        ];
+        let error = request
+            .validate_and_compile()
+            .expect_err("developer OLS validator must retain its slope restriction");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        let model = request
+            .validate_ppml_and_compile()
+            .expect("PPML validator must admit declared absorbed slopes");
+        assert_eq!(model.coefficients.len(), 2);
     }
 
     pub(crate) fn fixture() -> (OlsClusteredRequestV1, LoadedOlsInput) {

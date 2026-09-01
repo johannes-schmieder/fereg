@@ -8,7 +8,8 @@ checks the result, and writes the requested outputs.
 
 This guide describes the public OLS command in the unreleased 0.5.0 beta.
 `feppml` remains a fail-closed placeholder and is not documented as an
-estimator.
+estimator. Private PPML source and fixtures exist for pre-activation
+qualification only; users cannot invoke them as a supported package surface.
 
 ## Syntax
 
@@ -192,9 +193,11 @@ Type `help fereg` for twelve self-contained examples. Each estimation example
 creates synthetic data and preserves/restores the caller's dataset. The
 benchmark additionally requires Stata 19 and an installed `reghdfe`.
 
-The 0.5.0 beta does not implement PPML, IV/GMM, group outcomes with individual
-fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or
-GPU execution. Fixed-width string categorical sources are supported, but
+The public 0.5.0 beta does not expose PPML, IV/GMM, group outcomes with
+individual fixed effects, HAC or Driscoll--Kraay covariance estimators, other
+GLMs, or GPU execution. The source-only hidden PPML transaction is an
+activation test surface, not a user command. Fixed-width string categorical
+sources are supported, but
 `strL` sources are not. When `absorb()` contains an interaction or absorbed
 slope, explicit RHS base operators such as `ib2.region` and `fvset` base
 overrides are not yet supported by final-sample factor rebasing. See

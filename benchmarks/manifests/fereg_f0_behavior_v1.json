@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "manifest_id": "fereg_f0_behavior_v1",
+  "status": "frozen_contract",
+  "baseline_source": {
+    "commit": "2dee5d8c4cd99b51bbaca600348f66f325b58ab4",
+    "tree": "cc10b50077f162cab8be10702a9627b99ee5eea2",
+    "cargo_lock_sha256": "4dd5db4d5b7f889cc664b522b84ac46dd10b8ca83f15af371cd6acf1239b4e42",
+    "references_lock_sha256": "48aec6f93ea758987734f702dde87853da56342b228bae927b7bbebcf5b3f801"
+  },
+  "baseline_versions": {
+    "ado": "0.5.0",
+    "action_protocol": "1.5",
+    "model_wire": "2.1",
+    "ols_result_wire": "1.4"
+  },
+  "required_categories": [
+    "syntax",
+    "defaults",
+    "validation",
+    "error_codes",
+    "utility_modes",
+    "help_examples",
+    "package_inventory",
+    "prediction",
+    "test",
+    "estat",
+    "failure_atomicity"
+  ],
+  "fixtures": [
+    {
+      "id": "fereg_f0_public_contract",
+      "path": "tests/stata/qualification/fereg_f0_public_contract.do",
+      "sha256": "a0a34f1542c748bd9c40427010c25849dfeee9220507e2c29a005d2c6c30e0a6",
+      "categories": [
+        "syntax",
+        "defaults",
+        "validation",
+        "error_codes",
+        "utility_modes",
+        "prediction",
+        "test",
+        "estat",
+        "failure_atomicity"
+      ]
+    },
+    {
+      "id": "ordinary_factor_terms",
+      "path": "tests/stata/parser/ordinary_factor_terms.do",
+      "sha256": "a49ef58cba0e6ea93a95d89c4a5303e280f75d210553f26f44010a2634d15236",
+      "categories": ["syntax", "defaults"]
+    },
+    {
+      "id": "reject_ambiguous_absorb",
+      "path": "tests/stata/parser/reject_ambiguous_absorb.do",
+      "sha256": "591a9b9e7d6869f7a99d5abaacc310e3127280f1bc60556ec865e17f6c11a992",
+      "categories": ["validation", "error_codes"]
+    },
+    {
+      "id": "help_examples",
+      "path": "tests/stata/documentation/help_examples.do",
+      "sha256": "db79bea7d1ca100f272d036bf26fc06e86f8faa526317224f7682f35edb65294",
+      "categories": ["help_examples", "prediction", "test", "estat"]
+    }
+  ],
+  "resources": [
+    {
+      "path": "tests/fixtures/ols/ols_core.csv",
+      "sha256": "cb7d7e7ae21843f7c1dc5f84ac4daffa3954c9bfc54a9a109a3e2f6b50433bca"
+    }
+  ],
+  "package_contract": {
+    "format_version": 3,
+    "package_name": "fereg",
+    "package_version": "0.5.0",
+    "baseline_members": [
+      "fereg.ado",
+      "fereg_run.ado",
+      "_fereg_estimate_public.ado",
+      "_fereg_ols.ado",
+      "_fereg_estimate_ols.ado",
+      "_fereg_load.ado",
+      "feppml.ado",
+      "fereg_parse.ado",
+      "fereg_p.ado",
+      "fereg_estat.ado",
+      "fereg.sthlp",
+      "feppml.sthlp",
+      "fereg_parse.sthlp",
+      "fereg_postestimation.sthlp",
+      "fereg_windows.plugin",
+      "fereg_linux.plugin",
+      "fereg_macos.plugin"
+    ],
+    "byte_identical_fereg_members": [
+      "fereg.ado",
+      "fereg_run.ado",
+      "_fereg_estimate_public.ado",
+      "_fereg_ols.ado",
+      "_fereg_estimate_ols.ado",
+      "_fereg_load.ado",
+      "fereg_parse.ado",
+      "fereg_p.ado",
+      "fereg_estat.ado",
+      "fereg_parse.sthlp",
+      "fereg_postestimation.sthlp"
+    ],
+    "help_example_ids": [
+      "basic_two_way",
+      "factor_if",
+      "weights",
+      "clusters",
+      "string_fe",
+      "interacted_fe",
+      "absorbed_slope",
+      "slope_only",
+      "saved_outputs",
+      "disconnected",
+      "low_memory",
+      "benchmark"
+    ],
+    "activation": {
+      "allowed_added_members": [
+        "_fereg_ppml.ado",
+        "_fereg_estimate_ppml.ado",
+        "feppml_p.ado"
+      ],
+      "allowed_changed_shared_files": [
+        "fereg.pkg",
+        "stata.toc",
+        "fereg.sthlp",
+        "feppml.ado",
+        "feppml.sthlp"
+      ],
+      "preserve_baseline_member_order": true,
+      "preserve_fereg_help_examples": true
+    }
+  },
+  "receipt_contract": {
+    "observation_type": "fereg_f0_behavior_observation_v1",
+    "comparison_type": "fereg_f0_direct_command_contract_v1",
+    "complete_sentinel": "FEREG_F0_DIRECT_COMMAND_COMPLETE"
+  }
+}

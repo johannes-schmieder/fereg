@@ -11,6 +11,13 @@ import sys
 import tomllib
 from pathlib import Path
 
+try:
+    from scripts.ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
+    from scripts.feppml_public_state import ACTIVATED, public_state
+except ModuleNotFoundError:
+    from ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
+    from feppml_public_state import ACTIVATED, public_state
+
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
 
@@ -142,6 +149,7 @@ required_files = [
     "benchmarks/stata/baseline_reghdfe.do",
     "scripts/ols_reference.py",
     "scripts/stage_release.py",
+    "scripts/run_staged_stata_tests.py",
     "scripts/package_release.py",
     "scripts/run_dependency_audit.py",
     "fuzz/Cargo.toml",
@@ -153,6 +161,7 @@ required_files = [
     "fuzz/fuzz_targets/interaction_tuples.rs",
     "tests/fuzz/README.md",
     "docs/adr/0007-fereg-050-beta-qualification-contract.md",
+    "docs/feppml_activation_checklist.md",
     "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
@@ -285,10 +294,21 @@ require(
 )
 
 feppml_ado = read("stata/feppml.ado").lower()
-require("exit 498" in feppml_ado, "feppml.ado does not fail closed")
+try:
+    feppml_state = public_state(ROOT)
+except ValueError as error:
+    require(False, str(error))
+    feppml_state = None
+if feppml_state == ACTIVATED:
+    require(
+        "_fereg_ppml `0'" in feppml_ado and "exit 498" not in feppml_ado,
+        "activated feppml.ado is not the exact public transaction wrapper",
+    )
+else:
+    require("exit 498" in feppml_ado, "feppml.ado does not fail closed")
 require(
     "plugin call" not in feppml_ado,
-    "feppml.ado makes a substantive plugin call before PPML implementation",
+    "feppml.ado bypasses the guarded private PPML transaction",
 )
 
 loader = read("stata/_fereg_load.ado")
@@ -321,14 +341,19 @@ expected_capture_pins = {
     "reghdfe": "29b2b203f534413369d675d0c0f674d61291f536",
     "ftools": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
     "require": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+    "ppmlhdfe": "b85665d8f674e93c1e07446a9a2b29be7f797910",
 }
 for name, commit in expected_capture_pins.items():
     entry = refs.get(name, {})
     require(entry.get("pin_status") == "resolved" and entry.get("commit") == commit, f"{name} exact capture pin is stale")
+    require(bool(re.fullmatch(r"[0-9a-f]{40}", entry.get("git_tree", ""))), f"{name} capture Git tree is not closed")
     files = entry.get("required_capture_files", [])
     hashes = entry.get("required_capture_sha256", {})
     require(set(files) == set(hashes) and all(re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()), f"{name} capture file hashes are not closed")
 require("src/lftools.mlib" not in refs.get("ftools", {}).get("required_capture_files", []), "generated lftools.mlib must not be a locked source input")
+ppmlhdfe = refs.get("ppmlhdfe", {})
+require(bool(re.fullmatch(r"[0-9a-f]{64}", ppmlhdfe.get("source_archive_sha256", ""))), "ppmlhdfe source archive is not digest-bound")
+require(ppmlhdfe.get("source_archive_size_bytes", 0) > 0, "ppmlhdfe source archive size is not locked")
 
 try:
     ols_manifest = json.loads(read("benchmarks/manifests/ols_v1.json"))
@@ -446,6 +471,12 @@ for manifest in ROOT.glob("crates/*/Cargo.toml"):
     text = manifest.read_text(encoding="utf-8").lower()
     for forbidden in ("openblas", "mkl", "openmp", "pyo3", "numpy", "julia"):
         require(forbidden not in text, f"forbidden runtime dependency in {manifest.relative_to(ROOT)}: {forbidden}")
+
+# The retired dense PPML fitter/IRLS/separation runner may exist only as a
+# cfg(test) oracle.  Audit the full Rust module graph, not merely the current
+# plugin entry point, so aliases, wrappers, and renamed module inclusions fail.
+for violation in audit_ppml_legacy_boundary(ROOT):
+    ERRORS.append(f"PPML legacy boundary: {violation}")
 
 # Parse Python with its real grammar; use a cheap delimiter check only for Rust
 # when Cargo is unavailable.

@@ -55,6 +55,36 @@ substantive gate, run the relevant stronger profiles, normally including:
 The Stata commands require the licensed Mac environment documented in
 `STATA_CI_RUNNER.md`. Do not claim a test was run when it was not.
 
+During PPML pre-activation, keep the public and private boundaries separate:
+
+```bash
+./ci/run_stata_ci.sh ppml-fail-closed
+./ci/run_stata_ci.sh ppml-hidden
+./ci/run_stata_ci.sh fereg-regression
+```
+
+`ppml-fail-closed` runs the installed public stub without building a plugin.
+`ppml-hidden` builds the plugin and exercises the private live-SPI
+`estimate-ppml` transaction, its runtime result validator, fallible-allocation
+rollback, the shared command/saved-slope/time-series and scientific fixtures
+through `_fereg_ppml`, and native-core plus publication-boundary PPML Break
+rollback. The
+`fereg-regression` profile is the PPML-free OLS verdict. A green private PPML
+profile is pre-activation evidence only and does not authorize changing the
+public stub.
+
+The exact licensed-load artifacts needed before the 33-cell SCC prepare use
+the closed workflow in [feppml platform load evidence](feppml_platform_load_evidence.md).
+In particular, Linux has a standalone immutable SCC bootstrap so its build,
+actual-loader, Stata capture, and qacct receipt do not depend on the full
+qualification run that consumes them.
+
+Any checkpoint that extracts or changes a mechanism used by public OLS must
+also follow `fereg_regression_contract.md`. Run its closed local screen before
+the checkpoint commit and its governing SCC profile before accepting the
+checkpoint. Evidence remains diagnostic while the F0 manifest is explicitly
+unsealed.
+
 ## GitHub CI and exact-SHA acceptance
 
 The durable workflows are:
@@ -88,9 +118,10 @@ fixture status files, and terminal PASS sentinel must agree.
   mathematical or explicit-dummy oracles.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
-- Public `fereg` OLS is active in the beta source. `feppml` and
-  `estimate-ppml` remain fail-closed; the developer actions are not
-  distribution interfaces.
+- Public `fereg` OLS is active in the beta source. Public `feppml` remains a
+  fail-closed `r(498)` stub. The private live-SPI `estimate-ppml` action and
+  hidden ado adapters exist only for end-to-end qualification and are not
+  supported distribution interfaces.
 - Performance and memory claims require measured evidence on the frozen suite.
 
 ## Resume checklist

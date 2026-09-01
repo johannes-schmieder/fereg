@@ -83,6 +83,7 @@ def initial_summary(profile: str) -> dict[str, object]:
         "plugin_sha256": None,
         "build_rc": None,
         "results": [],
+        "break_receipts": [],
     }
 
 
@@ -239,6 +240,92 @@ def main() -> int:
             }
         )
         summary["results"] = results
+        break_receipts = list(summary["break_receipts"] or [])
+        break_receipts.append(
+            {
+                "schema_version": 1,
+                "receipt_type": "fereg-licensed-break-v1",
+                "fixture_kind": "ols",
+                "source_sha": args.tested_sha,
+                "plugin_sha256": plugin_sha256,
+                "fixture_sha256": sha256_file(
+                    args.repo_root / "tests/licensed_stata/estimate_ols_eclass_break.do"
+                ),
+                "log_sha256": sha256_file(break_log),
+                "process_rc": break_process.returncode,
+                "terminal_sentinel": "END_FIXTURE|estimate_ols_eclass_break|rc=0",
+                "rollback_validated": True,
+                "receipt_last_validated": True,
+                "status": "pass",
+            }
+        )
+        summary["break_receipts"] = break_receipts
+
+    if profile.get("run_ppml_break_fixture") is True:
+        break_log = args.run_root / "fixture-logs" / "estimate_ppml_eclass_break.log"
+        print("==> tests/licensed_stata/estimate_ppml_eclass_break.do")
+        with break_log.open("w", encoding="utf-8") as output:
+            break_process = subprocess.run(
+                [
+                    sys.executable,
+                    str(args.repo_root / "scripts" / "run_stata_break_test.py"),
+                    "--stata",
+                    args.stata,
+                    "--plugin",
+                    str(plugin),
+                    "--plugin-sha256",
+                    str(plugin_sha256),
+                    "--fixture-kind",
+                    "ppml",
+                ],
+                cwd=args.repo_root,
+                env=environment,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+        if break_process.returncode != 0:
+            summary["status"] = "failure"
+            summary["failure_kind"] = "stata_ppml_break_error"
+            summary["failure_detail"] = (
+                f"interactive PPML Break fixture returned {break_process.returncode}"
+            )
+            summary["tests_failed"] = int(summary["tests_failed"] or 0) + 1
+            write_json_atomic(args.summary_json, summary)
+            return 1
+        summary["tests_passed"] = int(summary["tests_passed"] or 0) + 1
+        results = list(summary["results"] or [])
+        results.append(
+            {
+                "fixture": "tests/licensed_stata/estimate_ppml_eclass_break.do",
+                "status": "success",
+                "failure_kind": None,
+                "failure_detail": None,
+                "process_rc": 0,
+                "stata_rc": 0,
+            }
+        )
+        summary["results"] = results
+        break_receipts = list(summary["break_receipts"] or [])
+        break_receipts.append(
+            {
+                "schema_version": 1,
+                "receipt_type": "fereg-licensed-break-v1",
+                "fixture_kind": "ppml",
+                "source_sha": args.tested_sha,
+                "plugin_sha256": plugin_sha256,
+                "fixture_sha256": sha256_file(
+                    args.repo_root / "tests/licensed_stata/estimate_ppml_eclass_break.do"
+                ),
+                "log_sha256": sha256_file(break_log),
+                "process_rc": break_process.returncode,
+                "terminal_sentinel": "END_FIXTURE|estimate_ppml_eclass_break|rc=0",
+                "rollback_validated": True,
+                "receipt_last_validated": True,
+                "status": "pass",
+            }
+        )
+        summary["break_receipts"] = break_receipts
 
     summary["status"] = "success"
     summary["failure_kind"] = None

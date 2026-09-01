@@ -59,7 +59,20 @@ impl RhsReservation for SystemRhsReservation {
 /// scale columns. The sole new observation-scale allocation is the returned
 /// dense matrix.
 pub fn build_prepared_ols_rhs(prepared: &PreparedOlsData) -> Result<PreparedOlsRhs> {
-    build_prepared_ols_rhs_with_reservation(prepared, &mut SystemRhsReservation)
+    build_prepared_ols_rhs_with_response(prepared, &prepared.sample.outcome)
+}
+
+/// Build the complete prepared X batch beside an explicitly borrowed response.
+///
+/// This is the crate-private weighted-linear seam used by estimators whose
+/// working response changes while the prepared regressor recipes remain
+/// fixed. It preserves the OLS builder's single observation-major allocation
+/// and its established fill order.
+pub(crate) fn build_prepared_ols_rhs_with_response(
+    prepared: &PreparedOlsData,
+    response: &[f64],
+) -> Result<PreparedOlsRhs> {
+    build_prepared_ols_rhs_with_reservation(prepared, response, &mut SystemRhsReservation)
 }
 
 /// Build and consume the prepared Y/X batch through the strict borrowed MAP
@@ -80,9 +93,10 @@ pub fn absorb_prepared_ols_rhs_map(
 
 fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     prepared: &PreparedOlsData,
+    response: &[f64],
     reservation: &mut R,
 ) -> Result<PreparedOlsRhs> {
-    validate_prepared_rhs_inputs(prepared)?;
+    validate_prepared_rhs_inputs(prepared, response)?;
     let (nrows, ncols, elements) =
         rhs_dimensions(prepared.sample.n_active(), prepared.model.columns.len())?;
     let mut data = Vec::new();
@@ -95,11 +109,11 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     data.resize(elements, 0.0);
 
     if rayon::current_num_threads() == 1 {
-        fill_rhs_single_thread(prepared, ncols, &mut data)?;
+        fill_rhs_single_thread(prepared, response, ncols, &mut data)?;
     } else {
         data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
             |(row, destination)| -> Result<()> {
-                destination[0] = prepared.sample.outcome[row];
+                destination[0] = response[row];
                 for generated_column in 0..prepared.model.columns.len() {
                     let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
                     destination[rhs_column] = prepared.column_value(generated_column, row)?;
@@ -123,11 +137,12 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
 /// of repeating the recipe dispatch for every observation.
 fn fill_rhs_single_thread(
     prepared: &PreparedOlsData,
+    response: &[f64],
     ncols: usize,
     data: &mut [f64],
 ) -> Result<()> {
-    for (row, outcome) in prepared.sample.outcome.iter().copied().enumerate() {
-        data[row * ncols] = outcome;
+    for (row, value) in response.iter().copied().enumerate() {
+        data[row * ncols] = value;
     }
     for (generated, column) in prepared.model.columns.iter().enumerate() {
         let rhs_column = PreparedOlsRhs::model_column(generated)?;
@@ -212,12 +227,13 @@ fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, u
     Ok((nrows, ncols, elements))
 }
 
-fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData) -> Result<()> {
+fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) -> Result<()> {
     let sample = &prepared.sample;
     let nrows = sample.n_active();
     if sample.n_candidate > sample.n_original
         || sample.drop_reasons.len() != sample.n_original
         || sample.outcome.len() != nrows
+        || response.len() != nrows
         || sample.regressors.iter().any(|source| source.len() != nrows)
         || !matches!(sample.adjustment, PreparedAdjustment::None)
     {
@@ -225,7 +241,7 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData) -> Result<()> {
             "prepared OLS numeric sample is not aligned on one observation axis",
         ));
     }
-    if sample.outcome.iter().any(|value| !value.is_finite())
+    if response.iter().any(|value| !value.is_finite())
         || sample
             .regressors
             .iter()
@@ -756,6 +772,37 @@ mod tests {
     }
 
     #[test]
+    fn explicit_response_replaces_only_column_zero_with_one_allocation() {
+        let prepared = prepared(false, true);
+        let response = [8.0, 4.0, -0.0, 2.0];
+        let ordinary = build_prepared_ols_rhs(&prepared).expect("ordinary RHS");
+        let mut reservation = InjectedReservation::default();
+        let explicit =
+            build_prepared_ols_rhs_with_reservation(&prepared, &response, &mut reservation)
+                .expect("explicit-response RHS");
+        assert_eq!(reservation.calls, 1);
+        assert_eq!(ordinary.values().nrows(), explicit.values().nrows());
+        assert_eq!(ordinary.values().ncols(), explicit.values().ncols());
+        for (row, expected_response) in response
+            .iter()
+            .copied()
+            .enumerate()
+            .take(explicit.values().nrows())
+        {
+            assert_eq!(
+                explicit.values()[(row, 0)].to_bits(),
+                expected_response.to_bits()
+            );
+            for column in 1..explicit.values().ncols() {
+                assert_eq!(
+                    explicit.values()[(row, column)].to_bits(),
+                    ordinary.values()[(row, column)].to_bits()
+                );
+            }
+        }
+    }
+
+    #[test]
     fn factor_omission_interaction_and_vanished_level_have_exact_rhs_semantics() {
         let g = source(1, "g");
         let h = source(2, "h");
@@ -906,8 +953,12 @@ mod tests {
                 skip,
                 ..InjectedReservation::default()
             };
-            let error = build_prepared_ols_rhs_with_reservation(&prepared, &mut reservation)
-                .expect_err("reservation failure");
+            let error = build_prepared_ols_rhs_with_reservation(
+                &prepared,
+                &prepared.sample.outcome,
+                &mut reservation,
+            )
+            .expect_err("reservation failure");
             assert_eq!(error.code, ErrorCode::Allocation);
             assert_eq!(reservation.calls, 1);
         }

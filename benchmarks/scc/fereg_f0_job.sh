@@ -35,6 +35,6 @@ if [ "$SGE_TASK_ID" -gt 1 ]; then
     test -f "$RUN_ROOT/receipts/tasks/task-001.SUCCESS"
 fi
 
-python3 "$RUN_ROOT/input/harness/fereg_f0_scc.py" task \
+python3 -I -B -S "$RUN_ROOT/input/harness/fereg_f0_scc.py" task \
     --run-root "$RUN_ROOT" \
     --task-id "$SGE_TASK_ID"

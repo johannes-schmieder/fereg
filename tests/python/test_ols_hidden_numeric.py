@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -109,6 +110,24 @@ def internal_q_case(case_id: str) -> dict:
 
 
 class HiddenNumericProjectionTests(unittest.TestCase):
+    def test_package_import_uses_one_reference_module_identity(self):
+        command = (
+            "import pathlib, sys; "
+            f"root = pathlib.Path({str(ROOT)!r}); "
+            "sys.path.insert(0, str(root)); "
+            "sys.path.insert(0, str(root / 'scripts')); "
+            "import ols_reference; "
+            "import scripts.ols_hidden_numeric as candidate; "
+            "import scripts.ols_reference as packaged; "
+            "assert candidate.ContractError is packaged.ContractError; "
+            "assert candidate.ContractError is not ols_reference.ContractError"
+        )
+        subprocess.run(
+            [sys.executable, "-I", "-c", command],
+            cwd=ROOT,
+            check=True,
+        )
+
     def test_projection_exactly_partitions_parent_and_stays_developer_only(self):
         projection = load_projection()
         self.assertEqual(tuple(projection["executable_case_ids"]), EXECUTABLE_CASE_IDS)

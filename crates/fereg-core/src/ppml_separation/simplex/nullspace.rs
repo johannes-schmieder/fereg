@@ -1,6 +1,8 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
+use super::{fallible_filled, reserve};
+
 pub(super) fn nullspace_basis(
     regressors: &DenseMatrix,
     rows: &[usize],
@@ -8,7 +10,11 @@ pub(super) fn nullspace_basis(
 ) -> Result<Vec<Vec<f64>>> {
     let ncols = regressors.ncols();
     let nrows = rows.len();
-    let mut scales = vec![0.0_f64; ncols];
+    let mut scales = fallible_filled(
+        ncols,
+        0.0_f64,
+        "unable to reserve model-simplex null-space scales",
+    )?;
     for column in 0..ncols {
         let mut square_sum = 0.0_f64;
         for row in 0..regressors.nrows() {
@@ -17,7 +23,17 @@ pub(super) fn nullspace_basis(
         }
         scales[column] = square_sum.sqrt().max(1.0);
     }
-    let mut matrix = vec![0.0_f64; nrows * ncols];
+    let elements = nrows.checked_mul(ncols).ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Allocation,
+            "model-simplex null-space matrix dimensions overflowed",
+        )
+    })?;
+    let mut matrix = fallible_filled(
+        elements,
+        0.0_f64,
+        "unable to reserve model-simplex null-space matrix",
+    )?;
     for (out_row, &row) in rows.iter().enumerate() {
         for column in 0..ncols {
             matrix[out_row * ncols + column] = regressors[(row, column)] / scales[column];
@@ -27,7 +43,13 @@ pub(super) fn nullspace_basis(
         .iter()
         .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
     let threshold = tolerance * initial_maximum.max(1.0);
-    let mut column_permutation = (0..ncols).collect::<Vec<_>>();
+    let mut column_permutation = Vec::new();
+    reserve(
+        &mut column_permutation,
+        ncols,
+        "unable to reserve model-simplex column permutation",
+    )?;
+    column_permutation.extend(0..ncols);
     let mut rank = 0_usize;
     while rank < nrows.min(ncols) {
         let mut pivot = None;
@@ -58,7 +80,7 @@ pub(super) fn nullspace_basis(
         let diagonal = matrix[rank * ncols + rank];
         if !diagonal.is_finite() || diagonal.abs() <= threshold {
             return Err(FeregError::new(
-                ErrorCode::InvalidData,
+                ErrorCode::NonConvergence,
                 "simplex null-space pivot is invalid",
             ));
         }
@@ -83,14 +105,27 @@ pub(super) fn nullspace_basis(
         return Ok(Vec::new());
     }
 
-    let mut basis = Vec::with_capacity(ncols - rank);
+    let mut basis = Vec::new();
+    reserve(
+        &mut basis,
+        ncols - rank,
+        "unable to reserve model-simplex null-space basis",
+    )?;
     for free in rank..ncols {
-        let mut permuted = vec![0.0_f64; ncols];
+        let mut permuted = fallible_filled(
+            ncols,
+            0.0_f64,
+            "unable to reserve model-simplex permuted basis direction",
+        )?;
         permuted[free] = 1.0;
         for pivot in 0..rank {
             permuted[pivot] = -matrix[pivot * ncols + free];
         }
-        let mut original = vec![0.0_f64; ncols];
+        let mut original = fallible_filled(
+            ncols,
+            0.0_f64,
+            "unable to reserve model-simplex basis direction",
+        )?;
         for position in 0..ncols {
             original[column_permutation[position]] =
                 permuted[position] / scales[column_permutation[position]];
@@ -101,7 +136,7 @@ pub(super) fn nullspace_basis(
             .sqrt();
         if !norm.is_finite() || norm <= f64::MIN_POSITIVE {
             return Err(FeregError::new(
-                ErrorCode::InvalidData,
+                ErrorCode::NonConvergence,
                 "simplex null-space basis is nonfinite or zero",
             ));
         }

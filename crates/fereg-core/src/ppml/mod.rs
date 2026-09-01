@@ -6,25 +6,82 @@
 
 mod certificate;
 mod family;
+#[cfg(test)]
 mod irls;
+mod memory;
+mod prepared;
+mod prepared_estimator;
+mod prepared_irls;
+mod prepared_model;
+mod prepared_separation;
+mod psd;
+mod residuals;
+mod result;
 mod vce;
 
 pub use certificate::PpmlCertificate;
 pub use family::{
-    means_from_eta, offset_from_exposure, poisson_objective, PoissonBounds, PoissonObjective,
+    means_from_eta, offset_from_exposure, poisson_null_objective, poisson_objective, PoissonBounds,
+    PoissonNullObjective, PoissonObjective,
+};
+pub use memory::{
+    certify_ppml_steady_state_allocation, estimate_ppml_memory, plan_ppml_memory,
+    BoundedPpmlDiagnostics, PpmlAllocationTelemetry, PpmlAllocatorSnapshot,
+    PpmlAllocatorSnapshotProbe, PpmlFallbackKind, PpmlIterationWorkspace, PpmlLineSearchAcceptance,
+    PpmlLinearWorkspaceCapacityReport, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryEstimate,
+    PpmlMemoryInventory, PpmlMemoryPlan, PpmlMemoryPreflightEvent, PpmlMemoryPreflightObservation,
+    PpmlMemoryPreflightProbe, PpmlMemoryRoute, PpmlMemoryTelemetry, PpmlPhase,
+    PpmlPhaseAllocatorEvent, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlPhaseTimings,
+    PpmlSteadyStateAllocationCertificate, PpmlSteadyStateAllocationObservation,
+    PpmlWorkspaceCapacityReport, PPML_PHASES, PPML_PHASE_COUNT, PPML_STEADY_STATE_AUDIT_ITERATIONS,
+};
+pub use prepared::{
+    prepare_ppml_numeric_data, PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
+    PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
+};
+pub use prepared_estimator::{
+    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlInterruptPoint,
+    PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+};
+pub use psd::{PpmlPsdReport, PpmlPsdState};
+pub use residuals::{fill_ppml_residuals, ppml_residuals, PpmlResidualKind};
+pub use result::{
+    certify_ppml_reconstruction, CertifiedPpmlResult, PpmlClusterDimensionResult,
+    PpmlCoefficientOutput, PpmlCoefficientStatus, PpmlConvergenceReport, PpmlFinalSample,
+    PpmlFixedEffectChannelKind, PpmlFixedEffectResult, PpmlLikelihoodStatistics, PpmlOutputState,
+    PpmlPredictionKind, PpmlReconstructionCertificate, PpmlResultCertificate,
+    PpmlSavedEffectOutput,
+};
+#[allow(unused_imports)]
+pub(crate) use result::{
+    prepare_ppml_fixed_effect_report, recover_ppml_fixed_effects, CertifiedPpmlResultInput,
+    PreparedPpmlFixedEffectReport, PreparedPpmlRecoveredFixedEffects,
+};
+pub use vce::{
+    compute_ppml_dof, compute_ppml_inference, PpmlClusterSubsetReport, PpmlDofReport,
+    PpmlInferenceCertificate, PpmlInferenceDesign, PpmlInferenceInput, PpmlInferenceResult,
+    PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PpmlVceResult, PpmlWaldReport,
 };
 
+#[cfg(test)]
 use crate::data::DenseMatrix;
+#[cfg(test)]
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{AbsorbConfig, FeDesign, SolveReport};
-use crate::ols::{
-    compute_dof, DofConfig, DofReport, FiniteSolver, RegressorStatus, VceKind, VceReport,
-};
+#[cfg(test)]
+use crate::fe::FeDesign;
+use crate::fe::{AbsorbConfig, SolveReport};
+#[cfg(test)]
+use crate::ols::{compute_dof, DofConfig, DofReport, RegressorStatus, VceKind, VceReport};
+#[cfg(test)]
 use certificate::score_certificate;
+#[cfg(test)]
+use family::poisson_objective_from_eta;
+#[cfg(test)]
 use irls::{
-    accept_step, initialize, multiply, profile_irls_step, scheduled_inner_tolerance,
-    validate_inputs, validate_start, weighted_outcome_sum,
+    accept_step, initialize, multiply, profile_irls_step, validate_inputs, validate_start,
+    weighted_outcome_sum, ProfileStep,
 };
+#[cfg(test)]
 use vce::{compute_ppml_vce, PpmlVceInput};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,8 +90,9 @@ pub enum PpmlInitialization {
     Intercept,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
-pub struct PpmlStart {
+pub(crate) struct PpmlStart {
     pub coefficients: Vec<f64>,
     /// Includes the offset.
     pub linear_predictor: Vec<f64>,
@@ -43,8 +101,6 @@ pub struct PpmlStart {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PpmlConfig {
     pub absorb: AbsorbConfig,
-    pub finite_solver: FiniteSolver,
-    pub rank_tolerance: f64,
     pub fixed_effect_collinearity_tolerance: f64,
     pub tolerance: f64,
     pub score_tolerance: f64,
@@ -56,33 +112,38 @@ pub struct PpmlConfig {
     pub objective_slack: f64,
     pub bounds: PoissonBounds,
     pub initialization: PpmlInitialization,
-    pub vce: VceKind,
-    pub small_sample_correction: bool,
-    pub dof: DofConfig,
 }
 
 impl Default for PpmlConfig {
     fn default() -> Self {
         Self {
             absorb: AbsorbConfig::default(),
-            finite_solver: FiniteSolver::Auto,
-            rank_tolerance: 1e-10,
             fixed_effect_collinearity_tolerance: 1e-10,
             tolerance: 1e-8,
             score_tolerance: 1e-8,
             inner_tolerance_initial: 1e-6,
-            inner_tolerance_final: 1e-10,
-            max_iterations: 100,
+            inner_tolerance_final: 1e-12,
+            max_iterations: 10_000,
             max_step_halvings: 25,
             minimum_step: 2.0_f64.powi(-25),
             objective_slack: 1e-12,
             bounds: PoissonBounds::default(),
             initialization: PpmlInitialization::Intercept,
-            vce: VceKind::Robust,
-            small_sample_correction: true,
-            dof: DofConfig::default(),
         }
     }
+}
+
+/// Deterministic tolerance policy shared by the prepared production session
+/// and the cfg(test)-only dense oracle.
+pub(crate) fn scheduled_inner_tolerance(config: PpmlConfig, iteration: usize) -> f64 {
+    const STAGES: usize = 8;
+    if iteration >= STAGES {
+        return config.inner_tolerance_final;
+    }
+    let fraction = iteration.saturating_sub(1) as f64 / (STAGES - 1) as f64;
+    ((1.0 - fraction) * config.inner_tolerance_initial.ln()
+        + fraction * config.inner_tolerance_final.ln())
+    .exp()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -100,6 +161,7 @@ pub struct PpmlIterationReport {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg(test)]
 pub struct PpmlDiagnostics {
     pub converged: bool,
     pub iterations: Vec<PpmlIterationReport>,
@@ -108,6 +170,7 @@ pub struct PpmlDiagnostics {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg(test)]
 pub struct PpmlFitStatistics {
     pub observations: usize,
     pub finite_rank: usize,
@@ -121,6 +184,7 @@ pub struct PpmlFitStatistics {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg(test)]
 pub struct PpmlResult {
     pub coefficients: Vec<f64>,
     pub covariance: Vec<f64>,
@@ -141,7 +205,8 @@ pub struct PpmlResult {
     pub diagnostics: PpmlDiagnostics,
 }
 
-pub fn fit_ppml(
+#[cfg(test)]
+pub(crate) fn fit_ppml(
     outcome: &[f64],
     regressors: &DenseMatrix,
     prior_weights: &[f64],
@@ -163,7 +228,8 @@ pub fn fit_ppml(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn fit_ppml_with_start(
+#[cfg(test)]
+pub(crate) fn fit_ppml_with_start(
     outcome: &[f64],
     regressors: &DenseMatrix,
     prior_weights: &[f64],
@@ -183,9 +249,15 @@ pub fn fit_ppml_with_start(
         config,
     )?;
     let nrows = outcome.len();
-    let ncols = regressors.ncols();
     let (mut coefficients, mut eta) = if let Some(start) = start {
-        validate_start(start, nrows, ncols, config)?;
+        validate_start(
+            start,
+            regressors,
+            prior_weights,
+            offset,
+            fixed_effects,
+            config,
+        )?;
         (start.coefficients.clone(), start.linear_predictor.clone())
     } else {
         initialize(
@@ -199,10 +271,13 @@ pub fn fit_ppml_with_start(
     };
     let mut mean = vec![0.0_f64; nrows];
     means_from_eta(&eta, config.bounds, &mut mean)?;
-    let mut objective = poisson_objective(outcome, &mean, prior_weights)?;
+    let mut objective = poisson_objective_from_eta(outcome, &eta, &mean, prior_weights)?;
     let mut reports = Vec::with_capacity(config.max_iterations.min(128));
     let mut total_step_halvings = 0_usize;
     let mut converged = false;
+    let mut certified_final_profile = None;
+    let mut strict_profile_rejections = 0_usize;
+    let mut consecutive_converged_iterations = 0_usize;
     let mut final_certificate = score_certificate(
         outcome,
         &mean,
@@ -241,7 +316,7 @@ pub fn fit_ppml_with_start(
                 FeregError::new(ErrorCode::Internal, "PPML step-halving count overflowed")
             })?;
         let relative_change = (objective.deviance - accepted.objective.deviance).abs()
-            / objective.deviance.abs().max(1.0);
+            / objective.deviance.min(accepted.objective.deviance).max(0.1);
         coefficients = accepted.coefficients;
         eta = accepted.eta;
         mean = accepted.mean;
@@ -254,6 +329,42 @@ pub fn fit_ppml_with_start(
             fixed_effects,
             config.score_tolerance,
         )?;
+        let iteration_certified = relative_change <= config.tolerance && final_certificate.passed;
+        consecutive_converged_iterations = if iteration_certified {
+            consecutive_converged_iterations.saturating_add(1)
+        } else {
+            0
+        };
+        let wants_convergence = consecutive_converged_iterations >= 2;
+        let strict_profile = if wants_convergence {
+            let strict_tolerance = (0.1 * config.tolerance).min(1e-12);
+            let candidate = profile_irls_step(
+                outcome,
+                regressors,
+                prior_weights,
+                offset,
+                fixed_effects,
+                &eta,
+                &mean,
+                config,
+                strict_tolerance,
+            )?;
+            if final_profile_is_consistent(&profile, &candidate, &eta, &coefficients, config) {
+                Some(candidate)
+            } else {
+                strict_profile_rejections =
+                    strict_profile_rejections.checked_add(1).ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "PPML strict-profile rejection count overflowed",
+                        )
+                    })?;
+                consecutive_converged_iterations = 0;
+                None
+            }
+        } else {
+            None
+        };
         reports.push(PpmlIterationReport {
             iteration,
             deviance: objective.deviance,
@@ -266,34 +377,32 @@ pub fn fit_ppml_with_start(
             absorb_report: profile.absorb_report,
             certificate: final_certificate.clone(),
         });
-        if relative_change <= config.tolerance && final_certificate.passed {
+        if let Some(profile) = strict_profile {
+            certified_final_profile = Some(profile);
             converged = true;
             break;
         }
     }
     if !converged {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
+            ErrorCode::NonConvergence,
             format!(
-                "PPML failed to converge after {} iterations; deviance={:.16e}, score={:.3e}",
-                config.max_iterations, objective.deviance, final_certificate.relative_infinity_norm
+                "PPML failed to converge after {} iterations; deviance={:.16e}, score={:.3e}, strict_profile_rejections={strict_profile_rejections}",
+                config.max_iterations, objective.deviance, final_certificate.relative_infinity_norm,
             ),
         ));
     }
 
-    // Recreate the Hessian and transformed X at the accepted final mean.  This
-    // prevents covariance and rank diagnostics from referring to a stale IRLS state.
-    let final_profile = profile_irls_step(
-        outcome,
-        regressors,
-        prior_weights,
-        offset,
-        fixed_effects,
-        &eta,
-        &mean,
-        config,
-        config.inner_tolerance_final,
-    )?;
+    // The strict profile was computed at this exact accepted mean and was also
+    // required to agree with the accepted coefficients, predictor, and rank.
+    // Thus covariance and statuses cannot silently refer to a different WLS
+    // solution than the published point estimate.
+    let final_profile = certified_final_profile.ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Internal,
+            "PPML convergence lacked a certified final profile",
+        )
+    })?;
     for (column, status) in final_profile.statuses.iter().enumerate() {
         if !matches!(status, RegressorStatus::Kept) {
             coefficients[column] = 0.0;
@@ -304,7 +413,20 @@ pub fn fit_ppml_with_start(
         .zip(&mean)
         .map(|(outcome, mean)| outcome - mean)
         .collect::<Vec<_>>();
-    let dof = compute_dof(nrows, final_profile.kept.len(), fixed_effects, config.dof)?;
+    // This direct fitter is retained only as a legacy test/oracle bridge.  It
+    // must not expose OLS inference policy through `PpmlConfig`: production
+    // PPML owns VCE and DoF in `PreparedPpmlRequestV1`/`compute_ppml_inference`.
+    let dof = compute_dof(
+        nrows,
+        final_profile.kept.len(),
+        fixed_effects,
+        DofConfig::default(),
+    )?;
+    let legacy_vce = if clusters.is_empty() {
+        VceKind::Robust
+    } else {
+        VceKind::Clustered
+    };
     let vce = compute_ppml_vce(PpmlVceInput {
         regressors: &final_profile.transformed_regressors,
         score_residuals: &score_residuals,
@@ -313,8 +435,7 @@ pub fn fit_ppml_with_start(
         kept: &final_profile.kept,
         residual_dof: dof.residual,
         clusters,
-        kind: config.vce,
-        small_sample: config.small_sample_correction,
+        kind: legacy_vce,
     })?;
     let finite_predictor = multiply(regressors, &coefficients)?;
     let absorbed_predictor = eta
@@ -360,26 +481,67 @@ pub fn fit_ppml_with_start(
 }
 
 #[cfg(test)]
+fn final_profile_is_consistent(
+    iteration_profile: &ProfileStep,
+    strict_profile: &ProfileStep,
+    accepted_eta: &[f64],
+    accepted_coefficients: &[f64],
+    config: PpmlConfig,
+) -> bool {
+    if iteration_profile.statuses != strict_profile.statuses
+        || iteration_profile.kept != strict_profile.kept
+    {
+        return false;
+    }
+    let tolerance = config
+        .tolerance
+        .min(config.score_tolerance)
+        .min(1e-8)
+        .max(64.0 * config.inner_tolerance_final)
+        .max(256.0 * f64::EPSILON);
+    relative_infinity_difference(accepted_eta, &strict_profile.candidate_eta) <= tolerance
+        && relative_infinity_difference(accepted_coefficients, &strict_profile.coefficients)
+            <= tolerance
+}
+
+#[cfg(test)]
+fn relative_infinity_difference(left: &[f64], right: &[f64]) -> f64 {
+    if left.len() != right.len() {
+        return f64::INFINITY;
+    }
+    left.iter()
+        .zip(right)
+        .map(|(left, right)| (left - right).abs() / left.abs().max(right.abs()).max(1.0))
+        .fold(0.0_f64, f64::max)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
 
-    fn model_based() -> PpmlConfig {
-        PpmlConfig {
-            vce: VceKind::Unadjusted,
-            small_sample_correction: false,
-            ..PpmlConfig::default()
-        }
+    fn legacy_config() -> PpmlConfig {
+        PpmlConfig::default()
     }
 
     #[test]
     fn intercept_only_matches_the_mean() {
         let y = [1.0, 2.0, 4.0, 8.0, 3.0, 5.0];
         let x = DenseMatrix::from_columns(&[vec![1.0; y.len()]]).expect("matrix");
-        let fit = fit_ppml(&y, &x, &[1.0; 6], &[0.0; 6], None, &[], model_based()).expect("fit");
+        let fit = fit_ppml(&y, &x, &[1.0; 6], &[0.0; 6], None, &[], legacy_config()).expect("fit");
         let expected = (y.iter().sum::<f64>() / y.len() as f64).ln();
         assert!((fit.coefficients[0] - expected).abs() < 1e-8);
         assert!(fit.diagnostics.final_certificate.passed);
+    }
+
+    #[test]
+    fn fractional_outcomes_are_valid_estimation_data() {
+        let y = [0.25_f64, 0.5, 1.75, 3.25, 2.5, 4.75];
+        let x = DenseMatrix::from_columns(&[vec![1.0; y.len()]]).expect("matrix");
+        let fit = fit_ppml(&y, &x, &[1.0; 6], &[0.0; 6], None, &[], legacy_config()).expect("fit");
+        let expected = (y.iter().sum::<f64>() / y.len() as f64).ln();
+        assert!((fit.coefficients[0] - expected).abs() < 1e-9);
+        assert!(fit.objective.deviance.is_finite());
     }
 
     #[test]
@@ -388,7 +550,7 @@ mod tests {
         let y = exposure.map(|value| 2.5 * value);
         let offset = offset_from_exposure(&exposure).expect("offset");
         let x = DenseMatrix::from_columns(&[vec![1.0; y.len()]]).expect("matrix");
-        let fit = fit_ppml(&y, &x, &[1.0; 6], &offset, None, &[], model_based()).expect("fit");
+        let fit = fit_ppml(&y, &x, &[1.0; 6], &offset, None, &[], legacy_config()).expect("fit");
         assert!((fit.coefficients[0] - 2.5_f64.ln()).abs() < 1e-8);
         assert!(fit
             .mean
@@ -427,7 +589,7 @@ mod tests {
             &vec![0.0; y.len()],
             Some(&design),
             &[],
-            model_based(),
+            legacy_config(),
         )
         .expect("fit");
         assert!((fit.coefficients[0] - 0.7).abs() < 1e-6);
@@ -450,10 +612,7 @@ mod tests {
             &[0.0; 8],
             None,
             &[vec![0, 0, 1, 1, 2, 2, 3, 3]],
-            PpmlConfig {
-                vce: VceKind::Clustered,
-                ..PpmlConfig::default()
-            },
+            legacy_config(),
         )
         .expect("fit");
         assert!(fit.standard_errors.iter().all(|value| value.is_finite()));
@@ -474,5 +633,115 @@ mod tests {
             )
             .is_err());
         }
+    }
+
+    #[test]
+    fn all_zero_outcome_reports_the_nonexistent_finite_intercept() {
+        let x = DenseMatrix::from_columns(&[vec![1.0; 4]]).expect("matrix");
+        let error = fit_ppml(
+            &[0.0; 4],
+            &x,
+            &[1.0; 4],
+            &[0.0; 4],
+            None,
+            &[],
+            legacy_config(),
+        )
+        .expect_err("all-zero outcome must fail");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert!(error.message.contains("no finite PPML intercept solution"));
+    }
+
+    #[test]
+    fn stale_final_profile_reproduction_is_rejected_instead_of_published() {
+        let x_values = [-2.0_f64, -1.0, 0.0, 1.0, 2.0, 3.0];
+        let outcome = x_values.map(|value| (0.2 + 0.6 * value).exp());
+        let regressors = DenseMatrix::from_columns(&[vec![1.0; outcome.len()], x_values.to_vec()])
+            .expect("regressors");
+        let weights = [1.0_f64; 6];
+        let offset = [0.0_f64; 6];
+        let mut config = legacy_config();
+        config.tolerance = 0.99;
+        config.score_tolerance = 0.99;
+        config.max_iterations = 1;
+
+        let (coefficients, eta) =
+            initialize(&outcome, &regressors, &weights, &offset, None, config)
+                .expect("initialization");
+        let mut mean = [0.0_f64; 6];
+        means_from_eta(&eta, config.bounds, &mut mean).expect("initial mean");
+        let objective = poisson_objective(&outcome, &mean, &weights).expect("objective");
+        let first_profile = profile_irls_step(
+            &outcome,
+            &regressors,
+            &weights,
+            &offset,
+            None,
+            &eta,
+            &mean,
+            config,
+            scheduled_inner_tolerance(config, 1),
+        )
+        .expect("first profile");
+        let accepted = accept_step(
+            &eta,
+            &coefficients,
+            &first_profile.candidate_eta,
+            &first_profile.coefficients,
+            &outcome,
+            &weights,
+            objective,
+            config,
+        )
+        .expect("accepted first step");
+        let strict_profile = profile_irls_step(
+            &outcome,
+            &regressors,
+            &weights,
+            &offset,
+            None,
+            &accepted.eta,
+            &accepted.mean,
+            config,
+            config.inner_tolerance_final,
+        )
+        .expect("strict profile");
+        assert!(
+            !final_profile_is_consistent(
+                &first_profile,
+                &strict_profile,
+                &accepted.eta,
+                &accepted.coefficients,
+                config,
+            ),
+            "the second WLS profile must expose the stale-final-state mismatch"
+        );
+
+        let error = fit_ppml(&outcome, &regressors, &weights, &offset, None, &[], config)
+            .expect_err("one loose iteration must not publish the stale final profile");
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+        assert!(error.message.contains("strict_profile_rejections="));
+    }
+
+    #[test]
+    fn public_warm_start_rejects_inconsistent_eta_and_beta() {
+        let outcome = [1.0_f64, 2.0, 3.0, 4.0];
+        let regressors = DenseMatrix::from_columns(&[vec![1.0; 4]]).expect("regressors");
+        let start = PpmlStart {
+            coefficients: vec![0.0],
+            linear_predictor: vec![1.0; 4],
+        };
+        let error = fit_ppml_with_start(
+            &outcome,
+            &regressors,
+            &[1.0; 4],
+            &[0.0; 4],
+            None,
+            &[],
+            legacy_config(),
+            Some(&start),
+        )
+        .expect_err("inconsistent warm start");
+        assert!(error.message.contains("warm start is inconsistent"));
     }
 }

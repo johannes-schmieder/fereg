@@ -96,7 +96,4 @@ capture noisily fereg y x, absorb(a#b)
 assert _rc == 0
 assert `"`e(cmd)'"' == "fereg"
 assert e(N) == 8
-capture noisily feppml y x, absorb(a#b)
-assert _rc == 498
-
 display "END_FIXTURE|estimate_ols_categorical_final_sample_rebase|rc=0"

@@ -440,6 +440,27 @@ impl OlsRequestV1 {
         self.validate_and_compile_with_cluster_sources(&[])
     }
 
+    /// Validate PPML's ordinary model plus its categorical absorbed topology
+    /// without applying the developer OLS boundary's intercept-only limit to
+    /// the original absorbed request. The synthetic availability request is
+    /// still compiled by that boundary, so ordinary terms, bindings, and
+    /// source uses retain the same fail-closed metadata checks.
+    pub fn validate_ppml_and_compile(&self) -> Result<PreparedOlsModel> {
+        self.validate_ppml_and_compile_with_cluster_sources(&[])
+    }
+
+    pub(super) fn validate_ppml_and_compile_with_cluster_sources(
+        &self,
+        cluster_sources: &[SourceId],
+    ) -> Result<PreparedOlsModel> {
+        if self.absorbed_terms.is_empty() {
+            return self.validate_and_compile_with_cluster_sources(cluster_sources);
+        }
+        let plan = crate::fe::plan_categorical_absorbed_request(self)?;
+        plan.availability_request()
+            .validate_and_compile_with_cluster_sources(cluster_sources)
+    }
+
     pub(super) fn validate_and_compile_with_cluster_sources(
         &self,
         cluster_sources: &[SourceId],

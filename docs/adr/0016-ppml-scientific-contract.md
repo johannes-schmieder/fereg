@@ -270,7 +270,32 @@ the public command.
 
     `deviance` deliberately preserves the pinned per-row contribution rather
     than a signed square-root residual. Unsupported prediction types fail
-    closed.
+    closed. Prediction availability also obeys the requested-output-only
+    memory contract in ADR 0018; a fit may not retain an unrequested hidden
+    O(N) `d`, `eta`, or `mu` vector merely to make a later prediction work.
+
+    - `xb` is always available. It is reconstructed from the fitted finite
+      coefficients, the current finite covariates, and the current
+      `offset()` or `exposure()` variable.
+    - Without absorbed effects, `d`/`absorbed` is identically zero and `eta`,
+      `mu`, and every residual statistic are reconstructed from the current
+      `xb`. Thus a fit with no requested observation-level outputs supports
+      the complete prediction surface.
+    - With absorbed effects, `d`/`absorbed` requires a compatible retained
+      `d()` output. `eta`, `mu`, and every residual statistic require a
+      compatible retained `d()`, `eta()`, or `mu()` output. If none was
+      requested and retained at estimation time, prediction returns `r(498)`
+      before creating the target variable; `xb` remains available.
+    - A retained `d()` is authoritative when more than one compatible output
+      exists: `eta` is reconstructed as the current `xb` plus retained `d`,
+      even if retained `eta()` or `mu()` snapshots are also present. Only when
+      `d()` is absent may retained `eta()`, then retained `mu()`, serve as a
+      snapshot fallback. Those fallbacks deliberately do not promise to track
+      post-estimation edits to finite covariates or adjustment variables.
+    - `d` and `absorbed` are one request, as are `eta` and `xbd`; specifying
+      both members of either alias pair is invalid syntax (`r(198)`) and
+      creates no target variable.
+
 39. The public score residual is unweighted. The internal sandwich score
     remains prior-weighted according to items 31--32.
 

@@ -178,6 +178,8 @@ const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
 const INPUT_BULK_READ_CHUNK_ROWS: usize = 65_536;
 
 pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+    #[cfg(test)]
+    let _action_observation_guard = instrumentation::lock_action_observation();
     let started = Instant::now();
     let resources_start = instrumentation::begin_observation();
     let specification = EstimateActionSpec::parse(args)?;
@@ -854,7 +856,7 @@ impl EstimateActionSpec {
 /// tagged, byte-length-framed bundle for the hidden licensed-Stata caller.
 /// Decoding is complete and canonical before the handshake and before any SPI
 /// metadata or observation read.
-fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
+pub(crate) fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
     let Some(bundle) = (args.len() == 1)
         .then(|| args[0].strip_prefix("bundle="))
         .flatten()
@@ -870,7 +872,7 @@ fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>
     parse_key_values(&fields)
 }
 
-fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
+pub(crate) fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
     const MAX_FIELDS: usize = 80;
     let bytes = bundle.as_bytes();
     let (count, mut cursor) = parse_bundle_decimal(bytes, 0, "field count")?;
@@ -1056,7 +1058,7 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
     Ok(output)
 }
 
-fn load_ols_input(
+pub(crate) fn load_ols_input(
     request: &OlsRequestV1,
     candidate_all: bool,
     input_complete: bool,
@@ -2599,7 +2601,7 @@ fn source_requires_numeric(request: &OlsRequestV1, source: SourceId) -> bool {
         .any(|term| term.slope_sources.contains(&source))
 }
 
-fn read_table(
+pub(crate) fn read_table(
     spi: &mut dyn SpiApi,
     name: &str,
     declared_count: usize,
@@ -2635,7 +2637,11 @@ fn read_table(
     })
 }
 
-fn read_bindings(spi: &mut dyn SpiApi, name: &str, count: usize) -> Result<Vec<OlsInputBinding>> {
+pub(crate) fn read_bindings(
+    spi: &mut dyn SpiApi,
+    name: &str,
+    count: usize,
+) -> Result<Vec<OlsInputBinding>> {
     if count == 0 {
         return Err(invalid("OLS binding matrix cannot be empty"));
     }
@@ -2713,7 +2719,7 @@ fn empty_loaded_column(n: usize, label: &'static str) -> Result<LoadedNumericCol
     })
 }
 
-fn decode_registry(value: &str, expected: usize) -> Result<Vec<String>> {
+pub(crate) fn decode_registry(value: &str, expected: usize) -> Result<Vec<String>> {
     if expected == 0 {
         if value != "." {
             return Err(invalid("empty registry must use the dot sentinel"));
@@ -2812,20 +2818,20 @@ fn parse_preconditioner(value: &str) -> Result<LsmrPreconditioner> {
     }
 }
 
-fn required<'a>(values: &'a BTreeMap<String, String>, key: &str) -> Result<&'a str> {
+pub(crate) fn required<'a>(values: &'a BTreeMap<String, String>, key: &str) -> Result<&'a str> {
     values
         .get(key)
         .map(String::as_str)
         .ok_or_else(|| syntax(format!("missing required field {key}")))
 }
 
-fn parse_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
+pub(crate) fn parse_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
     required(values, key)?
         .parse::<usize>()
         .map_err(|_| syntax(format!("field {key} must be an unsigned integer")))
 }
 
-fn parse_positive_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
+pub(crate) fn parse_positive_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
     let value = parse_usize(values, key)?;
     if value == 0 {
         Err(syntax(format!("field {key} must be positive")))
@@ -2834,7 +2840,7 @@ fn parse_positive_usize(values: &BTreeMap<String, String>, key: &str) -> Result<
     }
 }
 
-fn parse_positive_f64(values: &BTreeMap<String, String>, key: &str) -> Result<f64> {
+pub(crate) fn parse_positive_f64(values: &BTreeMap<String, String>, key: &str) -> Result<f64> {
     let value = required(values, key)?
         .parse::<f64>()
         .map_err(|_| syntax(format!("field {key} must be numeric")))?;
@@ -2845,7 +2851,7 @@ fn parse_positive_f64(values: &BTreeMap<String, String>, key: &str) -> Result<f6
     }
 }
 
-fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
+pub(crate) fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     let Some(value) = std::env::var_os("FEREG_MEMORY_LIMIT_BYTES") else {
         return Ok(instrumentation::system_available_memory_bytes());
     };
@@ -2862,13 +2868,13 @@ fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     }
 }
 
-fn parse_u16(values: &BTreeMap<String, String>, key: &str) -> Result<u16> {
+pub(crate) fn parse_u16(values: &BTreeMap<String, String>, key: &str) -> Result<u16> {
     required(values, key)?
         .parse::<u16>()
         .map_err(|_| syntax(format!("field {key} must be a u16 integer")))
 }
 
-fn parse_positive_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
+pub(crate) fn parse_positive_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
     let value = parse_nonnegative_u32(values, key)?;
     if value == 0 {
         Err(syntax(format!("field {key} must be positive")))
@@ -2877,13 +2883,13 @@ fn parse_positive_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u3
     }
 }
 
-fn parse_nonnegative_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
+pub(crate) fn parse_nonnegative_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
     required(values, key)?
         .parse::<u32>()
         .map_err(|_| syntax(format!("field {key} must be a u32 integer")))
 }
 
-fn parse_bool(values: &BTreeMap<String, String>, key: &str) -> Result<bool> {
+pub(crate) fn parse_bool(values: &BTreeMap<String, String>, key: &str) -> Result<bool> {
     match required(values, key)? {
         "0" => Ok(false),
         "1" => Ok(true),
@@ -3065,6 +3071,10 @@ mod tests {
                 column,
                 value,
             ));
+            Ok(())
+        }
+
+        fn display(&mut self, _message: &str) -> Result<()> {
             Ok(())
         }
 

@@ -5,6 +5,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{AbsorbConfig, BorrowedMapWeights, CmgAbsorber, CmgConfig, FeSolverKind};
 use crate::options::ThreadConfig;
 use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 use std::time::Instant;
 
@@ -12,35 +13,15 @@ use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
 use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsExecutionMode};
+pub(super) use crate::sandwich::{
+    SandwichReservation as PreparedInferenceReservation,
+    SystemSandwichReservation as SystemPreparedInferenceReservation,
+};
 
 const TRANSPOSE_BUFFER_BYTES: usize = 1 << 20;
 const SCORE_CERTIFICATE_REDUCTION_ROWS: usize = 16_384;
 const SCORE_CERTIFICATE_MAX_BLOCKS: usize = 64;
 const SCORE_CERTIFICATE_PARTIAL_BUDGET_BYTES: usize = 32 << 20;
-
-pub(super) trait PreparedInferenceReservation {
-    fn reserve<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        elements: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-pub(super) struct SystemPreparedInferenceReservation;
-
-impl PreparedInferenceReservation for SystemPreparedInferenceReservation {
-    fn reserve<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        elements: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(elements)
-            .map_err(|_| allocation(label))
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct PreparedOlsScoreDesignCertificate {
@@ -316,6 +297,32 @@ impl PreparedOlsDenseScoreView<'_> {
             }
         }
         Ok(())
+    }
+}
+
+impl SandwichDesign for PreparedOlsDenseScoreView<'_> {
+    fn nrows(&self) -> usize {
+        (*self).nrows()
+    }
+
+    fn dimension(&self) -> usize {
+        (*self).reported_dimension()
+    }
+
+    fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+        (*self).fill_reported_row(row, output)
+    }
+}
+
+impl SandwichDesign for CertifiedPreparedOlsScoreDesign<'_> {
+    fn nrows(&self) -> usize {
+        self.nrows()
+    }
+    fn dimension(&self) -> usize {
+        self.reported_to_finite.len()
+    }
+    fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+        self.fill_reported_row(row, output)
     }
 }
 

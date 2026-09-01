@@ -1,12 +1,12 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-08-30
-**Development branch:** `main`; certified contiguous robust/multiway VCE reductions are integrated alongside the complete-input OLS pipeline, portable-x86 Gram repair, deterministic parallel saved-FE publication, 16-thread one-FE execution, conservative topology-aware CMG auto routing, and qualified direct Schwarz-LSMR
+**Last updated:** 2026-08-31
+**Development branch:** `main`; public OLS remains active while the additive private PPML qualification path, shared certified-linear session, independent PPML wires, and exact-source qualification tooling are integrated before any public activation
 **Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** complete publication and cross-platform qualification, synchronize the GPL-3.0-only release files, and resolve the marked release metadata in the Stata Journal working-paper draft; use macOS only for fast smoke tests, focused profiling, and prototypes, and SCC for exhaustive matrices
-**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE are qualified on SCC/Linux; the intended public license is GPL-3.0-only, while repository license-file synchronization, cross-platform qualification, and final release qualification remain incomplete
+**Active milestone:** close the private PPML scientific, transaction, memory, performance, platform, and direct-F0 gates on one exact pre-activation source while keeping public `feppml` fail-closed
+**Release state:** public OLS beta, the primary direct-LSMR route, and robust/one- through five-way VCE have historical SCC/Linux qualification; the current shared-engine/PPML worktree has no accepted exact-source release receipt and public PPML is not activated
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
@@ -36,6 +36,36 @@ preserves task 99's parent evidence. The separate run
 preserves tasks 105--106. The accepted inventory, comparisons, scaling,
 overheads, and coverage limits are captured under
 `benchmarks/reports/captured/linux-x86_64/stata19/command-comparison-v2-partial-100/`.
+
+## PPML pre-activation state
+
+- Public `feppml` is still the installed atomic `r(498)` stub. It returns
+  before a substantive plugin call and is intentionally separate from the
+  private implementation.
+- The source contains private `_fereg_ppml` and `_fereg_estimate_ppml`
+  adapters and one live-SPI `estimate-ppml` action. The action uses independent
+  PPML request/result 1.1 wires and a receipt-last transaction. The bounded
+  result adds inference/PSD, drop-count, separation-sequence, and digest
+  evidence without repurposing the OLS action or result wire.
+- The private computation path is organized around prepared data, the shared
+  certified weighted-linear session and sandwich kernels, PPML-owned
+  separation/ledger rebasing, changing-weight IRLS, inference, certificates,
+  result construction, and fit-lifetime memory planning. Legacy dense PPML
+  fitting and VCE code is not a second production route.
+- `ppml-fail-closed` checks the public stub, `ppml-hidden` exercises the
+  private transaction and command-parameterized scientific fixtures, and
+  `fereg-regression` remains PPML-free. The frozen `ppmlhdfe` closure and
+  independent explicit-dummy/recession-cone tools are qualification oracles,
+  not runtime dependencies.
+- These are implemented qualification surfaces, not accepted evidence. The
+  final pre-activation source still requires complete local, SCC/Linux,
+  supported-build/ABI, memory/performance, transaction/Break, scientific,
+  comparator/oracle, and direct-F0 receipts. The candidate F0 identity remains
+  unsealed until its required platform evidence closes.
+- Public activation must be a small separately reviewable ado/help/package
+  change after the pre-activation gates pass. The complete gates must then be
+  rerun on the exact activated source; evidence cannot be inferred across the
+  activation commit.
 
 ## Current accepted state
 
@@ -253,8 +283,9 @@ overheads, and coverage limits are captured under
   The complete local entry point passes repository checks, 269 Python tests,
   strict formatting/Clippy, 318 core tests, 53 FFI plugin tests, integration
   oracles, mock SPI, and portable static checks.
-- `feppml` remains installed but is an explicit `r(498)` stub. PPML behavior
-  and performance are outside the 0.5.0 beta.
+- `feppml` remains installed but is an explicit `r(498)` stub. Private PPML
+  behavior and performance are under pre-activation qualification and are not
+  yet part of an accepted public 0.5.0 candidate.
 - The reference closure remains pinned to reghdfe 6.14.1 (`29b2b203...`),
   ftools 2.50.0 (`d6e24d66...`), and require 1.3.1 (`f4760b86...`).
 - The normal Stata PLUS tree has the exact local comparator closure: reghdfe
@@ -373,37 +404,52 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Current blockers
 
-1. The integrated ADR-0009/ADR-0010 route still needs a clean exact-commit
+1. The private PPML implementation and qualification tooling still need one
+   clean exact-source local verdict and licensed hidden-profile receipt; a
+   changing worktree or collection of focused test runs is not acceptance.
+2. The direct `fereg` F0 manifest is not sealed across every required platform,
+   and the final pre-activation source has not completed the paired scientific,
+   allocation, leak, RSS, and timing gate against F0.
+3. The final PPML scientific/comparator/oracle, memory/performance,
+   transaction/Break, clean-install, SCC/Linux, and supported build/ABI matrix
+   is not yet closed on one source and artifact identity.
+4. Public `feppml` activation and its exact-source rerun remain intentionally
+   blocked until items 1--3 close. The package inventory and public help must
+   continue to describe the stub meanwhile.
+5. The integrated ADR-0009/ADR-0010 route still needs a clean exact-commit
    rebuild, CI, fresh 1m/10m CMG holdouts, the broader release matrix, and
    immutable release receipts.
-2. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
+6. Explicit raw-start `solver(cg)` fails closed on the 1m low-mobility
    diagnostic because its refined residual fails the independent OLS score
    certificate. Auto's four-sweep pilot passes and is the beta acceptance path;
    the explicit escape hatch must remain documented as diagnostic until that
    raw-start score interaction is repaired.
-3. Explicit IT remains quarantined after the two registered high-mobility
+7. Explicit IT remains quarantined after the two registered high-mobility
    `r(459)` failures. It may not influence auto or publish uncertified output.
-4. The direct-LSMR qualification covers the registered standard and
+8. The direct-LSMR qualification covers the registered standard and
    low-mobility 1m/10m cases, and ADR-0014 now covers the broad clustered VCE,
    weight, moderate-K, scale, and thread surface.  The final release candidate
    still needs the combined slopes/saved-output/solver/resource matrix even
    though the component Rust and Stata surfaces are green.
-5. Rosetta, hosted Linux/Windows, and licensed Windows evidence is not refreshed
+9. Rosetta, hosted Linux/Windows, and licensed Windows evidence is not refreshed
    for this candidate. No tag or publication is permitted yet.
 
 ## Development plan
 
-1. Preserve the frozen ADR-0009 fallback and ADR-0010 topology tree. Run the
-   permanent CMG matrix and analyzer on fresh 1m holdouts and selected 10m
-   freeze cases before expanding the route or making release claims.
-2. Preserve the sealed Decimal fixtures, observation-space audit, large-case
-   tighter-solve stability check, and full generated 10m case in qualification.
-3. Diagnose explicit raw-start CG's low-mobility score failure separately from
-   auto. Any repair must preserve the four-sweep auto results and cannot weaken
-   FE or score certificates.
-4. Run the broader release matrix on the integration commit, then complete
-   clean-install, cross-platform, and final archive checks. Treat process RSS
-   as diagnostic and route-specific modeled allocation/leak/preflight as hard.
-5. Materialize immutable exact-commit licensed receipts only after that stack
-   passes. Then push the complete verified checkpoint together.
-6. Resume PPML development only after the OLS beta checkpoint is complete.
+1. Finish the private PPML source integration and run the complete local Rust,
+   Python, repository, plugin, build, and licensed `ppml-hidden` screens without
+   changing the public stub.
+2. Seal the remaining F0 platform identity and run the final pre-activation
+   candidate against F0 with the frozen scientific-first performance and memory
+   contract. Preserve all existing OLS wire and public-command behavior.
+3. Run the exact pinned `ppmlhdfe` closure plus independent-oracle PPML matrix,
+   constrained-memory and allocation gates, and SCC/Linux and supported-target
+   build/ABI qualification on the same source and artifacts.
+4. Only after those gates close, make the separately revertible public
+   activation change. Do not combine it with numerical, shared-engine, routing,
+   or OLS changes.
+5. Rerun the full local, F0, PPML, SCC, platform, clean-install, packaging, and
+   rollback/Break matrix on the exact activated source before recording any
+   public qualification claim.
+6. Preserve the frozen ADR-0009/ADR-0010 OLS routing, Decimal fixtures,
+   observation-space audits, and unresolved explicit-CG/IT caveats throughout.

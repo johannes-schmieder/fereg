@@ -13,6 +13,10 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::time::Instant;
 
+use super::linear_session::{
+    LinearSessionAllocationPhase, LinearSessionPhaseAllocationGuard,
+    LinearSessionPhaseAllocationObservation, LinearSessionPhaseAllocatorProbe,
+};
 use super::prepared_scratch::PreparedOlsScratch;
 use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData};
 
@@ -251,6 +255,106 @@ pub struct CertifiedPreparedOlsFit {
     execution: PreparedOlsExecutionReport,
 }
 
+/// Certified projection onto the complete prepared finite-plus-FE model span.
+///
+/// This crate-private result is intentionally narrower than an OLS fit: it
+/// freezes the same canonical finite rank decision and independently checks
+/// the projected residual, but never constructs covariance bread or publishes
+/// a reference-normalized absorbed intercept. PPML separation uses it when
+/// only the model-space projection is scientifically relevant.
+#[derive(Debug)]
+pub(crate) struct CertifiedPreparedLinearProjection {
+    coefficients: Vec<PreparedOlsFittedCoefficient>,
+    kept_generated_columns: Vec<usize>,
+    dropped_generated_columns: Vec<usize>,
+    finite_rank: usize,
+    rank_certificate: PreparedOlsRankCertificate,
+    score_certificate: PreparedOlsScoreCertificate,
+    absorption_report: SolveReport,
+    residual_absorption_report: SolveReport,
+    fitted: Vec<f64>,
+    residuals: Vec<f64>,
+    reconstruction_certificate: PreparedLinearProjectionReconstructionCertificate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct PreparedLinearProjectionReconstructionCertificate {
+    pub(crate) relative_infinity_norm: f64,
+    pub(crate) passed: bool,
+}
+
+impl CertifiedPreparedLinearProjection {
+    pub(crate) fn coefficients(&self) -> &[PreparedOlsFittedCoefficient] {
+        &self.coefficients
+    }
+
+    pub(crate) fn kept_generated_columns(&self) -> &[usize] {
+        &self.kept_generated_columns
+    }
+
+    pub(crate) fn dropped_generated_columns(&self) -> &[usize] {
+        &self.dropped_generated_columns
+    }
+
+    pub(crate) const fn finite_rank(&self) -> usize {
+        self.finite_rank
+    }
+
+    pub(crate) const fn rank_certificate(&self) -> PreparedOlsRankCertificate {
+        self.rank_certificate
+    }
+
+    pub(crate) const fn score_certificate(&self) -> PreparedOlsScoreCertificate {
+        self.score_certificate
+    }
+
+    pub(crate) const fn absorption_report(&self) -> &SolveReport {
+        &self.absorption_report
+    }
+
+    pub(crate) const fn residual_absorption_report(&self) -> &SolveReport {
+        &self.residual_absorption_report
+    }
+
+    pub(crate) fn fitted(&self) -> &[f64] {
+        &self.fitted
+    }
+
+    pub(crate) fn residuals(&self) -> &[f64] {
+        &self.residuals
+    }
+
+    pub(crate) const fn reconstruction_certificate(
+        &self,
+    ) -> PreparedLinearProjectionReconstructionCertificate {
+        self.reconstruction_certificate
+    }
+
+    pub(crate) fn certified(&self) -> bool {
+        let basis_is_coherent = self.finite_rank() == self.kept_generated_columns().len()
+            && self.kept_generated_columns().iter().all(|generated| {
+                self.coefficients().iter().any(|coefficient| {
+                    coefficient.generated_column_index == Some(*generated)
+                        && coefficient.status == PreparedOlsFitStatus::Kept
+                        && coefficient.value.is_some_and(f64::is_finite)
+                })
+            })
+            && self.dropped_generated_columns().iter().all(|generated| {
+                !self.kept_generated_columns().contains(generated)
+                    && self.coefficients().iter().any(|coefficient| {
+                        coefficient.generated_column_index == Some(*generated)
+                            && coefficient.status != PreparedOlsFitStatus::Kept
+                    })
+            });
+        basis_is_coherent
+            && self.rank_certificate().passed
+            && self.score_certificate().passed
+            && self.absorption_report().certified()
+            && self.residual_absorption_report().certified()
+            && self.reconstruction_certificate().passed
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub(super) enum PreparedOlsFastScoreCache {
     Packed {
@@ -393,6 +497,10 @@ impl CertifiedPreparedOlsFit {
         }
     }
 
+    pub(super) fn take_any_fast_score_cache(&mut self) -> Option<PreparedOlsFastScoreCache> {
+        self.fast_score_cache.take()
+    }
+
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
         self.execution.scratch_bytes = self.execution.scratch_bytes.max(bytes);
     }
@@ -497,6 +605,123 @@ impl<'a> NormalizedWeights<'a> {
     }
 }
 
+/// Borrowed numerical inputs for one prepared weighted-linear solve.
+///
+/// The frame deliberately owns no observation-scale storage. Its response and
+/// raw positive weights remain caller-owned, while the two scalar weight
+/// scales make the solver and reference cross-product conventions explicit.
+/// OLS constructs this frame from its prepared sample; an iterative estimator
+/// can instead borrow a changing working response and weight vector without
+/// rebuilding the prepared design.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LinearSolveFrame<'a> {
+    response: &'a [f64],
+    weights: NormalizedWeights<'a>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
+}
+
+impl<'a> LinearSolveFrame<'a> {
+    fn from_prepared_ols<P: PreparedOlsFitView + ?Sized>(prepared: &'a P) -> Result<Self> {
+        let weights = normalized_weights(prepared)?;
+        let bread_weight_scale = prepared_bread_weight_scale(prepared, weights)?;
+        Ok(Self {
+            response: &prepared.fit_sample().outcome,
+            weights,
+            bread_weight_scale,
+        })
+    }
+
+    /// Construct a frame from caller-owned response and raw solver weights.
+    /// The supplied scale states how raw weights are normalized for the solve
+    /// and how normalized cross-products map back to the reference Hessian.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn from_parts(
+        response: &'a [f64],
+        weights: BorrowedMapWeights<'a>,
+        bread_weight_scale: PreparedOlsBreadWeightScale,
+    ) -> Result<Self> {
+        if response.iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data(
+                "prepared weighted-linear response must be finite",
+            ));
+        }
+        if !bread_weight_scale.solver_weight_divisor.is_finite()
+            || bread_weight_scale.solver_weight_divisor <= 0.0
+            || !bread_weight_scale.reference_weight_multiplier.is_finite()
+            || bread_weight_scale.reference_weight_multiplier <= 0.0
+            || !bread_weight_scale.reference_weight_sum.is_finite()
+            || bread_weight_scale.reference_weight_sum <= 0.0
+        {
+            return Err(invalid_data(
+                "prepared weighted-linear weight scale must be finite and positive",
+            ));
+        }
+        let values = match weights {
+            BorrowedMapWeights::Unit => {
+                if bread_weight_scale.solver_weight_divisor != 1.0 {
+                    return Err(invalid_argument(
+                        "unit weighted-linear solve requires a unit solver divisor",
+                    ));
+                }
+                None
+            }
+            BorrowedMapWeights::Provided(values) => {
+                if values.len() != response.len()
+                    || values.iter().any(|weight| {
+                        !weight.is_finite()
+                            || *weight <= 0.0
+                            || *weight / bread_weight_scale.solver_weight_divisor == 0.0
+                    })
+                {
+                    return Err(invalid_data(
+                        "prepared weighted-linear weights must align and normalize positively",
+                    ));
+                }
+                Some(values)
+            }
+        };
+        Ok(Self {
+            response,
+            weights: NormalizedWeights {
+                values,
+                raw_scale: bread_weight_scale.solver_weight_divisor,
+                kind: bread_weight_scale.weight_kind,
+            },
+            bread_weight_scale,
+        })
+    }
+
+    pub(crate) const fn response(self) -> &'a [f64] {
+        self.response
+    }
+
+    const fn weights(self) -> NormalizedWeights<'a> {
+        self.weights
+    }
+
+    pub(crate) const fn raw_weights(self) -> BorrowedMapWeights<'a> {
+        self.weights.borrowed()
+    }
+
+    pub(crate) const fn bread_weight_scale(self) -> PreparedOlsBreadWeightScale {
+        self.bread_weight_scale
+    }
+
+    pub(crate) fn validate_for<P: PreparedOlsFitView + ?Sized>(self, prepared: &P) -> Result<()> {
+        if self.response.len() != prepared.fit_sample().n_active()
+            || match self.raw_weights() {
+                BorrowedMapWeights::Unit => false,
+                BorrowedMapWeights::Provided(values) => values.len() != self.response.len(),
+            }
+        {
+            return Err(invalid_argument(
+                "prepared weighted-linear frame is not aligned on the active observation axis",
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct FiniteScoreDraft {
     /// Largest finite-coordinate score after dividing out the within-X norm.
@@ -524,7 +749,7 @@ struct FiniteBreadInputs<'a> {
     standardized_gram: &'a [f64],
     rank: usize,
     reference_norms: &'a [f64],
-    weights: NormalizedWeights<'a>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
 }
 
 #[derive(Debug)]
@@ -600,6 +825,251 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
             ),
         }
     })?
+}
+
+/// Run the unchanged prepared OLS finalization around explicitly borrowed
+/// weighted-linear inputs. This is crate-private until estimator-neutral
+/// result ownership is extracted; public OLS entrypoints continue to build
+/// their frame from `PreparedNumericSample` above.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn fit_prepared_ols_coefficients_view_map_with_frame<
+    'a,
+    P: PreparedOlsFitView + Sync + ?Sized,
+>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+) -> Result<CertifiedPreparedOlsFit> {
+    fit_prepared_weighted_linear_once(prepared, frame, config, false, None, None)
+}
+
+pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+    retain_fast_score_cache: bool,
+    phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
+    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+) -> Result<CertifiedPreparedOlsFit> {
+    if phase_probe.is_some() != phase_observation.is_some() {
+        return Err(invalid_argument(
+            "weighted-linear phase probe and observation must be installed together",
+        ));
+    }
+    let team = ThreadTeam::new(config.execution.threads);
+    team.install(|| {
+        validate_config(prepared, config)?;
+        frame.validate_for(prepared)?;
+        let mut reservation = SystemFitReservation;
+        match config.execution.mode {
+            PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode_with_frame(
+                prepared,
+                frame,
+                config,
+                &mut reservation,
+                FitPerturbations::default(),
+                retain_fast_score_cache,
+                MAX_FAST_SCORE_CACHE_BYTES,
+                phase_probe,
+                phase_observation.as_deref_mut(),
+            ),
+            PreparedOlsExecutionMode::Low => fit_with_controls_low_internal_with_frame(
+                prepared,
+                frame,
+                config,
+                &mut reservation,
+                FitPerturbations::default(),
+                phase_probe,
+                phase_observation,
+            ),
+        }
+    })?
+}
+
+/// Canonical finite-plus-FE projection without covariance/report publication.
+/// The public OLS path never calls this boundary.
+pub(crate) fn fit_prepared_weighted_linear_projection_once<
+    'a,
+    P: PreparedOlsFitView + Sync + ?Sized,
+>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+) -> Result<CertifiedPreparedLinearProjection> {
+    let team = ThreadTeam::new(config.execution.threads);
+    team.install(|| {
+        validate_config(prepared, config)?;
+        frame.validate_for(prepared)?;
+        let mut reservation = SystemFitReservation;
+        fit_projection_only_internal(prepared, frame, config, &mut reservation)
+    })?
+}
+
+fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    frame: LinearSolveFrame<'_>,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+) -> Result<CertifiedPreparedLinearProjection> {
+    let weights = frame.weights();
+    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
+    let raw = prepared.fit_build_rhs_with_response(frame.response())?;
+    let generated_columns = prepared.fit_model().columns.len();
+    let mut reference_norms = reserved_filled(
+        reservation,
+        generated_columns,
+        0.0_f64,
+        "unable to reserve prepared projection reference norms",
+    )?;
+    for (column, norm) in reference_norms.iter_mut().enumerate() {
+        *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
+    }
+    let absorbed = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        raw,
+        config.absorb,
+        &mut cmg,
+        true,
+        false,
+    )?;
+    if !absorbed.report().certified() {
+        return Err(invalid_data(
+            "prepared projection initial absorption did not certify",
+        ));
+    }
+    let (mut within, absorption_report, _) = absorbed.into_full_parts();
+    let mut within_norms = reserved_filled(
+        reservation,
+        generated_columns + 1,
+        0.0_f64,
+        "unable to reserve prepared projection within norms",
+    )?;
+    if rayon::current_num_threads() == 1 {
+        fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+    } else {
+        within_norms
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&within, column, weights)?;
+                Ok(())
+            })?;
+    }
+    let within_outcome_norm = within_norms[0];
+    let score_norms = &within_norms[1..];
+    let mut qr = fit_scaled_pivoted_qr(
+        prepared,
+        &mut within,
+        weights,
+        frame.bread_weight_scale(),
+        &reference_norms,
+        score_norms,
+        config,
+        reservation,
+        false,
+        false,
+        false,
+    )?;
+    if qr.bread.is_some() {
+        return Err(invalid_argument(
+            "prepared projection-only finite solve unexpectedly constructed bread",
+        ));
+    }
+    let within_residuals = qr.within_residuals.take().ok_or_else(|| {
+        invalid_argument("prepared projection finite solve did not retain its residual")
+    })?;
+    let residual_matrix =
+        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
+    let residual_absorbed = absorb_fit_matrix(
+        prepared,
+        weights.borrowed(),
+        residual_matrix,
+        config.absorb,
+        &mut cmg,
+        false,
+        true,
+    )?;
+    if !residual_absorbed.report().certified() {
+        return Err(invalid_data(
+            "prepared projection residual absorption did not certify",
+        ));
+    }
+    let (residual_matrix, residual_absorption_report, _) = residual_absorbed.into_full_parts();
+    let residuals = residual_matrix.into_row_major();
+    let score_certificate = certify_scores(
+        prepared,
+        &residuals,
+        weights,
+        &reference_norms,
+        score_norms,
+        qr.finite_score,
+        &qr.generated_statuses,
+        within_outcome_norm,
+        config.score_tolerance,
+    )?;
+    if !score_certificate.passed {
+        return Err(invalid_data(
+            "prepared projection finite score certificate did not pass",
+        ));
+    }
+    let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
+    // A deferred absorbed-model intercept is not part of the finite rank
+    // problem and is not scientifically dropped.  The full OLS publication
+    // step removes it from this ledger when it installs the normalized
+    // reported intercept; projection-only deliberately skips that
+    // publication step, so make the same basis distinction here explicitly.
+    qr.dropped.retain(|generated| {
+        qr.generated_statuses[*generated] != PreparedOlsFitStatus::AbsorbedInterceptDeferred
+    });
+    qr.kept.sort_unstable();
+    qr.dropped.sort_unstable();
+    let mut fitted = reserved_filled(
+        reservation,
+        frame.response().len(),
+        0.0_f64,
+        "unable to reserve prepared projection fitted values",
+    )?;
+    let mut reconstruction_relative_infinity_norm = 0.0_f64;
+    for row in 0..fitted.len() {
+        fitted[row] = frame.response()[row] - residuals[row];
+        let reconstructed = fitted[row] + residuals[row];
+        let scale = frame.response()[row]
+            .abs()
+            .max(reconstructed.abs())
+            .max(1.0);
+        reconstruction_relative_infinity_norm = reconstruction_relative_infinity_norm
+            .max((reconstructed - frame.response()[row]).abs() / scale);
+        if !fitted[row].is_finite() || !reconstruction_relative_infinity_norm.is_finite() {
+            return Err(invalid_data(
+                "prepared projection reconstruction is not finite",
+            ));
+        }
+    }
+    let reconstruction_certificate = PreparedLinearProjectionReconstructionCertificate {
+        relative_infinity_norm: reconstruction_relative_infinity_norm,
+        passed: reconstruction_relative_infinity_norm <= 64.0 * f64::EPSILON,
+    };
+    let projection = CertifiedPreparedLinearProjection {
+        coefficients,
+        kept_generated_columns: qr.kept,
+        dropped_generated_columns: qr.dropped,
+        finite_rank: qr.rank,
+        rank_certificate: qr.certificate,
+        score_certificate,
+        absorption_report,
+        residual_absorption_report,
+        fitted,
+        residuals,
+        reconstruction_certificate,
+    };
+    if projection.certified() {
+        Ok(projection)
+    } else {
+        Err(invalid_data(
+            "prepared projection-only solve did not certify",
+        ))
+    }
 }
 
 pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
@@ -748,13 +1218,18 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
     reservation: &mut R,
     perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_with_controls_internal_mode(
+    validate_config(prepared, config)?;
+    let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+    fit_with_controls_internal_mode_with_frame(
         prepared,
+        frame,
         config,
         reservation,
         perturbations,
         false,
         MAX_FAST_SCORE_CACHE_BYTES,
+        None,
+        None,
     )
 }
 
@@ -834,12 +1309,48 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     retain_fast_score_cache: bool,
     max_fast_score_cache_bytes: usize,
 ) -> Result<CertifiedPreparedOlsFit> {
-    let mut trace = PhaseTrace::new();
     validate_config(prepared, config)?;
-    let weights = normalized_weights(prepared)?;
+    let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+    fit_with_controls_internal_mode_with_frame(
+        prepared,
+        frame,
+        config,
+        reservation,
+        perturbations,
+        retain_fast_score_cache,
+        max_fast_score_cache_bytes,
+        None,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fit_with_controls_internal_mode_with_frame<
+    'a,
+    P: PreparedOlsFitView + ?Sized,
+    R: FitReservation,
+>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturbations: FitPerturbations,
+    retain_fast_score_cache: bool,
+    max_fast_score_cache_bytes: usize,
+    phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
+    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+) -> Result<CertifiedPreparedOlsFit> {
+    let mut trace = PhaseTrace::new();
+    frame.validate_for(prepared)?;
+    let weights = frame.weights();
     let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
 
-    let raw = prepared.fit_build_rhs()?;
+    let projection_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation.as_deref_mut(),
+        LinearSessionAllocationPhase::Projection,
+    );
+    let raw = prepared.fit_build_rhs_with_response(frame.response())?;
     let rhs_seconds = trace.lap();
     let generated_columns = prepared.fit_model().columns.len();
     let use_strided_fast_score_cache =
@@ -931,6 +1442,12 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     }
     let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
     let initial_absorb_seconds = trace.lap();
+    drop(projection_phase);
+    let finite_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation.as_deref_mut(),
+        LinearSessionAllocationPhase::FiniteSolve,
+    );
     let mut fast_score_cache = if retain_fast_score_cache {
         build_fast_score_cache(
             prepared,
@@ -969,12 +1486,14 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         prepared,
         &mut within,
         weights,
+        frame.bread_weight_scale(),
         &reference_norms,
         score_norms,
         config,
         reservation,
         perturbations.first_coefficient,
         perturbations.finite_bread,
+        true,
     )?;
     let finite_solve_seconds = trace.lap();
     if retain_fast_score_cache && fast_score_cache.is_none() && qr.standardized_within_is_reusable {
@@ -992,12 +1511,18 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         && raw_moments.is_some()
         && qr.generated_coefficients.iter().any(Option::is_some)
     {
-        Some(build_independent_raw_residuals(prepared, &qr, reservation)?)
+        Some(build_independent_raw_residuals(
+            prepared,
+            frame.response(),
+            &qr,
+            reservation,
+        )?)
     } else {
         None
     };
     let bread = finalize_reported_bread_and_intercept(
         prepared,
+        frame.response(),
         &mut qr,
         independent_raw_residuals.as_deref_mut(),
         weights,
@@ -1008,6 +1533,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         raw_moments.as_ref(),
     )?;
     let bread_residual_seconds = trace.lap();
+    drop(finite_phase);
     let initial_absorbed_outcome_sum_of_squares =
         normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
     if !initial_absorbed_outcome_sum_of_squares.is_finite()
@@ -1025,6 +1551,11 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
             *residual += 0.25;
         }
     }
+    let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation,
+        LinearSessionAllocationPhase::Projection,
+    );
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
     let residual_absorbed = absorb_fit_matrix(
@@ -1044,6 +1575,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
     let (mut residuals, residual_absorption_report, residual_fe_coefficients) =
         residual_absorbed.into_full_parts();
     let residual_absorb_seconds = trace.lap();
+    drop(residual_projection_phase);
     if perturbations.final_residual_constant {
         for row in 0..residuals.nrows() {
             residuals[(row, 0)] += 0.25;
@@ -1115,16 +1647,22 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
 
 fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
+    response: &[f64],
     qr: &QrFit,
     reservation: &mut R,
 ) -> Result<Vec<f64>> {
     let rows = prepared.fit_sample().n_active();
+    if response.len() != rows {
+        return Err(invalid_argument(
+            "prepared weighted-linear response and residual axis differ",
+        ));
+    }
     let mut residuals = reserved_empty(
         reservation,
         rows,
         "unable to reserve prepared OLS independent raw residual",
     )?;
-    residuals.extend_from_slice(&prepared.fit_sample().outcome);
+    residuals.extend_from_slice(response);
     for (column, coefficient) in qr.generated_coefficients.iter().copied().enumerate() {
         if let Some(coefficient) = coefficient {
             prepared.fit_subtract_raw_column(column, coefficient, &mut residuals)?;
@@ -1409,12 +1947,43 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
     perturbations: FitPerturbations,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
-    let weights = normalized_weights(prepared)?;
+    let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+    fit_with_controls_low_internal_with_frame(
+        prepared,
+        frame,
+        config,
+        reservation,
+        perturbations,
+        None,
+        None,
+    )
+}
+
+fn fit_with_controls_low_internal_with_frame<
+    'a,
+    P: PreparedOlsFitView + ?Sized,
+    R: FitReservation,
+>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturbations: FitPerturbations,
+    phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
+    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+) -> Result<CertifiedPreparedOlsFit> {
+    frame.validate_for(prepared)?;
+    let weights = frame.weights();
     let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
 
-    let raw_outcome = prepared.fit_build_rhs_block(0, 0, true)?;
+    let projection_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation.as_deref_mut(),
+        LinearSessionAllocationPhase::Projection,
+    );
+    let raw_outcome = prepared.fit_build_rhs_block_with_response(0, 0, true, frame.response())?;
     let absorbed_outcome = absorb_fit_matrix(
         prepared,
         weights.borrowed(),
@@ -1464,7 +2033,8 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
     let mut intercept_cross = None;
     for start in (0..generated_columns).step_by(block_width) {
         let end = start.saturating_add(block_width).min(generated_columns);
-        let raw_block = prepared.fit_build_rhs_block(start, end, false)?;
+        let raw_block =
+            prepared.fit_build_rhs_block_with_response(start, end, false, frame.response())?;
         for (generated, reference_norm) in
             reference_norms.iter_mut().enumerate().take(end).skip(start)
         {
@@ -1511,7 +2081,13 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
             scratch.write_column(generated, &column_buffer)?;
         }
     }
+    drop(projection_phase);
 
+    let finite_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation.as_deref_mut(),
+        LinearSessionAllocationPhase::FiniteSolve,
+    );
     let normalized_initial_within_sum_of_squares =
         initial_within_sum_of_squares_low(prepared, within_outcome_norm, intercept_cross)?;
     let scratch_bytes = scratch.bytes();
@@ -1520,6 +2096,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         &mut scratch,
         &mut within_outcome,
         weights,
+        frame.bread_weight_scale(),
         &reference_norms,
         &score_norms,
         config,
@@ -1538,7 +2115,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         .par_iter_mut()
         .enumerate()
         .try_for_each(|(row, residual)| -> Result<()> {
-            let mut value = prepared.fit_sample().outcome[row];
+            let mut value = frame.response()[row];
             for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
                 if let Some(coefficient) = coefficient {
                     value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
@@ -1554,6 +2131,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         })?;
     let bread = finalize_reported_bread_and_intercept(
         prepared,
+        frame.response(),
         &mut qr,
         Some(&mut raw_residuals),
         weights,
@@ -1572,6 +2150,12 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
             "prepared OLS low-memory initial absorbed outcome sum of squares is invalid",
         ));
     }
+    drop(finite_phase);
+    let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
+        phase_probe,
+        phase_observation,
+        LinearSessionAllocationPhase::Projection,
+    );
     let residual_matrix = DenseMatrix::from_row_major(rows, 1, raw_residuals)?;
     let residual_absorbed = absorb_fit_matrix(
         prepared,
@@ -1588,6 +2172,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         ));
     }
     let (mut residuals, residual_absorption_report) = residual_absorbed.into_parts();
+    drop(residual_projection_phase);
     if perturbations.final_residual_constant {
         for row in 0..residuals.nrows() {
             residuals[(row, 0)] += 0.25;
@@ -2056,10 +2641,10 @@ fn build_standardized_moments_columnwise<R: FitReservation>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
+fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
     within: &DenseMatrix,
     weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
     reference_norms: &[f64],
     score_norms: &[f64],
     canonical_candidates: &[usize],
@@ -2071,6 +2656,7 @@ fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReserva
     reservation: &mut R,
     perturb_first_coefficient: bool,
     perturb_bread: bool,
+    build_bread: bool,
 ) -> Result<Option<QrFit>> {
     let candidate_count = canonical_candidates.len();
     if candidate_count == 0 || candidate_count > FUSED_MOMENT_MAX_COLUMNS {
@@ -2221,51 +2807,56 @@ fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReserva
         standardized_coefficients[permutation[position]] = pivot_coefficients[position];
     }
 
-    let mut inverse_lower = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared OLS inverse Cholesky factor",
-    )?;
-    for column in 0..candidate_count {
-        for row in 0..candidate_count {
-            let mut value = f64::from(row == column);
-            for inner in 0..row {
-                value = (-factor[row * candidate_count + inner])
-                    .mul_add(inverse_lower[inner * candidate_count + column], value);
+    let canonical_inverse = if build_bread {
+        let mut inverse_lower = reserved_filled(
+            reservation,
+            square,
+            0.0_f64,
+            "unable to reserve prepared OLS inverse Cholesky factor",
+        )?;
+        for column in 0..candidate_count {
+            for row in 0..candidate_count {
+                let mut value = f64::from(row == column);
+                for inner in 0..row {
+                    value = (-factor[row * candidate_count + inner])
+                        .mul_add(inverse_lower[inner * candidate_count + column], value);
+                }
+                inverse_lower[row * candidate_count + column] =
+                    value / factor[row * candidate_count + row];
             }
-            inverse_lower[row * candidate_count + column] =
-                value / factor[row * candidate_count + row];
         }
-    }
-    let mut canonical_inverse = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared OLS canonical Cholesky inverse",
-    )?;
-    for left in 0..candidate_count {
-        for right in left..candidate_count {
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for inner in 0..candidate_count {
-                compensated_add(
-                    inverse_lower[inner * candidate_count + left]
-                        * inverse_lower[inner * candidate_count + right],
-                    &mut sum,
-                    &mut correction,
-                )?;
+        let mut canonical_inverse = reserved_filled(
+            reservation,
+            square,
+            0.0_f64,
+            "unable to reserve prepared OLS canonical Cholesky inverse",
+        )?;
+        for left in 0..candidate_count {
+            for right in left..candidate_count {
+                let mut sum = 0.0_f64;
+                let mut correction = 0.0_f64;
+                for inner in 0..candidate_count {
+                    compensated_add(
+                        inverse_lower[inner * candidate_count + left]
+                            * inverse_lower[inner * candidate_count + right],
+                        &mut sum,
+                        &mut correction,
+                    )?;
+                }
+                let value = sum + correction;
+                if !value.is_finite() {
+                    return Ok(None);
+                }
+                let canonical_left = permutation[left];
+                let canonical_right = permutation[right];
+                canonical_inverse[canonical_left * candidate_count + canonical_right] = value;
+                canonical_inverse[canonical_right * candidate_count + canonical_left] = value;
             }
-            let value = sum + correction;
-            if !value.is_finite() {
-                return Ok(None);
-            }
-            let canonical_left = permutation[left];
-            let canonical_right = permutation[right];
-            canonical_inverse[canonical_left * candidate_count + canonical_right] = value;
-            canonical_inverse[canonical_right * candidate_count + canonical_left] = value;
         }
-    }
+        canonical_inverse
+    } else {
+        Vec::new()
+    };
 
     let mut generated_coefficients = reserved_filled(
         reservation,
@@ -2327,34 +2918,39 @@ fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReserva
         reference_norms,
         score_norms,
     )?;
-    let mut generated_columns = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS Cholesky bread coordinates",
-    )?;
-    generated_columns.extend_from_slice(canonical_candidates);
-    let mut canonical_candidate_positions = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS Cholesky candidate positions",
-    )?;
-    canonical_candidate_positions.extend(0..candidate_count);
-    let bread = match finalize_finite_bread_draft(
-        prepared,
-        canonical_candidates,
-        standardized_gram,
-        generated_columns,
-        canonical_candidate_positions,
-        canonical_inverse,
-        reference_norms,
-        weights,
-        config.bread_tolerance,
-        reservation,
-        perturb_bread,
-    ) {
-        Ok(bread) => bread,
-        Err(error) if error.code == ErrorCode::InvalidData && !perturb_bread => return Ok(None),
-        Err(error) => return Err(error),
+    let bread = if build_bread {
+        let mut generated_columns = reserved_empty(
+            reservation,
+            candidate_count,
+            "unable to reserve prepared OLS Cholesky bread coordinates",
+        )?;
+        generated_columns.extend_from_slice(canonical_candidates);
+        let mut canonical_candidate_positions = reserved_empty(
+            reservation,
+            candidate_count,
+            "unable to reserve prepared OLS Cholesky candidate positions",
+        )?;
+        canonical_candidate_positions.extend(0..candidate_count);
+        match finalize_finite_bread_draft(
+            canonical_candidates,
+            standardized_gram,
+            generated_columns,
+            canonical_candidate_positions,
+            canonical_inverse,
+            reference_norms,
+            bread_weight_scale,
+            config.bread_tolerance,
+            reservation,
+            perturb_bread,
+        ) {
+            Ok(bread) => Some(bread),
+            Err(error) if error.code == ErrorCode::InvalidData && !perturb_bread => {
+                return Ok(None)
+            }
+            Err(error) => return Err(error),
+        }
+    } else {
+        None
     };
     let mut kept = reserved_empty(
         reservation,
@@ -2389,7 +2985,7 @@ fn try_fit_scaled_pivoted_cholesky<P: PreparedOlsFitView + ?Sized, R: FitReserva
             passed: true,
         },
         finite_score,
-        bread: Some(bread),
+        bread,
         within_residuals: Some(residuals),
         standardized_within_is_reusable: true,
     }))
@@ -2453,12 +3049,14 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     within: &mut DenseMatrix,
     weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
     reference_norms: &[f64],
     score_norms: &[f64],
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturb_first_coefficient: bool,
     perturb_bread: bool,
+    build_bread: bool,
 ) -> Result<QrFit> {
     let nrows = within.nrows();
     let generated_columns = prepared.fit_model().columns.len();
@@ -2619,21 +3217,25 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 }
             },
         )?;
-        let bread = build_finite_bread_draft(
-            prepared,
-            FiniteBreadInputs {
-                qr: within,
-                pivot_columns: &candidate_columns,
-                canonical_candidates: &canonical_candidates,
-                standardized_gram: &standardized_gram,
-                rank: 0,
-                reference_norms,
-                weights,
-            },
-            config.bread_tolerance,
-            reservation,
-            perturb_bread,
-        )?;
+        let bread = if build_bread {
+            Some(build_finite_bread_draft(
+                prepared,
+                FiniteBreadInputs {
+                    qr: within,
+                    pivot_columns: &candidate_columns,
+                    canonical_candidates: &canonical_candidates,
+                    standardized_gram: &standardized_gram,
+                    rank: 0,
+                    reference_norms,
+                    bread_weight_scale,
+                },
+                config.bread_tolerance,
+                reservation,
+                perturb_bread,
+            )?)
+        } else {
+            None
+        };
         return Ok(QrFit {
             generated_coefficients,
             generated_statuses,
@@ -2647,7 +3249,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 passed: true,
             },
             finite_score,
-            bread: Some(bread),
+            bread,
             within_residuals: Some(within_residuals),
             standardized_within_is_reusable: false,
         });
@@ -2679,9 +3281,9 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let (standardized_rhs, standardized_gram) =
         build_standardized_moments(within, &canonical_candidates, reservation)?;
     if let Some(fit) = try_fit_scaled_pivoted_cholesky(
-        prepared,
         within,
         weights,
+        bread_weight_scale,
         reference_norms,
         score_norms,
         &canonical_candidates,
@@ -2693,6 +3295,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reservation,
         perturb_first_coefficient,
         perturb_bread,
+        build_bread,
     )? {
         return Ok(fit);
     }
@@ -2897,21 +3500,25 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         weights,
         reservation,
     )?);
-    let bread = build_finite_bread_draft(
-        prepared,
-        FiniteBreadInputs {
-            qr: within,
-            pivot_columns: &candidate_columns,
-            canonical_candidates: &canonical_candidates,
-            standardized_gram: &standardized_gram,
-            rank,
-            reference_norms,
-            weights,
-        },
-        config.bread_tolerance,
-        reservation,
-        perturb_bread,
-    )?;
+    let bread = if build_bread {
+        Some(build_finite_bread_draft(
+            prepared,
+            FiniteBreadInputs {
+                qr: within,
+                pivot_columns: &candidate_columns,
+                canonical_candidates: &canonical_candidates,
+                standardized_gram: &standardized_gram,
+                rank,
+                reference_norms,
+                bread_weight_scale,
+            },
+            config.bread_tolerance,
+            reservation,
+            perturb_bread,
+        )?)
+    } else {
+        None
+    };
     Ok(QrFit {
         generated_coefficients,
         generated_statuses,
@@ -2925,7 +3532,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             passed: true,
         },
         finite_score,
-        bread: Some(bread),
+        bread,
         within_residuals,
         standardized_within_is_reusable: false,
     })
@@ -2937,6 +3544,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     scratch: &mut PreparedOlsScratch,
     within_outcome: &mut [f64],
     weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
     reference_norms: &[f64],
     score_norms: &[f64],
     config: PreparedOlsFitConfig,
@@ -3368,7 +3976,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             standardized_gram: &standardized_gram,
             rank,
             reference_norms,
-            weights,
+            bread_weight_scale,
         },
         config.bread_tolerance,
         reservation,
@@ -3660,7 +4268,7 @@ fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         standardized_gram,
         rank,
         reference_norms,
-        weights,
+        bread_weight_scale,
     } = inputs;
     let candidate_count = canonical_candidates.len();
     let candidate_square = checked_square(
@@ -3801,14 +4409,13 @@ fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }
     }
     finalize_finite_bread_draft(
-        prepared,
         canonical_candidates,
         standardized_gram,
         generated_columns,
         canonical_candidate_positions,
         canonical_inverse,
         reference_norms,
-        weights,
+        bread_weight_scale,
         tolerance,
         reservation,
         perturb_bread,
@@ -3816,15 +4423,14 @@ fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn finalize_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
+fn finalize_finite_bread_draft<R: FitReservation>(
     canonical_candidates: &[usize],
     standardized_gram: &[f64],
     generated_columns: Vec<usize>,
     canonical_candidate_positions: Vec<usize>,
     mut canonical_inverse: Vec<f64>,
     reference_norms: &[f64],
-    weights: NormalizedWeights<'_>,
+    weight_scale: PreparedOlsBreadWeightScale,
     tolerance: f64,
     reservation: &mut R,
     perturb_bread: bool,
@@ -3877,7 +4483,6 @@ fn finalize_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation
         ));
     }
 
-    let weight_scale = prepared_bread_weight_scale(prepared, weights)?;
     let mut values = reserved_filled(
         reservation,
         rank_square,
@@ -4098,6 +4703,7 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
 #[allow(clippy::too_many_arguments)]
 fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
+    response: &[f64],
     qr: &mut QrFit,
     raw_residuals: Option<&mut [f64]>,
     weights: NormalizedWeights<'_>,
@@ -4107,9 +4713,10 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     fast_score_cache: Option<&PreparedOlsFastScoreCache>,
     raw_moments: Option<&RawMomentCache>,
 ) -> Result<PreparedOlsBread> {
-    if raw_residuals
-        .as_ref()
-        .is_some_and(|residuals| residuals.len() != prepared.fit_sample().n_active())
+    if response.len() != prepared.fit_sample().n_active()
+        || raw_residuals
+            .as_ref()
+            .is_some_and(|residuals| residuals.len() != prepared.fit_sample().n_active())
     {
         return Err(invalid_argument(
             "prepared OLS reported-intercept residual axis is inconsistent",
@@ -4245,7 +4852,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             cached_raw_residual_mean(prepared, qr, weights, cache)?
         } else {
             weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
-                let mut value = prepared.fit_sample().outcome[row];
+                let mut value = response[row];
                 for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
                     if let Some(coefficient) = coefficient {
                         value =
@@ -4273,7 +4880,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         let outcome_mean = if let Some(cache) = raw_moments {
             cache.means[0]
         } else {
-            weighted_mean_slice(&prepared.fit_sample().outcome, weights)?
+            weighted_mean_slice(response, weights)?
         };
         let mut finite_mean_fit = 0.0_f64;
         let mut finite_mean_fit_correction = 0.0_f64;
@@ -5708,9 +6315,53 @@ mod tests {
         TermOrder, TimeSeriesState,
     };
     use crate::ols::{
-        prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-        OlsRequestV1,
+        prepare_ols_data, CertifiedLinearSession, CertifiedLinearWithinDesign,
+        LinearSessionAllocationPhase, LinearSessionGenerations, LinearSessionPhaseAllocationEvent,
+        LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
     };
+    use crate::sandwich::SandwichDesign;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static ACTIVE_LINEAR_ALLOCATION_PHASE: AtomicUsize = AtomicUsize::new(0);
+    static LINEAR_PROJECTION_ENDS: AtomicUsize = AtomicUsize::new(0);
+    static LINEAR_FINITE_ENDS: AtomicUsize = AtomicUsize::new(0);
+
+    fn observed_linear_allocation_phase(
+        phase: LinearSessionAllocationPhase,
+        event: LinearSessionPhaseAllocationEvent,
+    ) -> u64 {
+        let phase_id = match phase {
+            LinearSessionAllocationPhase::Projection => 1,
+            LinearSessionAllocationPhase::FiniteSolve => 2,
+        };
+        match event {
+            LinearSessionPhaseAllocationEvent::Begin => {
+                assert_eq!(
+                    ACTIVE_LINEAR_ALLOCATION_PHASE.swap(phase_id, Ordering::SeqCst),
+                    0,
+                    "linear allocation phases must never overlap"
+                );
+                0
+            }
+            LinearSessionPhaseAllocationEvent::End => {
+                assert_eq!(
+                    ACTIVE_LINEAR_ALLOCATION_PHASE.swap(0, Ordering::SeqCst),
+                    phase_id,
+                    "linear allocation phase end must match its begin"
+                );
+                match phase {
+                    LinearSessionAllocationPhase::Projection => {
+                        LINEAR_PROJECTION_ENDS.fetch_add(1, Ordering::SeqCst);
+                        11
+                    }
+                    LinearSessionAllocationPhase::FiniteSolve => {
+                        LINEAR_FINITE_ENDS.fetch_add(1, Ordering::SeqCst);
+                        23
+                    }
+                }
+            }
+        }
+    }
 
     #[derive(Clone, Copy)]
     enum TestWeights<'a> {
@@ -6006,6 +6657,14 @@ mod tests {
         );
     }
 
+    fn without_solve_timings(mut fit: CertifiedPreparedOlsFit) -> CertifiedPreparedOlsFit {
+        fit.absorption_report.setup_seconds = 0.0;
+        fit.absorption_report.solve_seconds = 0.0;
+        fit.residual_absorption_report.setup_seconds = 0.0;
+        fit.residual_absorption_report.solve_seconds = 0.0;
+        fit
+    }
+
     #[test]
     fn fused_standardized_moments_match_compensated_scalar_reference() {
         let rows = 40_003_usize;
@@ -6288,10 +6947,12 @@ mod tests {
             .expect("wide standardized moments");
         let relative_threshold =
             PreparedOlsFitConfig::default().rank_tolerance_multiplier * f64::EPSILON * rows as f64;
+        let bread_weight_scale =
+            prepared_bread_weight_scale(&prepared, weights).expect("bread weight scale");
         let fit = try_fit_scaled_pivoted_cholesky(
-            &prepared,
             &within,
             weights,
+            bread_weight_scale,
             &reference_norms,
             &score_norms,
             &candidates,
@@ -6303,6 +6964,7 @@ mod tests {
             &mut reservation,
             false,
             false,
+            true,
         )
         .expect("guarded Cholesky attempt")
         .expect("well-conditioned design selects guarded Cholesky");
@@ -6856,6 +7518,1066 @@ mod tests {
                 2e-11,
             );
         }
+    }
+
+    #[test]
+    fn ols_adapter_and_borrowed_frame_are_exact_for_all_weight_kinds_and_modes() {
+        let g = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
+        let y = vec![1.2, 4.0, -0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
+        let continuous_weights = vec![0.5, 2.0, 1.25, 3.0, 0.8, 1.5, 2.5, 4.0];
+        let frequency_weights = vec![1.0, 2.0, 3.0, 1.0, 2.0, 1.0, 3.0, 2.0];
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for case in [
+                TestWeights::Unit,
+                TestWeights::Analytic(&continuous_weights),
+                TestWeights::Probability(&continuous_weights),
+                TestWeights::Frequency(&frequency_weights),
+            ] {
+                let prepared =
+                    prepared(&y, std::slice::from_ref(&x), &[false], Some(&g), true, case);
+                let config = PreparedOlsFitConfig {
+                    execution: PreparedOlsExecutionConfig {
+                        mode,
+                        poolsize: 1,
+                        ..PreparedOlsExecutionConfig::default()
+                    },
+                    ..PreparedOlsFitConfig::default()
+                };
+                let adapter =
+                    fit_prepared_ols_coefficients_map(&prepared, config).expect("OLS adapter fit");
+                let derived =
+                    LinearSolveFrame::from_prepared_ols(&prepared).expect("derived OLS frame");
+                let explicit = LinearSolveFrame::from_parts(
+                    derived.response(),
+                    derived.raw_weights(),
+                    derived.bread_weight_scale(),
+                )
+                .expect("explicit borrowed frame");
+                let framed =
+                    fit_prepared_ols_coefficients_view_map_with_frame(&prepared, explicit, config)
+                        .expect("explicit-frame fit");
+                assert_eq!(
+                    without_solve_timings(framed),
+                    without_solve_timings(adapter)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
+        let x = source(1, "x");
+        let g = source(2, "g");
+        let outcome = vec![1.0, 3.5, 2.0, 7.0, 4.5, 10.0, 8.0, 13.0];
+        let x_values = vec![-1.0, 0.5, -2.0, 2.0, -0.5, 3.0, 1.0, 4.0];
+        let g_values = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![x.clone(), g.clone()],
+                terms: vec![continuous_term(1, x.id, false)],
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("absorbed term"),
+                intercept: true,
+                categorical_sources: vec![g.id],
+                slope_sources: Vec::new(),
+                label: "g".to_owned(),
+                saved_name: String::new(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(g.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let prepared = crate::prepare_categorical_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; outcome.len()],
+                outcome: loaded(&outcome),
+                numeric_sources: vec![(x.id, loaded(&x_values)), (g.id, loaded(&g_values))],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("categorical prepared data");
+        let config = PreparedOlsFitConfig::default();
+        let adapter = fit_prepared_categorical_ols_coefficients_map(&prepared, config)
+            .expect("categorical OLS adapter fit");
+        let derived =
+            LinearSolveFrame::from_prepared_ols(&prepared).expect("categorical OLS frame");
+        let explicit = LinearSolveFrame::from_parts(
+            derived.response(),
+            derived.raw_weights(),
+            derived.bread_weight_scale(),
+        )
+        .expect("explicit categorical frame");
+        let framed = fit_prepared_ols_coefficients_view_map_with_frame(&prepared, explicit, config)
+            .expect("categorical explicit-frame fit");
+        assert_eq!(
+            without_solve_timings(framed),
+            without_solve_timings(adapter)
+        );
+    }
+
+    #[test]
+    fn categorical_recovery_uses_explicit_final_hessian_weights_for_normalization() {
+        let worker = source(1, "worker");
+        let firm = source(2, "firm");
+        let worker_codes = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0];
+        let firm_codes = vec![1.0, 2.0, 1.0, 2.0, 1.0, 2.0];
+        let worker_effect = [-1.0, -1.0, 0.25, 0.25, 0.75, 0.75];
+        let firm_effect = [-0.5, 0.5, -0.5, 0.5, -0.5, 0.5];
+        let target = worker_effect
+            .iter()
+            .zip(firm_effect)
+            .map(|(left, right)| left + right)
+            .collect::<Vec<_>>();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![worker.clone(), firm.clone()],
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![
+                AbsorbedTerm {
+                    id: AbsorbTermId::new(1).expect("worker absorb"),
+                    intercept: true,
+                    categorical_sources: vec![worker.id],
+                    slope_sources: Vec::new(),
+                    label: "worker".to_owned(),
+                    saved_name: String::new(),
+                },
+                AbsorbedTerm {
+                    id: AbsorbTermId::new(2).expect("firm absorb"),
+                    intercept: true,
+                    categorical_sources: vec![firm.id],
+                    slope_sources: Vec::new(),
+                    label: "firm".to_owned(),
+                    saved_name: String::new(),
+                },
+            ],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(worker.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(firm.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let prepared = crate::prepare_categorical_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; target.len()],
+                outcome: loaded(&target),
+                numeric_sources: vec![
+                    (worker.id, loaded(&worker_codes)),
+                    (firm.id, loaded(&firm_codes)),
+                ],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("categorical recovery preparation");
+        let requested = [true, true];
+        let map = PreparedOlsFitConfig::default().absorb.map;
+        let unit = prepared
+            .recover_absorbed_effects_map_with_weights(
+                BorrowedMapWeights::Unit,
+                &target,
+                &requested,
+                map,
+            )
+            .expect("unit-weight recovery");
+        // A nonconstant mean changes the final PPML Hessian from q to q*mu.
+        // The saved FE decomposition must therefore be normalized on this
+        // explicit final curvature measure, even though its absorbed sum is
+        // unchanged.
+        let final_hessian = [1.0, 3.0, 2.0, 9.0, 4.0, 27.0];
+        let hessian = prepared
+            .recover_absorbed_effects_map_with_weights(
+                BorrowedMapWeights::Provided(&final_hessian),
+                &target,
+                &requested,
+                map,
+            )
+            .expect("final-Hessian recovery");
+        for recovered in [&unit, &hessian] {
+            for (actual, expected) in recovered.absorbed_sum().iter().zip(&target) {
+                assert_close(*actual, *expected, 2e-10);
+            }
+        }
+        let unit_firm = unit.channels()[1].as_ref().expect("unit firm channel");
+        let hessian_firm = hessian.channels()[1]
+            .as_ref()
+            .expect("Hessian firm channel");
+        let unit_mean = unit_firm.iter().sum::<f64>() / unit_firm.len() as f64;
+        assert_close(unit_mean, 0.0, 2e-10);
+        let hessian_sum = final_hessian.iter().sum::<f64>();
+        let hessian_mean = hessian_firm
+            .iter()
+            .zip(final_hessian)
+            .map(|(value, weight)| value * weight)
+            .sum::<f64>()
+            / hessian_sum;
+        assert_close(hessian_mean, 0.0, 2e-10);
+        assert!(
+            unit_firm
+                .iter()
+                .zip(hessian_firm)
+                .any(|(left, right)| (left - right).abs() > 1e-3),
+            "nonconstant q*mu must change the normalized saved-FE channels"
+        );
+    }
+
+    #[test]
+    fn empty_categorical_topology_preserves_finite_intercept_across_session_routes() {
+        let x = source(1, "x");
+        let y = vec![1.0, 2.5, 2.0, 5.0, 4.5, 8.0, 7.0, 11.5];
+        let refreshed_y = vec![1.4, 2.1, 2.7, 4.6, 5.2, 7.4, 7.8, 10.9];
+        let x_values = vec![-2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 3.0, 4.0];
+        let weights = vec![0.5, 2.0, 1.25, 3.0, 0.8, 1.5, 2.5, 4.0];
+        let refreshed_weights = vec![2.0, 0.75, 1.5, 0.6, 3.5, 1.25, 2.2, 1.8];
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![x.clone()],
+                terms: vec![continuous_term(1, x.id, false)],
+            },
+            absorbed_terms: Vec::new(),
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::AnalyticWeight,
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let loaded_with = |outcome: &[f64], analytic_weight: &[f64]| LoadedOlsInput {
+            candidate: vec![true; outcome.len()],
+            outcome: loaded(outcome),
+            numeric_sources: vec![(x.id, loaded(&x_values))],
+            analytic_weight: Some(loaded(analytic_weight)),
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+            &request,
+            &loaded_with(&y, &weights),
+            &[],
+        )
+        .expect("empty categorical topology");
+        let refreshed_prepared =
+            crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+                &request,
+                &loaded_with(&refreshed_y, &refreshed_weights),
+                &[],
+            )
+            .expect("refreshed empty categorical topology");
+        assert!(!prepared.has_absorbed_intercept());
+        assert!(prepared.effect_specs().is_empty());
+
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let config = PreparedOlsFitConfig {
+                absorb: AbsorbConfig {
+                    solver: FeSolverKind::Map,
+                    ..AbsorbConfig::default()
+                },
+                execution: PreparedOlsExecutionConfig {
+                    mode,
+                    poolsize: 1,
+                    ..PreparedOlsExecutionConfig::default()
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let initial_frame =
+                LinearSolveFrame::from_prepared_ols(&prepared).expect("initial frame");
+            let mut session = CertifiedLinearSession::new(
+                &prepared,
+                initial_frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .expect("empty-topology session");
+            ACTIVE_LINEAR_ALLOCATION_PHASE.store(0, Ordering::SeqCst);
+            LINEAR_PROJECTION_ENDS.store(0, Ordering::SeqCst);
+            LINEAR_FINITE_ENDS.store(0, Ordering::SeqCst);
+            session.set_phase_allocator_probe(Some(observed_linear_allocation_phase));
+            let fresh = session.solve_fresh().expect("empty-topology fresh solve");
+            assert_eq!(
+                fresh.reuse_report().phase_allocation.projection_peak_bytes,
+                Some(11)
+            );
+            assert_eq!(
+                fresh
+                    .reuse_report()
+                    .phase_allocation
+                    .finite_solve_peak_bytes,
+                Some(23)
+            );
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 2);
+            assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 1);
+            assert_eq!(fresh.fit().finite_rank(), 2);
+            assert!(fresh.fit().coefficients().iter().any(|coefficient| {
+                coefficient.status == PreparedOlsFitStatus::Kept
+                    && coefficient.generated_column_index.is_some_and(|generated| {
+                        matches!(
+                            prepared.model().columns[generated].kind,
+                            PreparedOlsColumnKind::Intercept
+                        )
+                    })
+            }));
+            let refreshed_frame =
+                LinearSolveFrame::from_prepared_ols(&refreshed_prepared).expect("refreshed frame");
+            session
+                .refresh_response(&refreshed_y, 1)
+                .expect("response refresh");
+            session
+                .refresh_weights(
+                    refreshed_frame.raw_weights(),
+                    refreshed_frame.bread_weight_scale(),
+                    1,
+                )
+                .expect("weight refresh");
+            let expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                &prepared,
+                LinearSolveFrame::from_parts(
+                    &refreshed_y,
+                    refreshed_frame.raw_weights(),
+                    refreshed_frame.bread_weight_scale(),
+                )
+                .expect("canonical refreshed frame"),
+                config,
+            )
+            .expect("canonical refreshed fit");
+            let frozen = session.solve_frozen().expect("empty-topology frozen solve");
+            assert_eq!(
+                frozen.reuse_report().phase_allocation.projection_peak_bytes,
+                Some(11)
+            );
+            assert_eq!(
+                frozen
+                    .reuse_report()
+                    .phase_allocation
+                    .finite_solve_peak_bytes,
+                Some(23)
+            );
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 3);
+            assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 2);
+            assert_frozen_matches_fit(&frozen, &expected);
+            assert_eq!(frozen.basis().kept_generated_columns().len(), 2);
+            let strict = session.strictify().expect("empty-topology strict solve");
+            assert_eq!(
+                strict.reuse_report().phase_allocation.projection_peak_bytes,
+                Some(11)
+            );
+            assert_eq!(
+                strict
+                    .reuse_report()
+                    .phase_allocation
+                    .finite_solve_peak_bytes,
+                Some(23)
+            );
+            assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 5);
+            assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 3);
+            assert_eq!(ACTIVE_LINEAR_ALLOCATION_PHASE.load(Ordering::SeqCst), 0);
+            assert_fit_science_equal(strict.fit(), &expected);
+            assert_eq!(strict.fit().finite_rank(), 2);
+        }
+    }
+
+    #[test]
+    fn ppml_slope_only_topology_preserves_structural_constant() {
+        let group = source(1, "group");
+        let slope = source(2, "slope");
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![group.clone(), slope.clone()],
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).expect("absorb term"),
+                intercept: false,
+                categorical_sources: vec![group.id],
+                slope_sources: vec![slope.id],
+                label: "group#c.slope".to_owned(),
+                saved_name: "saved_slope".to_owned(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(group.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(slope.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let loaded_input = LoadedOlsInput {
+            candidate: vec![true; 6],
+            outcome: loaded(&[1.0, 2.0, 1.5, 3.0, 2.5, 4.0]),
+            numeric_sources: vec![
+                (group.id, loaded(&[1.0, 1.0, 1.0, 2.0, 2.0, 2.0])),
+                (slope.id, loaded(&[-1.0, 0.0, 1.0, -1.0, 0.0, 1.0])),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+
+        let prepared = crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+            &request,
+            &loaded_input,
+            &[],
+        )
+        .expect("PPML slope-only topology");
+        assert!(prepared.has_absorbed_slope());
+        assert!(!prepared.has_absorbed_intercept());
+        assert!(prepared.structural_intercept());
+        assert!(prepared.report_intercept());
+    }
+
+    #[test]
+    fn projection_only_matches_full_fit_without_constructing_reported_bread() {
+        let x = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 4.0, 5.0, 7.0];
+        let y = vec![1.2, 0.9, 1.5, 4.4, 4.8, 8.2, 11.1, 15.8];
+        let weights = vec![0.5, 2.0, 1.25, 3.0, 0.8, 1.5, 2.5, 4.0];
+        let prepared_data = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            None,
+            true,
+            TestWeights::Analytic(&weights),
+        );
+        let config = PreparedOlsFitConfig::default();
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
+        let full = fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
+            .expect("full fit");
+        let projection =
+            fit_prepared_weighted_linear_projection_once(&prepared_data, frame, config)
+                .expect("projection-only fit");
+        assert!(projection.certified());
+        assert_eq!(projection.finite_rank(), full.finite_rank());
+        assert_eq!(
+            projection.kept_generated_columns(),
+            full.kept_generated_columns()
+        );
+        assert_eq!(
+            projection.dropped_generated_columns(),
+            full.dropped_generated_columns()
+        );
+        assert_eq!(projection.coefficients().len(), full.coefficients().len());
+        for (projected, reported) in projection.coefficients().iter().zip(full.coefficients()) {
+            if reported.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
+                assert_eq!(
+                    projected.status,
+                    PreparedOlsFitStatus::AbsorbedInterceptDeferred
+                );
+                assert_eq!(projected.value, None);
+                assert_eq!(projected.coefficient_slot, reported.coefficient_slot);
+                assert_eq!(
+                    projected.generated_column_index,
+                    reported.generated_column_index
+                );
+            } else {
+                assert_eq!(projected, reported);
+            }
+        }
+        assert_eq!(projection.rank_certificate(), full.rank_certificate());
+        assert_eq!(projection.score_certificate(), full.score_certificate());
+        for (actual, expected) in projection.residuals().iter().zip(full.residuals()) {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        for ((fitted, residual), response) in projection
+            .fitted()
+            .iter()
+            .zip(projection.residuals())
+            .zip(&y)
+        {
+            assert_close(*fitted + *residual, *response, 2e-15);
+        }
+        assert!(projection.reconstruction_certificate().passed);
+        assert!(projection.absorption_report().certified());
+        assert!(projection.residual_absorption_report().certified());
+    }
+
+    fn assert_frozen_matches_fit(
+        frozen: &crate::ols::CertifiedFrozenLinearOutput<'_>,
+        expected: &CertifiedPreparedOlsFit,
+    ) {
+        assert!(frozen.certified());
+        assert_eq!(
+            frozen.basis().kept_generated_columns(),
+            expected.kept_generated_columns()
+        );
+        for (position, generated) in frozen
+            .basis()
+            .kept_generated_columns()
+            .iter()
+            .copied()
+            .enumerate()
+        {
+            let expected_coefficient = expected
+                .coefficients()
+                .iter()
+                .find(|coefficient| {
+                    coefficient.generated_column_index == Some(generated)
+                        && coefficient.status == PreparedOlsFitStatus::Kept
+                })
+                .and_then(|coefficient| coefficient.value)
+                .expect("expected kept coefficient");
+            assert_close(frozen.coefficients()[position], expected_coefficient, 5e-10);
+        }
+        assert_eq!(
+            frozen.reported_coefficients().len(),
+            expected.coefficients().len()
+        );
+        for (actual, expected) in frozen
+            .reported_coefficients()
+            .iter()
+            .zip(expected.coefficients())
+        {
+            match (*actual, expected.value) {
+                (Some(actual), Some(expected)) => assert_close(actual, expected, 5e-10),
+                (None, None) => {}
+                _ => panic!("frozen reported coefficient presence differs"),
+            }
+        }
+        let rank = frozen.coefficients().len();
+        assert_eq!(frozen.bread().len(), rank * rank);
+        for (left, left_generated) in frozen
+            .basis()
+            .kept_generated_columns()
+            .iter()
+            .copied()
+            .enumerate()
+        {
+            let left_position = expected
+                .bread()
+                .coordinates()
+                .iter()
+                .position(|coordinate| {
+                    coordinate.generated_column_index == left_generated
+                        && coordinate.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
+                })
+                .expect("expected left bread coordinate");
+            for (right, right_generated) in frozen
+                .basis()
+                .kept_generated_columns()
+                .iter()
+                .copied()
+                .enumerate()
+            {
+                let right_position = expected
+                    .bread()
+                    .coordinates()
+                    .iter()
+                    .position(|coordinate| {
+                        coordinate.generated_column_index == right_generated
+                            && coordinate.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
+                    })
+                    .expect("expected right bread coordinate");
+                let dimension = expected.bread().dimension();
+                assert_close(
+                    frozen.bread()[left * rank + right],
+                    expected.bread().values()[left_position * dimension + right_position],
+                    2e-9,
+                );
+            }
+        }
+        assert_eq!(frozen.finite_within_rows(), expected.residuals().len());
+        assert_eq!(frozen.finite_within_columns(), rank);
+        assert!(frozen.reconstruction_certificate().passed);
+    }
+
+    fn assert_fit_science_equal(
+        actual: &CertifiedPreparedOlsFit,
+        expected: &CertifiedPreparedOlsFit,
+    ) {
+        assert_eq!(actual.coefficients().len(), expected.coefficients().len());
+        for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
+            assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
+            assert_eq!(
+                actual.generated_column_index,
+                expected.generated_column_index
+            );
+            assert_eq!(actual.status, expected.status);
+            match (actual.value, expected.value) {
+                (Some(actual), Some(expected)) => assert_close(actual, expected, 2e-12),
+                (None, None) => {}
+                _ => panic!("prepared fit coefficient presence differs"),
+            }
+        }
+        assert_eq!(
+            actual.kept_generated_columns(),
+            expected.kept_generated_columns()
+        );
+        assert_eq!(
+            actual.dropped_generated_columns(),
+            expected.dropped_generated_columns()
+        );
+        assert_eq!(actual.finite_rank(), expected.finite_rank());
+        assert_eq!(actual.rank_certificate(), expected.rank_certificate());
+        assert_eq!(
+            actual.score_certificate().passed,
+            expected.score_certificate().passed
+        );
+        assert_eq!(
+            actual.score_certificate().moments,
+            expected.score_certificate().moments
+        );
+        assert_close(
+            actual.score_certificate().relative_infinity_norm,
+            expected.score_certificate().relative_infinity_norm,
+            2e-11,
+        );
+        assert_close(
+            actual.score_certificate().relative_two_norm,
+            expected.score_certificate().relative_two_norm,
+            2e-11,
+        );
+        assert_eq!(actual.bread().coordinates(), expected.bread().coordinates());
+        assert_eq!(
+            actual.bread().weight_scale(),
+            expected.bread().weight_scale()
+        );
+        assert_eq!(
+            actual.bread().values().len(),
+            expected.bread().values().len()
+        );
+        for (actual, expected) in actual
+            .bread()
+            .values()
+            .iter()
+            .zip(expected.bread().values())
+        {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        assert!(actual.bread().certificate().passed);
+        assert!(expected.bread().certificate().passed);
+        let mut actual_absorption = actual.absorption_report().clone();
+        let mut expected_absorption = expected.absorption_report().clone();
+        actual_absorption.setup_seconds = 0.0;
+        actual_absorption.solve_seconds = 0.0;
+        expected_absorption.setup_seconds = 0.0;
+        expected_absorption.solve_seconds = 0.0;
+        assert_eq!(actual_absorption, expected_absorption);
+        let mut actual_residual = actual.residual_absorption_report().clone();
+        let mut expected_residual = expected.residual_absorption_report().clone();
+        actual_residual.setup_seconds = 0.0;
+        actual_residual.solve_seconds = 0.0;
+        expected_residual.setup_seconds = 0.0;
+        expected_residual.solve_seconds = 0.0;
+        assert_eq!(actual_residual, expected_residual);
+        assert_close(
+            actual.initial_absorbed_outcome_sum_of_squares(),
+            expected.initial_absorbed_outcome_sum_of_squares(),
+            2e-12,
+        );
+        assert_eq!(actual.residuals().len(), expected.residuals().len());
+        for (actual, expected) in actual.residuals().iter().zip(expected.residuals()) {
+            assert_close(*actual, *expected, 2e-12);
+        }
+        assert_eq!(
+            actual.recovered_fe_coefficients().is_some(),
+            expected.recovered_fe_coefficients().is_some()
+        );
+        assert_eq!(actual.execution(), expected.execution());
+    }
+
+    #[test]
+    fn certified_linear_session_fresh_frozen_and_strict_match_across_routes() {
+        let g = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
+        let z = vec![1.0, -1.0, 0.5, 2.5, -2.0, 1.5, 3.0, -0.5];
+        let y = vec![1.2, 4.0, -0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
+        let refreshed_y = vec![1.7, 3.6, 0.1, 6.8, 2.1, 9.0, 6.2, 12.4];
+        let analytic = vec![0.5, 2.0, 1.25, 3.0, 0.8, 1.5, 2.5, 4.0];
+        let analytic_refresh = vec![1.5, 0.75, 2.0, 1.25, 3.5, 0.6, 1.8, 2.2];
+        let frequency = vec![1.0, 2.0, 3.0, 1.0, 2.0, 1.0, 3.0, 2.0];
+        let frequency_refresh = vec![2.0, 1.0, 1.0, 3.0, 2.0, 4.0, 1.0, 2.0];
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for has_fe in [false, true] {
+                for weight_case in 0..3 {
+                    let initial_weights = match weight_case {
+                        0 => TestWeights::Unit,
+                        1 => TestWeights::Analytic(&analytic),
+                        _ => TestWeights::Frequency(&frequency),
+                    };
+                    let refreshed_weights = match weight_case {
+                        0 | 1 => TestWeights::Analytic(&analytic_refresh),
+                        _ => TestWeights::Frequency(&frequency_refresh),
+                    };
+                    let fixed_effect = has_fe.then_some(g.as_slice());
+                    let prepared_data = prepared(
+                        &y,
+                        &[x.clone(), z.clone()],
+                        &[false, false],
+                        fixed_effect,
+                        true,
+                        initial_weights,
+                    );
+                    let config = PreparedOlsFitConfig {
+                        absorb: AbsorbConfig {
+                            solver: FeSolverKind::Map,
+                            ..AbsorbConfig::default()
+                        },
+                        execution: PreparedOlsExecutionConfig {
+                            mode,
+                            poolsize: 1,
+                            ..PreparedOlsExecutionConfig::default()
+                        },
+                        ..PreparedOlsFitConfig::default()
+                    };
+                    let initial_frame =
+                        LinearSolveFrame::from_prepared_ols(&prepared_data).expect("initial frame");
+                    let initial_expected =
+                        fit_prepared_ols_coefficients_map(&prepared_data, config)
+                            .expect("initial fit");
+                    if !has_fe {
+                        assert!(prepared_data.fit_has_absorbed_intercept());
+                        assert!(initial_expected.coefficients().iter().any(|coefficient| {
+                            coefficient.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+                        }));
+                    }
+                    let mut session = CertifiedLinearSession::new(
+                        &prepared_data,
+                        initial_frame,
+                        config,
+                        LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                    )
+                    .expect("session");
+                    let initial = session.solve_fresh().expect("fresh session fit");
+                    assert_fit_science_equal(initial.fit(), &initial_expected);
+
+                    session
+                        .refresh_response(&refreshed_y, 1)
+                        .expect("response refresh");
+                    let response_frame = LinearSolveFrame::from_parts(
+                        &refreshed_y,
+                        initial_frame.raw_weights(),
+                        initial_frame.bread_weight_scale(),
+                    )
+                    .expect("response frame");
+                    let response_expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                        &prepared_data,
+                        response_frame,
+                        config,
+                    )
+                    .expect("response reference");
+                    let response_warm = session.solve_warm().expect("response warm solve");
+                    assert_fit_science_equal(response_warm.fit(), &response_expected);
+                    let response_frozen = session.solve_frozen().expect("response frozen solve");
+                    assert_frozen_matches_fit(&response_frozen, &response_expected);
+
+                    let refreshed_prepared = prepared(
+                        &refreshed_y,
+                        &[x.clone(), z.clone()],
+                        &[false, false],
+                        fixed_effect,
+                        true,
+                        refreshed_weights,
+                    );
+                    let refreshed_frame = LinearSolveFrame::from_prepared_ols(&refreshed_prepared)
+                        .expect("refreshed weight frame");
+                    session
+                        .refresh_weights(
+                            refreshed_frame.raw_weights(),
+                            refreshed_frame.bread_weight_scale(),
+                            1,
+                        )
+                        .expect("weight refresh");
+                    let weighted_frame = LinearSolveFrame::from_parts(
+                        &refreshed_y,
+                        refreshed_frame.raw_weights(),
+                        refreshed_frame.bread_weight_scale(),
+                    )
+                    .expect("weighted reference frame");
+                    let weighted_expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                        &prepared_data,
+                        weighted_frame,
+                        config,
+                    )
+                    .expect("weighted reference");
+                    let weighted_frozen = session.solve_frozen().expect("weighted frozen solve");
+                    assert_frozen_matches_fit(&weighted_frozen, &weighted_expected);
+                    let warmed_capacities = session.workspace_capacities();
+
+                    session
+                        .refresh_response(&refreshed_y, 2)
+                        .expect("same-value response generation refresh");
+                    let reused_frozen = session.solve_frozen().expect("reused frozen solve");
+                    assert_frozen_matches_fit(&reused_frozen, &weighted_expected);
+                    assert!(reused_frozen.reuse_report().within_design_reused);
+                    assert!(reused_frozen.reuse_report().response_buffer_reused);
+                    assert!(reused_frozen.reuse_report().kernel_moment_workspace_reused);
+                    assert!(reused_frozen.reuse_report().kernel_solver_workspace_reused);
+                    assert!(reused_frozen.reuse_report().fe_projection_workspace_reused);
+                    assert!(reused_frozen.reuse_report().steady_state_allocation_free);
+                    assert_eq!(session.workspace_capacities(), warmed_capacities);
+                    let scratch_identity = session
+                        .retained_scratch_identity()
+                        .map(std::path::Path::to_path_buf);
+
+                    for iteration in 0..16_u64 {
+                        let response = if iteration % 2 == 0 { &y } else { &refreshed_y };
+                        let loop_weights = match (weight_case, iteration % 2) {
+                            (2, 0) => TestWeights::Frequency(&frequency),
+                            (2, _) => TestWeights::Frequency(&frequency_refresh),
+                            (_, 0) => TestWeights::Analytic(&analytic),
+                            (_, _) => TestWeights::Analytic(&analytic_refresh),
+                        };
+                        let loop_prepared = prepared(
+                            response,
+                            &[x.clone(), z.clone()],
+                            &[false, false],
+                            fixed_effect,
+                            true,
+                            loop_weights,
+                        );
+                        let loop_frame = LinearSolveFrame::from_prepared_ols(&loop_prepared)
+                            .expect("alternating frame");
+                        session
+                            .refresh_response(response, 3 + iteration)
+                            .expect("alternating response refresh");
+                        session
+                            .refresh_weights(
+                                loop_frame.raw_weights(),
+                                loop_frame.bread_weight_scale(),
+                                2 + iteration,
+                            )
+                            .expect("alternating weight refresh");
+                        let expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                            &prepared_data,
+                            LinearSolveFrame::from_parts(
+                                response,
+                                loop_frame.raw_weights(),
+                                loop_frame.bread_weight_scale(),
+                            )
+                            .expect("alternating reference frame"),
+                            config,
+                        )
+                        .expect("alternating canonical reference");
+                        let frozen = session.solve_frozen().expect("alternating frozen solve");
+                        assert_frozen_matches_fit(&frozen, &expected);
+                        assert!(frozen.reuse_report().fe_projection_workspace_reused);
+                        assert!(frozen.reuse_report().kernel_moment_workspace_reused);
+                        assert!(frozen.reuse_report().kernel_solver_workspace_reused);
+                        assert!(frozen.reuse_report().steady_state_allocation_free);
+                        assert_eq!(session.workspace_capacities(), warmed_capacities);
+                        assert_eq!(
+                            session.retained_scratch_identity(),
+                            scratch_identity.as_deref()
+                        );
+                    }
+
+                    let strict = session.strictify().expect("strict session fit");
+                    let final_weights = if weight_case == 2 {
+                        TestWeights::Frequency(&frequency_refresh)
+                    } else {
+                        TestWeights::Analytic(&analytic_refresh)
+                    };
+                    let final_prepared = prepared(
+                        &refreshed_y,
+                        &[x.clone(), z.clone()],
+                        &[false, false],
+                        fixed_effect,
+                        true,
+                        final_weights,
+                    );
+                    let final_frame = LinearSolveFrame::from_prepared_ols(&final_prepared)
+                        .expect("final strict frame");
+                    let final_expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                        &prepared_data,
+                        LinearSolveFrame::from_parts(
+                            &refreshed_y,
+                            final_frame.raw_weights(),
+                            final_frame.bread_weight_scale(),
+                        )
+                        .expect("final strict reference frame"),
+                        config,
+                    )
+                    .expect("final strict reference");
+                    assert_fit_science_equal(strict.fit(), &final_expected);
+                    let memory = strict.retained_within_memory();
+                    assert_eq!(memory.rows, y.len());
+                    assert_eq!(memory.columns, strict.fit().finite_rank());
+                    assert_eq!(memory.mode, mode);
+                    let products = session
+                        .into_current_products()
+                        .expect("owned final products");
+                    assert_fit_science_equal(products.fit(), &final_expected);
+                    let design = products.finite_within_design();
+                    assert_eq!(design.nrows(), y.len());
+                    assert_eq!(design.dimension(), products.fit().finite_rank());
+                    assert_eq!(
+                        products.identified_bread().len(),
+                        products.fit().finite_rank() * products.fit().finite_rank()
+                    );
+                    let mut within_row = vec![0.0; design.dimension()];
+                    design
+                        .fill_row(0, &mut within_row)
+                        .expect("owned within row");
+                    assert!(within_row.iter().all(|value| value.is_finite()));
+                    fn assert_copy_sync<T: Copy + Sync>() {}
+                    assert_copy_sync::<CertifiedLinearWithinDesign<'_>>();
+                    let mut adapter_row = vec![0.0; design.dimension()];
+                    design
+                        .fill_row(0, &mut adapter_row)
+                        .expect("thread-safe within row");
+                    assert_eq!(adapter_row, within_row);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn certified_linear_session_generation_invalidation_is_fail_closed() {
+        let x = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
+        let y = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
+        let prepared_data = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
+        let mut session = CertifiedLinearSession::new(
+            &prepared_data,
+            frame,
+            PreparedOlsFitConfig::default(),
+            LinearSessionGenerations::new(10, 20, 30, 40, 50),
+        )
+        .expect("session");
+        session.solve_fresh().expect("fresh fit");
+        assert_eq!(
+            session
+                .refresh_response(&y, 40)
+                .expect_err("response generation must increase")
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        session.refresh_basis(51).expect("basis generation");
+        assert!(session.output().is_err());
+        session.solve_fresh().expect("refreshed basis fit");
+        session.invalidate_sample(11).expect("sample invalidation");
+        session
+            .invalidate_topology(21)
+            .expect("topology invalidation");
+        assert!(session.requires_rebind());
+        let error = match session.strictify() {
+            Ok(_) => panic!("invalidated session must fail"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+    }
+
+    #[test]
+    fn rejected_uncertified_strict_candidate_restores_exact_basis_transaction() {
+        let x = vec![-2.0, -1.0, 0.5, 1.0, 2.0, 4.0];
+        let duplicate_x = x.clone();
+        let y = vec![1.0, 2.0, 2.5, 4.0, 5.0, 9.0];
+        let prepared_data = prepared(
+            &y,
+            &[x, duplicate_x],
+            &[false, false],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
+        let mut session = CertifiedLinearSession::new(
+            &prepared_data,
+            frame,
+            PreparedOlsFitConfig::default(),
+            LinearSessionGenerations::new(0, 0, 0, 0, 7),
+        )
+        .expect("session");
+        let initial = session.solve_fresh().expect("initial canonical fit");
+        let original_kept = initial.fit().kept_generated_columns().to_vec();
+        let original_dropped = initial.fit().dropped_generated_columns().to_vec();
+        assert!(!original_dropped.is_empty());
+
+        let (strict, _basis_unchanged, rollback) =
+            session.strict_candidate().expect("speculative strict fit");
+        // Model the caller's uncertified strict-output branch: candidate values
+        // are inspected but are not accepted as estimator state.
+        assert!(strict.fit().finite_rank() > 0);
+        assert!(session.inject_same_rank_strict_basis_pivot());
+        assert_eq!(session.basis_generation_for_test(), 8);
+        session.rollback_strict_candidate(rollback);
+        assert_eq!(session.basis_generation_for_test(), 7);
+
+        let rebuilt = session
+            .solve_fresh()
+            .expect("solve after rejected strict candidate");
+        assert_eq!(rebuilt.fit().kept_generated_columns(), original_kept);
+        assert_eq!(rebuilt.fit().dropped_generated_columns(), original_dropped);
     }
 
     #[test]

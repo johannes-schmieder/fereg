@@ -50,14 +50,33 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
             if cell["design"] == "absorbed_slope":
                 absorb = "worker firm##c.year"
             if cell["outputs"] == "save_fe":
-                absorb = "saved_worker=worker saved_firm=firm"
-                saved = ["saved_worker", "saved_firm"]
+                if cell["design"] == "saved_slope":
+                    absorb = "__f0_worker=worker __f0_firm=firm##c.year"
+                    saved = ["__f0_worker", "__f0_firm", "__f0_firm_Slope1"]
+                else:
+                    absorb = "__f0_worker=worker __f0_firm=firm"
+                    saved = ["__f0_worker", "__f0_firm"]
+            weight = ""
+            if cell["weight"] != "unweighted":
+                abbreviation = local.WEIGHT_ABBREVIATIONS[cell["weight"]]
+                variable = local.WEIGHT_VARIABLES[cell["weight"]]
+                weight = f" [{abbreviation}={variable}]"
             command = (
-                f"fereg y_linear c.x1 c.x2, absorb({absorb}) "
-                f"threads({cell['threads']}) solver(auto) memory({cell['memory']})"
+                f"fereg y_linear c.x1 c.x2{weight}, absorb({absorb}) "
+                f"threads({cell['threads']}) solver({cell['solver']}) "
+                f"memory({cell['memory']})"
             )
+            if cell["preconditioner"] != "auto":
+                command += f" preconditioner({cell['preconditioner']})"
             if cell["vce"] == "cluster":
-                command += " vce(cluster firm year)"
+                variables = (
+                    ("firm", "year")
+                    if cell["design"] == "clustered_vce"
+                    else local.CLUSTER_VARIABLES[: cell["cluster_dimensions"]]
+                )
+                command += f" vce(cluster {' '.join(variables)})"
+            elif cell["vce"] == "robust":
+                command += " vce(robust)"
             cells.append(
                 {
                     "cell_id": cell["id"],
@@ -83,7 +102,10 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
             tuple(cell.cell_id for cell in loaded.cells),
             evaluator.EXPECTED_CELLS_BY_PROFILE["local_screen"],
         )
-        self.assertEqual(len(loaded.cells), 18)
+        self.assertEqual(
+            len(loaded.cells),
+            len(evaluator.EXPECTED_CELLS_BY_PROFILE["local_screen"]),
+        )
         self.assertEqual(loaded.obs_id, "obs_id")
         self.assertTrue(all(cell.dataset.path.is_absolute() for cell in loaded.cells))
 
@@ -265,7 +287,7 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
                 )
         self.assertEqual(len(calls), 2)
 
-    def test_preparation_generates_four_datasets_and_seals_exact_18_cell_config(self) -> None:
+    def test_preparation_generates_closed_datasets_and_seals_registered_cell_config(self) -> None:
         source = self.root / "f0-source"
         generator = source / "benchmarks/generators/generate_panel.do"
         ols_path = source / "benchmarks/manifests/ols_v1.json"
@@ -280,6 +302,7 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
         def fake_process(command, *, cwd, check, stdout, stderr, text):
             wrapper = (cwd / "generate.do").read_text(encoding="utf-8")
             dataset_id = cwd.name
+            spec = next(item for item in local._prepared_dataset_specs() if item.id == dataset_id)
             destination = output / "datasets" / f"{dataset_id}.dta"
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes((dataset_id + "-with-obs-id").encode("ascii"))
@@ -295,12 +318,18 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
                         "os=MacOSX",
                         "machine_type=Macintosh",
                         f"dataset_id={dataset_id}",
+                        f"variant={spec.variant}",
                     )
                 )
                 + "\n",
                 encoding="utf-8",
             )
             self.assertIn("generate long obs_id = _n", wrapper)
+            if spec.variant == "qualified_dense":
+                self.assertIn("generate byte __f0_cluster5", wrapper)
+                self.assertIn("generate byte __f0_fweight", wrapper)
+            if spec.variant == "disconnected":
+                self.assertIn("replace worker = 2*worker + __f0_component", wrapper)
             return __import__("subprocess").CompletedProcess(command, 0, stdout="")
 
         args = type(
@@ -324,11 +353,61 @@ class FeregF0LocalRunnerTests(unittest.TestCase):
             receipt = local.prepare_local(args, process_runner=fake_process)
         config = output / "local-input.json"
         loaded = local.load_local_inputs(config, self.manifest, self.manifest_sha)
-        self.assertEqual(len({cell.dataset.id for cell in loaded.cells}), 4)
-        self.assertEqual(len(loaded.cells), 18)
+        self.assertEqual(
+            len({cell.dataset.id for cell in loaded.cells}),
+            len(local._prepared_dataset_specs()),
+        )
+        self.assertEqual(
+            len(loaded.cells),
+            len(evaluator.EXPECTED_CELLS_BY_PROFILE["local_screen"]),
+        )
         self.assertIn("i.year##c.(x1 x2)", next(
             cell.command for cell in loaded.cells if "moderate_k" in cell.cell_id
         ))
+        by_id = {cell.cell_id: cell for cell in loaded.cells}
+        self.assertIn(
+            "vce(robust)",
+            by_id["local_n100k_robust_t8_fast_fit"].command,
+        )
+        self.assertIn(
+            "[fw=__f0_fweight]",
+            by_id["local_n100k_fweight_robust_t1_fast_fit"].command,
+        )
+        cluster5 = by_id["local_n100k_cluster5_t1_low_fit"]
+        self.assertIn(
+            "vce(cluster __f0_cluster1 __f0_cluster2 __f0_cluster3 "
+            "__f0_cluster4 __f0_cluster5)",
+            cluster5.command,
+        )
+        self.assertEqual(cluster5.dataset.id, "local_n100k_qualified_dense")
+        moderate_cluster = by_id["local_n100k_moderate_k_cluster2_t8_fast_fit"]
+        self.assertIn("i.year##c.(x1 x2)", moderate_cluster.command)
+        self.assertIn("threads(8)", moderate_cluster.command)
+        disconnected = by_id["local_n1m_disconnected_two_fe_t1_fast_save_fe"]
+        self.assertEqual(disconnected.dataset.id, "local_n1m_disconnected")
+        self.assertEqual(
+            disconnected.saved_outputs, ("__f0_worker", "__f0_firm")
+        )
+        saved_slope = by_id["local_n1m_saved_slope_t1_fast_save_fe"]
+        self.assertEqual(
+            saved_slope.saved_outputs,
+            ("__f0_worker", "__f0_firm", "__f0_firm_Slope1"),
+        )
+        self.assertIn("__f0_firm=firm##c.year", saved_slope.command)
+        for solver, preconditioner in (
+            ("map", "off"),
+            ("cg", "off"),
+            ("it", "off"),
+            ("squarem", "off"),
+            ("lsmr_off", "off"),
+            ("lsmr_diagonal", "diagonal"),
+            ("lsmr_schwarz", "schwarz"),
+            ("cmg", "off"),
+        ):
+            cell = by_id[f"local_n100k_solver_{solver}_t1_fast_fit"]
+            requested_solver = "lsmr" if solver.startswith("lsmr_") else solver
+            self.assertIn(f"solver({requested_solver})", cell.command)
+            self.assertIn(f"preconditioner({preconditioner})", cell.command)
         self.assertEqual(receipt["payload"]["terminal_sentinel"], local.PREPARATION_SENTINEL)
         receipt_path = output / "preparation-receipt.json"
         receipt_sha, stata_environment = local.verify_preparation(

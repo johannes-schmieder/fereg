@@ -17,7 +17,9 @@
 5. Run compute-node smoke first, then Linux correctness and clean-install
    profiles. Run paired fereg/reghdfe performance and memory comparisons in the
    same node and job; require qacct, sentinels, logs, hashes, and schemas to
-   agree. Enforce ADR-0007 on approved cases of at least 10 million rows.
+   agree. Enforce ADR-0007 on approved cases of at least 10 million rows. For
+   shared-engine or PPML work, also require the direct F0 profile and receipt
+   integrity rules in `fereg_regression_contract.md`.
 6. Build/audit target-native artifacts: Linux x86-64 glibc 2.28+, Windows x64
    MSVC, and universal macOS x86_64/arm64. Reject `target-cpu=native`,
    unexpected dynamic dependencies, missing exports, checksum mismatches, or a
@@ -41,3 +43,21 @@
 
 Sanitized qualification receipts may be committed. Generated archives and raw
 logs remain outside the repository.
+
+## PPML activation sequence
+
+The public `feppml` stub is not replaced during ordinary PPML development.
+First, one exact pre-activation source must pass the private `ppml-hidden`
+transaction/science matrix, pinned-comparator and independent-oracle gates,
+memory/performance and constrained-resource gates, supported build/ABI and
+licensed-platform checks, and the complete direct-F0 `fereg` regression
+contract. Every receipt must bind the same source, artifact, dependencies,
+datasets, and environment required by its manifest.
+
+Only then may a small separately revertible activation commit replace the
+public stub and update public help, package inventory, installation tests, and
+postestimation routing. That commit must contain no shared numerical refactor,
+solver or memory-policy change, OLS wire/syntax change, or unrelated release
+work. The full local, F0, PPML, SCC, platform, clean-install, transaction/Break,
+and deterministic-package gates must run again on the exact activated source.
+Pre-activation receipts cannot be inferred across the activation commit.

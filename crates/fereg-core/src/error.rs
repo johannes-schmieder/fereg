@@ -9,10 +9,12 @@ pub enum ErrorCode {
     InvalidArgument,
     ProtocolMismatch,
     Unsupported,
+    UnsupportedWeight,
     NegativeWeight,
     InvalidFrequencyWeight,
     InsufficientObservations,
     InvalidData,
+    NonConvergence,
     Allocation,
     Interrupted,
     SelfTestFailed,
@@ -26,11 +28,13 @@ impl ErrorCode {
         match self {
             Self::Syntax => 198,
             Self::InvalidArgument | Self::Unsupported => 498,
+            Self::UnsupportedWeight => 101,
             Self::ProtocolMismatch => 499,
             Self::NegativeWeight => 402,
             Self::InvalidFrequencyWeight => 401,
             Self::InsufficientObservations => 2001,
             Self::InvalidData => 459,
+            Self::NonConvergence => 430,
             Self::Allocation => 909,
             Self::Interrupted => 1,
             Self::SelfTestFailed => 3498,
@@ -45,10 +49,12 @@ impl ErrorCode {
             Self::InvalidArgument => "invalid_argument",
             Self::ProtocolMismatch => "protocol_mismatch",
             Self::Unsupported => "unsupported",
+            Self::UnsupportedWeight => "unsupported_weight",
             Self::NegativeWeight => "negative_weight",
             Self::InvalidFrequencyWeight => "invalid_frequency_weight",
             Self::InsufficientObservations => "insufficient_observations",
             Self::InvalidData => "invalid_data",
+            Self::NonConvergence => "nonconvergence",
             Self::Allocation => "allocation",
             Self::Interrupted => "interrupted",
             Self::SelfTestFailed => "selftest_failed",
@@ -100,5 +106,7 @@ mod tests {
             2001
         );
         assert_eq!(ErrorCode::InvalidData.stata_return_code(), 459);
+        assert_eq!(ErrorCode::NonConvergence.stata_return_code(), 430);
+        assert_eq!(ErrorCode::UnsupportedWeight.stata_return_code(), 101);
     }
 }

@@ -1,5 +1,5 @@
 schema_version = 2
-pinned_at_utc = "2026-08-21"
+pinned_at_utc = "2026-08-31"
 policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
 
 [ols_v1_capture]
@@ -8,6 +8,14 @@ reference_root_layout = "<absolute-root>/reghdfe, <absolute-root>/ftools, and <a
 network_policy = "offline-only; the runner never installs or fetches reference commands"
 eligibility = "exact source pins are resolved; capture requires all three matching clean local checkouts, and candidate performance may pass only after exact scientific parity"
 raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
+
+[ppml_v1_capture]
+manifest = "benchmarks/manifests/feppml_qualification_v1.json"
+reference_closure = "ppmlhdfe, reghdfe, ftools, and require are staged outside the repository from exact digest-bound sources"
+network_policy = "offline-only during staging, capture, and SCC execution; acquisition is a separate explicit step"
+installation_policy = "never inspect or mutate user PLUS/PERSONAL installations"
+receipt_policy = "the runtime bundle, each source archive, every Git tree, and the closed required-file inventory are SHA-bound"
+git_archive_reproduction = "with GIT_CONFIG_NOSYSTEM=1, GIT_CONFIG_GLOBAL=/dev/null, and GIT_TERMINAL_PROMPT=0, run git -C <clean-checkout> archive --format=tar <pinned-commit> -- src; SHA-256 and byte-count the raw stdout"
 
 [[reference]]
 name = "pyfixest"
@@ -47,6 +55,7 @@ use = "Exact runtime dependency for solver(cmg), including additive checked memo
 name = "reghdfe"
 repository = "https://github.com/sergiocorreia/reghdfe"
 commit = "29b2b203f534413369d675d0c0f674d61291f536"
+git_tree = "6198858472637f73f65984e46f6a31a39a213651"
 pin_status = "resolved"
 version = "6.14.1"
 license = "MIT"
@@ -57,6 +66,10 @@ checkout_dir = "reghdfe"
 capture_ado_subdir = "src"
 required_capture_files = ["src/reghdfe.ado", "src/reghdfe.mata"]
 required_capture_sha256 = { "src/reghdfe.ado" = "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc", "src/reghdfe.mata" = "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6" }
+source_archive_format = "git-archive-tar"
+source_archive_scope = "src"
+source_archive_size_bytes = 768000
+source_archive_sha256 = "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd"
 
 [[reference]]
 name = "gtools-gregress"
@@ -80,6 +93,7 @@ comparator_policy = "Benchmark only from a frozen self-consistent comparator bun
 name = "ftools"
 repository = "https://github.com/sergiocorreia/ftools"
 commit = "d6e24d66fd02ba1b37325c82c5040444c5b4c636"
+git_tree = "a09b13ad3a337e9635d93ce4b5a2fd0275ac79fc"
 pin_status = "resolved"
 version = "2.50.0"
 license = "MIT"
@@ -92,11 +106,16 @@ required_capture_files = ["src/ftools.ado", "src/ftools.mata", "src/ftools.pkg",
 required_capture_sha256 = { "src/ftools.ado" = "c7eba3272b5fcd1dfa157e65c37840a051c6e2bf327d5ee31d42df65cf330b00", "src/ftools.mata" = "4af859bca19614684d3dd45566e13e17c6cf44df951ecca538bda5a44ebd1744", "src/ftools.pkg" = "2f1f75711b3bf12980bdf9503b0ac9a73d5455863da966ae27a610f6fc07f5ae", "src/ms_parse_vce.ado" = "99af53ca13f325a917b7377762feab140914a5a6534c0953ea9ce6d55dcfa678" }
 generated_capture_artifacts = ["src/lftools.mlib"]
 generated_artifact_policy = "lftools.mlib is compiled inside the private Stata capture directory and is never a pinned source input"
+source_archive_format = "git-archive-tar"
+source_archive_scope = "src"
+source_archive_size_bytes = 256000
+source_archive_sha256 = "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680"
 
 [[reference]]
 name = "require"
 repository = "https://github.com/sergiocorreia/stata-require"
 commit = "f4760b86e55cf73b82041ce59cf20e8e8224afb0"
+git_tree = "950f5a8d484acbcbc621b05ee483ada0722aecbc"
 pin_status = "resolved"
 version = "1.3.1"
 license = "MIT"
@@ -107,16 +126,32 @@ checkout_dir = "require"
 capture_ado_subdir = "src"
 required_capture_files = ["src/require.ado", "src/require.pkg"]
 required_capture_sha256 = { "src/require.ado" = "0f5a7bad374ade6c6ba0f05973666bb06b63d4acc36ddb0e277a060249a0e6de", "src/require.pkg" = "d9965f30b072949f7012fe3f0e6e83baf20dd6317ff2e21b15e185085a36ed62" }
+source_archive_format = "git-archive-tar"
+source_archive_scope = "src"
+source_archive_size_bytes = 51200
+source_archive_sha256 = "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1"
 
 [[reference]]
 name = "ppmlhdfe"
 repository = "https://github.com/sergiocorreia/ppmlhdfe"
 commit = "b85665d8f674e93c1e07446a9a2b29be7f797910"
+git_tree = "8db7c5bb771c699d759b62cc4a3376d0977fe108"
+pin_status = "resolved"
 version = "commit-pinned development tree"
 license = "MIT"
-relevant_source_paths = ["src/ppmlhdfe.ado", "src/ppmlhdfe.mata", "src/ppmlhdfe_p.ado"]
+relevant_source_paths = ["src/"]
 relevant_test_paths = ["test/", "tests/"]
 use = "Primary Stata-facing PPML and separation compatibility oracle; never called at runtime."
+checkout_dir = "ppmlhdfe"
+capture_ado_subdir = "src"
+source_archive_url = "https://codeload.github.com/sergiocorreia/ppmlhdfe/tar.gz/b85665d8f674e93c1e07446a9a2b29be7f797910"
+source_archive_format = "tar.gz"
+source_archive_scope = "src"
+source_archive_root = "ppmlhdfe-b85665d8f674e93c1e07446a9a2b29be7f797910"
+source_archive_size_bytes = 5079754
+source_archive_sha256 = "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e"
+required_capture_files = ["src/ppmlhdfe.ado", "src/ppmlhdfe.mata", "src/ppmlhdfe.pkg", "src/ppmlhdfe.sthlp", "src/ppmlhdfe_functions.mata", "src/ppmlhdfe_header.ado", "src/ppmlhdfe_p.ado", "src/ppmlhdfe_separation_relu.mata", "src/ppmlhdfe_separation_simplex.mata", "src/stata.toc"]
+required_capture_sha256 = { "src/ppmlhdfe.ado" = "0c1f65bb13e2a8a7ceb157a6fc38b70fd4de16b97412b5de0aef46c86e1a91b0", "src/ppmlhdfe.mata" = "20246794d857a76c96eeb8d5e2ddce0787e26da9169f8d2e9158799bc4b66135", "src/ppmlhdfe.pkg" = "f285b4fce23f5058288ebd614019b006cc805a594bc97daa21f748e621c212cc", "src/ppmlhdfe.sthlp" = "28baa95bd5b6d2887736d1fe334edec95f40f9defdc1cb87ff70b0e22da8ea30", "src/ppmlhdfe_functions.mata" = "dcedc8070f2224572b1832b1d0b3e2c04d8c15ea92aa6357ef784e58330bbc23", "src/ppmlhdfe_header.ado" = "ed4ecd016b75635fb6c970f1b5a6fd43f2dd89ab6829b8e75110a224ea8aa851", "src/ppmlhdfe_p.ado" = "49a276f6c9f9099831c17d7e0b4c8f66b479af4036970a10453d052c52502e73", "src/ppmlhdfe_separation_relu.mata" = "e7b7f8d58fb578255a76a7a79b430860956e7af0ea399f7b1dea73d9b3329c21", "src/ppmlhdfe_separation_simplex.mata" = "ea1c5f342080011fe870d19c88340f0a7ec554ac7eec6902ad65b2f0b5038fd9", "src/stata.toc" = "713a1933cee2519aa4725288ca7894ca6f3b7738fa07d2900a62ab9937ba5744" }
 
 [[reference]]
 name = "stata-spi"

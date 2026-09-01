@@ -11,20 +11,26 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
+import hashlib
+from datetime import datetime, timezone
 
 
 DEFAULT_STATA = Path("/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp")
 EVIDENCE_NAMES = (
     "process.json",
     "process.stdout.log",
+    "process.stderr.log",
     "stata.status",
     "stata.log",
     "profile-summary.json",
     "fixture-summary.json",
     "fixture-logs",
     "plugin-evidence",
+    "source.json",
+    "source.tar",
 )
 
 
@@ -105,6 +111,88 @@ def stage_repository(
         shutil.copy2(source, target)
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def materialize_exact_commit(
+    root: Path, commit: str, destination: Path, archive_path: Path
+) -> dict[str, object]:
+    """Stage only bytes from one resolved commit and retain the exact archive."""
+
+    if os.environ.get("FEREG_TRACKED_FILES_MANIFEST"):
+        raise RuntimeError(
+            "FEREG_TRACKED_FILES_MANIFEST is not allowed for formal Stata evidence; "
+            "the exact tested commit is always materialized"
+        )
+    resolved = command_output(["git", "rev-parse", f"{commit}^{{commit}}"], root)
+    tree = command_output(["git", "rev-parse", f"{resolved}^{{tree}}"], root)
+    timestamp_raw = command_output(
+        ["git", "show", "-s", "--format=%cI", resolved], root
+    )
+    try:
+        timestamp = datetime.fromisoformat(timestamp_raw.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise RuntimeError("tested commit timestamp is not exact ISO-8601") from error
+    if timestamp.tzinfo is None:
+        raise RuntimeError("tested commit timestamp has no timezone")
+    build_date = timestamp.astimezone(timezone.utc).strftime("%Y-%m-%d")
+    with archive_path.open("xb") as archive:
+        completed = subprocess.run(
+            ["git", "archive", "--format=tar", resolved], cwd=root,
+            stdout=archive, stderr=subprocess.PIPE, check=False,
+        )
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"cannot materialize exact tested commit: {detail}")
+    try:
+        with tarfile.open(archive_path, mode="r:") as archive:
+            seen: set[str] = set()
+            for member in archive.getmembers():
+                relative = Path(member.name)
+                target = (destination / relative).resolve()
+                if (
+                    member.name in seen or not member.name
+                    or relative.is_absolute() or ".." in relative.parts
+                    or destination.resolve() not in target.parents
+                    or not (member.isdir() or member.isfile())
+                ):
+                    raise RuntimeError(
+                        f"exact source archive contains an unsafe member: {member.name!r}"
+                    )
+                seen.add(member.name)
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    target.chmod(member.mode & 0o777)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source = archive.extractfile(member)
+                if source is None:
+                    raise RuntimeError(
+                        f"cannot read exact source archive member: {member.name}"
+                    )
+                with source, target.open("xb") as output:
+                    shutil.copyfileobj(source, output, length=1 << 20)
+                target.chmod(member.mode & 0o777)
+    except (OSError, tarfile.TarError) as error:
+        raise RuntimeError(f"cannot extract exact tested source archive: {error}") from error
+    return {
+        "schema_version": 1,
+        "record_type": "fereg-exact-source-archive-v1",
+        "source": {"commit": resolved, "tree": tree},
+        "build_date_utc": build_date,
+        "archive": {
+            "filename": archive_path.name,
+            "sha256": sha256_file(archive_path),
+            "size_bytes": archive_path.stat().st_size,
+        },
+    }
+
+
 def clear_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
     for child in path.iterdir():
@@ -171,14 +259,6 @@ def main() -> int:
     args = parser.parse_args()
 
     root = repo_root()
-    config_path = root / "ci" / "stata_profiles.json"
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    profiles = config.get("profiles", {})
-    if args.profile not in profiles:
-        choices = ", ".join(sorted(profiles))
-        parser.error(f"unknown profile {args.profile!r}; choose one of: {choices}")
-    profile = profiles[args.profile]
-
     artifact_dir = root / ".ci" / "stata" / "run"
     clear_directory(artifact_dir)
     parent = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())).resolve()
@@ -186,11 +266,24 @@ def main() -> int:
     run_root = Path(tempfile.mkdtemp(prefix="fereg-stata-ci-", dir=parent))
     staged_root = run_root / "repo"
     staged_root.mkdir()
-    manifest_name = os.environ.get("FEREG_TRACKED_FILES_MANIFEST")
-    manifest = (
-        Path(manifest_name).expanduser().resolve() if manifest_name else None
+    requested_sha = os.environ.get("GITHUB_SHA") or command_output(
+        ["git", "rev-parse", "HEAD^{commit}"], root
     )
-    stage_repository(root, staged_root, manifest)
+    source_record = materialize_exact_commit(
+        root, requested_sha, staged_root, run_root / "source.tar"
+    )
+    tested_sha = str(source_record["source"]["commit"])
+    (run_root / "source.json").write_text(
+        json.dumps(source_record, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="ascii",
+    )
+    config_path = staged_root / "ci" / "stata_profiles.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    profiles = config.get("profiles", {})
+    if args.profile not in profiles:
+        choices = ", ".join(sorted(profiles))
+        parser.error(f"unknown profile {args.profile!r}; choose one of: {choices}")
+    profile = profiles[args.profile]
     for directory in (
         "stata-plus",
         "stata-personal",
@@ -199,9 +292,6 @@ def main() -> int:
     ):
         (run_root / directory).mkdir()
 
-    tested_sha = os.environ.get("GITHUB_SHA") or command_output(
-        ["git", "rev-parse", "HEAD"], root
-    )
     stata_executable = Path(
         os.environ.get("STATA_BIN", str(DEFAULT_STATA))
     ).expanduser().resolve()
@@ -210,8 +300,10 @@ def main() -> int:
     profile_summary = run_root / "profile-summary.json"
     process_json = run_root / "process.json"
     process_log = run_root / "process.stdout.log"
+    process_error = run_root / "process.stderr.log"
     timeout_seconds = int(profile["timeout_seconds"])
     driver = profile.get("driver", "stata-harness")
+    python_executable = str(Path(sys.executable).resolve())
 
     if driver == "stata-harness":
         profile_command = [
@@ -229,7 +321,7 @@ def main() -> int:
         ]
     elif driver == "fereg-fixtures":
         profile_command = [
-            sys.executable,
+            python_executable,
             str(staged_root / "ci" / "run_fixture_profile.py"),
             "--profile-config",
             str(staged_root / "ci" / "stata_profiles.json"),
@@ -250,7 +342,7 @@ def main() -> int:
         raise SystemExit(f"unsupported profile driver: {driver}")
 
     supervisor = [
-        sys.executable,
+        python_executable,
         str(staged_root / "ci" / "supervise_stata.py"),
         "--timeout-seconds",
         str(timeout_seconds),
@@ -258,12 +350,19 @@ def main() -> int:
         str(process_json),
         "--stdout-log",
         str(process_log),
+        "--stderr-log",
+        str(process_error),
         "--cwd",
         str(run_root),
         "--",
         *profile_command,
     ]
-    supervisor_rc = subprocess.run(supervisor, check=False).returncode
+    formal_environment = os.environ.copy()
+    formal_environment["FEREG_GIT_COMMIT"] = tested_sha[:12]
+    formal_environment["FEREG_BUILD_DATE"] = str(source_record["build_date_utc"])
+    supervisor_rc = subprocess.run(
+        supervisor, check=False, env=formal_environment
+    ).returncode
     if supervisor_rc != 0 and not process_json.exists():
         process_json.write_text(
             json.dumps(
@@ -286,7 +385,7 @@ def main() -> int:
 
     receipt_path = artifact_dir / "receipt.json"
     make_receipt = [
-        sys.executable,
+        python_executable,
         str(staged_root / "ci" / "make_stata_receipt.py"),
         "--profile-config",
         str(staged_root / "ci" / "stata_profiles.json"),

@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::error::{ErrorCode, FeregError, Result};
 
 const IO_BUFFER_BYTES: usize = 1 << 20;
+const SHARED_READ_BUFFER_BYTES: usize = 8 << 10;
 static SCRATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
@@ -101,6 +102,15 @@ impl PreparedOlsScratch {
         self.bytes
     }
 
+    pub(crate) fn io_buffer_capacity(&self) -> usize {
+        self.io_buffer.capacity()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn identity_path(&self) -> &std::path::Path {
+        &self.path
+    }
+
     pub(crate) fn write_column(&mut self, column: usize, values: &[f64]) -> Result<()> {
         self.validate_column(column, values.len())?;
         let offset = self.column_element_offset(column, 0)?;
@@ -137,6 +147,40 @@ impl PreparedOlsScratch {
     pub(crate) fn read_linear(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
         self.validate_linear_range(offset, values.len())?;
         self.read_values_at(offset, values)
+    }
+
+    /// Read without changing the shared file cursor. This is the read-only,
+    /// allocation-free seam used by parallel final-inference row adapters.
+    pub(crate) fn read_linear_shared(&self, offset: usize, values: &mut [f64]) -> Result<()> {
+        self.validate_linear_range(offset, values.len())?;
+        let mut element_offset = offset;
+        let mut encoded = [0_u8; SHARED_READ_BUFFER_BYTES];
+        let values_per_chunk = encoded.len() / 8;
+        for chunk in values.chunks_mut(values_per_chunk) {
+            let byte_count = chunk
+                .len()
+                .checked_mul(8)
+                .ok_or_else(|| allocation("prepared OLS shared read size overflows"))?;
+            let byte_offset = u64::try_from(element_offset)
+                .ok()
+                .and_then(|value| value.checked_mul(8))
+                .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
+            read_exact_at(self.file_ref(), &mut encoded[..byte_count], byte_offset).map_err(
+                |error| io_error("unable to positionally read prepared OLS scratch", error),
+            )?;
+            for (value, bytes) in chunk.iter_mut().zip(encoded[..byte_count].chunks_exact(8)) {
+                let mut value_bytes = [0_u8; 8];
+                value_bytes.copy_from_slice(bytes);
+                *value = f64::from_le_bytes(value_bytes);
+                if !value.is_finite() {
+                    return Err(invalid("prepared OLS scratch contains a nonfinite value"));
+                }
+            }
+            element_offset = element_offset
+                .checked_add(chunk.len())
+                .ok_or_else(|| allocation("prepared OLS shared read offset overflows usize"))?;
+        }
+        Ok(())
     }
 
     fn write_values_at(&mut self, offset: usize, values: &[f64]) -> Result<()> {
@@ -245,6 +289,46 @@ impl PreparedOlsScratch {
             .as_mut()
             .expect("prepared OLS scratch file is open before Drop")
     }
+
+    fn file_ref(&self) -> &File {
+        self.file
+            .as_ref()
+            .expect("prepared OLS scratch file is open before Drop")
+    }
+}
+
+#[cfg(unix)]
+fn read_exact_at(file: &File, mut output: &mut [u8], mut offset: u64) -> std::io::Result<()> {
+    use std::os::unix::fs::FileExt;
+
+    while !output.is_empty() {
+        let read = file.read_at(output, offset)?;
+        if read == 0 {
+            return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
+        }
+        offset = offset
+            .checked_add(read as u64)
+            .ok_or_else(|| std::io::Error::other("scratch positional-read offset overflow"))?;
+        output = &mut output[read..];
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn read_exact_at(file: &File, mut output: &mut [u8], mut offset: u64) -> std::io::Result<()> {
+    use std::os::windows::fs::FileExt;
+
+    while !output.is_empty() {
+        let read = file.seek_read(output, offset)?;
+        if read == 0 {
+            return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
+        }
+        offset = offset
+            .checked_add(read as u64)
+            .ok_or_else(|| std::io::Error::other("scratch positional-read offset overflow"))?;
+        output = &mut output[read..];
+    }
+    Ok(())
 }
 
 impl Drop for PreparedOlsScratch {
@@ -315,5 +399,33 @@ mod tests {
                 .code,
             ErrorCode::InvalidData
         );
+    }
+
+    #[test]
+    fn scratch_shared_positional_reads_are_sync_and_cursor_independent() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<PreparedOlsScratch>();
+
+        let mut scratch = PreparedOlsScratch::create(4, 2).expect("scratch");
+        scratch
+            .write_linear(0, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+            .expect("write rows");
+        std::thread::scope(|scope| {
+            for row in 0..4 {
+                let scratch = &scratch;
+                scope.spawn(move || {
+                    let mut values = [0.0; 2];
+                    scratch
+                        .read_linear_shared(row * 2, &mut values)
+                        .expect("shared row read");
+                    assert_eq!(values, [2.0 * row as f64 + 1.0, 2.0 * row as f64 + 2.0]);
+                });
+            }
+        });
+        let mut first = [0.0; 2];
+        scratch
+            .read_linear_shared(0, &mut first)
+            .expect("repeat shared read");
+        assert_eq!(first, [1.0, 2.0]);
     }
 }

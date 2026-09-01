@@ -15,12 +15,12 @@ REMOTE_RUN_ROOT=/projectnb/welfgr/fereg/runs/$RUN_ID
 
 test -f "$LOCAL_RUN_ROOT/input/preparation.json"
 test -f "$LOCAL_RUN_ROOT/input/PREPARED"
-python3 "$LOCAL_RUN_ROOT/input/harness/fereg_f0_scc.py" verify-input --run-root "$LOCAL_RUN_ROOT"
+python3 -I -B -S "$LOCAL_RUN_ROOT/input/harness/fereg_f0_scc.py" verify-input --run-root "$LOCAL_RUN_ROOT"
 
 # A run ID is immutable. Deployment is incremental and never deletes or
 # overlays a previous attempt.
 ssh scc "test ! -e '$REMOTE_RUN_ROOT'"
 ssh scc "mkdir -p '$REMOTE_RUN_ROOT'"
-rsync -av --partial --info=progress2 "$LOCAL_RUN_ROOT/" "scc:$REMOTE_RUN_ROOT/"
-ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 '$REMOTE_RUN_ROOT/input/harness/fereg_f0_scc.py' verify-input --run-root '$REMOTE_RUN_ROOT'"
+rsync -av --partial --progress "$LOCAL_RUN_ROOT/" "scc:$REMOTE_RUN_ROOT/"
+ssh scc "source /etc/bashrc && module --force purge && module load python3/3.12.4 && python3 -I -B -S '$REMOTE_RUN_ROOT/input/harness/fereg_f0_scc.py' verify-input --run-root '$REMOTE_RUN_ROOT'"
 printf 'FEREG_F0_DEPLOY_SUCCESS run_root=%s\n' "$REMOTE_RUN_ROOT"

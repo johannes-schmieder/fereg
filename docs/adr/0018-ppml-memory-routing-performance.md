@@ -41,7 +41,12 @@ silently taking a slow duplicated path is not completion.
 2. All data-sized arithmetic uses checked dimensions and fallible reservation.
    `memory(fast|low|auto)` is resolved before the first large fit workspace is
    allocated. If no certified route fits the applicable limit, return `r(909)`
-   without partial output.
+   without partial output. The bounded simplex subplan separately counts the
+   complete finite-plus-FE model width and its jointly live explicit design,
+   FE-code/topology construction scratch, null-space work, phase-I tableau,
+   and certificate buffers. Its over-cap behavior follows ADR 0017: no N-by-P
+   design or tableau allocation, same-generation comprehensive-IR closure for
+   the default chain, and `r(909)` for an unresolved or simplex-only request.
 3. Fast mode may retain a reusable in-memory transformed design and the
    qualified dense reduction workspaces. Low mode streams bounded column/RHS
    pools and may use the same validated private scratch-file discipline as
@@ -73,10 +78,18 @@ silently taking a slow duplicated path is not completion.
 
 ### PPML-specific route policy
 
-10. PPML shares the certified MAP, CG, LSMR, and CMG implementations, but not
-    OLS automatic route thresholds. Route choice is a PPML fit-lifetime policy
-    based on final sample topology, RHS width, changing-weight cost,
-    conditioning diagnostics, memory mode, and requested products.
+10. PPML shares the certified MAP, CG, LSMR, and CMG infrastructure, but not
+    OLS automatic route thresholds or route qualification. The pinned
+    `within` LSMR implementation still contains infallible observation-,
+    coefficient-, and fixed-effect-sized allocations, so explicit PPML LSMR
+    fails closed before the first fit-lifetime allocation phase and is not
+    activation-qualified. OLS LSMR remains unchanged. PPML automatic routing
+    currently canonicalizes to the qualified shared MAP route; LSMR may become
+    eligible only after its upstream API is fallible and the complete PPML
+    allocation, changing-weight, and end-to-end qualification gates pass.
+    Route choice is otherwise a PPML fit-lifetime policy based on final sample
+    topology, RHS width, changing-weight cost, conditioning diagnostics,
+    memory mode, and requested products.
 11. The initial automatic PPML policy uses only routes with dedicated
     changing-weight and end-to-end qualification. CMG remains explicit and
     diagnostic until its hierarchy reuse, weighted convergence, memory model,

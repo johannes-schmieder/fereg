@@ -2,6 +2,7 @@ use crate::dispatch::dispatch_args;
 use crate::estimate::{estimate_ols_test, ACTION_ESTIMATE_OLS};
 use crate::input::{prepare_ols_test, PreparedMatrixStoreName, SpiApi, ACTION_PREPARE_OLS_TEST};
 use crate::output::OutputSink;
+use crate::ppml_estimate::{estimate_ppml_test, ACTION_ESTIMATE_PPML};
 use fereg_core::error::{ErrorCode, FeregError};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::any::Any;
@@ -10,91 +11,352 @@ use std::marker::PhantomData;
 use std::os::raw::{c_char, c_int};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicU64, AtomicU8, Ordering};
 
 struct TrackingAllocator;
 
 static ALLOCATION_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATION_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
+static ALLOCATION_EVENTS: AtomicU64 = AtomicU64::new(0);
 static PREVIOUS_ACTION_BASELINE_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
+static PPML_PHASE_ACTION_BASELINE_BYTES: AtomicU64 = AtomicU64::new(0);
+static PPML_PHASE_ACTIVE_MASK: AtomicU16 = AtomicU16::new(0);
+const PPML_PHASE_MASK: u16 = (1_u16 << fereg_core::ppml::PPML_PHASE_COUNT) - 1;
+const PPML_ACTION_ACTIVE_BIT: u16 = 1_u16 << fereg_core::ppml::PPML_PHASE_COUNT;
+static PPML_PHASE_DEPTHS: [AtomicU8; fereg_core::ppml::PPML_PHASE_COUNT] =
+    [const { AtomicU8::new(0) }; fereg_core::ppml::PPML_PHASE_COUNT];
+static PPML_PHASE_CURRENT_BYTES: [AtomicU64; fereg_core::ppml::PPML_PHASE_COUNT] =
+    [const { AtomicU64::new(0) }; fereg_core::ppml::PPML_PHASE_COUNT];
+static PPML_PHASE_PEAK_BYTES: [AtomicU64; fereg_core::ppml::PPML_PHASE_COUNT] =
+    [const { AtomicU64::new(0) }; fereg_core::ppml::PPML_PHASE_COUNT];
+static PPML_PHASE_EVENTS: [AtomicU64; fereg_core::ppml::PPML_PHASE_COUNT] =
+    [const { AtomicU64::new(0) }; fereg_core::ppml::PPML_PHASE_COUNT];
+#[cfg(test)]
+const TEST_NO_ALLOCATION_FAILURE_PHASE: u8 = u8::MAX;
+#[cfg(test)]
+static TEST_ALLOCATION_FAILURE_PHASE: AtomicU8 = AtomicU8::new(TEST_NO_ALLOCATION_FAILURE_PHASE);
+#[cfg(test)]
+static TEST_ALLOCATION_FAILURE_FIRED: AtomicU8 = AtomicU8::new(0);
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator;
 
 unsafe impl GlobalAlloc for TrackingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if should_inject_ppml_allocation_failure() {
+            return std::ptr::null_mut();
+        }
         // SAFETY: the request is forwarded unchanged to the system allocator.
         let pointer = unsafe { System.alloc(layout) };
         if !pointer.is_null() {
-            record_allocation(layout.size());
+            let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+            record_allocation(layout.size(), phases);
+            record_allocation_event(phases);
         }
         pointer
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        if should_inject_ppml_allocation_failure() {
+            return std::ptr::null_mut();
+        }
         // SAFETY: the request is forwarded unchanged to the system allocator.
         let pointer = unsafe { System.alloc_zeroed(layout) };
         if !pointer.is_null() {
-            record_allocation(layout.size());
+            let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+            record_allocation(layout.size(), phases);
+            record_allocation_event(phases);
         }
         pointer
     }
 
     unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
-        record_deallocation(layout.size());
+        let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+        record_deallocation(layout.size(), phases);
         // SAFETY: the pointer/layout pair came from the system allocator.
         unsafe { System.dealloc(pointer, layout) };
     }
 
     unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        if should_inject_ppml_allocation_failure() {
+            return std::ptr::null_mut();
+        }
         // SAFETY: the pointer/layout pair and new size are forwarded unchanged.
         let replacement = unsafe { System.realloc(pointer, layout, new_size) };
         if !replacement.is_null() {
             if new_size >= layout.size() {
-                record_allocation(new_size - layout.size());
+                let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+                record_allocation(new_size - layout.size(), phases);
+                if new_size > layout.size() {
+                    record_allocation_event(phases);
+                }
             } else {
-                record_deallocation(layout.size() - new_size);
+                let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+                record_deallocation(layout.size() - new_size, phases);
             }
         }
         replacement
     }
 }
 
-fn record_allocation(bytes: usize) {
+#[inline]
+fn should_inject_ppml_allocation_failure() -> bool {
+    #[cfg(test)]
+    {
+        let phase = TEST_ALLOCATION_FAILURE_PHASE.load(Ordering::Acquire);
+        if usize::from(phase) >= fereg_core::ppml::PPML_PHASE_COUNT {
+            return false;
+        }
+        let bit = 1_u16 << phase;
+        if PPML_PHASE_ACTIVE_MASK.load(Ordering::Acquire) & bit == 0 {
+            return false;
+        }
+        if TEST_ALLOCATION_FAILURE_PHASE
+            .compare_exchange(
+                phase,
+                TEST_NO_ALLOCATION_FAILURE_PHASE,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+        {
+            TEST_ALLOCATION_FAILURE_FIRED.store(1, Ordering::Release);
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+pub(crate) fn inject_ppml_allocation_failure(phase: fereg_core::ppml::PpmlPhase) {
+    PPML_PHASE_ACTIVE_MASK.store(0, Ordering::Release);
+    for depth in &PPML_PHASE_DEPTHS {
+        depth.store(0, Ordering::Relaxed);
+    }
+    TEST_ALLOCATION_FAILURE_FIRED.store(0, Ordering::Relaxed);
+    TEST_ALLOCATION_FAILURE_PHASE.store(phase as u8, Ordering::Release);
+}
+
+#[cfg(test)]
+pub(crate) fn ppml_allocation_failure_fired() -> bool {
+    TEST_ALLOCATION_FAILURE_FIRED.load(Ordering::Acquire) != 0
+}
+
+#[cfg(test)]
+pub(crate) fn ppml_allocation_failure_armed() -> bool {
+    usize::from(TEST_ALLOCATION_FAILURE_PHASE.load(Ordering::Acquire))
+        < fereg_core::ppml::PPML_PHASE_COUNT
+}
+
+#[cfg(test)]
+pub(crate) fn ppml_failure_injection_phase_probe(
+    phase: fereg_core::ppml::PpmlPhase,
+    event: fereg_core::ppml::PpmlPhaseAllocatorEvent,
+) -> u64 {
+    let _ = ppml_phase_allocation_probe(phase, event);
+    // Failure-injection qualification needs the real phase boundary, but it
+    // must not opt into allocator-telemetry validation for unrelated phases.
+    0
+}
+
+#[cfg(test)]
+pub(crate) fn ppml_failure_injection_linear_phase_probe(
+    phase: fereg_core::LinearSessionAllocationPhase,
+    event: fereg_core::LinearSessionPhaseAllocationEvent,
+) -> u64 {
+    let _ = ppml_linear_phase_allocation_probe(phase, event);
+    0
+}
+
+fn record_allocation(bytes: usize, mut phases: u16) {
     let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
-    let current = ALLOCATION_CURRENT_BYTES
+    record_allocation_on(&ALLOCATION_CURRENT_BYTES, &ALLOCATION_PEAK_BYTES, bytes);
+    phases &= PPML_PHASE_MASK;
+    while phases != 0 {
+        let index = phases.trailing_zeros() as usize;
+        record_allocation_on(
+            &PPML_PHASE_CURRENT_BYTES[index],
+            &PPML_PHASE_PEAK_BYTES[index],
+            bytes,
+        );
+        phases &= phases - 1;
+    }
+}
+
+fn record_allocation_on(current_bytes: &AtomicU64, peak_bytes: &AtomicU64, bytes: u64) {
+    let current = current_bytes
         .fetch_add(bytes, Ordering::Relaxed)
         .saturating_add(bytes);
-    ALLOCATION_PEAK_BYTES.fetch_max(current, Ordering::Relaxed);
+    peak_bytes.fetch_max(current, Ordering::Relaxed);
 }
 
-fn record_deallocation(bytes: usize) {
+fn record_deallocation(bytes: usize, mut phases: u16) {
     let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
-    let _ =
-        ALLOCATION_CURRENT_BYTES.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
-            Some(current.saturating_sub(bytes))
-        });
+    record_deallocation_on(&ALLOCATION_CURRENT_BYTES, bytes);
+    phases &= PPML_PHASE_MASK;
+    while phases != 0 {
+        let index = phases.trailing_zeros() as usize;
+        record_deallocation_on(&PPML_PHASE_CURRENT_BYTES[index], bytes);
+        phases &= phases - 1;
+    }
 }
 
-pub(crate) fn begin_allocation_observation() -> (u64, u64) {
+fn record_deallocation_on(current_bytes: &AtomicU64, bytes: u64) {
+    let _ = current_bytes.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+        Some(current.saturating_sub(bytes))
+    });
+}
+
+fn record_allocation_event(mut phases: u16) {
+    if phases & PPML_ACTION_ACTIVE_BIT != 0 {
+        record_allocation_event_on(&ALLOCATION_EVENTS);
+    }
+    phases &= PPML_PHASE_MASK;
+    while phases != 0 {
+        let index = phases.trailing_zeros() as usize;
+        record_allocation_event_on(&PPML_PHASE_EVENTS[index]);
+        phases &= phases - 1;
+    }
+}
+
+fn record_allocation_event_on(events: &AtomicU64) {
+    let _ = events.fetch_add(1, Ordering::Relaxed);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AllocationUsage {
+    pub(crate) current_bytes: u64,
+    pub(crate) peak_bytes: u64,
+    pub(crate) events: u64,
+}
+
+fn begin_allocation_observation_inner(
+    reset_ppml_phase_telemetry: bool,
+) -> (AllocationUsage, Option<u64>) {
     let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
     ALLOCATION_PEAK_BYTES.store(current, Ordering::Relaxed);
+    PPML_PHASE_ACTIVE_MASK.store(
+        if reset_ppml_phase_telemetry {
+            PPML_ACTION_ACTIVE_BIT
+        } else {
+            0
+        },
+        Ordering::Release,
+    );
+    if reset_ppml_phase_telemetry {
+        PPML_PHASE_ACTION_BASELINE_BYTES.store(current, Ordering::Relaxed);
+        for index in 0..fereg_core::ppml::PPML_PHASE_COUNT {
+            PPML_PHASE_DEPTHS[index].store(0, Ordering::Relaxed);
+            PPML_PHASE_CURRENT_BYTES[index].store(current, Ordering::Relaxed);
+            PPML_PHASE_PEAK_BYTES[index].store(current, Ordering::Relaxed);
+            PPML_PHASE_EVENTS[index].store(0, Ordering::Relaxed);
+        }
+    }
     let previous = PREVIOUS_ACTION_BASELINE_BYTES.swap(current, Ordering::Relaxed);
     (
-        current,
-        if previous == u64::MAX {
-            current
-        } else {
-            previous
-        },
+        allocation_usage(),
+        (previous != u64::MAX).then_some(previous),
     )
 }
 
-pub(crate) fn allocation_usage() -> (u64, u64) {
-    (
-        ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed),
-        ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed),
-    )
+/// Begin an OLS action without touching the additive PPML phase arrays.  F0
+/// OLS telemetry resets only the action-wide allocator window; keeping that
+/// path narrow avoids fixed PPML qualification work on every `fereg` call.
+pub(crate) fn begin_ols_allocation_observation() -> (AllocationUsage, Option<u64>) {
+    begin_allocation_observation_inner(false)
+}
+
+pub(crate) fn begin_allocation_observation() -> (AllocationUsage, Option<u64>) {
+    begin_allocation_observation_inner(true)
+}
+
+/// Qualification-only secondary allocator window. Its peak is independent of
+/// the action-wide peak reset and is reported relative to the action-start
+/// resident baseline, matching the PPML phase memory model.
+pub(crate) fn ppml_phase_allocation_probe(
+    phase: fereg_core::ppml::PpmlPhase,
+    event: fereg_core::ppml::PpmlPhaseAllocatorEvent,
+) -> u64 {
+    let index = phase as usize;
+    let bit = 1_u16 << index;
+    match event {
+        fereg_core::ppml::PpmlPhaseAllocatorEvent::Begin => {
+            let depth = match PPML_PHASE_DEPTHS[index].fetch_update(
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+                |depth| depth.checked_add(1),
+            ) {
+                Ok(depth) => depth,
+                Err(_) => {
+                    debug_assert!(false, "PPML phase allocation nesting overflowed");
+                    return 0;
+                }
+            };
+            if depth == 0 {
+                let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
+                PPML_PHASE_CURRENT_BYTES[index].store(current, Ordering::Relaxed);
+                PPML_PHASE_PEAK_BYTES[index].store(current, Ordering::Relaxed);
+                PPML_PHASE_EVENTS[index].store(0, Ordering::Relaxed);
+                PPML_PHASE_ACTIVE_MASK.fetch_or(bit, Ordering::Release);
+            }
+            0
+        }
+        fereg_core::ppml::PpmlPhaseAllocatorEvent::End => {
+            let depth = match PPML_PHASE_DEPTHS[index].fetch_update(
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+                |depth| depth.checked_sub(1),
+            ) {
+                Ok(depth) => depth,
+                Err(_) => {
+                    debug_assert!(false, "PPML phase allocation window ended without a begin");
+                    return 0;
+                }
+            };
+            if depth == 1 {
+                PPML_PHASE_ACTIVE_MASK.fetch_and(!bit, Ordering::AcqRel);
+            }
+            PPML_PHASE_PEAK_BYTES[index]
+                .load(Ordering::Relaxed)
+                .saturating_sub(PPML_PHASE_ACTION_BASELINE_BYTES.load(Ordering::Relaxed))
+        }
+    }
+}
+
+pub(crate) fn ppml_linear_phase_allocation_probe(
+    phase: fereg_core::LinearSessionAllocationPhase,
+    event: fereg_core::LinearSessionPhaseAllocationEvent,
+) -> u64 {
+    let phase = match phase {
+        fereg_core::LinearSessionAllocationPhase::Projection => {
+            fereg_core::ppml::PpmlPhase::FeProjection
+        }
+        fereg_core::LinearSessionAllocationPhase::FiniteSolve => {
+            fereg_core::ppml::PpmlPhase::FiniteSolve
+        }
+    };
+    let event = match event {
+        fereg_core::LinearSessionPhaseAllocationEvent::Begin => {
+            fereg_core::ppml::PpmlPhaseAllocatorEvent::Begin
+        }
+        fereg_core::LinearSessionPhaseAllocationEvent::End => {
+            fereg_core::ppml::PpmlPhaseAllocatorEvent::End
+        }
+    };
+    ppml_phase_allocation_probe(phase, event)
+}
+
+#[cfg(test)]
+pub(crate) fn test_ppml_phase_allocation_events(phase: fereg_core::ppml::PpmlPhase) -> u64 {
+    PPML_PHASE_EVENTS[phase as usize].load(Ordering::Relaxed)
+}
+
+pub(crate) fn allocation_usage() -> AllocationUsage {
+    AllocationUsage {
+        current_bytes: ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed),
+        peak_bytes: ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed),
+        events: ALLOCATION_EVENTS.load(Ordering::Relaxed),
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -821,6 +1083,13 @@ impl SpiApi for SpiSession {
         )
     }
 
+    fn display(&mut self, message: &str) -> Result<(), FeregError> {
+        let message = sanitize_c_string(message);
+        // SAFETY: the string is live and NUL-terminated and `SpiSession`
+        // proves this call is on Stata's bound thread.
+        Self::spi_rc(unsafe { fereg_spi_display(message.as_ptr()) }, "display")
+    }
+
     fn check_interrupted(&mut self) -> Result<(), FeregError> {
         // SAFETY: polling and stop inspection occur on the bound Stata thread.
         let poll = unsafe { fereg_spi_poll() };
@@ -893,6 +1162,12 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
         {
             let mut session = SpiSession::new()?;
             estimate_ols_test(&args[1..], &mut session)
+        } else if args
+            .first()
+            .is_some_and(|action| action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML))
+        {
+            let mut session = SpiSession::new()?;
+            estimate_ppml_test(&args[1..], &mut session)
         } else {
             dispatch_args(&args, &sink)
         }
@@ -1061,6 +1336,98 @@ mod tests {
         assert_eq!(
             stata_output_chunks("first\nsecond\nthird").collect::<Vec<_>>(),
             vec!["first\n", "second\n", "third"],
+        );
+    }
+
+    #[test]
+    fn allocation_events_detect_allocate_free_churn_with_zero_net_bytes() {
+        let current = AtomicU64::new(0);
+        let peak = AtomicU64::new(0);
+        let events = AtomicU64::new(0);
+        record_allocation_on(&current, &peak, 128);
+        record_allocation_event_on(&events);
+        record_deallocation_on(&current, 128);
+        assert_eq!(current.load(Ordering::Relaxed), 0);
+        assert_eq!(peak.load(Ordering::Relaxed), 128);
+        assert_eq!(events.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn tracking_allocator_event_counter_is_monotone() {
+        let _action_observation_guard = crate::instrumentation::lock_action_observation();
+        let _ = begin_allocation_observation();
+        let before = allocation_usage().events;
+        let layout = Layout::from_size_align(64, 8).expect("test allocation layout");
+        // SAFETY: the layout is valid and the returned pointer is released
+        // with the same allocator and layout below.
+        let pointer = unsafe { TrackingAllocator.alloc(layout) };
+        assert!(!pointer.is_null());
+        let after_allocation = allocation_usage().events;
+        assert!(after_allocation > before);
+        // SAFETY: pointer/layout came from the immediately preceding call.
+        unsafe { TrackingAllocator.dealloc(pointer, layout) };
+        assert!(allocation_usage().events >= after_allocation);
+    }
+
+    #[test]
+    fn ols_allocator_window_does_not_increment_ppml_event_counter() {
+        let _action_observation_guard = crate::instrumentation::lock_action_observation();
+        let _ = begin_ols_allocation_observation();
+        assert_eq!(PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed), 0);
+        let before = allocation_usage().events;
+        let layout = Layout::from_size_align(64, 8).expect("test allocation layout");
+        // SAFETY: the layout is valid and the returned pointer is released
+        // with the same allocator and layout below.
+        let pointer = unsafe { TrackingAllocator.alloc(layout) };
+        assert!(!pointer.is_null());
+        // SAFETY: pointer/layout came from the immediately preceding call.
+        unsafe { TrackingAllocator.dealloc(pointer, layout) };
+        assert_eq!(allocation_usage().events, before);
+    }
+
+    #[test]
+    fn ppml_phase_allocator_preserves_nested_outer_and_linear_windows() {
+        let _action_observation_guard = crate::instrumentation::lock_action_observation();
+        let _ = begin_allocation_observation();
+        assert_eq!(
+            ppml_phase_allocation_probe(
+                fereg_core::ppml::PpmlPhase::StrictFinalSolve,
+                fereg_core::ppml::PpmlPhaseAllocatorEvent::Begin,
+            ),
+            0,
+        );
+        assert_eq!(
+            ppml_linear_phase_allocation_probe(
+                fereg_core::LinearSessionAllocationPhase::FiniteSolve,
+                fereg_core::LinearSessionPhaseAllocationEvent::Begin,
+            ),
+            0,
+        );
+        let active_phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+        record_allocation(64, active_phases);
+        record_allocation_event(active_phases);
+        let _inner = ppml_linear_phase_allocation_probe(
+            fereg_core::LinearSessionAllocationPhase::FiniteSolve,
+            fereg_core::LinearSessionPhaseAllocationEvent::End,
+        );
+        let strict_index = fereg_core::ppml::PpmlPhase::StrictFinalSolve as usize;
+        let finite_index = fereg_core::ppml::PpmlPhase::FiniteSolve as usize;
+        assert_eq!(PPML_PHASE_DEPTHS[strict_index].load(Ordering::Relaxed), 1);
+        assert_eq!(PPML_PHASE_DEPTHS[finite_index].load(Ordering::Relaxed), 0);
+        assert_ne!(
+            PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed) & (1_u16 << strict_index),
+            0,
+        );
+        record_deallocation(64, PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed));
+        let _outer = ppml_phase_allocation_probe(
+            fereg_core::ppml::PpmlPhase::StrictFinalSolve,
+            fereg_core::ppml::PpmlPhaseAllocatorEvent::End,
+        );
+        assert!(PPML_PHASE_EVENTS[strict_index].load(Ordering::Relaxed) >= 1);
+        assert!(PPML_PHASE_EVENTS[finite_index].load(Ordering::Relaxed) >= 1);
+        assert_eq!(
+            PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed),
+            PPML_ACTION_ACTIVE_BIT,
         );
     }
 }

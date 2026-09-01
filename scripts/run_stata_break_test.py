@@ -7,6 +7,7 @@ import fcntl
 import os
 import pty
 import select
+import secrets
 import subprocess
 import tempfile
 import termios
@@ -15,7 +16,19 @@ from pathlib import Path
 
 from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
 
-ARMED = "FEREG_BREAK_ARMED"
+BREAK_FIXTURES = {
+    "ols": ("estimate_ols_eclass_break.do", ("FEREG_BREAK_ARMED",)),
+    "ppml": (
+        "estimate_ppml_eclass_break.do",
+        (
+            "FEPPML_NATIVE_BREAK_ARMED",
+            "FEPPML_BREAK_ARMED",
+            "FEPPML_NATIVE_BREAK_ARMED",
+            "FEPPML_BREAK_ARMED",
+            "FEPPML_PREDICT_BREAK_ARMED",
+        ),
+    ),
+}
 
 
 def stata_quote(path: Path) -> str:
@@ -47,27 +60,67 @@ def read_until(master: int, process: subprocess.Popen[bytes], needle: str, timeo
     )
 
 
+def read_until_marker_file(
+    master: int,
+    process: subprocess.Popen[bytes],
+    marker_path: Path,
+    expected: bytes,
+    timeout: float,
+) -> str:
+    deadline = time.monotonic() + timeout
+    chunks: list[bytes] = []
+    while time.monotonic() < deadline:
+        if marker_path.exists():
+            contents = marker_path.read_bytes()
+            if contents != expected:
+                raise RuntimeError(
+                    f"native Break marker {marker_path} had invalid contents {contents!r}"
+                )
+            return b"".join(chunks).decode("utf-8", errors="replace")
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            chunk = os.read(master, 65_536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        elif process.poll() is not None:
+            break
+    transcript = b"".join(chunks).decode("utf-8", errors="replace")
+    raise RuntimeError(
+        f"Stata did not create native Break marker {marker_path} before "
+        f"timeout/process exit; transcript:\n{transcript}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stata", default=os.environ.get("STATA_BIN"))
     parser.add_argument("--plugin", type=Path, required=True)
     parser.add_argument("--plugin-sha256", required=True)
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--fixture-kind", choices=sorted(BREAK_FIXTURES), default="ols")
     args = parser.parse_args()
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
 
     root = Path(__file__).resolve().parents[1]
-    fixture = root / "tests/licensed_stata/estimate_ols_eclass_break.do"
+    fixture_name, armed_markers = BREAK_FIXTURES[args.fixture_kind]
+    fixture = root / "tests/licensed_stata" / fixture_name
     bound_plugin = validate_candidate_plugin(args.plugin, args.plugin_sha256)
     temporary = tempfile.TemporaryDirectory(prefix="fereg-stata-break-")
     run_dir = Path(temporary.name)
+    native_marker_token = secrets.token_hex(16)
+    native_marker_path = run_dir / f"feppml-native-break-{native_marker_token}.marker"
     master, slave = pty.openpty()
 
     def attach_controlling_terminal() -> None:
         os.setsid()
         fcntl.ioctl(0, termios.TIOCSCTTY, 0)
 
+    process_environment = os.environ.copy()
+    if args.fixture_kind == "ppml":
+        process_environment["TMPDIR"] = str(run_dir)
+        process_environment["FEREG_PPML_BREAK_MARKER_TOKEN"] = native_marker_token
     process = subprocess.Popen(
         [args.stata],
         cwd=run_dir,
@@ -76,6 +129,7 @@ def main() -> None:
         stderr=slave,
         close_fds=True,
         preexec_fn=attach_controlling_terminal,
+        env=process_environment,
     )
     os.close(slave)
     transcript = ""
@@ -102,9 +156,22 @@ def main() -> None:
             ]
         )
         os.write(master, "\n".join(commands).encode("utf-8"))
-        transcript += read_until(master, process, ARMED, args.timeout)
-        os.write(master, b"\x03")
-        expected = "END_FIXTURE|estimate_ols_eclass_break|rc=0"
+        for armed in armed_markers:
+            if armed == "FEPPML_NATIVE_BREAK_ARMED":
+                transcript += read_until_marker_file(
+                    master,
+                    process,
+                    native_marker_path,
+                    b"FEPPML_NATIVE_BREAK_ARMED\n",
+                    args.timeout,
+                )
+                native_marker_path.unlink()
+            else:
+                transcript += read_until(master, process, armed, args.timeout)
+            if armed == "FEPPML_PREDICT_BREAK_ARMED":
+                time.sleep(0.05)
+            os.write(master, b"\x03")
+        expected = f"END_FIXTURE|{fixture.stem}|rc=0"
         transcript += read_until(master, process, expected, args.timeout)
         error = validate_fixture_log(fixture, transcript)
         if error:
@@ -113,6 +180,7 @@ def main() -> None:
             raise RuntimeError("candidate plugin bytes changed during the Break fixture")
         print(f"PASS: {expected}")
     finally:
+        native_marker_path.unlink(missing_ok=True)
         os.close(master)
         if process.poll() is None:
             process.terminate()

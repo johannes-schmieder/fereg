@@ -17,8 +17,12 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-try:
-    from ols_reference import (
+if __package__:
+    # Package imports must share the same exception and helper identities as
+    # the rest of the test/runtime package, even if another tool previously
+    # placed ``scripts/`` on sys.path and loaded ``ols_reference`` by its
+    # top-level name.
+    from scripts.ols_reference import (
         ContractError,
         ENVIRONMENT_FIELDS,
         _assert_redacted,
@@ -31,8 +35,8 @@ try:
         sha256_file,
         verify_receipt as verify_reference_receipt,
     )
-except ModuleNotFoundError:  # Importable as scripts.ols_hidden_numeric in tests.
-    from scripts.ols_reference import (
+else:
+    from ols_reference import (
         ContractError,
         ENVIRONMENT_FIELDS,
         _assert_redacted,

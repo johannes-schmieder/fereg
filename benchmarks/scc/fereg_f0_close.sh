@@ -18,4 +18,4 @@ fi
 # Run only after the collector has left qstat. This bounded qacct reader waits
 # for scheduler-accounting lag, validates every array task, and publishes the
 # sole run-level SUCCESS marker last.
-python3 "$RUN_ROOT/input/harness/fereg_f0_scc.py" close --run-root "$RUN_ROOT"
+python3 -I -B -S "$RUN_ROOT/input/harness/fereg_f0_scc.py" close --run-root "$RUN_ROOT"

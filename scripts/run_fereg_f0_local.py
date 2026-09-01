@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Prepare and run the closed licensed-Stata fereg candidate-versus-F0 screen.
 
-The ``prepare`` command generates and seals four deterministic ``.dta`` files
+The ``prepare`` command generates and seals six deterministic ``.dta`` files
 outside all measurement.  The ``run`` command never generates data or runs a
 comparator: it stages two complete exact-source fereg packages, verifies the
-preparation receipt, performs a scientific preflight for every cell, and only
-then starts the registered nine alternating AB/BA pairs.  Every arm invocation
-is a new Stata process whose RSS is sampled between READY/START/DONE markers.
+preparation receipt, performs a scientific preflight for every registered cell,
+and only then starts the registered nine alternating AB/BA pairs.  Every arm
+invocation is a new Stata process whose RSS is sampled between
+READY/START/DONE markers.
 """
 from __future__ import annotations
 
@@ -46,7 +47,17 @@ BASE_CASE_BY_DESIGN = {
     "absorbed_slope": "bench_absorbed_slope_t{threads}",
     "clustered_vce": "bench_clustered_vce_t{threads}",
     "moderate_k": "bench_moderate_k_t{threads}",
+    "constrained_memory": "bench_dense_two_fe_t{threads}",
 }
+ADDITIVE_DENSE_DESIGNS = {"disconnected_two_fe", "saved_slope"}
+WEIGHT_VARIABLES = {
+    "unweighted": None,
+    "fweight": "__f0_fweight",
+    "pweight": "weight",
+}
+WEIGHT_ABBREVIATIONS = {"fweight": "fw", "pweight": "pw"}
+CLUSTER_VARIABLES = tuple(f"__f0_cluster{index}" for index in range(1, 6))
+DATASET_VARIANTS = ("dense", "sparse", "qualified_dense", "disconnected")
 PREPARATION_TYPE = "fereg-f0-local-preparation-v1"
 PREPARATION_SENTINEL = "FEREG_F0_LOCAL_PREPARATION_SUCCESS"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -88,6 +99,19 @@ class ArmRun:
     peak_rss_bytes: int
 
 
+@dataclass(frozen=True)
+class PreparedDatasetSpec:
+    id: str
+    observations: int
+    variant: str
+    workers: int
+    firms: int
+
+    @property
+    def arguments(self) -> list[int]:
+        return [self.observations, self.workers, self.firms, 10, 20260821]
+
+
 def _closed(value: Any, fields: set[str], where: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise LocalRunContractError(f"{where} must be an object")
@@ -113,6 +137,27 @@ def _option(command: str, name: str) -> str | None:
     return matches[0].strip() if matches else None
 
 
+def _command_weight(command: str) -> tuple[str, str] | None:
+    matches = re.findall(
+        r"\[(aweight|aw|fweight|fw|pweight|pw)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\]",
+        command,
+        re.IGNORECASE,
+    )
+    if len(matches) > 1:
+        raise LocalRunContractError("command repeats a weight expression")
+    if not matches:
+        if "[" in command or "]" in command:
+            raise LocalRunContractError("command contains an unsupported weight expression")
+        return None
+    kind, variable = matches[0]
+    normalized = {
+        "aw": "aweight", "aweight": "aweight",
+        "fw": "fweight", "fweight": "fweight",
+        "pw": "pweight", "pweight": "pweight",
+    }[kind.lower()]
+    return normalized, variable
+
+
 def _validate_command(cell: Mapping[str, Any], command: str, outputs: tuple[str, ...]) -> None:
     if not isinstance(command, str) or command.strip() != command:
         raise LocalRunContractError(f"{cell['id']} command is not exact text")
@@ -127,22 +172,61 @@ def _validate_command(cell: Mapping[str, Any], command: str, outputs: tuple[str,
         raise LocalRunContractError(f"{cell['id']} command has the wrong threads()")
     if _option(command, "memory") != cell["memory"]:
         raise LocalRunContractError(f"{cell['id']} command has the wrong memory()")
+    if _option(command, "solver") != cell["solver"]:
+        raise LocalRunContractError(f"{cell['id']} command has the wrong solver()")
+    observed_preconditioner = _option(command, "preconditioner")
+    if cell["preconditioner"] == "auto":
+        if observed_preconditioner not in (None, "auto"):
+            raise LocalRunContractError(f"{cell['id']} changes the default preconditioner")
+    elif observed_preconditioner != cell["preconditioner"]:
+        raise LocalRunContractError(f"{cell['id']} has the wrong preconditioner()")
+    expected_weight = cell["weight"]
+    observed_weight = _command_weight(command)
+    if expected_weight == "unweighted":
+        if observed_weight is not None:
+            raise LocalRunContractError(f"{cell['id']} unexpectedly uses weights")
+    else:
+        expected_variable = WEIGHT_VARIABLES[expected_weight]
+        if observed_weight != (expected_weight, expected_variable):
+            raise LocalRunContractError(f"{cell['id']} has the wrong registered weight")
+
     vce = _option(command, "vce")
     if cell["vce"] == "cluster":
         if vce is None or not vce.lower().startswith("cluster "):
             raise LocalRunContractError(f"{cell['id']} command lacks clustered VCE")
+        cluster_variables = tuple(vce.split()[1:])
+        if len(cluster_variables) != cell["cluster_dimensions"]:
+            raise LocalRunContractError(f"{cell['id']} has the wrong cluster dimension")
+        if cell["design"] == "clustered_vce":
+            if cluster_variables != ("firm", "year"):
+                raise LocalRunContractError(f"{cell['id']} changed the frozen cluster variables")
+        elif cluster_variables != CLUSTER_VARIABLES[: cell["cluster_dimensions"]]:
+            raise LocalRunContractError(f"{cell['id']} changed qualification cluster variables")
+    elif cell["vce"] == "robust":
+        if vce is None or vce.lower() != "robust" or cell["cluster_dimensions"] != 0:
+            raise LocalRunContractError(f"{cell['id']} command lacks robust VCE")
     elif vce is not None and vce.lower() != "unadjusted":
         raise LocalRunContractError(f"{cell['id']} command changes the registered VCE")
+    elif cell["cluster_dimensions"] != 0:
+        raise LocalRunContractError(f"{cell['id']} has clusters without clustered VCE")
     if cell["outputs"] == "save_fe":
-        if len(outputs) != 2 or _option(command, "absorb") is None:
+        expected_outputs = (
+            ("__f0_worker", "__f0_firm", "__f0_firm_Slope1")
+            if cell["design"] == "saved_slope"
+            else ("__f0_worker", "__f0_firm")
+        )
+        if outputs != expected_outputs or _option(command, "absorb") is None:
             raise LocalRunContractError(
-                f"{cell['id']} must bind exactly two saved FE variables"
+                f"{cell['id']} must bind its exact saved FE variable inventory"
             )
         absorb = _option(command, "absorb") or ""
-        if not all(f"{name}=" in absorb for name in outputs):
+        assigned_outputs = outputs[:2]
+        if not all(f"{name}=" in absorb for name in assigned_outputs):
             raise LocalRunContractError(
                 f"{cell['id']} saved outputs are not bound in absorb()"
             )
+        if cell["design"] == "saved_slope" and "firm##c.year" not in absorb:
+            raise LocalRunContractError(f"{cell['id']} saved slope term changed")
     elif outputs:
         raise LocalRunContractError(f"{cell['id']} unexpectedly saves variables")
 
@@ -152,7 +236,7 @@ def load_local_inputs(
     manifest: Mapping[str, Any],
     manifest_sha256: str,
 ) -> LocalInputs:
-    """Load and verify the immutable datasets and exact 18-cell command map."""
+    """Load and verify the immutable datasets and exact registered command map."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -250,7 +334,9 @@ def load_local_inputs(
             )
         )
     if len(cells) != len(expected_ids):
-        raise LocalRunContractError("local input does not contain exactly 18 cells")
+        raise LocalRunContractError(
+            f"local input does not contain exactly {len(expected_ids)} cells"
+        )
     return LocalInputs(
         manifest_sha256=manifest_sha256,
         input_sha256=capture.sha256_file(path),
@@ -338,14 +424,37 @@ def _generate_dataset(
     destination: Path,
     run_dir: Path,
     dataset_id: str,
+    variant: str,
     process_runner: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
 ) -> dict[str, str]:
     """Generate and close one immutable input in its own untimed Stata process."""
+    if variant not in DATASET_VARIANTS:
+        raise LocalRunContractError(f"unknown preparation dataset variant {variant!r}")
     run_dir.mkdir(parents=True, exist_ok=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
     wrapper = run_dir / "generate.do"
     machine = run_dir / "generation.machine"
     argument_text = " ".join(str(value) for value in arguments)
+    post_generation: list[str] = []
+    if variant == "qualified_dense":
+        post_generation = [
+            "generate byte __f0_fweight = 1 + mod(obs_id, 5)",
+            "generate byte __f0_cluster1 = 1 + mod(worker, 17)",
+            "generate byte __f0_cluster2 = 1 + mod(firm, 13)",
+            "generate byte __f0_cluster3 = 1 + mod(year - 2000, 10)",
+            "generate byte __f0_cluster4 = 1 + mod(worker + firm, 7)",
+            "generate byte __f0_cluster5 = 1 + mod(3*worker + 5*firm + year, 5)",
+        ]
+    elif variant == "disconnected":
+        post_generation = [
+            "generate byte __f0_component = mod(obs_id, 2)",
+            "recast long worker firm",
+            "replace worker = 2*worker + __f0_component",
+            "replace firm = 2*firm + __f0_component",
+            "drop __f0_component",
+        ]
+    if post_generation:
+        post_generation.extend(("compress", "isid obs_id"))
     wrapper.write_text(
         "\n".join(
             (
@@ -361,6 +470,7 @@ def _generate_dataset(
                 "generate long obs_id = _n",
                 "isid obs_id",
                 "order obs_id",
+                *post_generation,
                 f"quietly save {_stata_quote(destination)}, replace",
                 f"file open __local_generation using {_stata_quote(machine)}, write text replace",
                 'file write __local_generation "schema=1" _n',
@@ -369,6 +479,7 @@ def _generate_dataset(
                 "file write __local_generation \"os=`c(os)'\" _n",
                 "file write __local_generation \"machine_type=`c(machine_type)'\" _n",
                 f'file write __local_generation "dataset_id={dataset_id}" _n',
+                f'file write __local_generation "variant={variant}" _n',
                 "file close __local_generation",
                 f'display as result "FEREG_F0_DATASET_SUCCESS|{dataset_id}"',
                 "exit 0",
@@ -402,10 +513,57 @@ def _generate_dataset(
         if key in environment or not value:
             raise LocalRunContractError("generation environment record is duplicated/empty")
         environment[key] = value
-    expected = {"schema", "stata_version", "stata_flavor", "os", "machine_type", "dataset_id"}
-    if set(environment) != expected or environment["schema"] != "1" or environment["dataset_id"] != dataset_id:
+    expected = {
+        "schema", "stata_version", "stata_flavor", "os", "machine_type",
+        "dataset_id", "variant",
+    }
+    if (
+        set(environment) != expected
+        or environment["schema"] != "1"
+        or environment["dataset_id"] != dataset_id
+        or environment["variant"] != variant
+    ):
         raise LocalRunContractError("generation environment record is incomplete")
     return {key: environment[key] for key in ("stata_version", "stata_flavor", "os", "machine_type")}
+
+
+def _prepared_dataset_specs() -> tuple[PreparedDatasetSpec, ...]:
+    specs: list[PreparedDatasetSpec] = []
+    for n in (100_000, 1_000_000):
+        for variant in ("dense", "sparse"):
+            workers, firms = (
+                (n // 1000, n // 10000)
+                if variant == "dense"
+                else (n // 20, n // 50)
+            )
+            specs.append(
+                PreparedDatasetSpec(
+                    id=f"local_n{n // 1000}k_{variant}",
+                    observations=n,
+                    variant=variant,
+                    workers=workers,
+                    firms=firms,
+                )
+            )
+    specs.extend(
+        (
+            PreparedDatasetSpec(
+                id="local_n100k_qualified_dense",
+                observations=100_000,
+                variant="qualified_dense",
+                workers=100,
+                firms=10,
+            ),
+            PreparedDatasetSpec(
+                id="local_n1m_disconnected",
+                observations=1_000_000,
+                variant="disconnected",
+                workers=50_000,
+                firms=20_000,
+            ),
+        )
+    )
+    return tuple(specs)
 
 
 def _load_ols_manifest(source_root: Path) -> tuple[Mapping[str, Any], Path]:
@@ -419,37 +577,88 @@ def _load_ols_manifest(source_root: Path) -> tuple[Mapping[str, Any], Path]:
     return value, path
 
 
+def base_case_id(cell: Mapping[str, Any]) -> str:
+    """Return the frozen OLS case that supplies non-mutated case metadata."""
+    base_design = (
+        "dense_two_fe"
+        if cell["design"] in ADDITIVE_DENSE_DESIGNS
+        else cell["design"]
+    )
+    return BASE_CASE_BY_DESIGN[base_design].format(threads=cell["threads"])
+
+
+def build_cell_command(
+    ols_manifest: Mapping[str, Any], cell: Mapping[str, Any]
+) -> tuple[str, tuple[str, ...]]:
+    """Derive one exact F0 command from the frozen OLS command registry."""
+    cases = {item["id"]: item for item in ols_manifest["benchmark_cases"]}
+    base_id = base_case_id(cell)
+    if base_id not in cases:
+        raise LocalRunContractError(f"F0 OLS manifest lacks {base_id}")
+    command = str(cases[base_id]["arms"]["candidate"])
+    command = _replace_option(command, "threads", str(cell["threads"]))
+    command = _replace_option(command, "memory", str(cell["memory"]))
+    command = _replace_option(command, "solver", str(cell["solver"]))
+    if cell["preconditioner"] != "auto":
+        command = _replace_option(
+            command, "preconditioner", str(cell["preconditioner"])
+        )
+    if cell["weight"] != "unweighted":
+        abbreviation = WEIGHT_ABBREVIATIONS[cell["weight"]]
+        variable = WEIGHT_VARIABLES[cell["weight"]]
+        comma = command.find(",")
+        if comma < 0:
+            raise LocalRunContractError("F0 OLS base command lacks an option comma")
+        command = f"{command[:comma]} [{abbreviation}={variable}]{command[comma:]}"
+    if cell["vce"] == "robust":
+        command = _replace_option(command, "vce", "robust")
+    elif cell["vce"] == "cluster" and cell["design"] != "clustered_vce":
+        variables = " ".join(CLUSTER_VARIABLES[: cell["cluster_dimensions"]])
+        command = _replace_option(command, "vce", f"cluster {variables}")
+    saved: tuple[str, ...] = ()
+    if cell["outputs"] == "save_fe":
+        before = "absorb(worker firm)"
+        if cell["design"] == "saved_slope":
+            after = "absorb(__f0_worker=worker __f0_firm=firm##c.year)"
+            saved = ("__f0_worker", "__f0_firm", "__f0_firm_Slope1")
+        else:
+            after = "absorb(__f0_worker=worker __f0_firm=firm)"
+            saved = ("__f0_worker", "__f0_firm")
+        if before not in command:
+            raise LocalRunContractError("saved-FE base command changed")
+        command = command.replace(before, after)
+    _validate_command(cell, command, saved)
+    return command, saved
+
+
+def dataset_variant(cell: Mapping[str, Any]) -> str:
+    """Return the sealed generated-data variant required by one F0 cell."""
+    if cell["design"] == "disconnected_two_fe":
+        return "disconnected"
+    if cell["weight"] != "unweighted" or (
+        cell["vce"] == "cluster" and cell["design"] != "clustered_vce"
+    ):
+        return "qualified_dense"
+    return "sparse" if cell["design"] == "sparse_two_fe" else "dense"
+
+
 def _preparation_commands(
     manifest: Mapping[str, Any],
     ols_manifest: Mapping[str, Any],
     datasets: Mapping[tuple[int, str], str],
 ) -> list[dict[str, Any]]:
-    cases = {item["id"]: item for item in ols_manifest["benchmark_cases"]}
     output: list[dict[str, Any]] = []
+    by_id = {item["id"]: item for item in manifest["cells"]}
     for cell_id in evaluator.EXPECTED_CELLS_BY_PROFILE[PROFILE]:
-        cell = next(item for item in manifest["cells"] if item["id"] == cell_id)
-        base_id = BASE_CASE_BY_DESIGN[cell["design"]].format(threads=cell["threads"])
-        if base_id not in cases:
-            raise LocalRunContractError(f"F0 OLS manifest lacks {base_id}")
-        command = str(cases[base_id]["arms"]["candidate"])
-        command = _replace_option(command, "threads", str(cell["threads"]))
-        command = _replace_option(command, "memory", str(cell["memory"]))
-        saved: list[str] = []
-        if cell["outputs"] == "save_fe":
-            before = "absorb(worker firm)"
-            after = "absorb(__f0_worker=worker __f0_firm=firm)"
-            if before not in command:
-                raise LocalRunContractError("saved-FE base command changed")
-            command = command.replace(before, after)
-            saved = ["__f0_worker", "__f0_firm"]
-        _validate_command(cell, command, tuple(saved))
-        density = "sparse" if cell["design"] == "sparse_two_fe" else "dense"
+        cell = by_id[cell_id]
+        command, saved = build_cell_command(ols_manifest, cell)
+        variant = dataset_variant(cell)
         output.append(
             {
                 "cell_id": cell_id,
-                "dataset_id": datasets[(cell["n"], density)],
+                "dataset_id": datasets[(cell["n"], variant)],
                 "command": command,
-                "saved_outputs": saved,
+                "saved_outputs": list(saved),
             }
         )
     return output
@@ -491,41 +700,35 @@ def prepare_local(
     dataset_records: list[dict[str, Any]] = []
     dataset_ids: dict[tuple[int, str], str] = {}
     common_environment: Mapping[str, str] | None = None
-    for n in (100_000, 1_000_000):
-        for density in ("dense", "sparse"):
-            dataset_id = f"local_n{n // 1000}k_{density}"
-            dataset_ids[(n, density)] = dataset_id
-            workers, firms = (
-                (n // 1000, n // 10000)
-                if density == "dense"
-                else (n // 20, n // 50)
-            )
-            arguments = [n, workers, firms, 10, 20260821]
-            destination = output_root / "datasets" / f"{dataset_id}.dta"
-            environment = _generate_dataset(
-                stata=args.stata,
-                generator=generator,
-                arguments=arguments,
-                destination=destination,
-                run_dir=output_root / "logs" / dataset_id,
-                dataset_id=dataset_id,
-                process_runner=process_runner,
-            )
-            if common_environment is None:
-                common_environment = environment
-            elif environment != common_environment:
-                raise LocalRunContractError("Stata environment changed during preparation")
-            dataset_records.append(
-                {
-                    "id": dataset_id,
-                    "path": f"datasets/{dataset_id}.dta",
-                    "sha256": capture.sha256_file(destination),
-                    "size_bytes": destination.stat().st_size,
-                    "observations": n,
-                    "arguments": arguments,
-                }
-            )
-            destination.chmod(0o444)
+    for spec in _prepared_dataset_specs():
+        dataset_ids[(spec.observations, spec.variant)] = spec.id
+        destination = output_root / "datasets" / f"{spec.id}.dta"
+        environment = _generate_dataset(
+            stata=args.stata,
+            generator=generator,
+            arguments=spec.arguments,
+            destination=destination,
+            run_dir=output_root / "logs" / spec.id,
+            dataset_id=spec.id,
+            variant=spec.variant,
+            process_runner=process_runner,
+        )
+        if common_environment is None:
+            common_environment = environment
+        elif environment != common_environment:
+            raise LocalRunContractError("Stata environment changed during preparation")
+        dataset_records.append(
+            {
+                "id": spec.id,
+                "path": f"datasets/{spec.id}.dta",
+                "sha256": capture.sha256_file(destination),
+                "size_bytes": destination.stat().st_size,
+                "observations": spec.observations,
+                "variant": spec.variant,
+                "arguments": spec.arguments,
+            }
+        )
+        destination.chmod(0o444)
     config = {
         "schema_version": 1,
         "input_type": INPUT_TYPE,
@@ -635,34 +838,30 @@ def verify_preparation(
     if input_path.stat().st_mode & 0o222:
         raise LocalRunContractError("prepared input config is not immutable")
     prepared = record["datasets"]
-    if not isinstance(prepared, list) or len(prepared) != 4:
+    dataset_specs = _prepared_dataset_specs()
+    if not isinstance(prepared, list) or len(prepared) != len(dataset_specs):
         raise LocalRunContractError("preparation receipt dataset inventory is incomplete")
     by_id = {cell.dataset.id: cell.dataset for cell in inputs.cells}
-    expected_datasets: list[tuple[str, list[int]]] = []
     expected_ids: dict[tuple[int, str], str] = {}
-    for n in (100_000, 1_000_000):
-        for density in ("dense", "sparse"):
-            dataset_id = f"local_n{n // 1000}k_{density}"
-            expected_ids[(n, density)] = dataset_id
-            workers, firms = (
-                (n // 1000, n // 10000)
-                if density == "dense"
-                else (n // 20, n // 50)
-            )
-            expected_datasets.append((dataset_id, [n, workers, firms, 10, 20260821]))
-    for index, (value, expected_dataset) in enumerate(zip(prepared, expected_datasets)):
+    for spec in dataset_specs:
+        expected_ids[(spec.observations, spec.variant)] = spec.id
+    for index, (value, spec) in enumerate(zip(prepared, dataset_specs)):
         item = _closed(
             value,
-            {"id", "path", "sha256", "size_bytes", "observations", "arguments"},
+            {
+                "id", "path", "sha256", "size_bytes", "observations",
+                "variant", "arguments",
+            },
             f"prepared dataset[{index}]",
         )
-        expected_id, expected_arguments = expected_dataset
         dataset = by_id.get(item["id"])
         expected_path = (path.parent / str(item["path"])).resolve()
         if (
-            item["id"] != expected_id
-            or item["path"] != f"datasets/{expected_id}.dta"
-            or item["arguments"] != expected_arguments
+            item["id"] != spec.id
+            or item["path"] != f"datasets/{spec.id}.dta"
+            or item["observations"] != spec.observations
+            or item["variant"] != spec.variant
+            or item["arguments"] != spec.arguments
             or dataset is None
             or dataset.path != expected_path
             or dataset.sha256 != item["sha256"]
@@ -683,7 +882,7 @@ def verify_preparation(
         for cell in inputs.cells
     ]
     if observed_commands != expected_commands:
-        raise LocalRunContractError("prepared 18-cell command map differs from audited F0")
+        raise LocalRunContractError("prepared command map differs from audited F0")
     environment = _closed(
         record["stata_environment"],
         {"stata_version", "stata_flavor", "os", "machine_type"},
@@ -853,18 +1052,21 @@ def _matrix_column_sum(result: capture.ArmCaptureResult, name: str, column: int)
 def _memory_record(
     preflight: capture.ArmCaptureResult,
     retained_bytes: int,
+    physical_observations: int,
 ) -> dict[str, Any]:
     scalars = preflight.raw["scalars"]["science"]
     if "N" not in scalars:
         raise LocalRunContractError("science capture lacks e(N) for memory accounting")
-    observations = _integer_value(capture.stata_hex_to_float(scalars["N"]), "e(N)")
+    _integer_value(capture.stata_hex_to_float(scalars["N"]), "e(N)")
     return {
         "native_allocation_bytes": _integer_value(
             _matrix_value(preflight, "fereg_runtime", 13, 2),
             "fereg_runtime native allocation",
         ),
         "allocation_classes": {
-            "observations": observations,
+            # e(N) is the frequency-weighted population for fweights.  Native
+            # allocation scales with physical rows, which is sealed separately.
+            "observations": physical_observations,
             "observation_columns": len(preflight.scientific["coefficient_names"]),
             "fe_levels": _matrix_column_sum(preflight, "fereg_fe", 4),
             "clusters": _matrix_column_sum(preflight, "fereg_cluster", 3),
@@ -1090,7 +1292,9 @@ def run_cell(
         "pairs": pairs,
         "confirmation_pairs": confirmation,
         "memory": {
-            arm: _memory_record(preflight[arm].result, retained[arm])
+            arm: _memory_record(
+                preflight[arm].result, retained[arm], cell.dataset.observations
+            )
             for arm in ("baseline", "candidate")
         },
     }
@@ -1201,6 +1405,7 @@ def run_local(args: argparse.Namespace) -> dict[str, Any]:
         "manifest": {"id": manifest["manifest_id"], "sha256": manifest_sha256},
         "baseline": identities["baseline"],
         "candidate": identities["candidate"],
+        "behavior": None,
         "cells": cell_evidence,
     }
     evidence_path = args.evidence.resolve()
@@ -1220,13 +1425,13 @@ def run_local(args: argparse.Namespace) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    prepare = commands.add_parser("prepare", help="create and seal the four immutable datasets")
+    prepare = commands.add_parser("prepare", help="create and seal the immutable datasets")
     prepare.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     prepare.add_argument("--baseline-source", type=Path, required=True)
     prepare.add_argument("--stata", required=True)
     prepare.add_argument("--output-root", type=Path, required=True)
 
-    run = commands.add_parser("run", help="execute the closed 18-cell paired screen")
+    run = commands.add_parser("run", help="execute the closed registered-cell paired screen")
     run.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     run.add_argument("--input-config", type=Path, required=True)
     run.add_argument("--preparation-receipt", type=Path, required=True)

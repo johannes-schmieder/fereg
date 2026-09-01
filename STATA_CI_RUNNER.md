@@ -44,18 +44,47 @@ From the repository root:
 ./ci/run_stata_ci.sh plugin-load
 ./ci/run_stata_ci.sh numerical-small
 ./ci/run_stata_ci.sh differential
+./ci/run_stata_ci.sh fereg-regression
+./ci/run_stata_ci.sh ppml-fail-closed
+./ci/run_stata_ci.sh ppml-hidden
 ./ci/run_stata_ci.sh benchmark-small
 ./ci/run_stata_ci.sh full
 ```
 
-Profiles are defined in `ci/stata_profiles.json`. Each run stages tracked files
-in a fresh temporary tree, isolates Stata ado locations, binds fixtures to the
-freshly built plugin, and stores sanitized local output in the ignored
-`.ci/stata/run/` directory.
+Profiles are defined in `ci/stata_profiles.json`. Each formal run materializes
+the declared target commit from its exact `git archive` bytes in a fresh
+temporary tree; it does not execute working-tree runners, helpers, or fixtures.
+The retained `source.tar` and `source.json` bind the commit, tree, archive
+SHA/size, and commit-derived UTC build date. The run isolates Stata ado
+locations, binds fixtures to the freshly built plugin, and stores sanitized
+local output in the ignored `.ci/stata/run/` directory. Formal evidence rejects
+the `FEREG_TRACKED_FILES_MANIFEST` override.
+
+Before public PPML activation, `ppml-fail-closed` checks the installed
+`feppml` stub without building the plugin. `ppml-hidden` builds the plugin and
+exercises the guarded private transaction, scientific fixtures through
+`_fereg_ppml`, its 108-row result validator, and interactive Break rollback.
+Among PPML fixtures, `quick` includes only the public stub check; `full` runs
+both boundaries, and `fereg-regression` remains the complete PPML-free OLS
+verdict. Profile membership does not by itself establish that a qualification
+run passed.
 
 Stata can return shell status zero after an uncaught Stata error. Acceptance
 therefore requires the explicit Stata return code, per-fixture status files, and
-exactly one terminal `END_FIXTURE|<name>|rc=0` sentinel.
+exactly one terminal `END_FIXTURE|<name>|rc=0` sentinel. The supervisor retains
+the full child argv, cwd, governing-environment digests, process status, and
+separate stdout/stderr bytes. Formal builds set `FEREG_GIT_COMMIT` to the
+target's 12-character prefix and `FEREG_BUILD_DATE` to the target commit's UTC
+date, so repeated licensed runs bind the same native artifact regardless of
+wall-clock date.
+
+The public PPML installation fixture is deliberately dormant before
+activation.  Phase 13 must run it through
+`scripts/run_staged_stata_tests.py`, which consumes a checksum-bound binary
+release ZIP, safely extracts its sealed flat package, and supplies only that
+directory to Stata's isolated ado path.  A source-tree `which` check is not
+installation evidence.  See `docs/feppml_activation_checklist.md` for the
+exact activation command and required path assertions.
 
 ## Durable GitHub workflows
 

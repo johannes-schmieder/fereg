@@ -128,6 +128,10 @@ impl LevelIndex {
         self.observations.len()
     }
 
+    fn storage_capacities(&self) -> (usize, usize) {
+        (self.offsets.capacity(), self.observations.capacity())
+    }
+
     pub fn checked_members(&self, level: usize) -> Result<&[usize]> {
         let start = self.offsets.get(level).copied().ok_or_else(|| {
             FeregError::new(
@@ -459,6 +463,17 @@ pub struct FeDesign {
     effects: Vec<EffectTerm>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct FeDesignStorageCapacities {
+    pub(crate) effects: usize,
+    pub(crate) codes: usize,
+    pub(crate) slope_vectors: usize,
+    pub(crate) slope_values: usize,
+    pub(crate) level_offsets: usize,
+    pub(crate) level_observations: usize,
+    pub(crate) resident_bytes: u128,
+}
+
 impl FeDesign {
     pub fn new(nobs: usize, effects: Vec<EffectTerm>) -> Result<Self> {
         if effects.iter().any(|effect| effect.codes().len() != nobs) {
@@ -496,6 +511,48 @@ impl FeDesign {
             .iter()
             .map(|effect| effect.n_levels().saturating_mul(effect.channels()))
             .sum()
+    }
+
+    pub(crate) fn storage_capacities(&self) -> FeDesignStorageCapacities {
+        let mut codes = 0_usize;
+        let mut slope_vectors = 0_usize;
+        let mut slope_values = 0_usize;
+        let mut level_offsets = 0_usize;
+        let mut level_observations = 0_usize;
+        for effect in &self.effects {
+            codes = codes.saturating_add(effect.codes.capacity());
+            slope_vectors = slope_vectors.saturating_add(effect.slopes.capacity());
+            for slope in &effect.slopes {
+                slope_values = slope_values.saturating_add(slope.capacity());
+            }
+            let (offsets, observations) = effect.level_index.storage_capacities();
+            level_offsets = level_offsets.saturating_add(offsets);
+            level_observations = level_observations.saturating_add(observations);
+        }
+        let resident_bytes = (self.effects.capacity() as u128)
+            .saturating_mul(std::mem::size_of::<EffectTerm>() as u128)
+            .saturating_add((codes as u128).saturating_mul(std::mem::size_of::<u32>() as u128))
+            .saturating_add(
+                (slope_vectors as u128).saturating_mul(std::mem::size_of::<Vec<f64>>() as u128),
+            )
+            .saturating_add(
+                (slope_values as u128).saturating_mul(std::mem::size_of::<f64>() as u128),
+            )
+            .saturating_add(
+                (level_offsets as u128).saturating_mul(std::mem::size_of::<usize>() as u128),
+            )
+            .saturating_add(
+                (level_observations as u128).saturating_mul(std::mem::size_of::<usize>() as u128),
+            );
+        FeDesignStorageCapacities {
+            effects: self.effects.capacity(),
+            codes,
+            slope_vectors,
+            slope_values,
+            level_offsets,
+            level_observations,
+            resident_bytes,
+        }
     }
 }
 

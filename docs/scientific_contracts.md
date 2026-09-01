@@ -9,6 +9,27 @@ Accepted scientific decisions are recorded under `docs/adr/`. ADR 0006
 supersedes the temporary signed residual-DoF/negative-iid-variance
 absorbed-slope route: successful OLS inference requires positive residual DoF.
 
+## PPML pre-activation contracts
+
+PPML outcome, public weight, offset/exposure, initialization, IRLS,
+rank, DoF, robust/cluster VCE, prediction, and saved-effect policies are fixed by
+[ADR 0016](adr/0016-ppml-scientific-contract.md). Certified separation and its
+sample-ledger/singleton ordering are fixed independently by
+[ADR 0017](adr/0017-certified-ppml-separation-ledger.md). These policies do not
+inherit OLS correction or reporting rules merely because both estimators use
+the shared mechanisms of ADR 0015.
+
+The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
+explicit-dummy Poisson and recession-cone calculations are the independent
+authority. The old core is classified in
+[the stale PPML disposition inventory](ppml_stale_module_inventory.md) and is
+not activation evidence. The private prepared PPML transaction and hidden
+Stata fixtures make these contracts executable before activation; their
+presence alone is not scientific qualification. Public `feppml` remains
+fail-closed until the
+scientific, memory, transaction, platform, and `fereg` non-regression gates in
+ADRs 0016--0019 all pass on the final source.
+
 ## Core contracts
 
 | Contract | Current accepted rule | Enablement requirement |

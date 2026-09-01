@@ -33,9 +33,9 @@ pub fn dispatch_args(args: &[String], output: &dyn OutputSink) -> Result<()> {
             ErrorCode::Unsupported,
             "estimate-ols requires a live Stata SPI session",
         )),
-        "estimate-ppml" => Err(FeregError::new(
+        crate::ppml_estimate::ACTION_ESTIMATE_PPML => Err(FeregError::new(
             ErrorCode::Unsupported,
-            "PPML estimation is not implemented in fereg 0.5.0",
+            "estimate-ppml requires a live Stata SPI session",
         )),
         other => Err(FeregError::new(
             ErrorCode::Syntax,
@@ -160,15 +160,29 @@ mod tests {
         assert!(sink.displayed().contains("fereg.action_protocol=1.5"));
         assert!(sink.displayed().contains("fereg.model_wire=2.1"));
         assert!(sink.displayed().contains("fereg.ols_result_wire=1.4"));
+        assert!(!sink.displayed().contains("fereg.ppml_request_wire="));
+        assert!(!sink.displayed().contains("fereg.ppml_result_wire="));
         assert!(!sink.displayed().contains("fereg.model_protocol="));
     }
 
     #[test]
     fn estimator_actions_require_the_live_spi_boundary() {
         let sink = BufferSink::default();
-        let error = dispatch_args(&["estimate-ols".to_owned()], &sink)
-            .expect_err("estimator must require live SPI");
-        assert_eq!(error.code, ErrorCode::Unsupported);
+        for (action, message) in [
+            (
+                "estimate-ols",
+                "estimate-ols requires a live Stata SPI session",
+            ),
+            (
+                "estimate-ppml",
+                "estimate-ppml requires a live Stata SPI session",
+            ),
+        ] {
+            let error = dispatch_args(&[action.to_owned()], &sink)
+                .expect_err("estimator must require live SPI");
+            assert_eq!(error.code, ErrorCode::Unsupported);
+            assert_eq!(error.message, message);
+        }
     }
 
     #[test]
