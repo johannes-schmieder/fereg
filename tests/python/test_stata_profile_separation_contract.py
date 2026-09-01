@@ -38,6 +38,34 @@ def load_profiles() -> dict[str, dict[str, object]]:
 
 
 class StataProfileSeparationContractTests(unittest.TestCase):
+    def test_licensed_runner_is_manual_and_defaults_to_smoke(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("  workflow_dispatch:", workflow)
+        self.assertNotIn("  push:", workflow)
+        self.assertIn("        default: smoke", workflow)
+        self.assertNotIn("inputs.profile ||", workflow)
+        reference = (
+            ROOT / ".github/workflows/fe-interaction-reference-probe.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("  workflow_dispatch:", reference)
+        self.assertNotIn("  push:", reference)
+
+    def test_scc_development_profiles_are_small_and_boundary_explicit(self) -> None:
+        profiles = load_profiles()
+        expected = {
+            "scc-dev-ols": ["ci/fereg_smoke.do"],
+            "scc-dev-ppml": ["ci/feppml_smoke.do"],
+            "scc-dev-shared": ["ci/fereg_smoke.do", "ci/feppml_smoke.do"],
+        }
+        for name, fixtures in expected.items():
+            profile = profiles[name]
+            self.assertTrue(profile["build_plugin"])
+            self.assertEqual(profile["fixtures"], fixtures)
+            self.assertEqual(profile["timeout_seconds"], 1800)
+        ppml_smoke = (ROOT / "ci/feppml_smoke.do").read_text(encoding="utf-8")
+        self.assertIn("threads(4)", ppml_smoke)
+        self.assertIn("END_FIXTURE|feppml_smoke|rc=0", ppml_smoke)
+
     def test_fereg_regression_is_a_complete_ols_only_verdict(self) -> None:
         profiles = load_profiles()
         regression = profiles["fereg-regression"]

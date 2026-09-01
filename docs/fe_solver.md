@@ -67,34 +67,34 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
-`solver(auto)` implements the ADR-0009 policy:
+`solver(auto)` implements the ADR-0021 categorical AKM policy while retaining
+the ADR-0009 generic/slope policy:
 
 - categorical intercept-only graphs first select CMG, without a MAP pilot,
-  when there are no nuisance Schur columns, at least eight observations per
-  highest-cardinality level, and at least a 10:1 level-count ratio between the
-  two core effects;
+  when there are at most nine nuisance Schur columns, at least three
+  observations per highest-cardinality level, and at least a 10:1 level-count
+  ratio between the two core effects;
 - one FE: direct one-pass demeaning and immediate certification;
-- multiple FEs: at most four symmetric MAP pilot sweeps;
-- return MAP if a pilot sweep certifies;
-- otherwise select direct Schwarz-preconditioned LSMR when pilot contraction is
-  at least 0.008, with internal tolerance
+- other categorical intercept-only graphs select direct
+  Schwarz-preconditioned LSMR without a MAP pilot, with internal tolerance
   `max(1e-14, requested_tolerance * 1e-2)`;
-- use genuine CG for the remaining multiway cases or when the complete LSMR
-  execution/workspace plan does not fit; and
-- if auto-selected LSMR fails or does not certify, perform one visible fallback
-  from the saved MAP-pilot state to certified CG within the remaining iteration
-  and memory budgets.
+- slope-bearing and generic multiway designs retain at most four symmetric MAP
+  pilot sweeps, the 0.008 contraction boundary, and genuine CG for the
+  remaining cases; and
+- if auto-selected LSMR returns a finite but uncertified candidate, continue
+  certified CG from that candidate within the remaining iteration and memory
+  budgets. Report all attempted LSMR work; do not restart from the pilot state.
 
-The CMG selector is frozen by ADR 0010 and applies in fast and low execution.
-It is deliberately narrower than explicit `solver(cmg)`, which continues to
+The CMG selector applies in fast and low execution. It remains narrower than
+explicit `solver(cmg)`, which continues to
 support up to 64 non-base nuisance columns. One hierarchy and workspace pool
 are retained across outcome/regressor blocks. Final OLS residuals normally
 already satisfy the FE certificate, so they skip graph PCG; the normal
 certified CMG path runs only when correction is required. The graph PCG systems
 use one-hundredth of the requested FE tolerance because their projection feeds
-the more sensitive OLS score certificate. CMG setup failure returns to the
-existing auto policy with a warning; a solve failure marks the fit-lifetime
-route failed and uses certified CG thereafter.
+the more sensitive OLS score certificate. CMG setup failure selects direct
+LSMR with a warning; a solve failure marks the fit-lifetime route failed and
+uses certified CG thereafter.
 
 The report retains requested solver `auto` and records used solver, pilot
 iterations, pilot contraction, total iterations, stop reason, setup/solve time,
@@ -103,7 +103,7 @@ categorical route passes the already finalized codes and memberships directly
 to `within`, avoiding the former observation-scale owned-code and membership
 copies. Schwarz construction and LSMR reuse those prepared structures.
 
-The frozen choice followed calibration of direct requested/tight tolerances,
+The direct LSMR configuration followed calibration of requested/tight tolerances,
 off/diagonal/Schwarz preconditioners, forced restarted CG refinements of
 4/8/16 iterations, and the prior coarse-LSMR/ordinary-CG hybrid. Direct tight
 Schwarz-LSMR was the surviving lowest-runtime arm; CG refinement is therefore
@@ -125,8 +125,9 @@ the cheapest coefficient-space product available:
   recurrence as its observation-space directions.
 - Irons--Tuck applies every accepted extrapolation to the parallel compact
   coefficient states.
-- `solver(auto)` records its four-sweep MAP pilot and adds the coefficient
-  product of the selected LSMR or CG continuation.
+- categorical `solver(auto)` retains the coefficient product of direct LSMR or
+  CMG; generic pilot-routed auto adds the MAP pilot product to its selected
+  LSMR or CG continuation.
 - unaccelerated intercept-only MAP records the group coefficients from its
   original batched `y`/`X` sweeps, then forms
   `alpha_y - sum_j beta_j alpha_Xj` after the finite coefficients are known.

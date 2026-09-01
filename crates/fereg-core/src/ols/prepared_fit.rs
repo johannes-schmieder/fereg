@@ -1339,6 +1339,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
 
 struct FitCmgAbsorber<'a> {
     session: Option<CmgAbsorber<'a>>,
+    auto_direct_lsmr: bool,
     auto_setup_warning: Option<String>,
 }
 
@@ -1352,6 +1353,7 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     {
         return Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: false,
             auto_setup_warning: None,
         });
     }
@@ -1360,6 +1362,7 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: true,
             auto_setup_warning: None,
         });
     }
@@ -1380,12 +1383,14 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     ) {
         Ok(session) => Ok(FitCmgAbsorber {
             session: Some(session),
+            auto_direct_lsmr: false,
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: true,
             auto_setup_warning: Some(format!(
-                "automatic CMG setup was unavailable ({error}); used the existing certified auto route"
+                "automatic CMG setup was unavailable ({error}); used certified direct LSMR"
             )),
         }),
         Err(error) => Err(error),
@@ -1408,7 +1413,9 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
             session.absorb(values)
         };
     }
-    let absorbed = if initial {
+    let absorbed = if cmg.auto_direct_lsmr {
+        prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
+    } else if initial {
         prepared.fit_absorb_initial_matrix(weights, values, config)
     } else {
         prepared.fit_absorb_matrix(weights, values, config)

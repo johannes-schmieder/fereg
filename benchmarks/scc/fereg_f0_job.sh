@@ -31,9 +31,7 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-if [ "$SGE_TASK_ID" -gt 1 ]; then
-    test -f "$RUN_ROOT/receipts/tasks/task-001.SUCCESS"
-fi
+test -f "$RUN_ROOT/receipts/setup.SUCCESS"
 
 python3 -I -B -S "$RUN_ROOT/input/harness/fereg_f0_scc.py" task \
     --run-root "$RUN_ROOT" \

@@ -16,6 +16,11 @@ def load_runner():
 
 
 class PaperAkmScalingMemoryContract(unittest.TestCase):
+    def test_large_single_cell_mode_is_named_benchmark_canary(self):
+        source = RUNNER.read_text(encoding="utf-8")
+        self.assertIn('choices=("benchmark-canary", "production")', source)
+        self.assertNotIn('mode == "smoke"', source)
+
     def test_cell_matrix_has_expected_coverage(self):
         runner = load_runner()
         cells = runner.measurement_cells()

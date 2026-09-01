@@ -8,7 +8,7 @@ adopath + /Users/johannes/Git/fereg/dist
 global GTOOLS_BETA = "I KNOW WHAT I AM DOING"
 
 * Size
-local scale = 1
+local scale = 100
 local Nworkers = `scale'*10000
 local Nfirms   = `scale'*500
 local T        = 3
@@ -47,7 +47,7 @@ eststo clear
 timer clear
 
 timer on 1
-quietly reghdfe lnwage experience exp2, absorb(what1=workerid fhat1=firmid)
+quietly reghdfe lnwage experience exp2, absorb(workerid firmid)
 timer off 1
 quietly timer list
 local runtime = r(t1)
@@ -55,7 +55,7 @@ eststo reghdfe
 estadd scalar runtime = `runtime', replace : reghdfe
 
 timer on 2
-quietly fereg lnwage experience exp2, absorb(what2=workerid fhat2=firmid) solver(auto)
+quietly fereg lnwage experience exp2, absorb(workerid firmid) solver(auto)
 timer off 2
 quietly timer list
 local runtime = r(t2)
@@ -64,7 +64,7 @@ estadd scalar runtime = `runtime', replace : fereg_auto
 
 timer on 3
 quietly fereg lnwage experience exp2, ///
-    absorb(what_cmg=workerid fhat_cmg=firmid) solver(CMG)
+    absorb(workerid firmid) solver(CMG)
 timer off 3
 quietly timer list
 local runtime = r(t3)

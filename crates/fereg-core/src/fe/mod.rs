@@ -36,6 +36,7 @@ pub use borrowed_map::{
     FeCoefficientBatch,
 };
 pub(crate) use borrowed_map::{
+    absorb_borrowed_intercept_auto_direct_lsmr_certified,
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_routed_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
@@ -86,6 +87,7 @@ pub use topology_map::{
     absorb_finalized_categorical_topology_map_certified,
 };
 pub(crate) use topology_map::{
+    absorb_finalized_categorical_topology_auto_direct_lsmr_certified,
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_retaining_certified,
     absorb_finalized_categorical_topology_irons_tuck_certified,

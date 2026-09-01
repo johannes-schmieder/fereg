@@ -396,7 +396,6 @@ def _submission_job_names(run_id: str) -> dict[str, str]:
     tag = hashlib.sha256(run_id.encode("ascii")).hexdigest()[:12]
     return {
         "setup": f"f0s_{tag}",
-        "smoke": f"f0m_{tag}",
         "array": f"f0a_{tag}",
         "collector": f"f0c_{tag}",
     }
@@ -405,7 +404,6 @@ def _submission_job_names(run_id: str) -> dict[str, str]:
 def _submitted_script_records(run_root: Path) -> dict[str, dict[str, Any]]:
     relative_by_stage = {
         "setup": "input/harness/fereg_f0_setup_job.sh",
-        "smoke": "input/harness/fereg_f0_job.sh",
         "array": "input/harness/fereg_f0_job.sh",
         "collector": "input/harness/fereg_f0_collector_job.sh",
     }
@@ -454,7 +452,7 @@ def _verify_scheduler_client(role: str) -> dict[str, Any]:
 def _qsub_output_jobs(run_root: Path) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
     jobs: dict[str, str] = {}
     records: dict[str, dict[str, Any]] = {}
-    for stage in ("setup", "smoke", "array", "collector"):
+    for stage in ("setup", "array", "collector"):
         relative = f"receipts/qsub/{stage}.txt"
         path = run_root / relative
         if path.is_symlink() or not path.is_file():
@@ -482,7 +480,7 @@ def _qstat_submission_records(
     names = _submission_job_names(run_root.name)
     scripts = _submitted_script_records(run_root)
     records: dict[str, dict[str, Any]] = {}
-    for stage in ("setup", "smoke", "array", "collector"):
+    for stage in ("setup", "array", "collector"):
         relative = f"receipts/qsub/{stage}.qstat.txt"
         path = run_root / relative
         if path.is_symlink() or not path.is_file():
@@ -520,16 +518,15 @@ def _qstat_submission_records(
             raise SccContractError(f"queue-time {stage} qstat contract differs from submission")
         parallel = fields.get("parallel_environment", "")
         expected_h_rt = {
-            "setup": "h_rt=14400", "smoke": "h_rt=42300",
-            "array": "h_rt=42300", "collector": "h_rt=1800",
+            "setup": "h_rt=14400", "array": "h_rt=42300",
+            "collector": "h_rt=1800",
         }[stage]
         predecessors = {
             value for key, value in fields.items()
             if key in {"jid_predecessor_list", "jid_predecessor_list_req"} and value
         }
         expected_hold = {
-            "setup": None, "smoke": jobs["setup"], "array": jobs["smoke"],
-            "collector": jobs["array"],
+            "setup": None, "array": jobs["setup"], "collector": jobs["array"],
         }[stage]
         array = fields.get("job_array_tasks")
         count = len(scc_cells(load_regression_manifest(run_root / "input/manifest.json")))
@@ -539,8 +536,7 @@ def _qstat_submission_records(
             or (stage != "collector" and re.search(r"\bomp\b.*\b16\b", parallel) is None)
             or (stage == "collector" and parallel not in ("", "NONE"))
             or (stage == "setup" and array not in (None, ""))
-            or (stage == "smoke" and array not in ("1", "1:1", "1:1:1"))
-            or (stage == "array" and array != f"2-{count}:1")
+            or (stage == "array" and array != f"1-{count}:1")
             or (expected_hold is None and predecessors)
             or (expected_hold is not None and predecessors != {expected_hold})
         ):
@@ -633,11 +629,8 @@ def _submission_argv(
         "setup": command(
             "setup", ["-pe", "omp", "16", "-l", "h_rt=04:00:00", "-l", "mem_per_core=4G"]
         ),
-        "smoke": command(
-            "smoke", ["-pe", "omp", "16", "-l", "h_rt=11:45:00", "-l", "mem_per_core=4G", "-hold_jid", jobs["setup"], "-t", "1"]
-        ),
         "array": command(
-            "array", ["-pe", "omp", "16", "-l", "h_rt=11:45:00", "-l", "mem_per_core=4G", "-hold_jid", jobs["smoke"], "-t", f"2-{count}"],
+            "array", ["-pe", "omp", "16", "-l", "h_rt=11:45:00", "-l", "mem_per_core=4G", "-hold_jid", jobs["setup"], "-t", f"1-{count}"],
         ),
         "collector": command(
             "collector", ["-l", "h_rt=00:30:00", "-l", "mem_per_core=4G", "-hold_jid", jobs["array"]]
@@ -971,7 +964,7 @@ def validate_submission_binding(
     ):
         raise SccContractError("submission receipt is not bound to preparation and manifest")
     jobs = submission.get("jobs")
-    if not isinstance(jobs, Mapping) or set(jobs) != {"setup", "smoke", "array", "collector"}:
+    if not isinstance(jobs, Mapping) or set(jobs) != {"setup", "array", "collector"}:
         raise SccContractError("submission receipt job inventory is not closed")
     for value in jobs.values():
         if not isinstance(value, str) or not JOB_ID_RE.fullmatch(value):
@@ -1002,12 +995,6 @@ def validate_submission_binding(
         )
     expected_resources = {
         "setup": {"slots": 16, "mem_per_core": "4G", "h_rt": "04:00:00"},
-        "smoke": {
-            "slots": 16,
-            "mem_per_core": "4G",
-            "h_rt": "11:45:00",
-            "tasks": [1],
-        },
         "array": {"slots": 16, "mem_per_core": "4G", "h_rt": "11:45:00"},
         "collector": {"slots": 1, "mem_per_core": "4G", "h_rt": "00:30:00"},
     }
@@ -2344,6 +2331,158 @@ def _verify_shared_build_receipt(
 _verify_build_receipt = _verify_shared_build_receipt
 
 
+def _run_setup_smoke(
+    run_root: Path,
+    source: Path,
+    artifact: Mapping[str, Any],
+    *,
+    arm: str,
+) -> dict[str, Any]:
+    """Run one small OLS fixture before any governing matrix tasks."""
+
+    smoke_root = run_root / f"logs/setup-smoke/{arm}"
+    smoke_root.mkdir(parents=True, exist_ok=False)
+    summary_path = smoke_root / "summary.json"
+    output_path = smoke_root / "runner.stdout"
+    fixture = source / "ci/fereg_smoke.do"
+    plugin = source / "dist/fereg_linux.plugin"
+    command = [
+        sys.executable,
+        str(source / "scripts/run_stata_tests.py"),
+        "--stata",
+        str(SCC_STATA),
+        "--plugin",
+        str(plugin),
+        "--plugin-sha256",
+        str(artifact["sha256"]),
+        "--log-dir",
+        str(smoke_root / "fixture-logs"),
+        "--summary-json",
+        str(summary_path),
+        str(fixture),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=source,
+        env=_stata_environment(smoke_root),
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    _write_exclusive(output_path, completed.stdout.encode("utf-8"))
+    if not summary_path.is_file():
+        raise SccContractError(f"{arm} setup smoke wrote no summary")
+    summary = _json(summary_path)
+    if not isinstance(summary, Mapping):
+        raise SccContractError(f"{arm} setup smoke summary is malformed")
+    results = summary.get("results")
+    if (
+        completed.returncode != 0
+        or summary.get("status") != "success"
+        or summary.get("completed") is not True
+        or summary.get("stata_rc") != 0
+        or summary.get("tests_passed") != 1
+        or summary.get("tests_failed") != 0
+        or not isinstance(results, list)
+        or len(results) != 1
+        or not isinstance(results[0], Mapping)
+        or results[0].get("fixture") != "ci/fereg_smoke.do"
+        or results[0].get("status") != "success"
+        or results[0].get("process_rc") != 0
+        or results[0].get("stata_rc") != 0
+    ):
+        raise SccContractError(f"{arm} setup smoke failed")
+    evidence_sha, evidence_size, inventory = _bundle_digest(smoke_root)
+    return {
+        "status": "pass",
+        "fixture": _relative_file_record(run_root, fixture),
+        "plugin": _relative_file_record(run_root, plugin),
+        "summary": _relative_file_record(run_root, summary_path),
+        "evidence": {
+            "sha256": evidence_sha,
+            "size_bytes": evidence_size,
+            "inventory": inventory,
+        },
+        "terminal_sentinel": "END_FIXTURE|fereg_smoke|rc=0",
+    }
+
+
+def _verify_setup_smoke(
+    run_root: Path,
+    setup: Mapping[str, Any],
+) -> None:
+    smoke = _expect_keys(
+        setup.get("smoke"), {"baseline", "candidate"}, "setup smoke"
+    )
+    for arm in ("baseline", "candidate"):
+        record = _expect_keys(
+            smoke[arm],
+            {"status", "fixture", "plugin", "summary", "evidence", "terminal_sentinel"},
+            f"setup {arm} smoke",
+        )
+        source = run_root / f"work/setup/{arm}/source"
+        fixture = source / "ci/fereg_smoke.do"
+        plugin = source / "dist/fereg_linux.plugin"
+        fixture_record = _expect_keys(
+            record["fixture"], {"path", "sha256", "size_bytes"},
+            f"setup {arm} smoke fixture",
+        )
+        plugin_record = _expect_keys(
+            record["plugin"], {"path", "sha256", "size_bytes"},
+            f"setup {arm} smoke plugin",
+        )
+        summary_record = _expect_keys(
+            record["summary"], {"path", "sha256", "size_bytes"},
+            f"setup {arm} smoke summary",
+        )
+        summary_path = run_root / str(summary_record["path"])
+        if (
+            record["status"] != "pass"
+            or record["terminal_sentinel"] != "END_FIXTURE|fereg_smoke|rc=0"
+            or fixture_record != _relative_file_record(run_root, fixture)
+            or plugin_record != _relative_file_record(run_root, plugin)
+            or plugin_record["sha256"] != setup["arms"][arm]["artifact"]["sha256"]
+        ):
+            raise SccContractError(f"setup {arm} smoke binding changed")
+        _verify_relative_file(run_root, summary_record, f"setup {arm} smoke summary")
+        summary = _json(summary_path)
+        if not isinstance(summary, Mapping):
+            raise SccContractError(f"setup {arm} smoke summary is malformed")
+        results = summary.get("results")
+        if (
+            summary.get("status") != "success"
+            or summary.get("completed") is not True
+            or summary.get("stata_rc") != 0
+            or summary.get("tests_passed") != 1
+            or summary.get("tests_failed") != 0
+            or not isinstance(results, list)
+            or len(results) != 1
+            or not isinstance(results[0], Mapping)
+            or results[0].get("fixture") != "ci/fereg_smoke.do"
+            or results[0].get("status") != "success"
+            or results[0].get("process_rc") != 0
+            or results[0].get("stata_rc") != 0
+        ):
+            raise SccContractError(f"setup {arm} smoke summary changed")
+        smoke_root = run_root / f"logs/setup-smoke/{arm}"
+        evidence_sha, evidence_size, inventory = _bundle_digest(smoke_root)
+        if record["evidence"] != {
+            "sha256": evidence_sha,
+            "size_bytes": evidence_size,
+            "inventory": inventory,
+        }:
+            raise SccContractError(f"setup {arm} smoke evidence changed")
+        log = smoke_root / "fixture-logs/fereg_smoke.log"
+        sentinels = [
+            line.strip()
+            for line in log.read_text(encoding="utf-8", errors="strict").splitlines()
+            if line.strip().startswith("END_FIXTURE|")
+        ]
+        if sentinels != [record["terminal_sentinel"]]:
+            raise SccContractError(f"setup {arm} smoke sentinel changed")
+
+
 def setup_run(run_root: Path) -> None:
     verify_input(run_root)
     preparation = read_sealed(run_root / "input/preparation.json", "fereg-f0-scc-preparation-v1")
@@ -2520,6 +2659,16 @@ def setup_run(run_root: Path) -> None:
         if arm_receipts["baseline"]["artifact"] != registered_identity:
             raise SccContractError("exact F0 Linux build differs from the registered artifact")
 
+    setup_smoke = {
+        arm: _run_setup_smoke(
+            run_root,
+            setup_root / arm / "source",
+            arm_receipts[arm]["artifact"],
+            arm=arm,
+        )
+        for arm in ("baseline", "candidate")
+    }
+
     baseline_source = setup_root / "baseline/source"
     ols_manifest = _json(baseline_source / "benchmarks/manifests/ols_v1.json")
     datasets_by_id = {item["id"]: item for item in ols_manifest["datasets"]}
@@ -2581,6 +2730,7 @@ def setup_run(run_root: Path) -> None:
             "environment_contract": "closed-private-home-tmp-v1",
         },
         "arms": arm_receipts,
+        "smoke": setup_smoke,
         "datasets": datasets,
         "sge": {
             "job_id": os.environ.get("JOB_ID", ""),
@@ -3468,6 +3618,7 @@ def task_run(run_root: Path, task_id: int) -> None:
         != sha256_file(run_root / "input/preparation.json")
     ):
         raise SccContractError("setup did not publish a matching success receipt")
+    _verify_setup_smoke(run_root, setup)
     manifest_path = run_root / "input/manifest.json"
     manifest = load_regression_manifest(manifest_path)
     if _manifest_lifecycle(manifest) == "candidate_unsealed":
@@ -3482,7 +3633,7 @@ def task_run(run_root: Path, task_id: int) -> None:
     if int(os.environ.get("NSLOTS", "1")) < int(cell["threads"]):
         raise SccContractError("SGE allocation is smaller than the registered native thread count")
     cell_id = str(cell["id"])
-    expected_job = submission["jobs"]["smoke" if task_id == 1 else "array"]
+    expected_job = submission["jobs"]["array"]
     if os.environ.get("JOB_ID", "") != expected_job:
         raise SccContractError("task scheduler job ID differs from the sealed submission")
     task_root = run_root / "work/tasks" / f"task-{task_id:03d}-{cell_id}"
@@ -3720,7 +3871,7 @@ def validate_task_inventory(
             raise SccContractError("task receipt binds a different manifest")
         if payload.get("setup_receipt_sha256") != sha256_file(run_root / "receipts/setup.json"):
             raise SccContractError("task receipt binds a different setup")
-        expected_job = submission["jobs"]["smoke" if task_id == 1 else "array"]
+        expected_job = submission["jobs"]["array"]
         if (
             payload.get("sge", {}).get("job_id") != expected_job
             or str(payload.get("sge", {}).get("task_id")) != str(task_id)
@@ -4046,7 +4197,6 @@ def record_submission(run_root: Path) -> None:
         "array_tasks": preparation["tasks"]["count"],
         "resources": {
             "setup": {"slots": 16, "mem_per_core": "4G", "h_rt": "04:00:00"},
-            "smoke": {"slots": 16, "mem_per_core": "4G", "h_rt": "11:45:00", "tasks": [1]},
             "array": {"slots": 16, "mem_per_core": "4G", "h_rt": "11:45:00"},
             "collector": {"slots": 1, "mem_per_core": "4G", "h_rt": "00:30:00"},
         },
@@ -4301,12 +4451,12 @@ def close_run(run_root: Path) -> None:
         submission_ledger["submit_cwd"], run_root.name
     )
     accounting: dict[str, Any] = {}
-    for stage in ("setup", "smoke", "array", "collector"):
+    for stage in ("setup", "array", "collector"):
         job_id = str(submission["jobs"][stage])
-        if stage == "smoke":
-            expected: Sequence[int] | None = [1]
-        elif stage == "array":
-            expected = list(range(2, len(scc_cells(manifest)) + 1))
+        if stage == "array":
+            expected: Sequence[int] | None = list(
+                range(1, len(scc_cells(manifest)) + 1)
+            )
         else:
             expected = None
         expected_slots = int(submission["resources"][stage]["slots"])
@@ -4344,9 +4494,8 @@ def close_run(run_root: Path) -> None:
             run_root / f"receipts/tasks/task-{task_id:03d}.json",
             "fereg-f0-scc-task-v1",
         )
-        stage = "smoke" if task_id == 1 else "array"
         if (
-            task.get("sge", {}).get("job_id") != submission["jobs"][stage]
+            task.get("sge", {}).get("job_id") != submission["jobs"]["array"]
             or str(task.get("sge", {}).get("task_id")) != str(task_id)
         ):
             raise SccContractError("task receipt job ID differs from submission")
@@ -4548,6 +4697,7 @@ def _verify_closed_run(
             "toolchain",
             "stata_controller",
             "arms",
+            "smoke",
             "datasets",
             "sge",
             "terminal_sentinel",
@@ -4664,6 +4814,8 @@ def _verify_closed_run(
             arm_receipt,
             root / "input" / preparation["arms"][arm]["archive"],
         )
+
+    _verify_setup_smoke(root, setup)
 
     registered_linux = next(
         item
@@ -4789,13 +4941,11 @@ def _verify_closed_run(
     submitted_root = _submitted_root(
         submission_ledger["submit_cwd"], root.name
     )
-    expected_slots = {"setup": 16, "smoke": 16, "array": 16, "collector": 1}
-    for stage in ("setup", "smoke", "array", "collector"):
+    expected_slots = {"setup": 16, "array": 16, "collector": 1}
+    for stage in ("setup", "array", "collector"):
         task_ids: Sequence[int] | None
-        if stage == "smoke":
-            task_ids = [1]
-        elif stage == "array":
-            task_ids = list(range(2, len(scc_cells(manifest)) + 1))
+        if stage == "array":
+            task_ids = list(range(1, len(scc_cells(manifest)) + 1))
         else:
             task_ids = None
         qacct_path = root / f"receipts/qacct/{stage}.txt"
@@ -4814,7 +4964,7 @@ def _verify_closed_run(
     actual_qacct = {
         path.name for path in (root / "receipts/qacct").iterdir() if path.is_file()
     }
-    if actual_qacct != {"setup.txt", "smoke.txt", "array.txt", "collector.txt"}:
+    if actual_qacct != {"setup.txt", "array.txt", "collector.txt"}:
         raise SccContractError("closed run qacct inventory is not exact")
     if qacct_records["setup"][0]["hostname"] != setup["sge"]["host_id"]:
         raise SccContractError("setup receipt host differs from qacct")
@@ -4825,10 +4975,9 @@ def _verify_closed_run(
             root / f"receipts/tasks/task-{task_id:03d}.json",
             "fereg-f0-scc-task-v1",
         )
-        stage = "smoke" if task_id == 1 else "array"
         records = [
             record
-            for record in qacct_records[stage]
+            for record in qacct_records["array"]
             if record.get("taskid") == str(task_id)
         ]
         if (
@@ -4901,7 +5050,7 @@ def _verify_closed_run(
         raise SccContractError("closed-run receipt differs from exact run evidence")
     accounting = _expect_keys(
         final.get("accounting"),
-        {"setup", "smoke", "array", "collector"},
+        {"setup", "array", "collector"},
         "closed-run accounting",
     )
     for stage, records in qacct_records.items():

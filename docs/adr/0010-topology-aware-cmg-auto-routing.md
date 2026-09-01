@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-08-27
 **Decision owner:** Johannes Schmieder
+**Superseded in part by:** ADR 0021 for the development auto selector and setup fallback
 
 ## Context
 

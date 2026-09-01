@@ -34,13 +34,14 @@ const MAX_NUISANCE_COLUMNS: usize = 64;
 // model's RSS/covariance identities.
 const PCG_TOLERANCE_MULTIPLIER: f64 = 0.01;
 const PCG_TOLERANCE_FLOOR: f64 = 32.0 * f64::EPSILON;
-/// Frozen from the 2026-08-27 CMG crossover calibration. Short panels were
-/// noisy or materially slower once hierarchy setup was charged; at eight or
-/// more observations per highest-cardinality level and a materially smaller
-/// second effect CMG won every calibrated unit/weighted, narrow/wide,
-/// one/eight-thread holdout admitted by the guards below.
-const AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL: usize = 8;
+/// The 2026-09-01 development calibration targets AKM-like panels: CMG is the
+/// default only when the large worker axis is observed at least three times,
+/// the firm axis is at least ten times smaller, and any third FE contributes
+/// at most nine non-base nuisance columns. Other ordinary categorical designs
+/// use direct Schwarz-LSMR and retain certified CG as a safety continuation.
+const AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL: usize = 3;
 const AUTO_MIN_CORE_CARDINALITY_RATIO: usize = 10;
+const AUTO_MAX_NUISANCE_COLUMNS: usize = 9;
 
 /// Internal execution policy for one prepared CMG absorption session.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,7 +65,7 @@ impl CmgConfig {
     }
 }
 
-/// Observation-pass-free topology summary used by the frozen automatic CMG route.
+/// Observation-pass-free topology summary used by the automatic CMG route.
 /// The canonical-edge count deliberately remains the safe input-edge upper
 /// bound: computing it exactly would add an avoidable O(N) pass before graph
 /// construction and would move runtime even when the route is rejected.
@@ -125,9 +126,7 @@ impl CmgTopologyProfile {
     #[must_use]
     pub(crate) fn auto_favorable(&self) -> bool {
         self.core_effects.is_some()
-            // Even an 8-column Schur block was not a stable win once setup
-            // was charged; keep all nuisance designs on the existing route.
-            && self.nuisance_columns == 0
+            && self.nuisance_columns <= AUTO_MAX_NUISANCE_COLUMNS
             && self
                 .highest_cardinality_levels
                 .checked_mul(AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL)
@@ -1555,19 +1554,19 @@ mod tests {
     }
 
     #[test]
-    fn auto_route_is_frozen_at_calibrated_shape_boundaries() {
-        let favorable = calibrated_panel_profile(8, 100, 10, None, false);
+    fn auto_route_matches_calibrated_akm_shape_boundaries() {
+        let favorable = calibrated_panel_profile(3, 100, 10, Some(10), false);
         assert!(favorable.auto_favorable());
-        assert_eq!(favorable.nuisance_columns(), 0);
+        assert_eq!(favorable.nuisance_columns(), 9);
 
-        let short = calibrated_panel_profile(7, 100, 10, None, false);
+        let short = calibrated_panel_profile(2, 100, 10, None, false);
         assert!(!short.auto_favorable());
 
         let balanced = calibrated_panel_profile(10, 100, 11, None, false);
         assert!(!balanced.auto_favorable());
 
-        let nuisance = calibrated_panel_profile(10, 1_000, 100, Some(65), false);
-        assert_eq!(nuisance.nuisance_columns(), 64);
+        let nuisance = calibrated_panel_profile(10, 1_000, 100, Some(11), false);
+        assert_eq!(nuisance.nuisance_columns(), 10);
         assert!(!nuisance.auto_favorable());
     }
 
@@ -1585,6 +1584,58 @@ mod tests {
             forward.second_cardinality_levels,
             reverse.second_cardinality_levels
         );
+    }
+
+    #[test]
+    fn three_way_profile_uses_two_largest_effects_as_core_in_every_order() {
+        let rows = 2_000;
+        let worker_levels = 400;
+        let firm_levels = 80;
+        let year_levels = 5;
+        let worker: Vec<u32> = (0..rows)
+            .map(|row| (row / (rows / worker_levels)) as u32)
+            .collect();
+        let firm: Vec<u32> = (0..rows)
+            .map(|row| ((row / 5 + row % 5) % firm_levels) as u32)
+            .collect();
+        let year: Vec<u32> = (0..rows).map(|row| (row % year_levels) as u32).collect();
+        let wi = LevelIndex::from_codes(&worker, worker_levels).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, firm_levels).expect("firm index");
+        let yi = LevelIndex::from_codes(&year, year_levels).expect("year index");
+        let sources = [
+            (&worker, worker_levels, &wi),
+            (&firm, firm_levels, &fi),
+            (&year, year_levels, &yi),
+        ];
+
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let effects = order
+                .iter()
+                .map(|index| {
+                    let (codes, levels, level_index) = sources[*index];
+                    effect(codes, levels, level_index)
+                })
+                .collect();
+            let design = BorrowedInterceptFeDesign::new(rows, effects).expect("profile design");
+            let profile = CmgTopologyProfile::analyze(&design).expect("profile");
+            assert_eq!(profile.highest_cardinality_levels, worker_levels);
+            assert_eq!(profile.second_cardinality_levels, firm_levels);
+            assert_eq!(profile.vertices, worker_levels + firm_levels);
+            assert_eq!(profile.nuisance_columns(), year_levels - 1);
+            let selected_original_effects = profile
+                .core_effects
+                .expect("two core effects")
+                .map(|position| order[position]);
+            assert_eq!(selected_original_effects, [0, 1]);
+            assert_eq!(order[profile.effect_order[2]], 2);
+        }
     }
 
     #[test]

@@ -1,0 +1,10 @@
+case_id,n,auto_selected_solver,auto_fallback,auto_pilot_contraction,best_certified_explicit_solver,auto_regret_percent,auto_median_seconds,auto_eligible,map_median_seconds,map_eligible,cg_median_seconds,cg_eligible,lsmr_schwarz_1e8_median_seconds,lsmr_schwarz_1e8_eligible,lsmr_schwarz_1e10_median_seconds,lsmr_schwarz_1e10_eligible,cmg_median_seconds,cmg_eligible
+cliff_n10000,10000,LSMR,0.0,0.011361815,cmg,40.000000000000014,0.021,1,10.75,1,0.132,1,0.017,1,0.018,1,0.015,1
+cliff_n12500,12500,LSMR,0.0,0.012273991,cmg,42.10526315789473,0.027,1,9.298,1,0.149,1,0.022,1,0.022,1,0.019,1
+cliff_n15000,15000,LSMR,0.0,0.01301356,cmg,47.619047619047606,0.031,1,17.728,1,0.207,1,0.024,1,0.025,1,0.021,1
+cliff_n17500,17500,LSMR,0.0,0.012438059,cmg,43.47826086956523,0.033,1,14.812,1,0.218,1,0.027,1,0.028,1,0.023,1
+cliff_n20000,20000,LSMR,0.0,0.011715981,cmg,46.15384615384617,0.038,1,34.55,0,0.335,1,0.029,1,0.031,1,0.026,1
+cliff_n22500,22500,LSMR,0.0,0.01237031,cmg,34.37499999999998,0.043,1,22.924,1,0.312,1,0.033,1,0.035,1,0.032,1
+cliff_n25000,25000,LSMR,0.0,0.011839133,lsmr_schwarz_1e8,33.33333333333335,0.048,1,41.765,1,0.418,1,0.036,1,0.038,1,0.037,1
+cliff_n27500,27500,LSMR,0.0,0.012926638,lsmr_schwarz_1e8,30.76923076923077,0.051,1,29.515,1,0.408,1,0.039,1,0.041,1,0.04,1
+cliff_n30000,30000,LSMR,0.0,0.012797218,lsmr_schwarz_1e8,27.272727272727295,0.056,1,32.403,1,0.457,1,0.044,1,0.047,1,0.047,1

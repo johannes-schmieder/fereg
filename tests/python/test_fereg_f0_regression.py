@@ -638,7 +638,7 @@ class F0RegressionContractTests(unittest.TestCase):
         }
         run_id = "20260831T130000Z-f0-baseline-evidence"
         scc_root = root / "build_evidence/f0-seal/scc"
-        jobs = {"setup": "801", "smoke": "802", "array": "803", "collector": "804"}
+        jobs = {"setup": "801", "array": "802", "collector": "803"}
         linux = next(
             F0._artifact_identity(item)
             for item in diagnostic["baseline_candidate"]["artifacts"]
@@ -709,7 +709,7 @@ class F0RegressionContractTests(unittest.TestCase):
                 "environment": cell["environment"],
                 "cell_sha256": cell_binding["sha256"],
                 "sge": {
-                    "job_id": jobs["smoke"] if task_id == 1 else jobs["array"],
+                    "job_id": jobs["array"],
                     "task_id": str(task_id),
                 },
                 "terminal_sentinel": f"FEREG_F0_TASK_SUCCESS|{cell_id}",
@@ -749,16 +749,13 @@ class F0RegressionContractTests(unittest.TestCase):
 
         qacct_bindings = {}
         accounting = {}
-        for stage in ("setup", "smoke", "array", "collector"):
-            if stage == "smoke":
-                text = self._qacct(jobs[stage], 1)
-                records = 1
-            elif stage == "array":
+        for stage in ("setup", "array", "collector"):
+            if stage == "array":
                 text = "".join(
                     self._qacct(jobs[stage], task_id)
-                    for task_id in range(2, len(F0.SCC_GOVERNING_CELL_IDS) + 1)
+                    for task_id in range(1, len(F0.SCC_GOVERNING_CELL_IDS) + 1)
                 )
-                records = len(F0.SCC_GOVERNING_CELL_IDS) - 1
+                records = len(F0.SCC_GOVERNING_CELL_IDS)
             else:
                 text = self._qacct(jobs[stage])
                 records = 1

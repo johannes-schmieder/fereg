@@ -1,0 +1,7 @@
+case_id,seed,year_levels,nuisance_columns,absorb_order,auto_selected_solver,auto_fallback,auto_median_seconds,cg_eligible,cg_median_seconds,lsmr_schwarz_1e8_eligible,lsmr_schwarz_1e8_median_seconds,cmg_eligible,cmg_median_seconds
+cmg_year5_f_w_y,562609841,5,4,firm worker year,LSMR,0.0,0.089,,,,,,
+cmg_year5_f_y_w,562609841,5,4,firm year worker,LSMR,0.0,0.087,,,,,,
+cmg_year5_w_f_y,562609841,5,4,worker firm year,LSMR,0.0,0.087,,,,,,
+cmg_year5_w_y_f,562609841,5,4,worker year firm,LSMR,0.0,0.086,,,,,,
+cmg_year5_y_f_w,562609841,5,4,year firm worker,LSMR,0.0,0.084,,,,,,
+cmg_year5_y_w_f,562609841,5,4,year worker firm,LSMR,0.0,0.084,,,,,,

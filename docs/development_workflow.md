@@ -28,15 +28,16 @@ superseded scientific policy is not current acceptance evidence.
 - Make coherent local milestone commits with targeted green evidence. Do not
   push incremental development commits during 0.5.0 qualification.
 - Do not use tiny no-op trigger commits or self-modifying workflow controllers.
-- Push the complete stack to `origin/main` only after the exact candidate SHA
-  passes all feasible local and SCC gates. Remote failures require a repaired,
-  newly offline-qualified stack before another release-level push.
+- Push only when Johannes requests it. For ordinary prototype work, attach the
+  smallest relevant local or SCC development check. Release-level pushes still
+  require the exact candidate SHA to pass the explicitly requested gates.
 - Keep raw licensed logs, machine paths, credentials, license data, unrelated
   local files, and confidential data out of Git.
 
 ## Local validation
 
-Use the pinned Rust toolchain and the repository entry points:
+Use targeted Rust, Python, source-contract, or Stata tests while iterating. The
+commands below are escalation points, not a checklist for every change:
 
 ```bash
 ./scripts/run_tests.sh
@@ -44,8 +45,8 @@ Use the pinned Rust toolchain and the repository entry points:
 ./ci/run_stata_ci.sh quick
 ```
 
-Use targeted Rust/Python/Stata tests while iterating. Before closing a
-substantive gate, run the relevant stronger profiles, normally including:
+Run stronger profiles only when the requested task needs broader regression or
+qualification evidence:
 
 ```bash
 ./ci/run_stata_ci.sh differential
@@ -55,23 +56,37 @@ substantive gate, run the relevant stronger profiles, normally including:
 The Stata commands require the licensed Mac environment documented in
 `STATA_CI_RUNNER.md`. Do not claim a test was run when it was not.
 
-During PPML pre-activation, keep the public and private boundaries separate:
+For focused PPML development, use the active public command and the smallest
+fixture that exercises the changed boundary:
 
 ```bash
-./ci/run_stata_ci.sh ppml-fail-closed
-./ci/run_stata_ci.sh ppml-hidden
-./ci/run_stata_ci.sh fereg-regression
+./ci/run_stata_ci.sh ppml-scientific
 ```
 
-`ppml-fail-closed` runs the installed public stub without building a plugin.
-`ppml-hidden` builds the plugin and exercises the private live-SPI
-`estimate-ppml` transaction, its runtime result validator, fallible-allocation
-rollback, the shared command/saved-slope/time-series and scientific fixtures
-through `_fereg_ppml`, and native-core plus publication-boundary PPML Break
-rollback. The
-`fereg-regression` profile is the PPML-free OLS verdict. A green private PPML
-profile is pre-activation evidence only and does not authorize changing the
-public stub.
+`ppml-hidden` and `fereg-regression` remain useful focused regression profiles,
+but they are not standing requirements. The historical fail-closed profile is
+pre-activation evidence and is not the current public surface.
+
+## Test escalation and SCC lanes
+
+This repository is in prototype and development mode. Unless Johannes
+explicitly asks for qualification, release evidence, or a detailed campaign,
+stop after the first proportionate green check:
+
+1. Focused local unit, oracle, static, or licensed-Stata fixture.
+2. SCC development smoke when Linux/SCC behavior matters, selecting exactly
+   `ols`, `ppml`, or `shared`.
+3. Focused benchmark only when a measured performance or memory answer is
+   needed.
+4. Frozen matrices and claim-grade receipts only after explicit authorization.
+
+The SCC development job is `benchmarks/scc/fereg_dev_smoke_job.sh`. It requests
+four slots, 30 minutes, and 4 GB per core. Stage one exact source snapshot into
+`/projectnb/welfgr/fereg/dev/<run-id>/source`, set `FEREG_DEV_PROFILE` to the
+changed boundary, and use a fresh run directory. Its summary and
+`DEV_SMOKE.SUCCESS` marker are diagnostic evidence; they are not promoted into
+qualification receipts. A normal development smoke should be checked directly
+after submission and does not need a heartbeat.
 
 The exact licensed-load artifacts needed before the 33-cell SCC prepare use
 the closed workflow in [feppml platform load evidence](feppml_platform_load_evidence.md).
@@ -89,9 +104,10 @@ unsealed.
 
 The durable workflows are:
 
-- `.github/workflows/stata-ci.yml` — normal main-push quick qualification and
-  exact-SHA receipt publication; manual dispatch supports stronger profiles.
-- `.github/workflows/fe-interaction-reference-probe.yml` — exact pinned
+- `.github/workflows/stata-ci.yml` — manual licensed Mac Stata/Rust validation;
+  dispatch defaults to the small `smoke` profile and publishes an exact-SHA
+  receipt. Ordinary pushes do not start it.
+- `.github/workflows/fe-interaction-reference-probe.yml` — manual exact-pinned
   offline reference probe for its bounded contract.
 - `.github/workflows/hosted-qualification.yml` — manual release-oriented hosted
   qualification only.
@@ -118,10 +134,9 @@ fixture status files, and terminal PASS sentinel must agree.
   mathematical or explicit-dummy oracles.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
-- Public `fereg` OLS is active in the beta source. Public `feppml` remains a
-  fail-closed `r(498)` stub. The private live-SPI `estimate-ppml` action and
-  hidden ado adapters exist only for end-to-end qualification and are not
-  supported distribution interfaces.
+- Public `fereg` OLS and public `feppml` are active beta testing surfaces. The
+  hidden PPML adapters remain development/qualification interfaces rather than
+  supported distribution commands.
 - Performance and memory claims require measured evidence on the frozen suite.
 
 ## Resume checklist

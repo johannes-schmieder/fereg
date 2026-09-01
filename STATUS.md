@@ -1,17 +1,80 @@
 # fereg 0.5.0 beta status
 
 **Last updated:** 2026-09-01
+**Operating mode:** prototype/development; qualification, detailed matrices,
+and release evidence run only when Johannes explicitly requests them
 **Development branch:** `main`; public OLS and the additive PPML testing surface are active, sharing the certified-linear session while retaining independent PPML wires and the unchanged OLS command path
 **Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
 **Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** exercise the activated public PPML surface on macOS/Linux, preserve the complete `fereg` regression boundary, and defer Windows licensed-Stata and the formal cross-platform aggregate until after user testing
+**Active milestone:** iterate on the public OLS/PPML prototype with focused changed-boundary checks; Linux/SCC development smoke is opt-in by boundary, and formal cross-platform qualification is deferred
 **Release state:** public OLS and PPML beta testing surfaces are active; activation is not a tag or source-qualified release, Windows testing is deferred, and the formal activated aggregate remains open
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
 and RSS rule while preserving its scientific and safety contracts. Historical receipts remain
 immutable even when they describe earlier hidden or fail-closed checkpoints.
+
+## Solver-routing recalibration development state
+
+- ADR-0021 implements the newly approved development OLS route for categorical
+  intercept-only AKM designs. Auto selects CMG when observations are at least
+  three times the largest FE level count, the two largest FE counts have a
+  ratio of at least 10:1, and additional effects contribute at most nine
+  non-base nuisance columns. Other categorical designs go directly to the
+  certified LSMR route; slope-bearing/generic designs retain the ADR-0009
+  pilot policy.
+- Post-pilot LSMR now certifies against the original RHS scale. An uncertified
+  finite candidate continues into CG without discarding its state, and all
+  attempted iterations, time, preconditioner, warning, and retained
+  coefficient work are accounted within the shared budget.
+- The development plugin SHA-256 is
+  `04cde2f5854e513567dd9551286090d42b01268e5748711c6dc7ab8a351e6be5`.
+  The 312-run post-change matrix had 78/78 certified auto runs, zero fallbacks,
+  and zero MAP pilots. The 10k--30k sparse three-FE series rose smoothly from
+  0.016 to 0.037 seconds. Rust library tests passed 637/637 and the focused
+  licensed Stata auto-route fixture passed. This is development evidence only;
+  frozen/cross-platform/release qualification remains open. The local `quick`
+  profile stopped on the pre-existing one-FE memory telemetry assertion
+  `e(fereg_runtime)[6,1] == 1`, before the changed route; substantive memory
+  selections and estimates passed an isolated diagnostic rerun. The exact
+  final plugin also passed the focused licensed route fixture and 12/12
+  recorded auto smoke runs across CMG and direct-Schwarz-LSMR cases.
+- The subsequent balanced-AKM diagnostic recorded 4,968 runs in 1,656 cells,
+  exactly three repetitions per cell. CMG certified without fallback in all
+  408 cases, but 25k--100k matched sensitivity cells exposed large CMG
+  graph-size/component cliffs at 2:1 and 5:1 ratios. Ten auto cells had
+  deterministic LSMR-to-CG fallback with no MAP pilot; focused traces show CG
+  certified an observation-space-identical retained candidate after a median
+  0.0025 seconds of added solve time, localizing the event to the
+  normal-equation certificate rather than a discarded solve. Forced
+  low-memory LSMR setup time rose 4.5x at the median while solve time was
+  unchanged, identifying reusable cross-block setup as a separate opportunity.
+  No further production routing change was made. The run-level data, corrected
+  matched thread/RHS subset, traces, candidate-rule counterfactuals, and report
+  are under
+  `benchmarks/reports/development/solver-routing-balanced-diagnostic-v1/`.
+- A controlled disconnected-component diagnostic then recorded 513 complete
+  runs, exactly three repetitions in every solver cell, while holding N, FE
+  levels, unique edges, cardinality ratio, and both degree distributions
+  fixed. All runs certified without fallback and produced identical exported
+  coefficients/RSS across auto, CMG, and Schwarz-LSMR. Component count alone
+  is not harmful: equal tiny components are a strong CMG case. The cliff occurs
+  when hundreds or thousands of tiny components coexist with a material large
+  component. At the current three-observations/10:1 auto-CMG boundary, the
+  1,000-component mixed cell took 1.329 seconds under auto-CMG versus 0.116 for
+  explicit Schwarz-LSMR with four controls, while 1,100 equal tiny components
+  took 0.045 versus 0.098. The bad hierarchy carries contracted tiny-component
+  vertices through deep recursive levels; a repeat-weighted hierarchy-work
+  proxy rises from 6.4 finest passes at 600 mixed components to 60.0 at 800 and
+  82.3 at 1,000, then falls to 2.3 when every component is tiny. No production
+  route changed. The next prototype should expose internal component/hierarchy
+  diagnostics, reject high-work CMG hierarchies after cheap setup, and test a
+  component-aware CMG solve. A separate unrecorded 16-control warm-up anomaly
+  remains to be localized with bounded per-stage timing. Sources, raw runs,
+  medians, hierarchy table, and report are under
+  `benchmarks/reports/development/cmg-component-diagnostic-v1/` and
+  `benchmarks/reports/development/cmg-component-autoeligible-v1/`.
 
 The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
 macOS matrix was deliberately stopped after 77 strictly valid scopes when this
@@ -118,26 +181,23 @@ overheads, and coverage limits are captured under
   for the other on the comparator-equivalent path.
 - Explicit `solver(cmg)` reuses one graph hierarchy per fit, supports up to 64
   nuisance non-base absorbed-intercept columns, and retains certified CG
-  polishing/fallback. ADR-0010 now selects CMG before the MAP pilot for the
-  frozen favorable intercept-only topology: no nuisance columns, at least
-  eight observations per highest-cardinality level, and a core cardinality
-  ratio of at least 10:1. Fast and low modes share the route; setup/memory
-  failure returns visibly to the existing auto policy, and solve failure uses
+  polishing/fallback. ADR-0021 selects CMG before the MAP pilot for the
+  development AKM topology described above. Fast and low modes share the route;
+  setup/memory failure returns visibly to direct LSMR, and solve failure uses
   certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
   tolerance to satisfy the OLS score certificate without a separate post-QR
   correction. The release decision is GPL-3.0-only; the repository license,
   dependency notices, and staged package metadata must be synchronized before
   distribution.
-- The qualified automatic policy is implemented: one FE uses direct one-pass
-  demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
-  if certified. Otherwise a pilot contraction of at least 0.008 selects direct
-  Schwarz-LSMR at two decimal orders tighter than the requested tolerance;
-  there is no coefficient cap. All other cases continue with genuine CG. An
-  auto LSMR failure has one visible fallback from the saved pilot state to
-  certified CG. The execution and route-specific solver workspaces must fit
-  jointly before selection. Pilot iterations, contraction, selected solver,
-  iteration count, fallback, native time, and effective thread count are
-  reported.
+- One FE uses direct one-pass demeaning. Categorical multiway designs use the
+  ADR-0021 CMG/direct-LSMR topology rule with no MAP pilot. Slope-bearing and
+  generic multiway designs retain at most four MAP pilot sweeps, the 0.008
+  contraction threshold for direct tight Schwarz-LSMR, and CG for remaining
+  cases. A finite uncertified auto-LSMR result is polished from its current
+  candidate by certified CG rather than restarted. The execution and
+  route-specific solver workspaces must fit jointly. Pilot iterations,
+  contraction, selected solver, iteration count, fallback, native time, and
+  effective thread count are reported.
 - Fast-mode saved fixed effects no longer rerun observation-space MAP. LSMR and
   CMG retain their coefficient solutions, CG propagates compact coefficient
   states through its recurrence, Irons--Tuck mirrors accepted extrapolations in
@@ -402,7 +462,10 @@ and fails with `r(909)` before large allocations when neither route fits. The
 old process-RSS ratio remains diagnostic; it is deliberately not a promotion
 blocker when modeled allocation, cleanup, and science pass.
 
-## Current blockers
+## Deferred qualification backlog
+
+The items below limit future qualification or release claims; they do not
+authorize a test campaign during ordinary prototype work.
 
 1. The activated source needs exact-commit public `ppml-scientific`, hidden,
    Break, staged-install, and full-profile receipts; pre-activation runs are
@@ -437,16 +500,11 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Development plan
 
-1. Run the repository, public `ppml-scientific`, hidden PPML, PPML Break,
-   `fereg-regression`, and manual trade-data tests on the activated source.
-2. Seal the activated F0 identity and run the scientific-first performance and
-   memory contract while preserving all existing OLS wire and public-command
-   behavior.
-3. Run the exact pinned `ppmlhdfe` closure plus independent-oracle PPML matrix,
-   constrained-memory and allocation gates, SCC/Linux qualification, and
-   staged clean-install tests on the same activated source and artifacts.
-4. Complete Windows licensed-Stata qualification later, then close the formal
-   no-waiver cross-platform activation aggregate. Until then, activation is a
-   testing surface only.
-5. Preserve the frozen ADR-0009/ADR-0010 OLS routing, Decimal fixtures,
-   observation-space audits, and unresolved explicit-CG/IT caveats throughout.
+1. Implement the next prototype change and run the smallest focused local test
+   for its boundary.
+2. When Linux or SCC behavior matters, use the four-slot development smoke and
+   select exactly `ols`, `ppml`, or `shared`; inspect its result directly.
+3. Run a focused benchmark only to answer a concrete performance or memory
+   question.
+4. Preserve the deferred qualification backlog and frozen evidence unchanged
+   until Johannes explicitly requests a detailed or release-level campaign.

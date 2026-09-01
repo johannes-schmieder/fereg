@@ -87,10 +87,11 @@ deferred and must not be inferred from the macOS profile.
 
 ## Durable GitHub workflows
 
-- `.github/workflows/stata-ci.yml` — main-push Rust quick plus licensed-Stata
-  quick; manual dispatch selects any profile; publishes exact-SHA receipts.
-- `.github/workflows/fe-interaction-reference-probe.yml` — bounded exact-pinned
-  offline reference probe.
+- `.github/workflows/stata-ci.yml` — manual Rust quick plus licensed-Stata
+  validation; dispatch defaults to `smoke`, can select any profile, and
+  publishes exact-SHA receipts. Ordinary pushes do not start the runner.
+- `.github/workflows/fe-interaction-reference-probe.yml` — manual bounded
+  exact-pinned offline reference probe.
 - `.github/workflows/hosted-qualification.yml` — manual release qualification
   on hosted runners.
 

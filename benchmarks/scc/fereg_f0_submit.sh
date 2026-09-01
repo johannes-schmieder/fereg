@@ -27,14 +27,13 @@ TASK_COUNT=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$RUN_ROOT/inpu
 case "$TASK_COUNT" in
     ''|*[!0-9]*) echo "invalid task count" >&2; exit 2 ;;
 esac
-if [ "$TASK_COUNT" -lt 2 ]; then
-    echo "task inventory cannot support the smoke-plus-array schedule" >&2
+if [ "$TASK_COUNT" -lt 1 ]; then
+    echo "task inventory is empty" >&2
     exit 2
 fi
 RUN_ID=${RUN_ROOT##*/}
 RUN_TAG=$(printf '%s' "$RUN_ID" | /usr/bin/sha256sum | /usr/bin/cut -c1-12)
 SETUP_NAME="f0s_$RUN_TAG"
-SMOKE_NAME="f0m_$RUN_TAG"
 ARRAY_NAME="f0a_$RUN_TAG"
 COLLECTOR_NAME="f0c_$RUN_TAG"
 
@@ -50,13 +49,7 @@ SETUP_JOB=${SETUP_RAW%%.*}
 case "$SETUP_JOB" in ''|*[!0-9]*) echo "invalid setup qsub response: $SETUP_RAW" >&2; exit 1 ;; esac
 "${SCHEDULER_ENV[@]}" "$QSTAT" -j "$SETUP_JOB" > "$RUN_ROOT/receipts/qsub/setup.qstat.txt"
 
-"${SCHEDULER_ENV[@]}" "$QSUB" -clear -terse -P welfgr -S /bin/bash -j y -m a -N "$SMOKE_NAME" -wd "$RUN_ROOT" -o "$RUN_ROOT/logs" -pe omp 16 -l h_rt=11:45:00 -l mem_per_core=4G -hold_jid "$SETUP_JOB" -t 1 -v RUN_ROOT="$RUN_ROOT" "$RUN_ROOT/input/harness/fereg_f0_job.sh" > "$RUN_ROOT/receipts/qsub/smoke.txt"
-SMOKE_RAW=$(tr -d '\n' < "$RUN_ROOT/receipts/qsub/smoke.txt")
-SMOKE_JOB=${SMOKE_RAW%%.*}
-case "$SMOKE_JOB" in ''|*[!0-9]*) echo "invalid smoke qsub response: $SMOKE_RAW" >&2; exit 1 ;; esac
-"${SCHEDULER_ENV[@]}" "$QSTAT" -j "$SMOKE_JOB" > "$RUN_ROOT/receipts/qsub/smoke.qstat.txt"
-
-"${SCHEDULER_ENV[@]}" "$QSUB" -clear -terse -P welfgr -S /bin/bash -j y -m a -N "$ARRAY_NAME" -wd "$RUN_ROOT" -o "$RUN_ROOT/logs" -pe omp 16 -l h_rt=11:45:00 -l mem_per_core=4G -hold_jid "$SMOKE_JOB" -t "2-$TASK_COUNT" -v RUN_ROOT="$RUN_ROOT" "$RUN_ROOT/input/harness/fereg_f0_job.sh" > "$RUN_ROOT/receipts/qsub/array.txt"
+"${SCHEDULER_ENV[@]}" "$QSUB" -clear -terse -P welfgr -S /bin/bash -j y -m a -N "$ARRAY_NAME" -wd "$RUN_ROOT" -o "$RUN_ROOT/logs" -pe omp 16 -l h_rt=11:45:00 -l mem_per_core=4G -hold_jid "$SETUP_JOB" -t "1-$TASK_COUNT" -v RUN_ROOT="$RUN_ROOT" "$RUN_ROOT/input/harness/fereg_f0_job.sh" > "$RUN_ROOT/receipts/qsub/array.txt"
 ARRAY_RAW=$(tr -d '\n' < "$RUN_ROOT/receipts/qsub/array.txt")
 ARRAY_JOB=${ARRAY_RAW%%.*}
 case "$ARRAY_JOB" in ''|*[!0-9]*) echo "invalid array qsub response: $ARRAY_RAW" >&2; exit 1 ;; esac
@@ -72,4 +65,4 @@ date -u '+%Y-%m-%dT%H:%M:%SZ' > "$RUN_ROOT/receipts/qsub/completed-at-utc.txt"
 chmod 0444 "$RUN_ROOT"/receipts/qsub/*.txt
 python3 -I -B -S "$RUN_ROOT/input/harness/fereg_f0_scc.py" record-submission \
     --run-root "$RUN_ROOT"
-printf 'FEREG_F0_SUBMISSION_SUCCESS setup=%s smoke=%s array=%s collector=%s\n' "$SETUP_JOB" "$SMOKE_JOB" "$ARRAY_JOB" "$COLLECTOR_JOB"
+printf 'FEREG_F0_SUBMISSION_SUCCESS setup=%s array=%s collector=%s\n' "$SETUP_JOB" "$ARRAY_JOB" "$COLLECTOR_JOB"

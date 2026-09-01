@@ -1,5 +1,36 @@
 # SCC benchmark workflows
 
+## Choose the smallest lane
+
+The default while fereg is a prototype is the development smoke, not either
+qualification workflow below. Use a fresh directory under
+`/projectnb/welfgr/fereg/dev/`, stage the exact source as `source/`, and submit
+`fereg_dev_smoke_job.sh` with all three variables explicit:
+
+```bash
+mkdir -p /projectnb/welfgr/fereg/dev/RUN_ID/logs
+qsub -wd /projectnb/welfgr/fereg/dev/RUN_ID \
+  -o /projectnb/welfgr/fereg/dev/RUN_ID/logs \
+  -v RUN_ROOT=/projectnb/welfgr/fereg/dev/RUN_ID,FEREG_DEV_PROFILE=ols,FEREG_DEV_SNAPSHOT=SOURCE_ID \
+  /projectnb/welfgr/fereg/dev/RUN_ID/source/benchmarks/scc/fereg_dev_smoke_job.sh
+```
+
+`FEREG_DEV_PROFILE` has no default: choose `ols`, `ppml`, or `shared` to match
+the changed boundary. The job uses four slots, 30 minutes, and 4 GB per core,
+and leaves a concise `output/summary.json`, fixture logs, plugin evidence, and
+`output/DEV_SMOKE.SUCCESS`. Inspect it directly after submission; do not create
+a heartbeat for this normal short job.
+
+The qualification sections below are archival/claim-grade procedures. Run
+them only when Johannes explicitly requests qualification, detailed tests, or
+release evidence. Their existence and any open historical gate are not
+standing authorization to submit them.
+
+The paper AKM runner uses `BENCH_MODE=benchmark-canary` for its single
+8-million-row diagnostic and `BENCH_MODE=production` for the full measurement
+schedule. The canary is still a large focused benchmark, not a smoke test; run
+it only to answer a concrete performance or memory question.
+
 ## feppml Phase 12 qualification
 
 `feppml_qualification_scc.py` is the governing exact-source execution layer
@@ -151,6 +182,11 @@ task and offline verifier independently reparse the do-files, raw Stata
 status/log/capture, output signatures, e-return inventory, terminal sentinel,
 process status, and RSS evidence to reconstruct the cell JSON. Fweighted
 memory envelopes use sealed physical rows, never weighted `e(N)`.
+
+Formal setup builds both arms and runs the small `ci/fereg_smoke.do` fixture
+against each exact Linux plugin. Only after both pass does one array job run
+tasks 1 through 42, followed by the collector. There is no separate serial
+"smoke" job consuming a full governing benchmark cell.
 
 Submission retains each raw `qsub -terse` response, start/completion
 timestamps, exact argv, cwd, job name, hold dependency, submitted script hash,
