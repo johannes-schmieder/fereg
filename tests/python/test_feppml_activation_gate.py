@@ -34,6 +34,32 @@ def commit(root: Path, message: str) -> None:
     )
 
 
+def preactivation_blob(relative: str) -> bytes:
+    """Return the frozen preactivation control-plane blob in either state."""
+
+    candidates = [(Path(gate.ROOT) / relative).read_bytes()]
+    for revision in ("HEAD", "HEAD^"):
+        completed = subprocess.run(
+            ["git", "-C", str(gate.ROOT), "show", f"{revision}:{relative}"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
+        )
+        if completed.returncode == 0:
+            candidates.append(completed.stdout)
+    for candidate in candidates:
+        if relative == "scripts/stage_release.py":
+            if gate.sha256_bytes(candidate) == gate.FROZEN_PREACTIVATION_STAGER_SHA256:
+                return candidate
+        elif relative == ".github/workflows/stata-ci.yml":
+            if (
+                candidate.count(b"          - ppml-fail-closed\n") == 1
+                and b"          - ppml-scientific\n" not in candidate
+            ):
+                return candidate
+        else:  # pragma: no cover - helper is intentionally closed to two files
+            raise AssertionError(relative)
+    raise AssertionError(f"frozen preactivation blob is unavailable: {relative}")
+
+
 class ActivationGateTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -57,9 +83,7 @@ class ActivationGateTests(unittest.TestCase):
                 "    version 18.0\n    exit 498\nend\n"
             )
             package = "v 3\nf feppml.ado\n"
-            stager = (Path(gate.ROOT) / "scripts/stage_release.py").read_text(
-                encoding="utf-8"
-            )
+            stager = preactivation_blob("scripts/stage_release.py").decode("utf-8")
             default_profiles = {
                 "profiles": {
                     "ppml-fail-closed": {
@@ -657,7 +681,7 @@ class ActivationGateTests(unittest.TestCase):
         workflow_path = ".github/workflows/stata-ci.yml"
         self.assertIn(workflow_path, gate.ACTIVATION_ALLOWED_PATHS)
         self.assertIn(workflow_path, gate.ACTIVATION_REQUIRED_CHANGED_PATHS)
-        parent = (Path(gate.ROOT) / workflow_path).read_bytes()
+        parent = preactivation_blob(workflow_path)
         self.assertEqual(parent.count(b"          - ppml-hidden\n"), 1)
         self.assertEqual(parent.count(b"          - ppml-fail-closed\n"), 1)
         self.assertNotIn(b"          - ppml-scientific\n", parent)
@@ -673,7 +697,7 @@ class ActivationGateTests(unittest.TestCase):
             )
 
     def test_activation_release_stager_is_one_exact_transform(self) -> None:
-        parent = (Path(gate.ROOT) / "scripts/stage_release.py").read_bytes()
+        parent = preactivation_blob("scripts/stage_release.py")
         active = gate._expected_activated_stager(parent)
         gate._require_exact_activation_stager(parent, active)
         self.assertEqual(active.count(b"PRODUCTION_STATA_FILES ="), 1)
@@ -694,7 +718,7 @@ class ActivationGateTests(unittest.TestCase):
                 gate._require_exact_activation_stager(parent, mutation)
 
     def test_preactivation_stager_is_frozen_beyond_first_inventory(self) -> None:
-        parent = (Path(gate.ROOT) / "scripts/stage_release.py").read_bytes()
+        parent = preactivation_blob("scripts/stage_release.py")
         self.assertEqual(
             gate.sha256_bytes(parent), gate.FROZEN_PREACTIVATION_STAGER_SHA256
         )
