@@ -9,12 +9,14 @@
 use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
+    absorb_borrowed_intercept_auto_direct_lsmr_certified,
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
     absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     absorb_finalized_categorical_slope_map_certified,
+    absorb_finalized_categorical_topology_auto_direct_lsmr_certified,
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_certified,
     absorb_finalized_categorical_topology_cg_retaining_certified,
@@ -200,6 +202,13 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
+    /// Borrow the finalized intercept-only topology for PPML's reusable MAP
+    /// session. One-shot OLS never calls this seam; slope-bearing prepared
+    /// views return `None` and retain the generic owned-design projector.
+    fn fit_borrowed_intercept_map_design(&self) -> Result<Option<BorrowedInterceptFeDesign<'_>>> {
+        Ok(None)
+    }
+
     fn fit_supports_cmg_auto(&self) -> bool {
         true
     }
@@ -244,6 +253,15 @@ pub(crate) trait PreparedOlsFitView: Sync {
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         self.fit_absorb_owned_matrix(weights, values, config)
+    }
+
+    fn fit_absorb_auto_direct_lsmr(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.fit_absorb_auto(weights, values, config)
     }
 
     fn fit_absorb_owned_matrix(
@@ -516,6 +534,25 @@ impl PreparedOlsFitView for PreparedOlsData {
         )
     }
 
+    fn fit_absorb_auto_direct_lsmr(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        let design = self.borrowed_intercept_fe_design()?;
+        absorb_borrowed_intercept_auto_direct_lsmr_certified(
+            &design,
+            weights,
+            values,
+            config.map,
+            config.lsmr,
+            config.solver_memory_budget,
+            true,
+            config.retain_coefficients,
+        )
+    }
+
     fn fit_absorb_initial_matrix(
         &self,
         weights: BorrowedMapWeights<'_>,
@@ -564,6 +601,10 @@ impl PreparedOlsFitView for PreparedOlsData {
             )?);
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
+    }
+
+    fn fit_borrowed_intercept_map_design(&self) -> Result<Option<BorrowedInterceptFeDesign<'_>>> {
+        Ok(Some(self.borrowed_intercept_fe_design()?))
     }
 
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
@@ -723,6 +764,27 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         }
     }
 
+    fn fit_absorb_auto_direct_lsmr(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if self.has_absorbed_slope() {
+            self.fit_absorb_owned_matrix(weights, values, config)
+        } else {
+            absorb_finalized_categorical_topology_auto_direct_lsmr_certified(
+                self.fe_topology(),
+                weights,
+                values,
+                config.map,
+                config.lsmr,
+                config.solver_memory_budget,
+                config.retain_coefficients,
+            )
+        }
+    }
+
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {
         let topology = self.fe_topology();
         let mut source_table = Vec::new();
@@ -771,6 +833,14 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
             )?);
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
+    }
+
+    fn fit_borrowed_intercept_map_design(&self) -> Result<Option<BorrowedInterceptFeDesign<'_>>> {
+        if self.has_absorbed_slope() {
+            Ok(None)
+        } else {
+            Ok(Some(self.fit_borrowed_cmg_design()?))
+        }
     }
 
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {

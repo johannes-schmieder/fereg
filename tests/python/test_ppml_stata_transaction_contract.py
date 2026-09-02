@@ -30,7 +30,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
             "request_major=1",
-            "request_minor=1",
+            "request_minor=4",
             "result_major=1",
             "result_minor=1",
             "model_major=`model_major'",
@@ -71,6 +71,45 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertIn('exit 498', text)
         self.assertNotIn('local finite_solver "qr"', text)
         self.assertNotIn('local finite_solver "pivoted-cholesky"', text)
+
+    def test_private_solver_controls_are_closed_and_dually_gated(self) -> None:
+        transaction = TRANSACTION.read_text(encoding="utf-8")
+        adapter = ADAPTER.read_text(encoding="utf-8")
+        plugin = PLUGIN.read_text(encoding="utf-8")
+        core = (ROOT / "crates/fereg-core/src/ppml/prepared_estimator.rs").read_text(
+            encoding="utf-8"
+        )
+        for option in (
+            "FESOLVer(string)",
+            "FEPREConditioner(string)",
+            "FELSMRMode(string)",
+            "FELSMRPolicy(string)",
+            "FECMGMode(string)",
+            "SOLVERTRACE",
+        ):
+            self.assertIn(option, transaction)
+            self.assertNotIn(option, adapter)
+        self.assertIn(
+            "private PPML FE-solver controls are unavailable through feppml",
+            transaction,
+        )
+        self.assertIn("FEREG_PPML_EXPERIMENTAL_SOLVERS", transaction)
+        for field in (
+            "fe_solver=`fe_solver'",
+            "fe_preconditioner=`fe_preconditioner'",
+            "fe_lsmr_mode=`fe_lsmr_mode'",
+            "fe_lsmr_policy=`fe_lsmr_policy'",
+            "fe_cmg_mode=`fe_cmg_mode'",
+            "solver_trace=`solver_trace'",
+            "solver_experiment=`solver_experiment'",
+        ):
+            self.assertIn(field, transaction)
+        self.assertIn('std::env::var("FEREG_PPML_EXPERIMENTAL_SOLVERS")', core)
+        self.assertIn('"fe_solver"', plugin)
+        self.assertIn('"fe_lsmr_mode"', plugin)
+        self.assertIn('"fe_lsmr_policy"', plugin)
+        self.assertIn('"fe_cmg_mode"', plugin)
+        self.assertIn('"solver_trace"', plugin)
 
     def test_outputs_are_private_until_final_commit(self) -> None:
         text = TRANSACTION.read_text(encoding="utf-8")
@@ -121,7 +160,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         protocol = PROTOCOL.read_text(encoding="utf-8")
 
         for token in (
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
             "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)",
             "PPML_RESULT_INFERENCE_ROWS: usize = 16",
             "PPML_RESULT_DROP_COUNT_ROWS: usize = 14",

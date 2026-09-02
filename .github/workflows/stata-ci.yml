@@ -23,14 +23,6 @@ on:
           - benchmark-small
           - full
         default: smoke
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - ".ci/stata/latest.json"
-      - ".ci/stata/results/**"
-      - ".ci/stata/full-results/**"
-
 concurrency:
   group: fereg-mac-${{ github.repository }}
   cancel-in-progress: false
@@ -44,14 +36,14 @@ env:
 
 jobs:
   mac-ci:
-    name: Mac Rust quick + Stata / ${{ inputs.profile || 'quick' }}
+    name: Mac Rust quick + Stata / ${{ inputs.profile }}
     runs-on: [self-hosted, macOS, ARM64, stata-mp, fereg]
     timeout-minutes: 240
     permissions:
       contents: write
     env:
       STATA_BIN: /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
-      STATA_PROFILE: ${{ inputs.profile || 'quick' }}
+      STATA_PROFILE: ${{ inputs.profile }}
     steps:
       - name: Check out tested commit
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -107,7 +99,7 @@ jobs:
 
       - name: Validate receipt identity
         env:
-          STATA_PROFILE: ${{ inputs.profile || 'quick' }}
+          STATA_PROFILE: ${{ inputs.profile }}
         run: >-
           /usr/bin/python3 ci/check_stata_receipt.py
           "$RUNNER_TEMP/stata-receipt/receipt.json"
@@ -121,7 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           branch="$GITHUB_REF_NAME"
-          if [[ "${{ inputs.profile || 'quick' }}" == "full" ]]; then
+          if [[ "${{ inputs.profile }}" == "full" ]]; then
             result_path=".ci/stata/full-results/$GITHUB_SHA.json"
           else
             result_path=".ci/stata/results/$GITHUB_SHA.json"

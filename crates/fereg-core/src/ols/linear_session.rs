@@ -9,7 +9,10 @@
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{BorrowedMapWeights, FeDesign, FeSolverKind, ReusableMapAbsorber, SolveReport};
+use crate::fe::{
+    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSolverKind,
+    ReusableCategoricalMapAbsorber, ReusableMapAbsorber, ReusableMapCapacities, SolveReport,
+};
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -209,6 +212,23 @@ impl LinearSessionReuseReport {
             },
         }
     }
+
+    /// PPML-only incremental solve accounting. The joint engine reuses its
+    /// fit-lifetime design and response buffers, but the pinned LSMR recurrence
+    /// still allocates per call; the stronger allocation-free flags therefore
+    /// remain false.
+    pub(crate) fn ppml_joint(projection_seconds: f64) -> Self {
+        let mut report = Self::new(LinearSessionSolveKind::Warm);
+        report.response_buffer_reused = true;
+        report.weight_buffer_reused = true;
+        report.within_design_reused = true;
+        report.warm_projection_attempted = true;
+        report.warm_projection_certified = true;
+        report.certificate_workspace_reused = true;
+        report.predictor_workspace_reused = true;
+        report.phase_timing.projection_seconds = Some(projection_seconds);
+        report
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -279,6 +299,7 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) fe_projection_rhs_elements: usize,
     pub(crate) fe_certificate_column_elements: usize,
     pub(crate) fe_certificate_basis_elements: usize,
+    pub(crate) fe_accelerator_state_elements: usize,
     pub(crate) fe_topology_effect_elements: usize,
     pub(crate) fe_topology_code_elements: usize,
     pub(crate) fe_topology_slope_vector_elements: usize,
@@ -1032,13 +1053,79 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     frozen_workspace: FrozenLinearWorkspace,
     map_weights: Vec<f64>,
     projection_block: Vec<f64>,
-    fe_projector: ReusableMapAbsorber,
+    fe_design: Option<FeDesign>,
+    fe_projector: Option<ReusableLinearMapProjector<'a>>,
     reconstruction: Option<LinearReconstructionCertificate>,
     reuse: Option<LinearSessionReuseReport>,
     pending_response_buffer_reused: bool,
     pending_weight_buffer_reused: bool,
     projection_refresh_required: bool,
     phase_allocator_probe: Option<LinearSessionPhaseAllocatorProbe>,
+}
+
+/// The generic variant is the unchanged reusable path used by existing
+/// callers. Only PPML's dedicated constructor may select the borrowed
+/// categorical variant; it retains the owned design solely for PPML score and
+/// final-state certificates that deliberately remain independent of the fast
+/// projection kernel.
+enum ReusableLinearMapProjector<'a> {
+    Generic(ReusableMapAbsorber),
+    PpmlCategorical {
+        projector: ReusableCategoricalMapAbsorber<'a>,
+        score_design: FeDesign,
+    },
+}
+
+impl ReusableLinearMapProjector<'_> {
+    const fn design(&self) -> &FeDesign {
+        match self {
+            Self::Generic(projector) => projector.design(),
+            Self::PpmlCategorical { score_design, .. } => score_design,
+        }
+    }
+
+    const fn max_rhs(&self) -> usize {
+        match self {
+            Self::Generic(projector) => projector.max_rhs(),
+            Self::PpmlCategorical { projector, .. } => projector.max_rhs(),
+        }
+    }
+
+    fn capacities(&self) -> ReusableMapCapacities {
+        match self {
+            Self::Generic(projector) => projector.capacities(),
+            Self::PpmlCategorical { projector, .. } => projector.capacities(),
+        }
+    }
+
+    const fn borrows_raw_weights(&self) -> bool {
+        matches!(self, Self::PpmlCategorical { .. })
+    }
+
+    const fn is_ppml_categorical(&self) -> bool {
+        matches!(self, Self::PpmlCategorical { .. })
+    }
+
+    fn absorb(
+        &mut self,
+        raw_weights: BorrowedMapWeights<'_>,
+        normalized_weights: &[f64],
+        values: DenseMatrix,
+        config: crate::fe::MapConfig,
+        structural_constant_if_empty: bool,
+    ) -> Result<CertifiedBorrowedMap> {
+        match self {
+            Self::Generic(projector) => projector.absorb(
+                normalized_weights,
+                values,
+                config,
+                structural_constant_if_empty,
+            ),
+            Self::PpmlCategorical { projector, .. } => {
+                projector.absorb(raw_weights, values, config)
+            }
+        }
+    }
 }
 
 /// A frozen solve may fail because its reused numerical state no longer
@@ -1103,6 +1190,7 @@ pub(crate) fn classify_frozen_linear_fallback(
     }
     let message = error.message.as_str();
     if message.starts_with("frozen weighted-linear reusable MAP projection failed;")
+        || message.starts_with("frozen weighted-linear fused MAP projection failed;")
         || message.starts_with("frozen weighted-linear warm projection failed;")
         || message == "frozen weighted-linear response absorption did not certify"
     {
@@ -1148,12 +1236,37 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// Construct from the estimator's one owned FE design. PPML uses this
     /// boundary after initialization so it does not duplicate categorical
     /// topology solely for the reusable projector.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_fe_design(
         prepared: &'a P,
         frame: LinearSolveFrame<'_>,
         config: PreparedOlsFitConfig,
         generations: LinearSessionGenerations,
         fe_design: FeDesign,
+    ) -> Result<Self> {
+        Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, false)
+    }
+
+    /// PPML-only constructor which may select the reusable categorical MAP
+    /// fast lane. Normal OLS and every existing generic session constructor
+    /// continue to select the prior owned-design projector.
+    pub(crate) fn new_with_ppml_fe_design(
+        prepared: &'a P,
+        frame: LinearSolveFrame<'_>,
+        config: PreparedOlsFitConfig,
+        generations: LinearSessionGenerations,
+        fe_design: FeDesign,
+    ) -> Result<Self> {
+        Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, true)
+    }
+
+    fn new_with_fe_design_mode(
+        prepared: &'a P,
+        frame: LinearSolveFrame<'_>,
+        config: PreparedOlsFitConfig,
+        generations: LinearSessionGenerations,
+        fe_design: FeDesign,
+        admit_ppml_categorical_map: bool,
     ) -> Result<Self> {
         frame.validate_for(prepared)?;
         let response = fallible_copy(
@@ -1175,12 +1288,49 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "weighted-linear owned FE design is not aligned on the prepared sample",
             ));
         }
-        let fe_projector = ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?;
-        let map_weights = fallible_filled(
-            response.len(),
-            0.0,
-            "unable to reserve weighted-linear reusable MAP weights",
-        )?;
+        let (fe_design, fe_projector, map_weights) = if config.absorb.solver == FeSolverKind::Map {
+            let categorical = if admit_ppml_categorical_map
+                && config.execution.mode == PreparedOlsExecutionMode::Fast
+                && !config.absorb.retain_coefficients
+            {
+                prepared.fit_borrowed_intercept_map_design()?
+            } else {
+                None
+            };
+            if let Some(categorical) = categorical.filter(|design| {
+                matches!(design.effects().len(), 2 | 3) && design.nobs() == response.len()
+            }) {
+                (
+                    None,
+                    Some(ReusableLinearMapProjector::PpmlCategorical {
+                        projector: ReusableCategoricalMapAbsorber::new(
+                            categorical,
+                            maximum_fe_rhs,
+                            config.execution.threads.resolved(),
+                        )?,
+                        score_design: fe_design,
+                    }),
+                    fallible_copy(
+                        &response,
+                        "unable to reserve weighted-linear prior response",
+                    )?,
+                )
+            } else {
+                (
+                    None,
+                    Some(ReusableLinearMapProjector::Generic(
+                        ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?,
+                    )),
+                    fallible_filled(
+                        response.len(),
+                        0.0,
+                        "unable to reserve weighted-linear reusable MAP weights",
+                    )?,
+                )
+            }
+        } else {
+            (Some(fe_design), None, Vec::new())
+        };
         Ok(Self {
             prepared,
             config,
@@ -1200,6 +1350,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             frozen_workspace: FrozenLinearWorkspace::default(),
             map_weights,
             projection_block: Vec::new(),
+            fe_design,
             fe_projector,
             reconstruction: None,
             reuse: None,
@@ -1211,7 +1362,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     pub(crate) const fn fe_design(&self) -> &FeDesign {
-        self.fe_projector.design()
+        match (&self.fe_projector, &self.fe_design) {
+            (Some(projector), None) => projector.design(),
+            (None, Some(design)) => design,
+            _ => panic!("weighted-linear FE owner invariant failed"),
+        }
     }
 
     /// Install or remove the qualification-only phase allocator observer.
@@ -1240,6 +1395,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn set_config(&mut self, config: PreparedOlsFitConfig) -> Result<()> {
         self.ensure_bound()?;
+        if (config.absorb.solver == FeSolverKind::Map) != self.fe_projector.is_some() {
+            return Err(invalid_argument(
+                "weighted-linear session cannot change its FE solver ownership route",
+            ));
+        }
         self.refresh_config(config);
         Ok(())
     }
@@ -1247,6 +1407,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     #[cfg(test)]
     pub(crate) const fn requires_rebind(&self) -> bool {
         !self.prepared_alignment_valid
+    }
+
+    #[cfg(test)]
+    pub(crate) fn uses_ppml_categorical_map_for_test(&self) -> bool {
+        self.fe_projector
+            .as_ref()
+            .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
     }
 
     pub(crate) fn retained_within_memory(&self) -> Option<LinearWithinMemoryReport> {
@@ -1295,7 +1462,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn workspace_capacities(&self) -> LinearSessionWorkspaceCapacities {
         let current_step = self.frozen_step.as_ref();
-        let fe = self.fe_projector.capacities();
+        let fe = self
+            .fe_projector
+            .as_ref()
+            .map(ReusableLinearMapProjector::capacities)
+            .unwrap_or_default();
         let (within_resident_elements, within_scratch_bytes, within_io_buffer_elements) = self
             .within
             .as_ref()
@@ -1365,6 +1536,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             fe_projection_rhs_elements: fe.projection_rhs,
             fe_certificate_column_elements: fe.certificate_columns,
             fe_certificate_basis_elements: fe.certificate_basis,
+            fe_accelerator_state_elements: fe.accelerator_state,
             fe_topology_effect_elements: fe.topology_effects,
             fe_topology_code_elements: fe.topology_codes,
             fe_topology_slope_vector_elements: fe.topology_slope_vectors,
@@ -1692,7 +1864,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.ensure_bound()?;
         LinearSolveFrame::from_parts(response, self.weights.borrowed(), self.bread_weight_scale)?
             .validate_for(self.prepared)?;
-        let reused = self.response.capacity() >= response.len();
+        let mut reused = self.response.capacity() >= response.len();
+        if self
+            .fe_projector
+            .as_ref()
+            .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+        {
+            reused &= self.map_weights.capacity() >= self.response.len();
+            self.map_weights.clear();
+            self.map_weights
+                .try_reserve(self.response.len())
+                .map_err(|_| allocation("unable to refresh weighted-linear prior response"))?;
+            self.map_weights.extend_from_slice(&self.response);
+        }
         self.response.clear();
         self.response
             .try_reserve(response.len())
@@ -1973,12 +2157,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )?;
         let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
             self.fill_reusable_map_weights()?;
-            self.fe_projector.absorb(
-                &self.map_weights,
-                raw,
-                self.config.absorb.map,
-                self.prepared.fit_has_absorbed_intercept(),
-            )?
+            self.absorb_reusable_map(raw)?
         } else {
             self.prepared
                 .fit_absorb_matrix(self.weights.borrowed(), raw, self.config.absorb)?
@@ -1990,6 +2169,35 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         let (response, report) = absorbed.into_parts();
         Ok((response.into_row_major(), report))
+    }
+
+    fn absorb_reusable_map(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
+        let raw_weights = self.weights.borrowed();
+        let projector = self.fe_projector.as_mut().ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "weighted-linear MAP route has no reusable projector",
+            )
+        })?;
+        projector.absorb(
+            raw_weights,
+            &self.map_weights,
+            values,
+            self.config.absorb.map,
+            self.prepared.fit_has_absorbed_intercept(),
+        )
+    }
+
+    fn reusable_map_max_rhs(&self) -> Result<usize> {
+        self.fe_projector
+            .as_ref()
+            .map(ReusableLinearMapProjector::max_rhs)
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "weighted-linear MAP route has no reusable projector",
+                )
+            })
     }
 
     fn solve_frozen_internal(&mut self) -> Result<CertifiedFrozenLinearOutput<'_>> {
@@ -2063,6 +2271,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .within
                 .as_ref()
                 .is_some_and(|within| within.generations.same_design(self.generations));
+        let mut fused_response_report = None;
         if !same_design {
             let eligible = self.within.as_ref().is_some_and(|within| {
                 within
@@ -2078,7 +2287,26 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 ));
             }
             report.warm_projection_attempted = true;
-            if reusable_map {
+            if reusable_map
+                && self
+                    .fe_projector
+                    .as_ref()
+                    .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+            {
+                let (reused, fused_report) = self
+                    .reproject_retained_with_response_in_place()
+                    .map_err(|error| {
+                        FeregError::new(
+                            error.code,
+                            format!(
+                                "frozen weighted-linear fused MAP projection failed; strict canonical solve required: {}",
+                                error.message
+                            ),
+                        )
+                    })?;
+                projection_workspace_reused &= reused;
+                fused_response_report = Some(fused_report);
+            } else if reusable_map {
                 projection_workspace_reused &=
                     self.reproject_retained_within_in_place().map_err(|error| {
                         FeregError::new(
@@ -2106,39 +2334,46 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         report.within_design_reused = true;
 
-        resize_zeroed(
-            &mut self.frozen_workspace.response,
-            self.response.len(),
-            "unable to reserve frozen weighted-linear response absorption",
-        )?;
-        self.frozen_workspace
-            .response
-            .copy_from_slice(&self.response);
-        let raw_response = DenseMatrix::from_row_major(
-            self.response.len(),
-            1,
-            std::mem::take(&mut self.frozen_workspace.response),
-        )?;
-        let absorbed = if reusable_map {
-            self.fe_projector.absorb(
-                &self.map_weights,
-                raw_response,
-                self.config.absorb.map,
-                self.prepared.fit_has_absorbed_intercept(),
-            )?
-        } else {
-            self.prepared.fit_absorb_matrix(
-                self.weights.borrowed(),
-                raw_response,
-                self.config.absorb,
-            )?
-        };
-        if !absorbed.report().certified() {
-            return Err(invalid_data(
-                "frozen weighted-linear response absorption did not certify",
-            ));
-        }
-        let (within_response_matrix, mut response_absorption_report) = absorbed.into_parts();
+        let (within_response_matrix, mut response_absorption_report) =
+            if let Some(fused_report) = fused_response_report {
+                (
+                    DenseMatrix::from_row_major(
+                        self.response.len(),
+                        1,
+                        std::mem::take(&mut self.frozen_workspace.response),
+                    )?,
+                    fused_report,
+                )
+            } else {
+                resize_zeroed(
+                    &mut self.frozen_workspace.response,
+                    self.response.len(),
+                    "unable to reserve frozen weighted-linear response absorption",
+                )?;
+                self.frozen_workspace
+                    .response
+                    .copy_from_slice(&self.response);
+                let raw_response = DenseMatrix::from_row_major(
+                    self.response.len(),
+                    1,
+                    std::mem::take(&mut self.frozen_workspace.response),
+                )?;
+                let absorbed = if reusable_map {
+                    self.absorb_reusable_map(raw_response)?
+                } else {
+                    self.prepared.fit_absorb_matrix(
+                        self.weights.borrowed(),
+                        raw_response,
+                        self.config.absorb,
+                    )?
+                };
+                if !absorbed.report().certified() {
+                    return Err(invalid_data(
+                        "frozen weighted-linear response absorption did not certify",
+                    ));
+                }
+                absorbed.into_parts()
+            };
         // The frozen report is retained across IRLS iterations and may overlap
         // a speculative strict candidate. Diagnostic warning strings have no
         // finite memory bound and do not carry scientific authority; retained
@@ -3141,10 +3376,35 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             passed: true,
         };
         let scratch_bytes = retained.storage.scratch_bytes();
+        let kept = fallible_copy(&workspace.kept, "unable to copy retained kept identities")?;
+        let canonical_candidates = fallible_copy(
+            &workspace.candidate_ids,
+            "unable to copy retained canonical candidates",
+        )?;
+        let finite_bread_generated_columns =
+            fallible_copy(&workspace.kept, "unable to copy retained bread identities")?;
+        let residual_matrix =
+            DenseMatrix::from_row_major(rows, 1, std::mem::take(&mut workspace.residuals))?;
+        let residual_absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+            self.fill_reusable_map_weights()?;
+            self.absorb_reusable_map(residual_matrix)?
+        } else {
+            self.prepared.fit_absorb_matrix(
+                self.weights.borrowed(),
+                residual_matrix,
+                self.config.absorb,
+            )?
+        };
+        if !residual_absorbed.report().certified() {
+            return Err(invalid_data(
+                "retained weighted-linear residual absorption did not certify",
+            ));
+        }
+        let (residuals, residual_absorption_report) = residual_absorbed.into_parts();
         let draft = RetainedFiniteFitDraft {
             generated_coefficients,
             generated_statuses,
-            kept: fallible_copy(&workspace.kept, "unable to copy retained kept identities")?,
+            kept,
             dropped,
             rank_certificate: super::PreparedOlsRankCertificate {
                 relative_threshold,
@@ -3152,16 +3412,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 condition_proxy,
                 passed: true,
             },
-            canonical_candidates: fallible_copy(
-                &workspace.candidate_ids,
-                "unable to copy retained canonical candidates",
-            )?,
-            standardized_gram: &workspace.gram,
-            standardized_rhs: &workspace.rhs,
-            finite_bread_generated_columns: fallible_copy(
-                &workspace.kept,
-                "unable to copy retained bread identities",
-            )?,
+            canonical_candidates,
+            standardized_gram: &self.frozen_workspace.gram,
+            standardized_rhs: &self.frozen_workspace.rhs,
+            finite_bread_generated_columns,
             finite_bread_values: finite_bread,
             finite_reference_crossproduct: reference_crossproduct,
             left_inverse_relative_infinity_norm: left_inverse_error,
@@ -3170,7 +3424,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             score_norms,
             within_outcome_norm,
             normalized_initial_within_sum_of_squares,
-            within_residuals: std::mem::take(&mut workspace.residuals),
+            residuals: residuals.into_row_major(),
+            residual_absorption_report,
             absorption_report,
             scratch_bytes,
         };
@@ -3252,12 +3507,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 drop(raw_norms);
                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                     self.fill_reusable_map_weights()?;
-                    self.fe_projector.absorb(
-                        &self.map_weights,
-                        raw,
-                        self.config.absorb.map,
-                        self.prepared.fit_has_absorbed_intercept(),
-                    )?
+                    self.absorb_reusable_map(raw)?
                 } else {
                     self.prepared.fit_absorb_matrix(
                         self.weights.borrowed(),
@@ -3338,12 +3588,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 )?;
                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                     self.fill_reusable_map_weights()?;
-                    self.fe_projector.absorb(
-                        &self.map_weights,
-                        raw_response,
-                        self.config.absorb.map,
-                        self.prepared.fit_has_absorbed_intercept(),
-                    )?
+                    self.absorb_reusable_map(raw_response)?
                 } else {
                     self.prepared.fit_absorb_matrix(
                         self.weights.borrowed(),
@@ -3384,12 +3629,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     reference_norms[start..end].copy_from_slice(&norms);
                     drop(norms);
                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.fe_projector.absorb(
-                            &self.map_weights,
-                            raw,
-                            self.config.absorb.map,
-                            self.prepared.fit_has_absorbed_intercept(),
-                        )?
+                        self.absorb_reusable_map(raw)?
                     } else {
                         self.prepared.fit_absorb_matrix(
                             self.weights.borrowed(),
@@ -3727,6 +3967,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn fill_reusable_map_weights(&mut self) -> Result<bool> {
+        if self
+            .fe_projector
+            .as_ref()
+            .is_some_and(ReusableLinearMapProjector::borrows_raw_weights)
+        {
+            return Ok(true);
+        }
         let rows = self.response.len();
         let reused = self.map_weights.capacity() >= rows;
         self.map_weights.resize(rows, 0.0);
@@ -3787,18 +4034,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 if columns == 0 {
                     RetainedWithinStorage::Dense(values)
                 } else {
-                    if columns > self.fe_projector.max_rhs() {
+                    if self.config.absorb.solver == FeSolverKind::Map
+                        && columns > self.reusable_map_max_rhs()?
+                    {
                         return Err(invalid_argument(
                             "weighted-linear reusable dense MAP projection exceeds its fixed workspace",
                         ));
                     }
                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.fe_projector.absorb(
-                            &self.map_weights,
-                            values,
-                            self.config.absorb.map,
-                            self.prepared.fit_has_absorbed_intercept(),
-                        )?
+                        self.absorb_reusable_map(values)?
                     } else {
                         self.prepared.fit_absorb_matrix(
                             self.weights.borrowed(),
@@ -3819,7 +4063,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
             RetainedWithinStorage::Scratch(mut scratch) => {
                 let block_width = self.config.execution.poolsize.max(1).min(columns.max(1));
-                if block_width > self.fe_projector.max_rhs() {
+                if self.config.absorb.solver == FeSolverKind::Map
+                    && block_width > self.reusable_map_max_rhs()?
+                {
                     return Err(invalid_argument(
                         "weighted-linear reusable scratch MAP projection exceeds its fixed workspace",
                     ));
@@ -3852,12 +4098,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         std::mem::take(&mut self.projection_block),
                     )?;
                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.fe_projector.absorb(
-                            &self.map_weights,
-                            raw,
-                            self.config.absorb.map,
-                            self.prepared.fit_has_absorbed_intercept(),
-                        )?
+                        self.absorb_reusable_map(raw)?
                     } else {
                         self.prepared.fit_absorb_matrix(
                             self.weights.borrowed(),
@@ -3908,6 +4149,125 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             },
         });
         Ok(workspace_reused)
+    }
+
+    /// Re-project the prior within controls and the exact response-delta warm
+    /// start as one categorical MAP block. If `r_old = M_old z_old`, then
+    /// `M_new(r_old + z_new - z_old) = M_new z_new`; no approximation enters
+    /// the changing-weight solve. The retained dense allocation is expanded
+    /// and compacted in place, so warmed PPML iterations need no second
+    /// observation-sized projection matrix.
+    fn reproject_retained_with_response_in_place(&mut self) -> Result<(bool, SolveReport)> {
+        if !self
+            .fe_projector
+            .as_ref()
+            .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+        {
+            return Err(invalid_argument(
+                "fused weighted-linear projection requires the PPML categorical MAP route",
+            ));
+        }
+        let prior = self.within.take().ok_or_else(|| {
+            invalid_argument("fused weighted-linear projection has no retained design")
+        })?;
+        let rows = prior.storage.rows();
+        let columns = prior.storage.columns();
+        let RetainedWithinDesign {
+            storage,
+            stored_generated_columns,
+            active_positions,
+            reference_norms,
+            within_norms,
+            ..
+        } = prior;
+        let RetainedWithinStorage::Dense(matrix) = storage else {
+            return Err(invalid_argument(
+                "fused weighted-linear projection requires fast dense storage",
+            ));
+        };
+        if rows != self.response.len()
+            || self.frozen_workspace.response.len() != rows
+            || self.map_weights.len() != rows
+            || reference_norms.len() != columns
+            || within_norms.len() != columns
+        {
+            return Err(invalid_argument(
+                "fused weighted-linear response/design state is not aligned",
+            ));
+        }
+        let stride = columns
+            .checked_add(1)
+            .ok_or_else(|| allocation("fused weighted-linear stride overflows"))?;
+        let elements = checked_elements(rows, stride)?;
+        let mut values = matrix.into_row_major();
+        let workspace_reused = values.capacity() >= elements;
+        values
+            .try_reserve(elements.saturating_sub(values.len()))
+            .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
+        values.resize(elements, 0.0);
+        for row in (0..rows).rev() {
+            let source = row
+                .checked_mul(columns)
+                .ok_or_else(|| allocation("fused weighted-linear source offset overflows"))?;
+            let target = row
+                .checked_mul(stride)
+                .ok_or_else(|| allocation("fused weighted-linear target offset overflows"))?;
+            if columns > 0 {
+                values.copy_within(source..source + columns, target + 1);
+            }
+            let response =
+                self.frozen_workspace.response[row] + (self.response[row] - self.map_weights[row]);
+            if !response.is_finite() {
+                return Err(invalid_data(
+                    "fused weighted-linear response warm start is nonfinite",
+                ));
+            }
+            values[target] = response;
+        }
+
+        let combined = DenseMatrix::from_row_major(rows, stride, values)?;
+        let absorbed = self.absorb_reusable_map(combined)?;
+        if !absorbed.report().certified() {
+            return Err(invalid_data(
+                "fused weighted-linear response/design projection did not certify",
+            ));
+        }
+        let (combined, report) = absorbed.into_parts();
+        let mut values = combined.into_row_major();
+        resize_zeroed(
+            &mut self.frozen_workspace.response,
+            rows,
+            "unable to retain fused weighted-linear response",
+        )?;
+        for row in 0..rows {
+            let source = row
+                .checked_mul(stride)
+                .ok_or_else(|| allocation("fused weighted-linear split offset overflows"))?;
+            self.frozen_workspace.response[row] = values[source];
+            if columns > 0 {
+                let target = row
+                    .checked_mul(columns)
+                    .ok_or_else(|| allocation("fused weighted-linear compact offset overflows"))?;
+                values.copy_within(source + 1..source + stride, target);
+            }
+        }
+        values.truncate(checked_elements(rows, columns)?);
+        self.within = Some(RetainedWithinDesign {
+            storage: RetainedWithinStorage::Dense(DenseMatrix::from_row_major(
+                rows, columns, values,
+            )?),
+            stored_generated_columns,
+            active_positions,
+            reference_norms,
+            within_norms,
+            generations: WithinGenerations::from_session(self.generations),
+            certificate: LinearWithinDesignCertificate {
+                left_inverse_relative_infinity_norm: f64::INFINITY,
+                right_inverse_relative_infinity_norm: f64::INFINITY,
+                passed: false,
+            },
+        });
+        Ok((workspace_reused, report))
     }
 
     fn rebuild_predictors(

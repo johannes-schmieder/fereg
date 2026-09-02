@@ -19,6 +19,43 @@
         "plugin-evidence/{platform_plugin}.sha256"
       ]
     },
+    "scc-dev-ols": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/fereg_smoke.do"
+      ],
+      "timeout_seconds": 1800,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
+    "scc-dev-ppml": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/feppml_smoke.do"
+      ],
+      "timeout_seconds": 1800,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
+    "scc-dev-shared": {
+      "driver": "fereg-fixtures",
+      "build_plugin": true,
+      "fixtures": [
+        "ci/fereg_smoke.do",
+        "ci/feppml_smoke.do"
+      ],
+      "timeout_seconds": 1800,
+      "required_outputs": [
+        "plugin-evidence/{platform_plugin}",
+        "plugin-evidence/{platform_plugin}.sha256"
+      ]
+    },
     "syntax": {
       "driver": "fereg-fixtures",
       "build_plugin": false,

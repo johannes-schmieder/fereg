@@ -11,9 +11,17 @@ use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
 
-const PARALLEL_PROJECTION_MIN_ROWS: usize = 65_536;
-const FUSED_PARALLEL_MAX_RHS: usize = 8;
-const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
+use super::map::ReusableMapCapacities;
+
+pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 65_536;
+pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 8;
+pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
+/// Keep the PPML accelerator available through the development matrix's
+/// control-heavy cases. The exact three-matrix state is charged by the PPML
+/// memory planner, so wider fits fall back to the bounded route rather than
+/// allocating this state outside the admitted budget.
+pub(crate) const CATEGORICAL_MAP_ACCELERATOR_MAX_RHS: usize = 64;
+const CATEGORICAL_MAP_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_CONTINUATION_CAP: usize = 4;
 const SD_RECOVERY_LSMR_TOLERANCE_CAP: f64 = 1e-4;
@@ -809,18 +817,38 @@ struct AutoRunOptions {
 struct AutoLsmrPlan {
     config: Option<LsmrConfig>,
     memory_budget: Option<FeSolverMemoryBudget>,
+    skip_map_pilot: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AutoLsmrAttemptAccounting {
+    iterations: usize,
+    setup_seconds: f64,
+    solve_seconds: f64,
+    requested_preconditioner: Option<LsmrPreconditioner>,
+    used_preconditioner: Option<LsmrPreconditioner>,
 }
 
 impl AutoLsmrPlan {
     const DISABLED: Self = Self {
         config: None,
         memory_budget: None,
+        skip_map_pilot: false,
     };
 
     const fn routed(config: LsmrConfig, memory_budget: Option<FeSolverMemoryBudget>) -> Self {
         Self {
             config: Some(config),
             memory_budget,
+            skip_map_pilot: false,
+        }
+    }
+
+    const fn direct_lsmr(config: LsmrConfig, memory_budget: Option<FeSolverMemoryBudget>) -> Self {
+        Self {
+            config: Some(config),
+            memory_budget,
+            skip_map_pilot: true,
         }
     }
 }
@@ -858,18 +886,33 @@ impl BorrowedMapWorkspace {
         rhs_count: usize,
         reservation: &mut R,
     ) -> Result<Self> {
-        let parallel_group_levels = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
-            && rayon::current_num_threads() > 1
-        {
-            design
-                .effects()
-                .iter()
-                .map(crate::fe::BorrowedInterceptEffect::n_levels)
-                .max()
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        Self::new_with_parallelism(
+            design,
+            observation_count,
+            rhs_count,
+            rayon::current_num_threads(),
+            reservation,
+        )
+    }
+
+    fn new_with_parallelism<R: WorkspaceReservation>(
+        design: &BorrowedInterceptFeDesign<'_>,
+        observation_count: usize,
+        rhs_count: usize,
+        parallel_threads: usize,
+        reservation: &mut R,
+    ) -> Result<Self> {
+        let parallel_group_levels =
+            if observation_count >= PARALLEL_PROJECTION_MIN_ROWS && parallel_threads > 1 {
+                design
+                    .effects()
+                    .iter()
+                    .map(crate::fe::BorrowedInterceptEffect::n_levels)
+                    .max()
+                    .unwrap_or(0)
+            } else {
+                0
+            };
         let parallel_group_mean_count = if rhs_count > 1 || parallel_group_levels > 0 {
             parallel_group_levels
                 .checked_mul(rhs_count)
@@ -879,7 +922,7 @@ impl BorrowedMapWorkspace {
         };
         let parallel_dot_sum_count = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
             && rhs_count <= FUSED_PARALLEL_MAX_RHS
-            && rayon::current_num_threads() > 1
+            && parallel_threads > 1
         {
             observation_count
                 .div_ceil(PARALLEL_DOT_CHUNK_ROWS)
@@ -953,6 +996,1276 @@ impl BorrowedMapWorkspace {
             },
         })
     }
+
+    fn set_rhs_count(&mut self, rhs_count: usize) -> Result<()> {
+        for values in [
+            &mut self.reference_norms,
+            &mut self.residual_norms,
+            &mut self.rhs_scales,
+            &mut self.rhs_relative_infinity_norms,
+            &mut self.value_scales,
+            &mut self.group_sums,
+            &mut self.group_corrections,
+        ] {
+            if rhs_count > values.capacity() {
+                return Err(invalid_argument(
+                    "reusable categorical MAP RHS workspaces exceed their fixed capacity",
+                ));
+            }
+            values.resize(rhs_count, 0.0);
+        }
+        Ok(())
+    }
+}
+
+/// PPML-owned reusable categorical MAP state.
+///
+/// Unlike the generic reusable projector, this session borrows finalized
+/// intercept-only codes and membership and therefore reduces every local
+/// projection to weighted group means.  Its RHS-sized and parallel buffers
+/// are allocated once at construction and resized only within those fixed
+/// capacities on later changing-weight solves.
+pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
+    design: BorrowedInterceptFeDesign<'a>,
+    workspace: BorrowedMapWorkspace,
+    two_fe_pcg: Option<TwoFePcgWorkspace>,
+    accelerator_x0: Option<DenseMatrix>,
+    accelerator_x1: Option<DenseMatrix>,
+    accelerator_x2: Option<DenseMatrix>,
+    cg_residual_square: Vec<f64>,
+    cg_initial_residual_square: Vec<f64>,
+    cg_next_residual_square: Vec<f64>,
+    cg_direction_projection: Vec<f64>,
+    cg_ratio: Vec<f64>,
+    max_rhs: usize,
+    max_level_members: usize,
+}
+
+/// Reusable level-space PCG state for two-way categorical graphs.
+///
+/// Eliminating the larger effect turns two-way demeaning into a weighted
+/// Schur-complement system on the smaller effect. This is still an
+/// acceleration of the requested MAP projection: the published result is
+/// reconstructed in observation space and must pass the ordinary MAP FE
+/// certificate before it can leave the solver.
+struct TwoFePcgWorkspace {
+    left_effect: usize,
+    right_effect: usize,
+    left_weights: Vec<f64>,
+    right_weights: Vec<f64>,
+    left_rhs: Vec<f64>,
+    left_work: Vec<f64>,
+    solution: Vec<f64>,
+    residual: Vec<f64>,
+    direction: Vec<f64>,
+    operator: Vec<f64>,
+}
+
+impl TwoFePcgWorkspace {
+    fn new(
+        design: &BorrowedInterceptFeDesign<'_>,
+        max_rhs: usize,
+        reservation: &mut impl WorkspaceReservation,
+    ) -> Result<Self> {
+        let left_effect =
+            usize::from(design.effects()[1].n_levels() > design.effects()[0].n_levels());
+        let right_effect = 1 - left_effect;
+        let left_levels = design.effects()[left_effect].n_levels();
+        let right_levels = design.effects()[right_effect].n_levels();
+        let left_cells = left_levels
+            .checked_mul(max_rhs)
+            .ok_or_else(|| allocation("two-FE PCG left workspace dimensions overflow"))?;
+        let right_cells = right_levels
+            .checked_mul(max_rhs)
+            .ok_or_else(|| allocation("two-FE PCG right workspace dimensions overflow"))?;
+        Ok(Self {
+            left_effect,
+            right_effect,
+            left_weights: reserved_zeros(
+                left_levels,
+                reservation,
+                "unable to reserve two-FE PCG left weights",
+            )?,
+            right_weights: reserved_zeros(
+                right_levels,
+                reservation,
+                "unable to reserve two-FE PCG right weights",
+            )?,
+            left_rhs: reserved_zeros(
+                left_cells,
+                reservation,
+                "unable to reserve two-FE PCG left RHS",
+            )?,
+            left_work: reserved_zeros(
+                left_cells,
+                reservation,
+                "unable to reserve two-FE PCG left work",
+            )?,
+            solution: reserved_zeros(
+                right_cells,
+                reservation,
+                "unable to reserve two-FE PCG solution",
+            )?,
+            residual: reserved_zeros(
+                right_cells,
+                reservation,
+                "unable to reserve two-FE PCG residual",
+            )?,
+            direction: reserved_zeros(
+                right_cells,
+                reservation,
+                "unable to reserve two-FE PCG direction",
+            )?,
+            operator: reserved_zeros(
+                right_cells,
+                reservation,
+                "unable to reserve two-FE PCG operator product",
+            )?,
+        })
+    }
+
+    fn capacity_elements(&self) -> usize {
+        self.left_weights
+            .capacity()
+            .saturating_add(self.right_weights.capacity())
+            .saturating_add(self.left_rhs.capacity())
+            .saturating_add(self.left_work.capacity())
+            .saturating_add(self.solution.capacity())
+            .saturating_add(self.residual.capacity())
+            .saturating_add(self.direction.capacity())
+            .saturating_add(self.operator.capacity())
+    }
+}
+
+impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn new(
+        design: BorrowedInterceptFeDesign<'a>,
+        max_rhs: usize,
+        parallel_threads: usize,
+    ) -> Result<Self> {
+        if max_rhs == 0 || parallel_threads == 0 {
+            return Err(invalid_argument(
+                "reusable categorical MAP dimensions must be positive",
+            ));
+        }
+        if !matches!(design.effects().len(), 2 | 3) {
+            return Err(invalid_argument(
+                "reusable categorical MAP requires exactly two or three effects",
+            ));
+        }
+        let max_level_members = design
+            .effects()
+            .iter()
+            .flat_map(|effect| {
+                (0..effect.n_levels()).map(|level| effect.level_index().members(level).len())
+            })
+            .max()
+            .unwrap_or(1)
+            .max(1);
+        let mut reservation = SystemWorkspaceReservation;
+        let workspace = BorrowedMapWorkspace::new_with_parallelism(
+            &design,
+            design.nobs(),
+            max_rhs,
+            parallel_threads,
+            &mut reservation,
+        )?;
+        let two_fe_pcg = if design.effects().len() == 2
+            && design.nobs() >= 128
+            && max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS
+        {
+            Some(TwoFePcgWorkspace::new(&design, max_rhs, &mut reservation)?)
+        } else {
+            None
+        };
+        let (accelerator_x0, accelerator_x1, accelerator_x2) =
+            if max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS && two_fe_pcg.is_none() {
+                (
+                    Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
+                    Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
+                    Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
+                )
+            } else {
+                (None, None, None)
+            };
+        let cg_scalar_rhs = usize::from(accelerator_x0.is_some() || two_fe_pcg.is_some()) * max_rhs;
+        Ok(Self {
+            design,
+            workspace,
+            two_fe_pcg,
+            accelerator_x0,
+            accelerator_x1,
+            accelerator_x2,
+            cg_residual_square: reserved_zeros(
+                cg_scalar_rhs,
+                &mut reservation,
+                "unable to reserve reusable categorical CG residual norms",
+            )?,
+            cg_initial_residual_square: reserved_zeros(
+                cg_scalar_rhs,
+                &mut reservation,
+                "unable to reserve reusable categorical CG initial norms",
+            )?,
+            cg_next_residual_square: reserved_zeros(
+                cg_scalar_rhs,
+                &mut reservation,
+                "unable to reserve reusable categorical CG updated norms",
+            )?,
+            cg_direction_projection: reserved_zeros(
+                cg_scalar_rhs,
+                &mut reservation,
+                "unable to reserve reusable categorical CG direction products",
+            )?,
+            cg_ratio: reserved_zeros(
+                cg_scalar_rhs,
+                &mut reservation,
+                "unable to reserve reusable categorical CG recurrence ratios",
+            )?,
+            max_rhs,
+            max_level_members,
+        })
+    }
+
+    pub(crate) const fn max_rhs(&self) -> usize {
+        self.max_rhs
+    }
+
+    pub(crate) fn capacities(&self) -> ReusableMapCapacities {
+        ReusableMapCapacities {
+            rhs: self.max_rhs,
+            max_channels: 1,
+            max_level_members: self.max_level_members,
+            reference_norms: self.workspace.reference_norms.capacity(),
+            residual_norms: self.workspace.residual_norms.capacity(),
+            rhs_scales: self.workspace.rhs_scales.capacity(),
+            norm_scales: self.workspace.value_scales.capacity(),
+            norm_sums: self.workspace.rhs_relative_infinity_norms.capacity(),
+            group_sums: self.workspace.group_sums.capacity(),
+            group_corrections: self.workspace.group_corrections.capacity(),
+            projection_gram: self.workspace.parallel_group_weights.capacity(),
+            projection_rhs: self.workspace.parallel_group_means.capacity(),
+            certificate_columns: self.workspace.parallel_dot_sums.capacity(),
+            certificate_basis: 0,
+            accelerator_state: self
+                .two_fe_pcg
+                .as_ref()
+                .map_or(0, TwoFePcgWorkspace::capacity_elements)
+                .saturating_add(
+                    self.accelerator_x0
+                        .as_ref()
+                        .map_or(0, DenseMatrix::storage_capacity),
+                )
+                .saturating_add(
+                    self.accelerator_x1
+                        .as_ref()
+                        .map_or(0, DenseMatrix::storage_capacity),
+                )
+                .saturating_add(
+                    self.accelerator_x2
+                        .as_ref()
+                        .map_or(0, DenseMatrix::storage_capacity),
+                )
+                .saturating_add(self.cg_residual_square.capacity())
+                .saturating_add(self.cg_initial_residual_square.capacity())
+                .saturating_add(self.cg_next_residual_square.capacity())
+                .saturating_add(self.cg_direction_projection.capacity())
+                .saturating_add(self.cg_ratio.capacity()),
+            topology_effects: 0,
+            topology_codes: 0,
+            topology_slope_vectors: 0,
+            topology_slope_values: 0,
+            topology_level_offsets: 0,
+            topology_level_observations: 0,
+            topology_resident_bytes: 0,
+        }
+    }
+
+    pub(crate) fn absorb(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        mut values: DenseMatrix,
+        config: MapConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        validate_config(config)?;
+        let rhs_count = values.ncols();
+        if values.nrows() != self.design.nobs()
+            || values.nrows() == 0
+            || rhs_count == 0
+            || rhs_count > self.max_rhs
+        {
+            return Err(invalid_argument(
+                "reusable categorical MAP inputs exceed their fixed session dimensions",
+            ));
+        }
+        if values.as_slice().iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data(
+                "reusable categorical MAP values must be finite",
+            ));
+        }
+        let weights = validate_weights(weights, values.nrows())?;
+        self.workspace.set_rhs_count(rhs_count)?;
+
+        let setup_started = Instant::now();
+        weighted_column_norms(
+            &values,
+            weights,
+            &mut self.workspace.reference_norms,
+            &mut self.workspace.value_scales,
+            &mut self.workspace.group_sums,
+        )?;
+        let setup_seconds = setup_started.elapsed().as_secs_f64();
+        let solve_started = Instant::now();
+        let initial = certify_initial(
+            &self.design,
+            weights,
+            &values,
+            config.tolerance,
+            &mut self.workspace,
+        )?;
+        if initial.passed {
+            return certified_result(
+                values,
+                SolveStopReason::Certified,
+                0,
+                initial,
+                setup_seconds,
+                solve_started.elapsed().as_secs_f64(),
+            );
+        }
+
+        let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
+        for iteration in 1..=pilot_limit {
+            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                &self.design,
+                weights,
+                &mut values,
+                &mut self.workspace,
+                None,
+                config.symmetric,
+            )?;
+            if iteration % config.check_every == 0 || iteration == pilot_limit {
+                let certificate = certify(
+                    &self.design,
+                    weights,
+                    &values,
+                    config.tolerance,
+                    &mut self.workspace,
+                )?;
+                if certificate.passed {
+                    return certified_result(
+                        values,
+                        SolveStopReason::Certified,
+                        iteration,
+                        certificate,
+                        setup_seconds,
+                        solve_started.elapsed().as_secs_f64(),
+                    );
+                }
+                if iteration != pilot_limit {
+                    continue;
+                }
+                let contraction =
+                    pilot_contraction(initial.relative_two_norm, certificate.relative_two_norm)?
+                        .max(pilot_contraction(
+                            initial.relative_infinity_norm,
+                            certificate.relative_infinity_norm,
+                        )?);
+                if pilot_limit == CATEGORICAL_MAP_PILOT_SWEEPS {
+                    if self.two_fe_pcg.is_some() {
+                        return self.absorb_two_fe_pcg_after_pilot(
+                            weights,
+                            values,
+                            config,
+                            pilot_limit,
+                            contraction,
+                            setup_seconds,
+                            solve_started,
+                        );
+                    }
+                    if self.accelerator_x0.is_none() {
+                        continue;
+                    }
+                    let topology_prefers_cg = self.design.effects().len() == 3;
+                    if topology_prefers_cg || config.tolerance <= 1.1e-12 {
+                        return self.absorb_cg_after_pilot(
+                            weights,
+                            values,
+                            config,
+                            pilot_limit,
+                            contraction,
+                            setup_seconds,
+                            solve_started,
+                        );
+                    }
+                    return self.absorb_accelerated_after_pilot(
+                        weights,
+                        values,
+                        config,
+                        pilot_limit,
+                        contraction,
+                        setup_seconds,
+                        solve_started,
+                    );
+                }
+            }
+        }
+        for iteration in pilot_limit.saturating_add(1)..=config.max_iterations {
+            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                &self.design,
+                weights,
+                &mut values,
+                &mut self.workspace,
+                None,
+                config.symmetric,
+            )?;
+            if iteration % config.check_every == 0 || iteration == config.max_iterations {
+                let certificate = certify(
+                    &self.design,
+                    weights,
+                    &values,
+                    config.tolerance,
+                    &mut self.workspace,
+                )?;
+                if certificate.passed {
+                    return certified_result(
+                        values,
+                        SolveStopReason::Certified,
+                        iteration,
+                        certificate,
+                        setup_seconds,
+                        solve_started.elapsed().as_secs_f64(),
+                    );
+                }
+            }
+        }
+        Err(invalid_data(
+            "reusable categorical MAP exhausted its iteration budget without certification",
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn absorb_two_fe_pcg_after_pilot(
+        &mut self,
+        weights: ValidatedWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+        completed_pilot_iterations: usize,
+        pilot_contraction: f64,
+        setup_seconds: f64,
+        solve_started: Instant,
+    ) -> Result<CertifiedBorrowedMap> {
+        let mut graph = self
+            .two_fe_pcg
+            .take()
+            .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
+        let result = absorb_two_fe_pcg_reusing(
+            &self.design,
+            weights,
+            values,
+            config,
+            completed_pilot_iterations,
+            pilot_contraction,
+            setup_seconds,
+            solve_started,
+            self.max_rhs,
+            &mut graph,
+            &mut self.workspace,
+            &mut self.cg_residual_square,
+            &mut self.cg_initial_residual_square,
+            &mut self.cg_next_residual_square,
+            &mut self.cg_direction_projection,
+            &mut self.cg_ratio,
+        );
+        self.two_fe_pcg = Some(graph);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn absorb_cg_after_pilot(
+        &mut self,
+        weights: ValidatedWeights<'_>,
+        mut values: DenseMatrix,
+        config: MapConfig,
+        completed_pilot_iterations: usize,
+        pilot_contraction: f64,
+        setup_seconds: f64,
+        solve_started: Instant,
+    ) -> Result<CertifiedBorrowedMap> {
+        let rhs_count = values.ncols();
+        for scalars in [
+            &mut self.cg_residual_square,
+            &mut self.cg_initial_residual_square,
+            &mut self.cg_next_residual_square,
+            &mut self.cg_direction_projection,
+            &mut self.cg_ratio,
+        ] {
+            if rhs_count > scalars.capacity() {
+                return Err(invalid_argument(
+                    "reusable categorical CG RHS workspaces exceed fixed capacity",
+                ));
+            }
+            scalars.resize(rhs_count, 0.0);
+        }
+        let residual = self
+            .accelerator_x0
+            .as_mut()
+            .ok_or_else(|| invalid_data("categorical CG residual state is unavailable"))?;
+        let direction = self
+            .accelerator_x1
+            .as_mut()
+            .ok_or_else(|| invalid_data("categorical CG direction state is unavailable"))?;
+        let projection = self
+            .accelerator_x2
+            .as_mut()
+            .ok_or_else(|| invalid_data("categorical CG projection state is unavailable"))?;
+        residual.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
+        direction.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
+        projection.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
+
+        borrowed_symmetric_projection_into_recording(
+            &self.design,
+            weights,
+            &values,
+            residual,
+            &mut self.workspace,
+            None,
+        )?;
+        direction
+            .as_mut_slice()
+            .copy_from_slice(residual.as_slice());
+        weighted_dot_columns_into(
+            residual,
+            residual,
+            weights,
+            &mut self.cg_residual_square,
+            &mut self.workspace.group_corrections,
+            &mut self.workspace.parallel_dot_sums,
+        )?;
+        self.cg_initial_residual_square
+            .copy_from_slice(&self.cg_residual_square);
+
+        let cg_tolerance = config.tolerance;
+        let mut iterations = completed_pilot_iterations;
+        while iterations < config.max_iterations {
+            borrowed_symmetric_projection_into_recording(
+                &self.design,
+                weights,
+                direction,
+                projection,
+                &mut self.workspace,
+                None,
+            )?;
+            weighted_dot_columns_into(
+                direction,
+                projection,
+                weights,
+                &mut self.cg_direction_projection,
+                &mut self.workspace.group_corrections,
+                &mut self.workspace.parallel_dot_sums,
+            )?;
+            if cg_ratios_into(
+                &self.cg_residual_square,
+                &self.cg_direction_projection,
+                &mut self.cg_ratio,
+                "reusable categorical CG direction denominator is nonfinite or nonpositive",
+            )
+            .is_err()
+            {
+                break;
+            }
+            cg_update_solution_and_residual(
+                &mut values,
+                residual,
+                direction,
+                projection,
+                &self.cg_ratio,
+            )?;
+            weighted_dot_columns_into(
+                residual,
+                residual,
+                weights,
+                &mut self.cg_next_residual_square,
+                &mut self.workspace.group_corrections,
+                &mut self.workspace.parallel_dot_sums,
+            )?;
+            iterations += 1;
+            let recurrence = cg_largest_relative_residual(
+                &self.cg_next_residual_square,
+                &self.cg_initial_residual_square,
+            )?;
+            if iterations % config.check_every == 0
+                || recurrence <= cg_tolerance.sqrt()
+                || iterations == config.max_iterations
+            {
+                let mut certificate = certify(
+                    &self.design,
+                    weights,
+                    &values,
+                    cg_tolerance,
+                    &mut self.workspace,
+                )?;
+                if certificate.passed {
+                    if iterations < config.max_iterations {
+                        borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                            &self.design,
+                            weights,
+                            &mut values,
+                            &mut self.workspace,
+                            None,
+                            config.symmetric,
+                        )?;
+                        iterations += 1;
+                        certificate = certify(
+                            &self.design,
+                            weights,
+                            &values,
+                            cg_tolerance,
+                            &mut self.workspace,
+                        )?;
+                    }
+                }
+                if certificate.passed {
+                    let mut result = certified_result(
+                        values,
+                        SolveStopReason::Certified,
+                        iterations,
+                        certificate,
+                        setup_seconds,
+                        solve_started.elapsed().as_secs_f64(),
+                    )?;
+                    result.report.pilot_iterations = completed_pilot_iterations;
+                    result.report.pilot_contraction = pilot_contraction;
+                    return Ok(result);
+                }
+            }
+            if cg_ratios_into(
+                &self.cg_next_residual_square,
+                &self.cg_residual_square,
+                &mut self.cg_ratio,
+                "reusable categorical CG residual denominator is nonfinite or nonpositive",
+            )
+            .is_err()
+            {
+                break;
+            }
+            cg_update_direction(direction, residual, &self.cg_ratio)?;
+            std::mem::swap(
+                &mut self.cg_residual_square,
+                &mut self.cg_next_residual_square,
+            );
+        }
+
+        self.absorb_accelerated_after_pilot(
+            weights,
+            values,
+            config,
+            iterations,
+            pilot_contraction,
+            setup_seconds,
+            solve_started,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn absorb_accelerated_after_pilot(
+        &mut self,
+        weights: ValidatedWeights<'_>,
+        mut values: DenseMatrix,
+        config: MapConfig,
+        mut iterations: usize,
+        pilot_contraction: f64,
+        setup_seconds: f64,
+        solve_started: Instant,
+    ) -> Result<CertifiedBorrowedMap> {
+        let rhs_count = values.ncols();
+        let x0 = self
+            .accelerator_x0
+            .as_mut()
+            .ok_or_else(|| invalid_data("categorical MAP accelerator state is unavailable"))?;
+        let x1 = self
+            .accelerator_x1
+            .as_mut()
+            .ok_or_else(|| invalid_data("categorical MAP accelerator state is unavailable"))?;
+        x0.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
+        x1.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
+        while iterations < config.max_iterations {
+            x0.as_mut_slice().copy_from_slice(values.as_slice());
+            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                &self.design,
+                weights,
+                &mut values,
+                &mut self.workspace,
+                None,
+                config.symmetric,
+            )?;
+            iterations += 1;
+            if iterations == config.max_iterations {
+                break;
+            }
+            x1.as_mut_slice().copy_from_slice(values.as_slice());
+            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                &self.design,
+                weights,
+                &mut values,
+                &mut self.workspace,
+                None,
+                config.symmetric,
+            )?;
+            iterations += 1;
+
+            let baseline = certify(
+                &self.design,
+                weights,
+                &values,
+                config.tolerance,
+                &mut self.workspace,
+            )?;
+            if baseline.passed {
+                let mut result = certified_result(
+                    values,
+                    SolveStopReason::Certified,
+                    iterations,
+                    baseline,
+                    setup_seconds,
+                    solve_started.elapsed().as_secs_f64(),
+                )?;
+                result.report.pilot_iterations = CATEGORICAL_MAP_PILOT_SWEEPS;
+                result.report.pilot_contraction = pilot_contraction;
+                return Ok(result);
+            }
+
+            if borrowed_irons_tuck_candidate_in_place(
+                x0,
+                x1,
+                &values,
+                &mut self.workspace.group_sums,
+                &mut self.workspace.group_corrections,
+                &mut self.workspace.value_scales,
+            )? {
+                let candidate = certify(
+                    &self.design,
+                    weights,
+                    x0,
+                    config.tolerance,
+                    &mut self.workspace,
+                )?;
+                if candidate.relative_two_norm < baseline.relative_two_norm
+                    && candidate.relative_infinity_norm <= baseline.relative_infinity_norm
+                {
+                    values.as_mut_slice().copy_from_slice(x0.as_slice());
+                    if candidate.passed {
+                        let mut result = certified_result(
+                            values,
+                            SolveStopReason::Certified,
+                            iterations,
+                            candidate,
+                            setup_seconds,
+                            solve_started.elapsed().as_secs_f64(),
+                        )?;
+                        result.report.pilot_iterations = CATEGORICAL_MAP_PILOT_SWEEPS;
+                        result.report.pilot_contraction = pilot_contraction;
+                        return Ok(result);
+                    }
+                }
+            }
+        }
+
+        let certificate = certify(
+            &self.design,
+            weights,
+            &values,
+            config.tolerance,
+            &mut self.workspace,
+        )?;
+        if certificate.passed {
+            let mut result = certified_result(
+                values,
+                SolveStopReason::Certified,
+                iterations,
+                certificate,
+                setup_seconds,
+                solve_started.elapsed().as_secs_f64(),
+            )?;
+            result.report.pilot_iterations = CATEGORICAL_MAP_PILOT_SWEEPS;
+            result.report.pilot_contraction = pilot_contraction;
+            return Ok(result);
+        }
+        Err(invalid_data(
+            "accelerated reusable categorical MAP exhausted its iteration budget without certification",
+        ))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn absorb_two_fe_pcg_reusing(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    mut values: DenseMatrix,
+    config: MapConfig,
+    completed_pilot_iterations: usize,
+    pilot_contraction: f64,
+    setup_seconds: f64,
+    solve_started: Instant,
+    stride: usize,
+    graph: &mut TwoFePcgWorkspace,
+    certificate_workspace: &mut BorrowedMapWorkspace,
+    residual_square: &mut Vec<f64>,
+    active_rhs_state: &mut Vec<f64>,
+    next_residual_square: &mut Vec<f64>,
+    direction_projection: &mut Vec<f64>,
+    ratio: &mut Vec<f64>,
+) -> Result<CertifiedBorrowedMap> {
+    let rhs_count = values.ncols();
+    let left = &design.effects()[graph.left_effect];
+    let right = &design.effects()[graph.right_effect];
+    let left_levels = left.n_levels();
+    let right_levels = right.n_levels();
+    if design.effects().len() != 2
+        || stride < rhs_count
+        || graph.left_weights.len() != left_levels
+        || graph.right_weights.len() != right_levels
+        || graph.left_rhs.len() != left_levels.saturating_mul(stride)
+        || graph.left_work.len() != left_levels.saturating_mul(stride)
+        || graph.solution.len() != right_levels.saturating_mul(stride)
+        || graph.residual.len() != right_levels.saturating_mul(stride)
+        || graph.direction.len() != right_levels.saturating_mul(stride)
+        || graph.operator.len() != right_levels.saturating_mul(stride)
+    {
+        return Err(invalid_argument(
+            "two-FE categorical MAP PCG workspace dimensions are inconsistent",
+        ));
+    }
+    for scalars in [
+        &mut *residual_square,
+        &mut *active_rhs_state,
+        &mut *next_residual_square,
+        &mut *direction_projection,
+        &mut *ratio,
+    ] {
+        if rhs_count > scalars.capacity() {
+            return Err(invalid_argument(
+                "two-FE categorical MAP PCG scalar workspace exceeds fixed capacity",
+            ));
+        }
+        scalars.resize(rhs_count, 0.0);
+    }
+
+    graph.left_weights.fill(0.0);
+    graph.right_weights.fill(0.0);
+    graph.left_rhs.fill(0.0);
+    graph.left_work.fill(0.0);
+    graph.solution.fill(0.0);
+    graph.residual.fill(0.0);
+    graph.direction.fill(0.0);
+    graph.operator.fill(0.0);
+    let left_codes = left.codes();
+    let right_codes = right.codes();
+    for row in 0..values.nrows() {
+        let weight = weights.normalized(row);
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        graph.left_weights[left_level] += weight;
+        graph.right_weights[right_level] += weight;
+        for rhs in 0..rhs_count {
+            let term = weight * values[(row, rhs)];
+            graph.left_rhs[left_level * stride + rhs] += term;
+            graph.residual[right_level * stride + rhs] += term;
+        }
+    }
+    if graph
+        .left_weights
+        .iter()
+        .chain(&graph.right_weights)
+        .any(|weight| !weight.is_finite() || *weight <= 0.0)
+        || graph
+            .left_rhs
+            .iter()
+            .chain(&graph.residual)
+            .any(|value| !value.is_finite())
+    {
+        return Err(invalid_data(
+            "two-FE categorical MAP PCG group state is invalid",
+        ));
+    }
+    for level in 0..left_levels {
+        let denominator = graph.left_weights[level];
+        for rhs in 0..rhs_count {
+            graph.left_rhs[level * stride + rhs] /= denominator;
+        }
+    }
+    for row in 0..values.nrows() {
+        let weight = weights.normalized(row);
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        for rhs in 0..rhs_count {
+            graph.residual[right_level * stride + rhs] -=
+                weight * graph.left_rhs[left_level * stride + rhs];
+        }
+    }
+    for level in 0..right_levels {
+        let denominator = graph.right_weights[level];
+        for rhs in 0..rhs_count {
+            let index = level * stride + rhs;
+            let residual = graph.residual[index];
+            graph.direction[index] = residual / denominator;
+            residual_square[rhs] = residual.mul_add(graph.direction[index], residual_square[rhs]);
+        }
+    }
+    if residual_square
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
+        return Err(invalid_data(
+            "two-FE categorical MAP PCG initial residual is invalid",
+        ));
+    }
+    let remaining_iterations = config
+        .max_iterations
+        .saturating_sub(completed_pilot_iterations);
+    let map_fallback_reserve = remaining_iterations / 4;
+    let pcg_iteration_limit = config.max_iterations.saturating_sub(map_fallback_reserve);
+    let mut iterations = completed_pilot_iterations;
+    let mut active_rhs = 0_usize;
+    active_rhs_state.fill(0.0);
+    for rhs in 0..rhs_count {
+        if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance)? {
+            residual_square[rhs] = 0.0;
+            for level in 0..right_levels {
+                let index = level * stride + rhs;
+                graph.residual[index] = 0.0;
+                graph.direction[index] = 0.0;
+            }
+        } else {
+            active_rhs_state[rhs] = 1.0;
+            active_rhs += 1;
+        }
+    }
+    let mut reconstruct = active_rhs == 0;
+    let mut breakdown = false;
+    while !reconstruct && iterations < pcg_iteration_limit {
+        apply_two_fe_schur(
+            design,
+            weights,
+            graph.left_effect,
+            graph.right_effect,
+            &graph.left_weights,
+            &graph.right_weights,
+            &mut graph.left_work,
+            &mut graph.operator,
+            &graph.direction,
+            rhs_count,
+            stride,
+        )?;
+        direction_projection.fill(0.0);
+        for level in 0..right_levels {
+            for rhs in 0..rhs_count {
+                let index = level * stride + rhs;
+                direction_projection[rhs] = graph.direction[index]
+                    .mul_add(graph.operator[index], direction_projection[rhs]);
+            }
+        }
+        for rhs in 0..rhs_count {
+            if active_rhs_state[rhs] == 0.0 {
+                ratio[rhs] = 0.0;
+                continue;
+            }
+            let numerator = residual_square[rhs];
+            let denominator = direction_projection[rhs];
+            if numerator == 0.0 {
+                ratio[rhs] = 0.0;
+            } else if numerator.is_finite()
+                && numerator > 0.0
+                && denominator.is_finite()
+                && denominator > 0.0
+            {
+                ratio[rhs] = numerator / denominator;
+            } else {
+                breakdown = true;
+                break;
+            }
+        }
+        if breakdown {
+            break;
+        }
+        for level in 0..right_levels {
+            for rhs in 0..rhs_count {
+                let index = level * stride + rhs;
+                graph.solution[index] =
+                    ratio[rhs].mul_add(graph.direction[index], graph.solution[index]);
+                graph.residual[index] =
+                    (-ratio[rhs]).mul_add(graph.operator[index], graph.residual[index]);
+            }
+        }
+        iterations += 1;
+        next_residual_square.fill(0.0);
+        for level in 0..right_levels {
+            let denominator = graph.right_weights[level];
+            for rhs in 0..rhs_count {
+                let index = level * stride + rhs;
+                let preconditioned = graph.residual[index] / denominator;
+                next_residual_square[rhs] =
+                    graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
+            }
+        }
+        if next_residual_square
+            .iter()
+            .any(|value| !value.is_finite() || *value < 0.0)
+        {
+            breakdown = true;
+            break;
+        }
+        for rhs in 0..rhs_count {
+            if active_rhs_state[rhs] != 0.0
+                && two_fe_pcg_rhs_ready(
+                    graph,
+                    certificate_workspace,
+                    rhs,
+                    stride,
+                    config.tolerance,
+                )?
+            {
+                active_rhs_state[rhs] = 0.0;
+                next_residual_square[rhs] = 0.0;
+                active_rhs -= 1;
+                for level in 0..right_levels {
+                    let index = level * stride + rhs;
+                    graph.residual[index] = 0.0;
+                    graph.direction[index] = 0.0;
+                }
+            }
+        }
+        reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
+        if reconstruct {
+            residual_square.copy_from_slice(next_residual_square);
+            break;
+        }
+        for rhs in 0..rhs_count {
+            if active_rhs_state[rhs] == 0.0 {
+                ratio[rhs] = 0.0;
+                continue;
+            }
+            ratio[rhs] = if residual_square[rhs] == 0.0 {
+                0.0
+            } else {
+                next_residual_square[rhs] / residual_square[rhs]
+            };
+            if !ratio[rhs].is_finite() || ratio[rhs] < 0.0 {
+                breakdown = true;
+                break;
+            }
+        }
+        if breakdown {
+            break;
+        }
+        for level in 0..right_levels {
+            let denominator = graph.right_weights[level];
+            for rhs in 0..rhs_count {
+                if active_rhs_state[rhs] == 0.0 {
+                    continue;
+                }
+                let index = level * stride + rhs;
+                let preconditioned = graph.residual[index] / denominator;
+                graph.direction[index] =
+                    preconditioned.mul_add(1.0, ratio[rhs] * graph.direction[index]);
+            }
+        }
+        residual_square.copy_from_slice(next_residual_square);
+    }
+
+    if reconstruct || iterations > completed_pilot_iterations {
+        reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values, rhs_count, stride)?;
+        let certificate = certify(
+            design,
+            weights,
+            &values,
+            config.tolerance,
+            certificate_workspace,
+        )?;
+        if certificate.passed {
+            let mut result = certified_result(
+                values,
+                SolveStopReason::Certified,
+                iterations,
+                certificate,
+                setup_seconds,
+                solve_started.elapsed().as_secs_f64(),
+            )?;
+            result.report.pilot_iterations = completed_pilot_iterations;
+            result.report.pilot_contraction = pilot_contraction;
+            return Ok(result);
+        }
+    }
+
+    // PCG is an acceleration only. A finite breakdown or a full-certificate
+    // miss continues with ordinary symmetric MAP from the reconstructed
+    // observation-space candidate. One quarter of the original iteration
+    // budget remains reserved for this fail-safe continuation.
+    for iteration in iterations.saturating_add(1)..=config.max_iterations {
+        borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+            design,
+            weights,
+            &mut values,
+            certificate_workspace,
+            None,
+            config.symmetric,
+        )?;
+        if iteration % config.check_every == 0 || iteration == config.max_iterations {
+            let certificate = certify(
+                design,
+                weights,
+                &values,
+                config.tolerance,
+                certificate_workspace,
+            )?;
+            if certificate.passed {
+                let mut result = certified_result(
+                    values,
+                    SolveStopReason::Certified,
+                    iteration,
+                    certificate,
+                    setup_seconds,
+                    solve_started.elapsed().as_secs_f64(),
+                )?;
+                result.report.pilot_iterations = completed_pilot_iterations;
+                result.report.pilot_contraction = pilot_contraction;
+                return Ok(result);
+            }
+        }
+    }
+    let reason = if breakdown {
+        "two-FE categorical MAP PCG broke down and the MAP continuation did not certify"
+    } else {
+        "two-FE categorical MAP PCG exhausted its iteration budget without certification"
+    };
+    Err(invalid_data(reason))
+}
+
+fn apply_two_fe_schur(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    left_effect: usize,
+    right_effect: usize,
+    left_weights: &[f64],
+    right_weights: &[f64],
+    left_work: &mut [f64],
+    operator: &mut [f64],
+    vector: &[f64],
+    rhs_count: usize,
+    stride: usize,
+) -> Result<()> {
+    left_work.fill(0.0);
+    operator.fill(0.0);
+    let left = &design.effects()[left_effect];
+    let right = &design.effects()[right_effect];
+    let left_codes = left.codes();
+    let right_codes = right.codes();
+    for row in 0..design.nobs() {
+        let weight = weights.normalized(row);
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        for rhs in 0..rhs_count {
+            left_work[left_level * stride + rhs] += weight * vector[right_level * stride + rhs];
+        }
+    }
+    for level in 0..left.n_levels() {
+        let denominator = left_weights[level];
+        for rhs in 0..rhs_count {
+            left_work[level * stride + rhs] /= denominator;
+        }
+    }
+    for level in 0..right.n_levels() {
+        for rhs in 0..rhs_count {
+            let index = level * stride + rhs;
+            operator[index] = right_weights[level] * vector[index];
+        }
+    }
+    for row in 0..design.nobs() {
+        let weight = weights.normalized(row);
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        for rhs in 0..rhs_count {
+            operator[right_level * stride + rhs] -= weight * left_work[left_level * stride + rhs];
+        }
+    }
+    if operator.iter().any(|value| !value.is_finite()) {
+        Err(invalid_data(
+            "two-FE categorical MAP PCG operator product is nonfinite",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn two_fe_pcg_rhs_ready(
+    graph: &TwoFePcgWorkspace,
+    certificate_workspace: &BorrowedMapWorkspace,
+    rhs: usize,
+    stride: usize,
+    tolerance: f64,
+) -> Result<bool> {
+    for level in 0..graph.right_weights.len() {
+        let denominator = graph.right_weights[level];
+        let mean = graph.residual[level * stride + rhs] / denominator;
+        let reference = certificate_workspace.reference_norms[rhs];
+        let relative = if reference == 0.0 {
+            if mean == 0.0 {
+                0.0
+            } else {
+                f64::INFINITY
+            }
+        } else {
+            mean.abs() / reference
+        };
+        if !relative.is_finite() || relative > 0.5 * tolerance {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn reconstruct_two_fe_pcg_candidate(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    graph: &mut TwoFePcgWorkspace,
+    values: &mut DenseMatrix,
+    rhs_count: usize,
+    stride: usize,
+) -> Result<()> {
+    graph.left_work.fill(0.0);
+    let left = &design.effects()[graph.left_effect];
+    let right = &design.effects()[graph.right_effect];
+    let left_codes = left.codes();
+    let right_codes = right.codes();
+    for row in 0..design.nobs() {
+        let weight = weights.normalized(row);
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        for rhs in 0..rhs_count {
+            graph.left_work[left_level * stride + rhs] +=
+                weight * graph.solution[right_level * stride + rhs];
+        }
+    }
+    for level in 0..left.n_levels() {
+        let denominator = graph.left_weights[level];
+        for rhs in 0..rhs_count {
+            graph.left_work[level * stride + rhs] = graph.left_rhs[level * stride + rhs]
+                - graph.left_work[level * stride + rhs] / denominator;
+        }
+    }
+    for row in 0..values.nrows() {
+        let left_level = left_codes[row] as usize;
+        let right_level = right_codes[row] as usize;
+        for rhs in 0..rhs_count {
+            values[(row, rhs)] -= graph.left_work[left_level * stride + rhs]
+                + graph.solution[right_level * stride + rhs];
+            if !values[(row, rhs)].is_finite() {
+                return Err(invalid_data(
+                    "two-FE categorical MAP PCG reconstruction is nonfinite",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1096,6 +2409,7 @@ pub(crate) fn absorb_borrowed_intercept_lsmr_certified(
         config.tolerance,
         config.max_iterations,
         config,
+        None,
         retain_coefficients,
     )?;
     if let Some(coefficients) = coefficients {
@@ -1283,6 +2597,7 @@ pub(crate) fn recover_borrowed_intercept_sd_lsmr_coefficients(
             tolerance: scaled_lsmr_tolerance,
             ..lsmr
         },
+        None,
         true,
     )?;
     drop(lsmr_residual);
@@ -1752,6 +3067,35 @@ pub(crate) fn absorb_borrowed_intercept_auto_routed_certified(
     )
 }
 
+/// Prepared categorical fast lane selected from topology known before the
+/// solve. It retains the automatic route's certified CG safety continuation,
+/// but does not pay for a MAP pilot whose result cannot change this decision.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn absorb_borrowed_intercept_auto_direct_lsmr_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
+    empty_design_is_structural_constant: bool,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_auto_with_reservation(
+        design,
+        weights,
+        values,
+        config,
+        AutoLsmrPlan::direct_lsmr(lsmr, solver_memory_budget),
+        AutoRunOptions {
+            empty_design_is_structural_constant,
+            retain_coefficients,
+        },
+        &mut reservation,
+    )
+}
+
 /// Prepared OLS compatibility path: an empty explicit FE design still owns a
 /// structural one-level constant. The global projection uses only the existing
 /// dense RHS plus O(K) workspace; it never materializes N constant codes.
@@ -1947,7 +3291,9 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     let AutoLsmrPlan {
         config: lsmr_config,
         memory_budget: solver_memory_budget,
+        skip_map_pilot,
     } = lsmr_plan;
+    let solver_trace = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
     validate_config(config)?;
     if design.nobs() != values.nrows() {
         return Err(invalid_argument(
@@ -2016,7 +3362,11 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     }
 
     let initial_moment = initial_certificate.relative_two_norm;
-    let pilot_budget = config.max_iterations.min(4);
+    let pilot_budget = if skip_map_pilot {
+        0
+    } else {
+        config.max_iterations.min(4)
+    };
     let pilot_started = Instant::now();
     let mut final_pilot_certificate = initial_certificate;
     for pilot_iteration in 1..=pilot_budget {
@@ -2072,21 +3422,33 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         }
     }
     let pilot_seconds = pilot_started.elapsed().as_secs_f64();
-    let contraction = pilot_contraction(initial_moment, final_pilot_certificate.relative_two_norm)?;
+    let contraction = if skip_map_pilot {
+        0.0
+    } else {
+        pilot_contraction(initial_moment, final_pilot_certificate.relative_two_norm)?
+    };
+    if solver_trace {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=pilot|iterations={pilot_budget}|contraction={contraction:.17e}|initial_rel2={initial_moment:.17e}|pilot_rel2={:.17e}|setup={pilot_setup_seconds:.9}|solve={pilot_seconds:.9}|public_tolerance={:.17e}",
+            final_pilot_certificate.relative_two_norm, config.tolerance,
+        );
+    }
     if pilot_budget == config.max_iterations {
         return Err(invalid_data(
             "borrowed auto exhausted its iteration budget during the MAP pilot",
         ));
     }
 
-    // CG continues the original absorption problem. Keep the raw RHS norms
-    // used by the pilot certificate: recomputing the reference scale from the
-    // already-residualized pilot state makes the same requested tolerance
-    // artificially stricter and can erase the pilot's benefit on slow graphs.
+    // LSMR and any subsequent CG polish continue the original absorption
+    // problem. Keep the raw RHS norms used by the pilot certificate:
+    // recomputing the reference scale from the already-residualized pilot
+    // state makes the same requested tolerance artificially stricter and can
+    // erase the pilot's benefit on slow graphs.
     let original_reference_norms = std::mem::take(&mut workspace.reference_norms);
     drop(workspace);
-    let remaining_iterations = config.max_iterations - pilot_budget;
+    let mut remaining_iterations = config.max_iterations - pilot_budget;
     let mut candidate_failure = None;
+    let mut attempted_lsmr = None;
     let total_fe_coefficients = design.effects().iter().try_fold(0_usize, |total, effect| {
         total
             .checked_add(effect.n_levels())
@@ -2137,7 +3499,11 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
             .is_none_or(|(budget, estimate)| {
                 budget.fits(estimate.lsmr_bytes(resolved_preconditioner))
             });
-        let route = auto_lsmr_route_at_cap(contraction, total_fe_coefficients, direct_lsmr_cap);
+        let route = if skip_map_pilot {
+            AutoLsmrRoute::Direct
+        } else {
+            auto_lsmr_route_at_cap(contraction, total_fe_coefficients, direct_lsmr_cap)
+        };
         if route != AutoLsmrRoute::None && !lsmr_fits {
             candidate_failure = Some(
                 "automatic LSMR route did not fit the joint execution/solver memory plan; selected CG"
@@ -2146,18 +3512,36 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         } else {
             match route {
                 AutoLsmrRoute::Direct => {
+                    let lsmr_tolerance = direct_lsmr_tolerance(config.tolerance);
+                    let lsmr_started = solver_trace.then(Instant::now);
                     match run_borrowed_lsmr(
                         design,
                         weights,
                         &values,
-                        direct_lsmr_tolerance(config.tolerance),
+                        lsmr_tolerance,
                         remaining_iterations,
                         lsmr_config,
+                        Some(&original_reference_norms),
                         retain_coefficients,
                     ) {
                         Ok((lsmr_values, mut report, owned_setup_seconds, lsmr_coefficients))
                             if report.certified() =>
                         {
+                            if solver_trace {
+                                eprintln!(
+                                    "FEREG_SOLVER_TRACE|phase=lsmr|outcome=certified|tolerance={lsmr_tolerance:.17e}|iterations={}|stop={:?}|owned_setup={owned_setup_seconds:.9}|solver_setup={:.9}|solve={:.9}|elapsed={:.9}|absinf={:.17e}|relinf={:.17e}|rel2={:.17e}|normal={:.17e}",
+                                    report.iterations,
+                                    report.stop_reason,
+                                    report.setup_seconds,
+                                    report.solve_seconds,
+                                    lsmr_started
+                                        .map_or(0.0, |started| started.elapsed().as_secs_f64()),
+                                    report.certificate.absolute_infinity_norm,
+                                    report.certificate.relative_infinity_norm,
+                                    report.certificate.relative_two_norm,
+                                    report.normal_equation_residual,
+                                );
+                            }
                             report.requested_solver = FeSolverKind::Auto;
                             report.iterations = report.iterations.saturating_add(pilot_budget);
                             report.pilot_iterations = pilot_budget;
@@ -2179,13 +3563,56 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                                 CertifiedBorrowedMap::from_certified_parts(lsmr_values, report)
                             };
                         }
-                        Ok((_, report, _, _)) => {
+                        Ok((lsmr_values, report, owned_setup_seconds, lsmr_coefficients)) => {
+                            if solver_trace {
+                                eprintln!(
+                                    "FEREG_SOLVER_TRACE|phase=lsmr|outcome=uncertified|tolerance={lsmr_tolerance:.17e}|iterations={}|stop={:?}|owned_setup={owned_setup_seconds:.9}|solver_setup={:.9}|solve={:.9}|elapsed={:.9}|absinf={:.17e}|relinf={:.17e}|rel2={:.17e}|normal={:.17e}",
+                                    report.iterations,
+                                    report.stop_reason,
+                                    report.setup_seconds,
+                                    report.solve_seconds,
+                                    lsmr_started
+                                        .map_or(0.0, |started| started.elapsed().as_secs_f64()),
+                                    report.certificate.absolute_infinity_norm,
+                                    report.certificate.relative_infinity_norm,
+                                    report.certificate.relative_two_norm,
+                                    report.normal_equation_residual,
+                                );
+                            }
+                            remaining_iterations = remaining_iterations
+                                .checked_sub(report.iterations)
+                                .filter(|remaining| *remaining > 0)
+                                .ok_or_else(|| {
+                                    invalid_data(
+                                        "automatic LSMR continuation exhausted the shared iteration budget before CG polish",
+                                    )
+                                })?;
+                            values = lsmr_values;
+                            if let (Some(pilot), Some(lsmr)) =
+                                (retained_coefficients.as_mut(), lsmr_coefficients.as_ref())
+                            {
+                                pilot.add_assign(lsmr, 1.0)?;
+                            }
+                            attempted_lsmr = Some(AutoLsmrAttemptAccounting {
+                                iterations: report.iterations,
+                                setup_seconds: owned_setup_seconds + report.setup_seconds,
+                                solve_seconds: report.solve_seconds,
+                                requested_preconditioner: report.requested_preconditioner,
+                                used_preconditioner: report.used_preconditioner,
+                            });
                             candidate_failure = Some(format!(
-                            "automatic LSMR path did not certify after {} iterations; retried CG",
-                            report.iterations
-                        ));
+                                "automatic LSMR path did not certify after {} iterations; continued CG from the LSMR candidate",
+                                report.iterations
+                            ));
                         }
                         Err(error) => {
+                            if solver_trace {
+                                eprintln!(
+                                    "FEREG_SOLVER_TRACE|phase=lsmr|outcome=error|tolerance={lsmr_tolerance:.17e}|elapsed={:.9}|error={error}",
+                                    lsmr_started
+                                        .map_or(0.0, |started| started.elapsed().as_secs_f64()),
+                                );
+                            }
                             candidate_failure =
                                 Some(format!("automatic LSMR path failed ({error}); retried CG"));
                         }
@@ -2200,6 +3627,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                         bulk_tolerance,
                         remaining_iterations,
                         lsmr_config,
+                        Some(&original_reference_norms),
                         false,
                     ) {
                         Ok((lsmr_values, lsmr_report, owned_setup_seconds, _)) => {
@@ -2321,21 +3749,42 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
         pilot_setup_seconds,
         pilot_seconds,
     )?;
+    let (residualized, mut report, coefficients) = marked.into_full_parts();
+    if let Some(attempt) = attempted_lsmr {
+        report.iterations = report.iterations.saturating_add(attempt.iterations);
+        report.setup_seconds += attempt.setup_seconds;
+        report.solve_seconds += attempt.solve_seconds;
+        report.requested_preconditioner = attempt.requested_preconditioner;
+        report.used_preconditioner = attempt.used_preconditioner;
+    }
+    let had_candidate_failure = candidate_failure.is_some();
     if let Some(warning) = candidate_failure {
-        let (residualized, mut report, coefficients) = marked.into_full_parts();
         report.fallback_used = true;
         report.warnings.insert(0, warning);
-        return if let Some(coefficients) = coefficients {
-            CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-                residualized,
-                report,
-                coefficients,
-            )
-        } else {
-            CertifiedBorrowedMap::from_certified_parts(residualized, report)
-        };
     }
-    Ok(marked)
+    if solver_trace {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=cg|outcome=certified|iterations={}|stop={:?}|setup={:.9}|solve={:.9}|absinf={:.17e}|relinf={:.17e}|rel2={:.17e}|normal={:.17e}|after_lsmr_failure={}",
+            report.iterations,
+            report.stop_reason,
+            report.setup_seconds,
+            report.solve_seconds,
+            report.certificate.absolute_infinity_norm,
+            report.certificate.relative_infinity_norm,
+            report.certificate.relative_two_norm,
+            report.normal_equation_residual,
+            had_candidate_failure,
+        );
+    }
+    if let Some(coefficients) = coefficients {
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            residualized,
+            report,
+            coefficients,
+        )
+    } else {
+        CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    }
 }
 
 fn borrowed_weights(weights: ValidatedWeights<'_>) -> BorrowedMapWeights<'_> {
@@ -2352,6 +3801,7 @@ fn lsmr_cg_bulk_tolerance(final_tolerance: f64) -> f64 {
     final_tolerance.max(final_tolerance.sqrt())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_borrowed_lsmr(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -2359,6 +3809,7 @@ fn run_borrowed_lsmr(
     tolerance: f64,
     max_iterations: usize,
     lsmr_config: LsmrConfig,
+    certificate_reference_norms: Option<&[f64]>,
     retain_coefficients: bool,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
@@ -2464,6 +3915,20 @@ fn run_borrowed_lsmr(
         &mut certificate_workspace.value_scales,
         &mut certificate_workspace.group_sums,
     )?;
+    if let Some(reference_norms) = certificate_reference_norms {
+        if reference_norms.len() != values.ncols()
+            || reference_norms
+                .iter()
+                .any(|norm| !norm.is_finite() || *norm < 0.0)
+        {
+            return Err(invalid_argument(
+                "borrowed LSMR continuation reference norms are invalid",
+            ));
+        }
+        certificate_workspace
+            .reference_norms
+            .copy_from_slice(reference_norms);
+    }
     let certificate = certify(
         design,
         weights,
@@ -2516,7 +3981,7 @@ fn run_borrowed_lsmr(
         pilot_contraction: 0.0,
         warnings,
     };
-    let coefficients = if retain_coefficients && report.certified() {
+    let coefficients = if retain_coefficients {
         Some(FeCoefficientBatch::from_values(
             vec![1; design.effects().len()],
             design
@@ -4324,6 +5789,82 @@ fn borrowed_irons_tuck_candidate(
     Ok(Some((candidate, alpha)))
 }
 
+fn borrowed_irons_tuck_candidate_in_place(
+    x0: &mut DenseMatrix,
+    x1: &DenseMatrix,
+    x2: &DenseMatrix,
+    d1d1: &mut [f64],
+    d1d2: &mut [f64],
+    d2d2: &mut [f64],
+) -> Result<bool> {
+    if x0.nrows() != x1.nrows()
+        || x0.ncols() != x1.ncols()
+        || x0.nrows() != x2.nrows()
+        || x0.ncols() != x2.ncols()
+    {
+        return Err(invalid_argument(
+            "reusable Irons-Tuck states have inconsistent dimensions",
+        ));
+    }
+    if d1d1.len() != x0.ncols() || d1d2.len() != x0.ncols() || d2d2.len() != x0.ncols() {
+        return Err(invalid_argument(
+            "reusable Irons-Tuck scalar workspaces have inconsistent dimensions",
+        ));
+    }
+    d1d1.fill(0.0);
+    d1d2.fill(0.0);
+    d2d2.fill(0.0);
+    for (index, ((a, b), c)) in x0
+        .as_slice()
+        .iter()
+        .zip(x1.as_slice())
+        .zip(x2.as_slice())
+        .enumerate()
+    {
+        let rhs = index % x0.ncols();
+        let d1 = b - a;
+        let d2 = c - 2.0 * b + a;
+        d1d1[rhs] = d1.mul_add(d1, d1d1[rhs]);
+        d1d2[rhs] = d1.mul_add(d2, d1d2[rhs]);
+        d2d2[rhs] = d2.mul_add(d2, d2d2[rhs]);
+    }
+    let mut any = false;
+    for rhs in 0..x0.ncols() {
+        d1d1[rhs] = if d2d2[rhs].is_finite() && d2d2[rhs] > f64::EPSILON * d1d1[rhs].max(1.0) {
+            let alpha = (-d1d2[rhs] / d2d2[rhs]).clamp(-64.0, 64.0);
+            any |= alpha.is_finite();
+            alpha
+        } else {
+            f64::NAN
+        };
+    }
+    if !any {
+        return Ok(false);
+    }
+    let columns = x0.ncols();
+    for (index, ((output, b), c)) in x0
+        .as_mut_slice()
+        .iter_mut()
+        .zip(x1.as_slice())
+        .zip(x2.as_slice())
+        .enumerate()
+    {
+        let alpha = d1d1[index % columns];
+        if !alpha.is_finite() {
+            *output = *c;
+            continue;
+        }
+        let a = *output;
+        let d1 = b - a;
+        let d2 = c - 2.0 * b + a;
+        *output = a + 2.0 * alpha * d1 + alpha * alpha * d2;
+        if !output.is_finite() {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 fn weighted_dot_columns_into(
     left: &DenseMatrix,
     right: &DenseMatrix,
@@ -4867,6 +6408,173 @@ mod tests {
             max_iterations: 10_000,
             check_every: 1,
             symmetric: true,
+        }
+    }
+
+    #[test]
+    fn reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths() {
+        let first_codes = [0_u32, 0, 1, 1, 2, 2, 0, 1, 2];
+        let second_codes = [0_u32, 1, 0, 1, 0, 1, 2, 2, 2];
+        let first_index = LevelIndex::from_codes(&first_codes, 3).expect("first index");
+        let second_index = LevelIndex::from_codes(&second_codes, 3).expect("second index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, 3, &first_index)
+            .expect("first source");
+        let second = ValidatedBorrowedInterceptSource::new(&second_codes, 3, &second_index)
+            .expect("second source");
+        let columns = [
+            vec![1.0, 2.0, 4.0, 8.0, 3.0, 5.0, 9.0, 7.0, 6.0],
+            vec![2.0, -1.0, 3.0, 0.5, 4.0, 1.0, -2.0, 8.0, 6.0],
+            vec![0.0, 1.0, 0.5, 2.0, -1.0, 3.0, 4.0, -2.0, 5.0],
+        ];
+        let first_weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0, 6.0, 8.0, 9.0];
+        let second_weights = [9.0, 2.0, 8.0, 3.0, 7.0, 4.0, 6.0, 5.0, 1.0];
+
+        let expected_design = BorrowedInterceptFeDesign::new(
+            first_codes.len(),
+            vec![first.effect(), second.effect()],
+        )
+        .expect("expected design");
+        let oracle_config = MapConfig {
+            tolerance: 1e-14,
+            ..config()
+        };
+        let expected = absorb_borrowed_intercept_map_certified(
+            &expected_design,
+            BorrowedMapWeights::Provided(&first_weights),
+            DenseMatrix::from_columns(&columns).expect("expected matrix"),
+            oracle_config,
+        )
+        .expect("one-shot map");
+
+        let reusable_design = BorrowedInterceptFeDesign::new(
+            first_codes.len(),
+            vec![first.effect(), second.effect()],
+        )
+        .expect("reusable design");
+        let mut reusable = ReusableCategoricalMapAbsorber::new(reusable_design, columns.len(), 1)
+            .expect("reusable map");
+        let initial_capacities = reusable.capacities();
+        let actual = reusable
+            .absorb(
+                BorrowedMapWeights::Provided(&first_weights),
+                DenseMatrix::from_columns(&columns).expect("actual matrix"),
+                config(),
+            )
+            .expect("reusable first frame");
+        assert!(actual.report().certified());
+        for (&left, &right) in actual
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(expected.residualized().as_slice())
+        {
+            assert!(
+                (left - right).abs() <= 1e-12,
+                "{left} != {right}; report={:?}",
+                actual.report()
+            );
+        }
+
+        let narrower = [columns[0].clone(), columns[2].clone()];
+        let expected_design = BorrowedInterceptFeDesign::new(
+            first_codes.len(),
+            vec![first.effect(), second.effect()],
+        )
+        .expect("second expected design");
+        let expected = absorb_borrowed_intercept_map_certified(
+            &expected_design,
+            BorrowedMapWeights::Provided(&second_weights),
+            DenseMatrix::from_columns(&narrower).expect("second expected matrix"),
+            oracle_config,
+        )
+        .expect("second one-shot map");
+        let actual = reusable
+            .absorb(
+                BorrowedMapWeights::Provided(&second_weights),
+                DenseMatrix::from_columns(&narrower).expect("second actual matrix"),
+                config(),
+            )
+            .expect("reusable second frame");
+        assert_eq!(reusable.capacities(), initial_capacities);
+        for (&left, &right) in actual
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(expected.residualized().as_slice())
+        {
+            assert!((left - right).abs() <= 1e-12, "{left} != {right}");
+        }
+    }
+
+    #[test]
+    fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
+        let rows = 256_usize;
+        let first_levels = 80_usize;
+        let second_levels = 64_usize;
+        let first_codes = (0..rows)
+            .map(|row| (row % first_levels) as u32)
+            .collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|row| ((row / first_levels + 7 * row) % second_levels) as u32)
+            .collect::<Vec<_>>();
+        let first_index =
+            LevelIndex::from_codes(&first_codes, first_levels).expect("first sparse index");
+        let second_index =
+            LevelIndex::from_codes(&second_codes, second_levels).expect("second sparse index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, first_levels, &first_index)
+            .expect("first sparse source");
+        let second =
+            ValidatedBorrowedInterceptSource::new(&second_codes, second_levels, &second_index)
+                .expect("second sparse source");
+        let columns = [
+            (0..rows)
+                .map(|row| ((row * 13 % 71) as f64).sin() + row as f64 / rows as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row * 5 % 43) as f64).cos() - 0.25 * (row % 9) as f64)
+                .collect::<Vec<_>>(),
+            vec![1.0; rows],
+        ];
+        let weights = (0..rows)
+            .map(|row| 1.0 + (row % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
+        let oracle_design =
+            BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
+                .expect("sparse oracle design");
+        let oracle = absorb_borrowed_intercept_map_certified(
+            &oracle_design,
+            BorrowedMapWeights::Provided(&weights),
+            DenseMatrix::from_columns(&columns).expect("sparse oracle values"),
+            MapConfig {
+                tolerance: 1e-13,
+                max_iterations: 20_000,
+                check_every: 4,
+                symmetric: true,
+            },
+        )
+        .expect("sparse MAP oracle");
+        let design = BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
+            .expect("sparse reusable design");
+        let mut reusable = ReusableCategoricalMapAbsorber::new(design, columns.len(), 1)
+            .expect("sparse reusable absorber");
+        assert!(reusable.two_fe_pcg.is_some());
+        let capacities = reusable.capacities();
+        let actual = reusable
+            .absorb(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).expect("sparse reusable values"),
+                config(),
+            )
+            .expect("sparse reusable PCG absorption");
+        assert!(actual.report().certified());
+        assert_eq!(reusable.capacities(), capacities);
+        for (&left, &right) in actual
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(oracle.residualized().as_slice())
+        {
+            assert!((left - right).abs() <= 5e-11, "{left} != {right}");
         }
     }
 
@@ -5716,10 +7424,162 @@ mod tests {
         assert_eq!(result.report().pilot_iterations, 4);
         assert!(result.report().pilot_contraction >= 0.008);
         assert!(result.report().certified());
+        let direct = absorb_borrowed_intercept_auto_direct_lsmr_certified(
+            &design,
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            config(),
+            LsmrConfig::default(),
+            None,
+            false,
+            false,
+        )
+        .expect("direct LSMR auto");
+        assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
+        assert_eq!(direct.report().used_solver, FeSolverKind::Lsmr);
+        assert_eq!(direct.report().pilot_iterations, 0);
+        assert_eq!(direct.report().pilot_contraction, 0.0);
+        assert!(direct.report().certified());
         let (residualized, _, coefficients) = result.into_full_parts();
         let coefficients = coefficients.expect("retained AUTO coefficient product");
         let rhs = coefficients.rhs(0).expect("coefficient RHS");
         for row in 0..input.nrows() {
+            let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
+                + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
+            assert!((fitted - (input[(row, 0)] - residualized[(row, 0)])).abs() <= 1e-9);
+        }
+    }
+
+    #[test]
+    fn lsmr_continuation_certificate_uses_the_supplied_original_rhs_scale() {
+        let workers = 160_usize;
+        let observations = workers * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut outcome = Vec::with_capacity(observations);
+        for worker in 0..workers {
+            worker_codes.extend([worker as u32, worker as u32]);
+            firm_codes.extend([worker as u32, (worker + 1) as u32]);
+            outcome.extend([(worker as f64 * 0.17).sin(), (worker as f64 * 0.11).cos()]);
+        }
+        let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, workers + 1).expect("firm index");
+        let worker = ValidatedBorrowedInterceptSource::new(&worker_codes, workers, &worker_index)
+            .expect("worker");
+        let firm = ValidatedBorrowedInterceptSource::new(&firm_codes, workers + 1, &firm_index)
+            .expect("firm");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
+                .expect("design");
+        let values = DenseMatrix::from_columns(&[outcome]).expect("matrix");
+        let weights = validate_weights(BorrowedMapWeights::Unit, observations).expect("weights");
+        let mut reference_norms = vec![0.0; values.ncols()];
+        let mut scales = vec![0.0; values.ncols()];
+        let mut square_sums = vec![0.0; values.ncols()];
+        weighted_column_norms(
+            &values,
+            weights,
+            &mut reference_norms,
+            &mut scales,
+            &mut square_sums,
+        )
+        .expect("reference norms");
+        for norm in &mut reference_norms {
+            *norm *= 1_000.0;
+        }
+        let lsmr = LsmrConfig {
+            tolerance: 1e-14,
+            max_iterations: 1,
+            preconditioner: LsmrPreconditioner::Schwarz,
+            ..LsmrConfig::default()
+        };
+        let (ordinary, ordinary_report, _, _) = run_borrowed_lsmr(
+            &design,
+            weights,
+            &values,
+            lsmr.tolerance,
+            lsmr.max_iterations,
+            lsmr,
+            None,
+            false,
+        )
+        .expect("ordinary LSMR certificate");
+        let (continued, continued_report, _, _) = run_borrowed_lsmr(
+            &design,
+            weights,
+            &values,
+            lsmr.tolerance,
+            lsmr.max_iterations,
+            lsmr,
+            Some(&reference_norms),
+            false,
+        )
+        .expect("continuation LSMR certificate");
+        assert_eq!(ordinary, continued);
+        assert!(ordinary_report.certificate.relative_infinity_norm > 0.0);
+        assert!(
+            continued_report.certificate.relative_infinity_norm
+                < ordinary_report.certificate.relative_infinity_norm / 100.0
+        );
+    }
+
+    #[test]
+    fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
+        let workers = 160_usize;
+        let observations = workers * 2;
+        let mut worker_codes = Vec::with_capacity(observations);
+        let mut firm_codes = Vec::with_capacity(observations);
+        let mut outcome = Vec::with_capacity(observations);
+        for worker in 0..workers {
+            worker_codes.extend([worker as u32, worker as u32]);
+            firm_codes.extend([worker as u32, (worker + 1) as u32]);
+            outcome.extend([(worker as f64 * 0.17).sin(), (worker as f64 * 0.11).cos()]);
+        }
+        let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm_codes, workers + 1).expect("firm index");
+        let worker = ValidatedBorrowedInterceptSource::new(&worker_codes, workers, &worker_index)
+            .expect("worker");
+        let firm = ValidatedBorrowedInterceptSource::new(&firm_codes, workers + 1, &firm_index)
+            .expect("firm");
+        let design =
+            BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
+                .expect("design");
+        let mut strict = config();
+        strict.tolerance = 1e-14;
+        let input = DenseMatrix::from_columns(&[outcome]).expect("matrix");
+        let result = absorb_borrowed_intercept_auto_routed_certified(
+            &design,
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            strict,
+            LsmrConfig {
+                tolerance: 1e-14,
+                max_iterations: 1,
+                preconditioner: LsmrPreconditioner::Off,
+                ..LsmrConfig::default()
+            },
+            None,
+            true,
+        )
+        .expect("polished auto result");
+        let report = result.report();
+        assert!(report.certified());
+        assert_eq!(report.used_solver, FeSolverKind::Cg);
+        assert!(report.fallback_used);
+        assert_eq!(
+            report.requested_preconditioner,
+            Some(LsmrPreconditioner::Off)
+        );
+        assert_eq!(report.used_preconditioner, Some(LsmrPreconditioner::Off));
+        assert!(report.iterations > report.pilot_iterations + 1);
+        assert!(report
+            .warnings
+            .first()
+            .is_some_and(|warning| { warning.contains("continued CG from the LSMR candidate") }));
+        let (residualized, _, coefficients) = result.into_full_parts();
+        let coefficients = coefficients.expect("combined pilot, LSMR, and CG coefficients");
+        let rhs = coefficients.rhs(0).expect("coefficient RHS");
+        for row in 0..observations {
             let fitted = rhs[coefficients.effect_offsets()[0] + worker_codes[row] as usize]
                 + rhs[coefficients.effect_offsets()[1] + firm_codes[row] as usize];
             assert!((fitted - (input[(row, 0)] - residualized[(row, 0)])).abs() <= 1e-9);
@@ -5977,6 +7837,7 @@ mod tests {
                         preconditioner,
                         ..LsmrConfig::default()
                     },
+                    None,
                     false,
                 )
                 .expect("qualification direct LSMR arm");
@@ -6003,6 +7864,7 @@ mod tests {
                 preconditioner: crate::fe::LsmrPreconditioner::Schwarz,
                 ..LsmrConfig::default()
             },
+            None,
             false,
         )
         .expect("direct Schwarz LSMR");

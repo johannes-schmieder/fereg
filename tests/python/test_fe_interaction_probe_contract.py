@@ -56,9 +56,10 @@ class FeInteractionProbeContractTests(unittest.TestCase):
         self.assertIn('"workflow_run_id"', text)
         self.assertIn('"workflow_run_attempt"', text)
 
-    def test_workflow_is_private_main_and_mac_runner_scoped(self) -> None:
+    def test_workflow_is_manual_private_and_mac_runner_scoped(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("branches:\n      - main", text)
+        self.assertIn("  workflow_dispatch:", text)
+        self.assertNotIn("  push:", text)
         self.assertNotIn("codex/categorical-interactions", text)
         self.assertIn("self-hosted, macOS, ARM64, stata-mp, fereg", text)
         self.assertIn("github.repository == 'johannes-schmieder/fereg'", text)

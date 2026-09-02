@@ -12,6 +12,8 @@ program define _fereg_estimate_ppml, eclass sortpreserve
          ETA(name) XBD(name) MU(name) DROPreason(name) ///
          MEMory(string) POOLSize(integer 10) THREADS(integer 0) ///
          DETERMINISTIC FINITESOLVer(string) ///
+         FESOLVer(string) FEPREConditioner(string) ///
+         FELSMRMode(string) FELSMRPolicy(string) FECMGMode(string) SOLVERTRACE ///
          TOLerance(real 1e-8) ITERate(integer 10000) ///
          SEPTOLerance(real 1e-8) SEPITERate(integer 10000) ///
          SIMPLEXITERate(integer 100000) SIMPLEXCELLS(integer 1000000) ///
@@ -32,6 +34,76 @@ program define _fereg_estimate_ppml, eclass sortpreserve
        (`"`publicmode'"' != "" & strtrim(`"`publiccmdline'"') == "") {
         di as error "invalid private PPML public-publication context"
         exit 198
+    }
+
+    local fe_solver = lower(strtrim(`"`fesolver'"'))
+    if `"`fe_solver'"' == "" local fe_solver "auto"
+    local fe_preconditioner = lower(strtrim(`"`fepreconditioner'"'))
+    if `"`fe_preconditioner'"' == "" local fe_preconditioner "none"
+    local fe_lsmr_mode = lower(strtrim(`"`felsmrmode'"'))
+    if `"`fe_lsmr_mode'"' == "" local fe_lsmr_mode "none"
+    local fe_lsmr_policy = lower(strtrim(`"`felsmrpolicy'"'))
+    if `"`fe_lsmr_policy'"' == "" local fe_lsmr_policy "none"
+    local fe_cmg_mode = lower(strtrim(`"`fecmgmode'"'))
+    if `"`fe_cmg_mode'"' == "" local fe_cmg_mode "none"
+    local solver_trace = (`"`solvertrace'"' != "")
+    if `"`publicmode'"' != "" & ///
+       (`"`fe_solver'"' != "auto" | `"`fe_preconditioner'"' != "none" | ///
+        `"`fe_lsmr_mode'"' != "none" | `"`fe_lsmr_policy'"' != "none" | ///
+        `"`fe_cmg_mode'"' != "none" | ///
+        `solver_trace') {
+        di as error "private PPML FE-solver controls are unavailable through feppml"
+        exit 198
+    }
+    if !inlist(`"`fe_solver'"', "auto", "map", "cg", "lsmr", "cmg") {
+        di as error "fesolver() must be auto, map, cg, lsmr, or cmg"
+        exit 198
+    }
+    if `"`fe_preconditioner'"' != "none" & ///
+       !(`"`fe_solver'"' == "lsmr" & `"`fe_preconditioner'"' == "schwarz") {
+        di as error "fepreconditioner(schwarz) is valid only with fesolver(lsmr)"
+        exit 198
+    }
+    if !inlist(`"`fe_lsmr_mode'"', "none", "legacy", "fused", "joint") {
+        di as error "felsmrmode() must be legacy, fused, or joint"
+        exit 198
+    }
+    if !inlist(`"`fe_lsmr_policy'"', "none", "diagonal", "reuse", "rebuild") {
+        di as error "felsmrpolicy() must be diagonal, reuse, or rebuild"
+        exit 198
+    }
+    if !inlist(`"`fe_cmg_mode'"', "none", "fused") {
+        di as error "fecmgmode() must be fused"
+        exit 198
+    }
+    if (`"`fe_lsmr_mode'"' == "none") != (`"`fe_lsmr_policy'"' == "none") {
+        di as error "felsmrmode() and felsmrpolicy() must be specified together"
+        exit 198
+    }
+    if `"`fe_lsmr_mode'"' != "none" & `"`fe_solver'"' != "lsmr" {
+        di as error "felsmrmode() and felsmrpolicy() require fesolver(lsmr)"
+        exit 198
+    }
+    if `"`fe_lsmr_mode'"' != "none" & `"`fe_preconditioner'"' != "none" {
+        di as error "felsmrpolicy() cannot be combined with fepreconditioner()"
+        exit 198
+    }
+    if `"`fe_lsmr_mode'"' == "legacy" & `"`fe_lsmr_policy'"' == "reuse" {
+        di as error "legacy PPML LSMR cannot reuse Schwarz state across frames"
+        exit 198
+    }
+    if `"`fe_cmg_mode'"' != "none" & `"`fe_solver'"' != "cmg" {
+        di as error "fecmgmode() requires fesolver(cmg)"
+        exit 198
+    }
+    local solver_experiment 0
+    if !inlist(`"`fe_solver'"', "auto", "map") | `solver_trace' {
+        local solver_gate : environment FEREG_PPML_EXPERIMENTAL_SOLVERS
+        if strtrim(`"`solver_gate'"') != "1" {
+            di as error "experimental PPML FE solvers require FEREG_PPML_EXPERIMENTAL_SOLVERS=1"
+            exit 498
+        }
+        local solver_experiment 1
     }
 
     local requested_weights = (`"`fweight'"' != "") + (`"`pweight'"' != "")
@@ -59,6 +131,14 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `"`memory_mode'"' == "" local memory_mode "auto"
     if !inlist(`"`memory_mode'"', "auto", "fast", "low") {
         di as error "memory() must be auto, fast, or low"
+        exit 198
+    }
+    if (`"`fe_solver'"' != "auto" | `solver_trace') & `"`memory_mode'"' != "fast" {
+        di as error "private PPML FE-solver experiments require memory(fast)"
+        exit 198
+    }
+    if (`"`fe_solver'"' != "auto" | `solver_trace') & `"`allocationaudit'"' != "" {
+        di as error "private PPML FE-solver experiments do not support allocationaudit"
         exit 198
     }
     local finite_solver = lower(strtrim(`"`finitesolver'"'))
@@ -610,7 +690,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `"`inject'"' == "panic" local plugin_inject "panic"
     if `"`inject'"' == "breaknative" local plugin_inject "breaknative"
     if `"`inject'"' == "allocation" local plugin_inject "allocation"
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=5;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=1;request_major=1;request_minor=1;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';finite_solver=`finite_solver';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=5;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=1;request_major=1;request_minor=4;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';finite_solver=`finite_solver';fe_solver=`fe_solver';fe_preconditioner=`fe_preconditioner';fe_lsmr_mode=`fe_lsmr_mode';fe_lsmr_policy=`fe_lsmr_policy';fe_cmg_mode=`fe_cmg_mode';solver_trace=`solver_trace';solver_experiment=`solver_experiment';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
     }
@@ -1259,7 +1339,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     ereturn local predict "feppml_p"
     ereturn local feppml_action_protocol "1.5"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.1"
+    ereturn local feppml_request_wire "1.4"
     ereturn local feppml_result_wire "1.1"
     ereturn local feppml_plugin "0.5.0"
     if `"`inject'"' == "breakpostpublic" {

@@ -37,6 +37,82 @@ class FeregF0SccContractTests(unittest.TestCase):
         self.assertEqual(cells[-1]["id"], "solver_cmg_t1_fast_fit")
         self.assertTrue(all(cell["profile"] == "scc_governing" for cell in cells))
 
+    def test_setup_smoke_runs_one_small_fixture_for_each_exact_arm(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "20260901T120000Z-test"
+            root.mkdir()
+            artifacts = {}
+            for arm in ("baseline", "candidate"):
+                source = root / f"work/setup/{arm}/source"
+                (source / "ci").mkdir(parents=True)
+                (source / "scripts").mkdir()
+                (source / "dist").mkdir()
+                (source / "ci/fereg_smoke.do").write_text(
+                    "display \"END_FIXTURE|fereg_smoke|rc=0\"\n",
+                    encoding="ascii",
+                )
+                (source / "scripts/run_stata_tests.py").write_text(
+                    "# retained exact runner\n", encoding="ascii"
+                )
+                plugin = source / "dist/fereg_linux.plugin"
+                plugin.write_bytes(f"plugin-{arm}".encode("ascii"))
+                artifacts[arm] = {
+                    "sha256": self.scc.sha256_file(plugin),
+                    "size_bytes": plugin.stat().st_size,
+                }
+
+            def fake_run(command, **_kwargs):
+                summary_path = Path(command[command.index("--summary-json") + 1])
+                log_dir = Path(command[command.index("--log-dir") + 1])
+                log_dir.mkdir(parents=True)
+                (log_dir / "fereg_smoke.log").write_text(
+                    "END_FIXTURE|fereg_smoke|rc=0\n", encoding="ascii"
+                )
+                summary_path.write_text(
+                    json.dumps(
+                        {
+                            "completed": True,
+                            "status": "success",
+                            "stata_rc": 0,
+                            "tests_passed": 1,
+                            "tests_failed": 0,
+                            "results": [
+                                {
+                                    "fixture": "ci/fereg_smoke.do",
+                                    "status": "success",
+                                    "process_rc": 0,
+                                    "stata_rc": 0,
+                                }
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(command, 0, stdout="PASS\n")
+
+            with mock.patch.object(self.scc.subprocess, "run", side_effect=fake_run):
+                smoke = {
+                    arm: self.scc._run_setup_smoke(
+                        root,
+                        root / f"work/setup/{arm}/source",
+                        artifacts[arm],
+                        arm=arm,
+                    )
+                    for arm in ("baseline", "candidate")
+                }
+            setup = {
+                "arms": {
+                    arm: {"artifact": artifacts[arm]}
+                    for arm in ("baseline", "candidate")
+                },
+                "smoke": smoke,
+            }
+            self.scc._verify_setup_smoke(root, setup)
+            self.assertEqual(
+                {arm: smoke[arm]["status"] for arm in smoke},
+                {"baseline": "pass", "candidate": "pass"},
+            )
+
     def test_frozen_harness_must_equal_candidate_but_diagnostic_may_differ(self):
         candidate = {
             "commit": "1" * 40, "tree": "2" * 40,
@@ -554,7 +630,7 @@ class FeregF0SccContractTests(unittest.TestCase):
                 "raw_files": self.scc._raw_inventory(task_root),
                 "cell_sha256": self.scc.sha256_file(cell_path),
                 "sge": {
-                    "job_id": "102" if task_id == 1 else "103",
+                    "job_id": "102",
                     "task_id": str(task_id),
                     "host_id": "task-host",
                     "slots": 16,
@@ -574,9 +650,8 @@ class FeregF0SccContractTests(unittest.TestCase):
         qsub_root.mkdir()
         jobs = {
             "setup": "101",
-            "smoke": "102",
-            "array": "103",
-            "collector": "104",
+            "array": "102",
+            "collector": "103",
         }
         for stage, job_id in jobs.items():
             (qsub_root / f"{stage}.txt").write_text(
@@ -584,16 +659,13 @@ class FeregF0SccContractTests(unittest.TestCase):
             )
             script = self.scc._submitted_script_records(root)[stage]["path"]
             name = self.scc._submission_job_names(root.name)[stage]
-            h_rt = {"setup": 14400, "smoke": 42300, "array": 42300, "collector": 1800}[stage]
+            h_rt = {"setup": 14400, "array": 42300, "collector": 1800}[stage]
             extra = []
             if stage != "collector":
                 extra.append("parallel_environment: omp range: 16")
-            if stage == "smoke":
-                extra.append("job-array tasks: 1")
+            if stage == "array":
+                extra.append(f"job-array tasks: 1-{len(self.scc.scc_cells(manifest))}:1")
                 extra.append(f"jid_predecessor_list (req): {jobs['setup']}")
-            elif stage == "array":
-                extra.append(f"job-array tasks: 2-{len(self.scc.scc_cells(manifest))}:1")
-                extra.append(f"jid_predecessor_list (req): {jobs['smoke']}")
             elif stage == "collector":
                 extra.append(f"jid_predecessor_list (req): {jobs['array']}")
             (qsub_root / f"{stage}.qstat.txt").write_text(
@@ -645,12 +717,6 @@ class FeregF0SccContractTests(unittest.TestCase):
                     "mem_per_core": "4G",
                     "h_rt": "04:00:00",
                 },
-                "smoke": {
-                    "slots": 16,
-                    "mem_per_core": "4G",
-                    "h_rt": "11:45:00",
-                    "tasks": [1],
-                },
                 "array": {
                     "slots": 16,
                     "mem_per_core": "4G",
@@ -695,7 +761,7 @@ class FeregF0SccContractTests(unittest.TestCase):
             self.assertEqual(replayed, original_submission)
             ledger = replayed["submission_ledger"]
             submitted_root = Path(ledger["submit_cwd"])
-            stage = "smoke"
+            stage = "array"
             script = submitted_root / replayed["scripts"][stage]["path"]
             qacct = self._qacct_record(
                 replayed["jobs"][stage],
@@ -925,6 +991,7 @@ class FeregF0SccContractTests(unittest.TestCase):
         submit = (ROOT / "benchmarks/scc/fereg_f0_submit.sh").read_text()
         deploy = (ROOT / "benchmarks/scc/fereg_f0_deploy.sh").read_text()
         close = (ROOT / "benchmarks/scc/fereg_f0_close.sh").read_text()
+        development = (ROOT / "benchmarks/scc/fereg_dev_smoke_job.sh").read_text()
         for source in (setup, task, collector):
             self.assertIn("#$ -P welfgr", source)
         self.assertIn("module load stata-mp/19", setup)
@@ -934,25 +1001,25 @@ class FeregF0SccContractTests(unittest.TestCase):
         self.assertIn("module load stata-mp/19", task)
         self.assertIn("--task-id \"$SGE_TASK_ID\"", task)
         self.assertIn("-hold_jid \"$SETUP_JOB\"", submit)
-        self.assertIn("-hold_jid \"$SMOKE_JOB\"", submit)
         self.assertIn("-hold_jid \"$ARRAY_JOB\"", submit)
-        self.assertIn('-t "2-$TASK_COUNT"', submit)
+        self.assertIn('-t "1-$TASK_COUNT"', submit)
         self.assertIn('-N "$SETUP_NAME"', submit)
         self.assertIn('-wd "$RUN_ROOT"', submit)
-        self.assertIn('receipts/qsub/smoke.txt', submit)
+        self.assertNotIn('receipts/qsub/smoke.txt', submit)
         self.assertIn('receipts/qsub/started-at-utc.txt', submit)
         self.assertIn('record-submission \\\n    --run-root "$RUN_ROOT"', submit)
-        self.assertEqual(submit.count('"$QSUB" -clear '), 4)
+        self.assertEqual(submit.count('"$QSUB" -clear '), 3)
         self.assertIn("-S /bin/bash -j y", submit)
-        self.assertEqual(submit.count("-pe omp 16"), 3)
+        self.assertEqual(submit.count("-pe omp 16"), 2)
         self.assertNotIn("-pe omp 1 ", submit)
         self.assertIn("h_rt=04:00:00", submit)
-        self.assertEqual(submit.count("h_rt=11:45:00"), 2)
+        self.assertEqual(submit.count("h_rt=11:45:00"), 1)
         self.assertIn("h_rt=00:30:00", submit)
-        self.assertEqual(submit.count("mem_per_core=4G"), 4)
+        self.assertEqual(submit.count("mem_per_core=4G"), 3)
         self.assertIn("SCHEDULER_ENV=(/usr/bin/env -i", submit)
         self.assertIn("QSUB=/usr/local/bin/qsub", submit)
         self.assertNotIn('--smoke-job', submit)
+        self.assertNotIn('SMOKE_JOB', submit)
         self.assertNotIn('--qacct-dir', MODULE_PATH.read_text(encoding="utf-8"))
         self.assertNotIn(" -V", submit)
         for source in (setup, task, collector, submit, close):
@@ -965,6 +1032,14 @@ class FeregF0SccContractTests(unittest.TestCase):
         self.assertIn(" qacct", close)
         for source in (setup, task, collector, submit, close):
             self.assertIn("^/projectnb/welfgr/fereg/runs/", source)
+        self.assertIn("#$ -pe omp 4", development)
+        self.assertIn("#$ -l h_rt=00:30:00", development)
+        self.assertIn("#$ -l mem_per_core=4G", development)
+        self.assertIn("FEREG_DEV_PROFILE must be ols, ppml, or shared", development)
+        self.assertIn("ols) PROFILE=scc-dev-ols", development)
+        self.assertIn("ppml) PROFILE=scc-dev-ppml", development)
+        self.assertIn("shared) PROFILE=scc-dev-shared", development)
+        self.assertNotIn("${FEREG_DEV_PROFILE:-", development)
 
     def test_controller_cli_rejects_direct_nonisolated_api(self):
         with self.assertRaisesRegex(SystemExit, "Python -I -B -S"):

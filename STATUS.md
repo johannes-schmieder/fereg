@@ -1,17 +1,45 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-02
+**Operating mode:** prototype/development; qualification, detailed matrices,
+and release evidence run only when Johannes explicitly requests them
 **Development branch:** `main`; public OLS and the additive PPML testing surface are active, sharing the certified-linear session while retaining independent PPML wires and the unchanged OLS command path
 **Verified candidate plugin:** `9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2`
-**Exploratory combined LSMR/CMG plugin:** `5ccc0cdf8841681d580043f821fa04d1d298c00bdb67d2d12148c96d5a4b8c18`
+**Exploratory combined LSMR/CMG plugin:** `47e09bc53ab35c03baa69590dd277854ff21b8bc5df3d9de7faf096264c77683`
 **Verified optimized-recovery source:** `4e78d015c49f659503aa9f761ca8a73473847387`
-**Active milestone:** exercise the activated public PPML surface on macOS/Linux, preserve the complete `fereg` regression boundary, and defer Windows licensed-Stata and the formal cross-platform aggregate until after user testing
+**Active milestone:** iterate on the public OLS/PPML prototype with focused changed-boundary checks; Linux/SCC development smoke is opt-in by boundary, and formal cross-platform qualification is deferred
 **Release state:** public OLS and PPML beta testing surfaces are active; activation is not a tag or source-qualified release, Windows testing is deferred, and the formal activated aggregate remains open
 
 `STATUS.md` is the mutable project-progress record. The next product target is
 a candidly labeled 0.5.0 beta. ADR-0009 supersedes ADR-0008's capped routing
 and RSS rule while preserving its scientific and safety contracts. Historical receipts remain
 immutable even when they describe earlier hidden or fail-closed checkpoints.
+
+## Solver-routing recalibration development state
+
+- ADR-0021 implements the newly approved development OLS route for categorical
+  intercept-only AKM designs. Auto selects CMG when observations are at least
+  three times the largest FE level count, the two largest FE counts have a
+  ratio of at least 10:1, and additional effects contribute at most nine
+  non-base nuisance columns. Other categorical designs go directly to the
+  certified LSMR route; slope-bearing/generic designs retain the ADR-0009
+  pilot policy.
+- Post-pilot LSMR now certifies against the original RHS scale. An uncertified
+  finite candidate continues into CG without discarding its state, and all
+  attempted iterations, time, preconditioner, warning, and retained
+  coefficient work are accounted within the shared budget.
+- The development plugin SHA-256 is
+  `04cde2f5854e513567dd9551286090d42b01268e5748711c6dc7ab8a351e6be5`.
+  The 312-run post-change matrix had 78/78 certified auto runs, zero fallbacks,
+  and zero MAP pilots. The 10k--30k sparse three-FE series rose smoothly from
+  0.016 to 0.037 seconds. Rust library tests passed 637/637 and the focused
+  licensed Stata auto-route fixture passed. This is development evidence only;
+  frozen/cross-platform/release qualification remains open. The local `quick`
+  profile stopped on the pre-existing one-FE memory telemetry assertion
+  `e(fereg_runtime)[6,1] == 1`, before the changed route; substantive memory
+  selections and estimates passed an isolated diagnostic rerun. The exact
+  final plugin also passed the focused licensed route fixture and 12/12
+  recorded auto smoke runs across CMG and direct-Schwarz-LSMR cases.
 
 The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
 macOS matrix was deliberately stopped after 77 strictly valid scopes when this
@@ -44,7 +72,7 @@ overheads, and coverage limits are captured under
   or post outside the guarded transaction.
 - The source contains private `_fereg_ppml` and `_fereg_estimate_ppml`
   adapters and one live-SPI `estimate-ppml` action. The action uses independent
-  PPML request/result 1.1 wires and a receipt-last transaction. The bounded
+  PPML request 1.4/result 1.1 wires and a receipt-last transaction. The bounded
   result adds inference/PSD, drop-count, separation-sequence, and digest
   evidence without repurposing the OLS action or result wire.
 - The private computation path is organized around prepared data, the shared
@@ -67,6 +95,108 @@ overheads, and coverage limits are captured under
   edit. Earlier evidence is not promoted across that commit. Windows licensed-
   Stata testing and the machine-enforced cross-platform activated aggregate
   are explicitly deferred rather than recorded as passed.
+
+## PPML solver-development state
+
+- ADR-0022 and ADR-0023 now carry PPML request wire 1.4 and typed private LSMR
+  mode/policy pairs: legacy, fused FWL, or joint incremental execution with
+  diagonal, retained-Schwarz, or rebuilt-Schwarz state. The adapter and core
+  independently require `FEREG_PPML_EXPERIMENTAL_SOLVERS=1`. The envelope is
+  still fast-memory, two or three categorical intercept-only FE dimensions,
+  no saved FE, and no allocation audit. Public `feppml`, production auto/MAP,
+  and every OLS route are unchanged.
+- Fused FWL projects all frozen active controls and the working response in
+  one LSMR batch and solves a small standardized pivoted-Cholesky system.
+  Joint incremental LSMR solves one augmented Newton correction, carries a
+  correction warm start, and uses staleness-driven Schwarz rebuild and exact-
+  certificate continuation. Fused FWL likewise makes at most one tighter
+  recurrence pass and rebuilds retained Schwarz state after an uncertified
+  result. Both engines rescan the complete control and FE
+  normal equations before accepting an ordinary IRLS frame. Production MAP
+  freezes the first-frame basis and owns strict/final-Hessian checkpoints;
+  Mu separation is canonical. Strict comparison covers the predictor,
+  objective, score, basis/rank, and estimable coefficients, while the
+  canonical strict state replaces nonestimable normalization coordinates.
+- The pinned comparator audit corrects an earlier premise: default
+  `ppmlhdfe` uses conjugate-gradient acceleration of symmetric Kaczmarz, not
+  LSMR. The harness now has separate `ppmlhdfe` and
+  `ppmlhdfe, accel(lsmr)` arms and validates their runtime signatures before
+  accepting results. It also supports bounded topology/control/difficulty/
+  thread filters, exact pinned-source checks, untimed mixed-route traces, and
+  an independent explicit-dummy oracle.
+- A fresh local one-repetition 400-observation science matrix passed all eight
+  balanced, skewed, chain, hub, dense, many-level, two-FE, and three-FE cells
+  for fused-reuse and joint-reuse with no sample, coefficient, robust-VCE,
+  objective, DoF, convergence, native-MAP, independent-oracle, process, or
+  trace failures. Launch-dominated performance rejected both candidates under
+  the frozen screen; this is correctness evidence only.
+- Focused 25,000-observation, one-thread measurements localized the useful
+  regions. At balanced two-FE/easy/K=10, MAP/fused/joint medians were
+  0.165/0.167/0.162 seconds; matched default/forced-LSMR `ppmlhdfe` medians
+  were 0.465/0.525. At long-connectivity/K=10, MAP/fused/joint were
+  3.810/2.296/2.521 seconds and the comparators were 25.112/65.856. At
+  easy/K=50, MAP/fused/joint/default/forced-LSMR were
+  0.841/0.844/0.593/4.167/2.702. At long/K=50, fused and joint three-run
+  medians were 6.549/6.372 seconds against a one-run 12.877-second MAP
+  diagnostic. The fereg candidates matched MAP estimates and objectives at
+  displayed precision. These dirty-worktree local screens are not frozen
+  performance, scale, memory, thread, or release claims.
+- On the exact final local artifact, the focused long-connectivity/K=10 smoke
+  again matched coefficients, covariance, likelihood, deviance, rank, and DoF;
+  its single-run MAP/fused/joint times were 3.743/2.249/2.482 seconds. The
+  focused Rust PPML and OLS filters passed 267/267 and 173/173 tests, the two
+  Python contract modules passed 24/24 tests, and the universal macOS build
+  passed its architecture, dependency/export, loader, and panic-containment
+  checks. This is changed-boundary development evidence, not qualification.
+- Current evidence motivates a later measured MAP/fused/joint routing round:
+  MAP for cheap projections, fused Schwarz reuse for narrow difficult
+  topologies, and joint reuse when control width makes fused cross-products
+  dominant. No rule is activated. Per-frame allocation removal, joint retry
+  reduction, the complete screening/scale matrix, holdouts, SCC, memory and
+  thread gates, and public activation all remain unrun. MAP remains the sole
+  production PPML route.
+- ADR-0023 established the private fused-CMG FWL path; ADR-0024 updates the
+  exact CMG pin to `90e1fe0b0c14065155532711246ede6678bb4935`, prepares core
+  endpoint topology once, and uses checked caller-owned batch buffers.
+  Ordinary IRLS frames still rebuild a numeric graph and fresh hierarchy for
+  the current weights,
+  jointly project the frozen controls and working response without generic CG
+  polish, selectively retry failed RHS columns, solve the compensated finite
+  system, and require fresh projection and combined normal-equation
+  certificates. Numerical nonconvergence falls back to same-frame MAP and
+  disables CMG permanently; topology, resource, input, interruption, and
+  internal errors remain visible. First, Mu, strict, and final-Hessian frames
+  remain MAP, and the OLS CMG path is unchanged.
+- The fused-CMG changed-boundary tests passed for typed decoding/admission,
+  two- and three-FE MAP-oracle agreement, one-RHS retry, permanent MAP
+  fallback, the existing 13 CMG/OLS unit tests, the two Python contract
+  modules (25 tests), and the universal macOS plugin audit/loader harness. The
+  complete local N=400 eight-topology science matrix had zero scientific,
+  native-MAP, explicit-dummy, process, or trace failures; on the final
+  universal artifact its projection ratio was 0.632 with 8/8 faster cells,
+  while launch-dominated end-to-end ratio 1.038 retained the
+  `reuse-engineering` label. Diagnostic N=25,000,
+  one-thread, K=10 medians were MAP/fused-CMG/`ppmlhdfe` =
+  0.147/0.129/0.441 seconds for balanced two-FE and 0.211/0.368/0.528 for
+  balanced three-FE. These dirty-worktree local results do not activate a
+  route or support frozen performance, memory, thread, platform, or release
+  claims; no SCC or broad qualification was run.
+- The ADR-0024 changed boundary passed upstream CMG's 9 repeated-topology
+  tests, fereg's 17 focused CMG/PPML tests, all 655 core library tests, the two
+  focused Python contract modules (25 tests), the universal macOS plugin
+  audit/loader harness, and the focused licensed-Stata OLS auto/explicit-CMG
+  fixture. Matched five-repetition old/new artifact medians were
+  0.487/0.492 seconds for balanced two-FE N=100,000 K=10,
+  0.198/0.197 for balanced three-FE N=25,000 K=0, and 0.366/0.365 for the same
+  three-FE cell at K=10. Prepared assembly halved the small recorded two-FE
+  setup slice, but did not improve end-to-end time; three-FE remained dominated
+  by nuisance-Schur work. Selected new-artifact medians versus pinned default
+  `ppmlhdfe` were 0.492/1.684 seconds in the 100,000-row two-FE cell and
+  0.365/0.529 in the 25,000-row three-FE K=10 cell. The difficult chain median
+  was 6.458 seconds with its prior iteration/retry behavior intact. These are
+  local dirty-worktree diagnostics, not general speed, routing, or release
+  evidence. Stale preconditioning and warm starts remain disabled pending an
+  adaptive-policy experiment; public PPML and OLS are unchanged.
 
 ## Current accepted state
 
@@ -118,26 +248,23 @@ overheads, and coverage limits are captured under
   for the other on the comparator-equivalent path.
 - Explicit `solver(cmg)` reuses one graph hierarchy per fit, supports up to 64
   nuisance non-base absorbed-intercept columns, and retains certified CG
-  polishing/fallback. ADR-0010 now selects CMG before the MAP pilot for the
-  frozen favorable intercept-only topology: no nuisance columns, at least
-  eight observations per highest-cardinality level, and a core cardinality
-  ratio of at least 10:1. Fast and low modes share the route; setup/memory
-  failure returns visibly to the existing auto policy, and solve failure uses
+  polishing/fallback. ADR-0021 selects CMG before the MAP pilot for the
+  development AKM topology described above. Fast and low modes share the route;
+  setup/memory failure returns visibly to direct LSMR, and solve failure uses
   certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
   tolerance to satisfy the OLS score certificate without a separate post-QR
   correction. The release decision is GPL-3.0-only; the repository license,
   dependency notices, and staged package metadata must be synchronized before
   distribution.
-- The qualified automatic policy is implemented: one FE uses direct one-pass
-  demeaning; multiway designs run at most four MAP pilot sweeps and return MAP
-  if certified. Otherwise a pilot contraction of at least 0.008 selects direct
-  Schwarz-LSMR at two decimal orders tighter than the requested tolerance;
-  there is no coefficient cap. All other cases continue with genuine CG. An
-  auto LSMR failure has one visible fallback from the saved pilot state to
-  certified CG. The execution and route-specific solver workspaces must fit
-  jointly before selection. Pilot iterations, contraction, selected solver,
-  iteration count, fallback, native time, and effective thread count are
-  reported.
+- One FE uses direct one-pass demeaning. Categorical multiway designs use the
+  ADR-0021 CMG/direct-LSMR topology rule with no MAP pilot. Slope-bearing and
+  generic multiway designs retain at most four MAP pilot sweeps, the 0.008
+  contraction threshold for direct tight Schwarz-LSMR, and CG for remaining
+  cases. A finite uncertified auto-LSMR result is polished from its current
+  candidate by certified CG rather than restarted. The execution and
+  route-specific solver workspaces must fit jointly. Pilot iterations,
+  contraction, selected solver, iteration count, fallback, native time, and
+  effective thread count are reported.
 - Fast-mode saved fixed effects no longer rerun observation-space MAP. LSMR and
   CMG retain their coefficient solutions, CG propagates compact coefficient
   states through its recurrence, Irons--Tuck mirrors accepted extrapolations in
@@ -402,7 +529,10 @@ and fails with `r(909)` before large allocations when neither route fits. The
 old process-RSS ratio remains diagnostic; it is deliberately not a promotion
 blocker when modeled allocation, cleanup, and science pass.
 
-## Current blockers
+## Deferred qualification backlog
+
+The items below limit future qualification or release claims; they do not
+authorize a test campaign during ordinary prototype work.
 
 1. The activated source needs exact-commit public `ppml-scientific`, hidden,
    Break, staged-install, and full-profile receipts; pre-activation runs are
@@ -437,16 +567,11 @@ blocker when modeled allocation, cleanup, and science pass.
 
 ## Development plan
 
-1. Run the repository, public `ppml-scientific`, hidden PPML, PPML Break,
-   `fereg-regression`, and manual trade-data tests on the activated source.
-2. Seal the activated F0 identity and run the scientific-first performance and
-   memory contract while preserving all existing OLS wire and public-command
-   behavior.
-3. Run the exact pinned `ppmlhdfe` closure plus independent-oracle PPML matrix,
-   constrained-memory and allocation gates, SCC/Linux qualification, and
-   staged clean-install tests on the same activated source and artifacts.
-4. Complete Windows licensed-Stata qualification later, then close the formal
-   no-waiver cross-platform activation aggregate. Until then, activation is a
-   testing surface only.
-5. Preserve the frozen ADR-0009/ADR-0010 OLS routing, Decimal fixtures,
-   observation-space audits, and unresolved explicit-CG/IT caveats throughout.
+1. Implement the next prototype change and run the smallest focused local test
+   for its boundary.
+2. When Linux or SCC behavior matters, use the four-slot development smoke and
+   select exactly `ols`, `ppml`, or `shared`; inspect its result directly.
+3. Run a focused benchmark only to answer a concrete performance or memory
+   question.
+4. Preserve the deferred qualification backlog and frozen evidence unchanged
+   until Johannes explicitly requests a detailed or release-level campaign.

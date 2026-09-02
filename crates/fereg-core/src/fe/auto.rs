@@ -3,6 +3,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     absorb_accelerated_map, absorb_lsmr, absorb_map, certify_residuals_with_reference_norms,
     weighted_column_norms, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
+    SolveStopReason,
 };
 use crate::memory::FeSolverMemoryBudget;
 
@@ -183,8 +184,9 @@ fn absorb_auto(
         ));
     }
 
-    let remaining_iterations = config.map.max_iterations - pilot_budget;
+    let mut remaining_iterations = config.map.max_iterations - pilot_budget;
     let mut lsmr_failure = None;
+    let mut attempted_lsmr = None;
     if auto_selects_lsmr(contraction, design.total_coefficients()) {
         let mut lsmr_values =
             fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
@@ -194,19 +196,46 @@ fn absorb_auto(
             ..config.lsmr
         };
         match absorb_lsmr(design, weights, &mut lsmr_values, lsmr_config) {
-            Ok(mut lsmr) if lsmr.certified() => {
-                lsmr.requested_solver = FeSolverKind::Auto;
-                lsmr.iterations = lsmr.iterations.saturating_add(pilot.iterations);
-                lsmr.pilot_iterations = pilot.iterations;
-                lsmr.pilot_contraction = contraction;
-                lsmr.setup_seconds += pilot.setup_seconds;
-                lsmr.solve_seconds += pilot.solve_seconds;
+            Ok(mut lsmr) => {
+                lsmr.certificate = certify_residuals_with_reference_norms(
+                    design,
+                    weights,
+                    &lsmr_values,
+                    &reference_norms,
+                    lsmr_config.tolerance,
+                )?;
+                if lsmr.certificate.passed {
+                    lsmr.stop_reason = SolveStopReason::Certified;
+                }
+                if lsmr.certified() {
+                    lsmr.requested_solver = FeSolverKind::Auto;
+                    lsmr.iterations = lsmr.iterations.saturating_add(pilot.iterations);
+                    lsmr.pilot_iterations = pilot.iterations;
+                    lsmr.pilot_contraction = contraction;
+                    lsmr.setup_seconds += pilot.setup_seconds;
+                    lsmr.solve_seconds += pilot.solve_seconds;
+                    *values = lsmr_values;
+                    return Ok(lsmr);
+                }
+                remaining_iterations = remaining_iterations
+                    .checked_sub(lsmr.iterations)
+                    .filter(|remaining| *remaining > 0)
+                    .ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::InvalidData,
+                            "automatic LSMR continuation exhausted the shared iteration budget before CG polish",
+                        )
+                    })?;
                 *values = lsmr_values;
-                return Ok(lsmr);
-            }
-            Ok(lsmr) => {
+                attempted_lsmr = Some((
+                    lsmr.iterations,
+                    lsmr.setup_seconds,
+                    lsmr.solve_seconds,
+                    lsmr.requested_preconditioner,
+                    lsmr.used_preconditioner,
+                ));
                 lsmr_failure = Some(format!(
-                    "automatic LSMR path did not certify after {} iterations; retried CG",
+                    "automatic LSMR path did not certify after {} iterations; continued CG from the LSMR candidate",
                     lsmr.iterations
                 ));
             }
@@ -238,6 +267,13 @@ fn absorb_auto(
     cg.pilot_contraction = contraction;
     cg.setup_seconds += pilot.setup_seconds;
     cg.solve_seconds += pilot.solve_seconds;
+    if let Some((iterations, setup, solve, requested, used)) = attempted_lsmr {
+        cg.iterations = cg.iterations.saturating_add(iterations);
+        cg.setup_seconds += setup;
+        cg.solve_seconds += solve;
+        cg.requested_preconditioner = requested;
+        cg.used_preconditioner = used;
+    }
     if let Some(warning) = lsmr_failure {
         cg.fallback_used = true;
         cg.warnings.insert(0, warning);

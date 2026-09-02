@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-08-26
 **Decision owner:** Johannes Schmieder
+**Superseded in part by:** ADR 0021 for categorical intercept-only OLS routing
 
 ## Context
 

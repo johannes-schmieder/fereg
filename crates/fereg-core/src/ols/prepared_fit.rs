@@ -796,7 +796,8 @@ pub(super) struct RetainedFiniteFitDraft<'a> {
     pub(super) score_norms: Vec<f64>,
     pub(super) within_outcome_norm: f64,
     pub(super) normalized_initial_within_sum_of_squares: f64,
-    pub(super) within_residuals: Vec<f64>,
+    pub(super) residuals: Vec<f64>,
+    pub(super) residual_absorption_report: SolveReport,
     pub(super) absorption_report: SolveReport,
     pub(super) scratch_bytes: u64,
 }
@@ -934,7 +935,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         || draft.generated_statuses.len() != generated_columns
         || draft.reference_norms.len() != generated_columns
         || draft.score_norms.len() != generated_columns
-        || draft.within_residuals.len() != prepared.fit_sample().n_active()
+        || draft.residuals.len() != prepared.fit_sample().n_active()
         || draft.finite_bread_generated_columns.len() != draft.kept.len()
     {
         return Err(invalid_argument(
@@ -984,7 +985,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
             left_inverse_relative_infinity_norm: draft.left_inverse_relative_infinity_norm,
             right_inverse_relative_infinity_norm: draft.right_inverse_relative_infinity_norm,
         }),
-        within_residuals: Some(draft.within_residuals),
+        within_residuals: Some(draft.residuals),
         standardized_within_is_reusable: false,
     };
     let weights = frame.weights();
@@ -1038,16 +1039,14 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     let within_residuals = qr.within_residuals.take().ok_or_else(|| {
         invalid_argument("retained weighted-linear fit did not retain its within residual")
     })?;
-    let residual_matrix =
-        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
-    let residual_absorbed =
-        prepared.fit_absorb_matrix(frame.raw_weights(), residual_matrix, config.absorb)?;
-    if !residual_absorbed.report().certified() {
+    if !draft.residual_absorption_report.certified() {
         return Err(invalid_data(
             "retained weighted-linear residual absorption did not certify",
         ));
     }
-    let (residuals, mut residual_absorption_report) = residual_absorbed.into_parts();
+    let residuals =
+        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
+    let mut residual_absorption_report = draft.residual_absorption_report;
     // A retained PPML session may own the accepted fit beside one speculative
     // strict candidate. Solver warnings are diagnostic strings with no
     // scientific authority and no finite heap bound, so they cannot become
@@ -1339,6 +1338,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
 
 struct FitCmgAbsorber<'a> {
     session: Option<CmgAbsorber<'a>>,
+    auto_direct_lsmr: bool,
     auto_setup_warning: Option<String>,
 }
 
@@ -1352,6 +1352,7 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     {
         return Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: false,
             auto_setup_warning: None,
         });
     }
@@ -1360,6 +1361,7 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: true,
             auto_setup_warning: None,
         });
     }
@@ -1380,12 +1382,14 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     ) {
         Ok(session) => Ok(FitCmgAbsorber {
             session: Some(session),
+            auto_direct_lsmr: false,
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitCmgAbsorber {
             session: None,
+            auto_direct_lsmr: true,
             auto_setup_warning: Some(format!(
-                "automatic CMG setup was unavailable ({error}); used the existing certified auto route"
+                "automatic CMG setup was unavailable ({error}); used certified direct LSMR"
             )),
         }),
         Err(error) => Err(error),
@@ -1408,7 +1412,9 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
             session.absorb(values)
         };
     }
-    let absorbed = if initial {
+    let absorbed = if cmg.auto_direct_lsmr {
+        prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
+    } else if initial {
         prepared.fit_absorb_initial_matrix(weights, values, config)
     } else {
         prepared.fit_absorb_matrix(weights, values, config)
@@ -9276,6 +9282,7 @@ mod tests {
             LinearSessionGenerations::new(0, 0, 0, 0, 0),
         )
         .expect("session");
+        assert!(!session.uses_ppml_categorical_map_for_test());
         let rows = prepared_data.fit_sample().n_active();
         let stride = prepared_data.fit_model().columns.len() + 1;
         let logical_elements = rows * stride;

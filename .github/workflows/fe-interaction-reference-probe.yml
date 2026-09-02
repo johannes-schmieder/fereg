@@ -1,24 +1,6 @@
 name: Pinned reghdfe FE-interaction probe
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/fe-interaction-reference-probe.yml
-      - scripts/fe_interaction_probe.py
-      - scripts/materialize_bundled_reference_root.py
-      - scripts/resolve_reference_root.py
-      - tests/python/test_fe_interaction_probe_contract.py
-      - tests/python/test_bundled_reference_root_contract.py
-      - tests/python/test_reference_root_resolver_contract.py
-      - ci/reference-bundles/stata-require/**
-      - ci/reference-probes/triggers/bundled-reference-v1.txt
-      - benchmarks/stata/probe_reghdfe_fe_interaction.do
-      - benchmarks/stata/baseline_reghdfe.do
-      - benchmarks/manifests/ols_v1.json
-      - references.lock.toml
-      - tests/fixtures/ols/ols_core.csv
   workflow_dispatch:
 
 permissions:

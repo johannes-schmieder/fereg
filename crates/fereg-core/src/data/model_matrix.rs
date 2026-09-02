@@ -75,6 +75,26 @@ impl DenseMatrix {
         self.data.capacity()
     }
 
+    pub(crate) fn resize_zeroed_within_capacity(
+        &mut self,
+        nrows: usize,
+        ncols: usize,
+    ) -> Result<()> {
+        let length = nrows.checked_mul(ncols).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")
+        })?;
+        if length > self.data.capacity() {
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                "reusable dense matrix dimensions exceed fixed capacity",
+            ));
+        }
+        self.data.resize(length, 0.0);
+        self.nrows = nrows;
+        self.ncols = ncols;
+        Ok(())
+    }
+
     pub(crate) fn into_row_major(self) -> Vec<f64> {
         self.data
     }

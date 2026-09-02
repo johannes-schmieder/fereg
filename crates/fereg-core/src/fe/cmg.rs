@@ -8,8 +8,12 @@
 use std::time::Instant;
 
 use cmg::{
-    CmgMemoryEstimate, CmgOptions, CmgPreconditioner, CmgProblemSize, Laplacian, ParallelExecutor,
-    ParallelOptions, ParallelPcgPolicy, ParallelPcgSolver, ParallelPcgWorkspace, PcgOptions,
+    solve_pcg_batch_into_with_executor, solve_pcg_batch_into_with_plan_and_workspace,
+    solve_pcg_batch_into_with_workspace, CmgMemoryEstimate, CmgOptions, CmgPreconditioner,
+    CmgProblemSize, Laplacian, ParallelExecutor, ParallelOptions, ParallelPcgExecution,
+    ParallelPcgPolicy, ParallelPcgSolver, ParallelPcgWorkspace, PcgBatchMut, PcgBatchRef,
+    PcgBatchWorkspace, PcgDiagnostics, PcgOptions, PreparedLaplacianTopology,
+    PreparedLaplacianWorkspace, RepeatedPcgMemoryEstimate, RepeatedPcgMemoryReport,
 };
 
 use crate::data::DenseMatrix;
@@ -26,7 +30,7 @@ use super::{
     SolveStopReason,
 };
 
-const MAX_NUISANCE_COLUMNS: usize = 64;
+pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
 // CMG's graph solve feeds the OLS normal equations, whose score certificate is
 // more sensitive than the observation-space FE certificate. Keep the public
 // tolerance unchanged while solving the reusable graph system two orders
@@ -34,13 +38,14 @@ const MAX_NUISANCE_COLUMNS: usize = 64;
 // model's RSS/covariance identities.
 const PCG_TOLERANCE_MULTIPLIER: f64 = 0.01;
 const PCG_TOLERANCE_FLOOR: f64 = 32.0 * f64::EPSILON;
-/// Frozen from the 2026-08-27 CMG crossover calibration. Short panels were
-/// noisy or materially slower once hierarchy setup was charged; at eight or
-/// more observations per highest-cardinality level and a materially smaller
-/// second effect CMG won every calibrated unit/weighted, narrow/wide,
-/// one/eight-thread holdout admitted by the guards below.
-const AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL: usize = 8;
+/// The 2026-09-01 development calibration targets AKM-like panels: CMG is the
+/// default only when the large worker axis is observed at least three times,
+/// the firm axis is at least ten times smaller, and any third FE contributes
+/// at most nine non-base nuisance columns. Other ordinary categorical designs
+/// use direct Schwarz-LSMR and retain certified CG as a safety continuation.
+const AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL: usize = 3;
 const AUTO_MIN_CORE_CARDINALITY_RATIO: usize = 10;
+const AUTO_MAX_NUISANCE_COLUMNS: usize = 9;
 
 /// Internal execution policy for one prepared CMG absorption session.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -55,16 +60,21 @@ pub(crate) struct CmgConfig {
 
 impl CmgConfig {
     fn pcg_options(self) -> PcgOptions {
+        self.pcg_options_at(
+            (self.map.tolerance * PCG_TOLERANCE_MULTIPLIER).max(PCG_TOLERANCE_FLOOR),
+        )
+    }
+
+    fn pcg_options_at(self, relative_tolerance: f64) -> PcgOptions {
         PcgOptions {
-            relative_tolerance: (self.map.tolerance * PCG_TOLERANCE_MULTIPLIER)
-                .max(PCG_TOLERANCE_FLOOR),
+            relative_tolerance,
             max_iterations: self.map.max_iterations,
             ..PcgOptions::default()
         }
     }
 }
 
-/// Observation-pass-free topology summary used by the frozen automatic CMG route.
+/// Observation-pass-free topology summary used by the automatic CMG route.
 /// The canonical-edge count deliberately remains the safe input-edge upper
 /// bound: computing it exactly would add an avoidable O(N) pass before graph
 /// construction and would move runtime even when the route is rejected.
@@ -125,9 +135,7 @@ impl CmgTopologyProfile {
     #[must_use]
     pub(crate) fn auto_favorable(&self) -> bool {
         self.core_effects.is_some()
-            // Even an 8-column Schur block was not a stable win once setup
-            // was charged; keep all nuisance designs on the existing route.
-            && self.nuisance_columns == 0
+            && self.nuisance_columns <= AUTO_MAX_NUISANCE_COLUMNS
             && self
                 .highest_cardinality_levels
                 .checked_mul(AUTO_MIN_OBSERVATIONS_PER_CORE_LEVEL)
@@ -138,10 +146,33 @@ impl CmgTopologyProfile {
                 .is_some_and(|minimum| self.highest_cardinality_levels >= minimum)
     }
 
-    #[cfg(test)]
-    const fn nuisance_columns(&self) -> usize {
+    pub(crate) const fn nuisance_columns(&self) -> usize {
         self.nuisance_columns
     }
+}
+
+/// Diagnostics from the CMG graph projection before any observation-space CG
+/// polish. This seam is deliberately crate-private: PPML uses it only after
+/// independently certifying every projected right-hand side.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CmgUnpolishedProjectionReport {
+    pub(crate) iterations: usize,
+    pub(crate) backward_error: f64,
+    pub(crate) setup_seconds: f64,
+    pub(crate) solve_seconds: f64,
+    pub(crate) right_hand_sides: usize,
+    pub(crate) batches: usize,
+    pub(crate) nuisance_columns: usize,
+}
+
+/// PPML-owned structural graph state reused while IRLS changes only weights.
+/// OLS deliberately does not use this seam, so its established construction
+/// and owned-result solve behavior remain unchanged.
+pub(crate) struct PreparedCmgTopology {
+    profile: CmgTopologyProfile,
+    topology: PreparedLaplacianTopology,
+    assembly_workspace: PreparedLaplacianWorkspace,
+    numeric_weights: Vec<f64>,
 }
 
 /// Fit-lifetime CMG state. The borrowed design owns only small term views;
@@ -172,9 +203,157 @@ struct GraphCmg {
     nuisance: Vec<NuisanceColumn>,
     nuisance_factor: PivotedPsdFactor,
     solver: ParallelPcgSolver,
-    workspace: ParallelPcgWorkspace,
+    workspace: GraphCmgWorkspace,
     setup_iterations: usize,
     setup_backward_error: f64,
+    setup_right_hand_sides: usize,
+    setup_batches: usize,
+}
+
+enum GraphCmgWorkspace {
+    OwnedResults(ParallelPcgWorkspace),
+    CallerBuffers(CallerPcgBuffers),
+}
+
+struct CallerPcgBuffers {
+    right_hand_sides: Vec<f64>,
+    solutions: Vec<f64>,
+    diagnostics: Vec<PcgDiagnostics>,
+    workspaces: Vec<PcgBatchWorkspace>,
+    planned_used: bool,
+}
+
+impl CallerPcgBuffers {
+    fn new(solver: &ParallelPcgSolver, batch_size: usize) -> Result<Self> {
+        let vertices = solver.graph().vertex_count();
+        let elements = vertices
+            .checked_mul(batch_size)
+            .ok_or_else(|| allocation("prepared CMG caller-buffer dimensions overflow"))?;
+        let report = solver
+            .select_batch_execution(batch_size)
+            .map_err(cmg_error)?;
+        let workspace_count = report.concurrency().max(1);
+        let mut diagnostics = Vec::new();
+        diagnostics
+            .try_reserve_exact(batch_size)
+            .map_err(|_| allocation("unable to reserve prepared CMG diagnostics"))?;
+        diagnostics.resize(batch_size, PcgDiagnostics::default());
+        let mut workspaces = Vec::new();
+        workspaces
+            .try_reserve_exact(workspace_count)
+            .map_err(|_| allocation("unable to reserve prepared CMG PCG workspace pool"))?;
+        for _ in 0..workspace_count {
+            workspaces.push(PcgBatchWorkspace::new(solver.preconditioner()).map_err(cmg_error)?);
+        }
+        Ok(Self {
+            right_hand_sides: zero_vec(
+                elements,
+                "unable to reserve prepared CMG right-hand-side buffers",
+            )?,
+            solutions: zero_vec(elements, "unable to reserve prepared CMG solution buffers")?,
+            diagnostics,
+            workspaces,
+            planned_used: false,
+        })
+    }
+
+    fn solve(
+        &mut self,
+        solver: &ParallelPcgSolver,
+        rhs_count: usize,
+        options: PcgOptions,
+    ) -> Result<()> {
+        let vertices = solver.graph().vertex_count();
+        let elements = vertices
+            .checked_mul(rhs_count)
+            .ok_or_else(|| allocation("prepared CMG solve dimensions overflow"))?;
+        if elements > self.right_hand_sides.len()
+            || elements > self.solutions.len()
+            || rhs_count > self.diagnostics.len()
+        {
+            return Err(invalid_argument(
+                "prepared CMG solve exceeds its caller-buffer capacity",
+            ));
+        }
+        let report = solver
+            .select_batch_execution(rhs_count)
+            .map_err(cmg_error)?;
+        if report.concurrency() > self.workspaces.len() {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "prepared CMG solve exceeds its fixed workspace pool",
+            ));
+        }
+        let rhs = PcgBatchRef::contiguous(&self.right_hand_sides[..elements], rhs_count, vertices)
+            .map_err(cmg_error)?;
+        let solutions =
+            PcgBatchMut::contiguous(&mut self.solutions[..elements], rhs_count, vertices)
+                .map_err(cmg_error)?;
+        let diagnostics = &mut self.diagnostics[..rhs_count];
+        match report.execution() {
+            ParallelPcgExecution::Serial => solve_pcg_batch_into_with_workspace(
+                solver.graph(),
+                solver.preconditioner(),
+                rhs,
+                None,
+                solutions,
+                diagnostics,
+                options,
+                &mut self.workspaces[0],
+            ),
+            ParallelPcgExecution::Planned => {
+                self.planned_used = true;
+                solve_pcg_batch_into_with_plan_and_workspace(
+                    solver.graph(),
+                    solver.preconditioner(),
+                    solver.try_plan().map_err(cmg_error)?,
+                    rhs,
+                    None,
+                    solutions,
+                    diagnostics,
+                    options,
+                    &mut self.workspaces[0],
+                    solver.executor(),
+                )
+            }
+            ParallelPcgExecution::AcrossRightHandSides => solve_pcg_batch_into_with_executor(
+                solver.graph(),
+                solver.preconditioner(),
+                rhs,
+                None,
+                solutions,
+                diagnostics,
+                options,
+                &mut self.workspaces[..report.concurrency()],
+                solver.executor(),
+            ),
+        }
+        .map_err(cmg_solve_error)
+    }
+
+    fn solution(&self, rhs: usize, vertices: usize) -> Result<&[f64]> {
+        let start = rhs
+            .checked_mul(vertices)
+            .ok_or_else(|| allocation("prepared CMG solution offset overflows"))?;
+        let end = start
+            .checked_add(vertices)
+            .ok_or_else(|| allocation("prepared CMG solution range overflows"))?;
+        self.solutions
+            .get(start..end)
+            .ok_or_else(|| invalid_argument("prepared CMG solution is out of bounds"))
+    }
+
+    fn caller_retained_bytes(&self) -> usize {
+        self.right_hand_sides
+            .capacity()
+            .saturating_add(self.solutions.capacity())
+            .saturating_mul(std::mem::size_of::<f64>())
+            .saturating_add(
+                self.diagnostics
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<PcgDiagnostics>()),
+            )
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -187,12 +366,84 @@ struct NuisanceColumn {
 struct CmgSolveMetrics {
     iterations: usize,
     backward_error: f64,
+    right_hand_sides: usize,
+    batches: usize,
 }
 
 impl CmgSolveMetrics {
     fn include(&mut self, iterations: usize, backward_error: f64) {
         self.iterations = self.iterations.max(iterations);
         self.backward_error = self.backward_error.max(backward_error);
+    }
+
+    fn include_batch(&mut self, right_hand_sides: usize) {
+        self.right_hand_sides = self.right_hand_sides.saturating_add(right_hand_sides);
+        self.batches = self.batches.saturating_add(1);
+    }
+}
+
+impl PreparedCmgTopology {
+    pub(crate) fn prepare(design: &BorrowedInterceptFeDesign<'_>) -> Result<Self> {
+        let profile = CmgTopologyProfile::analyze(design)?;
+        validate_nuisance_limit(&profile)?;
+        let core = profile.core_effects.ok_or_else(|| {
+            invalid_argument("prepared CMG topology requires two absorbed effects")
+        })?;
+        let left_levels = design.effects()[core[0]].n_levels();
+        let vertices = left_levels
+            .checked_add(design.effects()[core[1]].n_levels())
+            .ok_or_else(|| allocation("prepared CMG graph vertex count overflows"))?;
+        let left_codes = design.effects()[core[0]].codes();
+        let right_codes = design.effects()[core[1]].codes();
+        let endpoints = (0..design.nobs()).map(|row| {
+            (
+                left_codes[row] as usize,
+                left_levels + right_codes[row] as usize,
+            )
+        });
+        let topology =
+            PreparedLaplacianTopology::prepare(vertices, endpoints).map_err(cmg_error)?;
+        let assembly_workspace = topology.workspace().map_err(cmg_error)?;
+        let numeric_weights = zero_vec(
+            design.nobs(),
+            "unable to reserve prepared CMG numeric weights",
+        )?;
+        Ok(Self {
+            profile,
+            topology,
+            assembly_workspace,
+            numeric_weights,
+        })
+    }
+
+    fn assemble(
+        &mut self,
+        profile: &CmgTopologyProfile,
+        weights: BorrowedMapWeights<'_>,
+        weight_scale: f64,
+    ) -> Result<Laplacian> {
+        if profile != &self.profile || self.numeric_weights.len() != profile.observations {
+            return Err(invalid_argument(
+                "prepared CMG topology does not match the current absorbed design",
+            ));
+        }
+        for (row, numeric_weight) in self.numeric_weights.iter_mut().enumerate() {
+            *numeric_weight = normalized_weight(weights, weight_scale, row);
+        }
+        self.topology
+            .assemble_with_workspace(&self.numeric_weights, &mut self.assembly_workspace)
+            .map_err(cmg_error)
+    }
+
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.topology
+            .retained_bytes()
+            .saturating_add(self.assembly_workspace.byte_len())
+            .saturating_add(
+                self.numeric_weights
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<f64>()),
+            )
     }
 }
 
@@ -213,12 +464,73 @@ impl<'a> CmgAbsorber<'a> {
         )
     }
 
+    /// Build the PPML-only unpolished session from a topology prepared before
+    /// the first IRLS frame. Current weights still rebuild the numeric graph
+    /// and hierarchy, while endpoint sorting and component discovery are
+    /// reused. Caller-owned batch buffers avoid owned CMG result allocation.
+    pub(crate) fn build_unpolished_prepared(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        prepared: &mut PreparedCmgTopology,
+    ) -> Result<Self> {
+        let profile = CmgTopologyProfile::analyze(&design)?;
+        Self::build_profiled_inner_with_prepared(
+            design,
+            weights,
+            config,
+            false,
+            profile,
+            false,
+            Some(prepared),
+        )
+    }
+
     pub(crate) fn build_profiled(
         design: BorrowedInterceptFeDesign<'a>,
         weights: BorrowedMapWeights<'a>,
         config: CmgConfig,
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
+    ) -> Result<Self> {
+        Self::build_profiled_inner(
+            design,
+            weights,
+            config,
+            structural_constant_if_empty,
+            profile,
+            true,
+        )
+    }
+
+    fn build_profiled_inner(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+        profile: CmgTopologyProfile,
+        retain_setup_failure: bool,
+    ) -> Result<Self> {
+        Self::build_profiled_inner_with_prepared(
+            design,
+            weights,
+            config,
+            structural_constant_if_empty,
+            profile,
+            retain_setup_failure,
+            None,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_profiled_inner_with_prepared(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+        profile: CmgTopologyProfile,
+        retain_setup_failure: bool,
+        prepared: Option<&mut PreparedCmgTopology>,
     ) -> Result<Self> {
         validate_config(config)?;
         let weight_scale = validate_weights(weights, design.nobs())?;
@@ -227,11 +539,29 @@ impl<'a> CmgAbsorber<'a> {
             CmgRoute::Direct
         } else {
             validate_nuisance_limit(&profile)?;
-            let graph = preflight_cmg_memory(&design, &profile, config)
-                .and_then(|()| build_graph_route(&design, weights, weight_scale, config, &profile));
+            let graph = if let Some(prepared) = prepared {
+                preflight_prepared_cmg_memory(&design, &profile, config, prepared).and_then(|()| {
+                    build_prepared_graph_route(
+                        &design,
+                        weights,
+                        weight_scale,
+                        config,
+                        &profile,
+                        prepared,
+                    )
+                })
+            } else {
+                preflight_cmg_memory(&design, &profile, config).and_then(|()| {
+                    build_graph_route(&design, weights, weight_scale, config, &profile)
+                })
+            };
             match graph {
                 Ok(graph) => CmgRoute::Graph(graph),
-                Err(error) if config.requested_solver == FeSolverKind::Auto => return Err(error),
+                Err(error)
+                    if config.requested_solver == FeSolverKind::Auto || !retain_setup_failure =>
+                {
+                    return Err(error);
+                }
                 Err(error) => CmgRoute::Failed(error.to_string()),
             }
         };
@@ -239,6 +569,8 @@ impl<'a> CmgAbsorber<'a> {
             CmgRoute::Graph(graph) => CmgSolveMetrics {
                 iterations: graph.setup_iterations,
                 backward_error: graph.setup_backward_error,
+                right_hand_sides: graph.setup_right_hand_sides,
+                batches: graph.setup_batches,
             },
             CmgRoute::Direct | CmgRoute::Failed(_) => CmgSolveMetrics::default(),
         };
@@ -251,6 +583,65 @@ impl<'a> CmgAbsorber<'a> {
             pending_setup_seconds: setup_started.elapsed().as_secs_f64(),
             pending_setup_metrics,
             structural_constant_if_empty,
+        })
+    }
+
+    /// Apply only the graph/Schur projection. No observation-space CG polish
+    /// or route fallback is permitted here; callers must independently
+    /// certify the returned residualized columns before using them.
+    pub(crate) fn project_unpolished(
+        &mut self,
+        values: &mut DenseMatrix,
+        relative_tolerance: f64,
+    ) -> Result<CmgUnpolishedProjectionReport> {
+        if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+            return Err(invalid_argument(
+                "CMG unpolished design and matrix dimensions are inconsistent",
+            ));
+        }
+        if values.as_slice().iter().any(|value| !value.is_finite()) {
+            return Err(invalid_data("CMG unpolished input values must be finite"));
+        }
+        if !relative_tolerance.is_finite() || relative_tolerance <= 0.0 {
+            return Err(invalid_argument(
+                "CMG unpolished tolerance must be finite and positive",
+            ));
+        }
+        let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+        let mut metrics = std::mem::take(&mut self.pending_setup_metrics);
+        let nuisance_columns = match &self.route {
+            CmgRoute::Graph(graph) => graph.nuisance.len(),
+            CmgRoute::Direct => {
+                return Err(FeregError::new(
+                    ErrorCode::Unsupported,
+                    "CMG unpolished projection requires at least two absorbed effects",
+                ));
+            }
+            CmgRoute::Failed(message) => {
+                return Err(nonconvergence(format!("CMG setup failed: {message}")));
+            }
+        };
+        let solve_started = Instant::now();
+        let (projected, _) = match &mut self.route {
+            CmgRoute::Graph(graph) => graph.project_matrix_with_options(
+                &self.design,
+                self.weights,
+                self.weight_scale,
+                values,
+                self.config,
+                self.config.pcg_options_at(relative_tolerance),
+            ),
+            CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
+        }?;
+        metrics.include_from(projected);
+        Ok(CmgUnpolishedProjectionReport {
+            iterations: metrics.iterations,
+            backward_error: metrics.backward_error,
+            setup_seconds,
+            solve_seconds: solve_started.elapsed().as_secs_f64(),
+            right_hand_sides: metrics.right_hand_sides,
+            batches: metrics.batches,
+            nuisance_columns,
         })
     }
 
@@ -452,6 +843,25 @@ impl GraphCmg {
         values: &mut DenseMatrix,
         config: CmgConfig,
     ) -> Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)> {
+        self.project_matrix_with_options(
+            design,
+            weights,
+            weight_scale,
+            values,
+            config,
+            config.pcg_options(),
+        )
+    }
+
+    fn project_matrix_with_options(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        weight_scale: f64,
+        values: &mut DenseMatrix,
+        config: CmgConfig,
+        pcg_options: PcgOptions,
+    ) -> Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)> {
         let mut metrics = CmgSolveMetrics::default();
         let mut coefficients = config
             .retain_coefficients
@@ -467,6 +877,7 @@ impl GraphCmg {
                 coefficients: coefficients.as_mut(),
                 destination_rhs_start: 0,
                 coefficient_scale: 1.0,
+                pcg_options,
             },
         )?;
         metrics.include_from(core_metrics);
@@ -522,6 +933,7 @@ impl GraphCmg {
                     coefficients: coefficients.as_mut(),
                     destination_rhs_start: start,
                     coefficient_scale: -1.0,
+                    pcg_options,
                 },
             )?;
             metrics.include_from(correction_metrics);
@@ -553,46 +965,87 @@ impl GraphCmg {
             mut coefficients,
             destination_rhs_start,
             coefficient_scale,
+            pcg_options,
         } = request;
         let mut metrics = CmgSolveMetrics::default();
         for start in (0..values.ncols()).step_by(config.batch_size) {
             let end = start.saturating_add(config.batch_size).min(values.ncols());
-            let right_hand_sides = build_value_rhs_batch(
-                design,
-                self.core_effects,
-                weights,
-                weight_scale,
-                values,
-                start,
-                end,
-            )?;
-            let solved = self
-                .solver
-                .solve_batch_with_workspace(
-                    &right_hand_sides,
-                    config.pcg_options(),
-                    &mut self.workspace,
-                )
-                .map_err(cmg_error)?;
-            for (local, solution) in solved.results().iter().enumerate() {
-                metrics.include(solution.iterations(), solution.backward_error());
-                if let Some(batch) = coefficients.as_deref_mut() {
-                    record_core_solution(
+            match &mut self.workspace {
+                GraphCmgWorkspace::OwnedResults(workspace) => {
+                    let right_hand_sides = build_value_rhs_batch(
                         design,
                         self.core_effects,
-                        batch,
-                        destination_rhs_start + start + local,
-                        coefficient_scale,
-                        solution.solution(),
+                        weights,
+                        weight_scale,
+                        values,
+                        start,
+                        end,
                     )?;
+                    let solved = self
+                        .solver
+                        .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
+                        .map_err(cmg_solve_error)?;
+                    metrics.include_batch(solved.results().len());
+                    for (local, solution) in solved.results().iter().enumerate() {
+                        metrics.include(solution.iterations(), solution.backward_error());
+                        if let Some(batch) = coefficients.as_deref_mut() {
+                            record_core_solution(
+                                design,
+                                self.core_effects,
+                                batch,
+                                destination_rhs_start + start + local,
+                                coefficient_scale,
+                                solution.solution(),
+                            )?;
+                        }
+                        subtract_core_fit(
+                            design,
+                            self.core_effects,
+                            values,
+                            start + local,
+                            solution.solution(),
+                        )?;
+                    }
                 }
-                subtract_core_fit(
-                    design,
-                    self.core_effects,
-                    values,
-                    start + local,
-                    solution.solution(),
-                )?;
+                GraphCmgWorkspace::CallerBuffers(caller) => {
+                    let width = end - start;
+                    let vertices = self.solver.graph().vertex_count();
+                    fill_value_rhs_batch_into(
+                        &mut caller.right_hand_sides,
+                        vertices,
+                        design,
+                        self.core_effects,
+                        weights,
+                        weight_scale,
+                        values,
+                        start,
+                        end,
+                    )?;
+                    caller.solve(&self.solver, width, pcg_options)?;
+                    metrics.include_batch(width);
+                    for local in 0..width {
+                        let diagnostic = caller.diagnostics[local];
+                        metrics.include(diagnostic.iterations(), diagnostic.backward_error());
+                        let solution = caller.solution(local, vertices)?;
+                        if let Some(batch) = coefficients.as_deref_mut() {
+                            record_core_solution(
+                                design,
+                                self.core_effects,
+                                batch,
+                                destination_rhs_start + start + local,
+                                coefficient_scale,
+                                solution,
+                            )?;
+                        }
+                        subtract_core_fit(
+                            design,
+                            self.core_effects,
+                            values,
+                            start + local,
+                            solution,
+                        )?;
+                    }
+                }
             }
         }
         Ok(metrics)
@@ -604,6 +1057,7 @@ struct CoreProjectionRequest<'a> {
     coefficients: Option<&'a mut FeCoefficientBatch>,
     destination_rhs_start: usize,
     coefficient_scale: f64,
+    pcg_options: PcgOptions,
 }
 
 fn record_core_solution(
@@ -633,6 +1087,8 @@ fn record_core_solution(
 impl CmgSolveMetrics {
     fn include_from(&mut self, other: Self) {
         self.include(other.iterations, other.backward_error);
+        self.right_hand_sides = self.right_hand_sides.saturating_add(other.right_hand_sides);
+        self.batches = self.batches.saturating_add(other.batches);
     }
 }
 
@@ -646,8 +1102,6 @@ fn build_graph_route(
     let core_effects = profile
         .core_effects
         .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
-    let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
-
     let left_levels = design.effects()[core_effects[0]].n_levels();
     let right_levels = design.effects()[core_effects[1]].n_levels();
     let vertices = left_levels
@@ -669,6 +1123,59 @@ fn build_graph_route(
     });
     let graph =
         Laplacian::from_edges_with_executor(vertices, edges, &executor).map_err(cmg_error)?;
+    build_graph_route_from_numeric(
+        design,
+        weights,
+        weight_scale,
+        config,
+        profile,
+        graph,
+        executor,
+        None,
+    )
+}
+
+fn build_prepared_graph_route(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    config: CmgConfig,
+    profile: &CmgTopologyProfile,
+    prepared: &mut PreparedCmgTopology,
+) -> Result<GraphCmg> {
+    let parallel = ParallelOptions {
+        threads: config.threads.resolved(),
+        ..ParallelOptions::default()
+    };
+    let executor = ParallelExecutor::new(parallel).map_err(cmg_error)?;
+    let graph = prepared.assemble(profile, weights, weight_scale)?;
+    build_graph_route_from_numeric(
+        design,
+        weights,
+        weight_scale,
+        config,
+        profile,
+        graph,
+        executor,
+        Some(prepared),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_graph_route_from_numeric(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    config: CmgConfig,
+    profile: &CmgTopologyProfile,
+    graph: Laplacian,
+    executor: ParallelExecutor,
+    prepared: Option<&PreparedCmgTopology>,
+) -> Result<GraphCmg> {
+    let core_effects = profile
+        .core_effects
+        .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
+    let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
     let preconditioner =
         CmgPreconditioner::build_with_executor(&graph, CmgOptions::default(), &executor)
             .map_err(cmg_error)?;
@@ -678,7 +1185,11 @@ fn build_graph_route(
         ParallelPcgPolicy::default(),
     )
     .map_err(cmg_error)?;
-    let workspace = solver.workspace();
+    let workspace = if prepared.is_some() {
+        GraphCmgWorkspace::CallerBuffers(CallerPcgBuffers::new(&solver, config.batch_size)?)
+    } else {
+        GraphCmgWorkspace::OwnedResults(solver.workspace())
+    };
     let mut route = GraphCmg {
         core_effects,
         nuisance,
@@ -687,13 +1198,17 @@ fn build_graph_route(
         workspace,
         setup_iterations: 0,
         setup_backward_error: 0.0,
+        setup_right_hand_sides: 0,
+        setup_batches: 0,
     };
     let (factor, metrics) =
         build_nuisance_factor(design, weights, weight_scale, &mut route, config)?;
     route.nuisance_factor = factor;
-    ensure_cmg_exact_retained_memory_fits(&route, config)?;
+    ensure_cmg_exact_retained_memory_fits(&route, config, prepared)?;
     route.setup_iterations = metrics.iterations;
     route.setup_backward_error = metrics.backward_error;
+    route.setup_right_hand_sides = metrics.right_hand_sides;
+    route.setup_batches = metrics.batches;
     Ok(route)
 }
 
@@ -805,6 +1320,82 @@ fn preflight_cmg_memory(
     }
 }
 
+fn preflight_prepared_cmg_memory(
+    design: &BorrowedInterceptFeDesign<'_>,
+    profile: &CmgTopologyProfile,
+    config: CmgConfig,
+    prepared: &PreparedCmgTopology,
+) -> Result<()> {
+    let Some(budget) = config.solver_memory_budget else {
+        return Ok(());
+    };
+    if &prepared.profile != profile {
+        return Err(invalid_argument(
+            "prepared CMG topology does not match the current absorbed design",
+        ));
+    }
+    let parallel = ParallelOptions {
+        threads: config.threads.resolved(),
+        ..ParallelOptions::default()
+    };
+    let estimate = RepeatedPcgMemoryEstimate::conservative(
+        CmgProblemSize {
+            vertices: prepared.topology.vertex_count(),
+            input_edges: prepared.topology.input_edge_count(),
+            canonical_edges: prepared.topology.canonical_edge_count(),
+            right_hand_sides: config.batch_size,
+        },
+        CmgOptions::default(),
+        parallel,
+        config.threads.resolved() > 1,
+        false,
+    )
+    .map_err(cmg_error)?;
+    let repeated_frame_bytes = estimate
+        .total_solver_retained_bytes()
+        .checked_sub(estimate.prepared_topology_bytes())
+        .and_then(|value| value.checked_sub(estimate.numeric_assembly_scratch_bytes()))
+        .ok_or_else(|| allocation("prepared CMG repeated memory estimate underflows"))?;
+    let legacy_build_peak = CmgMemoryEstimate::conservative(
+        CmgProblemSize {
+            vertices: prepared.topology.vertex_count(),
+            input_edges: prepared.topology.input_edge_count(),
+            canonical_edges: prepared.topology.canonical_edge_count(),
+            right_hand_sides: config.batch_size,
+        },
+        CmgOptions::default(),
+        parallel,
+    )
+    .map_err(cmg_error)?
+    .build_peak_bytes();
+    let nuisance_square = profile
+        .nuisance_columns
+        .checked_mul(profile.nuisance_columns)
+        .and_then(|value| value.checked_mul(32))
+        .ok_or_else(|| allocation("prepared CMG nuisance workspace estimate overflows"))?;
+    let retained_coefficients = if config.retain_coefficients {
+        design
+            .total_term_slots()
+            .checked_mul(config.batch_size)
+            .and_then(|value| value.checked_mul(std::mem::size_of::<f64>()))
+            .ok_or_else(|| allocation("prepared CMG retained coefficient estimate overflows"))?
+    } else {
+        0
+    };
+    let required = (repeated_frame_bytes.max(legacy_build_peak) as u128)
+        .checked_add(estimate.caller_logical_bytes() as u128)
+        .and_then(|value| value.checked_add(nuisance_square as u128))
+        .and_then(|value| value.checked_add(retained_coefficients as u128))
+        .ok_or_else(|| allocation("prepared CMG complete memory estimate overflows"))?;
+    if budget.fits(required) {
+        Ok(())
+    } else {
+        Err(allocation(format!(
+            "prepared CMG requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
+        )))
+    }
+}
+
 fn ensure_cg_fallback_fits(
     design: &BorrowedInterceptFeDesign<'_>,
     right_hand_sides: usize,
@@ -835,18 +1426,58 @@ fn ensure_cg_fallback_fits(
     }
 }
 
-fn ensure_cmg_exact_retained_memory_fits(graph: &GraphCmg, config: CmgConfig) -> Result<()> {
+fn ensure_cmg_exact_retained_memory_fits(
+    graph: &GraphCmg,
+    config: CmgConfig,
+    prepared: Option<&PreparedCmgTopology>,
+) -> Result<()> {
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
-    let upstream = graph.solver.memory_report(&graph.workspace);
+    let upstream_bytes = match &graph.workspace {
+        GraphCmgWorkspace::OwnedResults(workspace) => {
+            graph.solver.memory_report(workspace).total_retained_bytes() as u128
+        }
+        GraphCmgWorkspace::CallerBuffers(caller) => {
+            let prepared = prepared.ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "prepared CMG caller buffers have no prepared topology",
+                )
+            })?;
+            let plan = if caller.planned_used {
+                Some(graph.solver.try_plan().map_err(cmg_error)?)
+            } else {
+                None
+            };
+            let report = RepeatedPcgMemoryReport::with_parallel_plan(
+                &prepared.topology,
+                &prepared.assembly_workspace,
+                graph.solver.graph(),
+                graph.solver.preconditioner(),
+                plan,
+                &caller.workspaces,
+                config.batch_size,
+                false,
+            )
+            .map_err(cmg_error)?;
+            let repeated_frame_bytes = report
+                .total_solver_retained_bytes()
+                .checked_sub(report.prepared_topology_bytes())
+                .and_then(|value| value.checked_sub(report.numeric_assembly_scratch_bytes()))
+                .ok_or_else(|| allocation("prepared CMG exact memory report underflows"))?;
+            (repeated_frame_bytes as u128)
+                .checked_add(caller.caller_retained_bytes() as u128)
+                .ok_or_else(|| allocation("prepared CMG exact retained-memory report overflows"))?
+        }
+    };
     let nuisance_bytes = graph
         .nuisance
         .capacity()
         .checked_mul(std::mem::size_of::<NuisanceColumn>())
         .and_then(|value| value.checked_add(graph.nuisance_factor.retained_bytes()))
         .ok_or_else(|| allocation("CMG exact retained-memory report overflows"))?;
-    let required = (upstream.total_retained_bytes() as u128)
+    let required = upstream_bytes
         .checked_add(nuisance_bytes as u128)
         .ok_or_else(|| allocation("CMG exact retained-memory report overflows"))?;
     if budget.fits(required) {
@@ -878,37 +1509,71 @@ fn build_nuisance_factor(
 
     for start in (0..dimension).step_by(config.batch_size) {
         let end = start.saturating_add(config.batch_size).min(dimension);
-        let right_hand_sides = build_nuisance_rhs_batch(
-            design,
-            graph.core_effects,
-            &graph.nuisance,
-            weights,
-            weight_scale,
-            start,
-            end,
-        )?;
-        let solved = graph
-            .solver
-            .solve_batch_with_workspace(
-                &right_hand_sides,
-                config.pcg_options(),
-                &mut graph.workspace,
-            )
-            .map_err(cmg_error)?;
-        for (local, solution) in solved.results().iter().enumerate() {
-            metrics.include(solution.iterations(), solution.backward_error());
-            let column = start + local;
-            accumulate_schur_column(
-                design,
-                graph.core_effects,
-                &graph.nuisance,
-                weights,
-                weight_scale,
-                column,
-                solution.solution(),
-                &mut schur,
-                &mut corrections,
-            )?;
+        match &mut graph.workspace {
+            GraphCmgWorkspace::OwnedResults(workspace) => {
+                let right_hand_sides = build_nuisance_rhs_batch(
+                    design,
+                    graph.core_effects,
+                    &graph.nuisance,
+                    weights,
+                    weight_scale,
+                    start,
+                    end,
+                )?;
+                let solved = graph
+                    .solver
+                    .solve_batch_with_workspace(&right_hand_sides, config.pcg_options(), workspace)
+                    .map_err(cmg_solve_error)?;
+                metrics.include_batch(solved.results().len());
+                for (local, solution) in solved.results().iter().enumerate() {
+                    metrics.include(solution.iterations(), solution.backward_error());
+                    let column = start + local;
+                    accumulate_schur_column(
+                        design,
+                        graph.core_effects,
+                        &graph.nuisance,
+                        weights,
+                        weight_scale,
+                        column,
+                        solution.solution(),
+                        &mut schur,
+                        &mut corrections,
+                    )?;
+                }
+            }
+            GraphCmgWorkspace::CallerBuffers(caller) => {
+                let width = end - start;
+                let vertices = graph.solver.graph().vertex_count();
+                fill_nuisance_rhs_batch_into(
+                    &mut caller.right_hand_sides,
+                    vertices,
+                    design,
+                    graph.core_effects,
+                    &graph.nuisance,
+                    weights,
+                    weight_scale,
+                    start,
+                    end,
+                )?;
+                caller.solve(&graph.solver, width, config.pcg_options())?;
+                metrics.include_batch(width);
+                for local in 0..width {
+                    let diagnostic = caller.diagnostics[local];
+                    metrics.include(diagnostic.iterations(), diagnostic.backward_error());
+                    let column = start + local;
+                    accumulate_schur_column(
+                        design,
+                        graph.core_effects,
+                        &graph.nuisance,
+                        weights,
+                        weight_scale,
+                        column,
+                        caller.solution(local, vertices)?,
+                        &mut schur,
+                        &mut corrections,
+                    )?;
+                }
+            }
         }
     }
     for left in 0..dimension {
@@ -955,6 +1620,43 @@ fn build_value_rhs_batch(
     Ok(batch)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn fill_value_rhs_batch_into(
+    output: &mut [f64],
+    vertices: usize,
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    values: &DenseMatrix,
+    start: usize,
+    end: usize,
+) -> Result<()> {
+    let width = end
+        .checked_sub(start)
+        .ok_or_else(|| invalid_argument("prepared CMG value batch range is invalid"))?;
+    let elements = width
+        .checked_mul(vertices)
+        .ok_or_else(|| allocation("prepared CMG value RHS dimensions overflow"))?;
+    let output = output
+        .get_mut(..elements)
+        .ok_or_else(|| invalid_argument("prepared CMG value RHS buffer is too small"))?;
+    output.fill(0.0);
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..values.nrows() {
+        let weight = normalized_weight(weights, weight_scale, row);
+        for (local, column) in (start..end).enumerate() {
+            let contribution = weight * values[(row, column)];
+            let base = local * vertices;
+            output[base + left[row] as usize] += contribution;
+            output[base + right_offset + right[row] as usize] -= contribution;
+        }
+    }
+    validate_finite_slice(output, "prepared CMG RHS accumulation is nonfinite")
+}
+
 fn build_nuisance_rhs_batch(
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
@@ -984,6 +1686,47 @@ fn build_nuisance_rhs_batch(
     }
     validate_finite_vectors(&batch, "CMG nuisance RHS accumulation is nonfinite")?;
     Ok(batch)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fill_nuisance_rhs_batch_into(
+    output: &mut [f64],
+    vertices: usize,
+    design: &BorrowedInterceptFeDesign<'_>,
+    core: [usize; 2],
+    nuisance: &[NuisanceColumn],
+    weights: BorrowedMapWeights<'_>,
+    weight_scale: f64,
+    start: usize,
+    end: usize,
+) -> Result<()> {
+    let width = end
+        .checked_sub(start)
+        .ok_or_else(|| invalid_argument("prepared CMG nuisance batch range is invalid"))?;
+    let elements = width
+        .checked_mul(vertices)
+        .ok_or_else(|| allocation("prepared CMG nuisance RHS dimensions overflow"))?;
+    let output = output
+        .get_mut(..elements)
+        .ok_or_else(|| invalid_argument("prepared CMG nuisance RHS buffer is too small"))?;
+    output.fill(0.0);
+    let left = design.effects()[core[0]].codes();
+    let right = design.effects()[core[1]].codes();
+    let right_offset = design.effects()[core[0]].n_levels();
+    for row in 0..design.nobs() {
+        let weight = normalized_weight(weights, weight_scale, row);
+        for (local, column) in nuisance[start..end].iter().enumerate() {
+            if design.effects()[column.effect].codes()[row] == column.level {
+                let base = local * vertices;
+                output[base + left[row] as usize] += weight;
+                output[base + right_offset + right[row] as usize] -= weight;
+            }
+        }
+    }
+    validate_finite_slice(
+        output,
+        "prepared CMG nuisance RHS accumulation is nonfinite",
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1417,6 +2160,14 @@ fn validate_finite_vectors(values: &[Vec<f64>], message: &'static str) -> Result
     }
 }
 
+fn validate_finite_slice(values: &[f64], message: &'static str) -> Result<()> {
+    if values.iter().any(|value| !value.is_finite()) {
+        Err(invalid_data(message))
+    } else {
+        Ok(())
+    }
+}
+
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
     let updated = *sum + value;
     let adjustment = if sum.abs() >= value.abs() {
@@ -1435,6 +2186,24 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
 
 fn cmg_error(error: cmg::CmgError) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, format!("CMG: {error}"))
+}
+
+fn cmg_solve_error(error: cmg::CmgError) -> FeregError {
+    let code = match &error {
+        cmg::CmgError::PcgBreakdown { .. }
+        | cmg::CmgError::MaximumIterations { .. }
+        | cmg::CmgError::ResidualVerificationFailed { .. }
+        | cmg::CmgError::IncompatibleLaplacianRhs { .. } => ErrorCode::NonConvergence,
+        cmg::CmgError::MemoryBudgetExceeded { .. } => ErrorCode::Allocation,
+        cmg::CmgError::ParallelRuntime { .. } => ErrorCode::Internal,
+        cmg::CmgError::InvalidOption { .. } => ErrorCode::InvalidArgument,
+        _ => ErrorCode::InvalidData,
+    };
+    FeregError::new(code, format!("CMG solve: {error}"))
+}
+
+fn nonconvergence(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::NonConvergence, message)
 }
 
 fn invalid_argument(message: impl Into<String>) -> FeregError {
@@ -1555,19 +2324,19 @@ mod tests {
     }
 
     #[test]
-    fn auto_route_is_frozen_at_calibrated_shape_boundaries() {
-        let favorable = calibrated_panel_profile(8, 100, 10, None, false);
+    fn auto_route_matches_calibrated_akm_shape_boundaries() {
+        let favorable = calibrated_panel_profile(3, 100, 10, Some(10), false);
         assert!(favorable.auto_favorable());
-        assert_eq!(favorable.nuisance_columns(), 0);
+        assert_eq!(favorable.nuisance_columns(), 9);
 
-        let short = calibrated_panel_profile(7, 100, 10, None, false);
+        let short = calibrated_panel_profile(2, 100, 10, None, false);
         assert!(!short.auto_favorable());
 
         let balanced = calibrated_panel_profile(10, 100, 11, None, false);
         assert!(!balanced.auto_favorable());
 
-        let nuisance = calibrated_panel_profile(10, 1_000, 100, Some(65), false);
-        assert_eq!(nuisance.nuisance_columns(), 64);
+        let nuisance = calibrated_panel_profile(10, 1_000, 100, Some(11), false);
+        assert_eq!(nuisance.nuisance_columns(), 10);
         assert!(!nuisance.auto_favorable());
     }
 
@@ -1585,6 +2354,58 @@ mod tests {
             forward.second_cardinality_levels,
             reverse.second_cardinality_levels
         );
+    }
+
+    #[test]
+    fn three_way_profile_uses_two_largest_effects_as_core_in_every_order() {
+        let rows = 2_000;
+        let worker_levels = 400;
+        let firm_levels = 80;
+        let year_levels = 5;
+        let worker: Vec<u32> = (0..rows)
+            .map(|row| (row / (rows / worker_levels)) as u32)
+            .collect();
+        let firm: Vec<u32> = (0..rows)
+            .map(|row| ((row / 5 + row % 5) % firm_levels) as u32)
+            .collect();
+        let year: Vec<u32> = (0..rows).map(|row| (row % year_levels) as u32).collect();
+        let wi = LevelIndex::from_codes(&worker, worker_levels).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, firm_levels).expect("firm index");
+        let yi = LevelIndex::from_codes(&year, year_levels).expect("year index");
+        let sources = [
+            (&worker, worker_levels, &wi),
+            (&firm, firm_levels, &fi),
+            (&year, year_levels, &yi),
+        ];
+
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let effects = order
+                .iter()
+                .map(|index| {
+                    let (codes, levels, level_index) = sources[*index];
+                    effect(codes, levels, level_index)
+                })
+                .collect();
+            let design = BorrowedInterceptFeDesign::new(rows, effects).expect("profile design");
+            let profile = CmgTopologyProfile::analyze(&design).expect("profile");
+            assert_eq!(profile.highest_cardinality_levels, worker_levels);
+            assert_eq!(profile.second_cardinality_levels, firm_levels);
+            assert_eq!(profile.vertices, worker_levels + firm_levels);
+            assert_eq!(profile.nuisance_columns(), year_levels - 1);
+            let selected_original_effects = profile
+                .core_effects
+                .expect("two core effects")
+                .map(|position| order[position]);
+            assert_eq!(selected_original_effects, [0, 1]);
+            assert_eq!(order[profile.effect_order[2]], 2);
+        }
     }
 
     #[test]

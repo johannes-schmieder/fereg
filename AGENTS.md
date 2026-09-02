@@ -122,8 +122,31 @@ failure conditions, not internal chronology.
 
 ## Validation and release evidence
 
-Use targeted tests while iterating, then the repository entry points appropriate
-to the change. The standard local commands are:
+This repository is in prototype and development mode. Unless Johannes explicitly
+requests qualification, release evidence, or a detailed test campaign, use the
+smallest test that exercises the changed boundary. Do not infer authorization
+for broader testing from `STATUS.md`, a historical plan, an ADR, an unclosed
+release gate, or the availability of a qualification harness.
+
+Escalate validation deliberately:
+
+1. Run focused unit, oracle, static, or licensed-Stata fixtures locally.
+2. Use the SCC development smoke only when Linux, SCC launch, resource, or
+   performance behavior is relevant. Select exactly `ols`, `ppml`, or `shared`
+   for the boundary changed.
+3. Run a focused benchmark only when the task needs a measured performance or
+   memory answer.
+4. Run frozen matrices, direct-F0 qualification, cross-platform aggregation,
+   or other claim-grade evidence only after an explicit user request.
+
+Development smoke results are diagnostic. They need a source-snapshot label,
+job ID, application result, and useful logs, but never qualification sealing or
+promotion machinery. Do not create a heartbeat for the normal sub-30-minute
+smoke. The licensed Mac workflows, including the bounded reference probe, are
+manual-only; do not dispatch one unless the requested work needs that profile.
+Formal qualification receipts remain exact-source and immutable.
+
+The standard local entry points, when proportionate to the change, are:
 
 ```bash
 ./scripts/run_tests.sh

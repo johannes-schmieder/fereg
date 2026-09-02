@@ -1,0 +1,27 @@
+case_id,test_id,topology,topology_detail,n,controls,rhs,threads,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
+boundary_dense_p4_r10_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest4_ratio10_nuisance0_dense,16000,4,5,8,worker firm,cmg,0.024,7.0,CMG,0.025,0.0,0.0,4.166666666666674
+boundary_dense_p8_r10_n19,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance19_dense,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.046,3.0,LSMR,0.036,0.0,0.0,-21.739130434782616
+boundary_dense_p8_r10_n9,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance9_dense,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.046,7.0,CMG,0.048,0.0,0.0,4.347826086956519
+boundary_sparse_p4_r10_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest4_ratio10_nuisance0_sparse,16000,4,5,8,worker firm,cmg,0.014,7.0,CMG,0.014,0.0,0.0,0.0
+boundary_sparse_p8_r10_n19,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance19_sparse,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.042,3.0,LSMR,0.034,0.0,0.0,-19.047619047619047
+boundary_sparse_p8_r10_n9,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance9_sparse,32000,4,5,8,year worker firm,cmg,0.04,7.0,CMG,0.04,0.0,0.0,0.0
+boundary_sparse_p8_r2_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio2_nuisance0_sparse,32000,4,5,8,worker firm,cmg,0.033,3.0,LSMR,0.041,0.0,0.0,24.242424242424242
+boundary_sparse_p8_r5_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio5_nuisance0_sparse,32000,4,5,8,worker firm,cmg,0.02,3.0,LSMR,0.033,0.0,0.0,65.00000000000001
+cliff_n10000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,10000,4,5,8,worker firm county,cmg,0.016,7.0,CMG,0.016,0.0,0.0,0.0
+cliff_n12500,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,12500,4,5,8,worker firm county,cmg,0.019,7.0,CMG,0.018,0.0,0.0,-5.263157894736848
+cliff_n15000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,15000,4,5,8,worker firm county,cmg,0.021,7.0,CMG,0.02,0.0,0.0,-4.761904761904767
+cliff_n17500,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,17500,4,5,8,worker firm county,cmg,0.024,7.0,CMG,0.023,0.0,0.0,-4.166666666666674
+cliff_n20000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,20000,4,5,8,worker firm county,cmg,0.026,7.0,CMG,0.026,0.0,0.0,0.0
+cliff_n22500,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,22500,4,5,8,worker firm county,cmg,0.031,3.0,LSMR,0.03,0.0,0.0,-3.2258064516129115
+cliff_n25000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,25000,4,5,8,worker firm county,cmg,0.036,3.0,LSMR,0.033,0.0,0.0,-8.333333333333325
+cliff_n27500,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,27500,4,5,8,worker firm county,cmg,0.039,3.0,LSMR,0.036,0.0,0.0,-7.692307692307699
+cliff_n30000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,30000,4,5,8,worker firm county,cmg,0.045,3.0,LSMR,0.037,0.0,0.0,-17.777777777777782
+val_p4r5_m02_s1,akm_validation,akm_out_of_sample,p4r5_m02_seed1_ratio5,40000,4,5,8,worker firm,cmg,0.045,3.0,LSMR,0.048,0.0,0.0,6.666666666666665
+val_p5r5_m02_s1,akm_validation,akm_out_of_sample,p5r5_m02_seed1_ratio5,50000,4,5,8,worker firm,lsmr_schwarz_1e8,0.078,3.0,LSMR,0.049,0.0,0.0,-37.17948717948718
+val_p8r2_m02_s2,akm_validation,akm_out_of_sample,p8r2_m02_seed2_ratio2,80000,4,5,8,worker firm,cmg,0.075,3.0,LSMR,0.087,0.0,0.0,15.999999999999993
+val_simple_n15000_s1,akm_validation,akm_out_of_sample,simple_n15000_seed1_ratio20,15000,4,5,8,worker firm,cmg,0.014,7.0,CMG,0.015,0.0,0.0,7.14285714285714
+val_simple_n60000_s2,akm_validation,akm_out_of_sample,simple_n60000_seed2_ratio20,60000,4,5,8,worker firm,cmg,0.048,7.0,CMG,0.047,0.0,0.0,-2.083333333333337
+val_year10_s1,akm_validation,akm_out_of_sample,year10_seed1_ratio20,50000,4,5,8,worker firm year,cmg,0.065,7.0,CMG,0.065,0.0,0.0,0.0
+val_year12_s1,akm_validation,akm_out_of_sample,year12_seed1_ratio20,50000,4,5,8,worker firm year,lsmr_schwarz_1e8,0.068,3.0,LSMR,0.056,0.0,0.0,-17.647058823529417
+val_year20_s1,akm_validation,akm_out_of_sample,year20_seed1_ratio20,50000,4,5,8,worker firm year,lsmr_schwarz_1e8,0.068,3.0,LSMR,0.055,0.0,0.0,-19.11764705882354
+val_year5_s1,akm_validation,akm_out_of_sample,year5_seed1_ratio20,50000,4,5,8,worker firm year,cmg,0.057,7.0,CMG,0.056,0.0,0.0,-1.7543859649122862

@@ -44,12 +44,12 @@ use = "Evaluated solver reference; not linked, copied, or used at runtime in 0.5
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "ce126358a82cc1a461cfe7b9f9318b4c3c1c1316"
+commit = "90e1fe0b0c14065155532711246ede6678bb4935"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
 relevant_test_paths = ["tests/", "src/**/tests/"]
-use = "Exact runtime dependency for solver(cmg), including additive checked memory accounting and retained setup optimizations; compiled with the parallel feature."
+use = "Exact runtime dependency for solver(cmg), including prepared fixed-topology assembly, caller-buffer PCG, checked repeated-solve memory accounting, and retained setup optimizations; compiled with the parallel feature."
 
 [[reference]]
 name = "reghdfe"

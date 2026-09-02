@@ -4,6 +4,9 @@
 //! solver as OLS.  Candidate steps must remain finite and weakly reduce deviance;
 //! success additionally requires independently recomputed finite and FE scores.
 
+mod categorical_fwl_cmg;
+mod categorical_fwl_lsmr;
+mod categorical_lsmr;
 mod certificate;
 mod family;
 #[cfg(test)]
@@ -43,8 +46,9 @@ pub use prepared::{
     PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
 };
 pub use prepared_estimator::{
-    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlInterruptPoint,
-    PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlCmgDevelopmentMode,
+    PpmlDevelopmentSolverRequest, PpmlInterruptPoint, PpmlLsmrDevelopmentMode,
+    PpmlLsmrDevelopmentPolicy, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
 };
 pub use psd::{PpmlPsdReport, PpmlPsdState};
 pub use residuals::{fill_ppml_residuals, ppml_residuals, PpmlResidualKind};

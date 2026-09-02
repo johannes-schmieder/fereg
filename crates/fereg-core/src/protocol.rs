@@ -32,7 +32,8 @@ pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
 /// Version of the PPML-specific request layout, independent of the action,
 /// model, OLS-result, and PPML-result wires.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
+/// Minor 4 adds the doubly gated fused-CMG development mode field.
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
 /// Version of the separately versioned PPML shadow-result layout.
 pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
 
@@ -601,7 +602,7 @@ mod tests {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 5));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 4));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 1));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 4));
         assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 1));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
         assert_ne!(OLS_RESULT_WIRE_VERSION, PPML_RESULT_WIRE_VERSION);

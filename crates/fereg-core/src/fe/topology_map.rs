@@ -11,8 +11,9 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::memory::FeSolverMemoryBudget;
 
 use super::{
-    absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_routed_certified,
-    absorb_borrowed_intercept_cg_certified, absorb_borrowed_intercept_cg_retaining_certified,
+    absorb_borrowed_intercept_auto_certified, absorb_borrowed_intercept_auto_direct_lsmr_certified,
+    absorb_borrowed_intercept_auto_routed_certified, absorb_borrowed_intercept_cg_certified,
+    absorb_borrowed_intercept_cg_retaining_certified,
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_certified, absorb_borrowed_intercept_map_retaining_certified,
     borrow_categorical_topology_design, BorrowedMapWeights, CategoricalCodeView,
@@ -53,6 +54,56 @@ pub(crate) fn absorb_finalized_categorical_topology_irons_tuck_certified(
         weights,
         values,
         config,
+        retain_coefficients,
+    )
+}
+
+/// Apply the topology-selected direct LSMR automatic fast lane without an
+/// observation-scale code copy or a MAP pilot.
+pub(crate) fn absorb_finalized_categorical_topology_auto_direct_lsmr_certified(
+    topology: &FinalizedCategoricalTopology,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    lsmr: LsmrConfig,
+    solver_memory_budget: Option<FeSolverMemoryBudget>,
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
+    topology.validate()?;
+    let nobs = topology.retained_rows().len();
+    if values.nrows() != nobs {
+        return Err(invalid(
+            "finalized categorical topology and direct auto LSMR values have different observation counts",
+        ));
+    }
+
+    let mut source_views: Vec<CategoricalCodeView<'_>> = Vec::new();
+    source_views
+        .try_reserve_exact(topology.compacted_sources().len())
+        .map_err(|_| {
+            allocation("unable to reserve finalized categorical direct auto LSMR source views")
+        })?;
+    for source in topology.compacted_sources() {
+        push_reserved(
+            &mut source_views,
+            source.view(),
+            "finalized categorical direct auto LSMR source-view capacity exhausted",
+        )?;
+    }
+    let design = borrow_categorical_topology_design(
+        nobs,
+        topology.registry(),
+        &source_views,
+        topology.effect_to_topology(),
+    )?;
+    absorb_borrowed_intercept_auto_direct_lsmr_certified(
+        &design,
+        weights,
+        values,
+        config,
+        lsmr,
+        solver_memory_budget,
+        false,
         retain_coefficients,
     )
 }

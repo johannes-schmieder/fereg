@@ -155,7 +155,7 @@ pub(crate) struct ReusableMapAbsorber {
     certificate_basis: Vec<f64>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct ReusableMapCapacities {
     pub(crate) rhs: usize,
     pub(crate) max_channels: usize,
@@ -171,6 +171,7 @@ pub(crate) struct ReusableMapCapacities {
     pub(crate) projection_rhs: usize,
     pub(crate) certificate_columns: usize,
     pub(crate) certificate_basis: usize,
+    pub(crate) accelerator_state: usize,
     pub(crate) topology_effects: usize,
     pub(crate) topology_codes: usize,
     pub(crate) topology_slope_vectors: usize,
@@ -254,6 +255,7 @@ impl ReusableMapAbsorber {
             projection_rhs,
             certificate_columns: self.certificate_columns.capacity(),
             certificate_basis: self.certificate_basis.capacity(),
+            accelerator_state: 0,
             topology_effects: topology.effects,
             topology_codes: topology.codes,
             topology_slope_vectors: topology.slope_vectors,

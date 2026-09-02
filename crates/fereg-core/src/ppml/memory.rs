@@ -16,7 +16,10 @@ use super::{
 };
 use crate::data::DropReason;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::FeSolverKind;
+use crate::fe::{
+    FeSolverKind, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS,
+    PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
+};
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
     FrozenLinearBasisSlot, PreparedOlsBreadCoordinate, PreparedOlsCoefficient, PreparedOlsColumn,
@@ -1216,6 +1219,73 @@ fn estimate_route(
         PpmlMemoryRoute::Fast => 0,
         PpmlMemoryRoute::Low => checked_mul(n, projection_rhs, "PPML low projection block")?,
     };
+    // The PPML-only categorical MAP fast lane allocates level-major group
+    // means and weights once so large two/three-way projections can execute
+    // inside the fit's bounded thread team. CG continuation also retains one
+    // deterministic dot-reduction bank for narrow fused RHS blocks. Generic,
+    // slope-bearing, and low-memory routes conservatively retain the same
+    // preflight envelope or use less than it.
+    let categorical_parallel_cells = if route == PpmlMemoryRoute::Fast
+        && dimensions.threads > 1
+        && dimensions.observations >= PARALLEL_PROJECTION_MIN_ROWS
+    {
+        let max_levels = dimensions.fe_max_levels as u128;
+        let group_means = checked_mul(
+            max_levels,
+            projection_rhs,
+            "PPML categorical MAP parallel group means",
+        )?;
+        let dot_sums = if projection_rhs <= FUSED_PARALLEL_MAX_RHS as u128 {
+            let chunks = dimensions.observations.div_ceil(PARALLEL_DOT_CHUNK_ROWS) as u128;
+            checked_mul(
+                chunks,
+                projection_rhs,
+                "PPML categorical MAP parallel dot reductions",
+            )?
+        } else {
+            0
+        };
+        checked_sum(&[group_means, max_levels, dot_sums])?
+    } else {
+        0
+    };
+    let categorical_accelerator_cells = if route == PpmlMemoryRoute::Fast
+        && matches!(dimensions.fe_dimensions, 2 | 3)
+        && dimensions.fe_total_channels == dimensions.fe_dimensions
+        && projection_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS as u128
+    {
+        let two_fe_graph = dimensions.fe_dimensions == 2 && dimensions.observations >= 128;
+        if two_fe_graph {
+            let left_levels = dimensions.fe_max_levels as u128;
+            let right_levels = (dimensions.fe_total_levels - dimensions.fe_max_levels) as u128;
+            checked_sum(&[
+                dimensions.fe_total_levels as u128,
+                checked_mul(
+                    checked_mul(left_levels, projection_rhs, "PPML two-FE PCG left state")?,
+                    2,
+                    "PPML two-FE PCG left workspaces",
+                )?,
+                checked_mul(
+                    checked_mul(right_levels, projection_rhs, "PPML two-FE PCG right state")?,
+                    4,
+                    "PPML two-FE PCG right workspaces",
+                )?,
+                checked_mul(projection_rhs, 5, "PPML categorical CG recurrence scalars")?,
+            ])?
+        } else {
+            checked_sum(&[
+                checked_mul(n, projection_rhs, "PPML categorical MAP accelerator state")?,
+                checked_mul(
+                    checked_mul(n, projection_rhs, "PPML categorical MAP accelerator state")?,
+                    2,
+                    "PPML additional categorical MAP accelerator buffers",
+                )?,
+                checked_mul(projection_rhs, 5, "PPML categorical CG recurrence scalars")?,
+            ])?
+        }
+    } else {
+        0
+    };
     let fe_workspace_cells = checked_sum(&[
         checked_mul(projection_rhs, 7, "PPML reusable MAP RHS scalars")?,
         checked_mul(
@@ -1238,6 +1308,8 @@ fn estimate_route(
             "PPML reusable MAP certificate buffers",
         )?,
         low_projection_block_cells,
+        categorical_parallel_cells,
+        categorical_accelerator_cells,
     ])?;
     let fe_workspace_bytes = bytes_f64(fe_workspace_cells)?;
     // Session response, owned weights, two predictors, frozen response and
@@ -2127,6 +2199,92 @@ impl PpmlIterationWorkspace {
 
     pub(crate) fn candidate_coefficients_mut(&mut self) -> &mut [f64] {
         &mut self.candidate_coefficients
+    }
+
+    /// Form an absolute PPML candidate from a certified incremental solve.
+    ///
+    /// The joint LSMR engine owns corrections on its compact active-control
+    /// axis.  Keeping the scatter here lets it update eta and beta without
+    /// allocating or borrowing accepted and candidate fields separately.
+    pub(crate) fn fill_incremental_candidate(
+        &mut self,
+        delta_eta: &[f64],
+        active_slots: &[usize],
+        delta_coefficients: &[f64],
+    ) -> Result<()> {
+        if delta_eta.len() != self.eta.len()
+            || active_slots.len() != delta_coefficients.len()
+            || active_slots
+                .iter()
+                .any(|slot| *slot >= self.coefficients.len())
+        {
+            return Err(invalid_argument(
+                "PPML incremental candidate dimensions are inconsistent",
+            ));
+        }
+        for row in 0..self.eta.len() {
+            self.candidate_eta[row] = self.eta[row] + delta_eta[row];
+            if !self.candidate_eta[row].is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "PPML incremental candidate predictor is nonfinite",
+                ));
+            }
+        }
+        self.candidate_coefficients
+            .copy_from_slice(&self.coefficients);
+        for (slot, delta) in active_slots.iter().zip(delta_coefficients) {
+            self.candidate_coefficients[*slot] += *delta;
+            if !self.candidate_coefficients[*slot].is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "PPML incremental candidate coefficient is nonfinite",
+                ));
+            }
+        }
+        self.certify_steady_state_capacity()
+    }
+
+    /// Form an absolute candidate from a fused Frisch-Waugh-Lovell solve.
+    pub(crate) fn fill_absolute_candidate(
+        &mut self,
+        fitted_without_offset: &[f64],
+        offset: &[f64],
+        active_slots: &[usize],
+        active_coefficients: &[f64],
+    ) -> Result<()> {
+        if fitted_without_offset.len() != self.eta.len()
+            || offset.len() != self.eta.len()
+            || active_slots.len() != active_coefficients.len()
+            || active_slots
+                .iter()
+                .any(|slot| *slot >= self.coefficients.len())
+        {
+            return Err(invalid_argument(
+                "PPML absolute candidate dimensions are inconsistent",
+            ));
+        }
+        for row in 0..self.eta.len() {
+            self.candidate_eta[row] = offset[row] + fitted_without_offset[row];
+            if !self.candidate_eta[row].is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "PPML absolute candidate predictor is nonfinite",
+                ));
+            }
+        }
+        self.candidate_coefficients
+            .copy_from_slice(&self.coefficients);
+        for (slot, value) in active_slots.iter().zip(active_coefficients) {
+            self.candidate_coefficients[*slot] = *value;
+            if !value.is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "PPML absolute candidate coefficient is nonfinite",
+                ));
+            }
+        }
+        self.certify_steady_state_capacity()
     }
 
     #[must_use]
@@ -3202,8 +3360,18 @@ mod tests {
         );
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
-            (21_u128 * 7 + 1 + 21 + 2 * 20) * size_of::<f64>() as u128,
-            "fast MAP capacity covers the combined response-plus-K projection",
+            (21_u128 * 7
+                + 1
+                + 21
+                + 2 * 20
+                + 20_000 * 21
+                + 20_000
+                + 30_000
+                + 2 * 20_000 * 21
+                + 4 * 10_000 * 21
+                + 5 * 21)
+                * size_of::<f64>() as u128,
+            "fast MAP capacity covers combined projection, parallel group, and two-FE level-PCG workspaces",
         );
         assert_eq!(
             estimate.low.fe_workspace_bytes,
@@ -3221,6 +3389,50 @@ mod tests {
             100_000_u128 * 20 * 8
         );
         assert!(estimate.low.peak_bytes < estimate.fast.peak_bytes);
+    }
+
+    #[test]
+    fn narrow_fast_two_fe_route_charges_level_pcg_state_exactly() {
+        let mut narrow = dimensions();
+        narrow.finite_columns = 3;
+        narrow.coefficient_slots = 3;
+        narrow.reported_coefficient_slots = 3;
+        narrow.threads = 1;
+        let estimate = estimate_ppml_memory(narrow, PpmlMemoryConfig::default())
+            .expect("narrow categorical estimate");
+        let rhs = 4_u128;
+        let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 20;
+        let accelerator_cells = 30_000_u128 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
+        assert_eq!(
+            estimate.fast.fe_workspace_bytes,
+            (generic_map_cells + accelerator_cells) * size_of::<f64>() as u128,
+        );
+    }
+
+    #[test]
+    fn sparse_two_fe_fast_route_charges_level_pcg_state_exactly() {
+        let mut sparse = dimensions();
+        sparse.observations = 256;
+        sparse.original_observations = 256;
+        sparse.candidate_observations = 256;
+        sparse.finite_columns = 1;
+        sparse.coefficient_slots = 1;
+        sparse.reported_coefficient_slots = 1;
+        sparse.fe_total_levels = 144;
+        sparse.fe_max_levels = 80;
+        sparse.fe_max_level_members = 4;
+        sparse.fe_coefficient_directions = 144;
+        sparse.fe_max_effect_directions = 80;
+        sparse.threads = 1;
+        let estimate = estimate_ppml_memory(sparse, PpmlMemoryConfig::default())
+            .expect("sparse two-FE categorical estimate");
+        let rhs = 2_u128;
+        let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 4;
+        let graph_cells = 144 + 2 * 80 * rhs + 4 * 64 * rhs + 5 * rhs;
+        assert_eq!(
+            estimate.fast.fe_workspace_bytes,
+            (generic_map_cells + graph_cells) * size_of::<f64>() as u128,
+        );
     }
 
     #[test]
@@ -4132,7 +4344,12 @@ mod tests {
 
     #[test]
     fn model_scales_session_vectors_slots_and_reusable_map_basis_separately() {
-        let base_dimensions = dimensions();
+        let mut base_dimensions = dimensions();
+        // This test isolates generic reusable-basis scaling. Keep its RHS one
+        // beyond the PPML-only categorical accelerator admission boundary.
+        base_dimensions.finite_columns = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+        base_dimensions.coefficient_slots = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+        base_dimensions.reported_coefficient_slots = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
         let base = estimate_ppml_memory(base_dimensions, PpmlMemoryConfig::default())
             .expect("base estimate")
             .fast;

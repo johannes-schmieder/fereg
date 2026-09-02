@@ -256,7 +256,7 @@ def aggregate(run_root: Path, rows: list[dict[str, object]], science: list[dict[
         })
     write_csv(evidence_dir / "summary.csv", summaries)
 
-    expected = 1 if mode == "smoke" else 23 * REPS
+    expected = 1 if mode == "benchmark-canary" else 23 * REPS
     if len(rows) != expected:
         raise RuntimeError(f"expected {expected} measurement rows, found {len(rows)}")
     if mode == "production":
@@ -312,7 +312,9 @@ def main() -> None:
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--comparator-root", type=Path, required=True)
-    parser.add_argument("--mode", choices=("smoke", "production"), required=True)
+    parser.add_argument(
+        "--mode", choices=("benchmark-canary", "production"), required=True
+    )
     args = parser.parse_args()
     run_root = args.run_root.resolve()
     source_root = args.source_root.resolve()
@@ -328,7 +330,7 @@ def main() -> None:
         if not candidates:
             raise RuntimeError("pinned reghdfe comparator not found")
 
-    sizes = (8_000_000,) if args.mode == "smoke" else SIZES
+    sizes = (8_000_000,) if args.mode == "benchmark-canary" else SIZES
     data = {n: generate_data(stata, source_tree, run_root / "data", n) for n in sizes}
     science: list[dict[str, object]] = []
     if args.mode == "production":
@@ -337,7 +339,7 @@ def main() -> None:
                 stata, source_tree, source_root, comparator_root, run_root, data[n], n, threads
             ))
 
-    if args.mode == "smoke":
+    if args.mode == "benchmark-canary":
         schedule = [(8_000_000, 4, "areg", 1)]
     else:
         schedule = [(*cell, rep) for rep in range(1, REPS + 1) for cell in measurement_cells()]

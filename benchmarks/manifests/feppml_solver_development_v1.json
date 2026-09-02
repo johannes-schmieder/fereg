@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "manifest_id": "feppml-solver-development-v1",
+  "qualification_eligible": false,
+  "purpose": "Development-only calibration of explicit PPML inner FE projection routes; this manifest cannot activate public routing or support release claims.",
+  "request_wire": "1.4",
+  "result_wire": "1.1",
+  "action_protocol": "1.5",
+  "candidate_routes": [
+    "map",
+    "cg",
+    "lsmr",
+    "cmg",
+    "cmg_fused",
+    "lsmr_legacy_diagonal",
+    "lsmr_fused_diagonal",
+    "lsmr_fused_reuse",
+    "lsmr_fused_rebuild",
+    "lsmr_joint_diagonal",
+    "lsmr_joint_reuse",
+    "lsmr_joint_rebuild"
+  ],
+  "lsmr_preconditioners": ["diagonal", "schwarz"],
+  "experiment_environment": "FEREG_PPML_EXPERIMENTAL_SOLVERS=1",
+  "fixed_policy": {
+    "memory": "fast",
+    "separation": "none_after_all_positive_outcome_oracle",
+    "absorbed_effects": "two_or_three_categorical_intercept_only",
+    "cmg_fused_three_fe_nuisance_columns_max": 64,
+    "saved_fixed_effects": false,
+    "allocation_audit": false,
+    "warm_solver_state_across_irls": "arm-specific: none, a retained CMG hierarchy for two-FE frames, Schwarz factor reuse, or joint correction warm start",
+    "canonical_checkpoint_solver": "MAP for fused-CMG, fused-LSMR, and joint-LSMR first, strict, and final-Hessian frames; the declared route for legacy arms",
+    "ordinary_frame_solver": "fused CMG or fused/joint LSMR only between canonical checkpoints",
+    "strict_coefficient_scope": "all estimable frozen-basis coefficients; nonestimable normalization coordinates are ignored and replaced by the canonical strict state",
+    "automatic_fallback": "fused CMG only: retry failed projected RHS once, then same-frame MAP on numerical nonconvergence; other arms fail closed",
+    "timed_trace": false,
+    "warmups": 1,
+    "local_repetitions": 3,
+    "scc_repetitions": 5
+  },
+  "science": {
+    "coefficient_rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-6,
+    "vce_atol": 1e-9,
+    "degrees_of_freedom": "exact native-route decomposition; comparator total model DoF and derived residual DoF",
+    "likelihood_rtol": 1e-8,
+    "likelihood_atol": 1e-10,
+    "sample_must_match": true,
+    "certificate_must_pass": true,
+    "oracle_arms": ["map", "ppmlhdfe", "independent_explicit_dummy"]
+  },
+  "science_matrix": {
+    "observations": 400,
+    "threads": [1],
+    "controls": [2],
+    "difficulty": ["easy"],
+    "topologies": [
+      "balanced_2fe",
+      "skewed_2fe",
+      "chain_2fe",
+      "hub_2fe",
+      "dense_2fe",
+      "many_levels_2fe",
+      "balanced_3fe",
+      "sparse_3fe"
+    ],
+    "expected_cells": 8
+  },
+  "screening": {
+    "observations": 25000,
+    "threads": [1],
+    "controls": [0, 10, 50],
+    "difficulty": ["easy", "long"],
+    "topologies": [
+      "balanced_2fe",
+      "skewed_2fe",
+      "chain_2fe",
+      "hub_2fe",
+      "dense_2fe",
+      "many_levels_2fe",
+      "balanced_3fe",
+      "sparse_3fe"
+    ],
+    "expected_cells": 48
+  },
+  "scale_thread": {
+    "observations": 100000,
+    "threads": [1, 8],
+    "controls": [10, 50],
+    "difficulty": ["easy", "long"],
+    "topologies": ["balanced_2fe", "chain_2fe", "balanced_3fe", "sparse_3fe"],
+    "expected_cells": 32
+  },
+  "holdout": {
+    "seeds": [20260917, 20261031],
+    "points": ["interior", "boundary"],
+    "repetitions": 5
+  },
+  "scc_confirmation": {
+    "observations": 1000000,
+    "threads": [1, 8],
+    "arms": ["map", "selected_candidate", "ppmlhdfe"],
+    "maximum_cells": 12,
+    "repetitions": 5,
+    "development_lane_only": true
+  },
+  "projection_potential_gate": {
+    "science_failures_max": 0,
+    "post_setup_projection_geometric_mean_ratio_max": 0.8,
+    "faster_cell_share_min": 0.8,
+    "individual_cell_ratio_max": 1.25,
+    "break_even_remaining_frames_quantile": 0.25,
+    "scc_direction_must_match": true,
+    "end_to_end_explicit_route_ratio_max": 0.9
+  },
+  "region_policy": {
+    "shape": "axis_aligned",
+    "cutpoints": "observed_midpoints_only",
+    "selection": "widest_passing_region_then_lowest_geometric_mean_then_fewest_predicates",
+    "outside_region": "map",
+    "labels": ["explicit-route", "reuse-engineering"]
+  },
+  "required_trace_prefix": "FEREG_PPML_SOLVER_TRACE|schema=1",
+  "required_trace_events": ["fit_begin", "solve"],
+  "required_solve_kinds": {
+    "legacy": ["fresh", "frozen", "strict", "final_hessian", "fit_end"],
+    "cmg_fused": ["fresh", "fused_fwl_cmg", "strict", "final_hessian", "fit_end"],
+    "fused": ["fresh", "fused_fwl", "strict", "final_hessian", "fit_end"],
+    "joint": ["fresh", "joint_incremental", "strict", "final_hessian", "fit_end"]
+  }
+}

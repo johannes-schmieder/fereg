@@ -67,34 +67,34 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
-`solver(auto)` implements the ADR-0009 policy:
+`solver(auto)` implements the ADR-0021 categorical AKM policy while retaining
+the ADR-0009 generic/slope policy:
 
 - categorical intercept-only graphs first select CMG, without a MAP pilot,
-  when there are no nuisance Schur columns, at least eight observations per
-  highest-cardinality level, and at least a 10:1 level-count ratio between the
-  two core effects;
+  when there are at most nine nuisance Schur columns, at least three
+  observations per highest-cardinality level, and at least a 10:1 level-count
+  ratio between the two core effects;
 - one FE: direct one-pass demeaning and immediate certification;
-- multiple FEs: at most four symmetric MAP pilot sweeps;
-- return MAP if a pilot sweep certifies;
-- otherwise select direct Schwarz-preconditioned LSMR when pilot contraction is
-  at least 0.008, with internal tolerance
+- other categorical intercept-only graphs select direct
+  Schwarz-preconditioned LSMR without a MAP pilot, with internal tolerance
   `max(1e-14, requested_tolerance * 1e-2)`;
-- use genuine CG for the remaining multiway cases or when the complete LSMR
-  execution/workspace plan does not fit; and
-- if auto-selected LSMR fails or does not certify, perform one visible fallback
-  from the saved MAP-pilot state to certified CG within the remaining iteration
-  and memory budgets.
+- slope-bearing and generic multiway designs retain at most four symmetric MAP
+  pilot sweeps, the 0.008 contraction boundary, and genuine CG for the
+  remaining cases; and
+- if auto-selected LSMR returns a finite but uncertified candidate, continue
+  certified CG from that candidate within the remaining iteration and memory
+  budgets. Report all attempted LSMR work; do not restart from the pilot state.
 
-The CMG selector is frozen by ADR 0010 and applies in fast and low execution.
-It is deliberately narrower than explicit `solver(cmg)`, which continues to
+The CMG selector applies in fast and low execution. It remains narrower than
+explicit `solver(cmg)`, which continues to
 support up to 64 non-base nuisance columns. One hierarchy and workspace pool
 are retained across outcome/regressor blocks. Final OLS residuals normally
 already satisfy the FE certificate, so they skip graph PCG; the normal
 certified CMG path runs only when correction is required. The graph PCG systems
 use one-hundredth of the requested FE tolerance because their projection feeds
-the more sensitive OLS score certificate. CMG setup failure returns to the
-existing auto policy with a warning; a solve failure marks the fit-lifetime
-route failed and uses certified CG thereafter.
+the more sensitive OLS score certificate. CMG setup failure selects direct
+LSMR with a warning; a solve failure marks the fit-lifetime route failed and
+uses certified CG thereafter.
 
 The report retains requested solver `auto` and records used solver, pilot
 iterations, pilot contraction, total iterations, stop reason, setup/solve time,
@@ -103,13 +103,85 @@ categorical route passes the already finalized codes and memberships directly
 to `within`, avoiding the former observation-scale owned-code and membership
 copies. Schwarz construction and LSMR reuse those prepared structures.
 
-The frozen choice followed calibration of direct requested/tight tolerances,
+The direct LSMR configuration followed calibration of requested/tight tolerances,
 off/diagonal/Schwarz preconditioners, forced restarted CG refinements of
 4/8/16 iterations, and the prior coarse-LSMR/ordinary-CG hybrid. Direct tight
 Schwarz-LSMR was the surviving lowest-runtime arm; CG refinement is therefore
 not a production stage. The forced-refinement test path bypasses CG's initial
 certificate return and proves that the comparison arm really executes its
 registered number of restarted iterations.
+
+## Private PPML solver development engines
+
+Production `feppml` remains pinned to MAP. ADR-0022 adds only a doubly gated,
+hidden development surface for comparing changing-weight inner solvers. It
+does not alter `fereg`, the OLS solver session, or public PPML routing.
+
+Two PPML-owned categorical prototypes operate between canonical checkpoints:
+
+- fused FWL residualizes every frozen active control and the current IRLS
+  working response in one LSMR batch, forms the weighted finite Gram/RHS, and
+  solves the standardized system with pivoted Cholesky;
+- joint incremental LSMR applies one augmented operator to the Newton
+  correction over active controls plus categorical FE coefficients, carries a
+  fit-lifetime correction warm start, and rebuilds stale Schwarz state when
+  its exact certificate requires continuation.
+
+Both routes require exactly two or three categorical intercept-only effects,
+`memory(fast)`, no saved FE, and no allocation audit. Diagonal, retained
+Schwarz, and rebuilt-Schwarz policies are explicit experiment arms. Retained
+Schwarz means numeric preconditioner reuse across changing IRLS weights; it
+does not mean that Hessian weights are frozen.
+
+The first weighted-linear frame remains a production-MAP solve so it freezes
+the canonical active basis. Every strict and final-Hessian frame also uses the
+production MAP session. Only ordinary publication IRLS frames may use fused or
+joint LSMR, and Mu separation remains canonical. Each experimental result is
+rescanned against the exact control and per-FE-level normal equations before
+an IRLS step can be accepted. At a strict checkpoint, the predictor,
+objective, score, rank, basis, and all estimable coefficients must agree; an
+unidentified normalization coordinate cannot force another IRLS frame, and
+the canonical strict state replaces it before publication.
+
+This tranche deliberately makes no allocation-free, memory, scale, thread, or
+automatic-routing claim. The fused engine still owns per-frame weight and
+projected-result storage, and either engine can spend one tighter recurrence
+pass after an uncertified result. A retained Schwarz preconditioner is rebuilt
+for that pass; the original publication certificate tolerance is unchanged.
+The development harness measures those costs separately from Stata launch and
+from canonical checkpoint work.
+
+The pinned `ppmlhdfe` comparator must not be described generically as LSMR.
+Its default runtime signature is conjugate-gradient acceleration of symmetric
+Kaczmarz. The harness therefore keeps distinct default and explicitly forced
+`accel(lsmr)` comparator arms and verifies both signatures before accepting a
+timing record.
+
+ADR-0023 adds a third PPML-owned engine, fused CMG. ADR-0024 updates its exact
+CMG pin and prepares the two core FE endpoint topology once for the fit. On
+each ordinary IRLS frame it validates and assembles the current-weight numeric
+graph, builds a fresh hierarchy, projects all frozen active controls and the
+working response through caller-owned batch buffers, and skips the generic
+observation-space CG polish. It then uses the same standardized pivoted-
+Cholesky finite solve as fused FWL and requires fresh per-column projection
+certificates plus a complete control-and-FE normal-equation certificate.
+
+Only failed projection columns receive one tighter retry. Two-FE retry reuses
+the current hierarchy; three-FE retry rebuilds because the nuisance Schur
+factor depends on the original solve tolerance. A remaining numerical failure
+runs certified MAP on that frame and disables CMG for the rest of the fit.
+Unsupported topology, invalid input, memory failure, interruption, and internal
+errors remain visible failures. First, Mu, strict, and final-Hessian frames are
+always MAP.
+
+This CMG mode has the same hidden, doubly gated fast-memory envelope as the
+LSMR experiments. Three-FE nuisance width is capped at 64, no FE is saved, and
+allocation audit is disallowed. Its retained fereg-owned buffers and the
+topology-aware CMG hierarchy are charged before use. It makes no cross-frame
+hierarchy-reuse claim: prior-frame preconditioning and warm starts remain off
+until a measured adaptive consumer policy is accepted. Caller buffers remove
+owned per-batch result construction but do not imply an allocation-free IRLS
+frame. The OLS CMG construction, polish, and fallback path is unchanged.
 
 ## Saved fixed-effect recovery
 
@@ -125,8 +197,9 @@ the cheapest coefficient-space product available:
   recurrence as its observation-space directions.
 - Irons--Tuck applies every accepted extrapolation to the parallel compact
   coefficient states.
-- `solver(auto)` records its four-sweep MAP pilot and adds the coefficient
-  product of the selected LSMR or CG continuation.
+- categorical `solver(auto)` retains the coefficient product of direct LSMR or
+  CMG; generic pilot-routed auto adds the MAP pilot product to its selected
+  LSMR or CG continuation.
 - unaccelerated intercept-only MAP records the group coefficients from its
   original batched `y`/`X` sweeps, then forms
   `alpha_y - sum_j beta_j alpha_Xj` after the finite coefficients are known.

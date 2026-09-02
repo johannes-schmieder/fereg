@@ -20,8 +20,8 @@ program define __frg_make_panel
         (mod((_n-1)*53 + 7, 101) - 50)*.001
 end
 
-* Frozen favorable boundary: N/G_high=8 and G_high/G_second=10.
-__frg_make_panel, periods(8) workers(100) firms(10)
+* Calibrated AKM boundary: N/G_high=3 and G_high/G_second=10.
+__frg_make_panel, periods(3) workers(100) firms(10)
 foreach mode in fast low {
     quietly fereg y x, absorb(worker firm) solver(auto) memory(`mode') poolsize(1) threads(2)
     assert e(fereg_solver)[1,1] == 1
@@ -30,18 +30,33 @@ foreach mode in fast low {
     assert e(fereg_solver)[1,11] == 0
 }
 
-* One observation per high-cardinality level below the frozen boundary stays
-* on the existing certified auto route.
-__frg_make_panel, periods(7) workers(100) firms(10)
+* Below the panel-depth boundary, auto goes directly to its certified LSMR
+* route without paying for a MAP pilot.
+__frg_make_panel, periods(2) workers(100) firms(10)
 quietly fereg y x, absorb(worker firm) solver(auto) memory(fast) poolsize(1) threads(2)
 assert e(fereg_solver)[1,1] == 1
-assert e(fereg_solver)[1,2] != 7
+assert e(fereg_solver)[1,2] == 3
+assert e(fereg_solver)[1,15] == 0
 
-* Near-balanced graph cardinalities also remain on the existing route.
+* Near-balanced graph cardinalities use the same pilot-free LSMR route.
 __frg_make_panel, periods(10) workers(100) firms(11)
 quietly fereg y x, absorb(worker firm) solver(auto) memory(fast) poolsize(1) threads(2)
 assert e(fereg_solver)[1,1] == 1
-assert e(fereg_solver)[1,2] != 7
+assert e(fereg_solver)[1,2] == 3
+assert e(fereg_solver)[1,15] == 0
+
+* Nine nuisance columns remain eligible, including when the low-cardinality FE
+* is listed first. Ten nuisance columns cross to direct LSMR.
+__frg_make_panel, periods(8) workers(100) firms(10)
+generate byte nuisance10 = 1 + mod(_n - 1, 10)
+quietly fereg y x, absorb(nuisance10 worker firm) solver(auto) memory(fast) poolsize(1) threads(2)
+assert e(fereg_solver)[1,2] == 7
+assert e(fereg_solver)[1,15] == 0
+
+generate byte nuisance11 = 1 + mod(_n - 1, 11)
+quietly fereg y x, absorb(nuisance11 worker firm) solver(auto) memory(fast) poolsize(1) threads(2)
+assert e(fereg_solver)[1,2] == 3
+assert e(fereg_solver)[1,15] == 0
 
 * Regression for tests/manual/simple_AKM.do: ordinary FE certification at the
 * public tolerance was not strong enough for the downstream OLS score

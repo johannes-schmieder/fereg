@@ -36,6 +36,7 @@ pub use borrowed_map::{
     FeCoefficientBatch,
 };
 pub(crate) use borrowed_map::{
+    absorb_borrowed_intercept_auto_direct_lsmr_certified,
     absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
     absorb_borrowed_intercept_auto_routed_certified,
     absorb_borrowed_intercept_auto_with_structural_constant_certified,
@@ -46,7 +47,9 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     certify_borrowed_intercept_candidate, recover_borrowed_intercept_sd_lsmr_coefficients,
-    BorrowedInterceptRecoveryMethod,
+    BorrowedInterceptRecoveryMethod, ReusableCategoricalMapAbsorber,
+    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS,
+    PARALLEL_PROJECTION_MIN_ROWS,
 };
 pub use categorical_request::{
     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
@@ -54,7 +57,10 @@ pub use categorical_request::{
 };
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
-pub(crate) use cmg::{CmgAbsorber, CmgConfig, CmgTopologyProfile};
+pub(crate) use cmg::{
+    CmgAbsorber, CmgConfig, CmgTopologyProfile, CmgUnpolishedProjectionReport, PreparedCmgTopology,
+    MAX_NUISANCE_COLUMNS as CMG_MAX_NUISANCE_COLUMNS,
+};
 pub(crate) use components::connected_components_all_fallible;
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::ValidatedBorrowedInterceptSource;
@@ -63,8 +69,8 @@ pub use design::{
 };
 pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
 pub use lsmr::{absorb_lsmr, LsmrConfig};
-pub(crate) use map::ReusableMapAbsorber;
 pub use map::{absorb_map, MapConfig};
+pub(crate) use map::{ReusableMapAbsorber, ReusableMapCapacities};
 pub use partition::CategoricalPartition;
 pub use partition_registry::CategoricalPartitionRegistry;
 pub use partition_singleton::{
@@ -86,6 +92,7 @@ pub use topology_map::{
     absorb_finalized_categorical_topology_map_certified,
 };
 pub(crate) use topology_map::{
+    absorb_finalized_categorical_topology_auto_direct_lsmr_certified,
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_retaining_certified,
     absorb_finalized_categorical_topology_irons_tuck_certified,
