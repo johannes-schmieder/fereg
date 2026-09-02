@@ -48,6 +48,16 @@ const AUTO_MAX_NUISANCE_COLUMNS: usize = 9;
 /// first loss at 5.68. Four is a conservative development safety boundary;
 /// direct terminals are deliberately outside this hierarchy-only veto.
 const AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST: f64 = 4.0;
+/// A final direct-terminal calibration found a conservative subset where the
+/// already-built CMG hierarchy predicts a reliable direct-CG win. These work
+/// units are deterministic hierarchy dimensions, not elapsed-time probes.
+const AUTO_DIRECT_MAX_DEPTH_WORK_PER_OBSERVATION: u128 = 100;
+const AUTO_DIRECT_MAX_NUISANCE_WORK: u128 = 300_000;
+const AUTO_DIRECT_MAX_EFFECTIVE_RHS_BATCHES: usize = 5;
+const AUTO_DIRECT_MIN_WIDE_FACTOR_RHS_BATCHES: usize = 2;
+const AUTO_DIRECT_MAX_WIDE_FACTOR_WORK: u128 = 750_000;
+const AUTO_DIRECT_CG_MIN_DEPTH_WORK_PER_OBSERVATION: u128 = 200;
+const AUTO_DIRECT_CG_MIN_NUISANCE_COLUMNS: usize = 9;
 
 /// Internal execution policy for one prepared CMG absorption session.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -167,6 +177,7 @@ pub(crate) struct CmgAbsorber<'a> {
 pub(crate) enum CmgAutoBuildOutcome<'a> {
     Ready(CmgAbsorber<'a>),
     HierarchyRejected { setup_seconds: f64 },
+    DirectCgPreferred { setup_seconds: f64 },
 }
 
 // The graph state is fit-lifetime and constructed once. Keeping it inline
@@ -182,6 +193,7 @@ enum CmgRoute {
 enum GraphBuildOutcome {
     Ready(GraphCmg),
     HierarchyRejected,
+    DirectCgPreferred,
 }
 
 struct GraphCmg {
@@ -303,9 +315,11 @@ impl<'a> CmgAbsorber<'a> {
             structural_constant_if_empty,
             profile,
             false,
+            None,
         )? {
             CmgAutoBuildOutcome::Ready(session) => Ok(session),
-            CmgAutoBuildOutcome::HierarchyRejected { .. } => {
+            CmgAutoBuildOutcome::HierarchyRejected { .. }
+            | CmgAutoBuildOutcome::DirectCgPreferred { .. } => {
                 unreachable!("unguarded CMG setup cannot reject a hierarchy")
             }
         }
@@ -317,10 +331,16 @@ impl<'a> CmgAbsorber<'a> {
         config: CmgConfig,
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
+        initial_rhs_columns: usize,
     ) -> Result<CmgAutoBuildOutcome<'a>> {
         if config.requested_solver != FeSolverKind::Auto {
             return Err(invalid_argument(
                 "automatic CMG hierarchy guard requires solver(auto)",
+            ));
+        }
+        if initial_rhs_columns == 0 {
+            return Err(invalid_argument(
+                "automatic CMG hierarchy guard requires at least one right-hand side",
             ));
         }
         Self::build_profiled_internal(
@@ -330,6 +350,7 @@ impl<'a> CmgAbsorber<'a> {
             structural_constant_if_empty,
             profile,
             true,
+            Some(initial_rhs_columns),
         )
     }
 
@@ -340,6 +361,7 @@ impl<'a> CmgAbsorber<'a> {
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
         apply_auto_hierarchy_guard: bool,
+        initial_rhs_columns: Option<usize>,
     ) -> Result<CmgAutoBuildOutcome<'a>> {
         validate_config(config)?;
         let weight_scale = validate_weights(weights, design.nobs())?;
@@ -356,12 +378,18 @@ impl<'a> CmgAbsorber<'a> {
                     config,
                     &profile,
                     apply_auto_hierarchy_guard,
+                    initial_rhs_columns,
                 )
             });
             match graph {
                 Ok(GraphBuildOutcome::Ready(graph)) => CmgRoute::Graph(graph),
                 Ok(GraphBuildOutcome::HierarchyRejected) => {
                     return Ok(CmgAutoBuildOutcome::HierarchyRejected {
+                        setup_seconds: setup_started.elapsed().as_secs_f64(),
+                    });
+                }
+                Ok(GraphBuildOutcome::DirectCgPreferred) => {
+                    return Ok(CmgAutoBuildOutcome::DirectCgPreferred {
                         setup_seconds: setup_started.elapsed().as_secs_f64(),
                     });
                 }
@@ -777,6 +805,7 @@ fn build_graph_route(
     config: CmgConfig,
     profile: &CmgTopologyProfile,
     apply_auto_hierarchy_guard: bool,
+    initial_rhs_columns: Option<usize>,
 ) -> Result<GraphBuildOutcome> {
     let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
     let core_effects = profile
@@ -841,6 +870,35 @@ fn build_graph_route(
         }
         return Ok(GraphBuildOutcome::HierarchyRejected);
     }
+    let terminal_factor_dimension = preconditioner
+        .terminal_factor()
+        .map_or(0, cmg::GroundedLdl::active_dimension);
+    if apply_auto_hierarchy_guard
+        && auto_direct_terminal_cg_preferred(
+            report.terminal_reason(),
+            work,
+            report.vertex_counts().len(),
+            design.nobs(),
+            profile.nuisance_columns,
+            initial_rhs_columns.expect("guarded CMG setup has an initial RHS width"),
+            config.threads.resolved(),
+            terminal_factor_dimension,
+        )
+    {
+        if trace_enabled {
+            eprintln!(
+                "FEREG_CMG_GUARD|decision=direct_cg|terminal={:?}|levels={}|recursive_work={}|observations={}|nuisance_columns={}|rhs={}|threads={}|terminal_factor_dimension={terminal_factor_dimension}",
+                report.terminal_reason(),
+                report.vertex_counts().len(),
+                work.estimated_recursive_work,
+                design.nobs(),
+                profile.nuisance_columns,
+                initial_rhs_columns.expect("guarded CMG setup has an initial RHS width"),
+                config.threads.resolved(),
+            );
+        }
+        return Ok(GraphBuildOutcome::DirectCgPreferred);
+    }
     let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
     let solver_started = trace_enabled.then(Instant::now);
     let solver = ParallelPcgSolver::from_preconditioner(
@@ -880,6 +938,49 @@ fn build_graph_route(
 
 fn auto_hierarchy_guard_rejects(terminal: TerminalReason, work_over_finest: f64) -> bool {
     terminal.is_iterative() && !(work_over_finest <= AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST)
+}
+
+fn auto_direct_terminal_cg_preferred(
+    terminal: TerminalReason,
+    work: CmgHierarchyWork,
+    hierarchy_levels: usize,
+    observations: usize,
+    nuisance_columns: usize,
+    rhs_columns: usize,
+    threads: usize,
+    terminal_factor_dimension: usize,
+) -> bool {
+    if terminal != TerminalReason::Direct || observations == 0 || rhs_columns == 0 || threads == 0 {
+        return false;
+    }
+
+    let levels = hierarchy_levels as u128;
+    let observations = observations as u128;
+    let rhs = rhs_columns as u128;
+    let effective_rhs_width = rhs_columns.min(threads) as u128;
+    let nuisance = nuisance_columns as u128;
+    let effective_nuisance_width = nuisance_columns.min(threads) as u128;
+    let recursive_work = work.estimated_recursive_work;
+    let depth_work_numerator = levels.saturating_mul(recursive_work);
+    let cost_guard_rejects = depth_work_numerator
+        > AUTO_DIRECT_MAX_DEPTH_WORK_PER_OBSERVATION.saturating_mul(observations)
+        || (nuisance_columns > 0
+            && recursive_work.saturating_mul(nuisance)
+                > AUTO_DIRECT_MAX_NUISANCE_WORK.saturating_mul(effective_nuisance_width))
+        || rhs
+            >= (AUTO_DIRECT_MAX_EFFECTIVE_RHS_BATCHES as u128).saturating_mul(effective_rhs_width)
+        || (terminal_factor_dimension > 0
+            && rhs
+                >= (AUTO_DIRECT_MIN_WIDE_FACTOR_RHS_BATCHES as u128)
+                    .saturating_mul(effective_rhs_width)
+            && recursive_work.saturating_mul(rhs)
+                > AUTO_DIRECT_MAX_WIDE_FACTOR_WORK.saturating_mul(effective_rhs_width));
+    let calibrated_cg_region = depth_work_numerator
+        > AUTO_DIRECT_CG_MIN_DEPTH_WORK_PER_OBSERVATION.saturating_mul(observations)
+        || nuisance_columns >= AUTO_DIRECT_CG_MIN_NUISANCE_COLUMNS;
+    let one_effective_rhs_batch = threads == 1 || rhs_columns <= threads;
+
+    cost_guard_rejects && calibrated_cg_region && one_effective_rhs_batch
 }
 
 fn trace_cmg_hierarchy(
@@ -1739,6 +1840,78 @@ mod tests {
     }
 
     #[test]
+    fn auto_direct_terminal_cg_guard_matches_locked_primary_boundaries() {
+        let work = |recursive_work| CmgHierarchyWork {
+            estimated_recursive_work: recursive_work,
+            finest_work: recursive_work,
+            work_over_finest: 1.0,
+            deepest_visits: 1,
+            maximum_repeat: 1,
+        };
+
+        assert!(!auto_direct_terminal_cg_preferred(
+            TerminalReason::StagnatedFill,
+            work(20_001),
+            10,
+            1_000,
+            0,
+            5,
+            8,
+            0,
+        ));
+        assert!(!auto_direct_terminal_cg_preferred(
+            TerminalReason::Direct,
+            work(20_000),
+            10,
+            1_000,
+            0,
+            5,
+            8,
+            0,
+        ));
+        assert!(auto_direct_terminal_cg_preferred(
+            TerminalReason::Direct,
+            work(20_001),
+            10,
+            1_000,
+            0,
+            5,
+            8,
+            0,
+        ));
+        assert!(auto_direct_terminal_cg_preferred(
+            TerminalReason::Direct,
+            work(300_001),
+            1,
+            1_000_000,
+            9,
+            5,
+            8,
+            0,
+        ));
+        assert!(!auto_direct_terminal_cg_preferred(
+            TerminalReason::Direct,
+            work(20_001),
+            10,
+            1_000,
+            0,
+            9,
+            8,
+            100,
+        ));
+        assert!(auto_direct_terminal_cg_preferred(
+            TerminalReason::Direct,
+            work(20_001),
+            10,
+            1_000,
+            0,
+            17,
+            1,
+            100,
+        ));
+    }
+
+    #[test]
     fn auto_hierarchy_guard_rejects_mixed_cliff_but_retains_all_tiny_graph() {
         let periods = 3;
         let workers = 33_000;
@@ -1794,6 +1967,7 @@ mod tests {
                 auto_config,
                 false,
                 mixed_profile,
+                5,
             )
             .expect("guarded mixed setup"),
             CmgAutoBuildOutcome::HierarchyRejected { .. }
@@ -1819,6 +1993,7 @@ mod tests {
                 auto_config,
                 false,
                 tiny_profile,
+                5,
             )
             .expect("guarded all-tiny setup"),
             CmgAutoBuildOutcome::Ready(_)

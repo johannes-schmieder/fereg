@@ -116,25 +116,26 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   development evidence only; qualification remains open. Evidence is under
   `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/` and
   `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/`.
-- The subsequent direct-terminal RHS/thread calibration recorded 756 runs in
-  84 calibration datasets and 432 runs in 48 fresh holdout datasets, always
-  with exactly three repetitions per solver cell. A locked hierarchy-depth,
-  nuisance-batch, and RHS-batch cost score rejected no measured CMG win above
-  five percent in 172 prior-plus-new calibration cells and again made no such
-  false rejection among the 34 holdout cells with certified no-fallback LSMR.
-  The destination route nevertheless failed: requested-tolerance
-  Schwarz-LSMR fell back deterministically in 42 runs spanning 14 holdout
-  cells, and the score would have routed 12 of those cells away from CMG.
-  A representative LSMR attempt stopped after three iterations with an FE
-  normal-equation diagnostic near 0.0076. A focused 84-run follow-up found
-  direct CG certified without fallback in 14/14 cells and `1e-10` LSMR in
-  10/14; four 17-RHS cells still fell back, while an unrecorded `1e-12` probe
-  exceeded several minutes and was stopped. The proposed direct-terminal
-  CMG-to-LSMR rule was rejected and production auto remains unchanged. Next
-  work is a bounded certification-aware LSMR continuation plus direct-CG
-  calibration for all score rejects. Evidence and source pointers are under
-  `benchmarks/reports/development/cmg-direct-terminal-calibration-v1/` and
-  `docs/future_auto_optimization.md`.
+- The direct-terminal work is now concluded in ADR-0023. Private per-RHS traces
+  showed that one `1e-10` LSMR case missed fereg's certificate by only 9--11%
+  in two of 17 columns, but `1e-11` reproduced a multi-minute cliff in a
+  different ordinary five-RHS, one-thread cell. Tighter LSMR was therefore
+  rejected as a deterministic destination. The final reliable comparison
+  recorded 366 CMG/CG runs in 61 calibration datasets and 324 runs in 54 fresh
+  holdout datasets, exactly three per solver cell; both solvers certified
+  throughout without fallback. The locked conservative direct-CG guard
+  rejected no CMG win above 5% before implementation. Its 486-run post-change
+  replay matched all 54 expected routes (15 CG, 39 CMG), certified every auto
+  run, used zero fallback cells, and improved aggregate command time 1.339x
+  over retaining CMG everywhere. A bounded 18-run recheck resolved the one
+  visibly noisy no-control topology in favor of CG. The universal plugin
+  `debb95dcaf648aa11c439deb2861971aeebb34fd707ff5608c6f371b39f7c458`
+  passed binary audit and the actual-plugin ABI/self-test. Auto calibration is
+  now paused: future work should prioritize component-aware CMG and Schwarz
+  setup reuse, reopening thresholds only for a new reproducible common
+  regression. This is development evidence, not qualification. Evidence is
+  under `benchmarks/reports/development/cmg-direct-terminal-conclusion-v1/`
+  and `docs/future_auto_optimization.md`.
 
 The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
 macOS matrix was deliberately stopped after 77 strictly valid scopes when this
@@ -242,8 +243,9 @@ overheads, and coverage limits are captured under
 - Explicit `solver(cmg)` reuses one graph hierarchy per fit, supports up to 64
   nuisance non-base absorbed-intercept columns, and retains certified CG
   polishing/fallback. ADR-0021 selects CMG before the MAP pilot for the
-  development AKM topology described above, and ADR-0022 rejects costly
-  iterative hierarchies to direct LSMR without labeling the planned route a
+  development AKM topology described above, ADR-0022 rejects costly iterative
+  hierarchies to direct LSMR, and ADR-0023 rejects a conservative calibrated
+  subset of direct terminals to direct CG. Neither planned route is labeled a
   fallback. Fast and low modes share the route;
   setup/memory failure returns visibly to direct LSMR, and solve failure uses
   certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
@@ -252,7 +254,8 @@ overheads, and coverage limits are captured under
   dependency notices, and staged package metadata must be synchronized before
   distribution.
 - One FE uses direct one-pass demeaning. Categorical multiway designs use the
-  ADR-0021/0022 CMG/direct-LSMR topology and hierarchy rule with no MAP pilot.
+  ADR-0021/0022/0023 CMG/direct-LSMR/direct-CG topology, hierarchy, and cost
+  rules with no MAP pilot.
   Slope-bearing and
   generic multiway designs retain at most four MAP pilot sweeps, the 0.008
   contraction threshold for direct tight Schwarz-LSMR, and CG for remaining

@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::time::Instant;
 
 use super::auto::{auto_lsmr_route_at_cap, direct_lsmr_tolerance, AutoLsmrRoute};
@@ -17,6 +19,16 @@ const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
 pub(crate) const SD_RECOVERY_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_CONTINUATION_CAP: usize = 4;
 const SD_RECOVERY_LSMR_TOLERANCE_CAP: f64 = 1e-4;
+
+fn emit_solver_trace(line: &str) {
+    eprintln!("{line}");
+    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
+        return;
+    };
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
 
 /// Objective weights for the strict borrowed-intercept MAP path.
 ///
@@ -2643,6 +2655,17 @@ fn run_borrowed_lsmr(
         tolerance,
         &mut certificate_workspace,
     )?;
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        for rhs in 0..lsmr_values.ncols() {
+            emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={rhs}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
+                solved.converged[rhs],
+                solved.iterations[rhs],
+                solved.residual[rhs],
+                certificate_workspace.rhs_relative_infinity_norms[rhs],
+            ));
+        }
+    }
     let recurrence_converged = solved.converged.iter().copied().all(|value| value);
     let stop_reason = if certificate.passed {
         SolveStopReason::Certified

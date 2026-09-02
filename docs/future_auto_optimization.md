@@ -318,49 +318,55 @@ state so low-memory execution can retain and reuse the same Schwarz setup.
 Measure setup, solve, total native time, peak memory, and saved-FE recovery.
 This work benefits the default fallback route independently of CMG changes.
 
-### 5. Continue localizing certification and wide-RHS events
+### 5. Completed: localize certification and select a reliable direct destination
 
-Use bounded, development-only traces to distinguish:
+Bounded private per-RHS traces distinguished:
 
-- LSMR normal-equation diagnostic scaling from the observation-space FE
+- LSMR's normwise stopping diagnostic from fereg's per-FE publication
   certificate;
-- a valid continuation into CG from an unnecessary fallback;
-- multi-RHS CMG solve time from final residual correction;
-- retained coefficient recovery; and
-- OLS score certification after absorption.
+- marginal column-specific certificate misses from gross nonconvergence; and
+- a safe direct destination from a route that routinely needs fallback.
 
-Treat fallback as a safety mechanism. A common deterministic route that always
-requires fallback is a routing or certificate-accounting defect, even when the
-added runtime is small.
+At `1e-10`, two columns in one representative 17-RHS solve missed fereg's
+certificate by only 9--11 percent. `1e-11` fixed that case, but an ordinary
+five-RHS, one-thread cell then exceeded the bounded runtime. Tighter LSMR moves
+rather than removes the performance cliff. Direct CG certified without
+fallback throughout the final relevant calibration and holdout.
 
-The new direct-terminal holdout makes the immediate sequence more concrete:
+The resulting sequence was completed:
 
-1. expose the per-attempt LSMR stopping and FE normal-equation diagnostics by
-   RHS/column before fallback;
-2. test a bounded continuation that tightens only while a small explicit work
-   budget remains;
-3. record direct CG in every cost-guard rejection cell, because one-thread and
-   eight-thread winners differ; and
-4. recalibrate a three-way CMG/LSMR/CG destination rule on a fresh holdout.
+1. expose per-attempt LSMR stopping and fereg certificate diagnostics by RHS;
+2. reject tolerance tightening as a deterministic route after it reproduced a
+   severe bounded-runtime cliff;
+3. record direct CG against CMG in every relevant cell; and
+4. lock a conservative direct-terminal CMG/CG rule before a fresh holdout.
 
-Do not implement the locked CMG-to-requested-tolerance-LSMR candidate. Its
-timing score survived holdout, but its destination did not.
+The rejected CMG-to-LSMR candidate remains historical development evidence. It
+must not be revived without a separately bounded solver change.
 
-### 6. Recalibrate routing only after the prototypes
+### 6. Completed: conservative direct-terminal CMG/CG guard
 
-Compare these candidates on the same generated datasets:
+The final reliable-destination calibration recorded 366 CMG/CG runs in 61
+datasets. The fresh holdout recorded another 324 runs in 54 new datasets. The
+locked primary rule selected CG only when:
 
-1. historical topology-only rule;
-2. current topology rule plus hierarchy-work guard;
-3. component-aware CMG plus the hierarchy-work guard; and
-4. direct Schwarz-LSMR as the conservative reference.
+1. the earlier deterministic direct-terminal cost score rejected CMG;
+2. hierarchy depth-work exceeded 200 per observation or nuisance width reached
+   nine columns; and
+3. execution was serial or the initial RHS width fit within the thread width.
 
-Use exactly three recorded repetitions, unchanged tolerance and iteration
-limits, rotated order, and no data-generation timing. Include worker--firm,
-worker--firm--year, worker--firm--county, realistic mobility, one versus eight
-threads, and 0/4/16 controls. Failed or uncertified runs remain ineligible
-winners. Do not run frozen matrices or qualification until a simple candidate
-rule has survived this development matrix.
+It displaced no CMG win above five percent before implementation. The
+post-change replay recorded 486 runs, matched all 54 locked routes, certified
+every run, used no fallback, and improved aggregate command time by 1.339
+relative to retaining CMG in every direct terminal. A paired 18-run recheck
+resolved the one visibly noisy no-control topology in favor of the locked CG
+route. ADR-0023 records the implemented development decision.
+
+Stop threshold mining here. The remaining direct-terminal oracle misses are
+all retained-CMG cases; the more aggressive candidate added three interacting
+thresholds for a modest incremental aggregate gain. Further routing clauses
+would now be more likely to fit benchmark idiosyncrasies than improve a common
+workload reliably.
 
 ## Current routing shape and next extension
 
@@ -369,11 +375,15 @@ The implemented deterministic design is:
 1. Apply the cheap FE-count/nuisance topology screen.
 2. If it rejects CMG, use direct Schwarz-LSMR.
 3. If it accepts CMG, construct the CMG graph/hierarchy once.
-4. Retain direct terminals; for iterative terminals run CMG only at `W <= 4`.
-5. If iterative hierarchy work exceeds 4, release the graph/preconditioner,
-   account for its setup, and solve with Schwarz-LSMR.
-6. If a component-aware CMG prototype succeeds, replace the rejection
-   in step 5 with the hybrid component solve when its own cost estimate wins.
+4. For iterative terminals, run CMG only at `W <= 4`; otherwise release the
+   graph/preconditioner, account for its setup, and solve with Schwarz-LSMR.
+5. For direct terminals, apply the locked depth/nuisance/RHS/thread cost guard;
+   its conservative rejection region uses direct CG, and all others retain
+   CMG.
+6. Treat both decisions as planned routes, never fallback. Preserve requested
+   solver `auto`, report the actual used solver, and charge discarded setup.
+7. If a component-aware CMG prototype succeeds, compare it against the step-4
+   LSMR destination without changing the now-settled direct-terminal rule.
 
 This avoids a discontinuous PCG performance cliff while preserving the
 all-tiny-component CMG wins that a component-count rule would lose.
@@ -393,11 +403,15 @@ all-tiny-component CMG wins that a component-count rule would lose.
 - Fresh holdout: `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/report.md`
 - Post-change rerun: `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/report.md`
 - Direct-terminal calibration and rejected route: `benchmarks/reports/development/cmg-direct-terminal-calibration-v1/report.md`
+- Direct-terminal reliable calibration, holdout, post-change replay, and
+  recheck: `benchmarks/reports/development/cmg-direct-terminal-conclusion-v1/`
 - Mutable project state: `STATUS.md`
 
-The next session should prototype bounded LSMR certification continuation and
-measure direct CG across the rejected direct-terminal population; separately,
-it can prototype a component-aware CMG solve. No current evidence justifies a
-component-count cutoff, unconditional direct-terminal work veto, or routine
-LSMR-to-CG fallback. The iterative-terminal cutoff 4 is a development safety
-threshold, not a frozen qualification constant.
+The auto calibration is now at a reasonable stopping point. The next session
+should work on implementation improvements with independent value: a
+component-aware CMG prototype and Schwarz setup reuse across RHS blocks. Reopen
+the routing thresholds only if those implementations materially change costs
+or a new representative workload shows a reproducible common regression. No
+current evidence justifies a component-count cutoff or routine LSMR-to-CG
+fallback. The thresholds remain development policy, not frozen qualification
+constants.

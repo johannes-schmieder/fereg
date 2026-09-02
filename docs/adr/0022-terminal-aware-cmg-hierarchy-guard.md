@@ -3,6 +3,7 @@
 **Status:** Accepted for development; qualification pending
 **Date:** 2026-09-01
 **Decision owner:** Johannes Schmieder
+**Extended by:** ADR 0023 direct-terminal CMG-to-CG guard
 
 ## Context
 
@@ -83,8 +84,7 @@ The calibration, fresh holdout, and post-change run-level evidence are under
   to LSMR; this cost is visible in timing diagnostics.
 - All-tiny disconnected graphs remain eligible because terminal reason and
   hierarchy work, not component count, govern the decision.
-- Direct terminals can still make poor CMG choices for wide RHS batches or
-  one-thread execution. That remaining opportunity should be calibrated
-  independently rather than weakening this narrowly supported safety rule.
+- Direct-terminal costs are governed separately by ADR-0023; this
+  iterative-terminal safety rule remains unchanged.
 - This remains development evidence. Frozen, cross-platform, and release
   qualification are pending.
