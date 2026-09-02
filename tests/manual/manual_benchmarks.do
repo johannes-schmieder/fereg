@@ -26,6 +26,12 @@
 
     This is an accessible diagnostic benchmark, not release evidence.  For
     correctness checks, run tests/manual/manual_validation.do separately.
+
+    If global FEREG_FIXEST_EXPORT_DIR names an existing directory, each
+    generated dataset is also exported there at full numeric precision for
+    the companion tests/manual/manual_benchmarks_fixest.R and
+    tests/manual/manual_benchmarks_pyfixest.py comparisons.  Export time
+    remains outside every recorded command timing.
 */
 
 version 19.0
@@ -148,6 +154,9 @@ if !`fixed_found' | missing(`fixed_threads') | `fixed_threads' < 1 | ///
 
 capture mkdir `"`output_directory'"'
 local output_stem `"`output_directory'/manual_benchmarks"'
+local fixest_export_directory `"$FEREG_FIXEST_EXPORT_DIR"'
+local export_fixest_data = (strtrim(`"`fixest_export_directory'"') != "")
+if `export_fixest_data' capture mkdir `"`fixest_export_directory'"'
 local original_processors = c(processors)
 local original_gtools_beta `"$GTOOLS_BETA"'
 
@@ -543,6 +552,14 @@ foreach problem_type of local selected_problem_types {
         local topology `"`r(topology)'"'
         local absorb `"`r(absorb)'"'
         local xvars `"`r(xvars)'"'
+
+        if `export_fixest_data' {
+            format obs_id worker period firm county %12.0f
+            format y `xvars' %21.17g
+            export delimited using                               ///
+                `"`fixest_export_directory'/`problem_type'_base`base_n'_N`n'.csv"', ///
+                replace datafmt
+        }
 
         global FMB_PROBLEM `"`problem_type'"'
         global FMB_TOPOLOGY `"`topology'"'
