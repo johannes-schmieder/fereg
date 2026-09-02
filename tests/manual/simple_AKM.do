@@ -8,7 +8,7 @@ adopath + /Users/johannes/Git/fereg/dist
 global GTOOLS_BETA = "I KNOW WHAT I AM DOING"
 
 * Size
-local scale = 1
+local scale = 100
 local Nworkers = `scale'*10000
 local Nfirms   = `scale'*500
 local T        = 3
@@ -47,7 +47,7 @@ eststo clear
 timer clear
 
 timer on 1
-quietly reghdfe lnwage experience exp2 i.year, absorb(workerid firmid)
+quietly reghdfe lnwage experience exp2, absorb(workerid firmid)
 timer off 1
 quietly timer list
 local runtime = r(t1)
@@ -55,7 +55,7 @@ eststo reghdfe
 estadd scalar runtime = `runtime', replace : reghdfe
 
 timer on 2
-quietly fereg lnwage experience exp2 i.year, absorb(workerid firmid) solver(auto)
+quietly fereg lnwage experience exp2, absorb(workerid firmid) solver(auto)
 timer off 2
 quietly timer list
 local runtime = r(t2)
@@ -63,7 +63,7 @@ eststo fereg_auto
 estadd scalar runtime = `runtime', replace : fereg_auto
 
 timer on 3
-quietly fereg lnwage experience exp2 i.year, ///
+quietly fereg lnwage experience exp2, ///
     absorb(workerid firmid) solver(CMG)
 timer off 3
 quietly timer list
@@ -72,7 +72,7 @@ eststo fereg_cmg
 estadd scalar runtime = `runtime', replace : fereg_cmg
 
 timer on 4
-quietly greg lnwage experience exp2 i.year, ///
+quietly greg lnwage experience exp2, ///
     absorb(workerid firmid) alphas(what3 fhat3)
 timer off 4
 quietly timer list
@@ -81,7 +81,7 @@ eststo greg
 estadd scalar runtime = `runtime', replace : greg
 
 timer on 5
-quietly areg lnwage experience exp2 i.year, absorb(workerid firmid)
+quietly areg lnwage experience exp2, absorb(workerid firmid)
 timer off 5
 quietly timer list
 local runtime = r(t5)

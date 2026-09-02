@@ -26,6 +26,12 @@
 
     This is an accessible diagnostic benchmark, not release evidence.  For
     correctness checks, run tests/manual/manual_validation.do separately.
+
+    If global FEREG_FIXEST_EXPORT_DIR names an existing directory, each
+    generated dataset is also exported there at full numeric precision for
+    the companion tests/manual/manual_benchmarks_fixest.R and
+    tests/manual/manual_benchmarks_pyfixest.py comparisons.  Export time
+    remains outside every recorded command timing.
 */
 
 version 19.0
@@ -44,7 +50,7 @@ local thread_counts       "1 2 4 8 16"      // Requested threads used at the med
 local controls            4                  // Number of continuous controls in each regression.
 local repetitions         5                  // Recorded warm repetitions per command and benchmark cell.
 local seed                20260831           // Random-number seed for reproducible datasets.
-local algorithm_settings  "default"          // "default" or "harmonized".
+local tuning_settings     "default"          // "default" or "harmonized".
 local common_tolerance    1e-8               // Used only with "harmonized".
 local common_maxiter      16000              // Used only with "harmonized".
 local output_directory    "."                // Directory for datasets and figures.
@@ -77,12 +83,12 @@ if `repetitions' < 1 | `repetitions' != floor(`repetitions') {
     display as error "repetitions must be a positive integer"
     exit 198
 }
-local algorithm_settings = lower(strtrim(`"`algorithm_settings'"'))
-if !inlist(`"`algorithm_settings'"', "default", "harmonized") {
-    display as error "algorithm_settings must be default or harmonized"
+local tuning_settings = lower(strtrim(`"`tuning_settings'"'))
+if !inlist(`"`tuning_settings'"', "default", "harmonized") {
+    display as error "tuning_settings must be default or harmonized"
     exit 198
 }
-local harmonize_settings = (`"`algorithm_settings'"' == "harmonized")
+local harmonize_settings = (`"`tuning_settings'"' == "harmonized")
 if !inlist(`make_figures', 0, 1) | !inlist(`require_comparators', 0, 1) | ///
    !inlist(`strict', 0, 1) {
     display as error ///
@@ -148,6 +154,9 @@ if !`fixed_found' | missing(`fixed_threads') | `fixed_threads' < 1 | ///
 
 capture mkdir `"`output_directory'"'
 local output_stem `"`output_directory'/manual_benchmarks"'
+local fixest_export_directory `"$FEREG_FIXEST_EXPORT_DIR"'
+local export_fixest_data = (strtrim(`"`fixest_export_directory'"') != "")
+if `export_fixest_data' capture mkdir `"`fixest_export_directory'"'
 local original_processors = c(processors)
 local original_gtools_beta `"$GTOOLS_BETA"'
 
@@ -181,8 +190,8 @@ if `require_comparators' & (!`have_reghdfe' | !`have_greg') {
     exit 499
 }
 global GTOOLS_BETA "I KNOW WHAT I AM DOING"
-local tuning_mode `"`algorithm_settings'"'
-display as text "Manual benchmark algorithm settings: `tuning_mode'"
+local tuning_mode `"`tuning_settings'"'
+display as text "Manual benchmark tolerance/iteration settings: `tuning_mode'"
 if `harmonize_settings' display as text ///
     "  common tolerance: `common_tolerance'; common maximum iterations: `common_maxiter'"
 
@@ -214,7 +223,7 @@ frame __fmb_results: label variable repetition           "Recorded repetition nu
 frame __fmb_results: label variable sequence             "Command position within the repetition"
 frame __fmb_results: label variable command              "Estimator command"
 frame __fmb_results: label variable thread_control       "How the command's thread count is controlled"
-frame __fmb_results: label variable tuning_mode          "Default or harmonized algorithm settings"
+frame __fmb_results: label variable tuning_mode          "Default or harmonized tolerance/iteration settings"
 frame __fmb_results: label variable status               "Run status: pass, fail, skip, or capped"
 frame __fmb_results: label variable rc                   "Stata return code"
 frame __fmb_results: label variable elapsed_seconds      "Elapsed wall time in seconds"
@@ -368,7 +377,7 @@ program define __fmb_run_arm, rclass
         local thread_control "native"
         if `harmonize' {
             local command_line                                      ///
-                `"fereg y `xvars', absorb(`absorb') dof(pairwise) solver(auto) threads(`requested_threads') tolerance(`common_tolerance') iterate(`common_maxiter')"'
+                `"fereg y `xvars', absorb(`absorb') dof(pairwise) threads(`requested_threads') tolerance(`common_tolerance') iterate(`common_maxiter')"'
         }
         else {
             local command_line                                      ///
@@ -379,7 +388,7 @@ program define __fmb_run_arm, rclass
         local available = $FMB_HAVE_REGHDFE
         if `harmonize' {
             local command_line                                      ///
-                `"reghdfe y `xvars', absorb(`absorb') dof(pairwise) transform(symmetric_kaczmarz) acceleration(conjugate_gradient) tolerance(`common_tolerance') iterate(`common_maxiter')"'
+                `"reghdfe y `xvars', absorb(`absorb') dof(pairwise) tolerance(`common_tolerance') iterate(`common_maxiter')"'
         }
         else {
             local command_line                                      ///
@@ -404,7 +413,7 @@ program define __fmb_run_arm, rclass
         local thread_control "uncontrolled"
         if `harmonize' {
             local command_line                                      ///
-                `"greg y `xvars', absorb(`absorb') algorithm(cg) hdfetol(`common_tolerance') maxiter(`common_maxiter') mata(GtoolsRegress)"'
+                `"greg y `xvars', absorb(`absorb') hdfetol(`common_tolerance') maxiter(`common_maxiter') mata(GtoolsRegress)"'
         }
         else {
             local command_line                                      ///
@@ -544,6 +553,14 @@ foreach problem_type of local selected_problem_types {
         local absorb `"`r(absorb)'"'
         local xvars `"`r(xvars)'"'
 
+        if `export_fixest_data' {
+            format obs_id worker period firm county %12.0f
+            format y `xvars' %21.17g
+            export delimited using                               ///
+                `"`fixest_export_directory'/`problem_type'_base`base_n'_N`n'.csv"', ///
+                replace datafmt
+        }
+
         global FMB_PROBLEM `"`problem_type'"'
         global FMB_TOPOLOGY `"`topology'"'
         global FMB_FE_DIMENSIONS `fe_dimensions'
@@ -640,7 +657,7 @@ label variable requested_threads           "Requested thread count"
 label variable stata_threads               "Capped Stata processor count"
 label variable command                     "Estimator command"
 label variable thread_control              "Thread-control mechanism"
-label variable tuning_mode                 "Default or harmonized algorithm settings"
+label variable tuning_mode                 "Default or harmonized tolerance/iteration settings"
 label variable median_seconds              "Median elapsed time in seconds"
 label variable median_effective_threads    "Median effective thread count"
 label variable median_peak_rss_mb          "Median fereg process peak RSS in MiB"
@@ -662,7 +679,7 @@ quietly save `"`output_stem'_summary.dta"', replace
 quietly export delimited using `"`output_stem'_summary.csv"', replace
 
 if `make_figures' {
-    local tuning_subtitle "Each command uses its default algorithm settings"
+    local tuning_subtitle "Each command uses its default tolerance and iteration settings"
     if `harmonize_settings' {
         local tuning_subtitle ///
             "Harmonized tolerance=`common_tolerance'; max iterations=`common_maxiter'"

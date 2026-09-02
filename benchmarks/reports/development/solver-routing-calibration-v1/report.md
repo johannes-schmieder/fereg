@@ -196,4 +196,3 @@ is visible.  A second, more conservative candidate is identical except that it
 keeps the existing CMG guards and changes only the post-pilot default from the
 `0.008` CG/LSMR split to Schwarz-LSMR; this cleanly separates the two policy
 questions in the next experiment.
-

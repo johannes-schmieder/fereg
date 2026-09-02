@@ -24,6 +24,12 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   non-base nuisance columns. Other categorical designs go directly to the
   certified LSMR route; slope-bearing/generic designs retain the ADR-0009
   pilot policy.
+- ADR-0022 adds a private post-hierarchy safety guard to that route. Direct
+  terminals remain CMG; iterative terminals remain CMG only through
+  repeat-weighted work 4, otherwise their graph/preconditioner is released and
+  auto uses direct Schwarz-LSMR. Rejected setup time is accounted, but the
+  planned route has no warning, fallback flag, or MAP pilot. Explicit CMG is
+  unchanged.
 - Post-pilot LSMR now certifies against the original RHS scale. An uncertified
   finite candidate continues into CG without discarding its state, and all
   attempted iterations, time, preconditioner, warning, and retained
@@ -40,6 +46,96 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   selections and estimates passed an isolated diagnostic rerun. The exact
   final plugin also passed the focused licensed route fixture and 12/12
   recorded auto smoke runs across CMG and direct-Schwarz-LSMR cases.
+- The subsequent balanced-AKM diagnostic recorded 4,968 runs in 1,656 cells,
+  exactly three repetitions per cell. CMG certified without fallback in all
+  408 cases, but 25k--100k matched sensitivity cells exposed large CMG
+  graph-size/component cliffs at 2:1 and 5:1 ratios. Ten auto cells had
+  deterministic LSMR-to-CG fallback with no MAP pilot; focused traces show CG
+  certified an observation-space-identical retained candidate after a median
+  0.0025 seconds of added solve time, localizing the event to the
+  normal-equation certificate rather than a discarded solve. Forced
+  low-memory LSMR setup time rose 4.5x at the median while solve time was
+  unchanged, identifying reusable cross-block setup as a separate opportunity.
+  No further production routing change was made. The run-level data, corrected
+  matched thread/RHS subset, traces, candidate-rule counterfactuals, and report
+  are under
+  `benchmarks/reports/development/solver-routing-balanced-diagnostic-v1/`.
+- A controlled disconnected-component diagnostic then recorded 513 complete
+  runs, exactly three repetitions in every solver cell, while holding N, FE
+  levels, unique edges, cardinality ratio, and both degree distributions
+  fixed. All runs certified without fallback and produced identical exported
+  coefficients/RSS across auto, CMG, and Schwarz-LSMR. Component count alone
+  is not harmful: equal tiny components are a strong CMG case. The cliff occurs
+  when hundreds or thousands of tiny components coexist with a material large
+  component. At the current three-observations/10:1 auto-CMG boundary, the
+  1,000-component mixed cell took 1.329 seconds under auto-CMG versus 0.116 for
+  explicit Schwarz-LSMR with four controls, while 1,100 equal tiny components
+  took 0.045 versus 0.098. The bad hierarchy carries contracted tiny-component
+  vertices through deep recursive levels; a repeat-weighted hierarchy-work
+  proxy rises from 6.4 finest passes at 600 mixed components to 60.0 at 800 and
+  82.3 at 1,000, then falls to 2.3 when every component is tiny. No production
+  route changed. The next prototype should expose internal component/hierarchy
+  diagnostics, reject high-work CMG hierarchies after cheap setup, and test a
+  component-aware CMG solve. A separate unrecorded 16-control warm-up anomaly
+  remains to be localized with bounded per-stage timing. Sources, raw runs,
+  medians, hierarchy table, and report are under
+  `benchmarks/reports/development/cmg-component-diagnostic-v1/` and
+  `benchmarks/reports/development/cmg-component-autoeligible-v1/`.
+- A terminal-aware hierarchy-guard calibration added a private Rust trace at
+  the post-hierarchy/pre-nuisance boundary and recorded 333 focused runs across
+  37 new component mixtures, plus exact hierarchy profiles for 72 cases from
+  the prior balanced matrix. All 330 successful focused runs certified without
+  fallback and matched scientifically; explicit Schwarz-LSMR returned
+  deterministic `r(459)` in the other three repetitions of one cell. Across
+  109 directly comparable joined cells, every iterative-terminal CMG win had
+  repeat-weighted work at or below 2.30 and the first iterative-terminal loss
+  occurred at 22.44. A candidate veto that retains direct terminals, retains
+  iterative terminals only through work 8, and otherwise routes to the
+  existing direct auto-LSMR/CG-continuation path rejected 17 cells without
+  rejecting a measured CMG win. One greater-than-twofold direct-terminal loss
+  with nine nuisance columns remains a separate RHS/nuisance cost-model issue.
+  Median graph-plus-hierarchy setup was 0.0037 seconds. No production route
+  changed. Source, run-level data, profiles, threshold counterfactuals, and the
+  report are under
+  `benchmarks/reports/development/cmg-hierarchy-guard-calibration-v1/`.
+- The fresh 32-dataset hierarchy holdout recorded 288 runs at new seeds and
+  graph wirings, including 0/4/16 controls and 1/8 threads. All 288 succeeded
+  and certified. It moved the first iterative-terminal CMG loss down to work
+  5.68; combined with the earlier maximum winning work 2.30, this selected the
+  conservative development cutoff 4. The post-change rerun also had 288/288
+  successful certified runs: auto used CMG in 90 and LSMR in the six guarded
+  runs, with zero auto fallbacks, warnings, or MAP pilots. Three fallback
+  events belonged to one explicit LSMR comparator cell. An 18-run control
+  retained the all-tiny iterative CMG win and rejected the high-work mixed
+  hierarchy. The universal plugin
+  `ff8592ad6d0b3ad9b00027e5de898ab08bceb6d87a1a4d73e8344d341afbc680`
+  passed binary audit, the actual-plugin loader harness, and the focused
+  licensed Stata route fixture. The Rust core passed 641 unit tests and 24
+  integration tests, plus its empty doc-test target. Direct-terminal wide-RHS
+  and single-thread losses remain a separate cost-model opportunity. This is
+  development evidence only; qualification remains open. Evidence is under
+  `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/` and
+  `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/`.
+- The direct-terminal work is now concluded in ADR-0023. Private per-RHS traces
+  showed that one `1e-10` LSMR case missed fereg's certificate by only 9--11%
+  in two of 17 columns, but `1e-11` reproduced a multi-minute cliff in a
+  different ordinary five-RHS, one-thread cell. Tighter LSMR was therefore
+  rejected as a deterministic destination. The final reliable comparison
+  recorded 366 CMG/CG runs in 61 calibration datasets and 324 runs in 54 fresh
+  holdout datasets, exactly three per solver cell; both solvers certified
+  throughout without fallback. The locked conservative direct-CG guard
+  rejected no CMG win above 5% before implementation. Its 486-run post-change
+  replay matched all 54 expected routes (15 CG, 39 CMG), certified every auto
+  run, used zero fallback cells, and improved aggregate command time 1.339x
+  over retaining CMG everywhere. A bounded 18-run recheck resolved the one
+  visibly noisy no-control topology in favor of CG. The universal plugin
+  `debb95dcaf648aa11c439deb2861971aeebb34fd707ff5608c6f371b39f7c458`
+  passed binary audit and the actual-plugin ABI/self-test. Auto calibration is
+  now paused: future work should prioritize component-aware CMG and Schwarz
+  setup reuse, reopening thresholds only for a new reproducible common
+  regression. This is development evidence, not qualification. Evidence is
+  under `benchmarks/reports/development/cmg-direct-terminal-conclusion-v1/`
+  and `docs/future_auto_optimization.md`.
 
 The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
 macOS matrix was deliberately stopped after 77 strictly valid scopes when this
@@ -249,7 +345,10 @@ overheads, and coverage limits are captured under
 - Explicit `solver(cmg)` reuses one graph hierarchy per fit, supports up to 64
   nuisance non-base absorbed-intercept columns, and retains certified CG
   polishing/fallback. ADR-0021 selects CMG before the MAP pilot for the
-  development AKM topology described above. Fast and low modes share the route;
+  development AKM topology described above, ADR-0022 rejects costly iterative
+  hierarchies to direct LSMR, and ADR-0023 rejects a conservative calibrated
+  subset of direct terminals to direct CG. Neither planned route is labeled a
+  fallback. Fast and low modes share the route;
   setup/memory failure returns visibly to direct LSMR, and solve failure uses
   certified CG thereafter. Graph PCG runs at one-hundredth of the public FE
   tolerance to satisfy the OLS score certificate without a separate post-QR
@@ -257,7 +356,9 @@ overheads, and coverage limits are captured under
   dependency notices, and staged package metadata must be synchronized before
   distribution.
 - One FE uses direct one-pass demeaning. Categorical multiway designs use the
-  ADR-0021 CMG/direct-LSMR topology rule with no MAP pilot. Slope-bearing and
+  ADR-0021/0022/0023 CMG/direct-LSMR/direct-CG topology, hierarchy, and cost
+  rules with no MAP pilot.
+  Slope-bearing and
   generic multiway designs retain at most four MAP pilot sweeps, the 0.008
   contraction threshold for direct tight Schwarz-LSMR, and CG for remaining
   cases. A finite uncertified auto-LSMR result is polished from its current

@@ -45,6 +45,52 @@ assert e(fereg_solver)[1,1] == 1
 assert e(fereg_solver)[1,2] == 3
 assert e(fereg_solver)[1,15] == 0
 
+* The post-hierarchy safety guard rejects repeat-amplified iterative CMG
+* hierarchies as a planned route decision. It does not reject an iterative
+* all-tiny hierarchy, and explicit CMG remains unchanged.
+program define __frg_make_component_panel
+    syntax, Components(integer) [Balanced]
+    clear
+    set obs 99000
+    generate long obs_id = _n
+    generate long worker = ceil(_n / 3)
+    bysort worker: generate byte period = _n - 1
+    local tiny_components = cond("`balanced'" == "", `components' - 1, `components')
+    local small_workers = `tiny_components' * 30
+    local small_firms = `tiny_components' * 3
+    local remaining_firms = 3300 - `small_firms'
+    generate long firm = floor((worker - 1) / 30) * 3 + ///
+        mod(mod(worker - 1, 3) + period, 3) + 1 if worker <= `small_workers'
+    if "`balanced'" == "" {
+        replace firm = `small_firms' + ///
+            mod(mod(worker - `small_workers' - 1, `remaining_firms') + period, ///
+            `remaining_firms') + 1 if worker > `small_workers'
+    }
+    assert !missing(firm)
+    generate double x = mod((obs_id-1)*37 + 11, 997)/97 - 5
+    generate double y = .7*x + sin(worker * .13) + cos(firm * .29) + ///
+        (mod((obs_id-1)*53 + 7, 101) - 50)*.001
+end
+
+__frg_make_component_panel, components(800)
+quietly fereg y x, absorb(worker firm) solver(auto) threads(2)
+assert e(fereg_solver)[1,1] == 1
+assert e(fereg_solver)[1,2] == 3
+assert e(fereg_solver)[1,11] == 0
+assert e(fereg_solver)[1,12] == 0
+assert e(fereg_solver)[1,15] == 0
+
+quietly fereg y x, absorb(worker firm) solver(cmg) threads(2)
+assert e(fereg_solver)[1,2] == 7
+
+__frg_make_component_panel, components(1100) balanced
+quietly fereg y x, absorb(worker firm) solver(auto) threads(2)
+assert e(fereg_solver)[1,1] == 1
+assert e(fereg_solver)[1,2] == 7
+assert e(fereg_solver)[1,11] == 0
+assert e(fereg_solver)[1,12] == 0
+assert e(fereg_solver)[1,15] == 0
+
 * Nine nuisance columns remain eligible, including when the low-cardinality FE
 * is listed first. Ten nuisance columns cross to direct LSMR.
 __frg_make_panel, periods(8) workers(100) firms(10)

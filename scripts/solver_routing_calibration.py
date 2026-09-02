@@ -57,6 +57,10 @@ class Arm:
             f"tolerance({self.tolerance:.0e})",
             f"iterate({MAX_ITERATIONS})",
         ]
+        if case.memory_mode != "auto":
+            options.append(f"memory({case.memory_mode})")
+        if case.poolsize > 0:
+            options.append(f"poolsize({case.poolsize})")
         if self.preconditioner != "none":
             options.append(f"preconditioner({self.preconditioner})")
         if residual is not None:
@@ -90,6 +94,8 @@ class Case:
     mobility: float
     controls: int
     threads: int
+    memory_mode: str
+    poolsize: int
     absorb_order: str
     arms: tuple[Arm, ...]
 
@@ -132,6 +138,8 @@ def _panel_case(
     mobility: float = 0.02,
     controls: int = 4,
     threads: int = 8,
+    memory_mode: str = "auto",
+    poolsize: int = 0,
     firms: int | None = None,
     third_name: str = "",
     third_levels: int = 0,
@@ -164,6 +172,8 @@ def _panel_case(
         mobility=mobility,
         controls=controls,
         threads=threads,
+        memory_mode=memory_mode,
+        poolsize=poolsize,
         absorb_order=absorb_order,
         arms=arms,
     )
@@ -512,6 +522,7 @@ def build_plan() -> list[Case]:
             n = workers * periods
             firms = max(2, round(workers / ratio))
             tag = f"p{periods}_r{ratio_tag}_n{n}_k{controls}_t{threads}"
+            matched_seed = _seed(f"balanced_sensitivity_p{periods}_r{ratio_tag}_n{n}")
             cases.append(
                 _panel_case(
                     test_id="balanced_diagnostic",
@@ -527,9 +538,43 @@ def build_plan() -> list[Case]:
                     threads=threads,
                     firms=firms,
                     arms=(AUTO, LSMR8, LSMR10, CMG),
-                    seed=_seed(f"balanced_sensitivity_{tag}"),
+                    seed=matched_seed,
                 )
             )
+
+        # Repeat the matched 50k, 4/16-control cells with a deliberately
+        # narrow low-memory pool.  This forces two or five RHS blocks and
+        # exposes any solver setup paid again across blocks without turning
+        # the main matrix into a memory-mode benchmark.
+        for controls in (4, 16):
+            for threads in (1, 8):
+                target_n = 50_000
+                workers = max(2, round(target_n / periods))
+                n = workers * periods
+                firms = max(2, round(workers / ratio))
+                matched_tag = f"p{periods}_r{ratio_tag}_n{n}_k{controls}_t{threads}"
+                low_tag = f"{matched_tag}_low_p4"
+                matched_seed = _seed(f"balanced_sensitivity_p{periods}_r{ratio_tag}_n{n}")
+                cases.append(
+                    _panel_case(
+                        test_id="balanced_diagnostic",
+                        case_id=f"bals_{low_tag}",
+                        topology="balanced_worker_firm_sensitivity",
+                        topology_detail=(
+                            f"periods{periods}_ratio{ratio:g}_mobility0.02_n{n}_controls{controls}_threads{threads}_memorylow_pool4"
+                        ),
+                        n=n,
+                        periods=periods,
+                        mobility=0.02,
+                        controls=controls,
+                        threads=threads,
+                        memory_mode="low",
+                        poolsize=4,
+                        firms=firms,
+                        arms=(AUTO, LSMR8, LSMR10, CMG),
+                        seed=matched_seed,
+                    )
+                )
     return cases
 
 
@@ -637,7 +682,7 @@ def _dataset_lines(case: Case) -> list[str]:
 POST_VARIABLES = [
     "case_id", "test_id", "topology", "topology_detail", "seed", "n", "periods",
     "workers", "firms", "third_levels", "fe_dimensions", "mobility", "controls",
-    "rhs", "threads", "absorb_order", "unique_edges", "duplicate_edge_fraction",
+    "rhs", "threads", "memory_mode", "poolsize", "absorb_order", "unique_edges", "duplicate_edge_fraction",
     "edges_per_vertex", "worker_degree_mean", "worker_degree_p50", "worker_degree_p90",
     "worker_degree_max", "firm_degree_mean", "firm_degree_p50", "firm_degree_p90",
     "firm_degree_max", "repetition", "sequence", "arm_id",
@@ -659,7 +704,7 @@ def _postfile_line(output: Path) -> str:
     return (
         "postfile __runs str48 case_id str20 test_id str40 topology str64 topology_detail "
         "long seed long n int periods long workers long firms long third_levels byte fe_dimensions "
-        "double mobility int controls int rhs int threads str32 absorb_order "
+        "double mobility int controls int rhs int threads str8 memory_mode int poolsize str32 absorb_order "
         "double unique_edges duplicate_edge_fraction edges_per_vertex worker_degree_mean "
         "worker_degree_p50 worker_degree_p90 worker_degree_max firm_degree_mean firm_degree_p50 "
         "firm_degree_p90 firm_degree_max int repetition int sequence "
@@ -676,7 +721,14 @@ def _postfile_line(output: Path) -> str:
     )
 
 
-def _run_block(case: Case, arm: Arm, repetition: int, sequence: int) -> list[str]:
+def _run_block(
+    case: Case,
+    arm: Arm,
+    repetition: int,
+    sequence: int,
+    *,
+    noisy: bool = False,
+) -> list[str]:
     command = arm.command(case)
     warning = (
         'cond(__fallback == 1 & __req == 1 & __used == 4 & __pilot_contract >= .008, '
@@ -690,6 +742,7 @@ def _run_block(case: Case, arm: Arm, repetition: int, sequence: int) -> list[str
         f'({case.periods})', f'({case.workers})', f'({case.firms})',
         f'({case.third_levels})', f'({case.fe_dimensions})', f'({case.mobility:.17g})',
         f'({case.controls})', f'({case.controls + 1})', f'({case.threads})',
+        f'("{case.memory_mode}")', f'({case.poolsize})',
         f'("{case.absorb_order}")', "(__graph_unique_edges)",
         "(__graph_duplicate_fraction)", "(__graph_edges_per_vertex)",
         "(__graph_worker_degree_mean)", "(__graph_worker_degree_p50)",
@@ -714,7 +767,7 @@ def _run_block(case: Case, arm: Arm, repetition: int, sequence: int) -> list[str
     return [
         "timer clear 91",
         "timer on 91",
-        f"capture quietly {command}",
+        f"capture {'noisily' if noisy else 'quietly'} {command}",
         "scalar __rc = _rc",
         "timer off 91",
         "quietly timer list 91",
@@ -774,7 +827,7 @@ def _run_block(case: Case, arm: Arm, repetition: int, sequence: int) -> list[str
     ]
 
 
-def _case_do(case: Case, output_dta: Path) -> str:
+def _case_do(case: Case, output_dta: Path, *, noisy: bool = False) -> str:
     lines = _stata_preamble(max(case.threads, 8)) + _dataset_lines(case)
     lines.append(_postfile_line(output_dta))
     # One unrecorded warm-up per arm on the already-generated data.
@@ -783,7 +836,7 @@ def _case_do(case: Case, output_dta: Path) -> str:
     for repetition in range(1, REPETITIONS + 1):
         rotated = case.arms[repetition - 1 :] + case.arms[: repetition - 1]
         for sequence, arm in enumerate(rotated, start=1):
-            lines.extend(_run_block(case, arm, repetition, sequence))
+            lines.extend(_run_block(case, arm, repetition, sequence, noisy=noisy))
     lines.extend(
         [
             "postclose __runs",
@@ -870,7 +923,7 @@ def summarize(raw: list[dict[str, str]]) -> list[dict[str, object]]:
             for field in (
                 "case_id", "test_id", "topology", "topology_detail", "seed", "n", "periods",
                 "workers", "firms", "third_levels", "fe_dimensions", "mobility", "controls", "rhs",
-                "threads", "absorb_order", "unique_edges", "duplicate_edge_fraction",
+                "threads", "memory_mode", "poolsize", "absorb_order", "unique_edges", "duplicate_edge_fraction",
                 "edges_per_vertex", "worker_degree_mean", "worker_degree_p50",
                 "worker_degree_p90", "worker_degree_max", "firm_degree_mean",
                 "firm_degree_p50", "firm_degree_p90", "firm_degree_max", "arm_id",
@@ -882,15 +935,21 @@ def summarize(raw: list[dict[str, str]]) -> list[dict[str, object]]:
         result["recorded_repetitions"] = len(rows)
         result["successful_repetitions"] = sum(value == 0 for value in rcs)
         result["certified_repetitions"] = sum(value == 1 for value in certified)
-        result["eligible"] = int(
+        fallback_values = {_number(row, "fallback") for row in rows}
+        result["certified_run"] = int(
             result["successful_repetitions"] == REPETITIONS
             and result["certified_repetitions"] == REPETITIONS
+        )
+        # A requested solver that reaches a different solver through a safety
+        # fallback remains a correctness success, but is not an eligible
+        # winner for calibration of the requested route.
+        result["eligible"] = int(
+            result["certified_run"] == 1 and fallback_values == {0.0}
         )
         for field in median_fields:
             values = [_number(row, field) for row in rows]
             finite = [value for value in values if value is not None]
             result[f"median_{field}"] = statistics.median(finite) if finite else ""
-        fallback_values = {_number(row, "fallback") for row in rows}
         result["fallback_deterministic"] = int(len(fallback_values) == 1)
         used_values = {_number(row, "used_solver_code") for row in rows}
         result["route_deterministic"] = int(len(used_values) == 1)
@@ -911,7 +970,11 @@ def add_decisions(summary: list[dict[str, object]]) -> list[dict[str, object]]:
         ]
         best = min(explicit, key=lambda row: float(row["median_command_seconds"])) if explicit else None
         first = rows[0]
-        auto_time = float(auto["median_command_seconds"]) if auto and int(auto["eligible"]) else None
+        auto_time = (
+            float(auto["median_command_seconds"])
+            if auto and int(auto["certified_run"]) == 1
+            else None
+        )
         best_time = float(best["median_command_seconds"]) if best else None
         decisions.append(
             {
@@ -923,6 +986,8 @@ def add_decisions(summary: list[dict[str, object]]) -> list[dict[str, object]]:
                 "controls": first["controls"],
                 "rhs": first["rhs"],
                 "threads": first["threads"],
+                "memory_mode": first["memory_mode"],
+                "poolsize": first["poolsize"],
                 "absorb_order": first["absorb_order"],
                 "best_certified_explicit_solver": best["arm_id"] if best else "none",
                 "best_explicit_seconds": best_time if best_time is not None else "",
@@ -1093,6 +1158,8 @@ def analyze(raw: list[dict[str, str]], output: Path) -> None:
                     "mobility": row["mobility"],
                     "controls": row["controls"],
                     "threads": row["threads"],
+                    "memory_mode": row["memory_mode"],
+                    "poolsize": row["poolsize"],
                     "unique_edges": row["unique_edges"],
                     "duplicate_edge_fraction": row["duplicate_edge_fraction"],
                     "edges_per_vertex": row["edges_per_vertex"],
@@ -1261,6 +1328,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "akm_validation", "balanced_diagnostic",
     ])
     parser.add_argument("--case", action="append", help="Run only the named case id")
+    parser.add_argument("--topology", action="append", help="Run only the named topology")
     parser.add_argument(
         "--arm",
         action="append",
@@ -1278,6 +1346,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--smoke", action="store_true", help="Run one case from each selected section")
     parser.add_argument("--skip-trace", action="store_true")
+    parser.add_argument(
+        "--noisy",
+        action="store_true",
+        help="Print captured fereg errors for focused diagnostic reruns",
+    )
     parser.add_argument("--trace-only", action="store_true", help="Run unrecorded auto traces only")
     parser.add_argument("--resume", action="store_true", help="Reuse complete per-case CSV files")
     parser.add_argument(
@@ -1305,6 +1378,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.case:
         wanted_cases = set(args.case)
         plan = [case for case in plan if case.case_id in wanted_cases]
+    if args.topology:
+        wanted_topologies = set(args.topology)
+        plan = [case for case in plan if case.topology in wanted_topologies]
     if args.arm:
         wanted_arms = set(args.arm)
         plan = [
@@ -1361,7 +1437,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raw.extend(cached)
                 print(f"  reused {expected} complete rows", flush=True)
                 continue
-        do_file.write_text(_case_do(case, dta_file), encoding="utf-8")
+        do_file.write_text(_case_do(case, dta_file, noisy=args.noisy), encoding="utf-8")
         _run_stata(args.stata, do_file, work)
         raw.extend(_read_case_csv(case_csv))
 

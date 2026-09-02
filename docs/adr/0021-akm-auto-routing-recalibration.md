@@ -3,6 +3,7 @@
 **Status:** Accepted for development; qualification pending
 **Date:** 2026-09-01
 **Decision owner:** Johannes Schmieder
+**Extended by:** ADR 0022 iterative-terminal and ADR 0023 direct-terminal guards
 
 ## Context
 

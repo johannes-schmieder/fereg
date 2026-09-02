@@ -14,6 +14,14 @@
 /tests/mock_spi/build/
 /benchmarks/reports/*.csv
 /benchmarks/reports/*.json
+/benchmarks/reports/development/*/work/
+/benchmarks/reports/captured/**/*.o[0-9]*
+/benchmarks/reports/captured/**/*.e[0-9]*
+/tests/manual/*_runs.csv
+/tests/manual/*_runs.dta
+/tests/manual/*_summary.csv
+/tests/manual/*_summary.dta
+/tests/manual/*_time_by_*.png
 *.log
 *.stswp
 .DS_Store

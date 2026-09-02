@@ -1,8 +1,8 @@
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig,
-    CmgTopologyProfile, FeCertificate, FeCoefficientBatch, FeSolverKind, SolveReport,
+    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgAutoBuildOutcome,
+    CmgConfig, CmgTopologyProfile, FeCertificate, FeCoefficientBatch, FeSolverKind, SolveReport,
     SolveStopReason,
 };
 use crate::metadata::CoefficientSlot;
@@ -1338,7 +1338,8 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
 
 struct FitCmgAbsorber<'a> {
     session: Option<CmgAbsorber<'a>>,
-    auto_direct_lsmr: bool,
+    auto_direct_solver: Option<FeSolverKind>,
+    auto_discarded_setup_seconds: f64,
     auto_setup_warning: Option<String>,
 }
 
@@ -1352,7 +1353,8 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     {
         return Ok(FitCmgAbsorber {
             session: None,
-            auto_direct_lsmr: false,
+            auto_direct_solver: None,
+            auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: None,
         });
     }
@@ -1361,7 +1363,8 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitCmgAbsorber {
             session: None,
-            auto_direct_lsmr: true,
+            auto_direct_solver: Some(FeSolverKind::Lsmr),
+            auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: None,
         });
     }
@@ -1373,21 +1376,56 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
         requested_solver: config.absorb.solver,
         solver_memory_budget: config.absorb.solver_memory_budget,
     };
-    match CmgAbsorber::build_profiled(
-        design,
-        weights,
-        cmg_config,
-        prepared.fit_structural_intercept(),
-        profile,
-    ) {
-        Ok(session) => Ok(FitCmgAbsorber {
+    let initial_rhs_columns = prepared
+        .fit_model()
+        .columns
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "prepared OLS RHS width overflows")
+        })?;
+    let built = if config.absorb.solver == FeSolverKind::Auto {
+        CmgAbsorber::build_profiled_auto_guarded(
+            design,
+            weights,
+            cmg_config,
+            prepared.fit_structural_intercept(),
+            profile,
+            initial_rhs_columns,
+        )
+    } else {
+        CmgAbsorber::build_profiled(
+            design,
+            weights,
+            cmg_config,
+            prepared.fit_structural_intercept(),
+            profile,
+        )
+        .map(CmgAutoBuildOutcome::Ready)
+    };
+    match built {
+        Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitCmgAbsorber {
             session: Some(session),
-            auto_direct_lsmr: false,
+            auto_direct_solver: None,
+            auto_discarded_setup_seconds: 0.0,
+            auto_setup_warning: None,
+        }),
+        Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitCmgAbsorber {
+            session: None,
+            auto_direct_solver: Some(FeSolverKind::Lsmr),
+            auto_discarded_setup_seconds: setup_seconds,
+            auto_setup_warning: None,
+        }),
+        Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitCmgAbsorber {
+            session: None,
+            auto_direct_solver: Some(FeSolverKind::Cg),
+            auto_discarded_setup_seconds: setup_seconds,
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitCmgAbsorber {
             session: None,
-            auto_direct_lsmr: true,
+            auto_direct_solver: Some(FeSolverKind::Lsmr),
+            auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: Some(format!(
                 "automatic CMG setup was unavailable ({error}); used certified direct LSMR"
             )),
@@ -1412,19 +1450,36 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
             session.absorb(values)
         };
     }
-    let absorbed = if cmg.auto_direct_lsmr {
-        prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
-    } else if initial {
-        prepared.fit_absorb_initial_matrix(weights, values, config)
-    } else {
-        prepared.fit_absorb_matrix(weights, values, config)
+    let absorbed = match cmg.auto_direct_solver {
+        Some(FeSolverKind::Lsmr) => prepared.fit_absorb_auto_direct_lsmr(weights, values, config),
+        Some(FeSolverKind::Cg) => {
+            let mut direct_config = config;
+            direct_config.solver = FeSolverKind::Cg;
+            prepared.fit_absorb_cg(weights, values, direct_config)
+        }
+        Some(_) => unreachable!("unsupported planned automatic direct solver"),
+        None if initial => prepared.fit_absorb_initial_matrix(weights, values, config),
+        None => prepared.fit_absorb_matrix(weights, values, config),
     }?;
-    let Some(warning) = cmg.auto_setup_warning.take() else {
+    let discarded_setup_seconds = std::mem::take(&mut cmg.auto_discarded_setup_seconds);
+    let warning = cmg.auto_setup_warning.take();
+    if cmg.auto_direct_solver.is_none() && discarded_setup_seconds == 0.0 && warning.is_none() {
         return Ok(absorbed);
-    };
+    }
     let (residualized, mut report, coefficients) = absorbed.into_full_parts();
-    report.fallback_used = true;
-    report.warnings.insert(0, warning);
+    if cmg.auto_direct_solver.is_some() {
+        report.requested_solver = FeSolverKind::Auto;
+    }
+    report.setup_seconds += discarded_setup_seconds;
+    if !report.setup_seconds.is_finite() {
+        return Err(invalid_data(
+            "automatic FE-solver setup timing is not finite",
+        ));
+    }
+    if let Some(warning) = warning {
+        report.fallback_used = true;
+        report.warnings.insert(0, warning);
+    }
     if let Some(coefficients) = coefficients {
         CertifiedBorrowedMap::from_certified_parts_with_coefficients(
             residualized,

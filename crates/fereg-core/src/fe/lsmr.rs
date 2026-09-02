@@ -1,3 +1,6 @@
+use std::fs::OpenOptions;
+use std::io::Write;
+
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -6,6 +9,16 @@ use crate::fe::{
 };
 use crate::options::ThreadConfig;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
+
+fn emit_solver_trace(line: &str) {
+    eprintln!("{line}");
+    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
+        return;
+    };
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
 
 /// Modified-LSMR tuning for fixed-effect absorption.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -186,6 +199,25 @@ pub fn absorb_lsmr(
         &reference_norms,
         config.tolerance,
     )?;
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        for column in 0..values.ncols() {
+            let one_column = DenseMatrix::from_columns(&[values.column(column)?])?;
+            let column_certificate = certify_residuals_with_reference_norms(
+                design,
+                weights,
+                &one_column,
+                &reference_norms[column..=column],
+                config.tolerance,
+            )?;
+            emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={column}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
+                solved.converged[column],
+                solved.iterations[column],
+                solved.residual[column],
+                column_certificate.relative_infinity_norm,
+            ));
+        }
+    }
     let recurrence_converged = solved.converged.iter().copied().all(|value| value);
     let stop_reason = if certificate.passed {
         SolveStopReason::Certified

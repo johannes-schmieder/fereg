@@ -1,0 +1,409 @@
+case_id,test_id,topology,topology_detail,n,controls,rhs,threads,memory_mode,poolsize,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
+bal_p12_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.02_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.042,7.0,CMG,0.043,0.0,0.0,2.3809523809523725
+bal_p12_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.02_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.042,7.0,CMG,0.042,0.0,0.0,0.0
+bal_p12_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.02_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.041,7.0,CMG,0.041,0.0,0.0,0.0
+bal_p12_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.2_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.054,7.0,CMG,0.054,0.0,0.0,0.0
+bal_p12_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.2_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.057,7.0,CMG,0.056,0.0,0.0,-1.7543859649122862
+bal_p12_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio10_mobility0.2_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.055,7.0,CMG,0.055,0.0,0.0,0.0
+bal_p12_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.02_seed1,96000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.136,3.0,LSMR,0.096,0.0,0.0,-29.41176470588236
+bal_p12_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.02_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.127,3.0,LSMR,0.101,0.0,0.0,-20.472440944881885
+bal_p12_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.02_seed3,96000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.14,3.0,LSMR,0.098,0.0,0.0,-30.000000000000004
+bal_p12_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.2_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.055,4.0,CG,0.081,1.0,0.0,47.272727272727266
+bal_p12_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.2_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.055,3.0,LSMR,0.074,0.0,0.0,34.54545454545455
+bal_p12_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio2_mobility0.2_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.06,3.0,LSMR,0.075,0.0,0.0,25.0
+bal_p12_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.02_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.08,3.0,LSMR,0.083,0.0,0.0,3.750000000000009
+bal_p12_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.02_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.052,3.0,LSMR,0.082,0.0,0.0,57.69230769230771
+bal_p12_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.02_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.079,3.0,LSMR,0.083,0.0,0.0,5.063291139240511
+bal_p12_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.2_seed1,96000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.09,3.0,LSMR,0.069,0.0,0.0,-23.33333333333333
+bal_p12_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.2_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.052,3.0,LSMR,0.071,0.0,0.0,36.53846153846154
+bal_p12_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio3_mobility0.2_seed3,96000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.091,3.0,LSMR,0.071,0.0,0.0,-21.978021978021978
+bal_p12_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.005_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.052,3.0,LSMR,0.058,0.0,0.0,11.538461538461542
+bal_p12_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.005_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.051,3.0,LSMR,0.059,0.0,0.0,15.686274509803933
+bal_p12_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.005_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.052,3.0,LSMR,0.06,0.0,0.0,15.384615384615397
+bal_p12_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.02_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.048,3.0,LSMR,0.067,0.0,0.0,39.58333333333335
+bal_p12_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.02_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.048,3.0,LSMR,0.066,0.0,0.0,37.5
+bal_p12_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.02_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.047,3.0,LSMR,0.065,0.0,0.0,38.29787234042554
+bal_p12_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.1_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.056,3.0,LSMR,0.062,0.0,0.0,10.71428571428572
+bal_p12_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.1_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.053,3.0,LSMR,0.062,0.0,0.0,16.981132075471695
+bal_p12_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.1_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.057,3.0,LSMR,0.063,0.0,0.0,10.526315789473673
+bal_p12_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.2_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.077,3.0,LSMR,0.066,0.0,0.0,-14.28571428571428
+bal_p12_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.2_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.076,3.0,LSMR,0.066,0.0,0.0,-13.157894736842103
+bal_p12_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio5_mobility0.2_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.076,3.0,LSMR,0.064,0.0,0.0,-15.78947368421052
+bal_p12_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.02_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.042,3.0,LSMR,0.059,0.0,0.0,40.47619047619047
+bal_p12_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.02_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.043,3.0,LSMR,0.059,0.0,0.0,37.2093023255814
+bal_p12_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.02_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.043,3.0,LSMR,0.059,0.0,0.0,37.2093023255814
+bal_p12_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.2_seed1,96000,4,5,8,auto,0,worker firm,cmg,0.063,3.0,LSMR,0.061,0.0,0.0,-3.1746031746031744
+bal_p12_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.2_seed2,96000,4,5,8,auto,0,worker firm,cmg,0.067,3.0,LSMR,0.062,0.0,0.0,-7.462686567164189
+bal_p12_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods12_ratio7.5_mobility0.2_seed3,96000,4,5,8,auto,0,worker firm,cmg,0.062,3.0,LSMR,0.061,0.0,0.0,-1.6129032258064502
+bal_p3_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.02_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.017,7.0,CMG,0.018,0.0,0.0,5.88235294117645
+bal_p3_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.02_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.018,7.0,CMG,0.017,0.0,0.0,-5.5555555555555465
+bal_p3_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.02_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.017,7.0,CMG,0.017,0.0,0.0,0.0
+bal_p3_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.2_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.023,7.0,CMG,0.023,0.0,0.0,0.0
+bal_p3_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.2_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.025,7.0,CMG,0.025,0.0,0.0,0.0
+bal_p3_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio10_mobility0.2_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.023,7.0,CMG,0.023,0.0,0.0,0.0
+bal_p3_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.02_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.027,3.0,LSMR,0.07,0.0,0.0,159.2592592592593
+bal_p3_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.02_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.072,0.0,0.0,187.99999999999994
+bal_p3_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.02_seed3,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.126,3.0,LSMR,0.07,0.0,0.0,-44.44444444444444
+bal_p3_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.2_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.062,3.0,LSMR,0.049,0.0,0.0,-20.967741935483865
+bal_p3_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.2_seed2,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.069,3.0,LSMR,0.05,0.0,0.0,-27.536231884057973
+bal_p3_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.2_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.067,3.0,LSMR,0.053,0.0,0.0,-20.895522388059707
+bal_p3_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.02_seed1,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.092,3.0,LSMR,0.054,0.0,0.0,-41.30434782608695
+bal_p3_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.02_seed2,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.087,3.0,LSMR,0.057,0.0,0.0,-34.482758620689644
+bal_p3_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.02_seed3,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.086,3.0,LSMR,0.05,0.0,0.0,-41.860465116279066
+bal_p3_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.2_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.036,0.0,0.0,43.99999999999997
+bal_p3_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.2_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.026,3.0,LSMR,0.036,0.0,0.0,38.46153846153846
+bal_p3_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio3_mobility0.2_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.026,3.0,LSMR,0.035,0.0,0.0,34.61538461538463
+bal_p3_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.005_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.042,0.0,0.0,68.0
+bal_p3_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.005_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.021,3.0,LSMR,0.039,0.0,0.0,85.7142857142857
+bal_p3_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.005_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.022,3.0,LSMR,0.038,0.0,0.0,72.72727272727273
+bal_p3_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.02_seed1,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.059,3.0,LSMR,0.037,0.0,0.0,-37.28813559322034
+bal_p3_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.02_seed2,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.059,3.0,LSMR,0.039,0.0,0.0,-33.89830508474576
+bal_p3_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.02_seed3,24000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.059,3.0,LSMR,0.036,0.0,0.0,-38.983050847457626
+bal_p3_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.1_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.034,0.0,0.0,36.00000000000001
+bal_p3_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.1_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.034,0.0,0.0,47.82608695652175
+bal_p3_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.1_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.024,3.0,LSMR,0.033,0.0,0.0,37.5
+bal_p3_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.2_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.035,3.0,LSMR,0.029,0.0,0.0,-17.14285714285715
+bal_p3_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.2_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.03,0.0,0.0,-11.764705882352954
+bal_p3_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio5_mobility0.2_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.036,3.0,LSMR,0.029,0.0,0.0,-19.444444444444432
+bal_p3_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.02_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.03,0.0,0.0,3.44827586206895
+bal_p3_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.02_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.042,3.0,LSMR,0.029,0.0,0.0,-30.952380952380953
+bal_p3_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.02_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.029,0.0,0.0,-3.3333333333333215
+bal_p3_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.2_seed1,24000,4,5,8,auto,0,worker firm,cmg,0.026,3.0,LSMR,0.03,0.0,0.0,15.384615384615397
+bal_p3_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.2_seed2,24000,4,5,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.028,0.0,0.0,21.739130434782616
+bal_p3_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods3_ratio7.5_mobility0.2_seed3,24000,4,5,8,auto,0,worker firm,cmg,0.026,3.0,LSMR,0.028,0.0,0.0,7.692307692307709
+bal_p4_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.02_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.02,7.0,CMG,0.019,0.0,0.0,-5.000000000000004
+bal_p4_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.02_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.02,7.0,CMG,0.02,0.0,0.0,0.0
+bal_p4_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.02_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.02,7.0,CMG,0.02,0.0,0.0,0.0
+bal_p4_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.2_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.025,7.0,CMG,0.025,0.0,0.0,0.0
+bal_p4_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.2_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.025,7.0,CMG,0.025,0.0,0.0,0.0
+bal_p4_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio10_mobility0.2_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.025,7.0,CMG,0.025,0.0,0.0,0.0
+bal_p4_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.02_seed1,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.124,3.0,LSMR,0.079,0.0,0.0,-36.29032258064516
+bal_p4_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.02_seed2,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.124,3.0,LSMR,0.071,0.0,0.0,-42.741935483870975
+bal_p4_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.02_seed3,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.132,3.0,LSMR,0.079,0.0,0.0,-40.15151515151515
+bal_p4_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.2_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.032,3.0,LSMR,0.048,0.0,0.0,50.0
+bal_p4_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.2_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.031,3.0,LSMR,0.046,0.0,0.0,48.38709677419355
+bal_p4_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio2_mobility0.2_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.032,3.0,LSMR,0.047,0.0,0.0,46.875
+bal_p4_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.02_seed1,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.088,3.0,LSMR,0.052,0.0,0.0,-40.90909090909091
+bal_p4_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.02_seed2,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.091,3.0,LSMR,0.056,0.0,0.0,-38.46153846153846
+bal_p4_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.02_seed3,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.092,3.0,LSMR,0.059,0.0,0.0,-35.86956521739131
+bal_p4_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.2_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.037,0.0,0.0,27.58620689655171
+bal_p4_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.2_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.046,0.0,0.0,53.33333333333334
+bal_p4_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio3_mobility0.2_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.028,3.0,LSMR,0.038,0.0,0.0,35.7142857142857
+bal_p4_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.005_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.024,3.0,LSMR,0.046,0.0,0.0,91.66666666666666
+bal_p4_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.005_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.024,3.0,LSMR,0.043,0.0,0.0,79.16666666666666
+bal_p4_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.005_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.024,3.0,LSMR,0.041,0.0,0.0,70.83333333333333
+bal_p4_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.02_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.036,3.0,LSMR,0.039,0.0,0.0,8.333333333333348
+bal_p4_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.02_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.036,3.0,LSMR,0.039,0.0,0.0,8.333333333333348
+bal_p4_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.02_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.036,3.0,LSMR,0.037,0.0,0.0,2.77777777777779
+bal_p4_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.1_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.037,3.0,LSMR,0.034,0.0,0.0,-8.108108108108091
+bal_p4_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.1_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.036,3.0,LSMR,0.033,0.0,0.0,-8.333333333333325
+bal_p4_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.1_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.035,3.0,LSMR,0.034,0.0,0.0,-2.857142857142858
+bal_p4_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.2_seed1,32000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.042,3.0,LSMR,0.033,0.0,0.0,-21.42857142857143
+bal_p4_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.2_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.041,3.0,LSMR,0.034,0.0,0.0,-17.07317073170731
+bal_p4_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio5_mobility0.2_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.041,3.0,LSMR,0.033,0.0,0.0,-19.512195121951216
+bal_p4_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.02_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.02,3.0,LSMR,0.032,0.0,0.0,60.00000000000001
+bal_p4_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.02_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.02,3.0,LSMR,0.031,0.0,0.0,55.00000000000001
+bal_p4_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.02_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.02,3.0,LSMR,0.03,0.0,0.0,50.0
+bal_p4_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.2_seed1,32000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.031,0.0,0.0,6.896551724137923
+bal_p4_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.2_seed2,32000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.032,0.0,0.0,10.344827586206895
+bal_p4_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods4_ratio7.5_mobility0.2_seed3,32000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.031,0.0,0.0,6.896551724137923
+bal_p5_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.02_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.024,7.0,CMG,0.024,0.0,0.0,0.0
+bal_p5_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.02_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.026,7.0,CMG,0.026,0.0,0.0,0.0
+bal_p5_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.02_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.026,7.0,CMG,0.025,0.0,0.0,-3.8461538461538325
+bal_p5_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.2_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.029,7.0,CMG,0.029,0.0,0.0,0.0
+bal_p5_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.2_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.029,7.0,CMG,0.028,0.0,0.0,-3.4482758620689724
+bal_p5_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio10_mobility0.2_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.029,7.0,CMG,0.028,0.0,0.0,-3.4482758620689724
+bal_p5_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.02_seed1,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.122,3.0,LSMR,0.073,0.0,0.0,-40.16393442622951
+bal_p5_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.02_seed2,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.123,3.0,LSMR,0.073,0.0,0.0,-40.65040650406504
+bal_p5_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.02_seed3,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.122,3.0,LSMR,0.08,0.0,0.0,-34.42622950819671
+bal_p5_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.2_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.048,0.0,0.0,41.17647058823528
+bal_p5_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.2_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.035,3.0,LSMR,0.048,0.0,0.0,37.142857142857125
+bal_p5_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio2_mobility0.2_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.047,0.0,0.0,38.23529411764706
+bal_p5_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.02_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.061,3.0,LSMR,0.053,0.0,0.0,-13.11475409836066
+bal_p5_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.02_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.073,3.0,LSMR,0.051,0.0,0.0,-30.136986301369863
+bal_p5_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.02_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.065,3.0,LSMR,0.057,0.0,0.0,-12.307692307692308
+bal_p5_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.2_seed1,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.054,3.0,LSMR,0.042,0.0,0.0,-22.22222222222222
+bal_p5_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.2_seed2,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.051,3.0,LSMR,0.042,0.0,0.0,-17.647058823529406
+bal_p5_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio3_mobility0.2_seed3,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.052,3.0,LSMR,0.041,0.0,0.0,-21.153846153846146
+bal_p5_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.005_seed1,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.073,3.0,LSMR,0.046,0.0,0.0,-36.98630136986301
+bal_p5_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.005_seed2,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.076,3.0,LSMR,0.047,0.0,0.0,-38.1578947368421
+bal_p5_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.005_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.047,0.0,0.0,87.99999999999999
+bal_p5_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.02_seed1,40000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.059,3.0,LSMR,0.039,0.0,0.0,-33.89830508474576
+bal_p5_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.02_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.038,0.0,0.0,26.66666666666666
+bal_p5_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.02_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.039,0.0,0.0,30.000000000000004
+bal_p5_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.1_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.038,3.0,LSMR,0.038,0.0,0.0,0.0
+bal_p5_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.1_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.038,3.0,LSMR,0.038,0.0,0.0,0.0
+bal_p5_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.1_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.037,3.0,LSMR,0.036,0.0,0.0,-2.7027027027027084
+bal_p5_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.2_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.043,3.0,LSMR,0.037,0.0,0.0,-13.953488372093027
+bal_p5_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.2_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.042,3.0,LSMR,0.038,0.0,0.0,-9.523809523809534
+bal_p5_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio5_mobility0.2_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.042,3.0,LSMR,0.037,0.0,0.0,-11.904761904761918
+bal_p5_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.02_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.034,0.0,0.0,47.82608695652175
+bal_p5_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.02_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.039,0.0,0.0,69.56521739130434
+bal_p5_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.02_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.039,0.0,0.0,69.56521739130434
+bal_p5_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.2_seed1,40000,4,5,8,auto,0,worker firm,cmg,0.031,3.0,LSMR,0.035,0.0,0.0,12.903225806451623
+bal_p5_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.2_seed2,40000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.034,0.0,0.0,13.333333333333353
+bal_p5_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods5_ratio7.5_mobility0.2_seed3,40000,4,5,8,auto,0,worker firm,cmg,0.029,3.0,LSMR,0.035,0.0,0.0,20.68965517241379
+bal_p6_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.02_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.029,7.0,CMG,0.028,0.0,0.0,-3.4482758620689724
+bal_p6_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.02_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.029,7.0,CMG,0.028,0.0,0.0,-3.4482758620689724
+bal_p6_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.02_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.028,7.0,CMG,0.028,0.0,0.0,0.0
+bal_p6_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.2_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.033,7.0,CMG,0.033,0.0,0.0,0.0
+bal_p6_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.2_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.032,7.0,CMG,0.032,0.0,0.0,0.0
+bal_p6_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio10_mobility0.2_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.032,7.0,CMG,0.033,0.0,0.0,3.125
+bal_p6_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.02_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.087,3.0,LSMR,0.076,0.0,0.0,-12.643678160919535
+bal_p6_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.02_seed2,48000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.134,3.0,LSMR,0.078,0.0,0.0,-41.7910447761194
+bal_p6_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.02_seed3,48000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.134,3.0,LSMR,0.078,0.0,0.0,-41.7910447761194
+bal_p6_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.2_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.04,3.0,LSMR,0.054,0.0,0.0,34.999999999999986
+bal_p6_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.2_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.039,3.0,LSMR,0.056,0.0,0.0,43.58974358974359
+bal_p6_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio2_mobility0.2_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.04,3.0,LSMR,0.059,0.0,0.0,47.499999999999986
+bal_p6_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.02_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.048,3.0,LSMR,0.059,0.0,0.0,22.91666666666665
+bal_p6_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.02_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.046,3.0,LSMR,0.058,0.0,0.0,26.086956521739136
+bal_p6_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.02_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.049,3.0,LSMR,0.058,0.0,0.0,18.36734693877551
+bal_p6_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.2_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.05,3.0,LSMR,0.078,0.0,0.0,55.999999999999986
+bal_p6_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.2_seed2,48000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.085,3.0,LSMR,0.071,0.0,0.0,-16.470588235294127
+bal_p6_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio3_mobility0.2_seed3,48000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.066,3.0,LSMR,0.051,0.0,0.0,-22.72727272727274
+bal_p6_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.005_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.052,0.0,0.0,73.33333333333334
+bal_p6_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.005_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.031,3.0,LSMR,0.05,0.0,0.0,61.290322580645174
+bal_p6_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.005_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.03,3.0,LSMR,0.051,0.0,0.0,70.0
+bal_p6_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.02_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.056,3.0,LSMR,0.053,0.0,0.0,-5.35714285714286
+bal_p6_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.02_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.057,3.0,LSMR,0.069,0.0,0.0,21.052631578947366
+bal_p6_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.02_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.078,3.0,LSMR,0.0600000000000001,0.0,0.0,-23.076923076922952
+bal_p6_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.1_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.047,3.0,LSMR,0.049,0.0,0.0,4.255319148936176
+bal_p6_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.1_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.046,3.0,LSMR,0.047,0.0,0.0,2.1739130434782705
+bal_p6_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.1_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.045,3.0,LSMR,0.044,0.0,0.0,-2.2222222222222254
+bal_p6_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.2_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.046,3.0,LSMR,0.043,0.0,0.0,-6.521739130434789
+bal_p6_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.2_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.046,3.0,LSMR,0.044,0.0,0.0,-4.34782608695653
+bal_p6_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio5_mobility0.2_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.045,3.0,LSMR,0.044,0.0,0.0,-2.2222222222222254
+bal_p6_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.02_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.028,3.0,LSMR,0.046,0.0,0.0,64.28571428571428
+bal_p6_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.02_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.027,3.0,LSMR,0.042,0.0,0.0,55.55555555555556
+bal_p6_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.02_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.028,3.0,LSMR,0.044,0.0,0.0,57.14285714285714
+bal_p6_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.2_seed1,48000,4,5,8,auto,0,worker firm,cmg,0.035,3.0,LSMR,0.041,0.0,0.0,17.142857142857125
+bal_p6_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.2_seed2,48000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.041,0.0,0.0,20.58823529411764
+bal_p6_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods6_ratio7.5_mobility0.2_seed3,48000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.042,0.0,0.0,23.529411764705888
+bal_p8_r100_m002_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.02_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.032,7.0,CMG,0.032,0.0,0.0,0.0
+bal_p8_r100_m002_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.02_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.033,7.0,CMG,0.033,0.0,0.0,0.0
+bal_p8_r100_m002_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.02_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.032,7.0,CMG,0.032,0.0,0.0,0.0
+bal_p8_r100_m02_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.2_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.036,7.0,CMG,0.036,0.0,0.0,0.0
+bal_p8_r100_m02_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.2_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.036,7.0,CMG,0.036,0.0,0.0,0.0
+bal_p8_r100_m02_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio10_mobility0.2_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.035,7.0,CMG,0.035,0.0,0.0,0.0
+bal_p8_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.02_seed1,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.131,3.0,LSMR,0.078,0.0,0.0,-40.458015267175576
+bal_p8_r20_m002_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.02_seed2,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.132,3.0,LSMR,0.077,0.0,0.0,-41.66666666666667
+bal_p8_r20_m002_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.02_seed3,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.132,3.0,LSMR,0.077,0.0,0.0,-41.66666666666667
+bal_p8_r20_m02_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.2_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.044,3.0,LSMR,0.062,0.0,0.0,40.90909090909092
+bal_p8_r20_m02_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.2_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.045,4.0,CG,0.065,1.0,0.0,44.444444444444464
+bal_p8_r20_m02_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio2_mobility0.2_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.044,4.0,CG,0.065,1.0,0.0,47.72727272727275
+bal_p8_r30_m002_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.02_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.091,3.0,LSMR,0.075,0.0,0.0,-17.582417582417587
+bal_p8_r30_m002_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.02_seed2,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.095,3.0,LSMR,0.0639999999999999,0.0,0.0,-32.631578947368524
+bal_p8_r30_m002_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.02_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.1,3.0,LSMR,0.068,0.0,0.0,-31.999999999999996
+bal_p8_r30_m02_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.2_seed1,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.071,3.0,LSMR,0.054,0.0,0.0,-23.943661971830977
+bal_p8_r30_m02_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.2_seed2,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.072,3.0,LSMR,0.055,0.0,0.0,-23.611111111111104
+bal_p8_r30_m02_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio3_mobility0.2_seed3,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.074,3.0,LSMR,0.06,0.0,0.0,-18.918918918918916
+bal_p8_r50_m0005_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.005_seed1,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.084,3.0,LSMR,0.055,0.0,0.0,-34.523809523809526
+bal_p8_r50_m0005_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.005_seed2,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.084,3.0,LSMR,0.055,0.0,0.0,-34.523809523809526
+bal_p8_r50_m0005_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.005_seed3,64000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.085,3.0,LSMR,0.055,0.0,0.0,-35.29411764705883
+bal_p8_r50_m002_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.02_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.033,3.0,LSMR,0.0580000000000001,0.0,0.0,75.75757575757605
+bal_p8_r50_m002_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.02_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.032,3.0,LSMR,0.056,0.0,0.0,75.0
+bal_p8_r50_m002_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.02_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.032,3.0,LSMR,0.054,0.0,0.0,68.75
+bal_p8_r50_m01_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.1_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.052,3.0,LSMR,0.047,0.0,0.0,-9.615384615384615
+bal_p8_r50_m01_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.1_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.051,3.0,LSMR,0.049,0.0,0.0,-3.9215686274509665
+bal_p8_r50_m01_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.1_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.05,3.0,LSMR,0.047,0.0,0.0,-6.000000000000005
+bal_p8_r50_m02_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.2_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.047,3.0,LSMR,0.048,0.0,0.0,2.127659574468077
+bal_p8_r50_m02_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.2_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.047,4.0,CG,0.052,1.0,0.0,10.63829787234043
+bal_p8_r50_m02_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio5_mobility0.2_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.05,3.0,LSMR,0.047,0.0,0.0,-6.000000000000005
+bal_p8_r75_m002_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.02_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.033,3.0,LSMR,0.047,0.0,0.0,42.42424242424241
+bal_p8_r75_m002_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.02_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.033,3.0,LSMR,0.048,0.0,0.0,45.45454545454546
+bal_p8_r75_m002_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.02_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.034,3.0,LSMR,0.049,0.0,0.0,44.11764705882353
+bal_p8_r75_m02_s1,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.2_seed1,64000,4,5,8,auto,0,worker firm,cmg,0.039,3.0,LSMR,0.046,0.0,0.0,17.948717948717952
+bal_p8_r75_m02_s2,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.2_seed2,64000,4,5,8,auto,0,worker firm,cmg,0.038,3.0,LSMR,0.046,0.0,0.0,21.052631578947366
+bal_p8_r75_m02_s3,balanced_diagnostic,balanced_worker_firm,periods8_ratio7.5_mobility0.2_seed3,64000,4,5,8,auto,0,worker firm,cmg,0.038,3.0,LSMR,0.046,0.0,0.0,21.052631578947366
+baln_p4_r100_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance10_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.037,3.0,LSMR,0.048,0.0,0.0,29.729729729729737
+baln_p4_r100_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance10_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.038,3.0,LSMR,0.045,0.0,0.0,18.421052631578938
+baln_p4_r100_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance10_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.038,3.0,LSMR,0.049,0.0,0.0,28.947368421052634
+baln_p4_r100_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance19_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.053,4.0,CG,0.048,1.0,0.0,-9.433962264150942
+baln_p4_r100_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance19_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.055,3.0,LSMR,0.046,0.0,0.0,-16.36363636363637
+baln_p4_r100_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance19_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.053,3.0,LSMR,0.045,0.0,0.0,-15.094339622641506
+baln_p4_r100_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance4_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.031,7.0,CMG,0.031,0.0,0.0,0.0
+baln_p4_r100_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance4_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.031,7.0,CMG,0.031,0.0,0.0,0.0
+baln_p4_r100_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance4_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.031,7.0,CMG,0.032,0.0,0.0,3.2258064516129004
+baln_p4_r100_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance9_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.036,7.0,CMG,0.037,0.0,0.0,2.77777777777779
+baln_p4_r100_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance9_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.036,7.0,CMG,0.036,0.0,0.0,0.0
+baln_p4_r100_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.02_nuisance9_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.038,7.0,CMG,0.037,0.0,0.0,-2.631578947368418
+baln_p4_r100_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance10_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.06,3.0,LSMR,0.047,0.0,0.0,-21.666666666666668
+baln_p4_r100_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance10_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.055,3.0,LSMR,0.043,0.0,0.0,-21.818181818181827
+baln_p4_r100_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance10_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.077,3.0,LSMR,0.061,0.0,0.0,-20.779220779220775
+baln_p4_r100_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance19_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.058,3.0,LSMR,0.047,0.0,0.0,-18.965517241379317
+baln_p4_r100_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance19_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.048,3.0,LSMR,0.04,0.0,0.0,-16.666666666666664
+baln_p4_r100_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance19_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.05,3.0,LSMR,0.04,0.0,0.0,-20.000000000000007
+baln_p4_r100_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance4_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.043,7.0,CMG,0.042,0.0,0.0,-2.325581395348819
+baln_p4_r100_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance4_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.043,7.0,CMG,0.042,0.0,0.0,-2.325581395348819
+baln_p4_r100_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance4_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.043,7.0,CMG,0.044,0.0,0.0,2.3255813953488413
+baln_p4_r100_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance9_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.046,7.0,CMG,0.052,0.0,0.0,13.043478260869556
+baln_p4_r100_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance9_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.047,7.0,CMG,0.051,0.0,0.0,8.51063829787233
+baln_p4_r100_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio10_mobility0.2_nuisance9_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.056,7.0,CMG,0.057,0.0,0.0,1.7857142857142794
+baln_p4_r50_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance10_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.079,3.0,LSMR,0.058,0.0,0.0,-26.582278481012654
+baln_p4_r50_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance10_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.078,3.0,LSMR,0.057,0.0,0.0,-26.923076923076916
+baln_p4_r50_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance10_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.077,3.0,LSMR,0.059,0.0,0.0,-23.376623376623385
+baln_p4_r50_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance19_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.081,3.0,LSMR,0.057,0.0,0.0,-29.629629629629626
+baln_p4_r50_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance19_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.081,3.0,LSMR,0.054,0.0,0.0,-33.333333333333336
+baln_p4_r50_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance19_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.079,3.0,LSMR,0.057,0.0,0.0,-27.848101265822777
+baln_p4_r50_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance4_seed1,32000,4,5,8,auto,0,worker firm year,cmg,0.069,4.0,CG,0.0570000000000001,1.0,0.0,-17.391304347825955
+baln_p4_r50_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance4_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.085,4.0,CG,0.062,1.0,0.0,-27.058823529411768
+baln_p4_r50_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance4_seed3,32000,4,5,8,auto,0,worker firm year,cmg,0.067,4.0,CG,0.058,1.0,0.0,-13.432835820895528
+baln_p4_r50_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance9_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.08,3.0,LSMR,0.057,0.0,0.0,-28.749999999999996
+baln_p4_r50_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance9_seed2,32000,4,5,8,auto,0,worker firm year,cmg,0.079,3.0,LSMR,0.059,0.0,0.0,-25.31645569620253
+baln_p4_r50_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.02_nuisance9_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.078,3.0,LSMR,0.055,0.0,0.0,-29.487179487179482
+baln_p4_r50_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance10_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.05,3.0,LSMR,0.04,0.0,0.0,-20.000000000000007
+baln_p4_r50_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance10_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.048,3.0,LSMR,0.039,0.0,0.0,-18.75
+baln_p4_r50_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance10_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.049,3.0,LSMR,0.04,0.0,0.0,-18.36734693877551
+baln_p4_r50_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance19_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.051,3.0,LSMR,0.041,0.0,0.0,-19.6078431372549
+baln_p4_r50_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance19_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.051,3.0,LSMR,0.041,0.0,0.0,-19.6078431372549
+baln_p4_r50_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance19_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.051,3.0,LSMR,0.043,0.0,0.0,-15.686274509803921
+baln_p4_r50_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance4_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.048,3.0,LSMR,0.04,0.0,0.0,-16.666666666666664
+baln_p4_r50_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance4_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.05,3.0,LSMR,0.042,0.0,0.0,-16.000000000000004
+baln_p4_r50_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance4_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.049,3.0,LSMR,0.04,0.0,0.0,-18.36734693877551
+baln_p4_r50_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance9_seed1,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.049,3.0,LSMR,0.041,0.0,0.0,-16.326530612244895
+baln_p4_r50_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance9_seed2,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.048,3.0,LSMR,0.04,0.0,0.0,-16.666666666666664
+baln_p4_r50_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods4_ratio5_mobility0.2_nuisance9_seed3,32000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.049,3.0,LSMR,0.039,0.0,0.0,-20.408163265306122
+baln_p5_r100_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance10_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.046,3.0,LSMR,0.047,0.0,0.0,2.1739130434782705
+baln_p5_r100_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance10_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.045,3.0,LSMR,0.049,0.0,0.0,8.888888888888902
+baln_p5_r100_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance10_seed3,40000,4,5,8,auto,0,worker firm year,cmg,0.046,3.0,LSMR,0.052,0.0,0.0,13.043478260869556
+baln_p5_r100_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance19_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.059,3.0,LSMR,0.049,0.0,0.0,-16.949152542372868
+baln_p5_r100_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance19_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.057,3.0,LSMR,0.047,0.0,0.0,-17.543859649122805
+baln_p5_r100_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance19_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.057,3.0,LSMR,0.047,0.0,0.0,-17.543859649122805
+baln_p5_r100_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance4_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.038,7.0,CMG,0.038,0.0,0.0,0.0
+baln_p5_r100_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance4_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.036,7.0,CMG,0.037,0.0,0.0,2.77777777777779
+baln_p5_r100_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance4_seed3,40000,4,5,8,auto,0,worker firm year,cmg,0.036,7.0,CMG,0.036,0.0,0.0,0.0
+baln_p5_r100_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance9_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.042,7.0,CMG,0.043,0.0,0.0,2.3809523809523725
+baln_p5_r100_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance9_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.043,7.0,CMG,0.043,0.0,0.0,0.0
+baln_p5_r100_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.02_nuisance9_seed3,40000,4,5,8,auto,0,worker firm year,cmg,0.047,7.0,CMG,0.046,0.0,0.0,-2.127659574468088
+baln_p5_r100_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance10_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.053,3.0,LSMR,0.043,0.0,0.0,-18.867924528301895
+baln_p5_r100_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance10_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.053,3.0,LSMR,0.043,0.0,0.0,-18.867924528301895
+baln_p5_r100_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance10_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.051,3.0,LSMR,0.042,0.0,0.0,-17.647058823529406
+baln_p5_r100_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance19_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.055,3.0,LSMR,0.042,0.0,0.0,-23.636363636363633
+baln_p5_r100_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance19_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.053,3.0,LSMR,0.043,0.0,0.0,-18.867924528301895
+baln_p5_r100_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance19_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.052,3.0,LSMR,0.043,0.0,0.0,-17.307692307692314
+baln_p5_r100_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance4_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.044,7.0,CMG,0.043,0.0,0.0,-2.2727272727272707
+baln_p5_r100_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance4_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.044,7.0,CMG,0.043,0.0,0.0,-2.2727272727272707
+baln_p5_r100_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance4_seed3,40000,4,5,8,auto,0,worker firm year,cmg,0.045,7.0,CMG,0.044,0.0,0.0,-2.2222222222222254
+baln_p5_r100_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance9_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.053,7.0,CMG,0.054,0.0,0.0,1.8867924528301883
+baln_p5_r100_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance9_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.053,7.0,CMG,0.053,0.0,0.0,0.0
+baln_p5_r100_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio10_mobility0.2_nuisance9_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.052,7.0,CMG,0.054,0.0,0.0,3.8461538461538547
+baln_p5_r50_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance10_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.071,3.0,LSMR,0.06,0.0,0.0,-15.492957746478863
+baln_p5_r50_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance10_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.073,3.0,LSMR,0.06,0.0,0.0,-17.808219178082187
+baln_p5_r50_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance10_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.082,4.0,CG,0.063,1.0,0.0,-23.17073170731707
+baln_p5_r50_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance19_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.076,3.0,LSMR,0.058,0.0,0.0,-23.684210526315784
+baln_p5_r50_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance19_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.079,3.0,LSMR,0.061,0.0,0.0,-22.78481012658228
+baln_p5_r50_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance19_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.08,3.0,LSMR,0.0600000000000001,0.0,0.0,-24.99999999999988
+baln_p5_r50_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance4_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.082,3.0,LSMR,0.061,0.0,0.0,-25.609756097560975
+baln_p5_r50_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance4_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.078,3.0,LSMR,0.059,0.0,0.0,-24.35897435897436
+baln_p5_r50_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance4_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.082,3.0,LSMR,0.057,0.0,0.0,-30.487804878048784
+baln_p5_r50_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance9_seed1,40000,4,5,8,auto,0,worker firm year,cmg,0.069,3.0,LSMR,0.0580000000000001,0.0,0.0,-15.942028985507106
+baln_p5_r50_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance9_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.077,4.0,CG,0.06,1.0,0.0,-22.077922077922086
+baln_p5_r50_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.02_nuisance9_seed3,40000,4,5,8,auto,0,worker firm year,cmg,0.072,3.0,LSMR,0.059,0.0,0.0,-18.055555555555557
+baln_p5_r50_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance10_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.059,3.0,LSMR,0.045,0.0,0.0,-23.728813559322038
+baln_p5_r50_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance10_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.059,3.0,LSMR,0.046,0.0,0.0,-22.033898305084744
+baln_p5_r50_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance10_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.055,3.0,LSMR,0.045,0.0,0.0,-18.181818181818187
+baln_p5_r50_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance19_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.057,3.0,LSMR,0.046,0.0,0.0,-19.298245614035093
+baln_p5_r50_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance19_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.06,3.0,LSMR,0.046,0.0,0.0,-23.33333333333333
+baln_p5_r50_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance19_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.058,3.0,LSMR,0.047,0.0,0.0,-18.965517241379317
+baln_p5_r50_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance4_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.055,3.0,LSMR,0.045,0.0,0.0,-18.181818181818187
+baln_p5_r50_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance4_seed2,40000,4,5,8,auto,0,worker firm year,cmg,0.08,3.0,LSMR,0.072,0.0,0.0,-10.000000000000009
+baln_p5_r50_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance4_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.068,3.0,LSMR,0.056,0.0,0.0,-17.647058823529417
+baln_p5_r50_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance9_seed1,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.0610000000000001,3.0,LSMR,0.05,0.0,0.0,-18.032786885246033
+baln_p5_r50_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance9_seed2,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.062,3.0,LSMR,0.051,0.0,0.0,-17.741935483870975
+baln_p5_r50_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods5_ratio5_mobility0.2_nuisance9_seed3,40000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.06,3.0,LSMR,0.051,0.0,0.0,-15.000000000000002
+baln_p8_r100_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance10_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.064,3.0,LSMR,0.06,0.0,0.0,-6.25
+baln_p8_r100_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance10_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.065,3.0,LSMR,0.06,0.0,0.0,-7.692307692307699
+baln_p8_r100_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance10_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.067,3.0,LSMR,0.059,0.0,0.0,-11.9402985074627
+baln_p8_r100_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance19_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.069,3.0,LSMR,0.059,0.0,0.0,-14.492753623188415
+baln_p8_r100_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance19_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.07,3.0,LSMR,0.06,0.0,0.0,-14.285714285714302
+baln_p8_r100_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance19_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.069,3.0,LSMR,0.059,0.0,0.0,-14.492753623188415
+baln_p8_r100_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance4_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.053,7.0,CMG,0.052,0.0,0.0,-1.8867924528301883
+baln_p8_r100_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance4_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.052,7.0,CMG,0.051,0.0,0.0,-1.9230769230769273
+baln_p8_r100_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance4_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.051,7.0,CMG,0.052,0.0,0.0,1.9607843137254832
+baln_p8_r100_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance9_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.064,7.0,CMG,0.063,0.0,0.0,-1.5625
+baln_p8_r100_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance9_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.063,7.0,CMG,0.064,0.0,0.0,1.5873015873015817
+baln_p8_r100_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.02_nuisance9_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.0639999999999999,7.0,CMG,0.063,0.0,0.0,-1.5624999999998557
+baln_p8_r100_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance10_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.072,3.0,LSMR,0.056,0.0,0.0,-22.22222222222221
+baln_p8_r100_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance10_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.071,3.0,LSMR,0.055,0.0,0.0,-22.535211267605625
+baln_p8_r100_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance10_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.073,3.0,LSMR,0.056,0.0,0.0,-23.287671232876704
+baln_p8_r100_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance19_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.07,3.0,LSMR,0.056,0.0,0.0,-20.000000000000007
+baln_p8_r100_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance19_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.071,3.0,LSMR,0.057,0.0,0.0,-19.718309859154914
+baln_p8_r100_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance19_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.074,3.0,LSMR,0.056,0.0,0.0,-24.32432432432432
+baln_p8_r100_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance4_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.059,7.0,CMG,0.059,0.0,0.0,0.0
+baln_p8_r100_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance4_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.057,7.0,CMG,0.058,0.0,0.0,1.7543859649122862
+baln_p8_r100_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance4_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.059,7.0,CMG,0.059,0.0,0.0,0.0
+baln_p8_r100_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance9_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.07,7.0,CMG,0.07,0.0,0.0,0.0
+baln_p8_r100_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance9_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.07,7.0,CMG,0.071,0.0,0.0,1.4285714285714013
+baln_p8_r100_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio10_mobility0.2_nuisance9_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.072,7.0,CMG,0.073,0.0,0.0,1.388888888888884
+baln_p8_r50_m002_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance10_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.065,3.0,LSMR,0.074,0.0,0.0,13.846153846153841
+baln_p8_r50_m002_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance10_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.065,3.0,LSMR,0.071,0.0,0.0,9.23076923076922
+baln_p8_r50_m002_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance10_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.066,3.0,LSMR,0.073,0.0,0.0,10.606060606060597
+baln_p8_r50_m002_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance19_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.091,3.0,LSMR,0.076,0.0,0.0,-16.483516483516482
+baln_p8_r50_m002_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance19_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.093,3.0,LSMR,0.077,0.0,0.0,-17.204301075268813
+baln_p8_r50_m002_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance19_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.09,3.0,LSMR,0.071,0.0,0.0,-21.111111111111114
+baln_p8_r50_m002_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance4_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.053,3.0,LSMR,0.072,0.0,0.0,35.849056603773576
+baln_p8_r50_m002_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance4_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.053,3.0,LSMR,0.07,0.0,0.0,32.07547169811322
+baln_p8_r50_m002_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance4_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.053,3.0,LSMR,0.072,0.0,0.0,35.849056603773576
+baln_p8_r50_m002_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance9_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.064,3.0,LSMR,0.073,0.0,0.0,14.0625
+baln_p8_r50_m002_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance9_seed2,64000,4,5,8,auto,0,worker firm year,cmg,0.064,3.0,LSMR,0.073,0.0,0.0,14.0625
+baln_p8_r50_m002_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.02_nuisance9_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.065,3.0,LSMR,0.071,0.0,0.0,9.23076923076922
+baln_p8_r50_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance10_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.078,3.0,LSMR,0.061,0.0,0.0,-21.794871794871796
+baln_p8_r50_m02_q10_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance10_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.077,3.0,LSMR,0.06,0.0,0.0,-22.077922077922086
+baln_p8_r50_m02_q10_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance10_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.075,3.0,LSMR,0.059,0.0,0.0,-21.333333333333336
+baln_p8_r50_m02_q19_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance19_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.076,3.0,LSMR,0.0610000000000001,0.0,0.0,-19.73684210526302
+baln_p8_r50_m02_q19_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance19_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.079,3.0,LSMR,0.061,0.0,0.0,-22.78481012658228
+baln_p8_r50_m02_q19_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance19_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.075,3.0,LSMR,0.061,0.0,0.0,-18.666666666666664
+baln_p8_r50_m02_q4_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance4_seed1,64000,4,5,8,auto,0,worker firm year,cmg,0.074,3.0,LSMR,0.058,0.0,0.0,-21.62162162162161
+baln_p8_r50_m02_q4_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance4_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.075,3.0,LSMR,0.059,0.0,0.0,-21.333333333333336
+baln_p8_r50_m02_q4_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance4_seed3,64000,4,5,8,auto,0,worker firm year,cmg,0.074,3.0,LSMR,0.059,0.0,0.0,-20.270270270270274
+baln_p8_r50_m02_q9_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance9_seed1,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.075,3.0,LSMR,0.059,0.0,0.0,-21.333333333333336
+baln_p8_r50_m02_q9_s2,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance9_seed2,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e10,0.079,3.0,LSMR,0.06,0.0,0.0,-24.050632911392412
+baln_p8_r50_m02_q9_s3,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance9_seed3,64000,4,5,8,auto,0,worker firm year,lsmr_schwarz_1e8,0.075,3.0,LSMR,0.06,0.0,0.0,-19.999999999999996
+bals_p5_r50_n100000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n100000_controls0_threads8,100000,0,1,8,auto,0,worker firm,lsmr_schwarz_1e10,0.121,3.0,LSMR,0.076,0.0,0.0,-37.1900826446281
+bals_p5_r50_n100000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n100000_controls16_threads8,100000,16,17,8,auto,0,worker firm,lsmr_schwarz_1e10,0.2,3.0,LSMR,0.145,0.0,0.0,-27.500000000000014
+bals_p5_r50_n100000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n100000_controls4_threads8,100000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.142,3.0,LSMR,0.09,0.0,0.0,-36.61971830985915
+bals_p5_r50_n25000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n25000_controls0_threads8,25000,0,1,8,auto,0,worker firm,cmg,0.013,3.0,LSMR,0.024,0.0,0.0,84.61538461538463
+bals_p5_r50_n25000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n25000_controls16_threads8,25000,16,17,8,auto,0,worker firm,cmg,0.032,3.0,LSMR,0.045,0.0,0.0,40.625
+bals_p5_r50_n25000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n25000_controls4_threads8,25000,4,5,8,auto,0,worker firm,cmg,0.018,3.0,LSMR,0.029,0.0,0.0,61.111111111111136
+bals_p5_r50_n50000_k0_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls0_threads1,50000,0,1,1,auto,0,worker firm,lsmr_schwarz_1e10,0.034,3.0,LSMR,0.025,0.0,0.0,-26.470588235294123
+bals_p5_r50_n50000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls0_threads8,50000,0,1,8,auto,0,worker firm,lsmr_schwarz_1e10,0.063,3.0,LSMR,0.04,0.0,0.0,-36.50793650793651
+bals_p5_r50_n50000_k16_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls16_threads1,50000,16,17,1,auto,0,worker firm,lsmr_schwarz_1e8,0.106,3.0,LSMR,0.094,0.0,0.0,-11.32075471698113
+bals_p5_r50_n50000_k16_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls16_threads1_memorylo,50000,16,17,1,low,4,worker firm,lsmr_schwarz_1e10,0.239,3.0,LSMR,0.227,0.0,0.0,-5.020920502092041
+bals_p5_r50_n50000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls16_threads8,50000,16,17,8,auto,0,worker firm,lsmr_schwarz_1e8,0.1,3.0,LSMR,0.07,0.0,0.0,-29.999999999999993
+bals_p5_r50_n50000_k16_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls16_threads8_memorylo,50000,16,17,8,low,4,worker firm,lsmr_schwarz_1e10,0.349,3.0,LSMR,0.334,0.0,0.0,-4.297994269340966
+bals_p5_r50_n50000_k4_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls4_threads1,50000,4,5,1,auto,0,worker firm,lsmr_schwarz_1e10,0.052,3.0,LSMR,0.041,0.0,0.0,-21.153846153846146
+bals_p5_r50_n50000_k4_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls4_threads1_memorylow,50000,4,5,1,low,4,worker firm,lsmr_schwarz_1e10,0.077,3.0,LSMR,0.07,0.0,0.0,-9.090909090909083
+bals_p5_r50_n50000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls4_threads8,50000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e8,0.071,3.0,LSMR,0.048,0.0,0.0,-32.39436619718309
+bals_p5_r50_n50000_k4_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods5_ratio5_mobility0.02_n50000_controls4_threads8_memorylow,50000,4,5,8,low,4,worker firm,lsmr_schwarz_1e10,0.139,3.0,LSMR,0.131,0.0,0.0,-5.755395683453246
+bals_p8_r20_n100000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n100000_controls0_threads8,100000,0,1,8,auto,0,worker firm,lsmr_schwarz_1e10,0.174,3.0,LSMR,0.099,0.0,0.0,-43.103448275862064
+bals_p8_r20_n100000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n100000_controls16_threads8,100000,16,17,8,auto,0,worker firm,lsmr_schwarz_1e10,0.236,3.0,LSMR,0.157,0.0,0.0,-33.47457627118644
+bals_p8_r20_n100000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n100000_controls4_threads8,100000,4,5,8,auto,0,worker firm,lsmr_schwarz_1e10,0.19,3.0,LSMR,0.114,0.0,0.0,-40.0
+bals_p8_r20_n25000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n25000_controls0_threads8,25000,0,1,8,auto,0,worker firm,cmg,0.02,3.0,LSMR,0.033,0.0,0.0,65.00000000000001
+bals_p8_r20_n25000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n25000_controls16_threads8,25000,16,17,8,auto,0,worker firm,cmg,0.053,3.0,LSMR,0.051,0.0,0.0,-3.7735849056603765
+bals_p8_r20_n25000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n25000_controls4_threads8,25000,4,5,8,auto,0,worker firm,cmg,0.025,3.0,LSMR,0.037,0.0,0.0,47.99999999999998
+bals_p8_r20_n50000_k0_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls0_threads1,50000,0,1,1,auto,0,worker firm,lsmr_schwarz_1e10,0.036,3.0,LSMR,0.026,0.0,0.0,-27.77777777777778
+bals_p8_r20_n50000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls0_threads8,50000,0,1,8,auto,0,worker firm,cmg,0.038,3.0,LSMR,0.053,0.0,0.0,39.47368421052631
+bals_p8_r20_n50000_k16_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls16_threads1,50000,16,17,1,auto,0,worker firm,lsmr_schwarz_1e10,0.11,3.0,LSMR,0.095,0.0,0.0,-13.636363636363635
+bals_p8_r20_n50000_k16_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls16_threads1_memorylo,50000,16,17,1,low,4,worker firm,lsmr_schwarz_1e10,0.245,3.0,LSMR,0.232,0.0,0.0,-5.306122448979589
+bals_p8_r20_n50000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls16_threads8,50000,16,17,8,auto,0,worker firm,cmg,0.102,3.0,LSMR,0.085,0.0,0.0,-16.66666666666665
+bals_p8_r20_n50000_k16_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls16_threads8_memorylo,50000,16,17,8,low,4,worker firm,cmg,0.275,3.0,LSMR,0.384,0.0,0.0,39.636363636363626
+bals_p8_r20_n50000_k4_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls4_threads1,50000,4,5,1,auto,0,worker firm,lsmr_schwarz_1e10,0.054,3.0,LSMR,0.043,0.0,0.0,-20.370370370370374
+bals_p8_r20_n50000_k4_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls4_threads1_memorylow,50000,4,5,1,low,4,worker firm,lsmr_schwarz_1e10,0.08,3.0,LSMR,0.073,0.0,0.0,-8.750000000000002
+bals_p8_r20_n50000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls4_threads8,50000,4,5,8,auto,0,worker firm,cmg,0.044,3.0,LSMR,0.059,0.0,0.0,34.09090909090908
+bals_p8_r20_n50000_k4_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio2_mobility0.02_n50000_controls4_threads8_memorylow,50000,4,5,8,low,4,worker firm,cmg,0.1,3.0,LSMR,0.18,0.0,0.0,79.99999999999999
+bals_p8_r50_n100000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n100000_controls0_threads8,100000,0,1,8,auto,0,worker firm,lsmr_schwarz_1e8,0.086,3.0,LSMR,0.064,0.0,0.0,-25.581395348837198
+bals_p8_r50_n100000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n100000_controls16_threads8,100000,16,17,8,auto,0,worker firm,lsmr_schwarz_1e8,0.195,3.0,LSMR,0.17,0.0,0.0,-12.82051282051282
+bals_p8_r50_n100000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n100000_controls4_threads8,100000,4,5,8,auto,0,worker firm,cmg,0.105,3.0,LSMR,0.085,0.0,0.0,-19.047619047619037
+bals_p8_r50_n25000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n25000_controls0_threads8,25000,0,1,8,auto,0,worker firm,cmg,0.023,3.0,LSMR,0.021,0.0,0.0,-8.695652173913038
+bals_p8_r50_n25000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n25000_controls16_threads8,25000,16,17,8,auto,0,worker firm,cmg,0.04,3.0,LSMR,0.051,0.0,0.0,27.499999999999993
+bals_p8_r50_n25000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n25000_controls4_threads8,25000,4,5,8,auto,0,worker firm,cmg,0.027,3.0,LSMR,0.027,0.0,0.0,0.0
+bals_p8_r50_n50000_k0_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls0_threads1,50000,0,1,1,auto,0,worker firm,cmg,0.022,3.0,LSMR,0.031,0.0,0.0,40.90909090909092
+bals_p8_r50_n50000_k0_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls0_threads8,50000,0,1,8,auto,0,worker firm,cmg,0.021,3.0,LSMR,0.034,0.0,0.0,61.904761904761905
+bals_p8_r50_n50000_k16_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls16_threads1,50000,16,17,1,auto,0,worker firm,cmg,0.093,3.0,LSMR,0.231,0.0,0.0,148.38709677419354
+bals_p8_r50_n50000_k16_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls16_threads1_memorylo,50000,16,17,1,low,4,worker firm,cmg,0.205,3.0,LSMR,0.354,0.0,0.0,72.6829268292683
+bals_p8_r50_n50000_k16_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls16_threads8,50000,16,17,8,auto,0,worker firm,cmg,0.05,3.0,LSMR,0.089,0.0,0.0,77.99999999999999
+bals_p8_r50_n50000_k16_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls16_threads8_memorylo,50000,16,17,8,low,4,worker firm,cmg,0.173,3.0,LSMR,0.281,0.0,0.0,62.427745664739916
+bals_p8_r50_n50000_k4_t1,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls4_threads1,50000,4,5,1,auto,0,worker firm,cmg,0.037,3.0,LSMR,0.078,0.0,0.0,110.81081081081084
+bals_p8_r50_n50000_k4_t1_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls4_threads1_memorylow,50000,4,5,1,low,4,worker firm,cmg,0.0570000000000001,3.0,LSMR,0.111,0.0,0.0,94.73684210526284
+bals_p8_r50_n50000_k4_t8,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls4_threads8,50000,4,5,8,auto,0,worker firm,cmg,0.026,3.0,LSMR,0.044,0.0,0.0,69.23076923076923
+bals_p8_r50_n50000_k4_t8_low_p4,balanced_diagnostic,balanced_worker_firm_sensitivity,periods8_ratio5_mobility0.02_n50000_controls4_threads8_memorylow,50000,4,5,8,low,4,worker firm,cmg,0.049,3.0,LSMR,0.107,0.0,0.0,118.36734693877551
