@@ -116,6 +116,25 @@ immutable even when they describe earlier hidden or fail-closed checkpoints.
   development evidence only; qualification remains open. Evidence is under
   `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/` and
   `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/`.
+- The subsequent direct-terminal RHS/thread calibration recorded 756 runs in
+  84 calibration datasets and 432 runs in 48 fresh holdout datasets, always
+  with exactly three repetitions per solver cell. A locked hierarchy-depth,
+  nuisance-batch, and RHS-batch cost score rejected no measured CMG win above
+  five percent in 172 prior-plus-new calibration cells and again made no such
+  false rejection among the 34 holdout cells with certified no-fallback LSMR.
+  The destination route nevertheless failed: requested-tolerance
+  Schwarz-LSMR fell back deterministically in 42 runs spanning 14 holdout
+  cells, and the score would have routed 12 of those cells away from CMG.
+  A representative LSMR attempt stopped after three iterations with an FE
+  normal-equation diagnostic near 0.0076. A focused 84-run follow-up found
+  direct CG certified without fallback in 14/14 cells and `1e-10` LSMR in
+  10/14; four 17-RHS cells still fell back, while an unrecorded `1e-12` probe
+  exceeded several minutes and was stopped. The proposed direct-terminal
+  CMG-to-LSMR rule was rejected and production auto remains unchanged. Next
+  work is a bounded certification-aware LSMR continuation plus direct-CG
+  calibration for all score rejects. Evidence and source pointers are under
+  `benchmarks/reports/development/cmg-direct-terminal-calibration-v1/` and
+  `docs/future_auto_optimization.md`.
 
 The exhaustive V2 scientific/performance matrix is SCC-only. The clean local
 macOS matrix was deliberately stopped after 77 strictly valid scopes when this

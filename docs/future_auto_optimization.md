@@ -220,6 +220,56 @@ median setup rose roughly 4.5 times while solve time was unchanged. Reusing
 Schwarz topology and setup across low-memory blocks is therefore an independent
 performance opportunity.
 
+### Direct-terminal cost calibration and rejected route
+
+A dedicated second-stage calibration then crossed direct-terminal hierarchy
+shape, 0/4/16 controls, 1/8 threads, and 0/4/9 nuisance columns. Its calibration
+population contained 84 datasets and 756 recorded runs; every run succeeded
+and certified without fallback. A locked candidate charged four quantities
+already available after hierarchy construction:
+
+- hierarchy depth times repeat-weighted work per observation;
+- repeat-weighted work times effective nuisance batches;
+- effective RHS batches; and
+- repeat-weighted RHS work when the direct terminal factor is nonempty.
+
+Across 172 prior-plus-new calibration cells, that candidate rejected 65 cases,
+false-rejected no measured CMG win above five percent, retained no CMG loss
+above twofold, and had maximum regret 1.311 after charging discarded CMG setup.
+The timing model itself therefore generalized substantially better than a raw
+RHS, component-count, or nuisance-column cutoff.
+
+The fresh 48-dataset holdout invalidated the proposed destination route. All
+432 recorded runs ended with certified results, and auto and explicit CMG had
+no fallback. Requested-tolerance Schwarz-LSMR, however, fell back
+deterministically in all three repetitions of 14 multi-RHS cells. The locked
+candidate would have rejected CMG in 32 holdout cells, including 12 cells
+without a certified no-fallback LSMR comparator. Among the 34 directly
+comparable cells it still false-rejected no CMG win above five percent and had
+maximum regret 1.315, but routing common cells into fallback is a safety
+failure regardless of that fit. No production rule changed.
+
+A representative trace showed the mechanism: LSMR stopped after three
+iterations while its FE normal-equation diagnostic remained about 0.0076 at a
+requested tolerance of `1e-8`. Fereg correctly rejected the candidate and
+continued CG, but attempted LSMR plus CG was 7--69 times slower than a direct
+eligible comparator in the focused failure subset. A further 84-run diagnostic
+found:
+
+- direct CG certified without fallback in all 14 affected cells;
+- Schwarz-LSMR at `1e-10` certified without fallback in 10 of 14 and still
+  fell back in four 17-RHS cells;
+- the fastest eligible solver was tighter LSMR in eight cells, CMG in four,
+  and CG in two; and
+- an unrecorded `1e-12` probe exceeded several minutes in one
+  p3/17-RHS/one-thread call and was stopped.
+
+The direct-terminal opportunity is therefore a joint cost-and-reliability
+problem. Simply tightening LSMR can help, but an unbounded tolerance multiplier
+creates another performance cliff. A durable route needs a bounded
+certification-aware LSMR continuation and explicit CG destination costs before
+it can use the calibrated CMG cost score.
+
 ## Recommended development sequence
 
 ### 1. Completed: expose internal component and hierarchy diagnostics
@@ -268,7 +318,7 @@ state so low-memory execution can retain and reuse the same Schwarz setup.
 Measure setup, solve, total native time, peak memory, and saved-FE recovery.
 This work benefits the default fallback route independently of CMG changes.
 
-### 5. Localize the remaining certification and wide-RHS events
+### 5. Continue localizing certification and wide-RHS events
 
 Use bounded, development-only traces to distinguish:
 
@@ -282,6 +332,19 @@ Use bounded, development-only traces to distinguish:
 Treat fallback as a safety mechanism. A common deterministic route that always
 requires fallback is a routing or certificate-accounting defect, even when the
 added runtime is small.
+
+The new direct-terminal holdout makes the immediate sequence more concrete:
+
+1. expose the per-attempt LSMR stopping and FE normal-equation diagnostics by
+   RHS/column before fallback;
+2. test a bounded continuation that tightens only while a small explicit work
+   budget remains;
+3. record direct CG in every cost-guard rejection cell, because one-thread and
+   eight-thread winners differ; and
+4. recalibrate a three-way CMG/LSMR/CG destination rule on a fresh holdout.
+
+Do not implement the locked CMG-to-requested-tolerance-LSMR candidate. Its
+timing score survived holdout, but its destination did not.
 
 ### 6. Recalibrate routing only after the prototypes
 
@@ -329,9 +392,12 @@ all-tiny-component CMG wins that a component-count rule would lose.
 - Hierarchy calibration: `benchmarks/reports/development/cmg-hierarchy-guard-calibration-v1/report.md`
 - Fresh holdout: `benchmarks/reports/development/cmg-hierarchy-guard-holdout-v1/report.md`
 - Post-change rerun: `benchmarks/reports/development/cmg-hierarchy-guard-postchange-v1/report.md`
+- Direct-terminal calibration and rejected route: `benchmarks/reports/development/cmg-direct-terminal-calibration-v1/report.md`
 - Mutable project state: `STATUS.md`
 
-The next session should calibrate a direct-terminal RHS/thread cost model and,
-separately, prototype a component-aware CMG solve. No current evidence
-justifies a component-count cutoff or unconditional work veto. The cutoff 4 is
-a development safety threshold, not a frozen qualification constant.
+The next session should prototype bounded LSMR certification continuation and
+measure direct CG across the rejected direct-terminal population; separately,
+it can prototype a component-aware CMG solve. No current evidence justifies a
+component-count cutoff, unconditional direct-terminal work veto, or routine
+LSMR-to-CG fallback. The iterative-terminal cutoff 4 is a development safety
+threshold, not a frozen qualification constant.

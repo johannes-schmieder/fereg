@@ -1,0 +1,2 @@
+case_id,probe_kind,requested_tolerance,attempted_solver_code,attempted_iterations,attempted_stop_reason,attempted_normal_equation_residual,attempted_setup_seconds,attempted_solve_seconds,final_used_solver_code,final_iterations,final_stop_reason,final_normal_equation_residual,final_solve_seconds,final_fallback,final_warning_count
+dth_p4_c450_s2_k4_t8,unrecorded_noisy_diagnostic,1e-8,3,3,2,0.00761939,0.01146058,0.00452004,2,496,2,6.0512478e-10,3.377472,1,1
