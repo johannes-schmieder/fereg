@@ -185,9 +185,24 @@ pub(crate) struct CmgUnpolishedProjectionReport {
 /// and owned-result solve behavior remain unchanged.
 pub(crate) struct PreparedCmgTopology {
     profile: CmgTopologyProfile,
+    design_identity: PreparedCmgDesignIdentity,
     topology: PreparedLaplacianTopology,
     assembly_workspace: PreparedLaplacianWorkspace,
     numeric_weights: Vec<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreparedCmgDesignIdentity {
+    observations: usize,
+    effects: Vec<PreparedCmgEffectIdentity>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PreparedCmgEffectIdentity {
+    codes_address: usize,
+    codes_len: usize,
+    levels: usize,
+    level_index_address: usize,
 }
 
 /// Fit-lifetime CMG state. The borrowed design owns only small term views;
@@ -230,6 +245,7 @@ enum GraphBuildOutcome {
 struct GraphCmg {
     core_effects: [usize; 2],
     nuisance: Vec<NuisanceColumn>,
+    nuisance_effects: Vec<NuisanceEffect>,
     nuisance_factor: PivotedPsdFactor,
     solver: ParallelPcgSolver,
     workspace: GraphCmgWorkspace,
@@ -391,6 +407,20 @@ struct NuisanceColumn {
     level: u32,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct NuisanceEffect {
+    effect: usize,
+    first_column: usize,
+    columns: usize,
+}
+
+impl NuisanceEffect {
+    fn column_at_row(self, design: &BorrowedInterceptFeDesign<'_>, row: usize) -> Option<usize> {
+        let level = design.effects()[self.effect].codes()[row] as usize;
+        (level > 0 && level <= self.columns).then(|| self.first_column + level - 1)
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy)]
 struct CmgSolveMetrics {
     iterations: usize,
@@ -471,9 +501,69 @@ impl CmgSolveMetrics {
 }
 
 impl PreparedCmgTopology {
+    /// Conservative peak required to prepare fixed endpoint topology, its
+    /// changing-weight assembly scratch, and fereg's normalized-weight buffer.
+    /// This bound is available before any observation-scale CMG allocation.
+    pub(crate) fn conservative_prepare_peak_bytes(
+        design: &BorrowedInterceptFeDesign<'_>,
+    ) -> Result<u128> {
+        let profile = CmgTopologyProfile::analyze(design)?;
+        validate_nuisance_limit(&profile)?;
+        let input_edges = design.nobs() as u128;
+        let vertices = profile.vertices as u128;
+        let usize_bytes = std::mem::size_of::<usize>() as u128;
+        // Canonical edges cannot exceed input edges. During preparation the
+        // sorted (key, input-index) records coexist with the retained maps.
+        let canonical_keys = input_edges
+            .checked_mul(8)
+            .ok_or_else(|| allocation("prepared CMG canonical-key estimate overflows"))?;
+        let group_offsets = input_edges
+            .checked_add(1)
+            .and_then(|value| value.checked_mul(usize_bytes))
+            .ok_or_else(|| allocation("prepared CMG group-offset estimate overflows"))?;
+        let input_maps =
+            input_edges
+                .checked_mul(usize_bytes.checked_mul(2).ok_or_else(|| {
+                    allocation("prepared CMG input-map element estimate overflows")
+                })?)
+                .ok_or_else(|| allocation("prepared CMG input-map estimate overflows"))?;
+        // Component construction temporarily holds parent, root-label,
+        // final-label, and worst-case component-size vectors together.
+        let components =
+            vertices
+                .checked_mul(usize_bytes.checked_mul(4).ok_or_else(|| {
+                    allocation("prepared CMG component element estimate overflows")
+                })?)
+                .ok_or_else(|| allocation("prepared CMG component estimate overflows"))?;
+        let assembly_scratch = input_edges
+            .checked_mul(8)
+            .ok_or_else(|| allocation("prepared CMG assembly estimate overflows"))?;
+        let normalized_weights = assembly_scratch;
+        let build_records = input_edges
+            .checked_mul(16)
+            .ok_or_else(|| allocation("prepared CMG build-record estimate overflows"))?;
+        let effect_metadata = (design.effects().len() as u128)
+            .checked_mul(
+                usize_bytes
+                    .checked_mul(5)
+                    .ok_or_else(|| allocation("prepared CMG effect estimate overflows"))?,
+            )
+            .ok_or_else(|| allocation("prepared CMG effect metadata estimate overflows"))?;
+        canonical_keys
+            .checked_add(group_offsets)
+            .and_then(|value| value.checked_add(input_maps))
+            .and_then(|value| value.checked_add(components))
+            .and_then(|value| value.checked_add(assembly_scratch))
+            .and_then(|value| value.checked_add(normalized_weights))
+            .and_then(|value| value.checked_add(build_records))
+            .and_then(|value| value.checked_add(effect_metadata))
+            .ok_or_else(|| allocation("prepared CMG topology peak estimate overflows"))
+    }
+
     pub(crate) fn prepare(design: &BorrowedInterceptFeDesign<'_>) -> Result<Self> {
         let profile = CmgTopologyProfile::analyze(design)?;
         validate_nuisance_limit(&profile)?;
+        let design_identity = PreparedCmgDesignIdentity::new(design)?;
         let core = profile.core_effects.ok_or_else(|| {
             invalid_argument("prepared CMG topology requires two absorbed effects")
         })?;
@@ -498,6 +588,7 @@ impl PreparedCmgTopology {
         )?;
         Ok(Self {
             profile,
+            design_identity,
             topology,
             assembly_workspace,
             numeric_weights,
@@ -506,21 +597,34 @@ impl PreparedCmgTopology {
 
     fn assemble(
         &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
         profile: &CmgTopologyProfile,
         weights: BorrowedMapWeights<'_>,
         weight_scale: f64,
     ) -> Result<Laplacian> {
-        if profile != &self.profile || self.numeric_weights.len() != profile.observations {
-            return Err(invalid_argument(
-                "prepared CMG topology does not match the current absorbed design",
-            ));
-        }
+        self.ensure_matches(design, profile)?;
         for (row, numeric_weight) in self.numeric_weights.iter_mut().enumerate() {
             *numeric_weight = normalized_weight(weights, weight_scale, row);
         }
         self.topology
             .assemble_with_workspace(&self.numeric_weights, &mut self.assembly_workspace)
             .map_err(cmg_error)
+    }
+
+    fn ensure_matches(
+        &self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        profile: &CmgTopologyProfile,
+    ) -> Result<()> {
+        if profile != &self.profile
+            || !self.design_identity.matches(design)
+            || self.numeric_weights.len() != profile.observations
+        {
+            return Err(invalid_argument(
+                "prepared CMG topology does not match the current absorbed design",
+            ));
+        }
+        Ok(())
     }
 
     pub(crate) fn retained_bytes(&self) -> usize {
@@ -532,6 +636,56 @@ impl PreparedCmgTopology {
                     .capacity()
                     .saturating_mul(std::mem::size_of::<f64>()),
             )
+            .saturating_add(
+                self.profile
+                    .effect_order
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<usize>()),
+            )
+            .saturating_add(
+                self.design_identity
+                    .effects
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<PreparedCmgEffectIdentity>()),
+            )
+    }
+}
+
+impl PreparedCmgDesignIdentity {
+    fn new(design: &BorrowedInterceptFeDesign<'_>) -> Result<Self> {
+        let mut effects = Vec::new();
+        effects
+            .try_reserve_exact(design.effects().len())
+            .map_err(|_| allocation("unable to reserve prepared CMG design identity"))?;
+        effects.extend(design.effects().iter().map(|effect| {
+            let codes = effect.codes();
+            PreparedCmgEffectIdentity {
+                codes_address: codes.as_ptr() as usize,
+                codes_len: codes.len(),
+                levels: effect.n_levels(),
+                level_index_address: effect.level_index() as *const _ as usize,
+            }
+        }));
+        Ok(Self {
+            observations: design.nobs(),
+            effects,
+        })
+    }
+
+    fn matches(&self, design: &BorrowedInterceptFeDesign<'_>) -> bool {
+        self.observations == design.nobs()
+            && self.effects.len() == design.effects().len()
+            && self
+                .effects
+                .iter()
+                .zip(design.effects())
+                .all(|(identity, effect)| {
+                    let codes = effect.codes();
+                    identity.codes_address == codes.as_ptr() as usize
+                        && identity.codes_len == codes.len()
+                        && identity.levels == effect.n_levels()
+                        && identity.level_index_address == effect.level_index() as *const _ as usize
+                })
     }
 }
 
@@ -1029,26 +1183,54 @@ impl GraphCmg {
         }
 
         let columns = values.ncols();
+        let nuisance_columns = self.nuisance.len();
+        let workspace_width = config.batch_size.min(columns);
+        let gamma_elements = workspace_width
+            .checked_mul(nuisance_columns)
+            .ok_or_else(|| allocation("CMG nuisance coefficient workspace overflows"))?;
+        let mut gamma = zero_vec(
+            gamma_elements,
+            "unable to reserve CMG nuisance coefficient workspace",
+        )?;
+        let mut moments = zero_vec(
+            nuisance_columns,
+            "unable to reserve CMG nuisance moment workspace",
+        )?;
+        let mut moment_corrections = zero_vec(
+            nuisance_columns,
+            "unable to reserve CMG nuisance moment corrections",
+        )?;
+        let mut factor_work = zero_vec(
+            nuisance_columns,
+            "unable to reserve CMG nuisance factor work",
+        )?;
+        let mut correction = DenseMatrix::zeros(values.nrows(), workspace_width)?;
         for start in (0..columns).step_by(config.batch_size) {
             let end = start.saturating_add(config.batch_size).min(columns);
             let width = end - start;
-            let mut gamma = Vec::new();
-            gamma
-                .try_reserve_exact(width)
-                .map_err(|_| allocation("unable to reserve CMG nuisance coefficients"))?;
-            for column in start..end {
-                let moments = nuisance_moments(
+            correction.resize_zeroed_within_capacity(values.nrows(), width)?;
+            for (local, column) in (start..end).enumerate() {
+                nuisance_moments_into(
                     design,
-                    &self.nuisance,
+                    &self.nuisance_effects,
                     weights,
                     weight_scale,
                     values,
                     column,
+                    &mut moments,
+                    &mut moment_corrections,
                 )?;
-                gamma.push(self.nuisance_factor.solve(&moments)?);
+                let gamma_start = local * nuisance_columns;
+                self.nuisance_factor.solve_into(
+                    &moments,
+                    &mut gamma[gamma_start..gamma_start + nuisance_columns],
+                    &mut factor_work,
+                )?;
             }
             if let Some(batch) = coefficients.as_mut() {
-                for (local, nuisance_coefficients) in gamma.iter().enumerate() {
+                for local in 0..width {
+                    let nuisance_coefficients =
+                        &gamma[local * nuisance_columns..(local + 1) * nuisance_columns];
                     for (index, nuisance_column) in self.nuisance.iter().enumerate() {
                         batch.add_intercept(
                             nuisance_column.effect,
@@ -1059,11 +1241,12 @@ impl GraphCmg {
                     }
                 }
             }
-            let mut correction = DenseMatrix::zeros(values.nrows(), width)?;
             for row in 0..values.nrows() {
-                for (local, coefficients) in gamma.iter().enumerate() {
+                for local in 0..width {
+                    let nuisance_coefficients =
+                        &gamma[local * nuisance_columns..(local + 1) * nuisance_columns];
                     correction[(row, local)] =
-                        nuisance_value(design, &self.nuisance, coefficients, row)?;
+                        nuisance_value(design, &self.nuisance_effects, nuisance_coefficients, row)?;
                 }
             }
             let correction_metrics = self.project_core_matrix(
@@ -1302,7 +1485,7 @@ fn build_prepared_graph_route(
     };
     let executor = ParallelExecutor::new(parallel).map_err(cmg_error)?;
     let graph_started = trace_enabled.then(Instant::now);
-    let graph = prepared.assemble(profile, weights, weight_scale)?;
+    let graph = prepared.assemble(design, profile, weights, weight_scale)?;
     let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     build_graph_route_from_numeric(
         design,
@@ -1403,6 +1586,7 @@ fn build_graph_route_from_numeric(
         return Ok(GraphBuildOutcome::DirectCgPreferred);
     }
     let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
+    let nuisance_effects = build_nuisance_effects(design, &profile.effect_order[2..])?;
     let solver_started = trace_enabled.then(Instant::now);
     let solver = ParallelPcgSolver::from_preconditioner(
         preconditioner,
@@ -1419,6 +1603,7 @@ fn build_graph_route_from_numeric(
     let mut route = GraphCmg {
         core_effects,
         nuisance,
+        nuisance_effects,
         nuisance_factor: PivotedPsdFactor::empty(),
         solver,
         workspace,
@@ -1587,6 +1772,31 @@ fn build_nuisance_columns(
     Ok(columns)
 }
 
+fn build_nuisance_effects(
+    design: &BorrowedInterceptFeDesign<'_>,
+    effect_order: &[usize],
+) -> Result<Vec<NuisanceEffect>> {
+    let mut effects = Vec::new();
+    effects
+        .try_reserve_exact(effect_order.len())
+        .map_err(|_| allocation("unable to reserve CMG nuisance effect map"))?;
+    let mut first_column = 0_usize;
+    for &effect in effect_order {
+        let columns = design.effects()[effect].n_levels().saturating_sub(1);
+        if columns > 0 {
+            effects.push(NuisanceEffect {
+                effect,
+                first_column,
+                columns,
+            });
+        }
+        first_column = first_column
+            .checked_add(columns)
+            .ok_or_else(|| allocation("CMG nuisance effect map overflows"))?;
+    }
+    Ok(effects)
+}
+
 fn validate_nuisance_limit(profile: &CmgTopologyProfile) -> Result<()> {
     if profile.nuisance_columns > MAX_NUISANCE_COLUMNS {
         Err(FeregError::new(
@@ -1639,6 +1849,11 @@ fn preflight_cmg_memory(
         .checked_mul(profile.nuisance_columns)
         .and_then(|value| value.checked_mul(32))
         .ok_or_else(|| allocation("CMG nuisance workspace estimate overflows"))?;
+    let nuisance_projection = nuisance_projection_workspace_bytes(
+        design.nobs(),
+        profile.nuisance_columns,
+        config.batch_size,
+    )?;
     let retained_coefficients = if config.retain_coefficients {
         design
             .total_term_slots()
@@ -1651,6 +1866,7 @@ fn preflight_cmg_memory(
     let required = (estimate.build_peak_bytes() as u128)
         .checked_add(batch_vectors as u128)
         .and_then(|value| value.checked_add(nuisance_square as u128))
+        .and_then(|value| value.checked_add(nuisance_projection as u128))
         .and_then(|value| value.checked_add(retained_coefficients as u128))
         .ok_or_else(|| allocation("CMG complete memory estimate overflows"))?;
     if budget.fits(required) {
@@ -1668,14 +1884,10 @@ fn preflight_prepared_cmg_memory(
     config: CmgConfig,
     prepared: &PreparedCmgTopology,
 ) -> Result<()> {
+    prepared.ensure_matches(design, profile)?;
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
-    if &prepared.profile != profile {
-        return Err(invalid_argument(
-            "prepared CMG topology does not match the current absorbed design",
-        ));
-    }
     let parallel = ParallelOptions {
         threads: config.threads.resolved(),
         ..ParallelOptions::default()
@@ -1715,6 +1927,11 @@ fn preflight_prepared_cmg_memory(
         .checked_mul(profile.nuisance_columns)
         .and_then(|value| value.checked_mul(32))
         .ok_or_else(|| allocation("prepared CMG nuisance workspace estimate overflows"))?;
+    let nuisance_projection = nuisance_projection_workspace_bytes(
+        design.nobs(),
+        profile.nuisance_columns,
+        config.batch_size,
+    )?;
     let retained_coefficients = if config.retain_coefficients {
         design
             .total_term_slots()
@@ -1727,6 +1944,7 @@ fn preflight_prepared_cmg_memory(
     let required = (repeated_frame_bytes.max(legacy_build_peak) as u128)
         .checked_add(estimate.caller_logical_bytes() as u128)
         .and_then(|value| value.checked_add(nuisance_square as u128))
+        .and_then(|value| value.checked_add(nuisance_projection as u128))
         .and_then(|value| value.checked_add(retained_coefficients as u128))
         .ok_or_else(|| allocation("prepared CMG complete memory estimate overflows"))?;
     if budget.fits(required) {
@@ -1817,6 +2035,14 @@ fn ensure_cmg_exact_retained_memory_fits(
         .nuisance
         .capacity()
         .checked_mul(std::mem::size_of::<NuisanceColumn>())
+        .and_then(|value| {
+            value.checked_add(
+                graph
+                    .nuisance_effects
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<NuisanceEffect>()),
+            )
+        })
         .and_then(|value| value.checked_add(graph.nuisance_factor.retained_bytes()))
         .ok_or_else(|| allocation("CMG exact retained-memory report overflows"))?;
     let required = upstream_bytes
@@ -1829,6 +2055,31 @@ fn ensure_cmg_exact_retained_memory_fits(
             "CMG retained hierarchy and workspace require {required} incremental bytes and do not fit the joint execution/solver memory plan"
         )))
     }
+}
+
+fn nuisance_projection_workspace_bytes(
+    observations: usize,
+    nuisance_columns: usize,
+    batch_size: usize,
+) -> Result<usize> {
+    if nuisance_columns == 0 {
+        return Ok(0);
+    }
+    let correction = observations
+        .checked_mul(batch_size)
+        .and_then(|value| value.checked_mul(std::mem::size_of::<f64>()))
+        .ok_or_else(|| allocation("CMG nuisance correction workspace estimate overflows"))?;
+    let solve_vectors = nuisance_columns
+        .checked_mul(3)
+        .ok_or_else(|| allocation("CMG nuisance solve workspace estimate overflows"))?;
+    let small_values = batch_size
+        .checked_mul(nuisance_columns)
+        .and_then(|value| value.checked_add(solve_vectors))
+        .and_then(|value| value.checked_mul(std::mem::size_of::<f64>()))
+        .ok_or_else(|| allocation("CMG nuisance projection workspace estimate overflows"))?;
+    correction
+        .checked_add(small_values)
+        .ok_or_else(|| allocation("CMG nuisance projection workspace estimate overflows"))
 }
 
 fn build_nuisance_factor(
@@ -1856,7 +2107,7 @@ fn build_nuisance_factor(
                 let right_hand_sides = build_nuisance_rhs_batch(
                     design,
                     graph.core_effects,
-                    &graph.nuisance,
+                    &graph.nuisance_effects,
                     weights,
                     weight_scale,
                     start,
@@ -1874,6 +2125,7 @@ fn build_nuisance_factor(
                         design,
                         graph.core_effects,
                         &graph.nuisance,
+                        &graph.nuisance_effects,
                         weights,
                         weight_scale,
                         column,
@@ -1891,7 +2143,7 @@ fn build_nuisance_factor(
                     vertices,
                     design,
                     graph.core_effects,
-                    &graph.nuisance,
+                    &graph.nuisance_effects,
                     weights,
                     weight_scale,
                     start,
@@ -1907,6 +2159,7 @@ fn build_nuisance_factor(
                         design,
                         graph.core_effects,
                         &graph.nuisance,
+                        &graph.nuisance_effects,
                         weights,
                         weight_scale,
                         column,
@@ -2002,7 +2255,7 @@ fn fill_value_rhs_batch_into(
 fn build_nuisance_rhs_batch(
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
-    nuisance: &[NuisanceColumn],
+    nuisance_effects: &[NuisanceEffect],
     weights: BorrowedMapWeights<'_>,
     weight_scale: f64,
     start: usize,
@@ -2019,8 +2272,12 @@ fn build_nuisance_rhs_batch(
     let right_offset = design.effects()[core[0]].n_levels();
     for row in 0..design.nobs() {
         let weight = normalized_weight(weights, weight_scale, row);
-        for (local, column) in nuisance[start..end].iter().enumerate() {
-            if design.effects()[column.effect].codes()[row] == column.level {
+        for nuisance_effect in nuisance_effects {
+            if let Some(column) = nuisance_effect.column_at_row(design, row) {
+                if column < start || column >= end {
+                    continue;
+                }
+                let local = column - start;
                 batch[local][left[row] as usize] += weight;
                 batch[local][right_offset + right[row] as usize] -= weight;
             }
@@ -2036,7 +2293,7 @@ fn fill_nuisance_rhs_batch_into(
     vertices: usize,
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
-    nuisance: &[NuisanceColumn],
+    nuisance_effects: &[NuisanceEffect],
     weights: BorrowedMapWeights<'_>,
     weight_scale: f64,
     start: usize,
@@ -2057,8 +2314,12 @@ fn fill_nuisance_rhs_batch_into(
     let right_offset = design.effects()[core[0]].n_levels();
     for row in 0..design.nobs() {
         let weight = normalized_weight(weights, weight_scale, row);
-        for (local, column) in nuisance[start..end].iter().enumerate() {
-            if design.effects()[column.effect].codes()[row] == column.level {
+        for nuisance_effect in nuisance_effects {
+            if let Some(column) = nuisance_effect.column_at_row(design, row) {
+                if column < start || column >= end {
+                    continue;
+                }
+                let local = column - start;
                 let base = local * vertices;
                 output[base + left[row] as usize] += weight;
                 output[base + right_offset + right[row] as usize] -= weight;
@@ -2076,6 +2337,7 @@ fn accumulate_schur_column(
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
     nuisance: &[NuisanceColumn],
+    nuisance_effects: &[NuisanceEffect],
     weights: BorrowedMapWeights<'_>,
     weight_scale: f64,
     column: usize,
@@ -2100,8 +2362,8 @@ fn accumulate_schur_column(
         if !weighted.is_finite() {
             return Err(invalid_data("CMG nuisance Schur contribution is nonfinite"));
         }
-        for (other, nuisance_column) in nuisance.iter().enumerate() {
-            if design.effects()[nuisance_column.effect].codes()[row] == nuisance_column.level {
+        for nuisance_effect in nuisance_effects {
+            if let Some(other) = nuisance_effect.column_at_row(design, row) {
                 compensated_add(
                     weighted,
                     &mut schur[other * dimension + column],
@@ -2113,54 +2375,59 @@ fn accumulate_schur_column(
     Ok(())
 }
 
-fn nuisance_moments(
+fn nuisance_moments_into(
     design: &BorrowedInterceptFeDesign<'_>,
-    nuisance: &[NuisanceColumn],
+    nuisance_effects: &[NuisanceEffect],
     weights: BorrowedMapWeights<'_>,
     weight_scale: f64,
     values: &DenseMatrix,
     column: usize,
-) -> Result<Vec<f64>> {
-    let mut moments = zero_vec(
-        nuisance.len(),
-        "unable to reserve CMG nuisance moment vector",
-    )?;
-    let mut corrections = zero_vec(
-        nuisance.len(),
-        "unable to reserve CMG nuisance moment corrections",
-    )?;
+    moments: &mut [f64],
+    corrections: &mut [f64],
+) -> Result<()> {
+    if moments.len() != corrections.len() {
+        return Err(invalid_argument(
+            "CMG nuisance moment workspace dimensions are inconsistent",
+        ));
+    }
+    moments.fill(0.0);
+    corrections.fill(0.0);
     for row in 0..values.nrows() {
         let weighted = normalized_weight(weights, weight_scale, row) * values[(row, column)];
-        for (index, nuisance_column) in nuisance.iter().enumerate() {
-            if design.effects()[nuisance_column.effect].codes()[row] == nuisance_column.level {
+        for nuisance_effect in nuisance_effects {
+            if let Some(index) = nuisance_effect.column_at_row(design, row) {
+                if index >= moments.len() {
+                    return Err(FeregError::new(
+                        ErrorCode::Internal,
+                        "CMG nuisance effect map exceeds its moment workspace",
+                    ));
+                }
                 compensated_add(weighted, &mut moments[index], &mut corrections[index])?;
             }
         }
     }
-    for (moment, correction) in moments.iter_mut().zip(corrections) {
-        *moment += correction;
+    for (moment, correction) in moments.iter_mut().zip(corrections.iter()) {
+        *moment += *correction;
         if !moment.is_finite() {
             return Err(invalid_data("CMG nuisance moment is nonfinite"));
         }
     }
-    Ok(moments)
+    Ok(())
 }
 
 fn nuisance_value(
     design: &BorrowedInterceptFeDesign<'_>,
-    nuisance: &[NuisanceColumn],
+    nuisance_effects: &[NuisanceEffect],
     coefficients: &[f64],
     row: usize,
 ) -> Result<f64> {
-    if coefficients.len() != nuisance.len() {
-        return Err(invalid_argument(
-            "CMG nuisance coefficient dimensions are inconsistent",
-        ));
-    }
     let mut value = 0.0;
-    for (index, column) in nuisance.iter().enumerate() {
-        if design.effects()[column.effect].codes()[row] == column.level {
-            value += coefficients[index];
+    for nuisance_effect in nuisance_effects {
+        if let Some(index) = nuisance_effect.column_at_row(design, row) {
+            let coefficient = coefficients.get(index).ok_or_else(|| {
+                invalid_argument("CMG nuisance coefficient dimensions are inconsistent")
+            })?;
+            value += coefficient;
         }
     }
     if value.is_finite() {
@@ -2406,17 +2673,17 @@ impl PivotedPsdFactor {
         })
     }
 
-    fn solve(&self, rhs: &[f64]) -> Result<Vec<f64>> {
-        if rhs.len() != self.dimension {
+    fn solve_into(&self, rhs: &[f64], output: &mut [f64], work: &mut [f64]) -> Result<()> {
+        if rhs.len() != self.dimension || output.len() != self.dimension || work.len() < self.rank {
             return Err(invalid_argument(
                 "CMG nuisance solve dimensions are inconsistent",
             ));
         }
-        let mut output = zero_vec(self.dimension, "unable to reserve CMG nuisance solution")?;
+        output.fill(0.0);
         if self.rank == 0 {
-            return Ok(output);
+            return Ok(());
         }
-        let mut work = zero_vec(self.rank, "unable to reserve CMG nuisance solve work")?;
+        work[..self.rank].fill(0.0);
         for row in 0..self.rank {
             let original = self.permutation[row];
             let scale = self.scales[original];
@@ -2451,7 +2718,7 @@ impl PivotedPsdFactor {
                 return Err(invalid_data("CMG nuisance solution is nonfinite"));
             }
         }
-        Ok(output)
+        Ok(())
     }
 }
 
@@ -2527,21 +2794,32 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
 }
 
 fn cmg_error(error: cmg::CmgError) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, format!("CMG: {error}"))
+    FeregError::new(cmg_error_code(&error, false), format!("CMG: {error}"))
 }
 
 fn cmg_solve_error(error: cmg::CmgError) -> FeregError {
-    let code = match &error {
+    FeregError::new(cmg_error_code(&error, true), format!("CMG solve: {error}"))
+}
+
+fn cmg_error_code(error: &cmg::CmgError, solving: bool) -> ErrorCode {
+    match error {
         cmg::CmgError::PcgBreakdown { .. }
         | cmg::CmgError::MaximumIterations { .. }
         | cmg::CmgError::ResidualVerificationFailed { .. }
-        | cmg::CmgError::IncompatibleLaplacianRhs { .. } => ErrorCode::NonConvergence,
-        cmg::CmgError::MemoryBudgetExceeded { .. } => ErrorCode::Allocation,
+        | cmg::CmgError::IncompatibleLaplacianRhs { .. }
+            if solving =>
+        {
+            ErrorCode::NonConvergence
+        }
+        cmg::CmgError::MemoryBudgetExceeded { .. }
+        | cmg::CmgError::AllocationFailed { .. }
+        | cmg::CmgError::VertexIndexTooWide { .. } => ErrorCode::Allocation,
         cmg::CmgError::ParallelRuntime { .. } => ErrorCode::Internal,
-        cmg::CmgError::InvalidOption { .. } => ErrorCode::InvalidArgument,
+        cmg::CmgError::DimensionMismatch { .. } | cmg::CmgError::InvalidOption { .. } => {
+            ErrorCode::InvalidArgument
+        }
         _ => ErrorCode::InvalidData,
-    };
-    FeregError::new(code, format!("CMG solve: {error}"))
+    }
 }
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {
@@ -2825,6 +3103,78 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn prepared_topology_rejects_a_different_design_with_the_same_profile() {
+        let worker_a = [0, 0, 1, 1, 2, 2, 3, 3];
+        let firm_a = [0, 1, 0, 1, 0, 1, 0, 1];
+        let worker_b = [0, 1, 1, 2, 2, 3, 3, 0];
+        let firm_b = [0, 0, 1, 1, 0, 0, 1, 1];
+        let worker_a_index = LevelIndex::from_codes(&worker_a, 4).expect("worker A index");
+        let firm_a_index = LevelIndex::from_codes(&firm_a, 2).expect("firm A index");
+        let worker_b_index = LevelIndex::from_codes(&worker_b, 4).expect("worker B index");
+        let firm_b_index = LevelIndex::from_codes(&firm_b, 2).expect("firm B index");
+        let design_a = BorrowedInterceptFeDesign::new(
+            worker_a.len(),
+            vec![
+                effect(&worker_a, 4, &worker_a_index),
+                effect(&firm_a, 2, &firm_a_index),
+            ],
+        )
+        .expect("design A");
+        let design_b = BorrowedInterceptFeDesign::new(
+            worker_b.len(),
+            vec![
+                effect(&worker_b, 4, &worker_b_index),
+                effect(&firm_b, 2, &firm_b_index),
+            ],
+        )
+        .expect("design B");
+        assert_eq!(
+            CmgTopologyProfile::analyze(&design_a).expect("profile A"),
+            CmgTopologyProfile::analyze(&design_b).expect("profile B")
+        );
+
+        let prepare_peak =
+            PreparedCmgTopology::conservative_prepare_peak_bytes(&design_a).expect("peak");
+        let mut prepared = PreparedCmgTopology::prepare(&design_a).expect("prepared topology");
+        assert!(prepare_peak >= prepared.retained_bytes() as u128);
+        let error = match CmgAbsorber::build_unpolished_prepared(
+            design_b,
+            BorrowedMapWeights::Unit,
+            config(1),
+            &mut prepared,
+        ) {
+            Ok(_) => panic!("prepared topology accepted a different design"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert!(error.message.contains("does not match"));
+    }
+
+    #[test]
+    fn upstream_cmg_errors_keep_structural_failures_out_of_nonconvergence() {
+        let allocation_error = cmg_error(cmg::CmgError::AllocationFailed { context: "test" });
+        assert_eq!(allocation_error.code, ErrorCode::Allocation);
+
+        let shape_error = cmg_error(cmg::CmgError::DimensionMismatch {
+            context: "test",
+            expected: 2,
+            actual: 1,
+        });
+        assert_eq!(shape_error.code, ErrorCode::InvalidArgument);
+
+        let exhausted = cmg::CmgError::MaximumIterations {
+            iterations: 10,
+            residual_norm: 1.0,
+            tolerance: 0.1,
+        };
+        assert_eq!(
+            cmg_solve_error(exhausted.clone()).code,
+            ErrorCode::NonConvergence
+        );
+        assert_eq!(cmg_error(exhausted).code, ErrorCode::InvalidData);
     }
 
     fn calibrated_panel_profile(
@@ -3217,6 +3567,61 @@ mod tests {
             &coefficients,
             5e-9,
         );
+    }
+
+    #[test]
+    fn multiple_nuisance_effects_agree_with_full_multi_effect_cg() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 0, 1, 2, 3, 4, 0, 2, 4];
+        let firm = [0, 1, 0, 2, 1, 3, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 1, 0];
+        let year = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2];
+        let region = [0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0];
+        let wi = LevelIndex::from_codes(&worker, 5).expect("worker index");
+        let fi = LevelIndex::from_codes(&firm, 4).expect("firm index");
+        let yi = LevelIndex::from_codes(&year, 3).expect("year index");
+        let ri = LevelIndex::from_codes(&region, 2).expect("region index");
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(
+                worker.len(),
+                vec![
+                    effect(&worker, 5, &wi),
+                    effect(&firm, 4, &fi),
+                    effect(&year, 3, &yi),
+                    effect(&region, 2, &ri),
+                ],
+            )
+            .expect("design")
+        };
+        let weights = (0..worker.len())
+            .map(|row| 0.8 + (row % 5) as f64 * 0.17)
+            .collect::<Vec<_>>();
+        let values = DenseMatrix::from_columns(&[
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.37).sin() + row as f64 * 0.02)
+                .collect(),
+            (0..worker.len())
+                .map(|row| (row as f64 * 0.19).cos() - row as f64 * 0.01)
+                .collect(),
+        ])
+        .expect("values");
+        let reference = absorb_borrowed_intercept_cg_certified(
+            &make_design(),
+            BorrowedMapWeights::Provided(&weights),
+            values.clone(),
+            config(2).map,
+        )
+        .expect("CG reference");
+        let mut session = CmgAbsorber::build(
+            make_design(),
+            BorrowedMapWeights::Provided(&weights),
+            config(2),
+            false,
+        )
+        .expect("CMG setup");
+        let result = session.absorb(values).expect("CMG projection");
+        let (result_values, report) = result.into_parts();
+        let (reference_values, _) = reference.into_parts();
+        assert!(report.certified());
+        assert_matrix_close(&result_values, &reference_values, 5e-9);
     }
 
     #[test]

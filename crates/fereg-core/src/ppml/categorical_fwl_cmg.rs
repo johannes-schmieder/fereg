@@ -12,7 +12,6 @@ use std::time::Instant;
 use std::cell::Cell;
 
 use rayon::prelude::*;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -22,6 +21,7 @@ use crate::fe::{
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::options::ThreadConfig;
+use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_fwl_lsmr::pivoted_cholesky_solve;
@@ -110,7 +110,7 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     moment_partials: Vec<f64>,
     residual: Vec<f64>,
     fitted_without_offset: Vec<f64>,
-    pool: ThreadPool,
+    team: InstalledThreadTeam,
     config: FusedFwlCmgConfig,
 }
 
@@ -122,14 +122,21 @@ impl ReusableCategoricalFwlCmg {
         config: FusedFwlCmgConfig,
     ) -> Result<Self> {
         let rows = fe_design.nobs();
-        if rows == 0
-            || rows != prepared.fit_sample().n_active()
-            || !(2..=3).contains(&fe_design.effects().len())
+        if rows == 0 || rows != prepared.fit_sample().n_active() {
+            return Err(invalid_argument(
+                "fused PPML CMG requires a nonempty aligned fit sample",
+            ));
+        }
+        if config.batch_size == 0 {
+            return Err(invalid_argument(
+                "fused PPML CMG batch size must be positive",
+            ));
+        }
+        if !(2..=3).contains(&fe_design.effects().len())
             || fe_design
                 .effects()
                 .iter()
                 .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
-            || config.batch_size == 0
         {
             return Err(unsupported(
                 "fused PPML CMG requires two or three aligned categorical intercept-only effects",
@@ -143,12 +150,26 @@ impl ReusableCategoricalFwlCmg {
                 profile.nuisance_columns()
             )));
         }
-        let prepared_topology = PreparedCmgTopology::prepare(&borrowed)?;
         let fused_workspace_bytes = estimate_fused_cmg_workspace_bytes(
             rows,
             active_generated.len(),
             config.threads.resolved(),
         )?;
+        let topology_prepare_peak =
+            PreparedCmgTopology::conservative_prepare_peak_bytes(&borrowed)?;
+        let preparation_peak = config
+            .solver_memory_budget
+            .execution_bytes
+            .checked_add(fused_workspace_bytes)
+            .and_then(|value| value.checked_add(topology_prepare_peak))
+            .ok_or_else(|| allocation("fused PPML CMG preparation memory overflows"))?;
+        if preparation_peak > config.solver_memory_budget.usable_bytes {
+            return Err(allocation(format!(
+                "fused PPML CMG workspaces and prepared-topology construction require {} bytes beyond the selected PPML execution plan",
+                fused_workspace_bytes + topology_prepare_peak
+            )));
+        }
+        let prepared_topology = PreparedCmgTopology::prepare(&borrowed)?;
         let adjusted_execution = config
             .solver_memory_budget
             .execution_bytes
@@ -219,15 +240,7 @@ impl ReusableCategoricalFwlCmg {
                 })?;
             active_slots.push(slot);
         }
-        let pool = ThreadPoolBuilder::new()
-            .num_threads(config.threads.resolved())
-            .build()
-            .map_err(|error| {
-                FeregError::new(
-                    ErrorCode::Internal,
-                    format!("unable to build fused PPML CMG thread team: {error}"),
-                )
-            })?;
+        let team = ThreadTeam::new(config.threads).acquire()?;
         Ok(Self {
             rows,
             active_columns,
@@ -273,7 +286,7 @@ impl ReusableCategoricalFwlCmg {
             )?,
             residual: fallible_filled(rows, 0.0, "fused PPML CMG residual")?,
             fitted_without_offset: fallible_filled(rows, 0.0, "fused PPML CMG fitted predictor")?,
-            pool,
+            team,
             config,
         })
     }
@@ -365,7 +378,7 @@ impl ReusableCategoricalFwlCmg {
         let active_columns = self.active_columns;
         let coefficients = &self.coefficients;
         let projected = &self.projected;
-        self.pool.install(|| {
+        self.team.install(|| {
             self.residual
                 .par_iter_mut()
                 .zip(self.fitted_without_offset.par_iter_mut())
@@ -502,7 +515,7 @@ impl ReusableCategoricalFwlCmg {
         let columns = self.active_columns;
         let width = columns + 1;
         let active = &self.active_values;
-        self.pool.install(|| {
+        self.team.install(|| {
             self.projected
                 .as_mut_slice()
                 .par_chunks_mut(width)
@@ -520,7 +533,7 @@ impl ReusableCategoricalFwlCmg {
             .resize_zeroed_within_capacity(self.rows, failed.len())?;
         let active_columns = self.active_columns;
         let active = &self.active_values;
-        self.pool.install(|| {
+        self.team.install(|| {
             self.retry
                 .as_mut_slice()
                 .par_chunks_mut(failed.len())
@@ -571,27 +584,21 @@ impl ReusableCategoricalFwlCmg {
             )
         };
         if retry_selected {
-            let computed: Result<Vec<(usize, ProjectionColumnCertificate)>> =
-                self.pool.install(|| {
-                    targets
-                        .par_iter()
-                        .enumerate()
-                        .map(|(local, &rhs)| {
-                            calculate(local, rhs).map(|certificate| (rhs, certificate))
-                        })
-                        .collect()
-                });
-            for (rhs, certificate) in computed? {
-                certificates[rhs] = certificate;
+            // Retry is exceptional and normally narrow. Updating the retained
+            // certificate array serially avoids a fresh result allocation.
+            for (local, &rhs) in targets.iter().enumerate() {
+                certificates[rhs] = calculate(local, rhs)?;
             }
         } else {
-            let computed: Result<Vec<ProjectionColumnCertificate>> = self.pool.install(|| {
-                (0..=active_columns)
-                    .into_par_iter()
-                    .map(|rhs| calculate(rhs, rhs))
-                    .collect()
-            });
-            certificates.copy_from_slice(&computed?);
+            self.team.install(|| {
+                certificates
+                    .par_iter_mut()
+                    .enumerate()
+                    .try_for_each(|(rhs, output)| {
+                        *output = calculate(rhs, rhs)?;
+                        Ok(())
+                    })
+            })?;
         }
         Ok(())
     }
@@ -605,7 +612,7 @@ impl ReusableCategoricalFwlCmg {
         let stride = square + columns;
         self.moment_partials.fill(0.0);
         let projected = &self.projected;
-        self.pool.install(|| {
+        self.team.install(|| {
             self.moment_partials
                 .par_chunks_mut(stride)
                 .enumerate()
@@ -811,11 +818,22 @@ pub(crate) fn estimate_fused_cmg_workspace_bytes(
     let square = k
         .checked_mul(k)
         .ok_or_else(|| allocation("fused PPML CMG square workspace overflows"))?;
-    let small_values = square
+    let float_workspace = square
         .checked_mul(2)
         .and_then(|value| value.checked_add(k.checked_mul(5)?))
-        .and_then(|value| value.checked_add(rhs.checked_mul(6)?))
-        .and_then(|value| value.checked_mul(8))
+        .and_then(|value| value.checked_mul(std::mem::size_of::<f64>() as u128))
+        .ok_or_else(|| allocation("fused PPML CMG float workspace bytes overflow"))?;
+    let index_workspace = k
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(rhs))
+        .and_then(|value| value.checked_mul(std::mem::size_of::<usize>() as u128))
+        .ok_or_else(|| allocation("fused PPML CMG index workspace bytes overflow"))?;
+    let certificate_workspace = rhs
+        .checked_mul(std::mem::size_of::<ProjectionColumnCertificate>() as u128)
+        .ok_or_else(|| allocation("fused PPML CMG certificate bytes overflow"))?;
+    let small_values = float_workspace
+        .checked_add(index_workspace)
+        .and_then(|value| value.checked_add(certificate_workspace))
         .ok_or_else(|| allocation("fused PPML CMG small workspace bytes overflow"))?;
     let blocks = rows.div_ceil(MOMENT_BLOCK_ROWS) as u128;
     let partials = blocks
