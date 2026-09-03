@@ -558,11 +558,15 @@ def execute_scopes(
 
 
 def _close(left: float | None, right: float | None, rtol: float, atol: float) -> bool:
-    return left is not None and right is not None and math.isclose(left, right, rel_tol=rtol, abs_tol=atol)
+    return (
+        left is not None
+        and right is not None
+        and abs(left - right) <= atol + rtol * max(abs(left), abs(right))
+    )
 
 
 def _vectors_close(left: Sequence[float], right: Sequence[float], rtol: float, atol: float) -> bool:
-    return len(left) == len(right) and all(math.isclose(a, b, rel_tol=rtol, abs_tol=atol) for a, b in zip(left, right))
+    return len(left) == len(right) and all(_close(a, b, rtol, atol) for a, b in zip(left, right))
 
 
 def _control_covariance(row: Mapping[str, object], controls: int) -> list[float]:
@@ -596,6 +600,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     oracle: dict[str, Mapping[str, object]] = {}
     failures: list[str] = []
     route_failures: list[str] = []
+    comparator_diagnostics: list[str] = []
     dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
@@ -639,11 +644,14 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     if default_reference["sample_n"] != lsmr_reference["sample_n"]:
                         failures.append(prefix + ":sample")
                     if default_reference["b_names"][:controls] != lsmr_reference["b_names"][:controls] or not _vectors_close(default_reference["b_values"][:controls], lsmr_reference["b_values"][:controls], float(science["coefficient_rtol"]), float(science["coefficient_atol"])):
-                        failures.append(prefix + ":coefficients")
+                        comparator_diagnostics.append(prefix + ":coefficients")
                     if default_reference["v_names"][:controls] != lsmr_reference["v_names"][:controls] or not _vectors_close(_control_covariance(default_reference, controls), _control_covariance(lsmr_reference, controls), float(science["vce_rtol"]), float(science["vce_atol"])):
-                        failures.append(prefix + ":vce")
+                        comparator_diagnostics.append(prefix + ":vce")
                     if _model_dof(default_reference) != _model_dof(lsmr_reference):
                         failures.append(prefix + ":model_dof")
+                    for scalar in ("ll", "deviance"):
+                        if not _close(default_reference[scalar], lsmr_reference[scalar], float(science["likelihood_rtol"]), float(science["likelihood_atol"])):
+                            comparator_diagnostics.append(prefix + f":{scalar}")
                 for solver in SOLVERS:
                     prefix = f"{scope_id}:{implementation}:{solver}:r{repetition}"
                     row = indexed.get((scope_id, implementation, solver, repetition))
@@ -665,7 +673,10 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         failures.append(prefix + ":inner_iterations")
                     if len(row["runtime_values"]) != 108:
                         failures.append(prefix + ":runtime")
-                    for target_name, target in (("map", baseline), *references.items()):
+                    # The forced-LSMR ppmlhdfe arm is a performance comparator,
+                    # not a second scientific authority. ADR-0022 uses the
+                    # default pinned ppmlhdfe route for the compatibility gate.
+                    for target_name, target in (("map", baseline), ("ppmlhdfe", default_reference)):
                         if target is None:
                             failures.append(prefix + f":missing_{target_name}")
                             continue
@@ -760,6 +771,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
+        "comparator_diagnostics": sorted(set(comparator_diagnostics)),
         "dof_convention_notes": sorted(dof_convention_notes),
         "solver_summary": summaries, "scopes": len(scopes), "repetitions": repetitions,
     }

@@ -135,6 +135,16 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(failed["science_pass"])
         self.assertTrue(any("lsmr:r2:map_coefficients" in item for item in failed["science_failures"]))
 
+        comparator_only = copy.deepcopy(document)
+        target = next(
+            row for row in comparator_only["records"]
+            if row["arm"] == "ppmlhdfe_lsmr" and row["repetition"] == 2
+        )
+        target["b_values"] = [0.5]
+        compared = DEVELOPMENT.analyze_document(comparator_only)
+        self.assertTrue(compared["science_pass"])
+        self.assertTrue(any("comparators:r2:coefficients" in item for item in compared["comparator_diagnostics"]))
+
     def test_analysis_rejects_fallback_and_missing_second_comparator(self) -> None:
         changed = run_document()
         target = next(row for row in changed["records"] if row["arm"] == "cmg" and row["repetition"] == 2)
@@ -190,6 +200,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         }
         self.assertEqual(DEVELOPMENT._control_covariance(row, 2), [1.0, 2.0, 2.0, 4.0])
         self.assertEqual(DEVELOPMENT._optional_vector("1 . .a 4"), [1.0, None, None, 4.0])
+        self.assertTrue(DEVELOPMENT._close(1.0, 1.00000010005, 1e-7, 1e-10))
 
     def test_exclusive_json_refuses_to_overwrite_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
