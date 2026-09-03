@@ -178,6 +178,8 @@ pub(crate) struct CmgUnpolishedProjectionReport {
     pub(crate) right_hand_sides: usize,
     pub(crate) batches: usize,
     pub(crate) nuisance_columns: usize,
+    #[cfg(test)]
+    pub(crate) executor_threads: usize,
 }
 
 /// PPML-owned structural graph state reused while IRLS changes only weights.
@@ -560,6 +562,24 @@ impl PreparedCmgTopology {
             .ok_or_else(|| allocation("prepared CMG topology peak estimate overflows"))
     }
 
+    /// Conservative retained topology plus one complete changing-weight CMG
+    /// frame. This is available before topology preparation so PPML can admit
+    /// the full route, rather than only the endpoint-sorting allocation.
+    pub(crate) fn conservative_retained_frame_peak_bytes(
+        design: &BorrowedInterceptFeDesign<'_>,
+        config: CmgConfig,
+    ) -> Result<u128> {
+        validate_config(config)?;
+        let profile = CmgTopologyProfile::analyze(design)?;
+        validate_nuisance_limit(&profile)?;
+        let problem = conservative_prepared_problem(&profile, config.batch_size);
+        let retained_topology = conservative_prepared_topology_retained_bytes(design, &profile)?;
+        let frame = conservative_prepared_cmg_frame_bytes(design, &profile, config, problem)?;
+        retained_topology
+            .checked_add(frame)
+            .ok_or_else(|| allocation("prepared CMG retained-frame peak estimate overflows"))
+    }
+
     pub(crate) fn prepare(design: &BorrowedInterceptFeDesign<'_>) -> Result<Self> {
         let profile = CmgTopologyProfile::analyze(design)?;
         validate_nuisance_limit(&profile)?;
@@ -918,6 +938,11 @@ impl<'a> CmgAbsorber<'a> {
                 return Err(nonconvergence(format!("CMG setup failed: {message}")));
             }
         };
+        #[cfg(test)]
+        let executor_threads = match &self.route {
+            CmgRoute::Graph(graph) => graph.solver.executor().thread_count(),
+            CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
+        };
         let solve_started = Instant::now();
         let (projected, _) = match &mut self.route {
             CmgRoute::Graph(graph) => graph.project_matrix_with_options(
@@ -939,6 +964,8 @@ impl<'a> CmgAbsorber<'a> {
             right_hand_sides: metrics.right_hand_sides,
             batches: metrics.batches,
             nuisance_columns,
+            #[cfg(test)]
+            executor_threads,
         })
     }
 
@@ -1907,17 +1934,87 @@ fn preflight_prepared_cmg_memory(
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
+    let problem = CmgProblemSize {
+        vertices: prepared.topology.vertex_count(),
+        input_edges: prepared.topology.input_edge_count(),
+        canonical_edges: prepared.topology.canonical_edge_count(),
+        right_hand_sides: config.batch_size,
+    };
+    let required = conservative_prepared_cmg_frame_bytes(design, profile, config, problem)?;
+    if budget.fits(required) {
+        Ok(())
+    } else {
+        Err(allocation(format!(
+            "prepared CMG requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
+        )))
+    }
+}
+
+fn conservative_prepared_problem(
+    profile: &CmgTopologyProfile,
+    right_hand_sides: usize,
+) -> CmgProblemSize {
+    CmgProblemSize {
+        vertices: profile.vertices,
+        input_edges: profile.observations,
+        // Canonical edges cannot exceed submitted observations. Computing the
+        // exact count would itself require the preparation being preflighted.
+        canonical_edges: profile.observations,
+        right_hand_sides,
+    }
+}
+
+fn conservative_prepared_topology_retained_bytes(
+    design: &BorrowedInterceptFeDesign<'_>,
+    profile: &CmgTopologyProfile,
+) -> Result<u128> {
+    let input_edges = profile.observations as u128;
+    let vertices = profile.vertices as u128;
+    let word = std::mem::size_of::<usize>() as u128;
+    let canonical_keys = input_edges
+        .checked_mul(std::mem::size_of::<u64>() as u128)
+        .ok_or_else(|| allocation("prepared CMG retained canonical keys overflow"))?;
+    let group_offsets = input_edges
+        .checked_add(1)
+        .and_then(|value| value.checked_mul(word))
+        .ok_or_else(|| allocation("prepared CMG retained group offsets overflow"))?;
+    let input_maps = input_edges
+        .checked_mul(2)
+        .and_then(|value| value.checked_mul(word))
+        .ok_or_else(|| allocation("prepared CMG retained input maps overflow"))?;
+    let components = vertices
+        .checked_mul(2)
+        .and_then(|value| value.checked_mul(word))
+        .ok_or_else(|| allocation("prepared CMG retained components overflow"))?;
+    let assembly_and_weights = input_edges
+        .checked_mul(2)
+        .and_then(|value| value.checked_mul(std::mem::size_of::<f64>() as u128))
+        .ok_or_else(|| allocation("prepared CMG retained weight storage overflows"))?;
+    let effect_metadata = (design.effects().len() as u128)
+        .checked_mul(5)
+        .and_then(|value| value.checked_mul(word))
+        .ok_or_else(|| allocation("prepared CMG retained effect metadata overflows"))?;
+    canonical_keys
+        .checked_add(group_offsets)
+        .and_then(|value| value.checked_add(input_maps))
+        .and_then(|value| value.checked_add(components))
+        .and_then(|value| value.checked_add(assembly_and_weights))
+        .and_then(|value| value.checked_add(effect_metadata))
+        .ok_or_else(|| allocation("prepared CMG retained topology estimate overflows"))
+}
+
+fn conservative_prepared_cmg_frame_bytes(
+    design: &BorrowedInterceptFeDesign<'_>,
+    profile: &CmgTopologyProfile,
+    config: CmgConfig,
+    problem: CmgProblemSize,
+) -> Result<u128> {
     let parallel = ParallelOptions {
         threads: config.threads.resolved(),
         ..ParallelOptions::default()
     };
     let estimate = RepeatedPcgMemoryEstimate::conservative(
-        CmgProblemSize {
-            vertices: prepared.topology.vertex_count(),
-            input_edges: prepared.topology.input_edge_count(),
-            canonical_edges: prepared.topology.canonical_edge_count(),
-            right_hand_sides: config.batch_size,
-        },
+        problem,
         CmgOptions::default(),
         parallel,
         config.threads.resolved() > 1,
@@ -1929,18 +2026,10 @@ fn preflight_prepared_cmg_memory(
         .checked_sub(estimate.prepared_topology_bytes())
         .and_then(|value| value.checked_sub(estimate.numeric_assembly_scratch_bytes()))
         .ok_or_else(|| allocation("prepared CMG repeated memory estimate underflows"))?;
-    let legacy_build_peak = CmgMemoryEstimate::conservative(
-        CmgProblemSize {
-            vertices: prepared.topology.vertex_count(),
-            input_edges: prepared.topology.input_edge_count(),
-            canonical_edges: prepared.topology.canonical_edge_count(),
-            right_hand_sides: config.batch_size,
-        },
-        CmgOptions::default(),
-        parallel,
-    )
-    .map_err(cmg_error)?
-    .build_peak_bytes();
+    let legacy_build_peak =
+        CmgMemoryEstimate::conservative(problem, CmgOptions::default(), parallel)
+            .map_err(cmg_error)?
+            .build_peak_bytes();
     let nuisance_square = profile
         .nuisance_columns
         .checked_mul(profile.nuisance_columns)
@@ -1966,13 +2055,7 @@ fn preflight_prepared_cmg_memory(
         .and_then(|value| value.checked_add(nuisance_projection as u128))
         .and_then(|value| value.checked_add(retained_coefficients as u128))
         .ok_or_else(|| allocation("prepared CMG complete memory estimate overflows"))?;
-    if budget.fits(required) {
-        Ok(())
-    } else {
-        Err(allocation(format!(
-            "prepared CMG requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
-        )))
-    }
+    Ok(required)
 }
 
 fn ensure_cg_fallback_fits(
@@ -2813,31 +2896,40 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
 }
 
 fn cmg_error(error: cmg::CmgError) -> FeregError {
-    FeregError::new(cmg_error_code(&error, false), format!("CMG: {error}"))
+    FeregError::new(cmg_error_code(&error), format!("CMG: {error}"))
 }
 
 fn cmg_solve_error(error: cmg::CmgError) -> FeregError {
-    FeregError::new(cmg_error_code(&error, true), format!("CMG solve: {error}"))
+    FeregError::new(cmg_error_code(&error), format!("CMG solve: {error}"))
 }
 
-fn cmg_error_code(error: &cmg::CmgError, solving: bool) -> ErrorCode {
+fn cmg_error_code(error: &cmg::CmgError) -> ErrorCode {
     match error {
         cmg::CmgError::PcgBreakdown { .. }
         | cmg::CmgError::MaximumIterations { .. }
         | cmg::CmgError::ResidualVerificationFailed { .. }
         | cmg::CmgError::IncompatibleLaplacianRhs { .. }
-            if solving =>
-        {
-            ErrorCode::NonConvergence
-        }
+        | cmg::CmgError::NonPositivePivot { .. } => ErrorCode::NonConvergence,
         cmg::CmgError::MemoryBudgetExceeded { .. }
         | cmg::CmgError::AllocationFailed { .. }
         | cmg::CmgError::VertexIndexTooWide { .. } => ErrorCode::Allocation,
-        cmg::CmgError::ParallelRuntime { .. } => ErrorCode::Internal,
+        cmg::CmgError::ParallelRuntime { .. } | cmg::CmgError::InvalidHierarchy { .. } => {
+            ErrorCode::Internal
+        }
         cmg::CmgError::DimensionMismatch { .. } | cmg::CmgError::InvalidOption { .. } => {
             ErrorCode::InvalidArgument
         }
-        _ => ErrorCode::InvalidData,
+        cmg::CmgError::VertexOutOfBounds { .. }
+        | cmg::CmgError::SelfLoop { .. }
+        | cmg::CmgError::InvalidEdgeWeight { .. }
+        | cmg::CmgError::NonFiniteMatrixValue { .. }
+        | cmg::CmgError::NotSymmetric { .. }
+        | cmg::CmgError::PositiveOffDiagonal { .. }
+        | cmg::CmgError::NegativeDiagonal { .. }
+        | cmg::CmgError::NotDiagonallyDominant { .. } => ErrorCode::InvalidData,
+        // CmgError is non-exhaustive. A new upstream variant must fail closed
+        // until fereg assigns it an explicit public error class.
+        _ => ErrorCode::Internal,
     }
 }
 
@@ -3165,27 +3257,235 @@ mod tests {
     }
 
     #[test]
-    fn upstream_cmg_errors_keep_structural_failures_out_of_nonconvergence() {
-        let allocation_error = cmg_error(cmg::CmgError::AllocationFailed { context: "test" });
-        assert_eq!(allocation_error.code, ErrorCode::Allocation);
-
-        let shape_error = cmg_error(cmg::CmgError::DimensionMismatch {
-            context: "test",
-            expected: 2,
-            actual: 1,
-        });
-        assert_eq!(shape_error.code, ErrorCode::InvalidArgument);
-
-        let exhausted = cmg::CmgError::MaximumIterations {
-            iterations: 10,
-            residual_norm: 1.0,
-            tolerance: 0.1,
+    fn early_prepared_memory_bound_covers_exact_topology_and_frame() {
+        let worker = [0, 0, 1, 1, 2, 2, 3, 3];
+        let firm = [0, 1, 0, 1, 0, 1, 0, 1];
+        let worker_index = LevelIndex::from_codes(&worker, 4).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 2).expect("firm index");
+        let design = BorrowedInterceptFeDesign::new(
+            worker.len(),
+            vec![
+                effect(&worker, 4, &worker_index),
+                effect(&firm, 2, &firm_index),
+            ],
+        )
+        .expect("design");
+        let cmg_config = config(2);
+        let early =
+            PreparedCmgTopology::conservative_retained_frame_peak_bytes(&design, cmg_config)
+                .expect("early retained-frame peak");
+        let prepared = PreparedCmgTopology::prepare(&design).expect("prepared topology");
+        let profile = CmgTopologyProfile::analyze(&design).expect("profile");
+        let exact_problem = CmgProblemSize {
+            vertices: prepared.topology.vertex_count(),
+            input_edges: prepared.topology.input_edge_count(),
+            canonical_edges: prepared.topology.canonical_edge_count(),
+            right_hand_sides: cmg_config.batch_size,
         };
-        assert_eq!(
-            cmg_solve_error(exhausted.clone()).code,
-            ErrorCode::NonConvergence
-        );
-        assert_eq!(cmg_error(exhausted).code, ErrorCode::InvalidData);
+        let exact_frame =
+            conservative_prepared_cmg_frame_bytes(&design, &profile, cmg_config, exact_problem)
+                .expect("exact prepared frame peak");
+        let exact_combined = (prepared.retained_bytes() as u128)
+            .checked_add(exact_frame)
+            .expect("exact retained-frame total");
+        assert!(early >= exact_combined);
+    }
+
+    #[test]
+    fn prepared_cmg_tracks_executor_width_across_one_four_one() {
+        let worker = [0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
+        let firm = [0, 1, 0, 2, 1, 2, 2, 1, 0, 0, 1, 2];
+        let worker_index = LevelIndex::from_codes(&worker, 3).expect("worker index");
+        let firm_index = LevelIndex::from_codes(&firm, 3).expect("firm index");
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(
+                worker.len(),
+                vec![
+                    effect(&worker, 3, &worker_index),
+                    effect(&firm, 3, &firm_index),
+                ],
+            )
+            .expect("design")
+        };
+        let mut prepared = PreparedCmgTopology::prepare(&make_design()).expect("prepared topology");
+
+        for requested in [1, 4, 1] {
+            let mut threaded_config = config(2);
+            threaded_config.threads =
+                ThreadConfig::from_requested(requested, true).expect("thread config");
+            let mut absorber = CmgAbsorber::build_unpolished_prepared(
+                make_design(),
+                BorrowedMapWeights::Unit,
+                threaded_config,
+                &mut prepared,
+            )
+            .expect("prepared CMG setup");
+            let mut values = DenseMatrix::from_columns(&[
+                (0..worker.len())
+                    .map(|row| (row as f64 * 0.37).sin())
+                    .collect(),
+                (0..worker.len())
+                    .map(|row| (row as f64 * 0.23).cos())
+                    .collect(),
+            ])
+            .expect("projection values");
+            let report = absorber
+                .project_unpolished(&mut values, 1e-10)
+                .expect("prepared CMG projection");
+            assert_eq!(report.executor_threads, requested);
+        }
+    }
+
+    #[test]
+    fn upstream_cmg_errors_have_an_explicit_fail_closed_public_class() {
+        let cases = vec![
+            (
+                cmg::CmgError::DimensionMismatch {
+                    context: "test",
+                    expected: 2,
+                    actual: 1,
+                },
+                ErrorCode::InvalidArgument,
+            ),
+            (
+                cmg::CmgError::VertexOutOfBounds {
+                    vertex: 2,
+                    vertex_count: 2,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::VertexIndexTooWide {
+                    vertex: usize::MAX,
+                    maximum: u32::MAX as usize,
+                },
+                ErrorCode::Allocation,
+            ),
+            (
+                cmg::CmgError::SelfLoop { vertex: 1 },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::InvalidEdgeWeight {
+                    u: 0,
+                    v: 1,
+                    weight: 0.0,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::NonFiniteMatrixValue {
+                    row: 0,
+                    column: 0,
+                    value: f64::NAN,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::NotSymmetric {
+                    row: 0,
+                    column: 1,
+                    forward: 1.0,
+                    reverse: 2.0,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::PositiveOffDiagonal {
+                    row: 0,
+                    column: 1,
+                    value: 1.0,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::NegativeDiagonal {
+                    index: 0,
+                    value: -1.0,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::NotDiagonallyDominant {
+                    row: 0,
+                    diagonal: 1.0,
+                    off_diagonal_sum: 2.0,
+                },
+                ErrorCode::InvalidData,
+            ),
+            (
+                cmg::CmgError::IncompatibleLaplacianRhs {
+                    component: 0,
+                    sum: 1.0,
+                    tolerance: 0.1,
+                },
+                ErrorCode::NonConvergence,
+            ),
+            (
+                cmg::CmgError::NonPositivePivot {
+                    vertex: 0,
+                    value: 0.0,
+                },
+                ErrorCode::NonConvergence,
+            ),
+            (
+                cmg::CmgError::InvalidHierarchy { context: "test" },
+                ErrorCode::Internal,
+            ),
+            (
+                cmg::CmgError::PcgBreakdown {
+                    iteration: 1,
+                    quantity: "test",
+                    value: 0.0,
+                },
+                ErrorCode::NonConvergence,
+            ),
+            (
+                cmg::CmgError::MaximumIterations {
+                    iterations: 10,
+                    residual_norm: 1.0,
+                    tolerance: 0.1,
+                },
+                ErrorCode::NonConvergence,
+            ),
+            (
+                cmg::CmgError::ResidualVerificationFailed {
+                    iteration: 10,
+                    residual_norm: 1.0,
+                    tolerance: 0.1,
+                },
+                ErrorCode::NonConvergence,
+            ),
+            (
+                cmg::CmgError::ParallelRuntime {
+                    message: "test".to_owned(),
+                },
+                ErrorCode::Internal,
+            ),
+            (
+                cmg::CmgError::MemoryBudgetExceeded {
+                    required_bytes: 2,
+                    budget_bytes: 1,
+                },
+                ErrorCode::Allocation,
+            ),
+            (
+                cmg::CmgError::AllocationFailed { context: "test" },
+                ErrorCode::Allocation,
+            ),
+            (
+                cmg::CmgError::InvalidOption {
+                    name: "test",
+                    value: 0.0,
+                },
+                ErrorCode::InvalidArgument,
+            ),
+        ];
+        for (error, expected) in cases {
+            assert_eq!(cmg_error_code(&error), expected, "{error}");
+            assert_eq!(cmg_error(error.clone()).code, expected);
+            assert_eq!(cmg_solve_error(error).code, expected);
+        }
     }
 
     fn calibrated_panel_profile(

@@ -11,7 +11,7 @@ The machine-readable authority is
 evaluator are `scripts/fereg_f0_regression.py`.
 
 The zero-overhead structural companion is
-`benchmarks/manifests/fereg_allocation_source_contract_v1.json`, enforced by
+`benchmarks/manifests/fereg_allocation_source_contract_v2.json`, enforced by
 `scripts/fereg_allocation_source_contract.py` from both repository checks and
 normal Python test discovery. It does not replace measured F0 evidence.
 
@@ -258,7 +258,7 @@ python3 -I -B -S scripts/fereg_allocation_source_contract.py audit
 ```
 
 After an intentional reviewed allocation or route change, inspect regenerated
-JSON before replacing the frozen companion manifest:
+JSON before creating the next version of the frozen companion manifest:
 
 ```bash
 python3 -I -B -S scripts/fereg_allocation_source_contract.py render

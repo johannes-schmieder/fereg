@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn cached_pool_can_change_counts_and_return_to_one() {
-        for threads in [1, 3, 1] {
+        for threads in [1, 4, 1] {
             let team =
                 ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("config"));
             assert_eq!(

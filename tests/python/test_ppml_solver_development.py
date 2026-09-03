@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import csv
 import importlib.util
 import json
 from pathlib import Path
@@ -29,6 +30,7 @@ def result_row(scope: dict[str, object], arm: str, repetition: int) -> dict[str,
         "arm": arm,
         "repetition": repetition,
         "rc": 0,
+        "timed": True,
         "seconds": 1.0,
         "sample_n": 100.0,
         "ll": -10.0,
@@ -49,6 +51,18 @@ def result_row(scope: dict[str, object], arm: str, repetition: int) -> dict[str,
         "v_values": [0.01],
         "certificate_values": [1.0] * 16 if solver else [],
         "runtime_values": [0.0] * 108 if solver else [],
+        "reference_acceleration": "conjugate_gradient" if not solver else "",
+        "reference_transform": "symmetric_kaczmarz" if not solver else "",
+    }
+
+
+def adjudicator_row(scope: dict[str, object], source: dict[str, object]) -> dict[str, object]:
+    return {
+        **copy.deepcopy(source), **scope, "scope_id": scope["id"],
+        "implementation": "adjudicator", "arm_type": "adjudicator",
+        "arm": DEVELOPMENT.ADJUDICATOR, "repetition": 1, "timed": False,
+        "seconds": None, "reference_acceleration": "conjugate_gradient",
+        "reference_transform": "symmetric_kaczmarz",
     }
 
 
@@ -83,12 +97,15 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(manifest["auto_calibration"])
         self.assertEqual([row["id"] for row in manifest["solvers"]], ["map", "lsmr", "cmg"])
         self.assertEqual([row["id"] for row in manifest["comparators"]], ["ppmlhdfe"])
+        self.assertFalse(manifest["scientific_adjudicator"]["timed"])
+        self.assertEqual(manifest["scientific_adjudicator"]["tolerance"], 1e-10)
+        self.assertEqual(manifest["scientific_adjudicator"]["itolerance"], 1e-12)
         serialized = json.dumps(manifest).lower()
         self.assertNotIn("recommendation", serialized)
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
-        self.assertEqual(manifest["protocols"]["development_result_table"], "2.1")
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.2")
 
     def test_local_profiles_are_bounded_and_campaign_is_16_bundled_tasks(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -98,17 +115,24 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertEqual(len(tasks), 16)
         self.assertEqual(sum(len(task["scopes"]) for task in tasks), 56)
         self.assertTrue(all(
-            scope["n"] == 25_000
+            scope["n"] == 10_000
             for task in tasks for scope in task["scopes"]
             if scope["difficulty"] == "long"
         ))
         self.assertEqual(
             {scope["n"] for task in tasks for scope in task["scopes"] if scope["difficulty"] == "easy"},
-            {250_000, 500_000},
+            {50_000, 100_000},
         )
         self.assertEqual([len(task["scopes"]) for task in tasks[:8]], [3] * 8)
         self.assertEqual([len(task["scopes"]) for task in tasks[8:]], [4] * 8)
         self.assertTrue(all(2 <= len(task["scopes"]) <= 4 for task in tasks))
+        for task in tasks[12:]:
+            self.assertEqual(len({scope["seed"] for scope in task["scopes"]}), 1)
+            self.assertEqual(len({DEVELOPMENT.dataset_id(scope) for scope in task["scopes"]}), 1)
+        self.assertEqual(
+            len({scope["seed"] for task in tasks[12:] for scope in task["scopes"]}),
+            4,
+        )
         self.assertEqual(
             manifest["scc_campaign"]["scheduler"],
             {
@@ -121,6 +145,11 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
     def test_manifest_rejects_any_auto_calibration_role(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
         manifest["auto_calibration"] = True
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.validate_manifest(manifest)
+
+        manifest = DEVELOPMENT.load_manifest()
+        manifest["generator"]["same_data_for_thread_scaling_within_bundle"] = False
         with self.assertRaises(DEVELOPMENT.DevelopmentError):
             DEVELOPMENT.validate_manifest(manifest)
 
@@ -145,6 +174,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertEqual(lsmr_summary["selected_engine_codes"], [3])
         self.assertEqual(lsmr_summary["effective_engine_codes"], [3])
         self.assertNotIn("comparator_diagnostics", analysis)
+        self.assertEqual(analysis["reference_adjudications"], [])
         self.assertNotIn("route_recommendation", analysis)
         self.assertNotIn("recommendation", json.dumps(analysis).lower())
 
@@ -154,6 +184,50 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         failed = DEVELOPMENT.analyze_document(changed)
         self.assertFalse(failed["science_pass"])
         self.assertTrue(any("lsmr:r2:map_coefficients" in item for item in failed["science_failures"]))
+
+    def test_strict_reference_adjudicates_only_a_default_stopping_mismatch(self) -> None:
+        changed = run_document()
+        default = next(
+            row for row in changed["records"]
+            if row["arm"] == "ppmlhdfe" and row["repetition"] == 2
+        )
+        default["b_values"] = [0.2501]
+        without_strict = DEVELOPMENT.analyze_document(changed)
+        self.assertFalse(without_strict["science_pass"])
+        self.assertTrue(any("ppmlhdfe_coefficients" in item for item in without_strict["science_failures"]))
+
+        scope = changed["scopes"][0]
+        matching_map = next(
+            row for row in changed["records"]
+            if row["implementation"] == "candidate" and row["arm"] == "map"
+            and row["repetition"] == 1
+        )
+        changed["records"].append(adjudicator_row(scope, matching_map))
+        adjudicated = DEVELOPMENT.analyze_document(changed)
+        self.assertTrue(adjudicated["science_pass"])
+        self.assertEqual(len(adjudicated["reference_adjudications"]), 3)
+        self.assertTrue(all(
+            row["default_science_mismatches"] == ["ppmlhdfe_coefficients"]
+            for row in adjudicated["reference_adjudications"]
+        ))
+        self.assertTrue(all(row["timed"] is False for row in adjudicated["reference_adjudications"]))
+
+        changed["records"][-1]["b_values"] = [0.5]
+        rejected = DEVELOPMENT.analyze_document(changed)
+        self.assertFalse(rejected["science_pass"])
+        self.assertTrue(any("strict_ppmlhdfe_coefficients" in item for item in rejected["science_failures"]))
+
+    def test_strict_reference_is_rejected_when_default_reference_agrees(self) -> None:
+        document = run_document()
+        scope = document["scopes"][0]
+        matching_map = next(
+            row for row in document["records"]
+            if row["implementation"] == "candidate" and row["arm"] == "map"
+        )
+        document["records"].append(adjudicator_row(scope, matching_map))
+        analysis = DEVELOPMENT.analyze_document(document)
+        self.assertFalse(analysis["science_pass"])
+        self.assertTrue(any("not_required" in item for item in analysis["science_failures"]))
 
     def test_analysis_rejects_fallback_and_missing_comparator(self) -> None:
         changed = run_document()
@@ -214,6 +288,47 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertEqual(DEVELOPMENT._optional_vector("1 . .a 4"), [1.0, None, None, 4.0])
         self.assertTrue(DEVELOPMENT._close(1.0, 1.00000010005, 1e-7, 1e-10))
 
+    def test_result_parser_keeps_strict_adjudication_untimed_and_route_verified(self) -> None:
+        fields = [
+            "arm", "repetition", "rc", "timed", "seconds", "N", "ll",
+            "deviance", "converged", "rank", "df_a", "df_resid",
+            "inner_iterations", "route_code", "selected_engine_code",
+            "effective_engine_code", "fallback_count", "effective_threads",
+            "b_names", "b_values", "v_names", "v_values",
+            "certificate_values", "runtime_values", "reference_acceleration",
+            "reference_transform",
+        ]
+        row = {field: "" for field in fields}
+        row.update({
+            "arm": DEVELOPMENT.ADJUDICATOR, "repetition": "1", "rc": "0",
+            "timed": "0", "seconds": ".", "N": "100", "ll": "-10",
+            "deviance": "2", "converged": "1", "rank": "1", "df_a": "18",
+            "df_resid": "81", "inner_iterations": "4", "b_names": "x1",
+            "b_values": ".25", "v_names": "x1", "v_values": ".01",
+            "reference_acceleration": "conjugate_gradient",
+            "reference_transform": "symmetric_kaczmarz",
+        })
+        scope = {
+            "id": "parser-scope", "n": 100, "topology": "balanced_2fe",
+            "controls": 1, "difficulty": "easy", "threads": 1, "seed": 11,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "result.tsv"
+            with path.open("w", encoding="utf-8", newline="") as target:
+                writer = csv.DictWriter(target, fieldnames=fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(row)
+            parsed = DEVELOPMENT.parse_table(path, scope, "adjudicator")
+            self.assertFalse(parsed[0]["timed"])
+            self.assertIsNone(parsed[0]["seconds"])
+            row["reference_transform"] = "kaczmarz"
+            with path.open("w", encoding="utf-8", newline="") as target:
+                writer = csv.DictWriter(target, fieldnames=fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(row)
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT.parse_table(path, scope, "adjudicator")
+
     def test_exclusive_json_refuses_to_overwrite_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "receipt.json"
@@ -232,6 +347,26 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             console.with_suffix(".stata.log").write_text("FEREG_PPML_SOLVER_RUN_FAIL|arm=map|rc=430\n")
             self.assertEqual(DEVELOPMENT.stata_stage_status(console, 0, "PASS"), (430, "failure-sentinel"))
 
+    def test_reference_route_requires_observed_cg_symmetric_kaczmarz(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            console = Path(temporary) / "reference.log"
+            console.write_text(
+                "Running solver (acceleration=conjugate_gradient, "
+                "transform=symmetric_kaczmarz tol=1.0e-09)\n"
+            )
+            self.assertEqual(
+                DEVELOPMENT.verified_reference_route(console),
+                {
+                    "acceleration": "conjugate_gradient",
+                    "transform": "symmetric_kaczmarz",
+                },
+            )
+            console.write_text(
+                "Running solver (acceleration=lsmr, transform=symmetric_kaczmarz tol=1.0e-09)\n"
+            )
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT.verified_reference_route(console)
+
     def test_driver_uses_public_solver_surface_and_default_comparator(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         self.assertIn("feppml y `control_list'", source)
@@ -241,6 +376,10 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertNotIn("set processors `threads'", source)
         self.assertNotIn("ppmlhdfe_lsmr", source)
         self.assertNotIn("accel(lsmr)", source)
+        self.assertNotIn("accel(", source)
+        self.assertNotIn("transform(", source)
+        self.assertIn("tolerance(1e-10) itolerance(1e-12) verbose(2)", source)
+        self.assertIn("local route_command `\"`command' verbose(2)\"'", source)
         self.assertIn("FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS", source)
         self.assertIn("e(feppml_certificate)", source)
         self.assertIn("e(feppml_solver)[1,4]", source)

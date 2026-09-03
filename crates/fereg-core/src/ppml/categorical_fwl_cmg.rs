@@ -33,14 +33,22 @@ const MOMENT_BLOCK_ROWS: usize = 32_768;
 #[cfg(test)]
 thread_local! {
     static FORCE_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
+    static FORCE_FATAL_FAILURE_ONCE: Cell<Option<ErrorCode>> = const { Cell::new(None) };
     static FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
     static FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE: Cell<Option<usize>> = const { Cell::new(None) };
     static TOTAL_RETRIED_RIGHT_HAND_SIDES: Cell<usize> = const { Cell::new(0) };
+    static ROUTE_OBSERVATION_PREPARATIONS: Cell<usize> = const { Cell::new(0) };
 }
 
 #[cfg(test)]
 pub(crate) fn inject_numerical_failure_once() {
     FORCE_NUMERICAL_FAILURE_ONCE.set(true);
+}
+
+#[cfg(test)]
+pub(crate) fn inject_fatal_failure_once(code: ErrorCode) {
+    assert_ne!(code, ErrorCode::NonConvergence);
+    FORCE_FATAL_FAILURE_ONCE.set(Some(code));
 }
 
 #[cfg(test)]
@@ -57,6 +65,11 @@ pub(crate) fn inject_projection_certificate_failure_once(rhs: usize) {
 #[cfg(test)]
 pub(crate) fn take_total_retried_right_hand_sides() -> usize {
     TOTAL_RETRIED_RIGHT_HAND_SIDES.replace(0)
+}
+
+#[cfg(test)]
+pub(crate) fn take_route_observation_preparations() -> usize {
+    ROUTE_OBSERVATION_PREPARATIONS.replace(0)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -196,6 +209,7 @@ pub(crate) struct FusedFwlCmgConfig {
 pub(crate) struct ReusableCategoricalFwlCmg {
     rows: usize,
     active_columns: usize,
+    certificate_topology: FusedCmgCertificateTopology,
     prepared_topology: PreparedCmgTopology,
     active_values: Vec<f64>,
     active_slots: Vec<usize>,
@@ -218,6 +232,71 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     config: FusedFwlCmgConfig,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FusedCmgCertificateTopology {
+    rows: usize,
+    effect_count: usize,
+    effects: [FusedCmgCertificateEffect; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FusedCmgCertificateEffect {
+    codes_address: usize,
+    codes_len: usize,
+    levels: usize,
+}
+
+impl FusedCmgCertificateTopology {
+    const EMPTY_EFFECT: FusedCmgCertificateEffect = FusedCmgCertificateEffect {
+        codes_address: 0,
+        codes_len: 0,
+        levels: 0,
+    };
+
+    fn bind(design: &FeDesign) -> Result<Self> {
+        if !(2..=3).contains(&design.effects().len()) {
+            return Err(unsupported(
+                "fused PPML CMG certificate topology requires two or three effects",
+            ));
+        }
+        let mut effects = [Self::EMPTY_EFFECT; 3];
+        for (slot, effect) in effects.iter_mut().zip(design.effects()) {
+            if !effect.has_intercept() || !effect.slopes().is_empty() {
+                return Err(unsupported(
+                    "fused PPML CMG certificate topology requires categorical intercept-only effects",
+                ));
+            }
+            let codes = effect.codes();
+            *slot = FusedCmgCertificateEffect {
+                codes_address: codes.as_ptr() as usize,
+                codes_len: codes.len(),
+                levels: effect.n_levels(),
+            };
+        }
+        Ok(Self {
+            rows: design.nobs(),
+            effect_count: design.effects().len(),
+            effects,
+        })
+    }
+
+    fn matches(self, design: &FeDesign) -> bool {
+        self.rows == design.nobs()
+            && self.effect_count == design.effects().len()
+            && self.effects[..self.effect_count]
+                .iter()
+                .zip(design.effects())
+                .all(|(identity, effect)| {
+                    let codes = effect.codes();
+                    effect.has_intercept()
+                        && effect.slopes().is_empty()
+                        && identity.codes_address == codes.as_ptr() as usize
+                        && identity.codes_len == codes.len()
+                        && identity.levels == effect.n_levels()
+                })
+    }
+}
+
 impl ReusableCategoricalFwlCmg {
     pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
@@ -236,16 +315,7 @@ impl ReusableCategoricalFwlCmg {
                 "fused PPML CMG batch size must be positive",
             ));
         }
-        if !(2..=3).contains(&fe_design.effects().len())
-            || fe_design
-                .effects()
-                .iter()
-                .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
-        {
-            return Err(unsupported(
-                "fused PPML CMG requires two or three aligned categorical intercept-only effects",
-            ));
-        }
+        let certificate_topology = FusedCmgCertificateTopology::bind(fe_design)?;
         let borrowed = prepared.fit_borrowed_cmg_design()?;
         let profile = CmgTopologyProfile::analyze(&borrowed)?;
         if profile.nuisance_columns() > CMG_MAX_NUISANCE_COLUMNS {
@@ -264,15 +334,15 @@ impl ReusableCategoricalFwlCmg {
         let preparation_peak = config
             .solver_memory_budget
             .execution_bytes
-            .checked_add(fused_workspace_bytes)
-            .and_then(|value| value.checked_add(topology_prepare_peak))
+            .checked_add(topology_prepare_peak)
             .ok_or_else(|| allocation("fused PPML CMG preparation memory overflows"))?;
         if preparation_peak > config.solver_memory_budget.usable_bytes {
             return Err(allocation(format!(
-                "fused PPML CMG workspaces and prepared-topology construction require {} bytes beyond the selected PPML execution plan",
-                fused_workspace_bytes + topology_prepare_peak
+                "fused PPML CMG prepared-topology construction requires {topology_prepare_peak} bytes beyond the selected PPML execution plan"
             )));
         }
+        #[cfg(test)]
+        ROUTE_OBSERVATION_PREPARATIONS.set(ROUTE_OBSERVATION_PREPARATIONS.get().saturating_add(1));
         let prepared_topology = PreparedCmgTopology::prepare(&borrowed)?;
         let adjusted_execution = config
             .solver_memory_budget
@@ -348,6 +418,7 @@ impl ReusableCategoricalFwlCmg {
         Ok(Self {
             rows,
             active_columns,
+            certificate_topology,
             prepared_topology,
             active_values,
             active_slots,
@@ -443,6 +514,12 @@ impl ReusableCategoricalFwlCmg {
         }
         #[cfg(test)]
         {
+            if let Some(code) = FORCE_FATAL_FAILURE_ONCE.replace(None) {
+                return Err(FeregError::new(
+                    code,
+                    "injected fused PPML CMG fatal failure",
+                ));
+            }
             if FORCE_NUMERICAL_FAILURE_ONCE.replace(false) {
                 return Err(nonconvergence("injected fused PPML CMG numerical failure"));
             }
@@ -675,6 +752,11 @@ impl ReusableCategoricalFwlCmg {
         {
             return Err(invalid_argument(
                 "fused PPML CMG frame dimensions or tolerance are invalid",
+            ));
+        }
+        if !self.certificate_topology.matches(fe_design) {
+            return Err(invalid_argument(
+                "fused PPML CMG certificate topology changed during the reusable fit",
             ));
         }
         if working_response.iter().any(|value| !value.is_finite())
@@ -1274,6 +1356,18 @@ fn nonconvergence(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fe::EffectTerm;
+
+    fn certificate_design(first: &[u32], second: &[u32]) -> FeDesign {
+        FeDesign::new(
+            first.len(),
+            vec![
+                EffectTerm::new(first.to_vec(), 2, true, Vec::new()).expect("first effect"),
+                EffectTerm::new(second.to_vec(), 2, true, Vec::new()).expect("second effect"),
+            ],
+        )
+        .expect("certificate design")
+    }
 
     #[test]
     fn fused_workspace_estimate_is_monotone() {
@@ -1282,5 +1376,20 @@ mod tests {
         let long = estimate_fused_cmg_workspace_bytes(1_000, 2, 1).expect("long estimate");
         assert!(wide > narrow);
         assert!(long > narrow);
+    }
+
+    #[test]
+    fn certificate_topology_is_bound_to_the_fit_lifetime_design() {
+        let first = [0, 0, 1, 1];
+        let second = [0, 1, 0, 1];
+        let design = certificate_design(&first, &second);
+        let identity = FusedCmgCertificateTopology::bind(&design).expect("topology identity");
+        assert!(identity.matches(&design));
+
+        let same_values_in_distinct_storage = certificate_design(&first, &second);
+        assert!(!identity.matches(&same_values_in_distinct_storage));
+
+        let changed = certificate_design(&first, &[0, 1, 1, 0]);
+        assert!(!identity.matches(&changed));
     }
 }

@@ -11,8 +11,8 @@ use std::time::{Duration, Instant};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    absorb_fixed_effects, BorrowedMapWeights, CmgTopologyProfile, FeDesign, FeSolverKind,
-    PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
+    absorb_fixed_effects, BorrowedMapWeights, CmgConfig, CmgTopologyProfile, FeDesign,
+    FeSolverKind, PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::ols::{
@@ -33,7 +33,7 @@ use super::categorical_fwl_lsmr::{
     estimate_fused_fwl_lsmr_workspace_bytes, FusedFwlLsmrReport, ReusableCategoricalFwlLsmr,
 };
 use super::categorical_lsmr::{
-    estimate_joint_lsmr_workspace_bytes, CategoricalLsmrPolicy, JointLsmrReport,
+    estimate_joint_lsmr_workspace_bytes, joint_lsmr_policy, CategoricalLsmrPolicy, JointLsmrReport,
     ReusableCategoricalJointLsmr,
 };
 use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
@@ -57,6 +57,8 @@ const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
 thread_local! {
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
     static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
+    static CANONICAL_FRAME_REFRESH_COUNT: Cell<usize> = const { Cell::new(0) };
+    static CMG_EARLY_MEMORY_PEAKS: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
 }
 
 #[cfg(test)]
@@ -73,7 +75,7 @@ fn take_strict_resume(bit: u8) -> bool {
 }
 
 #[cfg(test)]
-fn inject_strict_basis_change(first_strict: bool, final_hessian: bool) {
+pub(super) fn inject_strict_basis_change(first_strict: bool, final_hessian: bool) {
     STRICT_BASIS_CHANGE_INJECTION.set(u8::from(first_strict) | (u8::from(final_hessian) << 1));
 }
 
@@ -83,6 +85,21 @@ fn take_strict_basis_change(bit: u8) -> bool {
     let selected = state & bit != 0;
     STRICT_BASIS_CHANGE_INJECTION.set(state & !bit);
     selected
+}
+
+#[cfg(test)]
+pub(super) fn reset_canonical_frame_refresh_count() {
+    CANONICAL_FRAME_REFRESH_COUNT.set(0);
+}
+
+#[cfg(test)]
+pub(super) fn take_canonical_frame_refresh_count() -> usize {
+    CANONICAL_FRAME_REFRESH_COUNT.replace(0)
+}
+
+#[cfg(test)]
+pub(super) fn take_cmg_early_memory_peaks() -> Option<(u128, u128)> {
+    CMG_EARLY_MEMORY_PEAKS.replace(None)
 }
 
 #[cfg(test)]
@@ -787,21 +804,28 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         PpmlMemoryRoute::Low => PreparedOlsExecutionMode::Low,
     };
     config.linear.execution.poolsize = config.memory.poolsize;
-    let fe_design = prepared.fit_owned_fe_design()?;
     let solver_rhs = memory_plan
         .dimensions
         .finite_columns
         .checked_add(1)
         .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-    let solver_workspace =
-        public_solver_workspace_bytes(prepared, &fe_design, &config, solver_rhs, purpose)?;
-    memory_plan = memory_plan.with_solver_workspace(solver_workspace)?;
+    let solver_admission =
+        public_solver_memory_admission(prepared, memory_plan, &config, solver_rhs, purpose)?;
+    memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
+    let solver_execution_bytes = memory_plan
+        .selected_inventory()
+        .peak_bytes
+        .checked_add(solver_admission.owned_fe_design_shortfall_bytes)
+        .ok_or_else(|| allocation("PPML FE solver execution memory overflows"))?;
     let solver_memory_budget = FeSolverMemoryBudget {
-        execution_bytes: memory_plan.selected_inventory().peak_bytes,
+        execution_bytes: solver_execution_bytes,
         usable_bytes: memory_plan.usable_bytes.unwrap_or(u128::MAX),
     };
     config.ppml.absorb.solver_memory_budget = Some(solver_memory_budget);
     config.linear.absorb.solver_memory_budget = Some(solver_memory_budget);
+    // The route and its complete fit-lifetime budget are admitted before this
+    // observation-scale owned copy of the already-finalized FE topology.
+    let fe_design = prepared.fit_owned_fe_design()?;
     let requested_threads = config
         .linear
         .execution
@@ -974,7 +998,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         active_columns,
                         session.fe_design(),
                         config.linear.execution.threads,
-                        CategoricalLsmrPolicy::Reuse,
+                        joint_lsmr_policy(session.fe_design().effects().len()),
                     )?);
                 }
                 PpmlSolverEngine::LsmrFused => {
@@ -1040,7 +1064,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             rank_frozen = true;
             (
                 joint.active_rank(),
-                LinearSessionReuseReport::ppml_joint(report.setup_seconds + report.solve_seconds),
+                LinearSessionReuseReport::ppml_specialized(
+                    report.setup_seconds + report.solve_seconds,
+                    report.certification_seconds,
+                ),
                 FeSolverKind::Lsmr,
             )
         } else if let Some(fused) = fused_lsmr.as_mut() {
@@ -1069,7 +1096,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             rank_frozen = true;
             (
                 fused.active_rank(),
-                LinearSessionReuseReport::ppml_joint(report.setup_seconds + report.solve_seconds),
+                LinearSessionReuseReport::ppml_specialized(
+                    report.setup_seconds + report.solve_seconds,
+                    report.certification_seconds,
+                ),
                 FeSolverKind::Lsmr,
             )
         } else if fused_cmg.is_some() {
@@ -1105,8 +1135,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     rank_frozen = true;
                     (
                         cmg.active_rank(),
-                        LinearSessionReuseReport::ppml_joint(
-                            report.setup_seconds + report.solve_seconds + report.finish_seconds,
+                        LinearSessionReuseReport::ppml_specialized(
+                            report.setup_seconds + report.solve_seconds,
+                            report.finish_seconds,
                         ),
                         FeSolverKind::Cmg,
                     )
@@ -1606,7 +1637,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             active_columns,
                             session.fe_design(),
                             config.linear.execution.threads,
-                            CategoricalLsmrPolicy::Reuse,
+                            joint_lsmr_policy(session.fe_design().effects().len()),
                         )?);
                     }
                     Some(PpmlSolverEngine::LsmrFused) => {
@@ -1856,32 +1887,70 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     )))
 }
 
-fn public_solver_workspace_bytes<P: PreparedOlsFitView + ?Sized>(
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct PublicSolverMemoryAdmission {
+    incremental_bytes: u128,
+    owned_fe_design_shortfall_bytes: u128,
+}
+
+fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
-    design: &crate::fe::FeDesign,
+    memory_plan: PpmlMemoryPlan,
     config: &PreparedPpmlIrlsConfig,
     rhs: usize,
     purpose: PreparedPpmlIrlsPurpose,
-) -> Result<u128> {
+) -> Result<PublicSolverMemoryAdmission> {
     let solver = config.solver_plan.selected;
     if matches!(
         solver,
         super::PpmlSolverFamily::Auto | super::PpmlSolverFamily::Map
-    ) || design.effects().is_empty()
-        || matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. })
+    ) || matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. })
     {
-        return Ok(0);
+        return Ok(PublicSolverMemoryAdmission::default());
+    }
+    let design = prepared.fit_borrowed_cmg_design()?;
+    let dimensions = memory_plan.dimensions;
+    let admitted_rhs = dimensions
+        .finite_columns
+        .checked_add(1)
+        .ok_or_else(|| allocation("admitted PPML FE solver RHS width overflows"))?;
+    if design.nobs() != dimensions.observations
+        || design.effects().len() != dimensions.fe_dimensions
+        || rhs != admitted_rhs
+        || config.linear.execution.threads.resolved() != dimensions.threads
+    {
+        return Err(internal(
+            "public PPML solver preflight does not match its admitted immutable dimensions",
+        ));
     }
     let mut levels = Vec::new();
     levels
         .try_reserve_exact(design.effects().len())
         .map_err(|_| allocation("unable to reserve PPML FE solver preflight levels"))?;
     levels.extend(design.effects().iter().map(|effect| effect.n_levels()));
-    Ok(match solver {
+    let total_levels = levels.iter().try_fold(0_usize, |total, levels| {
+        total
+            .checked_add(*levels)
+            .ok_or_else(|| allocation("PPML FE solver level count overflows"))
+    })?;
+    if total_levels != dimensions.fe_total_levels
+        || dimensions.fe_total_channels != dimensions.fe_dimensions
+        || dimensions.fe_max_channels != usize::from(!levels.is_empty())
+        || levels.iter().copied().max().unwrap_or(0) != dimensions.fe_max_levels
+    {
+        return Err(internal(
+            "public PPML solver topology does not match its admitted FE dimensions",
+        ));
+    }
+    let owned_fe_design_peak =
+        conservative_owned_intercept_fe_design_peak_bytes(design.nobs(), &levels)?;
+    let owned_fe_design_shortfall_bytes = owned_fe_design_peak
+        .saturating_sub(memory_plan.selected_inventory().fe_solver_topology_bytes);
+    let route_workspace = match solver {
         super::PpmlSolverFamily::Lsmr => {
             let active_columns = rhs.saturating_sub(1);
             let fused_zero_control = estimate_fused_fwl_lsmr_workspace_bytes(
-                design.nobs(),
+                dimensions.observations,
                 0,
                 &levels,
                 config.linear.execution.threads.resolved(),
@@ -1891,22 +1960,22 @@ fn public_solver_workspace_bytes<P: PreparedOlsFitView + ?Sized>(
                 fused_zero_control
             } else {
                 estimate_joint_lsmr_workspace_bytes(
-                    design.nobs(),
+                    dimensions.observations,
                     active_columns,
                     &levels,
                     config.linear.execution.threads.resolved(),
+                    joint_lsmr_policy(levels.len()),
                 )?
                 .max(fused_zero_control)
             }
         }
         super::PpmlSolverFamily::Cmg => {
-            let workspace = estimate_fused_cmg_workspace_bytes(
-                design.nobs(),
+            let fused_workspace = estimate_fused_cmg_workspace_bytes(
+                dimensions.observations,
                 rhs.saturating_sub(1),
                 config.linear.execution.threads.resolved(),
             )?;
-            let borrowed = prepared.fit_borrowed_cmg_design()?;
-            let profile = CmgTopologyProfile::analyze(&borrowed)?;
+            let profile = CmgTopologyProfile::analyze(&design)?;
             if profile.nuisance_columns() > CMG_MAX_NUISANCE_COLUMNS {
                 return Err(FeregError::new(
                     ErrorCode::Unsupported,
@@ -1916,14 +1985,79 @@ fn public_solver_workspace_bytes<P: PreparedOlsFitView + ?Sized>(
                     ),
                 ));
             }
-            workspace
-                .checked_add(PreparedCmgTopology::conservative_prepare_peak_bytes(
-                    &borrowed,
-                )?)
-                .ok_or_else(|| allocation("prepared PPML CMG workspace peak overflows"))?
+            let cmg_config = CmgConfig {
+                map: config.ppml.absorb.map,
+                threads: config.linear.execution.threads,
+                batch_size: config.memory.poolsize.min(rhs).max(1),
+                retain_coefficients: false,
+                requested_solver: FeSolverKind::Cmg,
+                solver_memory_budget: None,
+            };
+            let topology_prepare = PreparedCmgTopology::conservative_prepare_peak_bytes(&design)?;
+            let retained_frame =
+                PreparedCmgTopology::conservative_retained_frame_peak_bytes(&design, cmg_config)?;
+            let steady_peak = fused_workspace
+                .checked_add(retained_frame)
+                .ok_or_else(|| allocation("prepared PPML CMG steady-state peak overflows"))?;
+            let complete_peak = topology_prepare.max(steady_peak);
+            #[cfg(test)]
+            {
+                let topology_only = fused_workspace
+                    .checked_add(topology_prepare)
+                    .and_then(|value| value.checked_add(owned_fe_design_shortfall_bytes))
+                    .ok_or_else(|| allocation("prepared PPML CMG legacy early peak overflows"))?;
+                let complete_incremental = complete_peak
+                    .checked_add(owned_fe_design_shortfall_bytes)
+                    .ok_or_else(|| allocation("prepared PPML CMG complete early peak overflows"))?;
+                CMG_EARLY_MEMORY_PEAKS.set(Some((topology_only, complete_incremental)));
+            }
+            complete_peak
         }
         super::PpmlSolverFamily::Auto | super::PpmlSolverFamily::Map => 0,
+    };
+    Ok(PublicSolverMemoryAdmission {
+        incremental_bytes: route_workspace
+            .checked_add(owned_fe_design_shortfall_bytes)
+            .ok_or_else(|| allocation("public PPML solver admission memory overflows"))?,
+        owned_fe_design_shortfall_bytes,
     })
+}
+
+fn conservative_owned_intercept_fe_design_peak_bytes(
+    rows: usize,
+    levels: &[usize],
+) -> Result<u128> {
+    let n = rows as u128;
+    let effects = levels.len() as u128;
+    let total_levels = levels.iter().try_fold(0_u128, |total, levels| {
+        total
+            .checked_add(*levels as u128)
+            .ok_or_else(|| allocation("owned PPML FE level count overflows"))
+    })?;
+    let maximum_levels = levels.iter().copied().max().unwrap_or(0) as u128;
+    let word = std::mem::size_of::<usize>() as u128;
+    let retained = effects
+        .checked_mul(std::mem::size_of::<crate::fe::EffectTerm>() as u128)
+        .and_then(|value| {
+            value.checked_add(
+                n.checked_mul(effects)?
+                    .checked_mul(std::mem::size_of::<u32>() as u128)?,
+            )
+        })
+        .and_then(|value| value.checked_add(n.checked_mul(effects)?.checked_mul(word)?))
+        .and_then(|value| value.checked_add(total_levels.checked_add(effects)?.checked_mul(word)?))
+        .ok_or_else(|| allocation("owned PPML FE topology estimate overflows"))?;
+    // LevelIndex construction holds one count and one cursor for every level
+    // beside the retained codes, offsets, and memberships of the current and
+    // previously completed effects.
+    retained
+        .checked_add(
+            maximum_levels
+                .checked_mul(2)
+                .and_then(|value| value.checked_mul(word))
+                .ok_or_else(|| allocation("owned PPML FE construction scratch overflows"))?,
+        )
+        .ok_or_else(|| allocation("owned PPML FE construction peak overflows"))
 }
 
 fn map_solver_observation(
@@ -1951,11 +2085,11 @@ fn joint_solver_observation(report: JointLsmrReport) -> PpmlSolverObservation {
     PpmlSolverObservation {
         engine: PpmlSolverEngine::LsmrJoint,
         frame: PpmlSolverFrameKind::Ordinary,
-        retries: usize::from(report.continued_after_certificate),
+        retries: report.retries,
         iterations: report.iterations,
         setup_seconds: report.setup_seconds,
         solve_seconds: report.solve_seconds,
-        certification_seconds: 0.0,
+        certification_seconds: report.certification_seconds,
         absolute_infinity_norm: Some(
             report
                 .certificate
@@ -1974,11 +2108,11 @@ fn fused_lsmr_solver_observation(report: FusedFwlLsmrReport) -> PpmlSolverObserv
     PpmlSolverObservation {
         engine: PpmlSolverEngine::LsmrFused,
         frame: PpmlSolverFrameKind::Ordinary,
-        retries: usize::from(report.continued_after_certificate),
+        retries: report.retries,
         iterations: report.iterations,
         setup_seconds: report.setup_seconds,
         solve_seconds: report.solve_seconds,
-        certification_seconds: 0.0,
+        certification_seconds: report.certification_seconds,
         absolute_infinity_norm: Some(
             report
                 .certificate
@@ -2144,7 +2278,10 @@ fn refresh_linear_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         BorrowedMapWeights::Provided(workspace.hessian_weights()),
         ppml_bread_weight_scale(workspace.hessian_weights())?,
         generation,
-    )
+    )?;
+    #[cfg(test)]
+    CANONICAL_FRAME_REFRESH_COUNT.set(CANONICAL_FRAME_REFRESH_COUNT.get().saturating_add(1));
+    Ok(())
 }
 
 /// Rebuild the reusable linear products on the accepted PPML Hessian without
@@ -4101,5 +4238,37 @@ mod tests {
     #[test]
     fn prepared_iteration_report_fits_registered_memory_slot() {
         assert!(std::mem::size_of::<PreparedPpmlIterationReport>() <= 256);
+    }
+
+    #[test]
+    fn owned_intercept_fe_design_peak_covers_the_allocated_topology() {
+        for codes in [
+            vec![vec![0, 0, 1, 1], vec![0, 1, 0, 1]],
+            vec![
+                vec![0, 0, 1, 1, 2, 2],
+                vec![0, 1, 0, 1, 0, 1],
+                vec![0, 1, 2, 0, 1, 2],
+            ],
+        ] {
+            let levels: Vec<usize> = codes
+                .iter()
+                .map(|effect| {
+                    effect.iter().copied().max().expect("nonempty test effect") as usize + 1
+                })
+                .collect();
+            let rows = codes[0].len();
+            let effects = codes
+                .into_iter()
+                .zip(&levels)
+                .map(|(effect, levels)| {
+                    crate::fe::EffectTerm::new(effect, *levels, true, Vec::new())
+                        .expect("intercept-only test effect")
+                })
+                .collect();
+            let design = FeDesign::new(rows, effects).expect("intercept-only test design");
+            let bound = conservative_owned_intercept_fe_design_peak_bytes(rows, &levels)
+                .expect("owned topology peak");
+            assert!(bound >= design.storage_capacities().resident_bytes);
+        }
     }
 }

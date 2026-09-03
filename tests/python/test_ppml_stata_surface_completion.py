@@ -156,6 +156,7 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
             "solver(lsmr)",
             'e(feppml_solver_engine)\'"\' == "lsmr_fused"',
             'e(feppml_solver_engine)\'"\' == "lsmr_joint"',
+            "absorb(cl1 cl2 cl3) separation(none)",
             "e(feppml_solver)[2,8] > 0",
             "e(feppml_solver)[3,8] > 0",
             "solver(cmg)",

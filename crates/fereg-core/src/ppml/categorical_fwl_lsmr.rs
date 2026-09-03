@@ -18,27 +18,26 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_lsmr::{
     add_relative, bytes_for_memory, checked_add_memory, checked_mul_memory, checked_sum_memory,
-    CategoricalLsmrMemoryShape, CategoricalLsmrPolicy, FeTopologyIdentity, FiniteCompensatedSum,
-    JointLsmrCertificate, ScaledSquareSum,
+    finite_weighted_moment, CategoricalLsmrMemoryShape, CategoricalLsmrPolicy, FeTopologyIdentity,
+    FiniteCompensatedSum, JointLsmrCertificate, ScaledSquareSum,
 };
 use super::PpmlIterationWorkspace;
-
-#[cfg(test)]
-static TEST_FUSED_LSMR_EXECUTING_WIDTH: std::sync::atomic::AtomicUsize =
-    std::sync::atomic::AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct FusedFwlLsmrReport {
     pub(crate) iterations: usize,
     pub(crate) effective_tolerance: f64,
+    pub(crate) retries: usize,
     pub(crate) setup_seconds: f64,
     pub(crate) solve_seconds: f64,
+    pub(crate) certification_seconds: f64,
     pub(crate) preconditioner_reuse_attempted: bool,
     pub(crate) preconditioner_reuse_certified: bool,
     pub(crate) rebuilt_preconditioner: bool,
-    pub(crate) continued_after_certificate: bool,
     pub(crate) used_schwarz: bool,
     pub(crate) certificate: JointLsmrCertificate,
+    #[cfg(test)]
+    pub(crate) executing_threads: usize,
 }
 
 pub(crate) struct ReusableCategoricalFwlLsmr {
@@ -175,18 +174,16 @@ impl ReusableCategoricalFwlLsmr {
         local_size: Option<usize>,
     ) -> Result<FusedFwlLsmrReport> {
         #[cfg(test)]
-        TEST_FUSED_LSMR_EXECUTING_WIDTH.store(
-            rayon::current_num_threads(),
-            std::sync::atomic::Ordering::Relaxed,
-        );
+        let executing_threads = rayon::current_num_threads();
         let preconditioner_reuse_attempted =
             self.policy == CategoricalLsmrPolicy::Reuse && self.preconditioner.is_some();
         let mut setup_seconds = 0.0_f64;
         let mut solve_seconds = 0.0_f64;
+        let mut certification_seconds = 0.0_f64;
         let mut iterations = 0_usize;
+        let mut retries = 0_usize;
         let mut rebuilt_preconditioner = false;
         let mut retry = false;
-        let mut continued_after_certificate = false;
         let mut used_schwarz = false;
         let mut effective_tolerance = tolerance;
 
@@ -204,7 +201,7 @@ impl ReusableCategoricalFwlLsmr {
                 (CategoricalLsmrPolicy::Reuse, Some(value)) if !retry => {
                     PreconditionerInput::Prebuilt(value.clone())
                 }
-                (CategoricalLsmrPolicy::Reuse | CategoricalLsmrPolicy::Rebuild, _) => {
+                (CategoricalLsmrPolicy::Reuse, _) => {
                     rebuilt_preconditioner = true;
                     PreconditionerInput::Config(PreconditionerConfig::default())
                 }
@@ -264,7 +261,7 @@ impl ReusableCategoricalFwlLsmr {
                     &self.residual,
                     tolerance,
                 )?;
-                solve_seconds += finish_started.elapsed().as_secs_f64();
+                certification_seconds += finish_started.elapsed().as_secs_f64();
                 Some(certificate)
             } else {
                 None
@@ -274,14 +271,17 @@ impl ReusableCategoricalFwlLsmr {
                 return Ok(FusedFwlLsmrReport {
                     iterations,
                     effective_tolerance,
+                    retries,
                     setup_seconds,
                     solve_seconds,
+                    certification_seconds,
                     preconditioner_reuse_attempted,
                     preconditioner_reuse_certified: preconditioner_reuse_attempted && !retry,
                     rebuilt_preconditioner,
-                    continued_after_certificate,
                     used_schwarz,
                     certificate,
+                    #[cfg(test)]
+                    executing_threads,
                 });
             }
             if retry {
@@ -292,7 +292,9 @@ impl ReusableCategoricalFwlLsmr {
                 }));
             }
             retry = true;
-            continued_after_certificate = converged;
+            retries = retries.checked_add(1).ok_or_else(|| {
+                FeregError::new(ErrorCode::Internal, "fused PPML FWL retry count overflowed")
+            })?;
             effective_tolerance = (tolerance * 0.01).max(1e-14);
         }
     }
@@ -544,8 +546,10 @@ fn certify_fwl(
         let mut basis_square = ScaledSquareSum::default();
         for row in 0..design.nobs() {
             let root_weight = weights[row].sqrt();
-            moment.add((root_weight * residual[row]) * (root_weight * column[row]))?;
-            basis_square.add(root_weight * column[row])?;
+            let (moment_term, weighted_basis) =
+                finite_weighted_moment(weights[row], residual[row], column[row], root_weight)?;
+            moment.add(moment_term)?;
+            basis_square.add(weighted_basis)?;
         }
         let moment = moment.total()?;
         finite_absolute = finite_absolute.max(moment.abs());
@@ -564,8 +568,10 @@ fn certify_fwl(
             let mut basis_square = ScaledSquareSum::default();
             for &row in effect.level_index().members(level) {
                 let root_weight = weights[row].sqrt();
-                moment.add((root_weight * residual[row]) * root_weight)?;
-                basis_square.add(root_weight)?;
+                let (moment_term, weighted_basis) =
+                    finite_weighted_moment(weights[row], residual[row], 1.0, root_weight)?;
+                moment.add(moment_term)?;
+                basis_square.add(weighted_basis)?;
             }
             let moment = moment.total()?;
             fe_absolute = fe_absolute.max(moment.abs());
@@ -817,44 +823,66 @@ mod tests {
     }
 
     #[test]
-    fn fused_solver_runs_upstream_work_under_the_retained_team() {
+    fn exact_certificate_does_not_erase_a_finite_moment_through_split_underflow() {
         let design = FeDesign::new(
-            4,
-            vec![EffectTerm::new(vec![0, 0, 1, 1], 2, true, Vec::new()).expect("effect")],
+            2,
+            vec![EffectTerm::new(vec![0, 0], 1, true, Vec::new()).expect("effect")],
         )
         .expect("design");
-        let mut solver = ReusableCategoricalFwlLsmr {
-            team: ThreadTeam::new(ThreadConfig::from_requested(3, true).expect("thread config"))
+        let active = vec![vec![1e300, 1e300]];
+        let values = [1e-200, 1e-200];
+        let error = certify_fwl(&design, &active, &[1e-300; 2], &values, &values, 1e-8)
+            .expect_err("unrepresentable reference norm must fail closed");
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+    }
+
+    #[test]
+    fn fused_solver_tracks_retained_team_across_one_four_one() {
+        let design = FeDesign::new(
+            4,
+            vec![
+                EffectTerm::new(vec![0, 0, 1, 1], 2, true, Vec::new()).expect("first"),
+                EffectTerm::new(vec![0, 1, 0, 1], 2, true, Vec::new()).expect("second"),
+            ],
+        )
+        .expect("design");
+        let ambient = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .expect("ambient pool");
+        for requested in [1, 4, 1] {
+            let mut solver = ReusableCategoricalFwlLsmr {
+                team: ThreadTeam::new(
+                    ThreadConfig::from_requested(requested, true).expect("thread config"),
+                )
                 .acquire()
                 .expect("installed team"),
-            active_columns: Vec::new(),
-            active_slots: Vec::new(),
-            topology: FeTopologyIdentity::capture(&design).expect("topology"),
-            preconditioner: None,
-            gram: Vec::new(),
-            rhs: Vec::new(),
-            factor: Vec::new(),
-            forward: Vec::new(),
-            standardized_solution: Vec::new(),
-            scales: Vec::new(),
-            coefficients: Vec::new(),
-            permutation: Vec::new(),
-            residual: vec![0.0; 4],
-            fitted_without_offset: vec![0.0; 4],
-            policy: CategoricalLsmrPolicy::Diagonal,
-        };
-        let unrelated_pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .build()
-            .expect("unrelated pool");
-        let report = unrelated_pool
-            .install(|| solver.solve(&design, &[1.0, 1.0, 2.0, 2.0], &[1.0; 4], 1e-10, 100, None))
-            .expect("fused solve");
-        assert!(report.certificate.passed);
-        assert_eq!(
-            TEST_FUSED_LSMR_EXECUTING_WIDTH.load(std::sync::atomic::Ordering::Relaxed),
-            3,
-        );
+                active_columns: Vec::new(),
+                active_slots: Vec::new(),
+                topology: FeTopologyIdentity::capture(&design).expect("topology"),
+                preconditioner: None,
+                gram: Vec::new(),
+                rhs: Vec::new(),
+                factor: Vec::new(),
+                forward: Vec::new(),
+                standardized_solution: Vec::new(),
+                scales: Vec::new(),
+                coefficients: Vec::new(),
+                permutation: Vec::new(),
+                residual: vec![0.0; 4],
+                fitted_without_offset: vec![0.0; 4],
+                policy: CategoricalLsmrPolicy::Diagonal,
+            };
+            let report = ambient
+                .install(|| {
+                    solver.solve(&design, &[1.0, 2.0, 3.0, 5.0], &[1.0; 4], 1e-10, 100, None)
+                })
+                .expect("fused solve");
+            assert_eq!(report.executing_threads, requested);
+            assert_eq!(report.retries, 0);
+            assert!(report.certificate.passed);
+            assert!(report.certification_seconds > 0.0);
+        }
     }
 
     #[test]

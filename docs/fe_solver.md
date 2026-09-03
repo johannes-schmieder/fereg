@@ -144,8 +144,12 @@ Two concrete categorical LSMR engines operate between canonical checkpoints:
   solves the standardized system with pivoted Cholesky;
 - joint incremental LSMR applies one augmented operator to the Newton
   correction over active controls plus categorical FE coefficients, carries a
-  fit-lifetime correction warm start, and rebuilds stale Schwarz state when
-  its exact certificate requires continuation.
+  fit-lifetime correction warm start, and uses a topology-class policy rather
+  than a fitted size threshold. Two-effect problems retain Schwarz state and
+  rebuild it only when recurrence or certificate evidence requires that work;
+  problems with three or more effects use the diagonal block because retained
+  pairwise Schwarz factors can make their augmented recurrence dramatically
+  slower.
 
 The public LSMR family selects one of those engines once per fit. Its
 preconditioner and reuse policy are internal implementation choices, not
@@ -168,15 +172,22 @@ the canonical strict state replaces it before publication.
 
 The initial public tranche makes no allocation-free, large-scale, or
 thread-scaling claim and no automatic-routing claim. The fused engine still
-owns per-frame weight and
-projected-result storage, and either engine can spend one tighter recurrence
-pass after an uncertified result. A retained Schwarz preconditioner is rebuilt
-for that pass; the original publication certificate tolerance is unchanged.
-The result wire measures those costs separately from canonical checkpoint work.
+owns per-frame weight and projected-result storage, and either engine can spend
+one tighter recurrence pass after an uncertified result. When the selected
+policy owns a retained Schwarz preconditioner, it is rebuilt for that pass; the
+original publication certificate tolerance is unchanged. The result wire
+measures those costs separately from canonical checkpoint work.
 
 The pinned `ppmlhdfe` comparator uses its default conjugate-gradient
 acceleration of symmetric Kaczmarz; it must not be described generically as
-LSMR. The development harness does not force a second comparator route.
+LSMR. The development harness does not force a second comparator route. It
+parses the pinned solver's verbose route line and fails if either default
+technique changes. If a candidate disagrees scientifically with the timed
+default fit, the harness runs one untimed fit from the same pinned closure with
+`tolerance(1e-10) itolerance(1e-12)`. That strict fit keeps the same
+conjugate-gradient/symmetric-Kaczmarz technique. Agreement with the strict fit
+adjudicates the stopping discrepancy while retaining the original default-fit
+mismatch in the analysis; disagreement remains fatal.
 
 The public CMG family means only the prepared fused-FWL engine introduced by
 ADR-0023 and updated to the exact prepared-topology pin by ADR-0024. It prepares

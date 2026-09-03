@@ -1446,6 +1446,10 @@ mod tests {
         TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use crate::ols::{OlsInputBinding, OlsInputRole};
+    use crate::ppml::prepared_irls::{
+        reset_canonical_frame_refresh_count, take_canonical_frame_refresh_count,
+        take_cmg_early_memory_peaks,
+    };
     use crate::ppml::{PpmlFallbackKind, PPML_STEADY_STATE_AUDIT_ITERATIONS};
     use crate::ppml_separation::{MethodStatus, SeparationDropReason, SeparationMethods};
     use std::cell::Cell;
@@ -1521,20 +1525,43 @@ mod tests {
 
     #[test]
     fn explicit_lsmr_matches_map_and_reports_its_concrete_engine() {
-        let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
-        let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
-            .expect("production MAP PPML oracle");
-        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        for effects in [2, 3] {
+            let (baseline_request, baseline_loaded) =
+                fixture(effects, false, false, false, false, false);
+            let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
+                .expect("production MAP PPML oracle");
+            let (mut request, loaded) = fixture(effects, false, false, false, false, false);
+            request.solver = PpmlSolverFamily::Lsmr;
+            request.memory.requested = MemoryMode::Fast;
+            reset_canonical_frame_refresh_count();
+            let candidate = fit_prepared_ppml(request, loaded).expect("public LSMR PPML");
+            let canonical_refreshes = take_canonical_frame_refresh_count();
+            assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
+            assert_eq!(candidate.solver().selected, PpmlSolverFamily::Lsmr);
+            assert_eq!(
+                candidate.solver().selected_engine,
+                super::super::PpmlSolverEngine::LsmrJoint
+            );
+            assert_specialized_route_skips_ordinary_canonical_refresh(
+                &candidate,
+                canonical_refreshes,
+                super::super::PpmlSolverEngine::LsmrJoint,
+            );
+            assert_ppml_results_close(&candidate, &baseline);
+        }
+    }
+
+    #[test]
+    fn three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh() {
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
         request.solver = PpmlSolverFamily::Lsmr;
         request.memory.requested = MemoryMode::Fast;
-        let candidate = fit_prepared_ppml(request, loaded).expect("public LSMR PPML");
-        assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
-        assert_eq!(candidate.solver().selected, PpmlSolverFamily::Lsmr);
-        assert_eq!(
-            candidate.solver().selected_engine,
-            super::super::PpmlSolverEngine::LsmrJoint
-        );
-        assert_ppml_results_close(&candidate, &baseline);
+        super::super::prepared_irls::inject_strict_basis_change(true, false);
+        let candidate = fit_prepared_ppml(request, loaded)
+            .expect("three-effect LSMR must survive a strict basis refresh");
+        assert!(candidate.convergence().converged);
+        assert!(candidate.convergence().strict_profile_rejections >= 1);
+        assert!(candidate.solver().engines()[2].ordinary_frames > 0);
     }
 
     #[test]
@@ -1558,13 +1585,20 @@ mod tests {
             let (mut request, loaded) = fixture(effects, false, false, false, false, false);
             request.solver = PpmlSolverFamily::Cmg;
             request.memory.requested = MemoryMode::Fast;
+            reset_canonical_frame_refresh_count();
             let candidate = fit_prepared_ppml(request, loaded).expect("public prepared CMG PPML");
+            let canonical_refreshes = take_canonical_frame_refresh_count();
             assert_eq!(candidate.solver().requested, PpmlSolverFamily::Cmg);
             assert_eq!(candidate.solver().effective, PpmlSolverFamily::Cmg);
             assert_eq!(
                 candidate.memory().fallback_mask & (1_u32 << PpmlFallbackKind::Route as u8),
                 0,
                 "the focused {effects}-FE fixture must execute CMG without MAP fallback",
+            );
+            assert_specialized_route_skips_ordinary_canonical_refresh(
+                &candidate,
+                canonical_refreshes,
+                super::super::PpmlSolverEngine::CmgPrepared,
             );
             assert_ppml_results_close(&candidate, &baseline);
         }
@@ -1622,6 +1656,71 @@ mod tests {
     }
 
     #[test]
+    fn public_cmg_non_numerical_failures_remain_fatal() {
+        for code in [
+            ErrorCode::Allocation,
+            ErrorCode::Internal,
+            ErrorCode::InvalidArgument,
+            ErrorCode::InvalidData,
+            ErrorCode::Interrupted,
+        ] {
+            let (mut request, loaded) = fixture(2, false, false, false, false, false);
+            request.solver = PpmlSolverFamily::Cmg;
+            request.memory.requested = MemoryMode::Fast;
+            super::super::categorical_fwl_cmg::inject_fatal_failure_once(code);
+            let error = fit_prepared_ppml(request, loaded)
+                .expect_err("non-numerical prepared CMG failure must not fall back to MAP");
+            assert_eq!(error.code, code);
+            assert!(error.message.contains("fatal failure"));
+        }
+    }
+
+    #[test]
+    fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation() {
+        let (mut admitted_request, admitted_loaded) = fixture(2, false, false, false, false, false);
+        admitted_request.solver = PpmlSolverFamily::Cmg;
+        admitted_request.memory.requested = MemoryMode::Fast;
+        super::super::categorical_fwl_cmg::take_route_observation_preparations();
+        let admitted = fit_prepared_ppml(admitted_request, admitted_loaded)
+            .expect("unbounded prepared CMG fixture");
+        assert!(super::super::categorical_fwl_cmg::take_route_observation_preparations() > 0);
+        let (topology_only, complete) =
+            take_cmg_early_memory_peaks().expect("CMG early memory peaks");
+        let base = admitted.memory().plan.selected_inventory().peak_bytes;
+        let solver = admitted.memory().plan.solver_workspace_bytes;
+        assert_eq!(solver, complete);
+        assert!(complete > topology_only);
+        let usable = base
+            .checked_add(topology_only)
+            .expect("intermediate CMG usable-memory boundary");
+        let headroom = 512_u128 * 1024 * 1024;
+        let available = usable
+            .checked_add(headroom)
+            .expect("small fixture available-memory boundary");
+        assert!(available / 5 <= headroom);
+
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Cmg;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = Some(available);
+        super::super::categorical_fwl_cmg::take_route_observation_preparations();
+        let error = fit_prepared_ppml(request, loaded)
+            .expect_err("a topology-only CMG budget must fail before route preparation");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("public PPML FE solver workspace"));
+        assert_eq!(
+            super::super::categorical_fwl_cmg::take_route_observation_preparations(),
+            0,
+            "route-owned observation-scale topology must not start before budget admission",
+        );
+        assert_eq!(
+            take_cmg_early_memory_peaks(),
+            Some((topology_only, complete)),
+            "the rejected fit must apply the same complete early CMG bound",
+        );
+    }
+
+    #[test]
     fn public_cmg_fallback_retains_retry_timing_and_certificate_evidence() {
         let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
@@ -1652,6 +1751,27 @@ mod tests {
         assert_eq!(solver.fallback_count, 1);
         assert_eq!(solver.effective, PpmlSolverFamily::Map);
         assert_ppml_results_close(&candidate, &baseline);
+    }
+
+    fn assert_specialized_route_skips_ordinary_canonical_refresh(
+        candidate: &CertifiedPpmlResult,
+        canonical_refreshes: usize,
+        expected_engine: super::super::PpmlSolverEngine,
+    ) {
+        let solver = candidate.solver();
+        let map = &solver.engines()[0];
+        let specialized = solver
+            .engines()
+            .iter()
+            .find(|report| report.engine == expected_engine)
+            .expect("canonical solver report contains the selected engine row");
+        assert!(specialized.ordinary_frames > 0);
+        assert_eq!(map.ordinary_frames, 0);
+        assert_eq!(
+            canonical_refreshes.saturating_add(1),
+            map.checkpoint_frames,
+            "only post-initial MAP checkpoints may refresh the canonical frame",
+        );
     }
 
     fn assert_ppml_results_close(candidate: &CertifiedPpmlResult, baseline: &CertifiedPpmlResult) {

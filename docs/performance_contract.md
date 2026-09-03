@@ -75,7 +75,13 @@ Process-RSS and old comparator/MAP ratios remain diagnostic, including cases
 where a faster certified route deliberately spends more resident memory.
 Solver development compares the three public families with the pinned default
 `ppmlhdfe` comparator. It starts with the versioned local science and smoke
-profiles. When an SCC development campaign
+profiles. The default comparator alone is timed. A strict, untimed fit from
+the same pinned comparator closure may adjudicate a candidate-versus-default
+stopping discrepancy, but only after such a discrepancy is observed; both
+reference paths must verify conjugate-gradient acceleration with the symmetric-
+Kaczmarz transform, and the default discrepancy remains recorded. Thread-
+scaling scopes within one campaign bundle reuse one generated dataset and
+seed. When an SCC development campaign
 is explicitly authorized, it uses small diagnostic cells on comparable
 28-core nodes with roughly 10--20 independent tasks in parallel. Those runs
 are not qualification evidence. Large-sample and broad route-calibration work

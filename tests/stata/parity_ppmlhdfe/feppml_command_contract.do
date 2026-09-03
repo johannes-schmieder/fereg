@@ -248,6 +248,14 @@ assert e(feppml_solver)[2,8] == 0
 assert e(feppml_solver)[3,8] > 0
 assert e(feppml_linear_route) == 2
 
+`feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
+    memory(fast) threads(1) deterministic solver(lsmr)
+assert `"`e(feppml_solver_engine)'"' == "lsmr_joint"
+assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_joint"
+assert e(feppml_solver_fallback_count) == 0
+assert e(feppml_solver)[2,8] == 0
+assert e(feppml_solver)[3,8] > 0
+
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(cmg)
 assert `"`e(solver)'"' == "cmg"

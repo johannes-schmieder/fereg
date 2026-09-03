@@ -114,7 +114,7 @@ if `"`mode'"' == "generate" {
 }
 
 if `"`mode'"' == "prepare-reference" | ///
-        (`"`mode'"' == "run" & `"`arm'"' == "ppmlhdfe") {
+        (`"`mode'"' == "run" & inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_strict")) {
     adopath ++ `"`reference_root'/require/src"'
     adopath ++ `"`reference_root'/ftools/src"'
     adopath ++ `"`reference_root'/reghdfe/src"'
@@ -174,7 +174,7 @@ if inlist(`"`arm'"', "map", "lsmr", "cmg") {
         exit 603
     }
 }
-if `"`arm'"' == "ppmlhdfe" {
+if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_strict") {
     foreach package in require ftools reghdfe ppmlhdfe {
         capture findfile `package'.ado
         if _rc exit _rc
@@ -214,6 +214,13 @@ if `"`arm'"' == "ppmlhdfe" {
     local command `"ppmlhdfe y `control_list', absorb(`absorb_list') vce(robust) separation(none)"'
     local route_command `"`command' verbose(2)"'
 }
+else if `"`arm'"' == "ppmlhdfe_strict" {
+    if `repetitions' != 1 {
+        display as error "strict PPML scientific adjudication must run exactly once"
+        exit 198
+    }
+    local command `"ppmlhdfe y `control_list', absorb(`absorb_list') vce(robust) separation(none) tolerance(1e-10) itolerance(1e-12) verbose(2)"'
+}
 else if inlist(`"`arm'"', "map", "lsmr", "cmg") {
     local command `"feppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') solver(`arm')"'
 }
@@ -222,33 +229,46 @@ else {
     exit 198
 }
 
-local warm_command `"`command'"'
-if `"`arm'"' == "ppmlhdfe" local warm_command `"`route_command'"'
-capture noisily `warm_command'
-local warm_rc = _rc
-if `warm_rc' {
-    display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`warm_rc'"
-    exit `warm_rc'
-}
-if `"`arm'"' == "ppmlhdfe" {
-    display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=conjugate_gradient"
+if `"`arm'"' != "ppmlhdfe_strict" {
+    local warm_command `"`command'"'
+    if `"`arm'"' == "ppmlhdfe" local warm_command `"`route_command'"'
+    capture noisily `warm_command'
+    local warm_rc = _rc
+    if `warm_rc' {
+        display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`warm_rc'"
+        exit `warm_rc'
+    }
+    if `"`arm'"' == "ppmlhdfe" {
+        local reference_acceleration "conjugate_gradient"
+        local reference_transform "symmetric_kaczmarz"
+        display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`reference_acceleration'|transform=`reference_transform'"
+    }
 }
 
 file open output using `"`result'"', write text replace
-file write output "arm" _tab "repetition" _tab "rc" _tab "seconds" _tab ///
+file write output "arm" _tab "repetition" _tab "rc" _tab "timed" _tab "seconds" _tab ///
     "N" _tab "ll" _tab "deviance" _tab "converged" _tab "rank" _tab ///
     "df_a" _tab "df_resid" _tab "inner_iterations" _tab "route_code" _tab ///
     "selected_engine_code" _tab "effective_engine_code" _tab ///
     "fallback_count" _tab "effective_threads" _tab "b_names" _tab "b_values" _tab ///
-    "v_names" _tab "v_values" _tab "certificate_values" _tab "runtime_values" _n
+    "v_names" _tab "v_values" _tab "certificate_values" _tab "runtime_values" _tab ///
+    "reference_acceleration" _tab "reference_transform" _n
 forvalues repetition = 1/`repetitions' {
-    timer clear 91
-    timer on 91
-    capture noisily `command'
-    local rc = _rc
-    timer off 91
-    quietly timer list 91
-    local seconds = r(t91)
+    local timed = (`"`arm'"' != "ppmlhdfe_strict")
+    local seconds .
+    if `timed' {
+        timer clear 91
+        timer on 91
+        capture noisily `command'
+        local rc = _rc
+        timer off 91
+        quietly timer list 91
+        local seconds = r(t91)
+    }
+    else {
+        capture noisily `command'
+        local rc = _rc
+    }
     local sample_n .
     local ll .
     local deviance .
@@ -268,6 +288,8 @@ forvalues repetition = 1/`repetitions' {
     local v_values
     local certificate_values
     local runtime_values
+    local reference_acceleration
+    local reference_transform
     if !`rc' {
         local sample_n = e(N)
         capture local ll = e(ll)
@@ -293,16 +315,22 @@ forvalues repetition = 1/`repetitions' {
         if !_rc mata: st_local("certificate_values", invtokens(strofreal(vec(st_matrix("__certificate"))', "%21.17e")))
         capture matrix __runtime = e(feppml_runtime)
         if !_rc mata: st_local("runtime_values", invtokens(strofreal(vec(st_matrix("__runtime"))', "%21.17e")))
+        if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_strict") {
+            local reference_acceleration "conjugate_gradient"
+            local reference_transform "symmetric_kaczmarz"
+            display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`reference_acceleration'|transform=`reference_transform'"
+        }
     }
     file write output `"`arm'"' _tab %9.0f (`repetition') _tab %9.0f (`rc') _tab ///
-        %21.17e (`seconds') _tab %21.17e (`sample_n') _tab %21.17e (`ll') _tab ///
+        %9.0f (`timed') _tab %21.17e (`seconds') _tab %21.17e (`sample_n') _tab %21.17e (`ll') _tab ///
         %21.17e (`deviance') _tab %21.17e (`converged') _tab %21.17e (`rank') _tab ///
         %21.17e (`df_a') _tab %21.17e (`df_resid') _tab %21.17e (`inner_iterations') _tab ///
         %21.17e (`route_code') _tab %21.17e (`selected_engine_code') _tab ///
         %21.17e (`effective_engine_code') _tab %21.17e (`fallback_count') _tab ///
         %21.17e (`effective_threads') _tab `"`b_names'"' _tab `"`b_values'"' _tab ///
         `"`v_names'"' _tab `"`v_values'"' _tab `"`certificate_values'"' _tab ///
-        `"`runtime_values'"' _n
+        `"`runtime_values'"' _tab `"`reference_acceleration'"' _tab ///
+        `"`reference_transform'"' _n
     if `rc' {
         file close output
         display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`rc'"

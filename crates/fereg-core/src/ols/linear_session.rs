@@ -220,11 +220,11 @@ impl LinearSessionReuseReport {
         }
     }
 
-    /// PPML-only incremental solve accounting. The joint engine reuses its
-    /// fit-lifetime design and response buffers, but the pinned LSMR recurrence
-    /// still allocates per call; the stronger allocation-free flags therefore
-    /// remain false.
-    pub(crate) fn ppml_joint(projection_seconds: f64) -> Self {
+    /// PPML-only specialized-solve accounting. The ordinary-frame engines
+    /// reuse fit-lifetime design and response buffers, while their upstream
+    /// solvers can still allocate per call; the stronger allocation-free flags
+    /// therefore remain false.
+    pub(crate) fn ppml_specialized(projection_seconds: f64, finite_solve_seconds: f64) -> Self {
         let mut report = Self::new(LinearSessionSolveKind::Warm);
         report.response_buffer_reused = true;
         report.weight_buffer_reused = true;
@@ -234,6 +234,7 @@ impl LinearSessionReuseReport {
         report.certificate_workspace_reused = true;
         report.predictor_workspace_reused = true;
         report.phase_timing.projection_seconds = Some(projection_seconds);
+        report.phase_timing.finite_solve_seconds = Some(finite_solve_seconds);
         report
     }
 }

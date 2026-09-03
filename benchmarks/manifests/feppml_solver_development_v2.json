@@ -10,7 +10,7 @@
     "request_wire": "1.5",
     "result_wire": "1.2",
     "action_protocol": "1.5",
-    "development_result_table": "2.1"
+    "development_result_table": "2.2"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
@@ -18,8 +18,18 @@
     {"id": "cmg", "option": "cmg", "route_code": 7}
   ],
   "comparators": [
-    {"id": "ppmlhdfe", "acceleration": "conjugate_gradient"}
+    {"id": "ppmlhdfe", "timed": true, "acceleration": "conjugate_gradient", "transform": "symmetric_kaczmarz"}
   ],
+  "scientific_adjudicator": {
+    "id": "ppmlhdfe_strict",
+    "timed": false,
+    "invoke_only_after_default_reference_mismatch": true,
+    "tolerance": 1e-10,
+    "itolerance": 1e-12,
+    "acceleration": "conjugate_gradient",
+    "transform": "symmetric_kaczmarz",
+    "preserve_default_mismatch": true
+  },
   "fixed_policy": {
     "memory": "fast",
     "separation": "none_after_all_positive_outcome_oracle",
@@ -50,6 +60,7 @@
     "seed_namespace": 2026090200,
     "data_generated_outside_timing": true,
     "same_data_for_every_solver_and_comparator": true,
+    "same_data_for_thread_scaling_within_bundle": true,
     "outcome": "strictly_positive_integer_counts"
   },
   "topologies": [
@@ -98,7 +109,7 @@
   "scc_campaign": {
     "task_count": 16,
     "expected_scopes": 56,
-    "long_observations": 25000,
+    "long_observations": 10000,
     "artifact_roles": ["candidate", "baseline"],
     "baseline_optional": true,
     "scheduler": {
@@ -112,9 +123,9 @@
       "h_rt": "02:00:00"
     },
     "bundle_shapes": {
-      "breadth": {"n": 250000, "controls": [0, 10, 50], "threads": [14]},
-      "difficulty": {"n": 250000, "controls": [2, 20], "difficulties": ["easy", "long"], "threads": [14]},
-      "scaling": {"n": 500000, "controls": [10], "threads": [1, 7, 14, 28]}
+      "breadth": {"n": 50000, "controls": [0, 10, 50], "threads": [14]},
+      "difficulty": {"n": 50000, "controls": [2, 20], "difficulties": ["easy", "long"], "threads": [14]},
+      "scaling": {"n": 100000, "controls": [10], "threads": [1, 7, 14, 28]}
     },
     "bundles": [
       {"task": 1, "id": "breadth_balanced_2fe", "shape": "breadth", "topology": "balanced_2fe", "difficulty": "easy"},

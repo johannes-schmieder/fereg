@@ -25,6 +25,9 @@ MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v2.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 SOLVERS = ("map", "lsmr", "cmg")
 COMPARATORS = ("ppmlhdfe",)
+ADJUDICATOR = "ppmlhdfe_strict"
+REFERENCE_ACCELERATION = "conjugate_gradient"
+REFERENCE_TRANSFORM = "symmetric_kaczmarz"
 ROUTE_CODES = {"map": 2, "lsmr": 3, "cmg": 7}
 SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
@@ -106,8 +109,8 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         {
             "schema_version", "manifest_id", "status", "qualification_eligible",
             "auto_calibration", "purpose", "public_command", "protocols", "solvers",
-            "comparators", "fixed_policy", "science", "generator", "topologies",
-            "profiles", "scc_campaign", "receipt_contract",
+            "comparators", "scientific_adjudicator", "fixed_policy", "science",
+            "generator", "topologies", "profiles", "scc_campaign", "receipt_contract",
         },
         "manifest",
     )
@@ -122,7 +125,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
-        "development_result_table": "2.1",
+        "development_result_table": "2.2",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -133,6 +136,19 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     comparators = manifest["comparators"]
     if not isinstance(comparators, list) or [row.get("id") for row in comparators] != list(COMPARATORS):
         raise DevelopmentError("comparator inventory changed")
+    if comparators != [{
+        "id": "ppmlhdfe", "timed": True,
+        "acceleration": REFERENCE_ACCELERATION, "transform": REFERENCE_TRANSFORM,
+    }]:
+        raise DevelopmentError("default comparator contract changed")
+    if manifest["scientific_adjudicator"] != {
+        "id": ADJUDICATOR, "timed": False,
+        "invoke_only_after_default_reference_mismatch": True,
+        "tolerance": 1e-10, "itolerance": 1e-12,
+        "acceleration": REFERENCE_ACCELERATION, "transform": REFERENCE_TRANSFORM,
+        "preserve_default_mismatch": True,
+    }:
+        raise DevelopmentError("strict scientific adjudicator contract changed")
     if manifest["topologies"] != [
         "balanced_2fe", "skewed_2fe", "chain_2fe", "hub_2fe", "dense_2fe",
         "many_levels_2fe", "balanced_3fe", "sparse_3fe",
@@ -144,6 +160,13 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     for profile_id in profiles:
         profile_scopes(dict(manifest), profile_id)
     tasks = campaign_tasks(dict(manifest))
+    if manifest["generator"].get("same_data_for_thread_scaling_within_bundle") is not True:
+        raise DevelopmentError("thread-scaling dataset-reuse contract changed")
+    if any(
+        len({dataset_id(scope) for scope in task["scopes"]}) != 1
+        for task in tasks if str(task["bundle"]).startswith("scaling_")
+    ):
+        raise DevelopmentError("thread-scaling scopes must share one generated dataset")
     campaign = manifest["scc_campaign"]
     if len(tasks) != 16 or sum(len(task["scopes"]) for task in tasks) != 56:
         raise DevelopmentError("SCC campaign must contain 16 tasks and 56 scopes")
@@ -209,7 +232,7 @@ def campaign_tasks(manifest: dict[str, object]) -> list[dict[str, object]]:
     shapes = campaign["bundle_shapes"]
     seed_base = int(manifest["generator"]["seed_namespace"]) + 1000
     tasks: list[dict[str, object]] = []
-    ordinal = 0
+    dataset_ordinal = 0
     for bundle in campaign["bundles"]:
         shape = shapes[bundle["shape"]]
         dimensions: list[tuple[int, str, int]] = []
@@ -225,8 +248,12 @@ def campaign_tasks(manifest: dict[str, object]) -> list[dict[str, object]]:
         else:
             raise DevelopmentError(f"unknown bundle shape: {bundle['shape']}")
         scopes: list[dict[str, object]] = []
+        seeds: dict[tuple[int, str], int] = {}
         for control, difficulty, thread in dimensions:
-            ordinal += 1
+            dataset_shape = (control, difficulty)
+            if dataset_shape not in seeds:
+                dataset_ordinal += 1
+                seeds[dataset_shape] = seed_base + dataset_ordinal
             observations = (
                 int(campaign["long_observations"])
                 if difficulty == "long"
@@ -236,7 +263,7 @@ def campaign_tasks(manifest: dict[str, object]) -> list[dict[str, object]]:
                 "id": f"{bundle['id']}-k{control}-{difficulty}-t{thread}",
                 "n": observations, "topology": str(bundle["topology"]),
                 "controls": control, "difficulty": difficulty, "threads": thread,
-                "seed": seed_base + ordinal,
+                "seed": seeds[dataset_shape],
             })
         tasks.append({"task": int(bundle["task"]), "bundle": str(bundle["id"]), "scopes": scopes})
     if [task["task"] for task in tasks] != list(range(1, int(campaign["task_count"]) + 1)):
@@ -244,6 +271,17 @@ def campaign_tasks(manifest: dict[str, object]) -> list[dict[str, object]]:
     all_scopes = [scope for task in tasks for scope in task["scopes"]]
     _validate_scopes(all_scopes, int(campaign["expected_scopes"]))
     return tasks
+
+
+def dataset_id(scope: Mapping[str, object]) -> str:
+    """Identify generated values independently of the requested thread count."""
+    value = (
+        f"{scope['topology']}-n{scope['n']}-k{scope['controls']}-"
+        f"{scope['difficulty']}-s{scope['seed']}"
+    )
+    if not SAFE_ID.fullmatch(value):
+        raise DevelopmentError(f"invalid generated dataset id: {value}")
+    return value
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -376,6 +414,22 @@ def stata_stage_status(console: Path, returncode: int, success: str) -> tuple[in
     return 0, "success-sentinel"
 
 
+def verified_reference_route(console: Path) -> dict[str, str]:
+    routes = set(re.findall(
+        r"Running solver \(acceleration=([a-z_]+), transform=([a-z_]+)\b",
+        process_log_text(console),
+    ))
+    expected = {(REFERENCE_ACCELERATION, REFERENCE_TRANSFORM)}
+    if routes != expected:
+        raise DevelopmentError(
+            f"reference route differs: observed={sorted(routes)}, expected={sorted(expected)}"
+        )
+    return {
+        "acceleration": REFERENCE_ACCELERATION,
+        "transform": REFERENCE_TRANSFORM,
+    }
+
+
 def run_stata(stata: str, environment: Mapping[str, str], console: Path) -> dict[str, object]:
     console.parent.mkdir(parents=True, exist_ok=True)
     clean = {key: value for key, value in os.environ.items() if not key.startswith("FEREG_PPML_SOLVER_")}
@@ -446,10 +500,11 @@ def _optional_vector(value: str) -> list[float | None]:
 
 def parse_table(path: Path, scope: Mapping[str, object], implementation: str) -> list[dict[str, object]]:
     required = {
-        "arm", "repetition", "rc", "seconds", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
+        "arm", "repetition", "rc", "timed", "seconds", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
         "inner_iterations", "route_code", "selected_engine_code", "effective_engine_code",
         "fallback_count", "effective_threads", "b_names", "b_values", "v_names",
-        "v_values", "certificate_values", "runtime_values",
+        "v_values", "certificate_values", "runtime_values", "reference_acceleration",
+        "reference_transform",
     }
     with path.open(encoding="utf-8", newline="") as source:
         reader = csv.DictReader(source, delimiter="\t")
@@ -459,15 +514,35 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
     output: list[dict[str, object]] = []
     for row in rows:
         arm = row["arm"]
-        if arm not in (*SOLVERS, *COMPARATORS):
+        if arm not in (*SOLVERS, *COMPARATORS, ADJUDICATOR):
             raise DevelopmentError(f"unknown result arm: {arm}")
         seconds = optional_float(row["seconds"])
-        if seconds is None or seconds < 0.0:
+        timed = int(row["timed"])
+        if timed not in {0, 1}:
+            raise DevelopmentError(f"invalid timing marker for {arm}")
+        if arm == ADJUDICATOR:
+            if implementation != "adjudicator" or timed or seconds is not None:
+                raise DevelopmentError("strict adjudicator must be an untimed adjudicator record")
+        elif implementation == "adjudicator" or not timed or seconds is None or seconds < 0.0:
             raise DevelopmentError(f"invalid elapsed time for {arm}")
+        expected_reference_route = arm in (*COMPARATORS, ADJUDICATOR)
+        if expected_reference_route and (
+            row["reference_acceleration"] != REFERENCE_ACCELERATION
+            or row["reference_transform"] != REFERENCE_TRANSFORM
+        ):
+            raise DevelopmentError(f"unverified reference route for {arm}")
+        if not expected_reference_route and (
+            row["reference_acceleration"] or row["reference_transform"]
+        ):
+            raise DevelopmentError(f"unexpected reference route for {arm}")
         output.append({
             **scope, "scope_id": str(scope["id"]), "implementation": implementation,
-            "arm_type": "solver" if arm in SOLVERS else "comparator", "arm": arm,
-            "repetition": int(row["repetition"]), "rc": int(row["rc"]), "seconds": seconds,
+            "arm_type": (
+                "solver" if arm in SOLVERS else
+                "comparator" if arm in COMPARATORS else "adjudicator"
+            ),
+            "arm": arm, "repetition": int(row["repetition"]), "rc": int(row["rc"]),
+            "timed": bool(timed), "seconds": seconds,
             "sample_n": optional_float(row["N"]), "ll": optional_float(row["ll"]), "deviance": optional_float(row["deviance"]),
             "converged": optional_float(row["converged"]), "rank": optional_float(row["rank"]), "df_a": optional_float(row["df_a"]),
             "df_resid": optional_float(row["df_resid"]), "inner_iterations": optional_float(row["inner_iterations"]),
@@ -478,6 +553,8 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             "effective_threads": optional_float(row["effective_threads"]), "b_names": row["b_names"].split(),
             "b_values": _float_vector(row["b_values"]), "v_names": row["v_names"].split(), "v_values": _float_vector(row["v_values"]),
             "certificate_values": _optional_vector(row["certificate_values"]), "runtime_values": _optional_vector(row["runtime_values"]),
+            "reference_acceleration": row["reference_acceleration"],
+            "reference_transform": row["reference_transform"],
         })
     return output
 
@@ -514,6 +591,7 @@ def execute_scopes(
     records: list[dict[str, object]] = []
     processes: list[dict[str, object]] = []
     datasets: list[dict[str, object]] = []
+    dataset_cache: dict[str, tuple[Path, Path, Path, str, dict[str, object]]] = {}
     if prepare_comparators:
         console = output_dir / "reference-setup.log"
         process = run_stata(
@@ -534,21 +612,36 @@ def execute_scopes(
     for scope_index, scope in enumerate(scopes):
         scope_dir = output_dir / "scopes" / str(scope["id"])
         scope_dir.mkdir(parents=True)
-        dataset = scope_dir / "data.dta"
-        data_csv = scope_dir / "data.csv"
-        meta = scope_dir / "data-meta.tsv"
-        env = base_environment(candidate_root, reference_root, scope, dataset, scope_dir / "unused.tsv")
-        env.update({"FEREG_PPML_SOLVER_MODE": "generate", "FEREG_PPML_SOLVER_DATA_CSV": str(data_csv), "FEREG_PPML_SOLVER_DATA_META": str(meta)})
-        process = run_stata(stata, env, scope_dir / "generate.log")
-        status, reason = stata_stage_status(scope_dir / "generate.log", int(process["process_returncode"]), "FEREG_PPML_SOLVER_DATA_PASS")
-        processes.append({**process, "stage": "generate", "scope_id": scope["id"], "accepted_rc": status, "status_reason": reason})
-        if status:
-            raise DevelopmentError(f"dataset generation failed for {scope['id']}: {reason}")
+        generated_id = dataset_id(scope)
+        cached = dataset_cache.get(generated_id)
+        if cached is None:
+            data_dir = output_dir / "datasets" / generated_id
+            data_dir.mkdir(parents=True)
+            dataset = data_dir / "data.dta"
+            data_csv = data_dir / "data.csv"
+            meta = data_dir / "data-meta.tsv"
+            env = base_environment(candidate_root, reference_root, scope, dataset, scope_dir / "unused.tsv")
+            env.update({"FEREG_PPML_SOLVER_MODE": "generate", "FEREG_PPML_SOLVER_DATA_CSV": str(data_csv), "FEREG_PPML_SOLVER_DATA_META": str(meta)})
+            process = run_stata(stata, env, scope_dir / "generate.log")
+            status, reason = stata_stage_status(scope_dir / "generate.log", int(process["process_returncode"]), "FEREG_PPML_SOLVER_DATA_PASS")
+            processes.append({**process, "stage": "generate", "scope_id": scope["id"], "dataset_id": generated_id, "accepted_rc": status, "status_reason": reason})
+            if status:
+                raise DevelopmentError(f"dataset generation failed for {scope['id']}: {reason}")
+            file_identity = {
+                "dta": {"sha256": sha256_file(dataset), "size": dataset.stat().st_size},
+                "csv": {"sha256": sha256_file(data_csv), "size": data_csv.stat().st_size},
+                "metadata_file": {"sha256": sha256_file(meta), "size": meta.stat().st_size},
+                "metadata": parse_data_meta(meta),
+            }
+            generated_by_scope_id = str(scope["id"])
+            dataset_cache[generated_id] = (
+                dataset, data_csv, meta, generated_by_scope_id, file_identity,
+            )
+        else:
+            dataset, data_csv, meta, generated_by_scope_id, file_identity = cached
         dataset_receipt = {
-            "scope": dict(scope), "dta": {"sha256": sha256_file(dataset), "size": dataset.stat().st_size},
-            "csv": {"sha256": sha256_file(data_csv), "size": data_csv.stat().st_size},
-            "metadata_file": {"sha256": sha256_file(meta), "size": meta.stat().st_size},
-            "metadata": parse_data_meta(meta),
+            "scope": dict(scope), "dataset_id": generated_id,
+            "generated_by_scope_id": generated_by_scope_id, **file_identity,
         }
         datasets.append(dataset_receipt)
         if include_oracle:
@@ -561,9 +654,44 @@ def execute_scopes(
             run_env.update({"FEREG_PPML_SOLVER_MODE": "run", "FEREG_PPML_SOLVER_ARM": arm, "FEREG_PPML_SOLVER_REPETITIONS": str(repetitions)})
             process = run_stata(stata, run_env, console)
             status, reason = stata_stage_status(console, int(process["process_returncode"]), "FEREG_PPML_SOLVER_RUN_PASS")
-            processes.append({**process, "stage": "run", "scope_id": scope["id"], "implementation": implementation, "arm": arm, "accepted_rc": status, "status_reason": reason})
+            reference_route = None
+            if not status and arm in COMPARATORS:
+                try:
+                    reference_route = verified_reference_route(console)
+                except DevelopmentError:
+                    status, reason = 498, "unverified-reference-route"
+            processes.append({**process, "stage": "run", "scope_id": scope["id"], "implementation": implementation, "arm": arm, "accepted_rc": status, "status_reason": reason, "reference_route": reference_route})
             if result.is_file():
                 records.extend(parse_table(result, scope, implementation))
+        if include_comparators and _needs_strict_adjudication(
+            records, scope, list(repositories), repetitions, manifest["science"],
+        ):
+            result = scope_dir / f"adjudicator-{ADJUDICATOR}.tsv"
+            console = scope_dir / f"adjudicator-{ADJUDICATOR}.log"
+            run_env = base_environment(candidate_root, reference_root, scope, dataset, result)
+            run_env.update({
+                "FEREG_PPML_SOLVER_MODE": "run", "FEREG_PPML_SOLVER_ARM": ADJUDICATOR,
+                "FEREG_PPML_SOLVER_REPETITIONS": "1",
+            })
+            process = run_stata(stata, run_env, console)
+            status, reason = stata_stage_status(
+                console, int(process["process_returncode"]),
+                "FEREG_PPML_SOLVER_RUN_PASS",
+            )
+            reference_route = None
+            if not status:
+                try:
+                    reference_route = verified_reference_route(console)
+                except DevelopmentError:
+                    status, reason = 498, "unverified-reference-route"
+            processes.append({
+                **process, "stage": "adjudicate", "scope_id": scope["id"],
+                "implementation": "adjudicator", "arm": ADJUDICATOR,
+                "accepted_rc": status, "status_reason": reason,
+                "reference_route": reference_route,
+            })
+            if result.is_file():
+                records.extend(parse_table(result, scope, "adjudicator"))
     references_after = reference_identity(reference_root)
     if references_before != references_after:
         raise DevelopmentError("pinned reference closure changed during execution")
@@ -606,6 +734,93 @@ def _model_dof(row: Mapping[str, object]) -> float | None:
     return float(rank) + float(absorbed)
 
 
+def _science_issues(
+    row: Mapping[str, object], target: Mapping[str, object], controls: int,
+    science: Mapping[str, object], target_name: str, dof_notes: set[str],
+) -> list[str]:
+    issues: list[str] = []
+    if row["sample_n"] != target["sample_n"]:
+        issues.append(f"{target_name}_sample")
+    if (
+        row["b_names"][:controls] != target["b_names"][:controls]
+        or not _vectors_close(
+            row["b_values"][:controls], target["b_values"][:controls],
+            float(science["coefficient_rtol"]), float(science["coefficient_atol"]),
+        )
+    ):
+        issues.append(f"{target_name}_coefficients")
+    if (
+        row["v_names"][:controls] != target["v_names"][:controls]
+        or not _vectors_close(
+            _control_covariance(row, controls), _control_covariance(target, controls),
+            float(science["vce_rtol"]), float(science["vce_atol"]),
+        )
+    ):
+        issues.append(f"{target_name}_vce")
+    for scalar in ("ll", "deviance"):
+        if not _close(
+            row[scalar], target[scalar],
+            float(science["likelihood_rtol"]), float(science["likelihood_atol"]),
+        ):
+            issues.append(f"{target_name}_{scalar}")
+    if target_name == "map":
+        for scalar in ("rank", "df_a", "df_resid"):
+            if row[scalar] != target[scalar]:
+                issues.append(f"{target_name}_{scalar}")
+        return issues
+
+    # ADR-0022 gates ppmlhdfe on total model DoF. The comparator assigns
+    # the normalized constant to df_a, while fereg exposes it as an omitted
+    # finite slot.
+    row_model_dof = _model_dof(row)
+    target_model_dof = _model_dof(target)
+    if row_model_dof is None or target_model_dof is None or row_model_dof != target_model_dof:
+        issues.append(f"{target_name}_model_dof")
+        return issues
+    row_residual_dof = row["df_resid"]
+    expected_row_residual_dof = float(row["sample_n"]) - row_model_dof
+    if row_residual_dof is None or float(row_residual_dof) != expected_row_residual_dof:
+        issues.append(f"{target_name}_candidate_df_resid")
+    target_residual_dof = target["df_resid"]
+    expected_target_residual_dof = float(target["sample_n"]) - target_model_dof
+    if target_residual_dof is not None and float(target_residual_dof) != expected_target_residual_dof:
+        issues.append(f"{target_name}_reference_df_resid")
+    if row["rank"] != target["rank"] or row["df_a"] != target["df_a"]:
+        dof_notes.add(
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; "
+            "the gate compares their equal total model DoF"
+        )
+    if target_residual_dof is None:
+        dof_notes.add(
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate "
+            "derives it from N minus total model DoF"
+        )
+    return issues
+
+
+def _needs_strict_adjudication(
+    records: Sequence[Mapping[str, object]], scope: Mapping[str, object],
+    implementations: Sequence[str], repetitions: int, science: Mapping[str, object],
+) -> bool:
+    scope_id = str(scope["id"])
+    controls = int(scope["controls"])
+    indexed = {
+        (str(row["implementation"]), str(row["arm"]), int(row["repetition"])): row
+        for row in records if str(row["scope_id"]) == scope_id and row["arm_type"] != "oracle"
+    }
+    for implementation in implementations:
+        for repetition in range(1, repetitions + 1):
+            target = indexed.get(("reference", "ppmlhdfe", repetition))
+            if target is None or int(target["rc"]) != 0 or target["converged"] != 1.0:
+                continue
+            for solver in SOLVERS:
+                row = indexed.get((implementation, solver, repetition))
+                if row is not None and int(row["rc"]) == 0 and row["converged"] == 1.0:
+                    if _science_issues(row, target, controls, science, "ppmlhdfe", set()):
+                        return True
+    return False
+
+
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
     if document.get("schema_version") != 2 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
@@ -617,18 +832,47 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     scopes = document["scopes"]
     records = document["records"]
     indexed: dict[tuple[str, str, str, int], Mapping[str, object]] = {}
+    adjudicators: dict[str, Mapping[str, object]] = {}
     oracle: dict[str, Mapping[str, object]] = {}
     failures: list[str] = []
     route_failures: list[str] = []
+    reference_adjudications: list[dict[str, object]] = []
+    used_adjudicators: set[str] = set()
     dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
             oracle[str(row["scope_id"])] = row
             continue
+        if row["arm_type"] == "adjudicator":
+            scope_id = str(row["scope_id"])
+            if (
+                row["implementation"] != "adjudicator"
+                or row["arm"] != ADJUDICATOR
+                or int(row["repetition"]) != 1
+                or row.get("timed") is not False
+                or row.get("seconds") is not None
+                or row.get("reference_acceleration") != REFERENCE_ACCELERATION
+                or row.get("reference_transform") != REFERENCE_TRANSFORM
+                or scope_id in adjudicators
+            ):
+                failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:unexpected")
+            else:
+                adjudicators[scope_id] = row
+            continue
         key = (str(row["scope_id"]), str(row["implementation"]), str(row["arm"]), int(row["repetition"]))
         if key[1] not in {*implementations, "reference"} or key[2] not in {*SOLVERS, *COMPARATORS} or not 1 <= key[3] <= repetitions:
             failures.append(":".join(map(str, key)) + ":unexpected")
             continue
+        if row.get("timed") is not True:
+            failures.append(":".join(map(str, key)) + ":untimed")
+        if key[2] in COMPARATORS:
+            if (
+                row.get("reference_acceleration") != REFERENCE_ACCELERATION
+                or row.get("reference_transform") != REFERENCE_TRANSFORM
+            ):
+                failures.append(":".join(map(str, key)) + ":reference_route")
+        elif row.get("reference_acceleration") or row.get("reference_transform"):
+            failures.append(":".join(map(str, key)) + ":unexpected_reference_route")
         if key in indexed:
             failures.append(":".join(map(str, key)) + ":duplicate")
         indexed[key] = row
@@ -687,51 +931,51 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         failures.append(prefix + ":inner_iterations")
                     if len(row["runtime_values"]) != 108:
                         failures.append(prefix + ":runtime")
-                    for target_name, target in (("map", baseline), ("ppmlhdfe", default_reference)):
-                        if target is None:
-                            failures.append(prefix + f":missing_{target_name}")
-                            continue
-                        if row["sample_n"] != target["sample_n"]:
-                            failures.append(prefix + f":{target_name}_sample")
-                        if row["b_names"][:controls] != target["b_names"][:controls] or not _vectors_close(row["b_values"][:controls], target["b_values"][:controls], float(science["coefficient_rtol"]), float(science["coefficient_atol"])):
-                            failures.append(prefix + f":{target_name}_coefficients")
-                        if row["v_names"][:controls] != target["v_names"][:controls] or not _vectors_close(_control_covariance(row, controls), _control_covariance(target, controls), float(science["vce_rtol"]), float(science["vce_atol"])):
-                            failures.append(prefix + f":{target_name}_vce")
-                        for scalar in ("ll", "deviance"):
-                            if not _close(row[scalar], target[scalar], float(science["likelihood_rtol"]), float(science["likelihood_atol"])):
-                                failures.append(prefix + f":{target_name}_{scalar}")
-                        if target_name == "map":
-                            for scalar in ("rank", "df_a", "df_resid"):
-                                if row[scalar] != target[scalar]:
-                                    failures.append(prefix + f":{target_name}_{scalar}")
-                            continue
-
-                        # ADR-0022 gates ppmlhdfe on total model DoF. The
-                        # comparator assigns the normalized constant to df_a,
-                        # while fereg exposes it as an omitted finite slot.
-                        row_model_dof = _model_dof(row)
-                        target_model_dof = _model_dof(target)
-                        if row_model_dof is None or target_model_dof is None or row_model_dof != target_model_dof:
-                            failures.append(prefix + f":{target_name}_model_dof")
-                            continue
-                        row_residual_dof = row["df_resid"]
-                        expected_row_residual_dof = float(row["sample_n"]) - row_model_dof
-                        if row_residual_dof is None or float(row_residual_dof) != expected_row_residual_dof:
-                            failures.append(prefix + f":{target_name}_candidate_df_resid")
-                        target_residual_dof = target["df_resid"]
-                        expected_target_residual_dof = float(target["sample_n"]) - target_model_dof
-                        if target_residual_dof is not None and float(target_residual_dof) != expected_target_residual_dof:
-                            failures.append(prefix + f":{target_name}_reference_df_resid")
-                        if row["rank"] != target["rank"] or row["df_a"] != target["df_a"]:
-                            dof_convention_notes.add(
-                                "fereg and ppmlhdfe partition rank versus absorbed DoF differently; "
-                                "the gate compares their equal total model DoF"
+                    if baseline is None:
+                        failures.append(prefix + ":missing_map")
+                    else:
+                        failures.extend(
+                            prefix + ":" + issue
+                            for issue in _science_issues(
+                                row, baseline, controls, science, "map", dof_convention_notes,
                             )
-                        if target_residual_dof is None:
-                            dof_convention_notes.add(
-                                "ppmlhdfe does not publish residual DoF for robust VCE; the gate "
-                                "derives it from N minus total model DoF"
-                            )
+                        )
+                    if default_reference is None:
+                        failures.append(prefix + ":missing_ppmlhdfe")
+                        continue
+                    default_issues = _science_issues(
+                        row, default_reference, controls, science, "ppmlhdfe",
+                        dof_convention_notes,
+                    )
+                    if not default_issues:
+                        continue
+                    strict_reference = adjudicators.get(scope_id)
+                    if strict_reference is None:
+                        failures.extend(prefix + ":" + issue for issue in default_issues)
+                        continue
+                    used_adjudicators.add(scope_id)
+                    if int(strict_reference["rc"]) != 0 or strict_reference["converged"] != 1.0:
+                        failures.append(prefix + ":strict_ppmlhdfe_execution")
+                        failures.extend(prefix + ":" + issue for issue in default_issues)
+                        continue
+                    strict_issues = _science_issues(
+                        row, strict_reference, controls, science, "strict_ppmlhdfe",
+                        dof_convention_notes,
+                    )
+                    if strict_issues:
+                        failures.extend(prefix + ":" + issue for issue in default_issues)
+                        failures.extend(prefix + ":" + issue for issue in strict_issues)
+                        continue
+                    reference_adjudications.append({
+                        "scope_id": scope_id, "implementation": implementation,
+                        "solver": solver, "repetition": repetition,
+                        "default_reference": "ppmlhdfe",
+                        "default_science_mismatches": default_issues,
+                        "adjudicator": ADJUDICATOR, "timed": False,
+                        "tolerance": 1e-10, "itolerance": 1e-12,
+                        "acceleration": REFERENCE_ACCELERATION,
+                        "transform": REFERENCE_TRANSFORM,
+                    })
         if document.get("include_oracle"):
             target = oracle.get(scope_id)
             candidate_map = indexed.get((scope_id, "candidate", "map", 1))
@@ -788,10 +1032,13 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     "baseline_median_seconds": baseline_median,
                     "candidate_over_baseline": statistics.median(values) / baseline_median if baseline_median and baseline_median > 0.0 else None,
                 })
+    for scope_id in sorted(set(adjudicators) - used_adjudicators):
+        failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:not_required")
     return {
         "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
+        "reference_adjudications": reference_adjudications,
         "dof_convention_notes": sorted(dof_convention_notes),
         "solver_summary": summaries, "scopes": len(scopes), "repetitions": repetitions,
     }

@@ -47,6 +47,8 @@ drop codes, stored results, failure atomicity, and runnable examples.
 `solver(auto)` currently selects MAP while automatic routing is calibrated.
 Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
 for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
+Concrete LSMR preconditioner and reuse choices remain internal and are not
+additional command options.
 LSMR initially supports at least two categorical intercept effects and CMG
 exactly two or three. Both retain the full PPML output surface, including
 saved fixed effects recovered from the final MAP-owned Hessian, and require
