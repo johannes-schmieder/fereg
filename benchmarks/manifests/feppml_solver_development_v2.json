@@ -18,8 +18,7 @@
     {"id": "cmg", "option": "cmg", "route_code": 7}
   ],
   "comparators": [
-    {"id": "ppmlhdfe", "acceleration": "conjugate_gradient"},
-    {"id": "ppmlhdfe_lsmr", "acceleration": "lsmr"}
+    {"id": "ppmlhdfe", "acceleration": "conjugate_gradient"}
   ],
   "fixed_policy": {
     "memory": "fast",

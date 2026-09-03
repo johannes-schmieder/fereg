@@ -89,8 +89,8 @@ routing calibration or release qualification.
 ## Development harness and validation
 
 - The live PPML solver development harness is manifest v2. It uses only public
-  MAP, LSMR, and CMG arms plus pinned default and forced-LSMR `ppmlhdfe`
-  comparators. Historical reports and qualification manifests are preserved;
+  MAP, LSMR, and CMG arms plus the pinned default `ppmlhdfe` comparator.
+  Historical reports and qualification manifests are preserved;
   the obsolete live v1 solver manifest was removed by explicit approval.
 - The v2 harness has local science and smoke gates, then a bounded SCC lane of
   16 parallel tasks on comparable 28-core Broadwell nodes. It records the

@@ -174,11 +174,9 @@ pass after an uncertified result. A retained Schwarz preconditioner is rebuilt
 for that pass; the original publication certificate tolerance is unchanged.
 The result wire measures those costs separately from canonical checkpoint work.
 
-The pinned `ppmlhdfe` comparator must not be described generically as LSMR.
-Its default runtime signature is conjugate-gradient acceleration of symmetric
-Kaczmarz. The harness therefore keeps distinct default and explicitly forced
-`accel(lsmr)` comparator arms and verifies both signatures before accepting a
-timing record.
+The pinned `ppmlhdfe` comparator uses its default conjugate-gradient
+acceleration of symmetric Kaczmarz; it must not be described generically as
+LSMR. The development harness does not force a second comparator route.
 
 The public CMG family means only the prepared fused-FWL engine introduced by
 ADR-0023 and updated to the exact prepared-topology pin by ADR-0024. It prepares

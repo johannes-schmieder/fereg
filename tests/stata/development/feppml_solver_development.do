@@ -114,7 +114,7 @@ if `"`mode'"' == "generate" {
 }
 
 if `"`mode'"' == "prepare-reference" | ///
-        (`"`mode'"' == "run" & inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr")) {
+        (`"`mode'"' == "run" & `"`arm'"' == "ppmlhdfe") {
     adopath ++ `"`reference_root'/require/src"'
     adopath ++ `"`reference_root'/ftools/src"'
     adopath ++ `"`reference_root'/reghdfe/src"'
@@ -174,7 +174,7 @@ if inlist(`"`arm'"', "map", "lsmr", "cmg") {
         exit 603
     }
 }
-if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
+if `"`arm'"' == "ppmlhdfe" {
     foreach package in require ftools reghdfe ppmlhdfe {
         capture findfile `package'.ado
         if _rc exit _rc
@@ -214,10 +214,6 @@ if `"`arm'"' == "ppmlhdfe" {
     local command `"ppmlhdfe y `control_list', absorb(`absorb_list') vce(robust) separation(none)"'
     local route_command `"`command' verbose(2)"'
 }
-else if `"`arm'"' == "ppmlhdfe_lsmr" {
-    local command `"ppmlhdfe y `control_list', absorb(`absorb_list') vce(robust) separation(none) accel(lsmr)"'
-    local route_command `"`command' verbose(2)"'
-}
 else if inlist(`"`arm'"', "map", "lsmr", "cmg") {
     local command `"feppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') solver(`arm')"'
 }
@@ -227,17 +223,15 @@ else {
 }
 
 local warm_command `"`command'"'
-if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") local warm_command `"`route_command'"'
+if `"`arm'"' == "ppmlhdfe" local warm_command `"`route_command'"'
 capture noisily `warm_command'
 local warm_rc = _rc
 if `warm_rc' {
     display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`warm_rc'"
     exit `warm_rc'
 }
-if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
-    local expected_acceleration "conjugate_gradient"
-    if `"`arm'"' == "ppmlhdfe_lsmr" local expected_acceleration "lsmr"
-    display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`expected_acceleration'"
+if `"`arm'"' == "ppmlhdfe" {
+    display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=conjugate_gradient"
 }
 
 file open output using `"`result'"', write text replace

@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v2.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 SOLVERS = ("map", "lsmr", "cmg")
-COMPARATORS = ("ppmlhdfe", "ppmlhdfe_lsmr")
+COMPARATORS = ("ppmlhdfe",)
 ROUTE_CODES = {"map": 2, "lsmr": 3, "cmg": 7}
 SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
@@ -620,7 +620,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     oracle: dict[str, Mapping[str, object]] = {}
     failures: list[str] = []
     route_failures: list[str] = []
-    comparator_diagnostics: list[str] = []
     dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
@@ -658,20 +657,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     elif int(reference["rc"]) != 0 or reference["converged"] != 1.0:
                         failures.append(prefix + ":execution")
                 default_reference = references["ppmlhdfe"]
-                lsmr_reference = references["ppmlhdfe_lsmr"]
-                if default_reference is not None and lsmr_reference is not None:
-                    prefix = f"{scope_id}:reference:comparators:r{repetition}"
-                    if default_reference["sample_n"] != lsmr_reference["sample_n"]:
-                        failures.append(prefix + ":sample")
-                    if default_reference["b_names"][:controls] != lsmr_reference["b_names"][:controls] or not _vectors_close(default_reference["b_values"][:controls], lsmr_reference["b_values"][:controls], float(science["coefficient_rtol"]), float(science["coefficient_atol"])):
-                        comparator_diagnostics.append(prefix + ":coefficients")
-                    if default_reference["v_names"][:controls] != lsmr_reference["v_names"][:controls] or not _vectors_close(_control_covariance(default_reference, controls), _control_covariance(lsmr_reference, controls), float(science["vce_rtol"]), float(science["vce_atol"])):
-                        comparator_diagnostics.append(prefix + ":vce")
-                    if _model_dof(default_reference) != _model_dof(lsmr_reference):
-                        failures.append(prefix + ":model_dof")
-                    for scalar in ("ll", "deviance"):
-                        if not _close(default_reference[scalar], lsmr_reference[scalar], float(science["likelihood_rtol"]), float(science["likelihood_atol"])):
-                            comparator_diagnostics.append(prefix + f":{scalar}")
                 for solver in SOLVERS:
                     prefix = f"{scope_id}:{implementation}:{solver}:r{repetition}"
                     row = indexed.get((scope_id, implementation, solver, repetition))
@@ -702,9 +687,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         failures.append(prefix + ":inner_iterations")
                     if len(row["runtime_values"]) != 108:
                         failures.append(prefix + ":runtime")
-                    # The forced-LSMR ppmlhdfe arm is a performance comparator,
-                    # not a second scientific authority. ADR-0022 uses the
-                    # default pinned ppmlhdfe route for the compatibility gate.
                     for target_name, target in (("map", baseline), ("ppmlhdfe", default_reference)):
                         if target is None:
                             failures.append(prefix + f":missing_{target_name}")
@@ -774,7 +756,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     and indexed[(scope_id, "candidate", solver, repetition)]["inner_iterations"] is not None
                 ]
                 reference_values = [float(indexed[(scope_id, "reference", "ppmlhdfe", repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "reference", "ppmlhdfe", repetition) in indexed]
-                reference_lsmr_values = [float(indexed[(scope_id, "reference", "ppmlhdfe_lsmr", repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "reference", "ppmlhdfe_lsmr", repetition) in indexed]
                 baseline_values = [float(indexed[(scope_id, "baseline", solver, repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "baseline", solver, repetition) in indexed]
                 selected_engines = sorted({
                     int(indexed[(scope_id, "candidate", solver, repetition)]["selected_engine_code"])
@@ -795,7 +776,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     and not any(item.startswith(prefix) for item in (*failures, *route_failures))
                 )
                 reference_median = statistics.median(reference_values) if reference_values else None
-                reference_lsmr_median = statistics.median(reference_lsmr_values) if reference_lsmr_values else None
                 baseline_median = statistics.median(baseline_values) if baseline_values else None
                 summaries.append({
                     "scope_id": scope_id, "solver": solver, "performance_eligible": eligible,
@@ -805,8 +785,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     "candidate_median_inner_iterations": statistics.median(inner_iterations) if inner_iterations else None,
                     "ppmlhdfe_median_seconds": reference_median,
                     "candidate_over_ppmlhdfe": statistics.median(values) / reference_median if reference_median and reference_median > 0.0 else None,
-                    "ppmlhdfe_lsmr_median_seconds": reference_lsmr_median,
-                    "candidate_over_ppmlhdfe_lsmr": statistics.median(values) / reference_lsmr_median if reference_lsmr_median and reference_lsmr_median > 0.0 else None,
                     "baseline_median_seconds": baseline_median,
                     "candidate_over_baseline": statistics.median(values) / baseline_median if baseline_median and baseline_median > 0.0 else None,
                 })
@@ -814,7 +792,6 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
-        "comparator_diagnostics": sorted(set(comparator_diagnostics)),
         "dof_convention_notes": sorted(dof_convention_notes),
         "solver_summary": summaries, "scopes": len(scopes), "repetitions": repetitions,
     }

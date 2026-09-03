@@ -82,7 +82,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(manifest["qualification_eligible"])
         self.assertFalse(manifest["auto_calibration"])
         self.assertEqual([row["id"] for row in manifest["solvers"]], ["map", "lsmr", "cmg"])
-        self.assertEqual([row["id"] for row in manifest["comparators"]], ["ppmlhdfe", "ppmlhdfe_lsmr"])
+        self.assertEqual([row["id"] for row in manifest["comparators"]], ["ppmlhdfe"])
         serialized = json.dumps(manifest).lower()
         self.assertNotIn("recommendation", serialized)
         self.assertNotIn("candidate_routes", serialized)
@@ -140,10 +140,11 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         analysis = DEVELOPMENT.analyze_document(document)
         self.assertTrue(analysis["science_pass"])
         self.assertTrue(analysis["route_pass"])
-        self.assertEqual(analysis["solver_summary"][0]["ppmlhdfe_lsmr_median_seconds"], 1.0)
+        self.assertNotIn("ppmlhdfe_lsmr_median_seconds", analysis["solver_summary"][0])
         lsmr_summary = next(row for row in analysis["solver_summary"] if row["solver"] == "lsmr")
         self.assertEqual(lsmr_summary["selected_engine_codes"], [3])
         self.assertEqual(lsmr_summary["effective_engine_codes"], [3])
+        self.assertNotIn("comparator_diagnostics", analysis)
         self.assertNotIn("route_recommendation", analysis)
         self.assertNotIn("recommendation", json.dumps(analysis).lower())
 
@@ -154,29 +155,19 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(failed["science_pass"])
         self.assertTrue(any("lsmr:r2:map_coefficients" in item for item in failed["science_failures"]))
 
-        comparator_only = copy.deepcopy(document)
-        target = next(
-            row for row in comparator_only["records"]
-            if row["arm"] == "ppmlhdfe_lsmr" and row["repetition"] == 2
-        )
-        target["b_values"] = [0.5]
-        compared = DEVELOPMENT.analyze_document(comparator_only)
-        self.assertTrue(compared["science_pass"])
-        self.assertTrue(any("comparators:r2:coefficients" in item for item in compared["comparator_diagnostics"]))
-
-    def test_analysis_rejects_fallback_and_missing_second_comparator(self) -> None:
+    def test_analysis_rejects_fallback_and_missing_comparator(self) -> None:
         changed = run_document()
         target = next(row for row in changed["records"] if row["arm"] == "cmg" and row["repetition"] == 2)
         target["fallback_count"] = 1.0
         target["effective_engine_code"] = 1.0
         changed["records"] = [
             row for row in changed["records"]
-            if not (row["arm"] == "ppmlhdfe_lsmr" and row["repetition"] == 2)
+            if not (row["arm"] == "ppmlhdfe" and row["repetition"] == 2)
         ]
         analysis = DEVELOPMENT.analyze_document(changed)
         self.assertFalse(analysis["science_pass"])
         self.assertFalse(analysis["route_pass"])
-        self.assertTrue(any("ppmlhdfe_lsmr:r2:missing" in item for item in analysis["science_failures"]))
+        self.assertTrue(any("ppmlhdfe:r2:missing" in item for item in analysis["science_failures"]))
         self.assertTrue(any("cmg:r2:fallback" in item for item in analysis["route_failures"]))
         self.assertTrue(any("cmg:r2:effective_engine" in item for item in analysis["route_failures"]))
         cmg = next(row for row in analysis["solver_summary"] if row["solver"] == "cmg")
@@ -241,15 +232,15 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             console.with_suffix(".stata.log").write_text("FEREG_PPML_SOLVER_RUN_FAIL|arm=map|rc=430\n")
             self.assertEqual(DEVELOPMENT.stata_stage_status(console, 0, "PASS"), (430, "failure-sentinel"))
 
-    def test_driver_uses_public_solver_surface_and_separate_comparators(self) -> None:
+    def test_driver_uses_public_solver_surface_and_default_comparator(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         self.assertIn("feppml y `control_list'", source)
         self.assertIn("solver(`arm')", source)
         self.assertNotIn("_fereg_estimate_ppml", source)
         self.assertNotIn("fesolver(", source)
         self.assertNotIn("set processors `threads'", source)
-        self.assertIn("ppmlhdfe_lsmr", source)
-        self.assertIn("accel(lsmr)", source)
+        self.assertNotIn("ppmlhdfe_lsmr", source)
+        self.assertNotIn("accel(lsmr)", source)
         self.assertIn("FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS", source)
         self.assertIn("e(feppml_certificate)", source)
         self.assertIn("e(feppml_solver)[1,4]", source)
