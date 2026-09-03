@@ -10,7 +10,7 @@
     "request_wire": "1.5",
     "result_wire": "1.2",
     "action_protocol": "1.5",
-    "development_result_table": "2.4"
+    "development_result_table": "2.5"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
@@ -43,7 +43,7 @@
       "preserve_default_mismatch": true
     },
     "public_state_kkt": {
-      "id": "independent_public_state_kkt_v1",
+      "id": "independent_public_state_kkt_v2",
       "timed": false,
       "invoke_only_after_default_and_strict_coefficient_mismatch": true,
       "candidate_solver": "map",
@@ -51,8 +51,36 @@
       "score_tolerance": 1e-8,
       "candidate_objective_replay_rtol": 1e-8,
       "candidate_objective_replay_atol": 1e-10,
+      "reference_public_state_objective_replay_rtol": 1e-8,
+      "reference_public_state_objective_replay_atol": 1e-10,
+      "reference_objective_source": "best_certified_feasible_state",
+      "objective_invariant_rtol": 1e-12,
+      "objective_invariant_atol": 1e-8,
       "objective_dominance_rtol": 1e-8,
       "objective_dominance_atol": 1e-10,
+      "model_space_projection": {
+        "algorithm": "scaled_cgls_v1",
+        "algorithm_code": 1,
+        "max_iterations": 20000,
+        "refresh_interval": 32,
+        "normal_rel2_loose": 5e-13,
+        "normal_rel2_final": 5e-14,
+        "normal_relinf_final": 5e-14,
+        "recurrence_relrms_max": 1e-10,
+        "tail_relrms_max": 1e-10,
+        "feasible_relrms_max": 1e-10,
+        "status_codes": {"feasible": 1, "indeterminate": 3},
+        "breakdown_codes": {
+          "none": 0,
+          "invalid_design": 1,
+          "nonpositive_curvature": 2,
+          "nonfinite_recurrence": 3,
+          "recurrence_drift": 4,
+          "iteration_limit": 5,
+          "final_certificate": 6,
+          "projected_objective": 7
+        }
+      },
       "both_reference_states_must_fail_score_tolerance": true,
       "preserve_default_and_strict_mismatches": true
     }

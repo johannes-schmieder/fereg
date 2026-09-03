@@ -195,11 +195,22 @@ control, constant, and FE-level score plus likelihood and deviance from the raw
 data. The discrepancy is adjudicated only when MAP independently satisfies the
 public `1e-8` score tolerance, both reference public states fail it, MAP's
 published objective replays from its public mean, and MAP's recomputed
-objective is no worse than either reference. Sample, VCE, likelihood,
+objective is no worse than the best independently certified feasible state for
+either reference. A matrix-free, diagonally scaled CGLS projection classifies
+each public log-mean against the span of the controls and full FE blocks. The
+comparison includes the reference's reported terminal objective, the projected
+public state, and the raw public state only when that state is certified to lie
+in the model space. The `1e-10` residual threshold certifies a nearby explicit
+control-plus-FE representation; every state that does not meet it is
+indeterminate and fails closed. A small normal residual or a stable iterate is
+never treated as proof that a state lies outside the model space. Fresh normal
+residuals, recurrence drift, the loose-to-final fitted-vector tail, and the
+Poisson identity `deviance + 2*ll` are all checked. Sample, VCE, likelihood,
 deviance, total-DoF, route, fallback, certificate, or non-coefficient failures
 remain fatal. The analysis retains both original reference mismatches and all
-hashed public-state inputs. This development-only audit never forces a
-different `ppmlhdfe` solver.
+hashed public-state inputs. This development-only audit uses the pinned
+comparator's supported CG/symmetric-Kaczmarz route and never forces a different
+`ppmlhdfe` solver.
 
 The version-2 development manifest derives explicit-solver eligibility from
 the generated dataset metadata before timing. It excludes an unsupported

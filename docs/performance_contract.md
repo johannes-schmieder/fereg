@@ -84,10 +84,19 @@ reference fits still have a coefficient-only mismatch, a final untimed audit
 may adjudicate it only by an independent absolute public-state score and
 objective check: MAP must meet the public score tolerance, both reference
 states must fail it, and MAP's replayed objective must be internally consistent
-and no worse. Every other scientific mismatch fails closed. Thread-
-scaling scopes within one campaign bundle reuse one generated dataset and
-seed. The development runner derives solver eligibility from that generated
-dataset's level-count metadata. In particular, it times public CMG only for
+and no worse than each reference's best certified feasible objective. An
+untimed, matrix-free scaled-CGLS audit projects each public log-mean onto the
+declared control-plus-FE space. Reported and projected objectives are feasible
+witnesses; the raw predicted-state objective is eligible only after a strict
+model-space certificate. A projection residual above the registered feasible
+threshold is indeterminate—not evidence of infeasibility—and fails closed, as
+does any other certificate failure or violation of the Poisson objective
+identity. Every other scientific mismatch fails
+closed. The reference stays on its supported CG/symmetric-Kaczmarz route; no
+forced `ppmlhdfe` LSMR arm is part of the manifest. Thread-scaling scopes within
+one campaign bundle reuse one generated dataset and seed. The development
+runner derives solver eligibility from that generated dataset's level-count
+metadata. In particular, it times public CMG only for
 two-FE designs or three-FE designs whose non-base nuisance width is at most 64;
 out-of-envelope CMG requests remain separate public `r(498)` contract tests,
 not failed timing cells. Every successful arm must retain all generated

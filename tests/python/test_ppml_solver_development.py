@@ -104,6 +104,31 @@ def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
         DEVELOPMENT.ADJUDICATOR: evidence_receipt("c-state"),
     }
     audit_result = evidence_receipt("d-audit")
+
+    def projection_metrics(
+        *, projected_ll: float = -10.0, projected_deviance: float = 2.0,
+        status: float = 1.0, residual_relrms: float = 1e-12,
+    ) -> dict[str, float]:
+        return {
+            "modelspace_algorithm_code": 1.0,
+            "modelspace_status_code": status,
+            "modelspace_iterations": 10.0,
+            "modelspace_columns": 19.0,
+            "modelspace_eta_scale": 1.0,
+            "modelspace_resid_maxabs": max(1e-11, residual_relrms),
+            "modelspace_resid_rms": residual_relrms,
+            "modelspace_resid_relrms": residual_relrms,
+            "modelspace_tail_relrms": 1e-14,
+            "modelspace_normal_rel2": 1e-15,
+            "modelspace_normal_relinf": 1e-15,
+            "modelspace_recurrence_relrms": 1e-15,
+            "modelspace_breakdown_code": 0.0,
+            "projected_ll": projected_ll,
+            "projected_deviance": projected_deviance,
+            "projected_min_mu": 0.5,
+            "projected_max_mu": 2.0,
+        }
+
     document["public_state_adjudications"] = [{
         **scope, "scope_id": scope["id"], "implementation": "candidate",
         "method": DEVELOPMENT.KKT_ADJUDICATOR,
@@ -121,18 +146,21 @@ def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
                 "score_relinf": 1e-12, "score_rel2": 1e-13, "score_scale": 10.0,
                 "recomputed_ll": -10.0, "recomputed_deviance": 2.0,
                 "min_mu": 0.5, "max_mu": 2.0,
+                **projection_metrics(),
             },
             "ppmlhdfe": {
                 "finite_score_absinf": 1e-3, "fe_score_absinf": 1e-4,
                 "score_relinf": 2e-7, "score_rel2": 2e-9, "score_scale": 10.0,
                 "recomputed_ll": -10.01, "recomputed_deviance": 2.02,
                 "min_mu": 0.5, "max_mu": 2.0,
+                **projection_metrics(),
             },
             DEVELOPMENT.ADJUDICATOR: {
                 "finite_score_absinf": 1e-4, "fe_score_absinf": 1e-5,
                 "score_relinf": 2e-8, "score_rel2": 2e-9, "score_scale": 10.0,
                 "recomputed_ll": -10.001, "recomputed_deviance": 2.002,
                 "min_mu": 0.5, "max_mu": 2.0,
+                **projection_metrics(),
             },
         },
     }]
@@ -162,6 +190,10 @@ def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
             **common, "stage": "public-state-fit", "implementation": "reference",
             "arm": "ppmlhdfe", "source_sha256": reference_source,
             "artifact_sha256": None, "state": states["ppmlhdfe"],
+            "reference_route": {
+                "acceleration": "conjugate_gradient",
+                "transform": "symmetric_kaczmarz",
+            },
             "result": default_result,
             "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
                 default_result, evidence["fits"]["ppmlhdfe"],
@@ -171,6 +203,10 @@ def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
             **common, "stage": "public-state-fit", "implementation": "reference",
             "arm": DEVELOPMENT.ADJUDICATOR, "source_sha256": reference_source,
             "artifact_sha256": None, "state": states[DEVELOPMENT.ADJUDICATOR],
+            "reference_route": {
+                "acceleration": "conjugate_gradient",
+                "transform": "symmetric_kaczmarz",
+            },
             "result": strict_result,
             "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
                 strict_result, evidence["fits"][DEVELOPMENT.ADJUDICATOR],
@@ -187,6 +223,17 @@ def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
         },
     ])
     return document
+
+
+def rebind_public_state_audit(document: dict[str, object]) -> None:
+    evidence = document["public_state_adjudications"][0]
+    audit = next(
+        process for process in document["processes"]
+        if process["stage"] == "public-state-audit"
+    )
+    audit["parsed_result_sha256"] = DEVELOPMENT.parsed_file_binding(
+        audit["result"], evidence["metrics"],
+    )
 
 
 def run_document() -> dict[str, object]:
@@ -206,6 +253,10 @@ def run_document() -> dict[str, object]:
     return {
         "schema_version": 2,
         "kind": "feppml_solver_development_run",
+        "manifest": {
+            "path": str(MANIFEST),
+            "sha256": DEVELOPMENT.sha256_file(MANIFEST),
+        },
         "qualification_eligible": False,
         "auto_calibration": False,
         "repetitions": 2,
@@ -233,11 +284,41 @@ def run_document() -> dict[str, object]:
                     "stage": "run", "scope_id": "unit-scope",
                     "implementation": "candidate" if arm in DEVELOPMENT.SOLVERS else "reference",
                     "arm": arm, "accepted_rc": 0,
+                    "reference_route": (
+                        None if arm in DEVELOPMENT.SOLVERS else {
+                            "acceleration": "conjugate_gradient",
+                            "transform": "symmetric_kaczmarz",
+                        }
+                    ),
                 }
                 for arm in (*DEVELOPMENT.SOLVERS, *DEVELOPMENT.COMPARATORS)
             ),
         ],
     }
+
+
+def public_state_conflict_document() -> dict[str, object]:
+    document = run_document()
+    for row in document["records"]:
+        if row["arm"] == "ppmlhdfe":
+            row["b_values"] = [0.2501]
+    scope = document["scopes"][0]
+    strict_source = next(
+        row for row in document["records"]
+        if row["implementation"] == "candidate" and row["arm"] == "map"
+    )
+    strict = adjudicator_row(scope, strict_source)
+    strict["b_values"] = [0.2502]
+    document["records"].append(strict)
+    document["processes"].append({
+        "stage": "adjudicate", "scope_id": scope["id"],
+        "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
+        "accepted_rc": 0, "reference_route": {
+            "acceleration": "conjugate_gradient",
+            "transform": "symmetric_kaczmarz",
+        },
+    })
+    return add_public_state_kkt(document)
 
 
 class PpmlSolverDevelopmentTests(unittest.TestCase):
@@ -253,15 +334,27 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertEqual(adjudication["strict_reference"]["itolerance"], 1e-12)
         self.assertEqual(
             adjudication["public_state_kkt"]["id"],
-            "independent_public_state_kkt_v1",
+            "independent_public_state_kkt_v2",
         )
         self.assertEqual(adjudication["public_state_kkt"]["score_tolerance"], 1e-8)
+        self.assertEqual(
+            adjudication["public_state_kkt"]["reference_objective_source"],
+            "best_certified_feasible_state",
+        )
+        projection = adjudication["public_state_kkt"]["model_space_projection"]
+        self.assertEqual(projection["algorithm"], "scaled_cgls_v1")
+        self.assertEqual(projection["status_codes"]["indeterminate"], 3)
         serialized = json.dumps(manifest).lower()
         self.assertNotIn("recommendation", serialized)
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
-        self.assertEqual(manifest["protocols"]["development_result_table"], "2.4")
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.5")
+
+        stale_binding = run_document()
+        stale_binding["manifest"]["sha256"] = "0" * 64
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.analyze_document(stale_binding)
 
     def test_solver_eligibility_uses_the_prepared_cmg_core_order_and_cap(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -490,7 +583,10 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         changed["processes"].append({
             "stage": "adjudicate", "scope_id": scope["id"],
             "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
-            "accepted_rc": 0,
+            "accepted_rc": 0, "reference_route": {
+                "acceleration": "conjugate_gradient",
+                "transform": "symmetric_kaczmarz",
+            },
         })
         adjudicated = DEVELOPMENT.analyze_document(changed)
         self.assertTrue(adjudicated["science_pass"])
@@ -534,7 +630,10 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         document["processes"].append({
             "stage": "adjudicate", "scope_id": scope["id"],
             "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
-            "accepted_rc": 0,
+            "accepted_rc": 0, "reference_route": {
+                "acceleration": "conjugate_gradient",
+                "transform": "symmetric_kaczmarz",
+            },
         })
         add_public_state_kkt(document)
         analysis = DEVELOPMENT.analyze_document(document)
@@ -548,6 +647,69 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             row["default_science_mismatches"] == ["ppmlhdfe_coefficients"]
             and row["strict_science_mismatches"] == ["strict_ppmlhdfe_coefficients"]
             for row in kkt_rows
+        ))
+        objective_diagnostics = analysis["public_state_objective_diagnostics"]
+        self.assertEqual(len(objective_diagnostics), 2)
+        self.assertTrue(all(
+            objective["comparison_source"] == "reported_fit"
+            and objective["public_state_replays_fit"] is False
+            for objective in objective_diagnostics
+        ))
+
+        off_space_reference = copy.deepcopy(document)
+        evidence = off_space_reference["public_state_adjudications"][0]
+        strict_metrics = evidence["metrics"][DEVELOPMENT.ADJUDICATOR]
+        strict_metrics["recomputed_ll"] = -9.999
+        strict_metrics["recomputed_deviance"] = 1.998
+        strict_metrics.update({
+            "modelspace_status_code": 3.0,
+            "modelspace_resid_maxabs": 2e-5,
+            "modelspace_resid_rms": 1e-5,
+            "modelspace_resid_relrms": 1e-5,
+        })
+        rebind_public_state_audit(off_space_reference)
+        off_space_analysis = DEVELOPMENT.analyze_document(off_space_reference)
+        self.assertFalse(off_space_analysis["science_pass"])
+        self.assertTrue(any(
+            "ppmlhdfe_strict_modelspace_indeterminate" in issue
+            for issue in off_space_analysis["science_failures"]
+        ))
+        objective = next(
+            row for row in off_space_analysis["public_state_objective_diagnostics"]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        self.assertFalse(objective["public_state_replays_fit"])
+        self.assertEqual(objective["comparison_source"], "reported_fit")
+        self.assertEqual(objective["comparison_ll"], -10.0)
+        self.assertEqual(objective["comparison_deviance"], 2.0)
+        self.assertFalse(objective["raw_public_state_eligible"])
+
+        feasible_better_reference = copy.deepcopy(document)
+        feasible_metrics = feasible_better_reference["public_state_adjudications"][0][
+            "metrics"
+        ][DEVELOPMENT.ADJUDICATOR]
+        feasible_metrics["recomputed_ll"] = -9.999
+        feasible_metrics["recomputed_deviance"] = 1.998
+        rebind_public_state_audit(feasible_better_reference)
+        feasible_better_analysis = DEVELOPMENT.analyze_document(feasible_better_reference)
+        self.assertFalse(feasible_better_analysis["science_pass"])
+        self.assertTrue(any(
+            "candidate_ll_worse" in issue or "candidate_deviance_worse" in issue
+            for issue in feasible_better_analysis["science_failures"]
+        ))
+
+        indeterminate_reference = copy.deepcopy(document)
+        indeterminate_metrics = indeterminate_reference["public_state_adjudications"][0][
+            "metrics"
+        ][DEVELOPMENT.ADJUDICATOR]
+        indeterminate_metrics["modelspace_status_code"] = 3.0
+        indeterminate_metrics["modelspace_breakdown_code"] = 5.0
+        rebind_public_state_audit(indeterminate_reference)
+        indeterminate_analysis = DEVELOPMENT.analyze_document(indeterminate_reference)
+        self.assertFalse(indeterminate_analysis["science_pass"])
+        self.assertTrue(any(
+            "ppmlhdfe_strict_invalid_metric" in issue
+            for issue in indeterminate_analysis["science_failures"]
         ))
 
         candidate_failure = copy.deepcopy(document)
@@ -578,6 +740,79 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(failed["science_pass"])
         self.assertTrue(any("strict_ppmlhdfe_vce" in issue for issue in failed["science_failures"]))
 
+    def test_task8_off_space_reference_prediction_is_never_an_objective_oracle(self) -> None:
+        policy = DEVELOPMENT.load_manifest()["scientific_adjudication"]["public_state_kkt"]
+        diagnostic = DEVELOPMENT._reference_objective_diagnostic(
+            {"ll": -23652.1206830109, "deviance": 8046.897433817},
+            {
+                "recomputed_ll": -23652.1202139359,
+                "recomputed_deviance": 8046.89649566694,
+                "projected_ll": -23652.120683092915,
+                "projected_deviance": 8046.89743398103,
+                "modelspace_status_code": 3.0,
+                "modelspace_breakdown_code": 0.0,
+            },
+            policy,
+        )
+        self.assertFalse(diagnostic["public_state_replays_fit"])
+        self.assertEqual(diagnostic["comparison_source"], "reported_fit")
+        self.assertEqual(diagnostic["comparison_ll"], -23652.1206830109)
+        self.assertEqual(diagnostic["comparison_deviance"], 8046.897433817)
+        self.assertFalse(diagnostic["raw_public_state_eligible"])
+        self.assertNotIn("raw_public_state", diagnostic["eligible_sources"])
+
+    def test_public_state_objectives_and_projection_fail_closed(self) -> None:
+        document = public_state_conflict_document()
+        manifest = DEVELOPMENT.load_manifest()
+        scope = document["scopes"][0]
+        evidence = document["public_state_adjudications"][0]
+        indexed = {
+            (
+                str(row["scope_id"]), str(row["implementation"]),
+                str(row["arm"]), int(row["repetition"]),
+            ): row
+            for row in document["records"]
+        }
+        strict = next(
+            row for row in document["records"]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+
+        def issues(changed: dict[str, object]) -> list[str]:
+            return DEVELOPMENT._public_state_kkt_issues(
+                changed, indexed, strict, scope, "candidate", 2,
+                19,
+                manifest["science"],
+                manifest["scientific_adjudication"]["public_state_kkt"],
+            )
+
+        missing_reported = copy.deepcopy(evidence)
+        missing_reported["fits"][DEVELOPMENT.ADJUDICATOR]["ll"] = True
+        self.assertIn(
+            "ppmlhdfe_strict_reported_objective_invalid",
+            issues(missing_reported),
+        )
+
+        inconsistent = copy.deepcopy(evidence)
+        inconsistent["metrics"][DEVELOPMENT.ADJUDICATOR]["projected_deviance"] = 2.1
+        self.assertIn(
+            "ppmlhdfe_strict_projected_objective_invariant",
+            issues(inconsistent),
+        )
+
+        negative_deviance = copy.deepcopy(evidence)
+        negative_deviance["metrics"]["ppmlhdfe"]["projected_deviance"] = -1.0
+        rejected = issues(negative_deviance)
+        self.assertIn("ppmlhdfe_invalid_metric", rejected)
+        self.assertIn("ppmlhdfe_projected_objective_invalid", rejected)
+
+        indeterminate = copy.deepcopy(evidence)
+        indeterminate["metrics"]["ppmlhdfe"]["modelspace_status_code"] = 3.0
+        self.assertIn("ppmlhdfe_invalid_metric", issues(indeterminate))
+
+        self.assertIsNone(DEVELOPMENT._objective_pair(True, 2.0))
+        self.assertIsNone(DEVELOPMENT._objective_pair(-10.0, -1.0))
+
     def test_public_state_kkt_evidence_and_processes_are_exactly_bound(self) -> None:
         document = run_document()
         for row in document["records"]:
@@ -594,7 +829,10 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         document["processes"].append({
             "stage": "adjudicate", "scope_id": scope["id"],
             "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
-            "accepted_rc": 0,
+            "accepted_rc": 0, "reference_route": {
+                "acceleration": "conjugate_gradient",
+                "transform": "symmetric_kaczmarz",
+            },
         })
         add_public_state_kkt(document)
 
@@ -619,6 +857,30 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertTrue(any(
             "missing_public_state_audit_process" in issue
             for issue in failed["science_failures"]
+        ))
+
+        forced_reference_lsmr = copy.deepcopy(document)
+        reference_fit = next(
+            process for process in forced_reference_lsmr["processes"]
+            if process["stage"] == "public-state-fit"
+            and process["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        reference_fit["reference_route"]["acceleration"] = "lsmr"
+        failed = DEVELOPMENT.analyze_document(forced_reference_lsmr)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "unexpected_process" in issue for issue in failed["science_failures"]
+        ))
+
+        wrong_projection_width = copy.deepcopy(document)
+        wrong_projection_width["public_state_adjudications"][0]["metrics"]["map"][
+            "modelspace_columns"
+        ] = 18.0
+        rebind_public_state_audit(wrong_projection_width)
+        failed = DEVELOPMENT.analyze_document(wrong_projection_width)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "map_invalid_metric" in issue for issue in failed["science_failures"]
         ))
 
         metrics_tamper = copy.deepcopy(document)

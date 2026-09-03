@@ -27,10 +27,21 @@ KKT_DRIVER = ROOT / "tests/stata/development/feppml_public_state_kkt.do"
 SOLVERS = ("map", "lsmr", "cmg")
 COMPARATORS = ("ppmlhdfe",)
 ADJUDICATOR = "ppmlhdfe_strict"
-KKT_ADJUDICATOR = "independent_public_state_kkt_v1"
+KKT_ADJUDICATOR = "independent_public_state_kkt_v2"
 REFERENCE_ACCELERATION = "conjugate_gradient"
 REFERENCE_TRANSFORM = "symmetric_kaczmarz"
 ROUTE_CODES = {"map": 2, "lsmr": 3, "cmg": 7}
+PUBLIC_STATE_METRICS = (
+    "finite_score_absinf", "fe_score_absinf", "score_relinf", "score_rel2",
+    "score_scale", "recomputed_ll", "recomputed_deviance", "min_mu", "max_mu",
+    "modelspace_algorithm_code", "modelspace_status_code", "modelspace_iterations",
+    "modelspace_columns", "modelspace_eta_scale", "modelspace_resid_maxabs",
+    "modelspace_resid_rms", "modelspace_resid_relrms", "modelspace_tail_relrms",
+    "modelspace_normal_rel2",
+    "modelspace_normal_relinf", "modelspace_recurrence_relrms",
+    "modelspace_breakdown_code", "projected_ll", "projected_deviance",
+    "projected_min_mu", "projected_max_mu",
+)
 SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
 RUN_ROOT = re.compile(r"^/projectnb/welfgr/fereg/dev/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
@@ -173,7 +184,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
-        "development_result_table": "2.4",
+        "development_result_table": "2.5",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -218,8 +229,32 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
             "score_tolerance": 1e-8,
             "candidate_objective_replay_rtol": 1e-8,
             "candidate_objective_replay_atol": 1e-10,
+            "reference_public_state_objective_replay_rtol": 1e-8,
+            "reference_public_state_objective_replay_atol": 1e-10,
+            "reference_objective_source": "best_certified_feasible_state",
+            "objective_invariant_rtol": 1e-12,
+            "objective_invariant_atol": 1e-8,
             "objective_dominance_rtol": 1e-8,
             "objective_dominance_atol": 1e-10,
+            "model_space_projection": {
+                "algorithm": "scaled_cgls_v1", "algorithm_code": 1,
+                "max_iterations": 20_000, "refresh_interval": 32,
+                "normal_rel2_loose": 5e-13,
+                "normal_rel2_final": 5e-14,
+                "normal_relinf_final": 5e-14,
+                "recurrence_relrms_max": 1e-10,
+                "tail_relrms_max": 1e-10,
+                "feasible_relrms_max": 1e-10,
+                "status_codes": {
+                    "feasible": 1, "indeterminate": 3,
+                },
+                "breakdown_codes": {
+                    "none": 0, "invalid_design": 1,
+                    "nonpositive_curvature": 2, "nonfinite_recurrence": 3,
+                    "recurrence_drift": 4, "iteration_limit": 5,
+                    "final_certificate": 6, "projected_objective": 7,
+                },
+            },
             "both_reference_states_must_fail_score_tolerance": True,
             "preserve_default_and_strict_mismatches": True,
         },
@@ -685,11 +720,7 @@ def parse_public_state_fit(
 
 
 def parse_public_state_kkt(path: Path) -> dict[str, dict[str, float]]:
-    required = {
-        "arm", "finite_score_absinf", "fe_score_absinf", "score_relinf",
-        "score_rel2", "score_scale", "recomputed_ll", "recomputed_deviance",
-        "min_mu", "max_mu",
-    }
+    required = {"arm", *PUBLIC_STATE_METRICS}
     with path.open(encoding="utf-8", newline="") as source:
         reader = csv.DictReader(source, delimiter="\t")
         if set(reader.fieldnames or []) != required:
@@ -700,7 +731,7 @@ def parse_public_state_kkt(path: Path) -> dict[str, dict[str, float]]:
     parsed: dict[str, dict[str, float]] = {}
     for row in rows:
         metrics: dict[str, float] = {}
-        for field in required - {"arm"}:
+        for field in PUBLIC_STATE_METRICS:
             value = optional_float(row[field])
             if value is None:
                 raise DevelopmentError("public-state KKT metric is missing")
@@ -793,6 +824,9 @@ def execute_scopes(
     processes: list[dict[str, object]] = []
     datasets: list[dict[str, object]] = []
     public_state_adjudications: list[dict[str, object]] = []
+    projection_policy = manifest["scientific_adjudication"]["public_state_kkt"][
+        "model_space_projection"
+    ]
     dataset_cache: dict[str, tuple[Path, Path, Path, str, dict[str, object]]] = {}
     if prepare_comparators:
         console = output_dir / "reference-setup.log"
@@ -1001,6 +1035,30 @@ def execute_scopes(
                     "FEREG_PPML_SOLVER_KKT_CANDIDATE_STATE": str(Path(before["map"]["path"])),
                     "FEREG_PPML_SOLVER_KKT_DEFAULT_STATE": str(Path(before["ppmlhdfe"]["path"])),
                     "FEREG_PPML_SOLVER_KKT_STRICT_STATE": str(Path(before[ADJUDICATOR]["path"])),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_MAXITER": str(
+                        projection_policy["max_iterations"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_REFRESH": str(
+                        projection_policy["refresh_interval"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_NORMAL_LOOSE": str(
+                        projection_policy["normal_rel2_loose"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_NORMAL_FINAL": str(
+                        projection_policy["normal_rel2_final"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_NORMAL_INFINITY": str(
+                        projection_policy["normal_relinf_final"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_RECURRENCE": str(
+                        projection_policy["recurrence_relrms_max"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_TAIL": str(
+                        projection_policy["tail_relrms_max"]
+                    ),
+                    "FEREG_PPML_SOLVER_KKT_PROJECTION_FEASIBLE": str(
+                        projection_policy["feasible_relrms_max"]
+                    ),
                 })
                 process = run_stata(stata, run_env, console, KKT_DRIVER)
                 status, reason = stata_stage_status(
@@ -1064,6 +1122,23 @@ def _close(left: float | None, right: float | None, rtol: float, atol: float) ->
         and right is not None
         and abs(left - right) <= atol + rtol * max(abs(left), abs(right))
     )
+
+
+def _finite_float(value: object, *, nonnegative: bool = False) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    numeric = float(value)
+    if not math.isfinite(numeric) or (nonnegative and numeric < 0.0):
+        return None
+    return numeric
+
+
+def _objective_pair(ll: object, deviance: object) -> tuple[float, float] | None:
+    numeric_ll = _finite_float(ll)
+    numeric_deviance = _finite_float(deviance, nonnegative=True)
+    if numeric_ll is None or numeric_deviance is None:
+        return None
+    return numeric_ll, numeric_deviance
 
 
 def _vectors_close(left: Sequence[float], right: Sequence[float], rtol: float, atol: float) -> bool:
@@ -1256,10 +1331,60 @@ def _fit_binding_issues(
     return issues
 
 
+def _reference_objective_diagnostic(
+    fit: Mapping[str, object], metrics: Mapping[str, object],
+    policy: Mapping[str, object],
+) -> dict[str, object]:
+    if policy.get("reference_objective_source") != "best_certified_feasible_state":
+        raise DevelopmentError("reference objective source contract changed")
+    reported = _objective_pair(fit.get("ll"), fit.get("deviance"))
+    public = _objective_pair(
+        metrics.get("recomputed_ll"), metrics.get("recomputed_deviance"),
+    )
+    projected = _objective_pair(
+        metrics.get("projected_ll"), metrics.get("projected_deviance"),
+    )
+    replay_rtol = float(policy["reference_public_state_objective_replay_rtol"])
+    replay_atol = float(policy["reference_public_state_objective_replay_atol"])
+    ll_replays = (
+        reported is not None and public is not None
+        and _close(public[0], reported[0], replay_rtol, replay_atol)
+    )
+    deviance_replays = (
+        reported is not None and public is not None
+        and _close(public[1], reported[1], replay_rtol, replay_atol)
+    )
+    public_state_replays_fit = ll_replays and deviance_replays
+    status = _finite_float(metrics.get("modelspace_status_code"))
+    breakdown = _finite_float(metrics.get("modelspace_breakdown_code"))
+    feasible_code = float(policy["model_space_projection"]["status_codes"]["feasible"])
+    projection_certified = status == feasible_code and breakdown == 0.0
+    eligible: list[tuple[str, tuple[float, float]]] = []
+    if reported is not None:
+        eligible.append(("reported_fit", reported))
+    if projection_certified and projected is not None:
+        eligible.append(("projected_public_state", projected))
+    if status == feasible_code and breakdown == 0.0 and public is not None:
+        eligible.append(("raw_public_state", public))
+    selected = max(eligible, key=lambda item: item[1][0]) if eligible else None
+    return {
+        "public_state_replays_fit": public_state_replays_fit,
+        "ll_replays_fit": ll_replays,
+        "deviance_replays_fit": deviance_replays,
+        "modelspace_status_code": status,
+        "raw_public_state_eligible": status == feasible_code and breakdown == 0.0,
+        "eligible_sources": [item[0] for item in eligible],
+        "comparison_source": selected[0] if selected else None,
+        "comparison_ll": selected[1][0] if selected else None,
+        "comparison_deviance": selected[1][1] if selected else None,
+    }
+
+
 def _public_state_kkt_issues(
     evidence: Mapping[str, object], indexed: Mapping[tuple[str, str, str, int], Mapping[str, object]],
     strict: Mapping[str, object], scope: Mapping[str, object], implementation: str,
-    repetitions: int, science: Mapping[str, object], policy: Mapping[str, object],
+    repetitions: int, expected_modelspace_columns: int,
+    science: Mapping[str, object], policy: Mapping[str, object],
 ) -> list[str]:
     issues: list[str] = []
     scope_id = str(scope["id"])
@@ -1320,17 +1445,74 @@ def _public_state_kkt_issues(
     ):
         issues.append("fit_sample_or_convergence")
 
+    projection_policy = policy["model_space_projection"]
+    feasible_code = float(projection_policy["status_codes"]["feasible"])
+    expected_algorithm = float(projection_policy["algorithm_code"])
     for arm, row in metrics.items():
+        if set(row) != set(PUBLIC_STATE_METRICS):
+            issues.append(f"{arm}_metric_inventory")
+            continue
+        numeric = {field: _finite_float(row.get(field)) for field in PUBLIC_STATE_METRICS}
+        if any(value is None for value in numeric.values()):
+            issues.append(f"{arm}_invalid_metric")
+            continue
+        values = {field: float(value) for field, value in numeric.items() if value is not None}
+        status = values["modelspace_status_code"]
         if (
-            row["finite_score_absinf"] < 0.0
-            or row["fe_score_absinf"] < 0.0
-            or row["score_relinf"] < 0.0
-            or row["score_rel2"] < 0.0
-            or row["score_scale"] <= 0.0
-            or row["min_mu"] <= 0.0
-            or row["max_mu"] < row["min_mu"]
+            values["finite_score_absinf"] < 0.0
+            or values["fe_score_absinf"] < 0.0
+            or values["score_relinf"] < 0.0
+            or values["score_rel2"] < 0.0
+            or values["score_scale"] <= 0.0
+            or values["recomputed_deviance"] < 0.0
+            or values["min_mu"] <= 0.0
+            or values["max_mu"] < values["min_mu"]
+            or values["modelspace_algorithm_code"] != expected_algorithm
+            or values["modelspace_breakdown_code"] != 0.0
+            or status != feasible_code
+            or values["modelspace_iterations"] < 0.0
+            or values["modelspace_iterations"] != int(values["modelspace_iterations"])
+            or values["modelspace_iterations"] > float(projection_policy["max_iterations"])
+            or values["modelspace_columns"] != expected_modelspace_columns
+            or values["modelspace_columns"] != int(values["modelspace_columns"])
+            or values["modelspace_eta_scale"] < 1.0
+            or values["modelspace_resid_maxabs"] < values["modelspace_resid_rms"]
+            or any(
+                values[field] < 0.0 for field in (
+                    "modelspace_resid_rms", "modelspace_resid_relrms",
+                    "modelspace_tail_relrms", "modelspace_normal_rel2",
+                    "modelspace_normal_relinf",
+                    "modelspace_recurrence_relrms",
+                )
+            )
+            or values["modelspace_normal_rel2"] > float(projection_policy["normal_rel2_final"])
+            or values["modelspace_normal_relinf"] > float(
+                projection_policy["normal_relinf_final"]
+            )
+            or values["modelspace_tail_relrms"] > float(
+                projection_policy["tail_relrms_max"]
+            )
+            or values["modelspace_recurrence_relrms"] > float(
+                projection_policy["recurrence_relrms_max"]
+            )
+            or values["projected_deviance"] < 0.0
+            or values["projected_min_mu"] <= 0.0
+            or values["projected_max_mu"] < values["projected_min_mu"]
+            or not _close(
+                values["modelspace_resid_relrms"],
+                values["modelspace_resid_rms"] / values["modelspace_eta_scale"],
+                1e-12, 1e-15,
+            )
         ):
             issues.append(f"{arm}_invalid_metric")
+        if (
+            status == feasible_code
+            and values["modelspace_resid_relrms"]
+            > float(projection_policy["feasible_relrms_max"])
+        ):
+            issues.append(f"{arm}_modelspace_classification")
+        if status != feasible_code:
+            issues.append(f"{arm}_modelspace_indeterminate")
     tolerance = float(policy["score_tolerance"])
     candidate_metrics = metrics["map"]
     if (
@@ -1355,23 +1537,60 @@ def _public_state_kkt_issues(
             replay_rtol, replay_atol,
         ):
             issues.append(f"candidate_{metric}_replay")
+    invariant_rtol = float(policy["objective_invariant_rtol"])
+    invariant_atol = float(policy["objective_invariant_atol"])
+    candidate_pair = _objective_pair(
+        candidate_metrics.get("recomputed_ll"),
+        candidate_metrics.get("recomputed_deviance"),
+    )
+    if candidate_pair is None:
+        issues.append("candidate_objective_invalid")
+        objective_constant = None
+    else:
+        objective_constant = candidate_pair[1] + 2.0 * candidate_pair[0]
+    objective_pairs: list[tuple[str, tuple[float, float] | None]] = []
+    for arm in ("map", "ppmlhdfe", ADJUDICATOR):
+        objective_pairs.extend((
+            (f"{arm}_reported", _objective_pair(fits[arm].get("ll"), fits[arm].get("deviance"))),
+            (f"{arm}_public", _objective_pair(
+                metrics[arm].get("recomputed_ll"), metrics[arm].get("recomputed_deviance"),
+            )),
+            (f"{arm}_projected", _objective_pair(
+                metrics[arm].get("projected_ll"), metrics[arm].get("projected_deviance"),
+            )),
+        ))
+    for label, pair in objective_pairs:
+        if pair is None:
+            issues.append(f"{label}_objective_invalid")
+        elif objective_constant is not None and not _close(
+            pair[1] + 2.0 * pair[0], objective_constant,
+            invariant_rtol, invariant_atol,
+        ):
+            issues.append(f"{label}_objective_invariant")
     dominance_rtol = float(policy["objective_dominance_rtol"])
     dominance_atol = float(policy["objective_dominance_atol"])
     for arm in ("ppmlhdfe", ADJUDICATOR):
-        reference_metrics = metrics[arm]
+        objective = _reference_objective_diagnostic(
+            fits[arm], metrics[arm], policy,
+        )
+        reference_ll = objective["comparison_ll"]
+        reference_deviance = objective["comparison_deviance"]
+        if reference_ll is None or reference_deviance is None:
+            issues.append(f"{arm}_objective_missing")
+            continue
         ll_slack = dominance_atol + dominance_rtol * max(
             abs(candidate_metrics["recomputed_ll"]),
-            abs(reference_metrics["recomputed_ll"]),
+            abs(reference_ll),
         )
         deviance_slack = dominance_atol + dominance_rtol * max(
             abs(candidate_metrics["recomputed_deviance"]),
-            abs(reference_metrics["recomputed_deviance"]),
+            abs(reference_deviance),
         )
-        if candidate_metrics["recomputed_ll"] + ll_slack < reference_metrics["recomputed_ll"]:
+        if candidate_metrics["recomputed_ll"] + ll_slack < reference_ll:
             issues.append(f"candidate_ll_worse_than_{arm}")
         if (
             candidate_metrics["recomputed_deviance"]
-            > reference_metrics["recomputed_deviance"] + deviance_slack
+            > reference_deviance + deviance_slack
         ):
             issues.append(f"candidate_deviance_worse_than_{arm}")
     return issues
@@ -1383,6 +1602,15 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         raise DevelopmentError("not a v2 solver-development run")
     if document.get("qualification_eligible") is not False or document.get("auto_calibration") is not False:
         raise DevelopmentError("development evidence cannot qualify or calibrate auto")
+    manifest_receipt = document.get("manifest")
+    if (
+        not isinstance(manifest_receipt, dict)
+        or set(manifest_receipt) != {"path", "sha256"}
+        or not isinstance(manifest_receipt["path"], str)
+        or not manifest_receipt["path"]
+        or manifest_receipt["sha256"] != sha256_file(MANIFEST)
+    ):
+        raise DevelopmentError("development evidence manifest differs from the active manifest")
     repetitions = int(document["repetitions"])
     implementations = list(document["sources"])
     if document.get("include_comparators") is not True:
@@ -1400,6 +1628,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         raise DevelopmentError("duplicate run scope")
     eligibility_by_scope: dict[str, dict[str, object]] = {}
     metadata_n_by_scope: dict[str, int] = {}
+    modelspace_columns_by_scope: dict[str, int] = {}
     dataset_sha_by_scope: dict[str, str] = {}
     dataset_id_by_scope: dict[str, str] = {}
     generated_scope_to_dataset: dict[str, str] = {}
@@ -1431,6 +1660,11 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             raise DevelopmentError("dataset solver eligibility differs from metadata")
         eligibility_by_scope[scope_id] = derived
         metadata_n_by_scope[scope_id] = int(dataset["metadata"]["N"])
+        modelspace_columns_by_scope[scope_id] = int(scope_by_id[scope_id]["controls"]) + sum(
+            int(dataset["metadata"][f"levels{index}"])
+            for index in range(1, 4)
+            if int(dataset["metadata"][f"levels{index}"]) > 0
+        )
         dataset_sha_by_scope[scope_id] = str(dataset.get("dta", {}).get("sha256", ""))
         dataset_id_by_scope[scope_id] = dataset_id_value
     indexed: dict[tuple[str, str, str, int], Mapping[str, object]] = {}
@@ -1515,10 +1749,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         if key in indexed:
             failures.append(":".join(map(str, key)) + ":duplicate")
         indexed[key] = row
-    metric_fields = {
-        "finite_score_absinf", "fe_score_absinf", "score_relinf", "score_rel2",
-        "score_scale", "recomputed_ll", "recomputed_deviance", "min_mu", "max_mu",
-    }
+    metric_fields = set(PUBLIC_STATE_METRICS)
     for evidence in public_state_evidence:
         scope_id = str(evidence.get("scope_id"))
         implementation = str(evidence.get("implementation"))
@@ -1600,6 +1831,13 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             if (
                 process_scope not in scope_by_id
                 or not (solver_pair or comparator_pair)
+                or process.get("reference_route") != (
+                    {
+                        "acceleration": REFERENCE_ACCELERATION,
+                        "transform": REFERENCE_TRANSFORM,
+                    }
+                    if comparator_pair else None
+                )
                 or (
                     solver_pair
                     and process_arm not in eligibility_by_scope[process_scope]["eligible_solvers"]
@@ -1618,6 +1856,10 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 process_scope not in scope_by_id
                 or process_implementation != "adjudicator"
                 or process_arm != ADJUDICATOR
+                or process.get("reference_route") != {
+                    "acceleration": REFERENCE_ACCELERATION,
+                    "transform": REFERENCE_TRANSFORM,
+                }
             ):
                 failures.append(f"{process_scope}:adjudicator:{process_arm}:unexpected_process")
             elif process_scope in observed_adjudicators:
@@ -1641,6 +1883,13 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 None if process_implementation == "reference"
                 else document["artifacts"].get(process_implementation, {}).get("sha256")
             )
+            expected_reference_route = (
+                {
+                    "acceleration": REFERENCE_ACCELERATION,
+                    "transform": REFERENCE_TRANSFORM,
+                }
+                if process_implementation == "reference" else None
+            )
             if (
                 process_scope not in scope_by_id
                 or not valid_pair
@@ -1648,6 +1897,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 or process.get("dataset_sha256") != dataset_sha_by_scope.get(process_scope)
                 or process.get("source_sha256") != expected_source
                 or process.get("artifact_sha256") != expected_artifact
+                or process.get("reference_route") != expected_reference_route
                 or not valid_file_receipt(process.get("state"))
                 or not valid_file_receipt(process.get("result"))
                 or not isinstance(process.get("parsed_result_sha256"), str)
@@ -1758,6 +2008,18 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         failures.append("prepare-reference:duplicate_process")
     science = manifest["science"]
     kkt_policy = manifest["scientific_adjudication"]["public_state_kkt"]
+    public_state_objective_diagnostics = [
+        {
+            "scope_id": scope_id,
+            "implementation": implementation,
+            "arm": arm,
+            **_reference_objective_diagnostic(
+                evidence["fits"][arm], evidence["metrics"][arm], kkt_policy,
+            ),
+        }
+        for (scope_id, implementation), evidence in sorted(public_state_by_key.items())
+        for arm in ("ppmlhdfe", ADJUDICATOR)
+    ]
     summaries: list[dict[str, object]] = []
     solver_exclusions: list[dict[str, object]] = []
     for scope in scopes:
@@ -1855,7 +2117,9 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         ):
                             kkt_issues = _public_state_kkt_issues(
                                 evidence, indexed, strict_reference, scope,
-                                implementation, repetitions, science, kkt_policy,
+                                implementation, repetitions,
+                                modelspace_columns_by_scope[scope_id],
+                                science, kkt_policy,
                             )
                             if not kkt_issues:
                                 used_public_state.add(public_state_key)
@@ -1957,6 +2221,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
         "reference_adjudications": reference_adjudications,
+        "public_state_objective_diagnostics": public_state_objective_diagnostics,
         "dof_convention_notes": sorted(dof_convention_notes),
         "solver_summary": summaries, "solver_exclusions": solver_exclusions,
         "scopes": len(scopes), "repetitions": repetitions,

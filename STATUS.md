@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-03
 
 **Branch:** `main`
 
@@ -88,20 +88,32 @@ routing calibration or release qualification.
 
 ## Development harness and validation
 
-- The live PPML solver development harness is manifest v2. It uses only public
-  MAP, LSMR, and CMG arms plus the pinned default `ppmlhdfe` comparator.
+- The live PPML solver development harness is manifest v2, result table 2.5. It
+  uses only public MAP, LSMR, and CMG arms plus the pinned default `ppmlhdfe`
+  comparator. The reference remains on its observed CG/symmetric-Kaczmarz
+  route; the harness does not force `ppmlhdfe` LSMR.
   Historical reports and qualification manifests are preserved;
   the obsolete live v1 solver manifest was removed by explicit approval.
 - The v2 harness has local science and smoke gates, then a bounded SCC lane of
   16 parallel tasks on comparable 28-core Broadwell nodes. It records the
   effective public family and public solver fallback count.
-- The complete local repository entry point is green on the implementation
-  worktree: repository checks, 744 Python tests, portable/static and mock-SPI
-  checks, strict formatting and Clippy, 677 core tests, integration oracles,
-  74 normal plugin tests, and 89 FFI plugin tests.
-- A universal macOS build previously passed during integration. The exact
-  committed candidate still needs a fresh universal build and licensed Stata
-  quick run before the development benchmark campaign.
+- The exact product commit `2ff872b` passed the universal arm64/x86_64 macOS
+  build, licensed Stata quick profile, local science and smoke profiles, strict
+  formatting and Clippy, 691 core tests, 74 normal plugin tests, and 89 FFI
+  plugin tests. The final development-harness patch passes all 758 repository
+  tests plus the portable shell, Python, TOML, C, and mock-SPI checks.
+- The SCC development run rooted at
+  `/projectnb/welfgr/fereg/dev/20260903T170000Z-public-ppml-solvers-2ff872b`
+  completed all scheduler work. Fifteen of sixteen task receipts passed. Task
+  8 failed the scientific gate and the collector therefore correctly refused
+  to create a merged success receipt. This run is retained as failed
+  development evidence, not rewritten or promoted.
+- The task-8 discrepancy is localized to the reference public prediction: the
+  default and strict `ppmlhdfe` predicted log-means cannot be certified within
+  the declared control-plus-FE model space at the registered tolerance. The
+  independent matrix-free scaled-CGLS audit classifies those states as
+  indeterminate and fails closed. It does not infer infeasibility from a small
+  normal residual or use an off-space predicted objective as an oracle.
 
 ## Completed, evidence-backed baseline
 
@@ -113,22 +125,21 @@ not inherit release or cross-platform qualification from earlier sources.
 
 ## Current blockers
 
-- The exact committed candidate has not yet completed its licensed Stata quick
-  gate or the approved v2 local/SCC solver campaign.
+- The task-8 reference-state policy must be resolved before a complete SCC
+  development campaign can pass: either retain the current fail-closed model-
+  space certificate, or explicitly adopt a different comparator objective
+  policy. No auto-routing claim depends on the failed run.
 - The upstream CMG executor ownership noted above prevents complete
   cross-frame executor reuse without an upstream API change.
 
 ## Development plan
 
-1. Commit the coherent public-solver candidate on `main`.
-2. Build the exact commit with `./scripts/build_macos.sh` and run
-   `./ci/run_stata_ci.sh quick`.
-3. Run the v2 local science and smoke profiles against the exact baseline and
-   pinned reference closure.
-4. If both local gates pass, run the approved 16-task, 28-core SCC development
-   campaign and inspect every scheduler/application/science result.
-5. Fix measured solver defects if any. Keep `solver(auto)` MAP-only; auto
-   calibration is the next separate campaign.
+1. Resolve the task-8 comparator objective policy without weakening the public
+   estimator's numerical contracts.
+2. If the policy changes, version the development manifest again and rerun the
+   bounded local and SCC development gates. Do not rewrite the failed run.
+3. Keep `solver(auto)` MAP-only. Calibrate auto in the next separate campaign
+   only after the explicit solver evidence policy is accepted.
 
 ## 0.5.0 beta exit gate
 
