@@ -82,18 +82,28 @@ reference paths must verify conjugate-gradient acceleration with the symmetric-
 Kaczmarz transform, and the default discrepancy remains recorded. When both
 reference fits still have a coefficient-only mismatch, a final untimed audit
 may adjudicate it only by an independent absolute public-state score and
-objective check: MAP must meet the public score tolerance, both reference
-states must fail it, and MAP's replayed objective must be internally consistent
-and no worse than each reference's best certified feasible objective. An
-untimed, matrix-free scaled-CGLS audit projects each public log-mean onto the
-declared control-plus-FE space. Reported and projected objectives are feasible
-witnesses; the raw predicted-state objective is eligible only after a strict
-model-space certificate. A projection residual above the registered feasible
-threshold is indeterminate—not evidence of infeasibility—and fails closed, as
-does any other certificate failure or violation of the Poisson objective
-identity. Every other scientific mismatch fails
-closed. The reference stays on its supported CG/symmetric-Kaczmarz route; no
-forced `ppmlhdfe` LSMR arm is part of the manifest. Thread-scaling scopes within
+objective check. Under
+[ADR 0026](adr/0026-ppml-comparator-objective-adjudication.md), the pinned
+reference fit's reported `e(ll)` and `e(deviance)` are the authoritative
+reference objective after finite, domain, and Poisson-identity checks; the
+candidate must be no worse within the registered tolerance. An untimed,
+matrix-free scaled-CGLS audit projects each public log-mean onto the declared
+control-plus-FE space, while separate
+checks replay its objective and measure its full score. Those prediction
+results remain diagnostics. The raw predicted state becomes an additional
+objective witness only after independent model-space feasibility and
+stationarity certificates, and the candidate must also be no worse than every
+such witness. The projected state alone is not a witness. A projection result
+above the registered feasible threshold is indeterminate, not evidence of
+infeasibility, and does not displace the reported reference objective.
+
+MAP's own public state must meet the public score tolerance, replay its
+reported objective, pass the model-space check, and satisfy every other
+candidate certificate. Outside this narrow coefficient-only stopping
+adjudication, every sample, VCE, DoF, route, fallback, self-consistency, and
+non-objective scientific mismatch fails closed. The reference stays on its
+supported CG/symmetric-Kaczmarz route; no forced `ppmlhdfe` LSMR arm is part of
+the manifest. Thread-scaling scopes within
 one campaign bundle reuse one generated dataset and seed. The development
 runner derives solver eligibility from that generated dataset's level-count
 metadata. In particular, it times public CMG only for

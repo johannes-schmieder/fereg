@@ -31,6 +31,18 @@ transaction, platform, and `fereg` non-regression gates in ADRs 0016--0020
 remain the release boundary, with Windows and the final aggregate deferred by
 explicit qualification decision.
 
+For cross-estimator PPML objective adjudication,
+[ADR 0026](adr/0026-ppml-comparator-objective-adjudication.md) makes the exact
+pinned `ppmlhdfe` fit's reported `e(ll)` and `e(deviance)` the authoritative
+reference objective, against which fereg must be no worse within the registered
+comparison tolerance. Its public predicted mean, replayed objective, KKT
+score, and model-space projection remain required diagnostics. The predicted
+state is an additional objective witness only when independent checks certify
+both model-space feasibility and stationarity; a projected state alone is not
+a witness. Fereg's own published mean must still replay its reported objective,
+lie in its declared model space, and pass every registered score, solver, rank,
+sample, and result certificate.
+
 ## Core contracts
 
 | Contract | Current accepted rule | Enablement requirement |

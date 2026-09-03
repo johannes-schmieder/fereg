@@ -192,23 +192,29 @@ only in finite coefficients, the development harness may run a final untimed
 public-state audit. Fresh processes save the public fitted means from MAP and
 from both pinned reference fits; a separate Mata calculation recomputes every
 control, constant, and FE-level score plus likelihood and deviance from the raw
-data. The discrepancy is adjudicated only when MAP independently satisfies the
-public `1e-8` score tolerance, both reference public states fail it, MAP's
-published objective replays from its public mean, and MAP's recomputed
-objective is no worse than the best independently certified feasible state for
-either reference. A matrix-free, diagonally scaled CGLS projection classifies
-each public log-mean against the span of the controls and full FE blocks. The
-comparison includes the reference's reported terminal objective, the projected
-public state, and the raw public state only when that state is certified to lie
-in the model space. The `1e-10` residual threshold certifies a nearby explicit
-control-plus-FE representation; every state that does not meet it is
-indeterminate and fails closed. A small normal residual or a stable iterate is
-never treated as proof that a state lies outside the model space. Fresh normal
-residuals, recurrence drift, the loose-to-final fitted-vector tail, and the
-Poisson identity `deviance + 2*ll` are all checked. Sample, VCE, likelihood,
-deviance, total-DoF, route, fallback, certificate, or non-coefficient failures
-remain fatal. The analysis retains both original reference mismatches and all
-hashed public-state inputs. This development-only audit uses the pinned
+data. [ADR 0026](adr/0026-ppml-comparator-objective-adjudication.md) makes each
+pinned reference fit's reported `e(ll)` and `e(deviance)` the authoritative
+cross-estimator objective pair, subject to finite, domain, and Poisson-identity
+checks. Fereg's certified objective must be no worse than that pair within the
+registered tolerance. The reference public prediction, its replayed objective,
+KKT score, and model-space projection remain mandatory diagnostics. A raw
+predicted state is an additional objective witness only when independent
+checks certify both its control-plus-FE model-space feasibility and its full
+control, constant, and FE-level stationarity; fereg must also be no worse than
+every such witness. A projected state alone is not a witness. A state that does
+not meet the model-space threshold remains indeterminate rather than proven
+infeasible, but that indeterminacy no longer invalidates the reported reference
+objective.
+
+Fereg remains subject to the stronger self-consistency rule: MAP must satisfy
+the public `1e-8` score tolerance, its published mean must replay its reported
+objective and lie in the declared model space, and all solver, rank, sample,
+and result certificates must pass. Fresh normal residuals, recurrence drift,
+the loose-to-final fitted-vector tail, and the Poisson identity
+`deviance + 2*ll` remain checked. Sample, VCE, total-DoF, route, fallback,
+certificate, or non-objective failures remain fatal. The analysis retains the
+reported and replayed reference objectives, all prediction diagnostics, and
+all hashed public-state inputs. This development-only audit uses the pinned
 comparator's supported CG/symmetric-Kaczmarz route and never forces a different
 `ppmlhdfe` solver.
 

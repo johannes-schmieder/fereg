@@ -73,6 +73,17 @@ report. Start with the smallest local science, parser, protocol, or transaction
 fixture that exercises the change. Auto remains MAP until the later dedicated
 calibration campaign; explicit-family measurements must not silently alter it.
 
+Cross-estimator objective adjudication follows
+[ADR 0026](adr/0026-ppml-comparator-objective-adjudication.md). The pinned
+`ppmlhdfe` fit's reported likelihood and deviance are the authoritative
+reference pair after their own finite, domain, and Poisson-identity checks.
+Prediction replay, KKT, and model-space projection remain diagnostics; a
+predicted state is an additional objective witness only after independent
+feasibility and stationarity certification. Fereg continues to require full
+self-consistency and certification. Version the manifest, parser, adjudicator,
+and focused tests together before collecting evidence under this policy, and
+never reinterpret an older receipt under the new rules.
+
 When SCC behavior is relevant, use small diagnostic samples first. Prefer
 comparable 28-core nodes and run roughly 10--20 independent tasks in parallel;
 each task may execute several small jobs sequentially. Escalate sample size and
