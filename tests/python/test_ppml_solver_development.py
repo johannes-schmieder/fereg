@@ -151,6 +151,38 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         cmg = next(row for row in analysis["solver_summary"] if row["solver"] == "cmg")
         self.assertFalse(cmg["performance_eligible"])
 
+    def test_analysis_preserves_candidate_dof_and_accepts_reference_partition(self) -> None:
+        document = run_document()
+        for row in document["records"]:
+            if row["implementation"] == "reference":
+                row["rank"] = 0.0
+                row["df_a"] = 19.0
+                row["df_resid"] = None
+        analysis = DEVELOPMENT.analyze_document(document)
+        self.assertTrue(analysis["science_pass"])
+        self.assertEqual(len(analysis["dof_convention_notes"]), 2)
+
+        changed = copy.deepcopy(document)
+        lsmr = next(
+            row for row in changed["records"]
+            if row["arm"] == "lsmr" and row["repetition"] == 2
+        )
+        lsmr["rank"] = 0.0
+        lsmr["df_a"] = 19.0
+        failed = DEVELOPMENT.analyze_document(changed)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("lsmr:r2:map_rank" in item for item in failed["science_failures"]))
+
+        changed = copy.deepcopy(document)
+        reference = next(
+            row for row in changed["records"]
+            if row["arm"] == "ppmlhdfe" and row["repetition"] == 2
+        )
+        reference["df_a"] = 18.0
+        failed = DEVELOPMENT.analyze_document(changed)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("ppmlhdfe_model_dof" in item for item in failed["science_failures"]))
+
     def test_control_covariance_uses_the_full_matrix_stride(self) -> None:
         row = {
             "v_names": ["x1", "x2", "_cons"],

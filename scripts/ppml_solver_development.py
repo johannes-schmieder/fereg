@@ -457,7 +457,7 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             "route_code": optional_float(row["route_code"]), "fallback_count": optional_float(row["fallback_count"]),
             "effective_threads": optional_float(row["effective_threads"]), "b_names": row["b_names"].split(),
             "b_values": _float_vector(row["b_values"]), "v_names": row["v_names"].split(), "v_values": _float_vector(row["v_values"]),
-            "certificate_values": _float_vector(row["certificate_values"]), "runtime_values": _optional_vector(row["runtime_values"]),
+            "certificate_values": _optional_vector(row["certificate_values"]), "runtime_values": _optional_vector(row["runtime_values"]),
         })
     return output
 
@@ -574,6 +574,14 @@ def _control_covariance(row: Mapping[str, object], controls: int) -> list[float]
     return [values[left * width + right] for left in range(controls) for right in range(controls)]
 
 
+def _model_dof(row: Mapping[str, object]) -> float | None:
+    rank = row["rank"]
+    absorbed = row["df_a"]
+    if rank is None or absorbed is None:
+        return None
+    return float(rank) + float(absorbed)
+
+
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
     if document.get("schema_version") != 2 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
@@ -588,6 +596,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     oracle: dict[str, Mapping[str, object]] = {}
     failures: list[str] = []
     route_failures: list[str] = []
+    dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
             oracle[str(row["scope_id"])] = row
@@ -633,6 +642,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         failures.append(prefix + ":coefficients")
                     if default_reference["v_names"][:controls] != lsmr_reference["v_names"][:controls] or not _vectors_close(_control_covariance(default_reference, controls), _control_covariance(lsmr_reference, controls), float(science["vce_rtol"]), float(science["vce_atol"])):
                         failures.append(prefix + ":vce")
+                    if _model_dof(default_reference) != _model_dof(lsmr_reference):
+                        failures.append(prefix + ":model_dof")
                 for solver in SOLVERS:
                     prefix = f"{scope_id}:{implementation}:{solver}:r{repetition}"
                     row = indexed.get((scope_id, implementation, solver, repetition))
@@ -667,9 +678,38 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         for scalar in ("ll", "deviance"):
                             if not _close(row[scalar], target[scalar], float(science["likelihood_rtol"]), float(science["likelihood_atol"])):
                                 failures.append(prefix + f":{target_name}_{scalar}")
-                        for scalar in ("rank", "df_a", "df_resid"):
-                            if row[scalar] != target[scalar]:
-                                failures.append(prefix + f":{target_name}_{scalar}")
+                        if target_name == "map":
+                            for scalar in ("rank", "df_a", "df_resid"):
+                                if row[scalar] != target[scalar]:
+                                    failures.append(prefix + f":{target_name}_{scalar}")
+                            continue
+
+                        # ADR-0022 gates ppmlhdfe on total model DoF. The
+                        # comparator assigns the normalized constant to df_a,
+                        # while fereg exposes it as an omitted finite slot.
+                        row_model_dof = _model_dof(row)
+                        target_model_dof = _model_dof(target)
+                        if row_model_dof is None or target_model_dof is None or row_model_dof != target_model_dof:
+                            failures.append(prefix + f":{target_name}_model_dof")
+                            continue
+                        row_residual_dof = row["df_resid"]
+                        expected_row_residual_dof = float(row["sample_n"]) - row_model_dof
+                        if row_residual_dof is None or float(row_residual_dof) != expected_row_residual_dof:
+                            failures.append(prefix + f":{target_name}_candidate_df_resid")
+                        target_residual_dof = target["df_resid"]
+                        expected_target_residual_dof = float(target["sample_n"]) - target_model_dof
+                        if target_residual_dof is not None and float(target_residual_dof) != expected_target_residual_dof:
+                            failures.append(prefix + f":{target_name}_reference_df_resid")
+                        if row["rank"] != target["rank"] or row["df_a"] != target["df_a"]:
+                            dof_convention_notes.add(
+                                "fereg and ppmlhdfe partition rank versus absorbed DoF differently; "
+                                "the gate compares their equal total model DoF"
+                            )
+                        if target_residual_dof is None:
+                            dof_convention_notes.add(
+                                "ppmlhdfe does not publish residual DoF for robust VCE; the gate "
+                                "derives it from N minus total model DoF"
+                            )
         if document.get("include_oracle"):
             target = oracle.get(scope_id)
             candidate_map = indexed.get((scope_id, "candidate", "map", 1))
@@ -720,6 +760,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
+        "dof_convention_notes": sorted(dof_convention_notes),
         "solver_summary": summaries, "scopes": len(scopes), "repetitions": repetitions,
     }
 
