@@ -44,8 +44,15 @@ assert `"`e(predict)'"' == "feppml_p"
 assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_action_protocol)'"' == "1.5"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.1"
-assert `"`e(feppml_result_wire)'"' == "1.1"
+assert `"`e(feppml_request_wire)'"' == "1.5"
+assert `"`e(feppml_result_wire)'"' == "1.2"
+assert `"`e(solver)'"' == "auto"
+assert `"`e(feppml_solver_selected)'"' == "map"
+assert `"`e(feppml_solver_engine)'"' == "map"
+assert `"`e(feppml_solver_effective)'"' == "map"
+assert `"`e(feppml_solver_checkpoint)'"' == "map"
+assert e(feppml_solver_fallback_count) == 0
+assert e(feppml_linear_route) == 2
 assert e(N) == 18
 assert e(N_physical) == 18
 assert e(N_effective) == 18
@@ -66,6 +73,8 @@ assert rowsof(e(feppml_certificate)) == 16
 assert rowsof(e(feppml_inference)) == 16
 assert rowsof(e(feppml_drop_counts)) == 14
 assert rowsof(e(feppml_separation_sequence)) == 5
+assert rowsof(e(feppml_solver)) == 4
+assert colsof(e(feppml_solver)) == 22
 assert colsof(e(feppml_receipt)) == 33
 assert e(feppml_receipt)[1,20] == 16
 assert e(feppml_receipt)[1,21] == 14

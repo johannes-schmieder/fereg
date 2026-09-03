@@ -67,35 +67,19 @@ fixture that exercises the changed boundary:
 but they are not standing requirements. The historical fail-closed profile is
 pre-activation evidence and is not the current public surface.
 
-### Private PPML solver experiments
+### PPML solver development
 
-ADR-0022's harness is local-development evidence only. It requires a freshly
-copied, exact-pinned reference closure with no preexisting generated
-`lftools.mlib`; the runner verifies every captured file digest and both
-`ppmlhdfe` runtime route signatures. A trace run is separate from every timed
-run.
+Use the public `solver(auto|map|lsmr|cmg)` surface and its versioned solver
+report. Start with the smallest local science, parser, protocol, or transaction
+fixture that exercises the change. Auto remains MAP until the later dedicated
+calibration campaign; explicit-family measurements must not silently alter it.
 
-List the frozen cells, run the smallest selected screen, and analyze the
-immutable result document with:
-
-```bash
-python3 scripts/ppml_solver_development.py cells --profile screening
-python3 scripts/ppml_solver_development.py run-local \
-  --profile screening --stata /path/to/stata-mp \
-  --reference-root /path/to/fresh-pinned-reference-root \
-  --output-dir /path/to/development-output --repetitions 3 \
-  --topology balanced_2fe --controls 10 --difficulty easy --threads 1 \
-  --arms map cmg_fused lsmr_fused_reuse lsmr_joint_reuse ppmlhdfe ppmlhdfe_lsmr
-python3 scripts/ppml_solver_development.py analyze \
-  /path/to/development-output/run.json --output /path/to/analysis.json
-```
-
-The cell filters are intended for fast local prototyping. Run the complete
-small science matrix only when a candidate boundary needs all eight topology
-oracles. Do not infer permission for screening, scale/thread, holdout, SCC, or
-activation from the presence of those manifest sections. A route remains
-private until its full frozen matrix, allocation/memory, thread, holdout, and
-platform gates have been explicitly authorized and passed.
+When SCC behavior is relevant, use small diagnostic samples first. Prefer
+comparable 28-core nodes and run roughly 10--20 independent tasks in parallel;
+each task may execute several small jobs sequentially. Escalate sample size and
+repetitions only after local and small-cluster science checks pass. Development
+results remain diagnostic until the frozen qualification contract is explicitly
+run on an exact source and artifact.
 
 ## Test escalation and SCC lanes
 
@@ -165,8 +149,8 @@ fixture status files, and terminal PASS sentinel must agree.
 - Ask Johannes before making a genuinely ambiguous econometric, compatibility,
   API, or architecture decision.
 - Public `fereg` OLS and public `feppml` are active beta testing surfaces. The
-  hidden PPML adapters remain development/qualification interfaces rather than
-  supported distribution commands.
+  internal PPML transaction remains an implementation and qualification seam,
+  not a second user-facing solver interface.
 - Performance and memory claims require measured evidence on the frozen suite.
 
 ## Resume checklist

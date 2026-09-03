@@ -30,14 +30,15 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
             "request_major=1",
-            "request_minor=4",
+            "request_minor=5",
             "result_major=1",
-            "result_minor=1",
+            "result_minor=2",
             "model_major=`model_major'",
             "model_minor=`model_minor'",
             "output_inference_matrix=`inference_shadow'",
             "output_drop_counts_matrix=`drop_counts_shadow'",
             "output_separation_sequence_matrix=`separation_sequence_shadow'",
+            "output_solver_matrix=`solver_shadow'",
             "output_receipt_matrix=`receipt_shadow'",
         ):
             self.assertIn(field, text)
@@ -46,7 +47,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertIn("nobreak {", text)
         self.assertIn("_estimates unhold `held_estimates', not", text)
         self.assertIn("`receipt'[1,33] != 1", text)
-        self.assertIn("syntax namelist(min=15 max=15)", text)
+        self.assertIn("syntax namelist(min=16 max=16)", text)
         self.assertIn("REQUESTEDVCECODE(integer) DROPSINGLETONS(integer)", text)
         self.assertIn("`coefficients' != `capacity'", text)
         self.assertIn("tempname finite_result covariance_scale", text)
@@ -67,18 +68,17 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertIn("feppml supports at most five cluster dimensions", text)
         self.assertIn("adjustment_position=", text)
         self.assertIn("include_intercept=1", text)
-        self.assertIn('if `"`finite_solver\'"\' != "auto"', text)
+        self.assertIn('local solver_mode = lower(strtrim(`"`solver\'"\'))', text)
+        self.assertIn('"auto", "map", "lsmr", "cmg"', text)
         self.assertIn('exit 498', text)
-        self.assertNotIn('local finite_solver "qr"', text)
-        self.assertNotIn('local finite_solver "pivoted-cholesky"', text)
+        self.assertNotIn('local finite_solver', text)
 
-    def test_private_solver_controls_are_closed_and_dually_gated(self) -> None:
+    def test_public_solver_control_is_exact_and_private_spellings_are_retired(self) -> None:
         transaction = TRANSACTION.read_text(encoding="utf-8")
         adapter = ADAPTER.read_text(encoding="utf-8")
-        plugin = PLUGIN.read_text(encoding="utf-8")
-        core = (ROOT / "crates/fereg-core/src/ppml/prepared_estimator.rs").read_text(
-            encoding="utf-8"
-        )
+        for surface in (transaction, adapter):
+            self.assertIn("SOLVer(string)", surface)
+            self.assertIn('"auto", "map", "lsmr", "cmg"', surface)
         for option in (
             "FESOLVer(string)",
             "FEPREConditioner(string)",
@@ -87,29 +87,22 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "FECMGMode(string)",
             "SOLVERTRACE",
         ):
-            self.assertIn(option, transaction)
+            self.assertNotIn(option, transaction)
             self.assertNotIn(option, adapter)
-        self.assertIn(
-            "private PPML FE-solver controls are unavailable through feppml",
-            transaction,
-        )
-        self.assertIn("FEREG_PPML_EXPERIMENTAL_SOLVERS", transaction)
+        self.assertIn("solver=`solver_mode'", transaction)
+        self.assertIn("output_solver_matrix=`solver_shadow'", transaction)
+        self.assertIn("solver(`solver_mode')", adapter)
         for field in (
-            "fe_solver=`fe_solver'",
-            "fe_preconditioner=`fe_preconditioner'",
-            "fe_lsmr_mode=`fe_lsmr_mode'",
-            "fe_lsmr_policy=`fe_lsmr_policy'",
-            "fe_cmg_mode=`fe_cmg_mode'",
-            "solver_trace=`solver_trace'",
-            "solver_experiment=`solver_experiment'",
+            "fe_solver=",
+            "fe_preconditioner=",
+            "fe_lsmr_mode=",
+            "fe_lsmr_policy=",
+            "fe_cmg_mode=",
+            "solver_trace=",
+            "solver_experiment=",
         ):
-            self.assertIn(field, transaction)
-        self.assertIn('std::env::var("FEREG_PPML_EXPERIMENTAL_SOLVERS")', core)
-        self.assertIn('"fe_solver"', plugin)
-        self.assertIn('"fe_lsmr_mode"', plugin)
-        self.assertIn('"fe_lsmr_policy"', plugin)
-        self.assertIn('"fe_cmg_mode"', plugin)
-        self.assertIn('"solver_trace"', plugin)
+            self.assertNotIn(field, transaction)
+        self.assertNotIn("FEREG_PPML_EXPERIMENTAL_SOLVERS", transaction)
 
     def test_outputs_are_private_until_final_commit(self) -> None:
         text = TRANSACTION.read_text(encoding="utf-8")
@@ -155,13 +148,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         rust_keys = set(re.findall(r'"([a-z_]+)"', allowed.group("body")))
         self.assertEqual(ado_keys, rust_keys)
 
-    def test_result_11_evidence_layout_and_publication_are_exact(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+    def test_protocol_uses_ppml_request_15_and_result_12(self) -> None:
         protocol = PROTOCOL.read_text(encoding="utf-8")
-
         for token in (
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2)",
             "PPML_RESULT_INFERENCE_ROWS: usize = 16",
             "PPML_RESULT_DROP_COUNT_ROWS: usize = 14",
             "PPML_RESULT_SEPARATION_SEQUENCE_ROWS: usize = 5",
@@ -169,16 +160,21 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         ):
             self.assertIn(token, protocol)
 
+    def test_result_12_evidence_layout_and_publication_are_exact(self) -> None:
+        text = TRANSACTION.read_text(encoding="utf-8")
+
         for token in (
             "matrix `inference_shadow' = J(16, 1, 0)",
             "matrix `drop_counts_shadow' = J(14, 2, 0)",
             "matrix `separation_sequence_shadow' = J(5, 13, 0)",
+            "matrix `solver_shadow' = J(4, 22, .)",
             "matrix `receipt_shadow' = J(1, 33, 0)",
             "rowsof(`inference') != 16 | colsof(`inference') != 1",
             "rowsof(`drop_counts') != 14 | colsof(`drop_counts') != 2",
             "rowsof(`separation_sequence') != 5 | colsof(`separation_sequence') != 13",
+            "rowsof(`solver') != 4 | colsof(`solver') != 22",
             "rowsof(`receipt') != 1 | colsof(`receipt') != 33",
-            "`receipt'[1,3] != 1",
+            "`receipt'[1,3] != 2",
             "`receipt'[1,33] != 1",
         ):
             self.assertIn(token, text)
@@ -265,6 +261,40 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         )
         self.assertEqual(
             stripe(
+                "matrix colnames `solver_shadow' =",
+                "matrix rownames `runtime_shadow'",
+            ),
+            [
+                "requested_family",
+                "selected_family",
+                "selected_engine",
+                "effective_family",
+                "effective_engine",
+                "checkpoint_family",
+                "row_engine",
+                "ordinary_frames",
+                "checkpoint_frames",
+                "retries",
+                "fallback_count",
+                "fallback_reason",
+                "iterations",
+                "setup_seconds",
+                "solve_seconds",
+                "certification_seconds",
+                "absinf_max",
+                "relinf_max",
+                "rel2_max",
+                "normal_equation_max",
+                "projection_absinf_max",
+                "backward_error_max",
+            ],
+        )
+        self.assertIn(
+            "matrix rownames `solver_shadow' = map lsmr_fused lsmr_joint cmg_prepared",
+            text,
+        )
+        self.assertEqual(
+            stripe(
                 "matrix colnames `receipt_shadow' =",
                 "matrix rownames `receipt_shadow'",
             ),
@@ -309,6 +339,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "feppml_inference",
             "feppml_drop_counts",
             "feppml_separation_sequence",
+            "feppml_solver",
             "feppml_receipt",
         ):
             self.assertIn(f"ereturn matrix {matrix_name} =", text)
@@ -331,6 +362,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "feppml_psd_passed",
             "feppml_sep_executions",
             "feppml_sep_generations",
+            "feppml_solver_fallback_count",
             "feppml_initial_hash_hi",
             "feppml_initial_hash_lo",
             "feppml_final_hash_hi",
@@ -360,6 +392,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertIn("TOLerance(real 1e-8)", adapter)
         self.assertIn("ITERate(integer 10000)", adapter)
         self.assertIn("MEMory(string) POOLSize(integer 10) THREADS(integer 0)", adapter)
+        self.assertIn("SOLVer(string)", adapter)
         for private_option in (
             "SAVEFEs",
             "FINITESOLVer",
@@ -370,7 +403,8 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "SIMPLEXCELLS",
         ):
             self.assertNotIn(private_option, adapter)
-        self.assertIn("finitesolver(auto)", adapter)
+        self.assertIn("solver(`solver_mode')", adapter)
+        self.assertNotIn("finitesolver", adapter.lower())
         self.assertIn("publicwexp", adapter)
         self.assertIn("generate double `public_weight'", adapter)
         self.assertIn("local public_display = c(noisily)", adapter)
@@ -743,7 +777,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "confirm new variable __failed_fe",
             "absorb(__panic_fe=fe)",
             "confirm new variable __panic_fe",
-            "foreach mutation in mutatewire mutatesemantic mutateoutput",
+            "foreach mutation in mutatewire mutatesemantic mutatesolver mutateoutput",
             'cond(`"`mutation\'"\' == "mutatewire", 499, 3499)',
             "absorb(__class_fe=fe)",
             "confirm new variable __class_fe",
@@ -764,9 +798,10 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         transaction = TRANSACTION.read_text(encoding="utf-8")
         for token in (
             '"breakpostplugin", "breakpostpublic", "mutatewire"',
-            '"mutatesemantic", "mutateoutput", "panic"',
+            '"mutatesemantic", "mutatesolver", "mutateoutput", "panic"',
             'if `"`inject\'"\' == "mutatewire" matrix `receipt_shadow\'[1,1] = 0',
             'if `"`inject\'"\' == "mutatesemantic" matrix `certificate_shadow\'[16,1] = 0',
+            'if `"`inject\'"\' == "mutatesolver" matrix `solver_shadow\'[1,1] = 0',
             'if `"`inject\'"\' == "mutateoutput" replace `sample_shadow\' = 2 in 1',
             "if `validation_rc' == 499 exit 499",
             "exit 3499",
@@ -876,22 +911,25 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertLess(overflow, overflow_rc)
         self.assertLess(overflow_rc, overflow_absent)
 
-    def test_runtime_validator_covers_result_11_and_runtime_failures(self) -> None:
+    def test_runtime_validator_covers_result_12_and_runtime_failures(self) -> None:
         fixture = RUNTIME_VALIDATOR_FIXTURE.read_text(encoding="utf-8")
         for token in (
             "matrix `inference' = J(16,1,0)",
             "matrix `drop_counts' = J(14,2,0)",
             "matrix `separation_sequence' = J(5,13,0)",
+            "matrix `solver' = J(4,22,.)",
             "matrix `runtime' = J(108,1,.)",
             "matrix `receipt' = J(1,33,0)",
-            "matrix `receipt'[1,3] = 1",
+            "matrix `receipt'[1,3] = 2",
             "matrix `receipt'[1,33] = 1",
             "requestedvcecode(2)",
             "dropsingletons(1)",
+            "requestedsolvercode(1)",
             "matrix `bad' = J(15,1,0)",
             "matrix `bad' = J(13,2,0)",
             "matrix `bad' = J(5,12,0)",
             "matrix `bad' = J(1,32,0)",
+            "matrix `bad' = J(4,21,.)",
             "foreach wiremutation in magic major minor inference_rows drop_rows sequence_rows complete",
             "foreach mutation in requested correction pass",
             "foreach mutation in reason retained negative",

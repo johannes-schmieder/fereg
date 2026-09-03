@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 31aug2026}{...}
+{* *! version 0.5.0 02sep2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -64,6 +64,7 @@ transaction. An error or Break posts no partial result.
     {cmd:dropreason(}{it:newvar}{cmd:)}{col 42}save the original-row drop code
 
   {ul:Execution}
+    {cmd:solver(auto|map|lsmr|cmg)}{col 42}fixed-effect solver; default {cmd:auto}
     {cmd:memory(auto|fast|low)}{col 42}memory plan; default {cmd:auto}
     {cmd:poolsize(}{it:#}{cmd:)}{col 42}low-memory block width; default 10
     {cmd:threads(}{it:#}{cmd:)}{col 42}native threads; default 0 (automatic)
@@ -77,8 +78,8 @@ transaction. An error or Break posts no partial result.
 The public weight forms are {cmd:[fw=}{it:exp}{cmd:]} and
 {cmd:[pw=}{it:exp}{cmd:]}. {cmd:aweight} and {cmd:iweight} are recognized only
 to return {cmd:r(101)}. The structural constant is always included; there is
-no public {cmd:noconstant}, solver, preconditioner, DoF-policy, or developer-
-injection option.
+no public {cmd:noconstant}, preconditioner, DoF-policy, or developer-injection
+option.
 
 {marker description}
 {title:Description}
@@ -286,7 +287,23 @@ before publishing output. {cmd:poolsize()} sets the low-memory block width.
 {cmd:threads(0)} uses the native default; a positive integer requests an
 isolated native thread team for the call. {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
-The public finite-solver route is automatic and is not user-selectable.
+{cmd:solver(auto)} is the default and currently selects certified MAP; automatic
+route calibration is a later step. {cmd:solver(map)} requests MAP explicitly.
+{cmd:solver(lsmr)} selects the native fused-FWL or joint-incremental LSMR engine
+for the fit, and {cmd:solver(cmg)} selects only the prepared fused-FWL CMG
+engine. The requested family, selected family and engine, final effective
+route, and MAP checkpoint route are reported separately.
+
+{pstd}
+The initial LSMR and CMG rollout supports two or three categorical intercept
+fixed effects, no saved fixed-effect channels, and the fast memory route.
+{cmd:memory(auto)} may select that route; explicit {cmd:memory(low)} is not yet
+supported for these two solvers. Recognized requests outside this envelope
+return {cmd:r(498)}. A viable selected route that cannot fit its modeled
+workspace returns {cmd:r(909)}. Numerical CMG nonconvergence triggers a visible,
+permanent MAP fallback; unsupported topology, memory failure, invalid input,
+interruption, and internal errors remain fatal. LSMR does not silently fall
+back.
 
 {pstd}
 The outer IRLS tolerance defaults to 1e-8 and must lie strictly between zero
@@ -420,7 +437,8 @@ The closed diagnostic matrix set is
 {cmd:e(feppml_fe)}, {cmd:e(feppml_cluster)}, {cmd:e(feppml_subset)},
 {cmd:e(feppml_separation)}, {cmd:e(feppml_inference)},
 {cmd:e(feppml_drop_counts)}, {cmd:e(feppml_separation_sequence)},
-{cmd:e(feppml_certificate)}, {cmd:e(feppml_runtime)}, and
+{cmd:e(feppml_certificate)}, {cmd:e(feppml_solver)},
+{cmd:e(feppml_runtime)}, and
 {cmd:e(feppml_receipt)}.
 
 {pstd}
@@ -431,6 +449,20 @@ numerically rank-deficient statuses. {cmd:e(feppml_receipt)} contains the
 versioned identity and final COMPLETE marker. Scalars beginning
 {cmd:e(feppml_)} expose bounded VCE/PSD, separation-ledger, memory, route,
 allocation, timing, thread, and certificate evidence.
+
+{pstd}
+{cmd:e(feppml_solver)} has rows {cmd:map}, {cmd:lsmr_fused},
+{cmd:lsmr_joint}, and {cmd:cmg_prepared}. Its fixed 22-column result-wire 1.2
+layout records repeated request/selection/effective/checkpoint identities and
+per-engine frame, retry, fallback, iteration, timing, and certificate maxima.
+The macros {cmd:e(solver)}, {cmd:e(feppml_solver_requested)},
+{cmd:e(feppml_solver_selected)}, {cmd:e(feppml_solver_engine)},
+{cmd:e(feppml_solver_effective)}, {cmd:e(feppml_solver_engine_effective)},
+{cmd:e(feppml_solver_checkpoint)}, and
+{cmd:e(feppml_solver_fallback_reason)} provide named identities;
+{cmd:e(feppml_solver_fallback_count)} is the route-specific fallback count.
+{cmd:e(feppml_linear_route)} remains a compatibility alias for the canonical
+final MAP checkpoint, not the ordinary-frame effective route.
 
 {pstd}
 Standard macros include {cmd:e(cmd)} = {cmd:feppml}, {cmd:e(cmdline)},
@@ -462,7 +494,7 @@ namespace. No partial requested variable or public {cmd:e()} result remains.
     {cmd:r(430)}{col 18}nonconvergence, failed numerical certificate, or unrepresentable prediction type
     {cmd:r(459)}{col 18}invalid outcome, pweight, offset, exposure, or data domain
     {cmd:r(2001)}{col 18}empty/zero-outcome sample, nonpositive DoF, or too few clusters
-    {cmd:r(498)}{col 18}unsupported feature or unavailable FE-dependent prediction
+    {cmd:r(498)}{col 18}recognized but unsupported solver, feature, or FE-dependent prediction
     {cmd:r(499)}{col 18}native protocol mismatch
     {cmd:r(909)}{col 18}allocation or memory preflight failure
     {cmd:r(3499)}{col 18}caught panic or internal invariant failure
@@ -486,7 +518,7 @@ rebasing path.
 
 {pstd}
 The public surface does not include a model-based IID VCE, user-selectable
-solver or DoF policy, IV/GMM, group outcomes with individual fixed effects,
+preconditioner or DoF policy, IV/GMM, group outcomes with individual fixed effects,
 HAC or Driscoll--Kraay covariance, other GLMs, GPU execution, or undocumented
 developer controls. Unsupported requests fail explicitly.
 

@@ -1407,8 +1407,8 @@ def _expected_activated_stager(parent: bytes) -> bytes:
         b'        "ols_result_wire": "1.4",\n',
         (
             b'        "ols_result_wire": "1.4",\n'
-            b'        "ppml_request_wire": "1.1",\n'
-            b'        "ppml_result_wire": "1.1",\n'
+            b'        "ppml_request_wire": "1.5",\n'
+            b'        "ppml_result_wire": "1.2",\n'
         ),
         "additive PPML manifest wire insertion",
     )

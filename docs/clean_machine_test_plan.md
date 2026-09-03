@@ -8,7 +8,8 @@ plugin from the audited 0.5.0 archive.
    inside the isolated install.
 2. Run `fereg, version`, `doctor threads(1)`, `doctor threads(32)`, and
    `selftest threads(32)`; require action protocol 1.5, OLS result wire 1.4,
-   PPML request/result wires 1.1, and model wire 2.1 for fereg 0.5.0.
+   PPML request wire 1.5, PPML result wire 1.2, and model wire 2.1 for fereg
+   0.5.0.
 3. Drop/redefine the plugin handle 100 times and rerun diagnostics to detect
    loader lifecycle defects.
 4. Run public parser/error, OLS, weight, FE/slope/string, time-series,

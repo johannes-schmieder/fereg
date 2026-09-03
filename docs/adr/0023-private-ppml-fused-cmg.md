@@ -1,8 +1,12 @@
 # ADR 0023: private PPML fused-CMG development path
 
-**Status:** Accepted for development; no route activation
+**Status:** Historical development decision; public-admission clauses superseded by ADR-0025
 **Date:** 2026-09-02
 **Decision owner:** Johannes Schmieder
+
+ADR-0025 supersedes this ADR's private wire, environment gate, and MAP-only
+public-admission clauses. Its fused-CMG numerical, retry, and fallback decisions
+and the evidence below remain authoritative historical input.
 
 ## Context
 

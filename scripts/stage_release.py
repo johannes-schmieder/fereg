@@ -294,8 +294,8 @@ def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
         "source_dirty": source_dirty,
         "action_protocol": "1.5",
         "ols_result_wire": "1.4",
-        "ppml_request_wire": "1.1",
-        "ppml_result_wire": "1.1",
+        "ppml_request_wire": "1.5",
+        "ppml_result_wire": "1.2",
         "model_wire": "2.1",
         "plugins": [
             {

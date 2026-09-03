@@ -35,13 +35,23 @@ clustering is supported. The public model options are `absorb()`,
 `keepsingletons`, `offset()` or `exposure()`, and
 `separation(fe simplex ir|none)`. Saved outputs include `residuals()`, `xb()`,
 `d()`, `eta()`/`xbd()`, `mu()`, `dropreason()`, and named absorbed channels.
-Execution uses `memory(auto|fast|low)`, `poolsize()`, `threads()`,
+Execution uses `solver(auto|map|lsmr|cmg)`, `memory(auto|fast|low)`, `poolsize()`, `threads()`,
 `deterministic`, `tolerance()`, `iterate()`, and `timeit`. Frequency and
 probability weights are implemented; analytic and importance weights return
 the documented `r(101)` rejection. After estimation, `predict` supports
 `mu`, `eta`/`xbd`, `xb`, `d`, and the registered residual types when their
 required retained state is available. See `help feppml` for the exact syntax,
 drop codes, stored results, failure atomicity, and runnable examples.
+
+`solver(auto)` currently selects MAP while automatic routing is calibrated.
+Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
+for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
+LSMR and CMG initially support two or three categorical intercept effects, no
+saved FE channels, and fast-memory execution; a recognized request outside
+that envelope returns `r(498)`. Numerical CMG nonconvergence falls back
+permanently and visibly to MAP. Other CMG errors and every LSMR error remain
+fatal. `e(feppml_solver)` and the accompanying macros distinguish requested,
+selected, concrete, effective, checkpoint, and fallback identities.
 
 ### Model and inference options
 
@@ -214,8 +224,9 @@ benchmark additionally requires Stata 19 and an installed `reghdfe`.
 
 The public 0.5.0 beta does not expose IV/GMM, group outcomes with individual
 fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
-execution. `feppml` does not expose a model-based IID covariance, public solver
-or DoF-policy controls, analytic/importance weights, or developer injection.
+execution. `feppml` does not expose a model-based IID covariance,
+preconditioner or DoF-policy controls, analytic/importance weights, or
+developer injection.
 Fixed-width string categorical sources are supported, but
 `strL` sources are not. When `absorb()` contains an interaction or absorbed
 slope, explicit RHS base operators such as `ib2.region` and `fvset` base

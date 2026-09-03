@@ -9,7 +9,7 @@ set obs 10
 generate double y = _n
 
 tempname b V status fit dof fe cluster subset separation
-tempname inference drop_counts separation_sequence certificate runtime receipt bad badV
+tempname inference drop_counts separation_sequence certificate solver runtime receipt bad badV
 matrix `b' = (0, 0)
 matrix `V' = I(2)
 matrix `status' = (1,1,1,0 \ 2,1,1,0)
@@ -77,6 +77,28 @@ matrix `separation_sequence'[1,2] = 1
 
 matrix `certificate' = J(16,1,0)
 matrix `certificate'[16,1] = 1
+matrix `solver' = J(4,22,.)
+forvalues row = 1/4 {
+    matrix `solver'[`row',1] = 1
+    matrix `solver'[`row',2] = 2
+    matrix `solver'[`row',3] = 1
+    matrix `solver'[`row',4] = 2
+    matrix `solver'[`row',5] = 1
+    matrix `solver'[`row',6] = 2
+    matrix `solver'[`row',7] = `row'
+    forvalues column = 8/16 {
+        matrix `solver'[`row',`column'] = 0
+    }
+}
+matrix `solver'[1,8] = 2
+matrix `solver'[1,9] = 1
+matrix `solver'[1,13] = 3
+matrix `solver'[1,14] = .01
+matrix `solver'[1,15] = .02
+matrix `solver'[1,16] = .03
+forvalues column = 17/22 {
+    matrix `solver'[1,`column'] = 0
+}
 matrix `runtime' = J(108,1,.)
 matrix `runtime'[1,1] = .1
 matrix `runtime'[2,1] = 2
@@ -105,7 +127,7 @@ forvalues row = 83/95 {
 matrix `receipt' = J(1,33,0)
 matrix `receipt'[1,1] = 5354602
 matrix `receipt'[1,2] = 1
-matrix `receipt'[1,3] = 1
+matrix `receipt'[1,3] = 2
 matrix `receipt'[1,4] = 2
 matrix `receipt'[1,5] = 2
 matrix `receipt'[1,6] = 2
@@ -120,57 +142,64 @@ matrix `receipt'[1,21] = 14
 matrix `receipt'[1,22] = 5
 matrix `receipt'[1,33] = 1
 
-local validator_options `"clusters(0) ferows(0) subsets(0) separations(1) residual(0) saved(0) adjustment(0) vcecode(2) requestedvcecode(2) weightcode(0) memorycode(0) requestedthreads(0) feterms(0) sources(0) methodcodes("1") dropsingletons(1)"'
+local validator_options `"clusters(0) ferows(0) subsets(0) separations(1) residual(0) saved(0) adjustment(0) vcecode(2) requestedvcecode(2) weightcode(0) memorycode(0) requestedthreads(0) feterms(0) sources(0) methodcodes("1") dropsingletons(1) requestedsolvercode(1)"'
 
 * The validator must not create or overwrite process-global scratch objects.
 scalar __fereg_ppml_finite_result = 12345
 mata: __fereg_ppml_fit = 67890
 _fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
     `subset' `separation' `inference' `drop_counts' `separation_sequence' ///
-    `certificate' `runtime' `receipt', capacity(2) `validator_options'
+    `certificate' `solver' `runtime' `receipt', capacity(2) `validator_options'
 assert r(coefficients) == 2
 assert scalar(__fereg_ppml_finite_result) == 12345
 mata: assert(__fereg_ppml_fit == 67890)
 
 capture noisily _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 0
 assert r(coefficients) == 2
 
-* Every result-1.1 matrix is dimension-bound.  Structural mismatches and the
+* Every result-1.2 matrix is dimension-bound.  Structural mismatches and the
 * receipt header/COMPLETE marker are protocol r(499), never semantic errors.
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(3) `validator_options'
 assert _rc == 499
 
 matrix `bad' = J(15,1,0)
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `bad' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 499
 
 matrix `bad' = J(13,2,0)
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `bad' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 499
 
 matrix `bad' = J(5,12,0)
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' `bad' ///
-    `certificate' `runtime' `receipt', capacity(2) `validator_options'
+    `certificate' `solver' `runtime' `receipt', capacity(2) `validator_options'
 assert _rc == 499
 
 matrix `bad' = J(1,32,0)
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `bad', ///
+    `separation_sequence' `certificate' `solver' `runtime' `bad', ///
+    capacity(2) `validator_options'
+assert _rc == 499
+
+matrix `bad' = J(4,21,.)
+capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
+    `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
+    `separation_sequence' `certificate' `bad' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 499
 
@@ -185,12 +214,12 @@ foreach wiremutation in magic major minor inference_rows drop_rows sequence_rows
     if `"`wiremutation'"' == "complete" matrix `bad'[1,33] = 0
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-        `separation_sequence' `certificate' `runtime' `bad', ///
+        `separation_sequence' `certificate' `solver' `runtime' `bad', ///
         capacity(2) `validator_options'
     assert _rc == 499
 }
 
-* Result-1.1 evidence is semantic and therefore fails with internal r(3499)
+* Result-1.2 evidence is semantic and therefore fails with internal r(3499)
 * after the wire layout itself has been accepted.
 foreach mutation in requested correction pass {
     matrix `bad' = `inference'
@@ -199,10 +228,18 @@ foreach mutation in requested correction pass {
     if `"`mutation'"' == "pass" matrix `bad'[16,1] = 0
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `bad' `drop_counts' ///
-        `separation_sequence' `certificate' `runtime' `receipt', ///
+        `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
         capacity(2) `validator_options'
     assert _rc == 3499
 }
+
+matrix `bad' = `solver'
+matrix `bad'[2,1] = 2
+capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
+    `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
+    `separation_sequence' `certificate' `bad' `runtime' `receipt', ///
+    capacity(2) `validator_options'
+assert _rc == 3499
 
 * Final PSD evidence uses the published covariance maximum-entry scale.  The
 * exact negative tolerance boundary is accepted; a value below it is not.
@@ -210,12 +247,12 @@ matrix `bad' = `inference'
 matrix `bad'[10,1] = -1e-8
 _fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
     `subset' `separation' `bad' `drop_counts' `separation_sequence' ///
-    `certificate' `runtime' `receipt', capacity(2) `validator_options'
+    `certificate' `solver' `runtime' `receipt', capacity(2) `validator_options'
 
 matrix `bad'[10,1] = -1.0000001e-8
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `bad' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
 assert scalar(__fereg_ppml_finite_result) == 12345
@@ -228,7 +265,7 @@ matrix `bad' = `inference'
 matrix `bad'[10,1] = -1.25e-8
 capture quietly _fereg_eppml_validate `b' `badV' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `bad' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
 
@@ -239,7 +276,7 @@ foreach mutation in reason retained negative {
     if `"`mutation'"' == "negative" matrix `bad'[2,2] = -1
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `inference' `bad' ///
-        `separation_sequence' `certificate' `runtime' `receipt', ///
+        `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
         capacity(2) `validator_options'
     assert _rc == 3499
 }
@@ -252,7 +289,7 @@ foreach mutation in method requested execution certificate {
     if `"`mutation'"' == "certificate" matrix `bad'[1,13] = 0
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `inference' `drop_counts' `bad' ///
-        `certificate' `runtime' `receipt', capacity(2) `validator_options'
+        `certificate' `solver' `runtime' `receipt', capacity(2) `validator_options'
     assert _rc == 3499
 }
 
@@ -265,7 +302,7 @@ foreach mutation in executions generation_bound execution_bound fractional_hash 
     if `"`mutation'"' == "oversized_hash" matrix `bad'[1,25] = 4294967296
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-        `separation_sequence' `certificate' `runtime' `bad', ///
+        `separation_sequence' `certificate' `solver' `runtime' `bad', ///
         capacity(2) `validator_options'
     assert _rc == 3499
 }
@@ -275,7 +312,7 @@ matrix `bad' = `separation'
 matrix `bad'[1,3] = 1
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `bad' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `runtime' `receipt', ///
+    `separation_sequence' `certificate' `solver' `runtime' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
 
@@ -319,7 +356,7 @@ matrix `runtime'[75,1] = 100
 matrix `runtime'[76,1] = 0
 _fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
     `subset' `separation' `inference' `drop_counts' `separation_sequence' ///
-    `certificate' `runtime' `receipt', capacity(2) `validator_options'
+    `certificate' `solver' `runtime' `receipt', capacity(2) `validator_options'
 
 * The fully passed audit, repeated-call identity, and complete action-event
 * triple are accepted together.
@@ -345,7 +382,7 @@ matrix `bad'[82,1] = 2
 matrix `bad'[25,1] = 1
 _fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
     `subset' `separation' `inference' `drop_counts' `separation_sequence' ///
-    `certificate' `bad' `receipt', capacity(2) `validator_options'
+    `certificate' `solver' `bad' `receipt', capacity(2) `validator_options'
 
 foreach mutation in route qualified certificate scratch modeled auditpartial {
     matrix `bad' = `runtime'
@@ -357,7 +394,7 @@ foreach mutation in route qualified certificate scratch modeled auditpartial {
     if `"`mutation'"' == "auditpartial" matrix `bad'[42,1] = .
     capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
         `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-        `separation_sequence' `certificate' `bad' `receipt', ///
+        `separation_sequence' `certificate' `solver' `bad' `receipt', ///
         capacity(2) `validator_options'
     assert _rc == 3499
 }
@@ -368,7 +405,7 @@ matrix `bad'[18,1] = 120
 matrix `bad'[79,1] = 19
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `bad' `receipt', ///
+    `separation_sequence' `certificate' `solver' `bad' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
 
@@ -376,7 +413,7 @@ matrix `bad' = `runtime'
 matrix `bad'[80,1] = 10
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
-    `separation_sequence' `certificate' `bad' `receipt', ///
+    `separation_sequence' `certificate' `solver' `bad' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
 

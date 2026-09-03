@@ -1,8 +1,12 @@
 # ADR 0022: private PPML FE-solver development boundary
 
-**Status:** Accepted for development; no route activation
+**Status:** Historical development decision; public-admission clauses superseded by ADR-0025
 **Date:** 2026-09-02
 **Decision owner:** Johannes Schmieder
+
+ADR-0025 supersedes this ADR's private syntax, environment gate, and MAP-only
+public-admission clauses. The engine design and evidence below remain the
+historical record of the development boundary that preceded activation.
 
 ## Context
 

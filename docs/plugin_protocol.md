@@ -14,8 +14,8 @@ request/result layouts are independently versioned:
 | Action protocol | 1.5 |
 | Model wire | 2.1 |
 | OLS result wire | 1.4 |
-| PPML request wire | 1.1 |
-| PPML result wire | 1.1 |
+| PPML request wire | 1.5 |
+| PPML result wire | 1.2 |
 
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `doctor` and `selftest` callers retain the action
@@ -73,12 +73,23 @@ request, PPML request/result wire identities, source and output bindings,
 dimensions, nonaliasing destinations, memory/thread controls, and initially
 incomplete receipt before reading observations.
 
+Request wire 1.5 has one closed `solver` field with values `auto`, `map`,
+`lsmr`, and `cmg`. The retired private solver, preconditioner, mode, policy,
+trace, and experiment keys are not compatibility aliases. An older exact
+request version is a protocol mismatch; an unknown key on 1.5 is syntax error.
+Recognized solver/topology combinations outside the staged public envelope
+return `r(498)`. A supported route that fails its checked workspace preflight
+returns `r(909)`; neither condition is converted to an implicit solver choice.
+
 The live action owns sample construction, singleton and separation processing,
 topology rebasing, IRLS, inference, certificates, saved-output preparation,
 and complete result validation. All result values are certified in Rust-owned
-memory before the first SPI store. Result wire 1.1 includes fixed 16-row
+memory before the first SPI store. Result wire 1.2 includes fixed 16-row
 inference/PSD evidence, a 14x2 drop-reason count table, and a 5x13
-separation-sequence table. Its independent 33-column receipt binds those
+separation-sequence table. It adds a fixed 4x22 solver table whose rows are
+MAP, fused LSMR, joint LSMR, and prepared CMG. The table binds the requested,
+selected, concrete, effective, and checkpoint routes and per-engine frame,
+retry, fallback, timing, and certificate evidence. Its independent 33-column receipt binds the other
 tables, execution/generation counts, and uint32 limbs for the initial/final
 generation hashes plus deterministic digests of the complete ordered
 separation trace and generation-hash sequence. Timing and process-local values

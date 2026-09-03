@@ -128,13 +128,16 @@ not a production stage. The forced-refinement test path bypasses CG's initial
 certificate return and proves that the comparison arm really executes its
 registered number of restarted iterations.
 
-## Private PPML solver development engines
+## Public PPML solver families
 
-Production `feppml` remains pinned to MAP. ADR-0022 adds only a doubly gated,
-hidden development surface for comparing changing-weight inner solvers. It
-does not alter `fereg`, the OLS solver session, or public PPML routing.
+`feppml` accepts exactly `solver(auto|map|lsmr|cmg)`. Auto currently selects
+MAP; later calibration may change that selection without changing the four
+public families. The PPML request records the requested family, while the
+result separately reports the selected family, concrete engine, final effective
+route, and checkpoint family. This policy does not alter `fereg` or its OLS
+solver session.
 
-Two PPML-owned categorical prototypes operate between canonical checkpoints:
+Two concrete categorical LSMR engines operate between canonical checkpoints:
 
 - fused FWL residualizes every frozen active control and the current IRLS
   working response in one LSMR batch, forms the weighted finite Gram/RHS, and
@@ -144,29 +147,29 @@ Two PPML-owned categorical prototypes operate between canonical checkpoints:
   fit-lifetime correction warm start, and rebuilds stale Schwarz state when
   its exact certificate requires continuation.
 
-Both routes require exactly two or three categorical intercept-only effects,
-`memory(fast)`, no saved FE, and no allocation audit. Diagonal, retained
-Schwarz, and rebuilt-Schwarz policies are explicit experiment arms. Retained
-Schwarz means numeric preconditioner reuse across changing IRLS weights; it
-does not mean that Hessian weights are frozen.
+The public LSMR family selects one of those engines once per fit. Its
+preconditioner and reuse policy are internal implementation choices, not
+additional command options. The initial rollout requires exactly two or three
+categorical intercept-only effects, the fast memory route, no saved FE, and no
+allocation audit. `memory(auto)` may select fast; explicit `memory(low)` and
+other recognized but unsupported combinations return `r(498)`.
 
 The first weighted-linear frame remains a production-MAP solve so it freezes
 the canonical active basis. Every strict and final-Hessian frame also uses the
 production MAP session. Only ordinary publication IRLS frames may use fused or
-joint LSMR, and Mu separation remains canonical. Each experimental result is
+joint LSMR, and Mu separation remains canonical. Each LSMR result is
 rescanned against the exact control and per-FE-level normal equations before
 an IRLS step can be accepted. At a strict checkpoint, the predictor,
 objective, score, rank, basis, and all estimable coefficients must agree; an
 unidentified normalization coordinate cannot force another IRLS frame, and
 the canonical strict state replaces it before publication.
 
-This tranche deliberately makes no allocation-free, memory, scale, thread, or
+The initial public tranche makes no allocation-free, scale, thread, or
 automatic-routing claim. The fused engine still owns per-frame weight and
 projected-result storage, and either engine can spend one tighter recurrence
 pass after an uncertified result. A retained Schwarz preconditioner is rebuilt
 for that pass; the original publication certificate tolerance is unchanged.
-The development harness measures those costs separately from Stata launch and
-from canonical checkpoint work.
+The result wire measures those costs separately from canonical checkpoint work.
 
 The pinned `ppmlhdfe` comparator must not be described generically as LSMR.
 Its default runtime signature is conjugate-gradient acceleration of symmetric
@@ -174,9 +177,10 @@ Kaczmarz. The harness therefore keeps distinct default and explicitly forced
 `accel(lsmr)` comparator arms and verifies both signatures before accepting a
 timing record.
 
-ADR-0023 adds a third PPML-owned engine, fused CMG. ADR-0024 updates its exact
-CMG pin and prepares the two core FE endpoint topology once for the fit. On
-each ordinary IRLS frame it validates and assembles the current-weight numeric
+The public CMG family means only the prepared fused-FWL engine introduced by
+ADR-0023 and updated to the exact prepared-topology pin by ADR-0024. It prepares
+the two core FE endpoint topology once for the fit. On each ordinary IRLS frame
+it validates and assembles the current-weight numeric
 graph, builds a fresh hierarchy, projects all frozen active controls and the
 working response through caller-owned batch buffers, and skips the generic
 observation-space CG polish. It then uses the same standardized pivoted-
@@ -191,14 +195,23 @@ Unsupported topology, invalid input, memory failure, interruption, and internal
 errors remain visible failures. First, Mu, strict, and final-Hessian frames are
 always MAP.
 
-This CMG mode has the same hidden, doubly gated fast-memory envelope as the
-LSMR experiments. Three-FE nuisance width is capped at 64, no FE is saved, and
-allocation audit is disallowed. Its retained fereg-owned buffers and the
+CMG has the same initial fast-memory envelope as LSMR. Three-FE nuisance width
+is capped at 64, no FE is saved, and allocation audit is disallowed. Its
+retained fereg-owned buffers and the
 topology-aware CMG hierarchy are charged before use. It makes no cross-frame
 hierarchy-reuse claim: prior-frame preconditioning and warm starts remain off
 until a measured adaptive consumer policy is accepted. Caller buffers remove
 owned per-batch result construction but do not imply an allocation-free IRLS
 frame. The OLS CMG construction, polish, and fallback path is unchanged.
+
+Result wire 1.2 publishes four fixed engine rows: MAP, fused LSMR, joint LSMR,
+and prepared CMG. Each row repeats the route identities and records its own
+ordinary/checkpoint frames, retries, fallback evidence, iterations, timings,
+and certificate maxima. Numerical CMG nonconvergence records one visible
+fallback, solves the same frame with certified MAP, and leaves the effective
+route as MAP. LSMR has no silent MAP fallback. A viable route that cannot fit
+its checked workspace returns `r(909)`; unsupported topology or feature
+combinations return `r(498)`.
 
 ## Saved fixed-effect recovery
 

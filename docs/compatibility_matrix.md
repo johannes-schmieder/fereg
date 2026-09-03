@@ -17,6 +17,7 @@ ADR-0007 and `STATUS.md`.
 | Native transport | One substantive plugin call, Stata-thread-only SPI, receipt-last completion, rollback, panic and Break containment | Exact packaged-plugin tests on every supported build target |
 | Memory/threading | `memory(fast|low|auto)`, bounded scratch cleanup, allocation/RSS/time reporting, deterministic per-action thread pools | Leak, modeled-allocation, constrained-memory, and SCC RSS gates |
 | CMG graph route | Explicit `solver(cmg)` supports two large categorical intercept effects plus at most 64 non-base nuisance-FE columns. `solver(auto)` selects CMG before its MAP pilot only for the frozen no-nuisance, 8-observations-per-high-level, 10:1-cardinality topology in fast and low modes. Setup and solve fallback remain certified and visible; used solver code is 7. | Full 1m/10m route freeze, non-macOS builds, cross-platform memory/performance receipts, and license-compatible distribution decision |
+| PPML FE solver | `feppml, solver(auto|map|lsmr|cmg)` is public. Auto remains MAP pending calibration; LSMR reports its fused or joint engine; CMG is prepared fused FWL and only numerical nonconvergence falls back visibly to MAP. The initial LSMR/CMG envelope is two or three categorical intercept effects, no saved FE, and fast-memory execution. | Auto routing calibration, broader topology/output/memory support, and frozen performance qualification |
 
 `feppml` is active as an additive public testing surface. It supports the
 implemented PPML sample, fixed-effect and absorbed-slope grammar, robust and
@@ -31,7 +32,7 @@ modes are not part of 0.5.0.
 The public wrapper delegates once to `_fereg_ppml`, which enters the guarded
 `_fereg_estimate_ppml` transaction, and additive `estimate-ppml` plugin action.
 The three ado files are now part of the package inventory and exercise public
-PPML semantics through independent request and result wires without altering
+PPML semantics through request wire 1.5 and result wire 1.2 without altering
 the OLS action or result layout.
 
 Activation requires exact-source scientific agreement with the pinned

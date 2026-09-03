@@ -33,9 +33,21 @@ assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_memory_requested)'"' == "auto"
 assert `"`e(feppml_action_protocol)'"' == "1.5"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.1"
-assert `"`e(feppml_result_wire)'"' == "1.1"
+assert `"`e(feppml_request_wire)'"' == "1.5"
+assert `"`e(feppml_result_wire)'"' == "1.2"
 assert `"`e(feppml_plugin)'"' == "0.5.0"
+assert `"`e(solver)'"' == "auto"
+assert `"`e(feppml_solver_requested)'"' == "auto"
+assert `"`e(feppml_solver_selected)'"' == "map"
+assert `"`e(feppml_solver_engine)'"' == "map"
+assert `"`e(feppml_solver_effective)'"' == "map"
+assert `"`e(feppml_solver_engine_effective)'"' == "map"
+assert `"`e(feppml_solver_checkpoint)'"' == "map"
+assert `"`e(feppml_solver_fallback_reason)'"' == "none"
+assert e(feppml_solver_fallback_count) == 0
+assert e(feppml_linear_route) == 2
+assert rowsof(e(feppml_solver)) == 4
+assert colsof(e(feppml_solver)) == 22
 assert e(feppml_poolsize) == 10
 assert e(feppml_requested_tolerance) == 1e-8
 assert e(feppml_iterate) == 10000
@@ -117,7 +129,8 @@ local allowed_feppml_scalars feppml_action_events_delta ///
     feppml_rank_frozen feppml_rank_is_approximate ///
     feppml_repeated_baseline_growth feppml_requested_threads ///
     feppml_requested_tolerance feppml_scratch_bytes ///
-    feppml_sep_executions feppml_sep_generations feppml_steady_median_ns ///
+    feppml_sep_executions feppml_sep_generations ///
+    feppml_solver_fallback_count feppml_steady_median_ns ///
     feppml_strict_profile_rejections feppml_threads ///
     feppml_time_fe_projection feppml_time_fe_recovery ///
     feppml_time_finite_solve feppml_time_inference feppml_time_line_search ///
@@ -153,7 +166,10 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     clustvar3 clustvar4 clustvar5 resid residual_type xb_var d_var eta_var ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
     feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
-    feppml_memory_requested properties
+    feppml_memory_requested solver feppml_solver_requested ///
+    feppml_solver_selected feppml_solver_engine feppml_solver_effective ///
+    feppml_solver_engine_effective feppml_solver_checkpoint ///
+    feppml_solver_fallback_reason properties
 local actual_macros : e(macros)
 foreach field of local actual_macros {
     local allowed : list field in allowed_macros
@@ -163,7 +179,7 @@ foreach field of local actual_macros {
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///
     feppml_drop_counts feppml_separation_sequence feppml_certificate ///
-    feppml_runtime feppml_receipt dof_table
+    feppml_solver feppml_runtime feppml_receipt dof_table
 local actual_matrices : e(matrices)
 foreach field of local actual_matrices {
     local allowed : list field in allowed_matrices
@@ -172,7 +188,7 @@ foreach field of local actual_matrices {
 foreach field in b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///
     feppml_drop_counts feppml_separation_sequence feppml_certificate ///
-    feppml_runtime feppml_receipt {
+    feppml_solver feppml_runtime feppml_receipt {
     confirm matrix e(`field')
 }
 local actual_functions : e(functions)
@@ -190,7 +206,6 @@ foreach field in fereg_status fereg_fit fereg_dof fereg_fe ///
     capture confirm matrix e(`field')
     assert _rc == 111
 }
-assert `"`e(solver)'"' == ""
 assert `"`e(dof)'"' == ""
 
 tempname accepted_b accepted_V
@@ -198,11 +213,104 @@ matrix `accepted_b' = e(b)
 matrix `accepted_V' = e(V)
 generate byte __accepted_sample = e(sample)
 
+`feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
+    memory(fast) threads(1) deterministic solver(lsmr)
+assert `"`e(solver)'"' == "lsmr"
+assert `"`e(feppml_solver_selected)'"' == "lsmr"
+assert inlist(`"`e(feppml_solver_engine)'"', "lsmr_fused", "lsmr_joint")
+assert `"`e(feppml_solver_effective)'"' == "lsmr"
+assert `"`e(feppml_solver_engine_effective)'"' == `"`e(feppml_solver_engine)'"'
+assert `"`e(feppml_solver_checkpoint)'"' == "map"
+assert `"`e(feppml_solver_fallback_reason)'"' == "none"
+assert e(feppml_solver_fallback_count) == 0
+forvalues row = 1/4 {
+    assert e(feppml_solver)[`row',1] == 3
+    assert e(feppml_solver)[`row',2] == 3
+    assert inlist(e(feppml_solver)[`row',3], 2, 3)
+    assert e(feppml_solver)[`row',4] == 3
+    assert e(feppml_solver)[`row',5] == e(feppml_solver)[`row',3]
+    assert e(feppml_solver)[`row',6] == 2
+    assert e(feppml_solver)[`row',7] == `row'
+}
+assert e(feppml_linear_route) == 2
+
+`feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
+    memory(fast) threads(1) deterministic solver(cmg)
+assert `"`e(solver)'"' == "cmg"
+assert `"`e(feppml_solver_selected)'"' == "cmg"
+assert `"`e(feppml_solver_engine)'"' == "cmg_prepared"
+assert inlist(`"`e(feppml_solver_effective)'"', "cmg", "map")
+if `"`e(feppml_solver_effective)'"' == "cmg" {
+    assert `"`e(feppml_solver_engine_effective)'"' == "cmg_prepared"
+    assert `"`e(feppml_solver_fallback_reason)'"' == "none"
+    assert e(feppml_solver_fallback_count) == 0
+}
+else {
+    assert `"`e(feppml_solver_engine_effective)'"' == "map"
+    assert `"`e(feppml_solver_fallback_reason)'"' == "cmg_numerical_nonconvergence"
+    assert e(feppml_solver_fallback_count) == 1
+}
+forvalues row = 1/4 {
+    assert e(feppml_solver)[`row',1] == 7
+    assert e(feppml_solver)[`row',2] == 7
+    assert e(feppml_solver)[`row',3] == 4
+    assert inlist(e(feppml_solver)[`row',4], 2, 7)
+    assert e(feppml_solver)[`row',6] == 2
+    assert e(feppml_solver)[`row',7] == `row'
+}
+assert e(feppml_solver)[4,11] == e(feppml_solver_fallback_count)
+assert e(feppml_linear_route) == 2
+
+`feppml_test_command' y c.x, solver(map)
+assert `"`e(solver)'"' == "map"
+assert `"`e(feppml_solver_requested)'"' == "map"
+assert `"`e(feppml_solver_selected)'"' == "map"
+assert `"`e(feppml_solver_engine)'"' == "map"
+assert `"`e(feppml_solver_effective)'"' == "map"
+assert `"`e(feppml_solver_checkpoint)'"' == "map"
+assert e(feppml_solver_fallback_count) == 0
+assert e(feppml_linear_route) == 2
+assert mreldif(e(b), `accepted_b') == 0
+assert mreldif(e(V), `accepted_V') == 0
+
 * Public defaults have a deliberately narrow validation surface.  All errors
 * below occur without changing the accepted result or creating requested
 * output variables.
 capture noisily `feppml_test_command' y c.x, memory(bogus)
 assert _rc == 198
+capture noisily `feppml_test_command' y c.x, solver(bogus)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, solver(cg)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, fesolver(map)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, finitesolver(auto)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, fepreconditioner(block)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, felsmrmode(fused)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, felsmrpolicy(auto)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, fecmgmode(prepared)
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, solvertrace
+assert _rc == 198
+capture noisily `feppml_test_command' y c.x, solver(lsmr)
+assert _rc == 498
+capture noisily `feppml_test_command' y c.x, solver(cmg)
+assert _rc == 498
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(cl1 cl2) separation(none) solver(lsmr) memory(low)
+assert _rc == 498
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(cl1##c.x cl2) separation(none) solver(lsmr) memory(fast)
+assert _rc == 498
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(__unsupported_solver_fe=cl1 cl2) separation(none) ///
+    solver(cmg) memory(fast)
+assert _rc == 498
+confirm new variable __unsupported_solver_fe
 capture noisily `feppml_test_command' y c.x, threads(-1)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, poolsize(0)

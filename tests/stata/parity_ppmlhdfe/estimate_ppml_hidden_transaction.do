@@ -97,7 +97,7 @@ assert mreldif(e(V), `before_v') == 0
 
 * Malformed native publications are not user data errors.  A broken wire
 * header is r(499); semantic certificates and output maps are internal r(3499).
-foreach mutation in mutatewire mutatesemantic mutateoutput {
+foreach mutation in mutatewire mutatesemantic mutatesolver mutateoutput {
     local expected_rc = cond(`"`mutation'"' == "mutatewire", 499, 3499)
     capture noisily _fereg_estimate_ppml y c.x, absorb(__class_fe=fe) memory(fast) ///
         separation(none) residual(__class_resid) eta(__class_eta) ///
@@ -165,7 +165,7 @@ _fereg_estimate_ppml y c.x, memory(fast) separation(none) ///
 assert `"`e(cmd)'"' == "_fereg_estimate_ppml"
 assert e(feppml_receipt)[1,1] == 5354602
 assert e(feppml_receipt)[1,2] == 1
-assert e(feppml_receipt)[1,3] == 1
+assert e(feppml_receipt)[1,3] == 2
 assert e(feppml_receipt)[1,4] == 2
 assert e(feppml_receipt)[1,13] == 1
 assert e(feppml_receipt)[1,14] == 1

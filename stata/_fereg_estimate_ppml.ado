@@ -1,4 +1,4 @@
-*! fereg guarded PPML eclass transaction 0.5.0 31aug2026
+*! fereg guarded PPML eclass transaction 0.5.0 02sep2026
 program define _fereg_estimate_ppml, eclass sortpreserve
     version 18.0
     local hidden_cmdline `"_fereg_estimate_ppml `0'"'
@@ -11,9 +11,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
          RESIDual(name) RESIDualtype(string) XB(name) D(name) ///
          ETA(name) XBD(name) MU(name) DROPreason(name) ///
          MEMory(string) POOLSize(integer 10) THREADS(integer 0) ///
-         DETERMINISTIC FINITESOLVer(string) ///
-         FESOLVer(string) FEPREConditioner(string) ///
-         FELSMRMode(string) FELSMRPolicy(string) FECMGMode(string) SOLVERTRACE ///
+         DETERMINISTIC SOLVer(string) ///
          TOLerance(real 1e-8) ITERate(integer 10000) ///
          SEPTOLerance(real 1e-8) SEPITERate(integer 10000) ///
          SIMPLEXITERate(integer 100000) SIMPLEXCELLS(integer 1000000) ///
@@ -36,75 +34,14 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         exit 198
     }
 
-    local fe_solver = lower(strtrim(`"`fesolver'"'))
-    if `"`fe_solver'"' == "" local fe_solver "auto"
-    local fe_preconditioner = lower(strtrim(`"`fepreconditioner'"'))
-    if `"`fe_preconditioner'"' == "" local fe_preconditioner "none"
-    local fe_lsmr_mode = lower(strtrim(`"`felsmrmode'"'))
-    if `"`fe_lsmr_mode'"' == "" local fe_lsmr_mode "none"
-    local fe_lsmr_policy = lower(strtrim(`"`felsmrpolicy'"'))
-    if `"`fe_lsmr_policy'"' == "" local fe_lsmr_policy "none"
-    local fe_cmg_mode = lower(strtrim(`"`fecmgmode'"'))
-    if `"`fe_cmg_mode'"' == "" local fe_cmg_mode "none"
-    local solver_trace = (`"`solvertrace'"' != "")
-    if `"`publicmode'"' != "" & ///
-       (`"`fe_solver'"' != "auto" | `"`fe_preconditioner'"' != "none" | ///
-        `"`fe_lsmr_mode'"' != "none" | `"`fe_lsmr_policy'"' != "none" | ///
-        `"`fe_cmg_mode'"' != "none" | ///
-        `solver_trace') {
-        di as error "private PPML FE-solver controls are unavailable through feppml"
+    local solver_mode = lower(strtrim(`"`solver'"'))
+    if `"`solver_mode'"' == "" local solver_mode "auto"
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg") {
+        di as error "solver() must be auto, map, lsmr, or cmg"
         exit 198
     }
-    if !inlist(`"`fe_solver'"', "auto", "map", "cg", "lsmr", "cmg") {
-        di as error "fesolver() must be auto, map, cg, lsmr, or cmg"
-        exit 198
-    }
-    if `"`fe_preconditioner'"' != "none" & ///
-       !(`"`fe_solver'"' == "lsmr" & `"`fe_preconditioner'"' == "schwarz") {
-        di as error "fepreconditioner(schwarz) is valid only with fesolver(lsmr)"
-        exit 198
-    }
-    if !inlist(`"`fe_lsmr_mode'"', "none", "legacy", "fused", "joint") {
-        di as error "felsmrmode() must be legacy, fused, or joint"
-        exit 198
-    }
-    if !inlist(`"`fe_lsmr_policy'"', "none", "diagonal", "reuse", "rebuild") {
-        di as error "felsmrpolicy() must be diagonal, reuse, or rebuild"
-        exit 198
-    }
-    if !inlist(`"`fe_cmg_mode'"', "none", "fused") {
-        di as error "fecmgmode() must be fused"
-        exit 198
-    }
-    if (`"`fe_lsmr_mode'"' == "none") != (`"`fe_lsmr_policy'"' == "none") {
-        di as error "felsmrmode() and felsmrpolicy() must be specified together"
-        exit 198
-    }
-    if `"`fe_lsmr_mode'"' != "none" & `"`fe_solver'"' != "lsmr" {
-        di as error "felsmrmode() and felsmrpolicy() require fesolver(lsmr)"
-        exit 198
-    }
-    if `"`fe_lsmr_mode'"' != "none" & `"`fe_preconditioner'"' != "none" {
-        di as error "felsmrpolicy() cannot be combined with fepreconditioner()"
-        exit 198
-    }
-    if `"`fe_lsmr_mode'"' == "legacy" & `"`fe_lsmr_policy'"' == "reuse" {
-        di as error "legacy PPML LSMR cannot reuse Schwarz state across frames"
-        exit 198
-    }
-    if `"`fe_cmg_mode'"' != "none" & `"`fe_solver'"' != "cmg" {
-        di as error "fecmgmode() requires fesolver(cmg)"
-        exit 198
-    }
-    local solver_experiment 0
-    if !inlist(`"`fe_solver'"', "auto", "map") | `solver_trace' {
-        local solver_gate : environment FEREG_PPML_EXPERIMENTAL_SOLVERS
-        if strtrim(`"`solver_gate'"') != "1" {
-            di as error "experimental PPML FE solvers require FEREG_PPML_EXPERIMENTAL_SOLVERS=1"
-            exit 498
-        }
-        local solver_experiment 1
-    }
+    local requested_solver_code = cond(`"`solver_mode'"' == "auto", 1, ///
+        cond(`"`solver_mode'"' == "map", 2, cond(`"`solver_mode'"' == "lsmr", 3, 7)))
 
     local requested_weights = (`"`fweight'"' != "") + (`"`pweight'"' != "")
     if `requested_weights' > 1 {
@@ -133,18 +70,12 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         di as error "memory() must be auto, fast, or low"
         exit 198
     }
-    if (`"`fe_solver'"' != "auto" | `solver_trace') & `"`memory_mode'"' != "fast" {
-        di as error "private PPML FE-solver experiments require memory(fast)"
-        exit 198
+    if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`memory_mode'"' == "low" {
+        di as error "solver(`solver_mode') does not support memory(low) in this release"
+        exit 498
     }
-    if (`"`fe_solver'"' != "auto" | `solver_trace') & `"`allocationaudit'"' != "" {
-        di as error "private PPML FE-solver experiments do not support allocationaudit"
-        exit 198
-    }
-    local finite_solver = lower(strtrim(`"`finitesolver'"'))
-    if `"`finite_solver'"' == "" local finite_solver "auto"
-    if `"`finite_solver'"' != "auto" {
-        di as error "only finitesolver(auto) is implemented"
+    if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`allocationaudit'"' != "" {
+        di as error "solver(`solver_mode') does not support allocation auditing in this release"
         exit 498
     }
 
@@ -233,7 +164,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         "postdiagnostics", "precommit")
     local inject_known = `inject_known' | inlist(`"`inject'"', ///
         "breakpostplugin", "breakpostpublic", "mutatewire", ///
-        "mutatesemantic", "mutateoutput", "panic", "breaknative", ///
+        "mutatesemantic", "mutatesolver", "mutateoutput", "panic", "breaknative", ///
         "allocation")
     if !`inject_known' {
         di as error "unknown developer PPML transaction injection stage: `inject'"
@@ -544,6 +475,15 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         confirm new variable `output'
     }
     local requested_saved_count : word count `saved_target_variables'
+    if inlist(`"`solver_mode'"', "lsmr", "cmg") & ///
+       (!inlist(`n_absorb_intercepts', 2, 3) | `n_absorb_slopes' != 0) {
+        di as error "solver(`solver_mode') currently requires two or three categorical intercept fixed effects"
+        exit 498
+    }
+    if inlist(`"`solver_mode'"', "lsmr", "cmg") & `requested_saved_count' != 0 {
+        di as error "solver(`solver_mode') does not support saved fixed effects in this release"
+        exit 498
+    }
     local coefficient_capacity = `n_terms' + 1
     local matrix_dimension = max(`coefficient_capacity', 1)
     local fe_rows = max(`n_absorb_intercepts' + `n_absorb_slopes', 1)
@@ -643,7 +583,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     tempname b_shadow v_shadow status_shadow fit_shadow dof_shadow
     tempname fe_shadow cluster_shadow subset_shadow separation_shadow
     tempname inference_shadow drop_counts_shadow separation_sequence_shadow
-    tempname certificate_shadow runtime_shadow receipt_shadow
+    tempname certificate_shadow solver_shadow runtime_shadow receipt_shadow
     matrix `b_shadow' = J(1, `matrix_dimension', .)
     matrix `v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `status_shadow' = J(`matrix_dimension', 4, .)
@@ -657,6 +597,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     matrix `drop_counts_shadow' = J(14, 2, 0)
     matrix `separation_sequence_shadow' = J(5, 13, 0)
     matrix `certificate_shadow' = J(16, 1, .)
+    matrix `solver_shadow' = J(4, 22, .)
     matrix `runtime_shadow' = J(108, 1, .)
     matrix `receipt_shadow' = J(1, 33, 0)
 
@@ -690,7 +631,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `"`inject'"' == "panic" local plugin_inject "panic"
     if `"`inject'"' == "breaknative" local plugin_inject "breaknative"
     if `"`inject'"' == "allocation" local plugin_inject "allocation"
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=5;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=1;request_major=1;request_minor=4;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';finite_solver=`finite_solver';fe_solver=`fe_solver';fe_preconditioner=`fe_preconditioner';fe_lsmr_mode=`fe_lsmr_mode';fe_lsmr_policy=`fe_lsmr_policy';fe_cmg_mode=`fe_cmg_mode';solver_trace=`solver_trace';solver_experiment=`solver_experiment';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=5;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=2;request_major=1;request_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
     }
@@ -722,6 +663,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     // native products are classified and rolled back without a second call.
     if `"`inject'"' == "mutatewire" matrix `receipt_shadow'[1,1] = 0
     if `"`inject'"' == "mutatesemantic" matrix `certificate_shadow'[16,1] = 0
+    if `"`inject'"' == "mutatesolver" matrix `solver_shadow'[1,1] = 0
     if `"`inject'"' == "mutateoutput" replace `sample_shadow' = 2 in 1
 
     if `"`inject'"' == "breakpostplugin" {
@@ -735,7 +677,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         `fit_shadow' `dof_shadow' `fe_shadow' `cluster_shadow' ///
         `subset_shadow' `separation_shadow' `inference_shadow' ///
         `drop_counts_shadow' `separation_sequence_shadow' ///
-        `certificate_shadow' `runtime_shadow' `receipt_shadow', ///
+        `certificate_shadow' `solver_shadow' `runtime_shadow' `receipt_shadow', ///
         capacity(`coefficient_capacity') ///
         clusters(`n_cluster_terms') ferows(`=`n_absorb_intercepts' + `n_absorb_slopes'') ///
         subsets(`=cond(`n_cluster_terms' == 0, 0, 2^`n_cluster_terms' - 1)') ///
@@ -747,13 +689,32 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         weightcode(`=cond(`has_fweight', 1, cond(`has_pweight', 2, 0))') ///
         memorycode(`=cond(`"`memory_mode'"' == "auto", 0, cond(`"`memory_mode'"' == "fast", 1, 2))') ///
         requestedthreads(`threads') feterms(`n_absorb_terms') sources(`n_sources') ///
-        methodcodes(`"`separation_codes'"') dropsingletons(`=1 - `keep_singletons'')
+        methodcodes(`"`separation_codes'"') dropsingletons(`=1 - `keep_singletons'') ///
+        requestedsolvercode(`requested_solver_code')
     local validation_rc = _rc
     if `validation_rc' {
         if `validation_rc' == 499 exit 499
         exit 3499
     }
     local coefficient_count = r(coefficients)
+    local solver_selected "map"
+    if `solver_shadow'[1,2] == 3 local solver_selected "lsmr"
+    if `solver_shadow'[1,2] == 7 local solver_selected "cmg"
+    local solver_engine "map"
+    if `solver_shadow'[1,3] == 2 local solver_engine "lsmr_fused"
+    if `solver_shadow'[1,3] == 3 local solver_engine "lsmr_joint"
+    if `solver_shadow'[1,3] == 4 local solver_engine "cmg_prepared"
+    local solver_effective "map"
+    if `solver_shadow'[1,4] == 3 local solver_effective "lsmr"
+    if `solver_shadow'[1,4] == 7 local solver_effective "cmg"
+    local solver_engine_effective "map"
+    if `solver_shadow'[1,5] == 2 local solver_engine_effective "lsmr_fused"
+    if `solver_shadow'[1,5] == 3 local solver_engine_effective "lsmr_joint"
+    if `solver_shadow'[1,5] == 4 local solver_engine_effective "cmg_prepared"
+    local solver_checkpoint "map"
+    local solver_fallback_reason "none"
+    if `solver_shadow'[4,12] == 1 ///
+        local solver_fallback_reason "cmg_numerical_nonconvergence"
 
     // The native result tables carry enough identity to prove that the
     // rebased FE/cluster topology is still the parser-owned declaration.  Do
@@ -998,6 +959,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     ereturn scalar feppml_linear_route = `runtime_shadow'[7,1]
     ereturn scalar feppml_fallback_mask = `runtime_shadow'[8,1]
     ereturn scalar feppml_fallback_count = `runtime_shadow'[9,1]
+    ereturn scalar feppml_solver_fallback_count = `solver_shadow'[4,11]
     ereturn scalar feppml_requested_threads = `runtime_shadow'[10,1]
     ereturn scalar feppml_threads = `runtime_shadow'[11,1]
     ereturn scalar feppml_memory_fast_bytes = `runtime_shadow'[12,1]
@@ -1134,6 +1096,13 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         meat_relinf covariance_relinf covariance_symmetry_relinf ///
         wald_solve_relinf composite_passed
     matrix colnames `certificate_shadow' = value
+    matrix rownames `solver_shadow' = map lsmr_fused lsmr_joint cmg_prepared
+    matrix colnames `solver_shadow' = requested_family selected_family ///
+        selected_engine effective_family effective_engine checkpoint_family ///
+        row_engine ordinary_frames checkpoint_frames retries fallback_count ///
+        fallback_reason iterations setup_seconds solve_seconds ///
+        certification_seconds absinf_max relinf_max rel2_max ///
+        normal_equation_max projection_absinf_max backward_error_max
     matrix rownames `runtime_shadow' = total_seconds outer_iterations ///
         inner_iterations step_halvings memory_requested memory_selected ///
         linear_route fallback_mask fallback_count threads_requested ///
@@ -1197,6 +1166,7 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     ereturn matrix feppml_drop_counts = `drop_counts_shadow', copy
     ereturn matrix feppml_separation_sequence = `separation_sequence_shadow', copy
     ereturn matrix feppml_certificate = `certificate_shadow', copy
+    ereturn matrix feppml_solver = `solver_shadow', copy
     ereturn matrix feppml_runtime = `runtime_shadow', copy
     ereturn matrix feppml_receipt = `receipt_shadow', copy
     if `n_absorb_intercepts' + `n_absorb_slopes' > 0 {
@@ -1337,10 +1307,18 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `"`mu'"' != "" ereturn local mu_var "`mu'"
     if `"`dropreason'"' != "" ereturn local drop_reason_var "`dropreason'"
     ereturn local predict "feppml_p"
+    ereturn local solver "`solver_mode'"
+    ereturn local feppml_solver_requested "`solver_mode'"
+    ereturn local feppml_solver_selected "`solver_selected'"
+    ereturn local feppml_solver_engine "`solver_engine'"
+    ereturn local feppml_solver_effective "`solver_effective'"
+    ereturn local feppml_solver_engine_effective "`solver_engine_effective'"
+    ereturn local feppml_solver_checkpoint "`solver_checkpoint'"
+    ereturn local feppml_solver_fallback_reason "`solver_fallback_reason'"
     ereturn local feppml_action_protocol "1.5"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.4"
-    ereturn local feppml_result_wire "1.1"
+    ereturn local feppml_request_wire "1.5"
+    ereturn local feppml_result_wire "1.2"
     ereturn local feppml_plugin "0.5.0"
     if `"`inject'"' == "breakpostpublic" {
         di as result "FEPPML_BREAK_ARMED"
@@ -1378,12 +1356,13 @@ end
 
 program define _fereg_eppml_validate, rclass
     version 18.0
-    syntax namelist(min=15 max=15), CAPACITY(integer) CLUSTERS(integer) ///
+    syntax namelist(min=16 max=16), CAPACITY(integer) CLUSTERS(integer) ///
         FEROWS(integer) SUBSETS(integer) SEPARATIONS(integer) ///
         RESIDUAL(integer) SAVED(integer) ADJUSTMENT(integer) VCECODE(integer) ///
         REQUESTEDVCECODE(integer) DROPSINGLETONS(integer) ///
         WEIGHTCODE(integer) MEMORYCODE(integer) REQUESTEDTHREADS(integer) ///
-        FETERMS(integer) SOURCES(integer) METHODCodes(string)
+        FETERMS(integer) SOURCES(integer) METHODCodes(string) ///
+        REQUESTEDSOLVERCODE(integer)
     local b : word 1 of `namelist'
     local V : word 2 of `namelist'
     local status : word 3 of `namelist'
@@ -1397,8 +1376,9 @@ program define _fereg_eppml_validate, rclass
     local drop_counts : word 11 of `namelist'
     local separation_sequence : word 12 of `namelist'
     local certificate : word 13 of `namelist'
-    local runtime : word 14 of `namelist'
-    local receipt : word 15 of `namelist'
+    local solver : word 14 of `namelist'
+    local runtime : word 15 of `namelist'
+    local receipt : word 16 of `namelist'
     local dimension = max(`capacity', 1)
     if rowsof(`b') != 1 | colsof(`b') != `dimension' | ///
        rowsof(`V') != `dimension' | colsof(`V') != `dimension' | ///
@@ -1413,6 +1393,7 @@ program define _fereg_eppml_validate, rclass
        rowsof(`drop_counts') != 14 | colsof(`drop_counts') != 2 | ///
        rowsof(`separation_sequence') != 5 | colsof(`separation_sequence') != 13 | ///
        rowsof(`certificate') != 16 | colsof(`certificate') != 1 | ///
+       rowsof(`solver') != 4 | colsof(`solver') != 22 | ///
        rowsof(`runtime') != 108 | colsof(`runtime') != 1 | ///
        rowsof(`receipt') != 1 | colsof(`receipt') != 33 {
         di as error "PPML result layout failed exact structural validation"
@@ -1420,7 +1401,7 @@ program define _fereg_eppml_validate, rclass
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354602 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 1 | `receipt'[1,20] != 16 | ///
+       `receipt'[1,3] != 2 | `receipt'[1,20] != 16 | ///
        `receipt'[1,21] != 14 | `receipt'[1,22] != 5 | ///
        `receipt'[1,33] != 1 {
         di as error "PPML receipt wire header or COMPLETE marker is invalid"
@@ -1453,6 +1434,109 @@ program define _fereg_eppml_validate, rclass
             di as error "PPML bounded hash evidence is outside uint32"
             exit 3499
         }
+    }
+
+    local selected_family = `solver'[1,2]
+    local selected_engine = `solver'[1,3]
+    local effective_family = `solver'[1,4]
+    local effective_engine = `solver'[1,5]
+    local checkpoint_family = `solver'[1,6]
+    if `solver'[1,1] != `requestedsolvercode' | ///
+       !inlist(`requestedsolvercode', 1, 2, 3, 7) | ///
+       !inlist(`selected_family', 2, 3, 7) | ///
+       !inlist(`effective_family', 2, 3, 7) | ///
+       !inlist(`selected_engine', 1, 2, 3, 4) | ///
+       !inlist(`effective_engine', 1, 2, 3, 4) | ///
+       `checkpoint_family' != 2 {
+        di as error "PPML solver report has an invalid route identity"
+        exit 3499
+    }
+    if (`requestedsolvercode' == 1 & `selected_family' != 2) | ///
+       (`requestedsolvercode' != 1 & `selected_family' != `requestedsolvercode') | ///
+       (`selected_family' == 2 & `selected_engine' != 1) | ///
+       (`selected_family' == 3 & !inlist(`selected_engine', 2, 3)) | ///
+       (`selected_family' == 7 & `selected_engine' != 4) | ///
+       (`effective_family' == 2 & `effective_engine' != 1) | ///
+       (`effective_family' == 3 & ///
+            (!inlist(`effective_engine', 2, 3) | `effective_engine' != `selected_engine')) | ///
+       (`effective_family' == 7 & `effective_engine' != 4) | ///
+       (`selected_family' == 2 & `effective_family' != 2) | ///
+       (`selected_family' == 3 & `effective_family' != 3) | ///
+       (`selected_family' == 7 & !inlist(`effective_family', 2, 7)) {
+        di as error "PPML requested, selected, effective, or checkpoint solver disagrees"
+        exit 3499
+    }
+    forvalues row = 1/4 {
+        if `solver'[`row',1] != `requestedsolvercode' | ///
+           `solver'[`row',2] != `selected_family' | ///
+           `solver'[`row',3] != `selected_engine' | ///
+           `solver'[`row',4] != `effective_family' | ///
+           `solver'[`row',5] != `effective_engine' | ///
+           `solver'[`row',6] != `checkpoint_family' | ///
+           `solver'[`row',7] != `row' {
+            di as error "PPML solver report identities are not repeated exactly"
+            exit 3499
+        }
+        foreach column in 8 9 10 11 13 {
+            if `solver'[`row',`column'] >= . | ///
+               `solver'[`row',`column'] != int(`solver'[`row',`column']) | ///
+               `solver'[`row',`column'] < 0 {
+                di as error "PPML solver report count is invalid"
+                exit 3499
+            }
+        }
+        if !inlist(`solver'[`row',12], 0, 1) | ///
+           (`solver'[`row',11] == 0) != (`solver'[`row',12] == 0) | ///
+           `solver'[`row',14] >= . | `solver'[`row',14] < 0 | ///
+           `solver'[`row',15] >= . | `solver'[`row',15] < 0 | ///
+           `solver'[`row',16] >= . | `solver'[`row',16] < 0 {
+            di as error "PPML solver retry, fallback, or timing evidence is invalid"
+            exit 3499
+        }
+        forvalues column = 17/22 {
+            if `solver'[`row',`column'] < . & `solver'[`row',`column'] < 0 {
+                di as error "PPML solver certificate maximum is invalid"
+                exit 3499
+            }
+        }
+        local frame_count = `solver'[`row',8] + `solver'[`row',9]
+        local engine_observed = (`row' == 1 | `row' == `selected_engine')
+        if !`engine_observed' {
+            forvalues column = 8/16 {
+                if `solver'[`row',`column'] != 0 {
+                    di as error "PPML unobserved solver engine has nonzero work"
+                    exit 3499
+                }
+            }
+        }
+        if `frame_count' == 0 {
+            forvalues column = 17/22 {
+                if `solver'[`row',`column'] < . {
+                    di as error "PPML unobserved solver engine has certificate evidence"
+                    exit 3499
+                }
+            }
+        }
+        if `frame_count' > 0 & ///
+           (`solver'[`row',17] >= . | `solver'[`row',18] >= . | ///
+            `solver'[`row',19] >= .) {
+            di as error "PPML observed solver engine lacks certificate maxima"
+            exit 3499
+        }
+    }
+    if `solver'[1,11] != 0 | `solver'[1,12] != 0 | ///
+       `solver'[2,11] != 0 | `solver'[2,12] != 0 | ///
+       `solver'[3,11] != 0 | `solver'[3,12] != 0 | ///
+       `solver'[4,11] > 1 | ///
+       (`solver'[4,12] == 1 & ///
+            (`selected_family' != 7 | `effective_family' != 2 | `effective_engine' != 1)) {
+        di as error "PPML solver fallback evidence is inconsistent"
+        exit 3499
+    }
+    if (`selected_family' == 7 & `effective_family' == 2 & ///
+            (`solver'[4,11] != 1 | `solver'[4,12] != 1)) {
+        di as error "PPML CMG-to-MAP route lacks its numerical fallback evidence"
+        exit 3499
     }
     if `receipt'[1,24] > `receipt'[1,8] | ///
        `receipt'[1,23] > 5 * (`receipt'[1,8] + 1) {
@@ -2017,7 +2101,7 @@ program define _fereg_eppml_validate, rclass
        `runtime'[2,1] != `fit'[14,1] | `runtime'[3,1] != `fit'[15,1] | ///
        `runtime'[4,1] != `fit'[16,1] | ///
        `runtime'[5,1] != `memorycode' | !inlist(`runtime'[6,1], 1, 2) | ///
-       `runtime'[7,1] != int(`runtime'[7,1]) | `runtime'[7,1] < 0 | ///
+       `runtime'[7,1] != `checkpoint_family' | ///
        `runtime'[8,1] != int(`runtime'[8,1]) | `runtime'[8,1] < 0 | ///
        `runtime'[9,1] != int(`runtime'[9,1]) | `runtime'[9,1] < 0 | ///
        `runtime'[10,1] != `requestedthreads' | ///

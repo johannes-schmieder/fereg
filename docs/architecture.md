@@ -37,10 +37,13 @@ over the guarded PPML transaction; it neither reparses nor posts results.
 
 ## Public PPML architecture
 
-The source now contains a private PPML path that reuses the prepared model,
+The public PPML path reuses the prepared model,
 certified weighted-linear kernels, and sandwich reductions below the
 estimator-policy boundary. OLS remains a one-shot caller; PPML owns separation
-and a reusable changing-weight IRLS session. The ownership, invalidation, and
+and a reusable changing-weight IRLS session. Public solver requests are the
+four closed families `auto`, `map`, `lsmr`, and `cmg`; Rust selects the concrete
+engine and owns every changing-weight solve. Auto remains MAP until calibrated,
+and strict/final checkpoints remain MAP for every family. The ownership, invalidation, and
 zero-cost OLS rules are fixed by
 [ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
 memory/routing rules by
@@ -51,15 +54,15 @@ transaction, and worker-team reuse
 are fixed by
 [ADR 0020](adr/0020-retained-ppml-session-execution-boundary.md).
 
-The pre-activation call graph is:
+The public call graph is:
 
 ```text
-private _fereg_ppml.ado syntax adapter
+_fereg_ppml.ado public syntax adapter
   -> one _fereg_estimate_ppml.ado transaction
        -> one plugin call __fereg_plugin, estimate-ppml <framed request>
-            -> private PPML request/result wire validation
+            -> exact PPML request 1.5/result 1.2 wire validation
             -> preparation, separation, topology rebase, IRLS, inference
-            -> complete private shadows; PPML receipt COMPLETE last
+            -> complete private shadows, including solver report; COMPLETE last
        -> validate shadows and receipt; protected post or full rollback
 
 public feppml.ado

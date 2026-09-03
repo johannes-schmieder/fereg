@@ -12,7 +12,7 @@ same `fereg` command in both arms, a scientific-first nine-pair AB/BA design,
 and stricter 1.02 aggregate, 1.05 confirmed-cell, allocation-class, leak, and
 RSS limits. It supplements rather than replaces the external comparisons here.
 
-## PPML pre-activation performance gate
+## PPML solver performance gate
 
 PPML timing is inadmissible until the same cell passes the frozen candidate,
 exact pinned `ppmlhdfe`, and independent-oracle scientific checks. The PPML
@@ -25,9 +25,9 @@ gate so shared-engine reuse cannot hide an OLS regression.
 The PPML runtime threshold is evaluated only from source-, artifact-, dataset-,
 comparator-, and environment-bound receipts on the registered cells. Profile
 definitions, benchmark scripts, or successful unit tests are not performance
-evidence. No PPML timing or memory result authorizes public activation until
-the complete scientific, transaction, platform, and `fereg` non-regression
-matrix is exact-green on the same source.
+evidence. Public availability is not a performance claim; qualification still
+requires the complete scientific, transaction, platform, and `fereg`
+non-regression matrix to be exact-green on the same source.
 
 Required benchmark reporting:
 
@@ -37,6 +37,8 @@ Required benchmark reporting:
 - full-model simplex width, checked peak-cell bound, executed/skipped status,
   and any same-generation comprehensive-IR closure;
 - FE/IRLS iteration counts and final certificates;
+- requested and selected solver family, concrete and effective engine,
+  checkpoint route, per-engine frames/retries, and any fallback reason;
 - thread count, CPU model, OS, Stata edition/version, and plugin hash;
 - comparison against the pinned reference versions in `references.lock.toml`.
 
@@ -46,7 +48,9 @@ moderate regressor counts. Comparator and candidate arms run on the same node
 and in the same job with registered one- and eight-thread comparisons; 16/32
 thread scaling is supplemental where useful work justifies it.
 
-The governing runtime gates apply to default `solver(auto)`:
+The governing runtime gates ultimately apply to default `solver(auto)`. Auto
+remains MAP while explicit MAP, LSMR, and CMG are optimized and compared; no
+automatic selection rule is inferred before the separate calibration campaign.
 
 - geometric-mean candidate/reference runtime ratio no greater than 0.40
   (at least 2.5x faster);

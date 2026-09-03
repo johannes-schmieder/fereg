@@ -1,8 +1,12 @@
 # ADR 0024: prepared-topology CMG integration for private PPML
 
-**Status:** Accepted for development; no route activation
+**Status:** Historical development decision; public-admission clauses superseded by ADR-0025
 **Date:** 2026-09-02
 **Decision owner:** Johannes Schmieder
+
+ADR-0025 supersedes this ADR's private-only and MAP-only public-admission
+clauses. Its prepared-topology ownership, memory, and numerical decisions and
+the evidence below remain authoritative.
 
 ## Context
 

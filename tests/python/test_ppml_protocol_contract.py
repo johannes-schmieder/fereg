@@ -18,8 +18,8 @@ class PpmlProtocolContractTests(unittest.TestCase):
             "ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
             "MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1)",
             "OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2)",
         ):
             self.assertIn(declaration, protocol)
 

@@ -109,8 +109,8 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertEqual(manifest["ols_result_wire"], "1.4")
             self.assertEqual(manifest["model_wire"], "2.1")
             if public_state(ROOT) == ACTIVATED:
-                self.assertEqual(manifest["ppml_request_wire"], "1.1")
-                self.assertEqual(manifest["ppml_result_wire"], "1.1")
+                self.assertEqual(manifest["ppml_request_wire"], "1.5")
+                self.assertEqual(manifest["ppml_result_wire"], "1.2")
                 caveats = " ".join(manifest["support_caveats"]).lower()
                 self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
             else:
