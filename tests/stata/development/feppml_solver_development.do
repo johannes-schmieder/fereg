@@ -113,7 +113,8 @@ if `"`mode'"' == "generate" {
     exit 0
 }
 
-if inlist(`"`mode'"', "prepare-reference", "run") {
+if `"`mode'"' == "prepare-reference" | ///
+        (`"`mode'"' == "run" & inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr")) {
     adopath ++ `"`reference_root'/require/src"'
     adopath ++ `"`reference_root'/ftools/src"'
     adopath ++ `"`reference_root'/reghdfe/src"'
@@ -161,9 +162,9 @@ if missing(`threads') | `threads' <= 0 | missing(`repetitions') | `repetitions' 
     exit 198
 }
 
-adopath ++ `"`repository'/stata"'
-adopath ++ `"`repository'/dist"'
 if inlist(`"`arm'"', "map", "lsmr", "cmg") {
+    adopath ++ `"`repository'/stata"'
+    adopath ++ `"`repository'/dist"'
     capture findfile feppml.ado
     if _rc exit _rc
     local found_feppml = subinstr(`"`r(fn)'"', "\", "/", .)
