@@ -422,7 +422,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             {
                 "project": "welfgr", "parallel_environment": "omp", "slots": 28,
                 "m_core": 28, "cpu_arch": "broadwell", "cpu_type": "E5-2680v4",
-                "mem_per_core": "4G", "h_rt": "02:00:00",
+                "mem_per_core": "4G", "h_rt": "03:00:00",
             },
         )
 

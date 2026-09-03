@@ -147,7 +147,7 @@
       "cpu_arch": "broadwell",
       "cpu_type": "E5-2680v4",
       "mem_per_core": "4G",
-      "h_rt": "02:00:00"
+      "h_rt": "03:00:00"
     },
     "bundle_shapes": {
       "breadth": {"n": 50000, "controls": [0, 10, 50], "threads": [14]},

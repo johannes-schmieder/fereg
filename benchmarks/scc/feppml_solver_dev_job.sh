@@ -2,7 +2,7 @@
 #$ -P welfgr
 #$ -N feppml_solver_v2
 #$ -pe omp 28
-#$ -l h_rt=02:00:00
+#$ -l h_rt=03:00:00
 #$ -l mem_per_core=4G
 #$ -l m_core=28
 #$ -l cpu_arch=broadwell
