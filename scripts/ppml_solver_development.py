@@ -338,7 +338,17 @@ def parse_qhost_class(text: str) -> dict[str, object]:
         if len(set(matches)) != 1:
             raise DevelopmentError(f"qhost does not report one {key} value")
         values[key] = matches[0]
-    observed = {"m_core": int(values["m_core"]), "cpu_arch": values["cpu_arch"], "cpu_type": values["cpu_type"]}
+    try:
+        m_core_value = float(values["m_core"])
+    except ValueError as error:
+        raise DevelopmentError("qhost m_core value is not numeric") from error
+    if not math.isfinite(m_core_value) or not m_core_value.is_integer():
+        raise DevelopmentError("qhost m_core value is not an integer")
+    observed = {
+        "m_core": int(m_core_value),
+        "cpu_arch": values["cpu_arch"],
+        "cpu_type": values["cpu_type"],
+    }
     expected = {"m_core": 28, "cpu_arch": "broadwell", "cpu_type": "E5-2680v4"}
     if observed != expected:
         raise DevelopmentError(f"wrong SCC host class: {observed}")

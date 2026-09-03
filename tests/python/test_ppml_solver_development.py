@@ -122,13 +122,15 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             DEVELOPMENT.validate_manifest(manifest)
 
     def test_qhost_class_is_exact(self) -> None:
-        source = "HOSTNAME ARCH NCPU\nhl:m_core=28\nhl:cpu_arch=broadwell\nhl:cpu_type=E5-2680v4\n"
+        source = "HOSTNAME ARCH NCPU\nhl:m_core=28.000000\nhl:cpu_arch=broadwell\nhl:cpu_type=E5-2680v4\n"
         self.assertEqual(
             DEVELOPMENT.parse_qhost_class(source),
             {"m_core": 28, "cpu_arch": "broadwell", "cpu_type": "E5-2680v4"},
         )
         with self.assertRaises(DEVELOPMENT.DevelopmentError):
-            DEVELOPMENT.parse_qhost_class(source.replace("m_core=28", "m_core=32"))
+            DEVELOPMENT.parse_qhost_class(source.replace("m_core=28.000000", "m_core=32.000000"))
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.parse_qhost_class(source.replace("m_core=28.000000", "m_core=28.5"))
 
     def test_analysis_checks_every_repetition_and_emits_no_auto_recommendation(self) -> None:
         document = run_document()
