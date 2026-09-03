@@ -244,6 +244,7 @@ file open output using `"`result'"', write text replace
 file write output "arm" _tab "repetition" _tab "rc" _tab "seconds" _tab ///
     "N" _tab "ll" _tab "deviance" _tab "converged" _tab "rank" _tab ///
     "df_a" _tab "df_resid" _tab "inner_iterations" _tab "route_code" _tab ///
+    "selected_engine_code" _tab "effective_engine_code" _tab ///
     "fallback_count" _tab "effective_threads" _tab "b_names" _tab "b_values" _tab ///
     "v_names" _tab "v_values" _tab "certificate_values" _tab "runtime_values" _n
 forvalues repetition = 1/`repetitions' {
@@ -263,6 +264,8 @@ forvalues repetition = 1/`repetitions' {
     local df_resid .
     local inner_iterations .
     local route_code .
+    local selected_engine_code .
+    local effective_engine_code .
     local fallback_count .
     local effective_threads .
     local b_names
@@ -284,6 +287,8 @@ forvalues repetition = 1/`repetitions' {
         if _rc capture local inner_iterations = e(ic)
         if _rc capture local inner_iterations = e(iterations)
         capture local route_code = e(feppml_solver)[1,4]
+        capture local selected_engine_code = e(feppml_solver)[1,3]
+        capture local effective_engine_code = e(feppml_solver)[1,5]
         capture local fallback_count = e(feppml_solver_fallback_count)
         capture local effective_threads = e(feppml_threads)
         local b_names : colfullnames e(b)
@@ -299,7 +304,8 @@ forvalues repetition = 1/`repetitions' {
         %21.17e (`seconds') _tab %21.17e (`sample_n') _tab %21.17e (`ll') _tab ///
         %21.17e (`deviance') _tab %21.17e (`converged') _tab %21.17e (`rank') _tab ///
         %21.17e (`df_a') _tab %21.17e (`df_resid') _tab %21.17e (`inner_iterations') _tab ///
-        %21.17e (`route_code') _tab %21.17e (`fallback_count') _tab ///
+        %21.17e (`route_code') _tab %21.17e (`selected_engine_code') _tab ///
+        %21.17e (`effective_engine_code') _tab %21.17e (`fallback_count') _tab ///
         %21.17e (`effective_threads') _tab `"`b_names'"' _tab `"`b_values'"' _tab ///
         `"`v_names'"' _tab `"`v_values'"' _tab `"`certificate_values'"' _tab ///
         `"`runtime_values'"' _n

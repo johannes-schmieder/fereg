@@ -54,8 +54,8 @@ The driver performs one fail-closed sequence:
    or wall-clock build-date fallback for a materialized build.
 4. Parse the target's `stata/fereg.pkg`, substitute only the exact built
    Windows plugin, isolate all Stata lookup paths, and resolve every staged
-   package file.  Candidate mode adds controller-owned private PPML adapters;
-   F0 mode explicitly excludes them.
+   package file. Candidate mode requires and consumes the target-owned public
+   PPML files; F0 mode explicitly excludes them.
 5. Hash the exact staged artifact and controller capture program, run the
    common licensed-Stata load capture, and independently reparse its closed
    JSON.  The Stata program—not a handwritten receipt—publishes the successful
@@ -64,8 +64,9 @@ The driver performs one fail-closed sequence:
    selected mode, target commit/tree/archive/hash/size/build date, controller
    and harness identities, artifact and capture hashes, capture-program hash,
    and licensed load result.
-7. Run the bounded OLS fixture in both modes and the public command plus private
-   PPML transaction only in candidate mode.
+7. Run the bounded OLS fixture in both modes and the public PPML command
+   contract plus guarded internal transaction regression only in candidate
+   mode.
 8. Create deterministic `feppml-windows-results.zip` with the exact closed
    inventory `artifact/fereg_windows.plugin`, `evidence/capture.json`, and
    `evidence/source-manifest.json`.

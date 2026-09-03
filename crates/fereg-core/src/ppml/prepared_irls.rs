@@ -723,33 +723,6 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
     }
 }
 
-/// Follow the certified bounded IRLS trajectory without constructing any
-/// publication products. This is intentionally usable only by Mu separation.
-#[allow(dead_code)]
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn explore_prepared_ppml_mu<P: PreparedOlsFitView + Sync + ?Sized>(
-    prepared: &P,
-    outcome: &[f64],
-    prior_weights: &[f64],
-    offset: &[f64],
-    config: PreparedPpmlIrlsConfig,
-    memory_plan: PpmlMemoryPlan,
-    start: Option<&PreparedPpmlStart>,
-    mu_tolerance: f64,
-) -> Result<PreparedPpmlMuExploration> {
-    explore_prepared_ppml_mu_interruptible(
-        prepared,
-        outcome,
-        prior_weights,
-        offset,
-        config,
-        memory_plan,
-        start,
-        mu_tolerance,
-        &mut |_| Ok(()),
-    )
-}
-
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,

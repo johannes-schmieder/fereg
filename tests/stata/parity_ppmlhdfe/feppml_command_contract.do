@@ -213,25 +213,39 @@ matrix `accepted_b' = e(b)
 matrix `accepted_V' = e(V)
 generate byte __accepted_sample = e(sample)
 
+`feppml_test_command' y, absorb(cl1 cl2) separation(none) ///
+    memory(fast) threads(1) deterministic solver(lsmr)
+assert `"`e(feppml_solver_engine)'"' == "lsmr_fused"
+assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_fused"
+assert e(feppml_solver_fallback_count) == 0
+forvalues row = 1/4 {
+    assert e(feppml_solver)[`row',3] == 2
+    assert e(feppml_solver)[`row',5] == 2
+}
+assert e(feppml_solver)[2,8] > 0
+assert e(feppml_solver)[3,8] == 0
+
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
 assert `"`e(solver)'"' == "lsmr"
 assert `"`e(feppml_solver_selected)'"' == "lsmr"
-assert inlist(`"`e(feppml_solver_engine)'"', "lsmr_fused", "lsmr_joint")
+assert `"`e(feppml_solver_engine)'"' == "lsmr_joint"
 assert `"`e(feppml_solver_effective)'"' == "lsmr"
-assert `"`e(feppml_solver_engine_effective)'"' == `"`e(feppml_solver_engine)'"'
+assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_joint"
 assert `"`e(feppml_solver_checkpoint)'"' == "map"
 assert `"`e(feppml_solver_fallback_reason)'"' == "none"
 assert e(feppml_solver_fallback_count) == 0
 forvalues row = 1/4 {
     assert e(feppml_solver)[`row',1] == 3
     assert e(feppml_solver)[`row',2] == 3
-    assert inlist(e(feppml_solver)[`row',3], 2, 3)
+    assert e(feppml_solver)[`row',3] == 3
     assert e(feppml_solver)[`row',4] == 3
     assert e(feppml_solver)[`row',5] == e(feppml_solver)[`row',3]
     assert e(feppml_solver)[`row',6] == 2
     assert e(feppml_solver)[`row',7] == `row'
 }
+assert e(feppml_solver)[2,8] == 0
+assert e(feppml_solver)[3,8] > 0
 assert e(feppml_linear_route) == 2
 
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///

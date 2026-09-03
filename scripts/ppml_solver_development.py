@@ -121,7 +121,8 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     ):
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
-        "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5"
+        "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
+        "development_result_table": "2.1",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -446,7 +447,8 @@ def _optional_vector(value: str) -> list[float | None]:
 def parse_table(path: Path, scope: Mapping[str, object], implementation: str) -> list[dict[str, object]]:
     required = {
         "arm", "repetition", "rc", "seconds", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
-        "inner_iterations", "route_code", "fallback_count", "effective_threads", "b_names", "b_values", "v_names",
+        "inner_iterations", "route_code", "selected_engine_code", "effective_engine_code",
+        "fallback_count", "effective_threads", "b_names", "b_values", "v_names",
         "v_values", "certificate_values", "runtime_values",
     }
     with path.open(encoding="utf-8", newline="") as source:
@@ -469,7 +471,10 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             "sample_n": optional_float(row["N"]), "ll": optional_float(row["ll"]), "deviance": optional_float(row["deviance"]),
             "converged": optional_float(row["converged"]), "rank": optional_float(row["rank"]), "df_a": optional_float(row["df_a"]),
             "df_resid": optional_float(row["df_resid"]), "inner_iterations": optional_float(row["inner_iterations"]),
-            "route_code": optional_float(row["route_code"]), "fallback_count": optional_float(row["fallback_count"]),
+            "route_code": optional_float(row["route_code"]),
+            "selected_engine_code": optional_float(row["selected_engine_code"]),
+            "effective_engine_code": optional_float(row["effective_engine_code"]),
+            "fallback_count": optional_float(row["fallback_count"]),
             "effective_threads": optional_float(row["effective_threads"]), "b_names": row["b_names"].split(),
             "b_values": _float_vector(row["b_values"]), "v_names": row["v_names"].split(), "v_values": _float_vector(row["v_values"]),
             "certificate_values": _optional_vector(row["certificate_values"]), "runtime_values": _optional_vector(row["runtime_values"]),
@@ -677,6 +682,15 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         failures.append(prefix + ":execution")
                     if row["route_code"] != float(ROUTE_CODES[solver]):
                         route_failures.append(prefix + ":route")
+                    expected_engine = {
+                        "map": 1,
+                        "lsmr": 2 if controls == 0 else 3,
+                        "cmg": 4,
+                    }[solver]
+                    if row["selected_engine_code"] != float(expected_engine):
+                        route_failures.append(prefix + ":selected_engine")
+                    if row["effective_engine_code"] != float(expected_engine):
+                        route_failures.append(prefix + ":effective_engine")
                     if row["fallback_count"] != 0.0:
                         route_failures.append(prefix + ":fallback")
                     if row["effective_threads"] != float(scope["threads"]):
@@ -762,6 +776,18 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 reference_values = [float(indexed[(scope_id, "reference", "ppmlhdfe", repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "reference", "ppmlhdfe", repetition) in indexed]
                 reference_lsmr_values = [float(indexed[(scope_id, "reference", "ppmlhdfe_lsmr", repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "reference", "ppmlhdfe_lsmr", repetition) in indexed]
                 baseline_values = [float(indexed[(scope_id, "baseline", solver, repetition)]["seconds"]) for repetition in range(1, repetitions + 1) if (scope_id, "baseline", solver, repetition) in indexed]
+                selected_engines = sorted({
+                    int(indexed[(scope_id, "candidate", solver, repetition)]["selected_engine_code"])
+                    for repetition in range(1, repetitions + 1)
+                    if (scope_id, "candidate", solver, repetition) in indexed
+                    and indexed[(scope_id, "candidate", solver, repetition)]["selected_engine_code"] is not None
+                })
+                effective_engines = sorted({
+                    int(indexed[(scope_id, "candidate", solver, repetition)]["effective_engine_code"])
+                    for repetition in range(1, repetitions + 1)
+                    if (scope_id, "candidate", solver, repetition) in indexed
+                    and indexed[(scope_id, "candidate", solver, repetition)]["effective_engine_code"] is not None
+                })
                 prefix = f"{scope_id}:candidate:{solver}:"
                 eligible = (
                     len(values) == repetitions
@@ -773,6 +799,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 baseline_median = statistics.median(baseline_values) if baseline_values else None
                 summaries.append({
                     "scope_id": scope_id, "solver": solver, "performance_eligible": eligible,
+                    "selected_engine_codes": selected_engines,
+                    "effective_engine_codes": effective_engines,
                     "candidate_median_seconds": statistics.median(values), "candidate_min_seconds": min(values), "candidate_max_seconds": max(values),
                     "candidate_median_inner_iterations": statistics.median(inner_iterations) if inner_iterations else None,
                     "ppmlhdfe_median_seconds": reference_median,

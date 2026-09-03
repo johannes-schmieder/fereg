@@ -134,6 +134,9 @@ class PackageContractTests(unittest.TestCase):
     def test_fereg_and_feppml_package_public_commands(self):
         fereg = (ROOT / "stata/fereg.ado").read_text(encoding="utf-8").lower()
         package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
+        toc = (ROOT / "stata/stata.toc").read_text(encoding="utf-8")
+        self.assertEqual(package.splitlines()[1], toc.splitlines()[1])
+        self.assertIn("PPML", package.splitlines()[1])
         self.assertIn("_fereg_estimate_public `0'", fereg)
         self.assertIn("f _fereg_ols.ado", package)
         self.assertIn("f _fereg_estimate_ols.ado", package)

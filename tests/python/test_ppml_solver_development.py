@@ -39,6 +39,8 @@ def result_row(scope: dict[str, object], arm: str, repetition: int) -> dict[str,
         "df_resid": 81.0,
         "inner_iterations": 4.0,
         "route_code": float(DEVELOPMENT.ROUTE_CODES[arm]) if solver else None,
+        "selected_engine_code": ({"map": 1.0, "lsmr": 3.0, "cmg": 4.0}[arm] if solver else None),
+        "effective_engine_code": ({"map": 1.0, "lsmr": 3.0, "cmg": 4.0}[arm] if solver else None),
         "fallback_count": 0.0 if solver else None,
         "effective_threads": float(scope["threads"]) if solver else None,
         "b_names": ["x1"],
@@ -86,6 +88,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.1")
 
     def test_local_profiles_are_bounded_and_campaign_is_16_bundled_tasks(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -138,6 +141,9 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertTrue(analysis["science_pass"])
         self.assertTrue(analysis["route_pass"])
         self.assertEqual(analysis["solver_summary"][0]["ppmlhdfe_lsmr_median_seconds"], 1.0)
+        lsmr_summary = next(row for row in analysis["solver_summary"] if row["solver"] == "lsmr")
+        self.assertEqual(lsmr_summary["selected_engine_codes"], [3])
+        self.assertEqual(lsmr_summary["effective_engine_codes"], [3])
         self.assertNotIn("route_recommendation", analysis)
         self.assertNotIn("recommendation", json.dumps(analysis).lower())
 
@@ -162,6 +168,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         changed = run_document()
         target = next(row for row in changed["records"] if row["arm"] == "cmg" and row["repetition"] == 2)
         target["fallback_count"] = 1.0
+        target["effective_engine_code"] = 1.0
         changed["records"] = [
             row for row in changed["records"]
             if not (row["arm"] == "ppmlhdfe_lsmr" and row["repetition"] == 2)
@@ -171,6 +178,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(analysis["route_pass"])
         self.assertTrue(any("ppmlhdfe_lsmr:r2:missing" in item for item in analysis["science_failures"]))
         self.assertTrue(any("cmg:r2:fallback" in item for item in analysis["route_failures"]))
+        self.assertTrue(any("cmg:r2:effective_engine" in item for item in analysis["route_failures"]))
         cmg = next(row for row in analysis["solver_summary"] if row["solver"] == "cmg")
         self.assertFalse(cmg["performance_eligible"])
 
@@ -245,6 +253,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertIn("FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS", source)
         self.assertIn("e(feppml_certificate)", source)
         self.assertIn("e(feppml_solver)[1,4]", source)
+        self.assertIn("e(feppml_solver)[1,3]", source)
+        self.assertIn("e(feppml_solver)[1,5]", source)
         self.assertIn("e(feppml_solver_fallback_count)", source)
         self.assertNotIn("e(feppml_linear_route)", source)
         self.assertNotIn("e(feppml_fallback_count)", source)

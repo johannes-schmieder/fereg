@@ -220,9 +220,9 @@ if `"`built_verification_line'"' != ///
     exit 610
 }
 
-* Stage the package from the target, never from the controller. Only candidate
-* mode receives controller-owned private PPML adapters; F0 remains its exact
-* historical package and runs only the load/OLS contract.
+* Stage the package from the target, never from the controller. Candidate mode
+* consumes the target-owned public PPML files; F0 remains its exact historical
+* package and runs only the load/OLS contract.
 capture mkdir `"`private_stage'"'
 if _rc {
     exit 693
@@ -263,21 +263,19 @@ foreach required_member in fereg.ado _fereg_load.ado feppml.ado ///
         exit 610
     }
 }
+local public_ppml_members _fereg_ppml.ado _fereg_estimate_ppml.ado feppml_p.ado
+if `"`target_mode'"' == "candidate" {
+    foreach public_file of local public_ppml_members {
+        local present : list public_file in package_members
+        if !`present' {
+            exit 610
+        }
+    }
+}
 copy `"`target_root'/stata/fereg.pkg"' `"`private_stage'/fereg.pkg"'
 copy `"`target_root'/stata/stata.toc"' `"`private_stage'/stata.toc"'
 copy `"`built_plugin'"' `"`private_stage'/fereg_windows.plugin"'
 copy `"`built_checksum'"' `"`private_stage'/fereg_windows.plugin.sha256"'
-
-local private_adapters _fereg_ppml.ado _fereg_estimate_ppml.ado feppml_p.ado
-if `"`target_mode'"' == "candidate" {
-    foreach private_file of local private_adapters {
-        local publicly_shipped : list private_file in package_members
-        if `publicly_shipped' {
-            exit 610
-        }
-        copy `"`root'/stata/`private_file'"' `"`private_stage'/`private_file'"'
-    }
-}
 
 file open `plugin_handle' using `"`private_stage'/fereg_windows.plugin"', read binary
 file seek `plugin_handle' eof
@@ -317,10 +315,6 @@ foreach package_member of local package_members {
     }
 }
 local staged_resolution_members `staged_resolution_members' fereg_windows.plugin
-if `"`target_mode'"' == "candidate" {
-    local staged_resolution_members ///
-        `staged_resolution_members' `private_adapters'
-}
 foreach staged_file of local staged_resolution_members {
     findfile `staged_file'
     local resolved = lower(subinstr(`"`r(fn)'"', char(92), "/", .))
@@ -330,8 +324,8 @@ foreach staged_file of local staged_resolution_members {
     }
 }
 if `"`target_mode'"' == "f0-baseline" {
-    foreach private_file of local private_adapters {
-        capture which `private_file'
+    foreach public_file of local public_ppml_members {
+        capture which `public_file'
         if !_rc {
             exit 610
         }

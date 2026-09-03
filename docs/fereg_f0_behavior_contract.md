@@ -36,11 +36,11 @@ python3 -I -B -S scripts/fereg_f0_behavior.py capture \
   --identity-output /evidence/f0-baseline-observation.identity.json
 ```
 
-Before activation, capture the candidate with `--phase preactivation`:
+Capture the current public candidate with `--phase activation`:
 
 ```bash
 python3 -I -B -S scripts/fereg_f0_behavior.py capture \
-  --role candidate --phase preactivation \
+  --role candidate --phase activation \
   --source /path/to/clean/candidate \
   --plugin /path/to/candidate/fereg_macos.plugin \
   --stata /path/to/StataMP \
@@ -83,6 +83,10 @@ bundle retains the exact wrapper, invocation/argv/cwd/environment, merged
 process stream, Stata log, status file, and process/Stata return codes.
 
 ## Preactivation and activation boundaries
+
+The phase names are historical schema vocabulary for interpreting frozen
+receipts; they do not represent a pending public-surface switch. Current
+candidates use `activation` because the public PPML files ship in the package.
 
 For a preactivation comparison, every installed baseline file except the
 native plugin remains byte-identical. This includes the public `feppml` stub,

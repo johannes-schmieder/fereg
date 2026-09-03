@@ -9,7 +9,8 @@
   "protocols": {
     "request_wire": "1.5",
     "result_wire": "1.2",
-    "action_protocol": "1.5"
+    "action_protocol": "1.5",
+    "development_result_table": "2.1"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},

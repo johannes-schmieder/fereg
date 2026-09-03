@@ -87,7 +87,16 @@ class WindowsCiDriverContractTests(unittest.TestCase):
         self.assertNotIn("`\"`root'/stata/fereg.pkg\"'", self.lower)
         self.assertIn('if `"`target_mode\'"\' == "candidate"', self.driver)
         self.assertIn('if `"`target_mode\'"\' == "f0-baseline"', self.driver)
-        self.assertIn("capture which `private_file'", self.driver)
+        for member in (
+            "_fereg_ppml.ado",
+            "_fereg_estimate_ppml.ado",
+            "feppml_p.ado",
+        ):
+            self.assertIn(member, self.driver)
+        self.assertIn("local present : list public_file in package_members", self.driver)
+        self.assertIn("capture which `public_file'", self.driver)
+        self.assertNotIn("publicly_shipped", self.driver)
+        self.assertNotIn("copy `\"`root'/stata/`public_file'\"'", self.driver)
 
     def test_exact_capture_and_generated_manifest_precede_sole_pass(self) -> None:
         capture_program = (
