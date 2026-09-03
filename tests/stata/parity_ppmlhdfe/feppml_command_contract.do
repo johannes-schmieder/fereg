@@ -295,6 +295,26 @@ assert e(feppml_linear_route) == 2
 assert mreldif(e(b), `accepted_b') == 0
 assert mreldif(e(V), `accepted_V') == 0
 
+* The prepared CMG nuisance cap is inclusive: 65 levels contribute exactly
+* 64 non-base nuisance columns after the two 67-level core effects are chosen.
+preserve
+clear
+set obs 1000
+generate double x = mod(7 * _n, 29) / 14 - 1
+generate double y = 1 + mod(11 * _n, 7)
+generate int __solver_core1 = mod(_n - 1, 67)
+generate int __solver_core2 = mod(5 * (_n - 1) + floor((_n - 1) / 67), 67)
+generate int __solver_nuisance = mod(_n - 1, 65)
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
+    separation(none) solver(cmg) memory(fast) threads(1) deterministic
+assert _rc == 0
+assert `"`e(feppml_solver_selected)'"' == "cmg"
+restore
+`feppml_test_command' y c.x, solver(map)
+assert mreldif(e(b), `accepted_b') == 0
+assert mreldif(e(V), `accepted_V') == 0
+
 * Public defaults have a deliberately narrow validation surface.  All errors
 * below occur without changing the accepted result or creating requested
 * output variables.
@@ -322,6 +342,14 @@ capture noisily `feppml_test_command' y c.x, solver(lsmr)
 assert _rc == 498
 capture noisily `feppml_test_command' y c.x, solver(cmg)
 assert _rc == 498
+generate int __solver_wide1 = _n
+generate int __solver_wide2 = mod(5 * _n, 97)
+generate int __solver_wide3 = mod(7 * _n, 101)
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(__solver_wide1 __solver_wide2 __solver_wide3) ///
+    keepsingletons separation(none) solver(cmg) memory(fast)
+assert _rc == 498
+drop __solver_wide1 __solver_wide2 __solver_wide3
 capture noisily `feppml_test_command' y c.x, ///
     absorb(cl1 cl2) separation(none) solver(lsmr) memory(low)
 assert _rc == 498

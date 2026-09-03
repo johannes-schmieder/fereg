@@ -109,7 +109,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         {
             "schema_version", "manifest_id", "status", "qualification_eligible",
             "auto_calibration", "purpose", "public_command", "protocols", "solvers",
-            "comparators", "scientific_adjudicator", "fixed_policy", "science",
+            "solver_eligibility", "comparators", "scientific_adjudicator", "fixed_policy", "science",
             "generator", "topologies", "profiles", "scc_campaign", "receipt_contract",
         },
         "manifest",
@@ -125,7 +125,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
-        "development_result_table": "2.2",
+        "development_result_table": "2.3",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -133,6 +133,18 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         raise DevelopmentError("public solver inventory must be map, lsmr, cmg")
     if {str(row["id"]): int(row["route_code"]) for row in solvers} != ROUTE_CODES:
         raise DevelopmentError("public route-code inventory changed")
+    if manifest["solver_eligibility"] != {
+        "source": "generated_dataset_metadata",
+        "effect_count": "positive_level_counts",
+        "sample_requirement": "every_successful_arm_equals_generated_N",
+        "map_minimum_effects": 2,
+        "lsmr_minimum_effects": 2,
+        "cmg_effect_counts": [2, 3],
+        "cmg_core_effects": "two_largest_level_counts",
+        "cmg_max_nonbase_nuisance_columns": 64,
+        "ineligible_solver_action": "exclude_timed_arm_and_test_public_r498_separately",
+    }:
+        raise DevelopmentError("public solver eligibility contract changed")
     comparators = manifest["comparators"]
     if not isinstance(comparators, list) or [row.get("id") for row in comparators] != list(COMPARATORS):
         raise DevelopmentError("comparator inventory changed")
@@ -567,8 +579,59 @@ def parse_data_meta(path: Path) -> dict[str, int]:
     return {key: int(value) for key, value in rows[0].items()}
 
 
-def _configurations(repositories: Mapping[str, Path], include_comparators: bool, rotation: int) -> list[tuple[str, str]]:
-    values = [(implementation, solver) for implementation in repositories for solver in SOLVERS]
+def solver_eligibility(
+    metadata: Mapping[str, object], topology: str, manifest: Mapping[str, object],
+) -> dict[str, object]:
+    if set(metadata) != {"N", "levels1", "levels2", "levels3"}:
+        raise DevelopmentError("dataset metadata fields differ")
+    values = [metadata["N"], *(metadata[f"levels{index}"] for index in range(1, 4))]
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in values):
+        raise DevelopmentError("dataset metadata dimensions must be exact integers")
+    observations = int(metadata["N"])
+    level_counts = [int(metadata[f"levels{index}"]) for index in range(1, 4)]
+    if observations <= 0 or any(level < 0 or level > observations for level in level_counts):
+        raise DevelopmentError("dataset metadata level counts must lie between zero and N")
+    if topology.endswith("_2fe"):
+        valid_topology = level_counts[0] > 0 and level_counts[1] > 0 and level_counts[2] == 0
+    elif topology.endswith("_3fe"):
+        valid_topology = all(level > 0 for level in level_counts)
+    else:
+        valid_topology = False
+    if topology not in manifest["topologies"] or not valid_topology:
+        raise DevelopmentError("dataset level counts differ from the declared topology")
+    effects = sorted((level for level in level_counts if level > 0), reverse=True)
+    policy = manifest["solver_eligibility"]
+    minimum_effects = max(
+        int(policy["map_minimum_effects"]), int(policy["lsmr_minimum_effects"]),
+    )
+    if len(effects) < minimum_effects:
+        raise DevelopmentError("development dataset is outside the explicit-solver envelope")
+    cmg_effect_counts = {int(value) for value in policy["cmg_effect_counts"]}
+    if len(effects) not in cmg_effect_counts:
+        raise DevelopmentError("development topology is outside the CMG campaign envelope")
+    nuisance_columns = sum(level - 1 for level in effects[2:])
+    cmg_eligible = nuisance_columns <= int(policy["cmg_max_nonbase_nuisance_columns"])
+    eligible_solvers = ["map", "lsmr", *(["cmg"] if cmg_eligible else [])]
+    excluded = {} if cmg_eligible else {"cmg": "three_fe_nuisance_columns_exceed_64"}
+    return {
+        "effect_count": len(effects),
+        "level_counts_descending": effects,
+        "cmg_nuisance_columns": nuisance_columns,
+        "eligible_solvers": eligible_solvers,
+        "excluded_solvers": excluded,
+    }
+
+
+def _configurations(
+    repositories: Mapping[str, Path], eligible_solvers: Sequence[str],
+    include_comparators: bool, rotation: int,
+) -> list[tuple[str, str]]:
+    if not eligible_solvers or any(solver not in SOLVERS for solver in eligible_solvers):
+        raise DevelopmentError("invalid eligible solver inventory")
+    values = [
+        (implementation, solver)
+        for implementation in repositories for solver in eligible_solvers
+    ]
     if include_comparators:
         values.extend(("reference", comparator) for comparator in COMPARATORS)
     offset = rotation % len(values)
@@ -643,10 +706,19 @@ def execute_scopes(
             "scope": dict(scope), "dataset_id": generated_id,
             "generated_by_scope_id": generated_by_scope_id, **file_identity,
         }
+        eligibility = solver_eligibility(
+            file_identity["metadata"], str(scope["topology"]), manifest,
+        )
+        if int(file_identity["metadata"]["N"]) != int(scope["n"]):
+            raise DevelopmentError("generated dataset observation count differs from scope")
+        dataset_receipt["solver_eligibility"] = eligibility
         datasets.append(dataset_receipt)
         if include_oracle:
             records.append({**scope, "scope_id": scope["id"], "implementation": "independent", "arm_type": "oracle", "arm": "explicit_dummy", **explicit_dummy_oracle(data_csv, int(scope["controls"]))})
-        for implementation, arm in _configurations(repositories, include_comparators, scope_index):
+        for implementation, arm in _configurations(
+            repositories, eligibility["eligible_solvers"], include_comparators,
+            scope_index,
+        ):
             repository = candidate_root if implementation == "reference" else repositories[implementation]
             result = scope_dir / f"{implementation}-{arm}.tsv"
             console = scope_dir / f"{implementation}-{arm}.log"
@@ -665,6 +737,7 @@ def execute_scopes(
                 records.extend(parse_table(result, scope, implementation))
         if include_comparators and _needs_strict_adjudication(
             records, scope, list(repositories), repetitions, manifest["science"],
+            eligibility["eligible_solvers"],
         ):
             result = scope_dir / f"adjudicator-{ADJUDICATOR}.tsv"
             console = scope_dir / f"adjudicator-{ADJUDICATOR}.log"
@@ -734,6 +807,10 @@ def _model_dof(row: Mapping[str, object]) -> float | None:
     return float(rank) + float(absorbed)
 
 
+def _row_matches_scope(row: Mapping[str, object], scope: Mapping[str, object]) -> bool:
+    return all(row.get(field) == value for field, value in scope.items())
+
+
 def _science_issues(
     row: Mapping[str, object], target: Mapping[str, object], controls: int,
     science: Mapping[str, object], target_name: str, dof_notes: set[str],
@@ -801,6 +878,7 @@ def _science_issues(
 def _needs_strict_adjudication(
     records: Sequence[Mapping[str, object]], scope: Mapping[str, object],
     implementations: Sequence[str], repetitions: int, science: Mapping[str, object],
+    eligible_solvers: Sequence[str],
 ) -> bool:
     scope_id = str(scope["id"])
     controls = int(scope["controls"])
@@ -813,7 +891,7 @@ def _needs_strict_adjudication(
             target = indexed.get(("reference", "ppmlhdfe", repetition))
             if target is None or int(target["rc"]) != 0 or target["converged"] != 1.0:
                 continue
-            for solver in SOLVERS:
+            for solver in eligible_solvers:
                 row = indexed.get((implementation, solver, repetition))
                 if row is not None and int(row["rc"]) == 0 and row["converged"] == 1.0:
                     if _science_issues(row, target, controls, science, "ppmlhdfe", set()):
@@ -829,8 +907,45 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         raise DevelopmentError("development evidence cannot qualify or calibrate auto")
     repetitions = int(document["repetitions"])
     implementations = list(document["sources"])
+    if document.get("include_comparators") is not True:
+        raise DevelopmentError("solver development analysis requires its pinned comparator")
     scopes = document["scopes"]
     records = document["records"]
+    datasets = document.get("datasets")
+    if not isinstance(datasets, list) or len(datasets) != len(scopes):
+        raise DevelopmentError("run must contain one dataset receipt per scope")
+    scope_by_id = {str(scope["id"]): scope for scope in scopes}
+    if len(scope_by_id) != len(scopes):
+        raise DevelopmentError("duplicate run scope")
+    eligibility_by_scope: dict[str, dict[str, object]] = {}
+    metadata_n_by_scope: dict[str, int] = {}
+    generated_scope_to_dataset: dict[str, str] = {}
+    for dataset in datasets:
+        if not isinstance(dataset, dict) or not isinstance(dataset.get("scope"), dict):
+            raise DevelopmentError("invalid dataset receipt")
+        scope_id = str(dataset["scope"].get("id"))
+        if scope_id not in scope_by_id or dataset["scope"] != scope_by_id[scope_id]:
+            raise DevelopmentError("dataset receipt scope differs from run scope")
+        if scope_id in eligibility_by_scope:
+            raise DevelopmentError("duplicate dataset receipt scope")
+        generated_scope = str(dataset.get("generated_by_scope_id"))
+        dataset_id_value = str(dataset.get("dataset_id"))
+        if generated_scope not in scope_by_id or not SAFE_ID.fullmatch(dataset_id_value):
+            raise DevelopmentError("dataset generation identity is invalid")
+        previous_dataset = generated_scope_to_dataset.setdefault(
+            generated_scope, dataset_id_value,
+        )
+        if previous_dataset != dataset_id_value:
+            raise DevelopmentError("one generator scope is bound to multiple datasets")
+        derived = solver_eligibility(
+            dataset.get("metadata", {}), str(scope_by_id[scope_id]["topology"]), manifest,
+        )
+        if int(dataset["metadata"]["N"]) != int(scope_by_id[scope_id]["n"]):
+            raise DevelopmentError("dataset observation count differs from run scope")
+        if dataset.get("solver_eligibility") != derived:
+            raise DevelopmentError("dataset solver eligibility differs from metadata")
+        eligibility_by_scope[scope_id] = derived
+        metadata_n_by_scope[scope_id] = int(dataset["metadata"]["N"])
     indexed: dict[tuple[str, str, str, int], Mapping[str, object]] = {}
     adjudicators: dict[str, Mapping[str, object]] = {}
     oracle: dict[str, Mapping[str, object]] = {}
@@ -841,13 +956,28 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
-            oracle[str(row["scope_id"])] = row
+            scope_id = str(row.get("scope_id"))
+            if (
+                not document.get("include_oracle")
+                or scope_id not in scope_by_id
+                or row.get("implementation") != "independent"
+                or row.get("arm") != "explicit_dummy"
+                or not _row_matches_scope(row, scope_by_id.get(scope_id, {}))
+                or scope_id in oracle
+            ):
+                failures.append(f"{scope_id}:oracle:unexpected")
+            else:
+                oracle[scope_id] = row
+                if row.get("sample_n") != float(metadata_n_by_scope[scope_id]):
+                    failures.append(f"{scope_id}:oracle:sample_differs_from_metadata")
             continue
         if row["arm_type"] == "adjudicator":
             scope_id = str(row["scope_id"])
             if (
-                row["implementation"] != "adjudicator"
+                scope_id not in scope_by_id
+                or row["implementation"] != "adjudicator"
                 or row["arm"] != ADJUDICATOR
+                or not _row_matches_scope(row, scope_by_id.get(scope_id, {}))
                 or int(row["repetition"]) != 1
                 or row.get("timed") is not False
                 or row.get("seconds") is not None
@@ -858,11 +988,31 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:unexpected")
             else:
                 adjudicators[scope_id] = row
+                if int(row["rc"]) == 0 and row.get("sample_n") != float(metadata_n_by_scope[scope_id]):
+                    failures.append(
+                        f"{scope_id}:adjudicator:{ADJUDICATOR}:sample_differs_from_metadata"
+                    )
             continue
         key = (str(row["scope_id"]), str(row["implementation"]), str(row["arm"]), int(row["repetition"]))
-        if key[1] not in {*implementations, "reference"} or key[2] not in {*SOLVERS, *COMPARATORS} or not 1 <= key[3] <= repetitions:
+        solver_pair = key[1] in implementations and key[2] in SOLVERS
+        comparator_pair = key[1] == "reference" and key[2] in COMPARATORS
+        if (
+            key[0] not in scope_by_id
+            or not (solver_pair or comparator_pair)
+            or not _row_matches_scope(row, scope_by_id.get(key[0], {}))
+            or row["arm_type"] != ("solver" if solver_pair else "comparator")
+            or not 1 <= key[3] <= repetitions
+        ):
             failures.append(":".join(map(str, key)) + ":unexpected")
             continue
+        if (
+            key[2] in SOLVERS
+            and key[2] not in eligibility_by_scope.get(key[0], {}).get("eligible_solvers", [])
+        ):
+            failures.append(":".join(map(str, key)) + ":ineligible_solver")
+            continue
+        if int(row["rc"]) == 0 and row.get("sample_n") != float(metadata_n_by_scope[key[0]]):
+            failures.append(":".join(map(str, key)) + ":sample_differs_from_metadata")
         if row.get("timed") is not True:
             failures.append(":".join(map(str, key)) + ":untimed")
         if key[2] in COMPARATORS:
@@ -876,17 +1026,103 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         if key in indexed:
             failures.append(":".join(map(str, key)) + ":duplicate")
         indexed[key] = row
-    for process in document.get("processes", []):
+    expected_runs = {
+        (scope_id, implementation, solver)
+        for scope_id, eligibility in eligibility_by_scope.items()
+        for implementation in implementations
+        for solver in eligibility["eligible_solvers"]
+    }
+    expected_runs.update(
+        (scope_id, "reference", comparator)
+        for scope_id in scope_by_id for comparator in COMPARATORS
+    )
+    observed_runs: set[tuple[str, str, str]] = set()
+    observed_generators: set[str] = set()
+    observed_adjudicators: set[str] = set()
+    prepare_reference_processes = 0
+    processes = document.get("processes", [])
+    if not isinstance(processes, list):
+        raise DevelopmentError("process inventory must be a list")
+    for process in processes:
+        stage = str(process.get("stage", ""))
+        process_scope = str(process.get("scope_id"))
+        process_arm = str(process.get("arm", ""))
+        process_implementation = str(process.get("implementation", ""))
+        if stage == "run":
+            solver_pair = process_implementation in implementations and process_arm in SOLVERS
+            comparator_pair = process_implementation == "reference" and process_arm in COMPARATORS
+            if (
+                process_scope not in scope_by_id
+                or not (solver_pair or comparator_pair)
+                or (
+                    solver_pair
+                    and process_arm not in eligibility_by_scope[process_scope]["eligible_solvers"]
+                )
+            ):
+                failures.append(
+                    f"{process_scope}:{process_implementation}:{process_arm}:unexpected_process"
+                )
+            else:
+                process_key = (process_scope, process_implementation, process_arm)
+                if process_key in observed_runs:
+                    failures.append(":".join(process_key) + ":duplicate_process")
+                observed_runs.add(process_key)
+        elif stage == "adjudicate":
+            if (
+                process_scope not in scope_by_id
+                or process_implementation != "adjudicator"
+                or process_arm != ADJUDICATOR
+            ):
+                failures.append(f"{process_scope}:adjudicator:{process_arm}:unexpected_process")
+            elif process_scope in observed_adjudicators:
+                failures.append(f"{process_scope}:adjudicator:{process_arm}:duplicate_process")
+            else:
+                observed_adjudicators.add(process_scope)
+        elif stage == "generate":
+            if (
+                process_scope not in generated_scope_to_dataset
+                or str(process.get("dataset_id")) != generated_scope_to_dataset.get(process_scope)
+                or process_arm or process_implementation
+            ):
+                failures.append(f"{process_scope}:generate:unexpected_process")
+            elif process_scope in observed_generators:
+                failures.append(f"{process_scope}:generate:duplicate_process")
+            else:
+                observed_generators.add(process_scope)
+        elif stage == "prepare-reference":
+            if process_arm or process_implementation or process.get("scope_id") is not None:
+                failures.append("prepare-reference:unexpected_process")
+            prepare_reference_processes += 1
+        else:
+            failures.append(f"{process_scope}:{stage or 'missing-stage'}:unexpected_process")
         if int(process.get("accepted_rc", 0)):
             failures.append(
                 f"{process.get('scope_id')}:{process.get('implementation', process.get('stage'))}:"
                 f"{process.get('arm', '')}:process"
             )
+    for scope_id, implementation, arm in sorted(expected_runs - observed_runs):
+        failures.append(f"{scope_id}:{implementation}:{arm}:missing_process")
+    for scope_id in sorted(set(generated_scope_to_dataset) - observed_generators):
+        failures.append(f"{scope_id}:generate:missing_process")
+    for scope_id in sorted(set(adjudicators) - observed_adjudicators):
+        failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:missing_process")
+    for scope_id in sorted(observed_adjudicators - set(adjudicators)):
+        failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:missing_record")
+    if prepare_reference_processes > 1:
+        failures.append("prepare-reference:duplicate_process")
     science = manifest["science"]
     summaries: list[dict[str, object]] = []
+    solver_exclusions: list[dict[str, object]] = []
     for scope in scopes:
         scope_id = str(scope["id"])
         controls = int(scope["controls"])
+        eligibility = eligibility_by_scope[scope_id]
+        eligible_solvers = list(eligibility["eligible_solvers"])
+        solver_exclusions.extend({
+            "scope_id": scope_id, "solver": solver, "reason": reason,
+            "effect_count": eligibility["effect_count"],
+            "cmg_nuisance_columns": eligibility["cmg_nuisance_columns"],
+        } for solver, reason in eligibility["excluded_solvers"].items())
         for implementation in implementations:
             for repetition in range(1, repetitions + 1):
                 baseline = indexed.get((scope_id, implementation, "map", repetition))
@@ -901,7 +1137,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     elif int(reference["rc"]) != 0 or reference["converged"] != 1.0:
                         failures.append(prefix + ":execution")
                 default_reference = references["ppmlhdfe"]
-                for solver in SOLVERS:
+                for solver in eligible_solvers:
                     prefix = f"{scope_id}:{implementation}:{solver}:r{repetition}"
                     row = indexed.get((scope_id, implementation, solver, repetition))
                     if row is None:
@@ -986,7 +1222,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     failures.append(scope_id + ":independent_oracle_coefficients")
                 if not _close(candidate_map["deviance"], target["deviance"], float(science["likelihood_rtol"]), float(science["likelihood_atol"])):
                     failures.append(scope_id + ":independent_oracle_deviance")
-        for solver in SOLVERS:
+        for solver in eligible_solvers:
             values = [
                 float(indexed[(scope_id, "candidate", solver, repetition)]["seconds"])
                 for repetition in range(1, repetitions + 1)
@@ -1040,7 +1276,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
         "reference_adjudications": reference_adjudications,
         "dof_convention_notes": sorted(dof_convention_notes),
-        "solver_summary": summaries, "scopes": len(scopes), "repetitions": repetitions,
+        "solver_summary": summaries, "solver_exclusions": solver_exclusions,
+        "scopes": len(scopes), "repetitions": repetitions,
     }
 
 

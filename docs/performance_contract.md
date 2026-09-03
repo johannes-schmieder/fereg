@@ -81,7 +81,13 @@ stopping discrepancy, but only after such a discrepancy is observed; both
 reference paths must verify conjugate-gradient acceleration with the symmetric-
 Kaczmarz transform, and the default discrepancy remains recorded. Thread-
 scaling scopes within one campaign bundle reuse one generated dataset and
-seed. When an SCC development campaign
+seed. The development runner derives solver eligibility from that generated
+dataset's level-count metadata. In particular, it times public CMG only for
+two-FE designs or three-FE designs whose non-base nuisance width is at most 64;
+out-of-envelope CMG requests remain separate public `r(498)` contract tests,
+not failed timing cells. Every successful arm must retain all generated
+observations, so the metadata describes the topology actually prepared. When
+an SCC development campaign
 is explicitly authorized, it uses small diagnostic cells on comparable
 28-core nodes with roughly 10--20 independent tasks in parallel. Those runs
 are not qualification evidence. Large-sample and broad route-calibration work

@@ -76,17 +76,40 @@ def run_document() -> dict[str, object]:
         for repetition in (1, 2)
         for arm in (*DEVELOPMENT.SOLVERS, *DEVELOPMENT.COMPARATORS)
     ]
+    metadata = {"N": 100, "levels1": 10, "levels2": 8, "levels3": 0}
+    eligibility = DEVELOPMENT.solver_eligibility(
+        metadata, str(scope["topology"]), DEVELOPMENT.load_manifest(),
+    )
     return {
         "schema_version": 2,
         "kind": "feppml_solver_development_run",
         "qualification_eligible": False,
         "auto_calibration": False,
         "repetitions": 2,
+        "include_comparators": True,
         "include_oracle": False,
         "sources": {"candidate": {"commit": "a" * 40}},
         "scopes": [scope],
+        "datasets": [{
+            "scope": copy.deepcopy(scope), "dataset_id": "unit-dataset",
+            "generated_by_scope_id": "unit-scope", "metadata": metadata,
+            "solver_eligibility": eligibility,
+        }],
         "records": records,
-        "processes": [],
+        "processes": [
+            {
+                "stage": "generate", "scope_id": "unit-scope",
+                "dataset_id": "unit-dataset", "accepted_rc": 0,
+            },
+            *(
+                {
+                    "stage": "run", "scope_id": "unit-scope",
+                    "implementation": "candidate" if arm in DEVELOPMENT.SOLVERS else "reference",
+                    "arm": arm, "accepted_rc": 0,
+                }
+                for arm in (*DEVELOPMENT.SOLVERS, *DEVELOPMENT.COMPARATORS)
+            ),
+        ],
     }
 
 
@@ -105,7 +128,135 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
-        self.assertEqual(manifest["protocols"]["development_result_table"], "2.2")
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.3")
+
+    def test_solver_eligibility_uses_the_prepared_cmg_core_order_and_cap(self) -> None:
+        manifest = DEVELOPMENT.load_manifest()
+        two_fe = DEVELOPMENT.solver_eligibility(
+            {"N": 100, "levels1": 80, "levels2": 64, "levels3": 0},
+            "balanced_2fe", manifest,
+        )
+        self.assertEqual(two_fe["eligible_solvers"], ["map", "lsmr", "cmg"])
+        self.assertEqual(two_fe["cmg_nuisance_columns"], 0)
+
+        at_cap = DEVELOPMENT.solver_eligibility(
+            {"N": 100, "levels1": 65, "levels2": 100, "levels3": 90},
+            "balanced_3fe", manifest,
+        )
+        self.assertEqual(at_cap["level_counts_descending"], [100, 90, 65])
+        self.assertEqual(at_cap["cmg_nuisance_columns"], 64)
+        self.assertIn("cmg", at_cap["eligible_solvers"])
+
+        above_cap = DEVELOPMENT.solver_eligibility(
+            {"N": 100, "levels1": 66, "levels2": 100, "levels3": 90},
+            "balanced_3fe", manifest,
+        )
+        self.assertEqual(above_cap["eligible_solvers"], ["map", "lsmr"])
+        self.assertEqual(
+            above_cap["excluded_solvers"],
+            {"cmg": "three_fe_nuisance_columns_exceed_64"},
+        )
+        configurations = DEVELOPMENT._configurations(
+            {"candidate": ROOT}, above_cap["eligible_solvers"], True, 0,
+        )
+        self.assertNotIn(("candidate", "cmg"), configurations)
+        self.assertIn(("reference", "ppmlhdfe"), configurations)
+
+    def test_solver_eligibility_rejects_impossible_or_mislabeled_metadata(self) -> None:
+        manifest = DEVELOPMENT.load_manifest()
+        invalid = [
+            ({"N": 100, "levels1": 10.5, "levels2": 8, "levels3": 0}, "balanced_2fe"),
+            ({"N": 100, "levels1": True, "levels2": 8, "levels3": 0}, "balanced_2fe"),
+            ({"N": 100, "levels1": 101, "levels2": 8, "levels3": 0}, "balanced_2fe"),
+            ({"N": 100, "levels1": 10, "levels2": 0, "levels3": 8}, "balanced_2fe"),
+            ({"N": 100, "levels1": 10, "levels2": 8, "levels3": 0}, "balanced_3fe"),
+        ]
+        for metadata, topology in invalid:
+            with self.subTest(metadata=metadata, topology=topology):
+                with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                    DEVELOPMENT.solver_eligibility(metadata, topology, manifest)
+
+    def test_analysis_excludes_ineligible_cmg_without_masking_unexpected_rows(self) -> None:
+        document = run_document()
+        scope = document["scopes"][0]
+        scope["topology"] = "balanced_3fe"
+        document["datasets"][0]["scope"] = copy.deepcopy(scope)
+        metadata = {"N": 100, "levels1": 100, "levels2": 90, "levels3": 66}
+        eligibility = DEVELOPMENT.solver_eligibility(
+            metadata, "balanced_3fe", DEVELOPMENT.load_manifest(),
+        )
+        document["datasets"][0]["metadata"] = metadata
+        document["datasets"][0]["solver_eligibility"] = eligibility
+        document["records"] = [row for row in document["records"] if row["arm"] != "cmg"]
+        document["processes"] = [
+            process for process in document["processes"] if process.get("arm") != "cmg"
+        ]
+        for row in document["records"]:
+            row["topology"] = "balanced_3fe"
+        analysis = DEVELOPMENT.analyze_document(document)
+        self.assertTrue(analysis["science_pass"])
+        self.assertEqual(
+            analysis["solver_exclusions"],
+            [{
+                "scope_id": "unit-scope", "solver": "cmg",
+                "reason": "three_fe_nuisance_columns_exceed_64",
+                "effect_count": 3, "cmg_nuisance_columns": 65,
+            }],
+        )
+        self.assertEqual(
+            [row["solver"] for row in analysis["solver_summary"]], ["map", "lsmr"],
+        )
+
+        unexpected = copy.deepcopy(document)
+        unexpected["records"].append(result_row(scope, "cmg", 1))
+        rejected = DEVELOPMENT.analyze_document(unexpected)
+        self.assertFalse(rejected["science_pass"])
+        self.assertTrue(any("ineligible_solver" in item for item in rejected["science_failures"]))
+
+        stale = copy.deepcopy(document)
+        stale["datasets"][0]["solver_eligibility"]["eligible_solvers"].append("cmg")
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.analyze_document(stale)
+
+    def test_analysis_rejects_unexpected_result_oracle_process_and_sample(self) -> None:
+        result = run_document()
+        result["records"].append({
+            **copy.deepcopy(result["records"][0]),
+            "implementation": "reference", "arm": "map", "arm_type": "solver",
+        })
+        self.assertFalse(DEVELOPMENT.analyze_document(result)["science_pass"])
+
+        scope_mismatch = run_document()
+        scope_mismatch["records"][0]["topology"] = "sparse_3fe"
+        self.assertFalse(DEVELOPMENT.analyze_document(scope_mismatch)["science_pass"])
+
+        oracle = run_document()
+        oracle["records"].append({
+            "scope_id": "unit-scope", "implementation": "independent",
+            "arm_type": "oracle", "arm": "bogus", "sample_n": 100.0,
+        })
+        self.assertFalse(DEVELOPMENT.analyze_document(oracle)["science_pass"])
+
+        process = run_document()
+        process["processes"].append({
+            "stage": "run", "scope_id": "unit-scope",
+            "implementation": "candidate", "arm": "bogus", "accepted_rc": 0,
+        })
+        self.assertFalse(DEVELOPMENT.analyze_document(process)["science_pass"])
+
+        duplicate_process = run_document()
+        duplicate_process["processes"].append(copy.deepcopy(duplicate_process["processes"][1]))
+        self.assertFalse(DEVELOPMENT.analyze_document(duplicate_process)["science_pass"])
+
+        missing_process = run_document()
+        missing_process["processes"] = []
+        self.assertFalse(DEVELOPMENT.analyze_document(missing_process)["science_pass"])
+
+        sample = run_document()
+        sample["records"][0]["sample_n"] = 99.0
+        failed = DEVELOPMENT.analyze_document(sample)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("sample_differs_from_metadata" in item for item in failed["science_failures"]))
 
     def test_local_profiles_are_bounded_and_campaign_is_16_bundled_tasks(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -203,6 +354,11 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             and row["repetition"] == 1
         )
         changed["records"].append(adjudicator_row(scope, matching_map))
+        changed["processes"].append({
+            "stage": "adjudicate", "scope_id": scope["id"],
+            "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
+            "accepted_rc": 0,
+        })
         adjudicated = DEVELOPMENT.analyze_document(changed)
         self.assertTrue(adjudicated["science_pass"])
         self.assertEqual(len(adjudicated["reference_adjudications"]), 3)

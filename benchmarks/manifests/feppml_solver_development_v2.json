@@ -10,13 +10,24 @@
     "request_wire": "1.5",
     "result_wire": "1.2",
     "action_protocol": "1.5",
-    "development_result_table": "2.2"
+    "development_result_table": "2.3"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
     {"id": "lsmr", "option": "lsmr", "route_code": 3},
     {"id": "cmg", "option": "cmg", "route_code": 7}
   ],
+  "solver_eligibility": {
+    "source": "generated_dataset_metadata",
+    "effect_count": "positive_level_counts",
+    "sample_requirement": "every_successful_arm_equals_generated_N",
+    "map_minimum_effects": 2,
+    "lsmr_minimum_effects": 2,
+    "cmg_effect_counts": [2, 3],
+    "cmg_core_effects": "two_largest_level_counts",
+    "cmg_max_nonbase_nuisance_columns": 64,
+    "ineligible_solver_action": "exclude_timed_arm_and_test_public_r498_separately"
+  },
   "comparators": [
     {"id": "ppmlhdfe", "timed": true, "acceleration": "conjugate_gradient", "transform": "symmetric_kaczmarz"}
   ],

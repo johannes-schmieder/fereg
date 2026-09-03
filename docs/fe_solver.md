@@ -189,6 +189,13 @@ conjugate-gradient/symmetric-Kaczmarz technique. Agreement with the strict fit
 adjudicates the stopping discrepancy while retaining the original default-fit
 mismatch in the analysis; disagreement remains fatal.
 
+The version-2 development manifest derives explicit-solver eligibility from
+the generated dataset metadata before timing. It excludes an unsupported
+solver arm instead of treating its documented `r(498)` as a failed benchmark;
+the public rejection remains covered separately. For CMG, the runner mirrors
+the prepared engine's core choice: the two largest-cardinality effects are the
+core graph, and the remaining non-base width must not exceed 64.
+
 The public CMG family means only the prepared fused-FWL engine introduced by
 ADR-0023 and updated to the exact prepared-topology pin by ADR-0024. It prepares
 the two core FE endpoint topology once for the fit. On each ordinary IRLS frame
