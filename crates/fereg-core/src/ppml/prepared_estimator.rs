@@ -585,7 +585,10 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
 }
 
 fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
-    if matches!(request.solver, PpmlSolverFamily::Auto | PpmlSolverFamily::Map) {
+    if matches!(
+        request.solver,
+        PpmlSolverFamily::Auto | PpmlSolverFamily::Map
+    ) {
         return Ok(());
     }
     if request.memory.requested == MemoryMode::Low {
@@ -1491,8 +1494,8 @@ mod tests {
         request.phase_allocation_probe = Some(count_fit_phase_begins);
         FIT_PHASE_BEGINS.store(0, Ordering::SeqCst);
 
-        let error = fit_prepared_ppml(request, loaded)
-            .expect_err("one-FE PPML LSMR must fail closed");
+        let error =
+            fit_prepared_ppml(request, loaded).expect_err("one-FE PPML LSMR must fail closed");
         assert_eq!(error.code, ErrorCode::Unsupported);
         assert_eq!(error.return_code(), 498);
         assert!(error.message.contains("at least two"));
@@ -1518,8 +1521,7 @@ mod tests {
 
     #[test]
     fn explicit_lsmr_matches_map_and_reports_its_concrete_engine() {
-        let (baseline_request, baseline_loaded) =
-            fixture(2, false, false, false, false, false);
+        let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
             .expect("production MAP PPML oracle");
         let (mut request, loaded) = fixture(2, false, false, false, false, false);
@@ -1528,7 +1530,10 @@ mod tests {
         let candidate = fit_prepared_ppml(request, loaded).expect("public LSMR PPML");
         assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
         assert_eq!(candidate.solver().selected, PpmlSolverFamily::Lsmr);
-        assert_eq!(candidate.solver().selected_engine, super::super::PpmlSolverEngine::LsmrJoint);
+        assert_eq!(
+            candidate.solver().selected_engine,
+            super::super::PpmlSolverEngine::LsmrJoint
+        );
         assert_ppml_results_close(&candidate, &baseline);
     }
 
@@ -1608,6 +1613,44 @@ mod tests {
             candidate.solver().fallback_reason,
             super::super::PpmlSolverFallbackReason::CmgNumericalNonconvergence
         );
+        let solver = candidate.solver();
+        let cmg = &solver.engines()[3];
+        assert_eq!(cmg.ordinary_frames, 1);
+        assert_eq!(cmg.retries, 0);
+        assert_eq!(cmg.fallback_count, 1);
+        assert_ppml_results_close(&candidate, &baseline);
+    }
+
+    #[test]
+    fn public_cmg_fallback_retains_retry_timing_and_certificate_evidence() {
+        let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
+        let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
+            .expect("production MAP PPML oracle");
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Cmg;
+        request.memory.requested = MemoryMode::Fast;
+        super::super::categorical_fwl_cmg::inject_projection_certificate_failure_once(0);
+        super::super::categorical_fwl_cmg::inject_post_projection_numerical_failure_once();
+
+        let candidate = fit_prepared_ppml(request, loaded).expect("reported MAP fallback PPML");
+        assert_eq!(
+            super::super::categorical_fwl_cmg::take_total_retried_right_hand_sides(),
+            1,
+        );
+        let solver = candidate.solver();
+        let cmg = &solver.engines()[3];
+        assert_eq!(cmg.ordinary_frames, 1);
+        assert_eq!(cmg.retries, 1);
+        assert!(cmg.iterations > 0);
+        assert!(cmg.setup_seconds + cmg.solve_seconds + cmg.certification_seconds > 0.0);
+        assert!(cmg.absolute_infinity_norm_max.is_some());
+        assert!(cmg.relative_infinity_norm_max.is_some());
+        assert!(cmg.relative_two_norm_max.is_some());
+        assert!(cmg.projection_absolute_infinity_norm_max.is_some());
+        assert!(cmg.backward_error_max.is_some());
+        assert_eq!(cmg.fallback_count, 1);
+        assert_eq!(solver.fallback_count, 1);
+        assert_eq!(solver.effective, PpmlSolverFamily::Map);
         assert_ppml_results_close(&candidate, &baseline);
     }
 
@@ -2531,6 +2574,15 @@ mod tests {
                 column(&[1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0]),
             ));
             absorbed_terms.push(absorbed(3, k, "k", ""));
+        }
+        if effects >= 4 {
+            let m = SourceId::new(5).expect("m");
+            sources.push(source(m, "m"));
+            numeric_sources.push((
+                m,
+                column(&[1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0]),
+            ));
+            absorbed_terms.push(absorbed(4, m, "m", ""));
         }
         let mut clusters = Vec::new();
         if clustered {

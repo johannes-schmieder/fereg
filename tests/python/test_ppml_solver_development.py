@@ -188,7 +188,10 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertIn("accel(lsmr)", source)
         self.assertIn("FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS", source)
         self.assertIn("e(feppml_certificate)", source)
-        self.assertIn("e(feppml_linear_route)", source)
+        self.assertIn("e(feppml_solver)[1,4]", source)
+        self.assertIn("e(feppml_solver_fallback_count)", source)
+        self.assertNotIn("e(feppml_linear_route)", source)
+        self.assertNotIn("e(feppml_fallback_count)", source)
         self.assertIn("data_meta", source)
 
     def test_scc_scripts_encode_exact_array_and_full_lifecycle(self) -> None:

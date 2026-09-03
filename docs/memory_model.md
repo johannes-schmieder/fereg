@@ -102,9 +102,9 @@ predictor only when it was itself requested). Preflight and final planning use
 the same saved-channel and requested-output dimensions, so a saved intercept
 or slope cannot create an uncharged post-preflight vector.
 
-## PPML pre-activation separation memory
+## PPML separation memory
 
-The private PPML path adds its own fit-lifetime plan without changing OLS
+The PPML path adds its own fit-lifetime plan without changing OLS
 memory modes or thresholds. Its simplex detector operates on the complete
 prepared model span, including finite columns, one indicator per finalized
 intercept-FE level, and one level-by-raw-slope column per absorbed slope

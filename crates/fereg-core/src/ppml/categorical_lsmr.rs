@@ -133,23 +133,6 @@ pub(crate) struct ReusableCategoricalJointLsmr {
 }
 
 impl ReusableCategoricalJointLsmr {
-    /// Temporary compatibility entry point until the prepared IRLS caller is
-    /// switched atomically to `new_with_threads`.
-    pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
-        prepared: &P,
-        active_generated: &[usize],
-        fe_design: &FeDesign,
-        policy: CategoricalLsmrPolicy,
-    ) -> Result<Self> {
-        Self::new_with_threads(
-            prepared,
-            active_generated,
-            fe_design,
-            ThreadConfig::default(),
-            policy,
-        )
-    }
-
     pub(crate) fn new_with_threads<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
         active_generated: &[usize],
@@ -578,9 +561,9 @@ impl ReusableCategoricalJointLsmr {
             .enumerate()
             .for_each(|(column, inverse)| {
                 let mut diagonal = 0.0_f64;
-                for row in 0..self.active_design.nrows() {
+                for (row, &weight) in weights.iter().enumerate() {
                     let value = self.active_design[(row, column)];
-                    diagonal = (weights[row] * value).mul_add(value, diagonal);
+                    diagonal = (weight * value).mul_add(value, diagonal);
                 }
                 *inverse = if diagonal > 0.0 { 1.0 / diagonal } else { 0.0 };
             });
@@ -708,8 +691,8 @@ impl<'a> AugmentedCategoricalOperator<'a> {
         let finite = self.active_design.ncols();
         output.par_iter_mut().enumerate().for_each(|(row, value)| {
             let mut fitted = 0.0_f64;
-            for column in 0..finite {
-                fitted = self.active_design[(row, column)].mul_add(x[column], fitted);
+            for (column, &coefficient) in x[..finite].iter().enumerate() {
+                fitted = self.active_design[(row, column)].mul_add(coefficient, fitted);
             }
             for (effect_index, effect) in self.fe_design.effects().iter().enumerate() {
                 let level = effect.codes()[row] as usize;
@@ -744,8 +727,8 @@ impl Operator for AugmentedCategoricalOperator<'_> {
         let finite = self.active_design.ncols();
         y.par_iter_mut().enumerate().for_each(|(row, value)| {
             let mut fitted = 0.0_f64;
-            for column in 0..finite {
-                fitted = self.active_design[(row, column)].mul_add(x[column], fitted);
+            for (column, &coefficient) in x[..finite].iter().enumerate() {
+                fitted = self.active_design[(row, column)].mul_add(coefficient, fitted);
             }
             for (effect_index, effect) in self.fe_design.effects().iter().enumerate() {
                 let level = effect.codes()[row] as usize;
@@ -767,9 +750,9 @@ impl Operator for AugmentedCategoricalOperator<'_> {
             .enumerate()
             .for_each(|(column, output)| {
                 let mut sum = 0.0_f64;
-                for row in 0..self.nrows() {
+                for (row, &input) in x.iter().enumerate() {
                     sum = (self.sqrt_weights[row] * self.active_design[(row, column)])
-                        .mul_add(x[row], sum);
+                        .mul_add(input, sum);
                 }
                 *output = sum;
             });
@@ -1094,6 +1077,279 @@ impl ScaledSquareSum {
     }
 }
 
+/// Conservative heap peak added by the PPML joint-LSMR engine.
+///
+/// This is deliberately route-specific. The generic FE estimate assumes
+/// borrowed topology and a shared recurrence, while this engine retains an
+/// active finite design and PPML frame buffers, owns a Schwarz factor, and can
+/// overlap an earlier solution with a certified continuation.
+pub(crate) fn estimate_joint_lsmr_workspace_bytes(
+    rows: usize,
+    active_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+) -> Result<u128> {
+    let shape =
+        CategoricalLsmrMemoryShape::new(rows, active_columns, effect_level_counts, threads)?;
+    let n = shape.rows;
+    let k = shape.active_columns;
+    let p = checked_add_memory(k, shape.levels, "joint PPML augmented width")?;
+
+    // Fit-lifetime allocations owned directly by ReusableCategoricalJointLsmr.
+    let retained_values = checked_sum_memory(&[
+        checked_mul_memory(n, k, "joint PPML retained active design")?,
+        checked_mul_memory(n, 5, "joint PPML retained observation buffers")?,
+        p,
+        k,
+        shape.levels,
+    ])?;
+    let retained_indices = checked_sum_memory(&[
+        k,
+        checked_add_memory(shape.effects, 1, "joint PPML retained effect-offset count")?,
+        checked_mul_memory(shape.effects, 4, "joint PPML topology identity words")?,
+    ])?;
+    let retained_engine = checked_sum_memory(&[
+        bytes_for_memory::<f64>(retained_values, "joint PPML retained values")?,
+        bytes_for_memory::<usize>(retained_indices, "joint PPML retained indices")?,
+        shape.schwarz.retained_bytes,
+    ])?;
+
+    // The continuation path uses a four-vector local reorthogonalization
+    // window. Besides Modified Golub-Kahan's 2N + (3 + 2w)P vectors, the
+    // LSMR solution recurrence owns another 3P vectors and a warm start owns
+    // an N-vector residual. Keep one prior P-vector result live because both
+    // recurrence escalation and exact-certificate continuation do so.
+    const CONTINUATION_LOCAL_SIZE: u128 = 4;
+    let recurrence_vectors = checked_add_memory(
+        6,
+        checked_mul_memory(CONTINUATION_LOCAL_SIZE, 2, "joint PPML local history lanes")?,
+        "joint PPML recurrence vector count",
+    )?;
+    let recurrence_values = checked_sum_memory(&[
+        checked_mul_memory(n, 3, "joint PPML recurrence observation vectors")?,
+        checked_mul_memory(
+            p,
+            recurrence_vectors,
+            "joint PPML recurrence coefficient vectors",
+        )?,
+        p,
+    ])?;
+    let recurrence_peak = checked_sum_memory(&[
+        bytes_for_memory::<f64>(recurrence_values, "joint PPML recurrence values")?,
+        shape.schwarz.apply_peak_bytes,
+    ])?;
+
+    // A stale/certificate-triggered rebuild retains the previous solution
+    // while `within::Solver::new` owns copied weights and may locality-sort all
+    // categorical columns.
+    let rebuild_peak = checked_add_memory(
+        shape.schwarz.build_peak_bytes,
+        bytes_for_memory::<f64>(p, "joint PPML retained continuation result")?,
+        "joint PPML rebuild peak",
+    )?;
+    checked_add_memory(
+        retained_engine,
+        recurrence_peak.max(rebuild_peak),
+        "joint PPML LSMR workspace peak",
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CategoricalSchwarzMemoryEstimate {
+    pub(super) retained_bytes: u128,
+    pub(super) build_peak_bytes: u128,
+    pub(super) apply_peak_bytes: u128,
+    pub(super) solver_frame_bytes: u128,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CategoricalLsmrMemoryShape {
+    pub(super) rows: u128,
+    pub(super) active_columns: u128,
+    pub(super) effects: u128,
+    pub(super) levels: u128,
+    pub(super) maximum_levels: u128,
+    pub(super) threads: u128,
+    pub(super) schwarz: CategoricalSchwarzMemoryEstimate,
+}
+
+impl CategoricalLsmrMemoryShape {
+    pub(super) fn new(
+        rows: usize,
+        active_columns: usize,
+        effect_level_counts: &[usize],
+        threads: usize,
+    ) -> Result<Self> {
+        if rows == 0 || threads == 0 {
+            return Err(invalid_argument(
+                "PPML categorical LSMR memory estimate requires positive rows and threads",
+            ));
+        }
+        if effect_level_counts.is_empty() || effect_level_counts.contains(&0) {
+            return Err(invalid_argument(
+                "PPML categorical LSMR memory estimate requires positive effect level counts",
+            ));
+        }
+        let levels = effect_level_counts
+            .iter()
+            .try_fold(0_u128, |total, &levels| {
+                checked_add_memory(total, levels as u128, "PPML LSMR total levels")
+            })?;
+        let maximum_levels = effect_level_counts.iter().copied().max().unwrap_or(0) as u128;
+        let rows = rows as u128;
+        let effects = effect_level_counts.len() as u128;
+        let threads = threads as u128;
+        let schwarz =
+            estimate_categorical_schwarz_memory(rows, effects, levels, maximum_levels, threads)?;
+        Ok(Self {
+            rows,
+            active_columns: active_columns as u128,
+            effects,
+            levels,
+            maximum_levels,
+            threads,
+            schwarz,
+        })
+    }
+}
+
+/// Upper-bound the owned `within::Solver` categorical/Schwarz state used by
+/// both PPML LSMR routes. Every factor-pair can contain N distinct edges; the
+/// accounting charges both CSR orientations, construction copies, per-level
+/// maps/factors, locality-sort copies, and concurrent Schwarz apply buffers.
+fn estimate_categorical_schwarz_memory(
+    rows: u128,
+    effects: u128,
+    levels: u128,
+    maximum_levels: u128,
+    threads: u128,
+) -> Result<CategoricalSchwarzMemoryEstimate> {
+    let pairs = checked_mul_memory(
+        effects,
+        effects.saturating_sub(1),
+        "PPML LSMR factor-pair count",
+    )? / 2;
+    let edges = checked_mul_memory(rows, pairs, "PPML LSMR factor-pair edges")?;
+    let pair_level_incidence = checked_mul_memory(
+        levels,
+        effects.saturating_sub(1),
+        "PPML LSMR pair-level incidence",
+    )?;
+
+    // Constants include payload slack for opaque upstream vector and factor
+    // records, not an empirically selected routing threshold.
+    let retained_edge_bytes = checked_mul_memory(edges, 80, "PPML LSMR retained edge bytes")?;
+    let retained_level_bytes = checked_mul_memory(
+        pair_level_incidence,
+        80,
+        "PPML LSMR retained pair-level bytes",
+    )?;
+    let diagonal_bytes = bytes_for_memory::<f64>(levels, "PPML LSMR retained diagonal")?;
+
+    // The additive executor pools at most four buffers. During an apply,
+    // nested Rayon work cannot have more live global accumulators than the
+    // retained team width. Each buffer also has two local-solve scratches,
+    // conservatively sized to two maximum FE blocks.
+    let local_scratch_values =
+        checked_mul_memory(maximum_levels, 4, "PPML LSMR Schwarz local scratch values")?;
+    let global_apply_values = checked_add_memory(
+        levels,
+        local_scratch_values,
+        "PPML LSMR Schwarz apply values",
+    )?;
+    let retained_pool_bytes = bytes_for_memory::<f64>(
+        checked_mul_memory(
+            global_apply_values,
+            threads.min(4),
+            "PPML LSMR retained Schwarz pools",
+        )?,
+        "PPML LSMR retained Schwarz pool bytes",
+    )?;
+    let apply_peak_bytes = bytes_for_memory::<f64>(
+        checked_mul_memory(
+            global_apply_values,
+            threads,
+            "PPML LSMR concurrent Schwarz buffers",
+        )?,
+        "PPML LSMR concurrent Schwarz bytes",
+    )?;
+    let retained_bytes = checked_sum_memory(&[
+        retained_edge_bytes,
+        retained_level_bytes,
+        diagonal_bytes,
+        retained_pool_bytes,
+    ])?;
+
+    let categorical_copy_bytes = checked_sum_memory(&[
+        bytes_for_memory::<u32>(
+            checked_mul_memory(rows, effects, "PPML LSMR sorted categorical cells")?,
+            "PPML LSMR sorted categorical bytes",
+        )?,
+        bytes_for_memory::<u32>(rows, "PPML LSMR observation permutation")?,
+    ])?;
+    let solver_frame_bytes = checked_sum_memory(&[
+        categorical_copy_bytes,
+        bytes_for_memory::<f64>(rows, "PPML LSMR square-root weights")?,
+        bytes_for_memory::<usize>(
+            checked_add_memory(
+                pair_level_incidence,
+                effects,
+                "PPML LSMR categorical metadata count",
+            )?,
+            "PPML LSMR categorical metadata bytes",
+        )?,
+    ])?;
+
+    // Construction may simultaneously hold caller-order and sorted weights,
+    // stable-sort scratch, active maps, both transient cross tabs, the newly
+    // built retained factor, and the solver frame that takes ownership.
+    let sort_scratch_bytes = checked_sum_memory(&[
+        checked_mul_memory(rows, 16, "PPML LSMR stable-sort scratch")?,
+        bytes_for_memory::<usize>(
+            checked_add_memory(maximum_levels, 1, "PPML LSMR sort cursor count")?,
+            "PPML LSMR sort cursor bytes",
+        )?,
+    ])?;
+    let build_edge_bytes = checked_mul_memory(edges, 64, "PPML LSMR transient edge bytes")?;
+    let build_level_bytes = checked_mul_memory(
+        pair_level_incidence,
+        64,
+        "PPML LSMR transient pair-level bytes",
+    )?;
+    let build_peak_bytes = checked_sum_memory(&[
+        solver_frame_bytes,
+        bytes_for_memory::<f64>(rows, "PPML LSMR source weight copy")?,
+        sort_scratch_bytes,
+        build_edge_bytes,
+        build_level_bytes,
+        retained_bytes,
+    ])?;
+    Ok(CategoricalSchwarzMemoryEstimate {
+        retained_bytes,
+        build_peak_bytes,
+        apply_peak_bytes,
+        solver_frame_bytes,
+    })
+}
+
+pub(super) fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+    left.checked_add(right).ok_or_else(|| allocation(context))
+}
+
+pub(super) fn checked_mul_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+    left.checked_mul(right).ok_or_else(|| allocation(context))
+}
+
+pub(super) fn checked_sum_memory(values: &[u128]) -> Result<u128> {
+    values.iter().try_fold(0_u128, |total, &value| {
+        checked_add_memory(total, value, "PPML LSMR workspace sum overflowed")
+    })
+}
+
+pub(super) fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Result<u128> {
+    checked_mul_memory(elements, std::mem::size_of::<T>() as u128, context)
+}
+
 fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
@@ -1325,6 +1581,37 @@ mod tests {
         assert!(!second.rebuilt_preconditioner);
         assert!(solver.warm_start_valid);
         assert!(solver.delta_eta.iter().all(|value| value.is_finite()));
+    }
+
+    #[test]
+    fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
+        let base = estimate_joint_lsmr_workspace_bytes(10_000, 2, &[2_000, 1_000], 1)
+            .expect("base estimate");
+        let wider = estimate_joint_lsmr_workspace_bytes(10_000, 8, &[2_000, 1_000], 1)
+            .expect("wide estimate");
+        let parallel = estimate_joint_lsmr_workspace_bytes(10_000, 8, &[2_000, 1_000], 8)
+            .expect("parallel estimate");
+        let more_levels = estimate_joint_lsmr_workspace_bytes(10_000, 8, &[4_000, 2_000], 8)
+            .expect("larger topology estimate");
+        assert!(wider > base);
+        assert!(parallel > wider);
+        assert!(more_levels > parallel);
+    }
+
+    #[test]
+    fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
+        let invalid = estimate_joint_lsmr_workspace_bytes(100, 2, &[20, 0], 4)
+            .expect_err("zero levels must fail");
+        assert_eq!(invalid.code, ErrorCode::InvalidArgument);
+
+        let overflow = estimate_joint_lsmr_workspace_bytes(
+            usize::MAX,
+            usize::MAX,
+            &[usize::MAX, usize::MAX],
+            usize::MAX,
+        )
+        .expect_err("adversarial dimensions must fail closed");
+        assert_eq!(overflow.code, ErrorCode::Allocation);
     }
 
     fn test_team(threads: usize) -> InstalledThreadTeam {

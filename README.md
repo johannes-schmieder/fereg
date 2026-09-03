@@ -11,9 +11,9 @@ The current source is an unreleased 0.5.0 beta. Both the public `fereg` OLS
 command and the additive `feppml` command are active. `feppml` uses the same
 prepared-data, certified weighted-linear, covariance, memory-planning, and
 thread-team infrastructure without changing the public `fereg` path or OLS
-wire. Windows licensed-Stata testing and the formal cross-platform activation
-aggregate remain deferred, so this source is available for user testing but is
-not a tagged or source-qualified release.
+wire. Windows licensed-Stata testing and formal cross-platform qualification
+remain deferred, so this source is available for user testing but is not a
+tagged or source-qualified release.
 
 ## Quick start
 

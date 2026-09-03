@@ -213,6 +213,7 @@ RETAINED_ROUTE_SYMBOLS = frozenset(
         "CertifiedLinearSession",
         "factor_rank_revealing_retained_qr",
         "new_with_fe_design",
+        "new_with_ppml_fe_design",
         "solve_fresh",
         "solve_frozen",
         "solve_full_retained_rank",
@@ -588,7 +589,7 @@ def _item_end(tokens: Sequence[Token], start: int) -> int:
             square_depth += 1
         elif value == "]":
             square_depth -= 1
-        elif value == ";" and round_depth == square_depth == 0:
+        elif value in {";", ","} and round_depth == square_depth == 0:
             return index
         elif value == "{" and round_depth == square_depth == 0:
             return _matching(tokens, index, "{", "}")
@@ -1462,7 +1463,7 @@ def _retained_session_route_violations(root: Path) -> list[str]:
         ppml_values = [token.value for token in ppml_tokens]
         constructor_calls = sum(
             ppml_values[index : index + 4]
-            == ["CertifiedLinearSession", "::", "new_with_fe_design", "("]
+            == ["CertifiedLinearSession", "::", "new_with_ppml_fe_design", "("]
             for index in range(len(ppml_values) - 3)
         )
         if constructor_calls < 1:

@@ -5,9 +5,6 @@ import re
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
-
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/stata/parity_ppmlhdfe"
 TRANSACTION = ROOT / "stata/_fereg_estimate_ppml.ado"
@@ -27,7 +24,7 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
     def text(self, relative: str) -> str:
         return (ROOT / relative).read_text(encoding="utf-8")
 
-    def test_new_science_fixtures_are_shared_across_public_states(self) -> None:
+    def test_science_fixtures_are_shared_by_public_and_hidden_commands(self) -> None:
         for public_name, hidden_name in SHARED.items():
             with self.subTest(public_name=public_name):
                 shared = (FIXTURES / public_name).read_text(encoding="utf-8")
@@ -44,13 +41,8 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
                 self.assertIn(public_name, hidden)
 
         public = PUBLIC.read_text(encoding="utf-8")
-        activated = public_state(ROOT) == ACTIVATED
-        if activated:
-            self.assertIn("_fereg_ppml `0'", public)
-            self.assertNotIn("exit 498", public)
-        else:
-            self.assertIn("exit 498", public)
-            self.assertNotIn("_fereg_ppml `0'", public)
+        self.assertIn("_fereg_ppml `0'", public)
+        self.assertNotIn("exit 498", public)
         package = self.text("stata/fereg.pkg")
         stager = self.text("scripts/stage_release.py")
         for private in (
@@ -58,9 +50,8 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
             "_fereg_estimate_ppml.ado",
             "feppml_p.ado",
         ):
-            assertion = self.assertIn if activated else self.assertNotIn
-            assertion(f"f {private}", package)
-            assertion(f'"{private}"', stager)
+            self.assertIn(f"f {private}", package)
+            self.assertIn(f'"{private}"', stager)
 
     def test_saved_intercept_and_slope_contract_is_complete(self) -> None:
         source = (FIXTURES / "feppml_saved_slopes.do").read_text(encoding="utf-8")
@@ -209,6 +200,15 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
         ):
             self.assertIn(token, source)
 
+        compact = " ".join(source.replace("///", " ").split())
+        self.assertIn(
+            "absorb(__solver_lsmr_fe=cl1 cl2) separation(none) "
+            "solver(lsmr) memory(fast)",
+            compact,
+        )
+        self.assertIn("confirm variable __solver_lsmr_fe", source)
+        self.assertIn("assert __solver_lsmr_fe < . if e(sample)", source)
+
         transaction = TRANSACTION.read_text(encoding="utf-8")
         allowed_match = re.search(
             r"local allowed_feppml_scalars (?P<body>.*?)\n"
@@ -268,11 +268,7 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
         self.assertTrue(hidden["run_ppml_break_fixture"])
         self.assertTrue(full["run_ppml_break_fixture"])
         self.assertTrue(expected.isdisjoint(profiles["fereg-regression"]["fixtures"]))
-        activated = public_state(ROOT) == ACTIVATED
-        if activated:
-            self.assertIn("ppml-scientific", profiles)
-        else:
-            self.assertNotIn("ppml-scientific", profiles)
+        self.assertIn("ppml-scientific", profiles)
 
         allocation = (FIXTURES / "estimate_ppml_hidden_allocation.do").read_text(
             encoding="utf-8"

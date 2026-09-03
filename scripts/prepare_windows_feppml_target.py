@@ -48,7 +48,7 @@ CONTRACT_PATHS = (
     "tests/stata/installation/feppml_platform_load_capture.do",
     "tests/stata/installation/windows_ci_smoke.do",
     "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
-    "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
+    "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
 )
 
 

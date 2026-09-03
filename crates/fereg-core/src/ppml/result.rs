@@ -9,8 +9,8 @@ use super::PpmlIterationWorkspace;
 use super::{
     poisson_null_objective, poisson_objective, PoissonObjective, PpmlAllocationTelemetry,
     PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
-    PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlTestDistribution,
-    PpmlSolverReport, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
+    PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlSolverReport,
+    PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
     PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
 };
 use crate::data::{DropReason, WeightKind};
@@ -3780,8 +3780,7 @@ mod tests {
     use crate::options::MemoryMode;
     use crate::ppml::{
         compute_ppml_inference, plan_ppml_memory, PpmlInferenceInput, PpmlMemoryConfig,
-        PpmlMemoryDimensions, PpmlSolverEngine, PpmlSolverFamily, PpmlSolverPlan,
-        PpmlVceRequest,
+        PpmlMemoryDimensions, PpmlSolverEngine, PpmlSolverFamily, PpmlSolverPlan, PpmlVceRequest,
     };
 
     fn exact_state(saved: bool) -> PpmlOutputState {

@@ -33,6 +33,7 @@ const MOMENT_BLOCK_ROWS: usize = 32_768;
 #[cfg(test)]
 thread_local! {
     static FORCE_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
+    static FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
     static FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE: Cell<Option<usize>> = const { Cell::new(None) };
     static TOTAL_RETRIED_RIGHT_HAND_SIDES: Cell<usize> = const { Cell::new(0) };
 }
@@ -40,6 +41,11 @@ thread_local! {
 #[cfg(test)]
 pub(crate) fn inject_numerical_failure_once() {
     FORCE_NUMERICAL_FAILURE_ONCE.set(true);
+}
+
+#[cfg(test)]
+pub(crate) fn inject_post_projection_numerical_failure_once() {
+    FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE.set(true);
 }
 
 #[cfg(test)]
@@ -79,6 +85,104 @@ pub(crate) struct FusedFwlCmgReport {
     pub(crate) projection_relative_infinity_norm: f64,
     pub(crate) projection_relative_two_norm: f64,
     pub(crate) certificate: JointLsmrCertificate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct FusedFwlCmgFailureReport {
+    pub(crate) iterations: usize,
+    pub(crate) retries: usize,
+    pub(crate) setup_seconds: f64,
+    pub(crate) solve_seconds: f64,
+    pub(crate) certification_seconds: f64,
+    pub(crate) absolute_infinity_norm: Option<f64>,
+    pub(crate) relative_infinity_norm: Option<f64>,
+    pub(crate) relative_two_norm: Option<f64>,
+    pub(crate) projection_absolute_infinity_norm: Option<f64>,
+    pub(crate) backward_error: Option<f64>,
+}
+
+#[derive(Debug)]
+pub(crate) enum FusedFwlCmgSolveOutcome {
+    Certified(FusedFwlCmgReport),
+    // Only typed numerical failure crosses this seam. Allocation, data,
+    // interruption, and internal errors remain `Err` and cannot trigger MAP.
+    NumericalFailure(FusedFwlCmgFailureReport),
+}
+
+#[derive(Debug, Default)]
+struct FusedFwlCmgAttemptDiagnostics {
+    iterations: usize,
+    retries: usize,
+    setup_seconds: f64,
+    solve_seconds: f64,
+    certification_seconds: f64,
+    absolute_infinity_norm: Option<f64>,
+    relative_infinity_norm: Option<f64>,
+    relative_two_norm: Option<f64>,
+    projection_absolute_infinity_norm: Option<f64>,
+    backward_error: Option<f64>,
+}
+
+impl FusedFwlCmgAttemptDiagnostics {
+    fn observe_projection(&mut self, report: CmgUnpolishedProjectionReport) {
+        self.iterations = self.iterations.saturating_add(report.iterations);
+        self.setup_seconds += report.setup_seconds;
+        self.solve_seconds += report.solve_seconds;
+        update_optional_max(&mut self.backward_error, report.backward_error);
+    }
+
+    fn observe_projection_certificates(&mut self, certificates: &[ProjectionColumnCertificate]) {
+        for certificate in certificates {
+            update_optional_max(
+                &mut self.absolute_infinity_norm,
+                certificate.absolute_infinity_norm,
+            );
+            update_optional_max(
+                &mut self.relative_infinity_norm,
+                certificate.relative_infinity_norm,
+            );
+            update_optional_max(&mut self.relative_two_norm, certificate.relative_two_norm);
+            update_optional_max(
+                &mut self.projection_absolute_infinity_norm,
+                certificate.absolute_infinity_norm,
+            );
+        }
+    }
+
+    fn observe_final_certificate(&mut self, certificate: JointLsmrCertificate) {
+        update_optional_max(
+            &mut self.absolute_infinity_norm,
+            certificate
+                .finite_absolute_infinity_norm
+                .max(certificate.fixed_effect_absolute_infinity_norm),
+        );
+        update_optional_max(
+            &mut self.relative_infinity_norm,
+            certificate.relative_infinity_norm,
+        );
+        update_optional_max(&mut self.relative_two_norm, certificate.relative_two_norm);
+    }
+
+    fn into_failure_report(mut self, elapsed_seconds: f64) -> FusedFwlCmgFailureReport {
+        let accounted = self.setup_seconds + self.solve_seconds + self.certification_seconds;
+        // A failed lower-level solve may not return its phase report. Preserve
+        // that wall time as solve work instead of silently dropping the attempt.
+        if elapsed_seconds > accounted {
+            self.solve_seconds += elapsed_seconds - accounted;
+        }
+        FusedFwlCmgFailureReport {
+            iterations: self.iterations,
+            retries: self.retries,
+            setup_seconds: self.setup_seconds,
+            solve_seconds: self.solve_seconds,
+            certification_seconds: self.certification_seconds,
+            absolute_infinity_norm: self.absolute_infinity_norm,
+            relative_infinity_norm: self.relative_infinity_norm,
+            relative_two_norm: self.relative_two_norm,
+            projection_absolute_infinity_norm: self.projection_absolute_infinity_norm,
+            backward_error: self.backward_error,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -298,8 +402,45 @@ impl ReusableCategoricalFwlCmg {
         working_response: &[f64],
         weights: &[f64],
         tolerance: f64,
-    ) -> Result<FusedFwlCmgReport> {
+    ) -> Result<FusedFwlCmgSolveOutcome> {
         self.validate_frame(fe_design, working_response, weights, tolerance)?;
+        let attempt_started = Instant::now();
+        let mut diagnostics = FusedFwlCmgAttemptDiagnostics::default();
+        match self.solve_certified(
+            prepared,
+            fe_design,
+            working_response,
+            weights,
+            tolerance,
+            &mut diagnostics,
+        ) {
+            Ok(report) => Ok(FusedFwlCmgSolveOutcome::Certified(report)),
+            Err(error) if error.code == ErrorCode::NonConvergence => {
+                Ok(FusedFwlCmgSolveOutcome::NumericalFailure(
+                    diagnostics.into_failure_report(attempt_started.elapsed().as_secs_f64()),
+                ))
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn solve_certified<P: PreparedOlsFitView + Sync + ?Sized>(
+        &mut self,
+        prepared: &P,
+        fe_design: &FeDesign,
+        working_response: &[f64],
+        weights: &[f64],
+        tolerance: f64,
+        diagnostics: &mut FusedFwlCmgAttemptDiagnostics,
+    ) -> Result<FusedFwlCmgReport> {
+        for certificate in &mut self.projection_certificates {
+            *certificate = ProjectionColumnCertificate {
+                absolute_infinity_norm: f64::INFINITY,
+                relative_infinity_norm: f64::INFINITY,
+                relative_two_norm: f64::INFINITY,
+                passed: false,
+            };
+        }
         #[cfg(test)]
         {
             if FORCE_NUMERICAL_FAILURE_ONCE.replace(false) {
@@ -318,7 +459,13 @@ impl ReusableCategoricalFwlCmg {
             &mut self.prepared_topology,
         )?;
         let first = absorber.project_unpolished(&mut self.projected, tolerance)?;
-        self.certify_projected_columns(fe_design, working_response, weights, tolerance, false)?;
+        diagnostics.observe_projection(first);
+        let certification_started = Instant::now();
+        let projection_certificate =
+            self.certify_projected_columns(fe_design, working_response, weights, tolerance, false);
+        diagnostics.certification_seconds += certification_started.elapsed().as_secs_f64();
+        diagnostics.observe_projection_certificates(&self.projection_certificates);
+        projection_certificate?;
         #[cfg(test)]
         if let Some(rhs) = FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE.replace(None) {
             let certificate = self.projection_certificates.get_mut(rhs).ok_or_else(|| {
@@ -342,6 +489,7 @@ impl ReusableCategoricalFwlCmg {
         let mut retry_report = None;
         let effective_tolerance = (tolerance * 0.01).max(1e-14);
         if failed > 0 {
+            diagnostics.retries = diagnostics.retries.saturating_add(failed);
             self.fill_retry_projection_input(working_response)?;
             let report = if fe_design.effects().len() == 2 {
                 absorber.project_unpolished(&mut self.retry, effective_tolerance)?
@@ -359,7 +507,18 @@ impl ReusableCategoricalFwlCmg {
                 )?;
                 retry_absorber.project_unpolished(&mut self.retry, effective_tolerance)?
             };
-            self.certify_projected_columns(fe_design, working_response, weights, tolerance, true)?;
+            diagnostics.observe_projection(report);
+            let certification_started = Instant::now();
+            let retry_certificate = self.certify_projected_columns(
+                fe_design,
+                working_response,
+                weights,
+                tolerance,
+                true,
+            );
+            diagnostics.certification_seconds += certification_started.elapsed().as_secs_f64();
+            diagnostics.observe_projection_certificates(&self.projection_certificates);
+            retry_certificate?;
             for (local, &rhs) in self.failed_right_hand_sides.iter().enumerate() {
                 if !self.projection_certificates[rhs].passed {
                     return Err(nonconvergence(
@@ -373,8 +532,18 @@ impl ReusableCategoricalFwlCmg {
             retry_report = Some(report);
         }
 
+        #[cfg(test)]
+        if FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE.replace(false) {
+            return Err(nonconvergence(
+                "injected fused PPML CMG post-projection numerical failure",
+            ));
+        }
+
         let finish_started = Instant::now();
-        self.solve_finite_system(weights, tolerance)?;
+        if let Err(error) = self.solve_finite_system(weights, tolerance) {
+            diagnostics.certification_seconds += finish_started.elapsed().as_secs_f64();
+            return Err(error);
+        }
         let active_columns = self.active_columns;
         let coefficients = &self.coefficients;
         let projected = &self.projected;
@@ -398,12 +567,21 @@ impl ReusableCategoricalFwlCmg {
             .chain(&self.fitted_without_offset)
             .any(|value| !value.is_finite())
         {
+            diagnostics.certification_seconds += finish_started.elapsed().as_secs_f64();
             return Err(nonconvergence(
                 "fused PPML CMG produced a nonfinite residual or predictor",
             ));
         }
-        let certificate = self.certify_fwl(fe_design, working_response, weights, tolerance)?;
+        let certificate = match self.certify_fwl(fe_design, working_response, weights, tolerance) {
+            Ok(certificate) => certificate,
+            Err(error) => {
+                diagnostics.certification_seconds += finish_started.elapsed().as_secs_f64();
+                return Err(error);
+            }
+        };
+        diagnostics.observe_final_certificate(certificate);
         if !certificate.passed {
+            diagnostics.certification_seconds += finish_started.elapsed().as_secs_f64();
             return Err(nonconvergence(
                 "fused PPML CMG did not pass its exact combined normal-equation certificate",
             ));
@@ -729,10 +907,10 @@ impl ReusableCategoricalFwlCmg {
         for column in 0..self.active_columns {
             let mut moment = CompensatedSum::default();
             let mut basis_square = CompensatedSum::default();
-            for row in 0..self.rows {
+            for (row, &weight) in weights.iter().enumerate().take(self.rows) {
                 let value = self.active_values[row * self.active_columns + column];
-                moment.add(weights[row] * self.residual[row] * value)?;
-                basis_square.add(weights[row] * value * value)?;
+                moment.add(weight * self.residual[row] * value)?;
+                basis_square.add(weight * value * value)?;
             }
             let moment = moment.total();
             finite_absolute = finite_absolute.max(moment.abs());
@@ -860,8 +1038,8 @@ fn projection_column_certificate(
 ) -> Result<ProjectionColumnCertificate> {
     let mut target_scale = ScaledSquareSum::default();
     let mut residual_scale = ScaledSquareSum::default();
-    for row in 0..design.nobs() {
-        let root_weight = weights[row].sqrt();
+    for (row, &weight) in weights.iter().enumerate().take(design.nobs()) {
+        let root_weight = weight.sqrt();
         target_scale.add(root_weight * target(row))?;
         residual_scale.add(root_weight * residual(row))?;
     }
@@ -934,6 +1112,12 @@ fn combine_reports(
             )
         },
     )
+}
+
+fn update_optional_max(target: &mut Option<f64>, value: f64) {
+    if value.is_finite() && value >= 0.0 {
+        *target = Some(target.as_ref().map_or(value, |current| current.max(value)));
+    }
 }
 
 fn weighted_norm(values: &[f64], weights: &[f64]) -> Result<f64> {

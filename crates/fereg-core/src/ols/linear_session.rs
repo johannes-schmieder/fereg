@@ -77,6 +77,13 @@ pub(crate) enum LinearSessionSolveKind {
     Strict,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrozenLinearOutputKind {
+    #[cfg(test)]
+    FullOlsDecomposition,
+    PpmlCombinedPredictor,
+}
+
 /// Allocation phases observed only when an embedding explicitly installs a
 /// qualification probe on a reusable linear session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -279,6 +286,7 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) frozen_candidate_position_elements: usize,
     pub(crate) frozen_candidate_identity_elements: usize,
     pub(crate) frozen_candidate_scale_elements: usize,
+    pub(crate) frozen_reference_mean_correction_elements: usize,
     pub(crate) frozen_basis_slot_elements: usize,
     pub(crate) map_weight_elements: usize,
     pub(crate) projection_block_elements: usize,
@@ -634,6 +642,10 @@ struct RetainedWithinDesign {
     active_positions: Vec<usize>,
     /// Current raw and within weighted norms aligned to stored columns.
     reference_norms: Vec<f64>,
+    /// Current raw weighted means aligned to stored columns. PPML needs these
+    /// scalars to report the normalized absorbed intercept without rebuilding
+    /// an observation-scale finite predictor on every IRLS frame.
+    reference_means: Vec<f64>,
     within_norms: Vec<f64>,
     generations: WithinGenerations,
     certificate: LinearWithinDesignCertificate,
@@ -646,6 +658,7 @@ impl RetainedWithinDesign {
             stored_generated_columns,
             active_positions,
             reference_norms,
+            reference_means,
             within_norms,
             generations,
             certificate,
@@ -653,6 +666,7 @@ impl RetainedWithinDesign {
         let stored_columns = storage.columns();
         if stored_generated_columns.len() != stored_columns
             || reference_norms.len() != stored_columns
+            || reference_means.len() != stored_columns
             || within_norms.len() != stored_columns
             || active_positions.windows(2).any(|pair| pair[0] >= pair[1])
             || active_positions
@@ -676,9 +690,14 @@ impl RetainedWithinDesign {
             selected_columns,
             "unable to reserve weighted-linear final within norms",
         )?;
+        let mut selected_reference_means = fallible_empty(
+            selected_columns,
+            "unable to reserve weighted-linear final reference means",
+        )?;
         for position in active_positions.iter().copied() {
             selected_generated_columns.push(stored_generated_columns[position]);
             selected_reference_norms.push(reference_norms[position]);
+            selected_reference_means.push(reference_means[position]);
             selected_within_norms.push(within_norms[position]);
         }
         let rows = storage.rows();
@@ -718,6 +737,7 @@ impl RetainedWithinDesign {
             stored_generated_columns: selected_generated_columns,
             active_positions: compact_positions,
             reference_norms: selected_reference_norms,
+            reference_means: selected_reference_means,
             within_norms: selected_within_norms,
             generations,
             certificate,
@@ -837,17 +857,16 @@ struct CertifiedFrozenLinearStep {
 
 /// Borrowed products from the no-N-by-K-rebuild iteration path. Coefficients
 /// and bread follow `basis().kept_generated_columns()` order.
+#[cfg(test)]
 pub(crate) struct CertifiedFrozenLinearOutput<'a> {
     step: &'a CertifiedFrozenLinearStep,
     basis: &'a FrozenLinearBasis,
-    response: &'a [f64],
-    finite_predictor: &'a [f64],
-    absorbed_predictor: &'a [f64],
     within: &'a RetainedWithinDesign,
     reconstruction: LinearReconstructionCertificate,
     reuse: LinearSessionReuseReport,
 }
 
+#[cfg(test)]
 impl<'a> CertifiedFrozenLinearOutput<'a> {
     pub(crate) fn coefficients(&self) -> &'a [f64] {
         &self.step.coefficients
@@ -866,24 +885,8 @@ impl<'a> CertifiedFrozenLinearOutput<'a> {
         &self.step.response_absorption_report
     }
 
-    pub(crate) const fn certificate(&self) -> FrozenLinearSolveCertificate {
-        self.step.certificate
-    }
-
     pub(crate) const fn basis(&self) -> &'a FrozenLinearBasis {
         self.basis
-    }
-
-    pub(crate) const fn response(&self) -> &'a [f64] {
-        self.response
-    }
-
-    pub(crate) const fn finite_predictor(&self) -> &'a [f64] {
-        self.finite_predictor
-    }
-
-    pub(crate) const fn absorbed_predictor(&self) -> &'a [f64] {
-        self.absorbed_predictor
     }
 
     #[cfg(test)]
@@ -894,6 +897,68 @@ impl<'a> CertifiedFrozenLinearOutput<'a> {
     #[cfg(test)]
     pub(crate) fn finite_within_columns(&self) -> usize {
         self.within.active_positions.len()
+    }
+
+    pub(crate) const fn reconstruction_certificate(&self) -> LinearReconstructionCertificate {
+        self.reconstruction
+    }
+
+    pub(crate) const fn reuse_report(&self) -> LinearSessionReuseReport {
+        self.reuse
+    }
+
+    pub(crate) fn certified(&self) -> bool {
+        self.step.response_absorption_report.certified()
+            && self.step.certificate.passed
+            && self.within.certificate.passed
+            && self.reconstruction.passed
+    }
+}
+
+/// PPML-only frozen-basis output. The working response decomposes as
+/// `combined_predictor + within_residual`; exposing those two owned slices
+/// lets IRLS construct its candidate predictor in O(N) without materializing
+/// the separate finite and absorbed predictor vectors required by OLS.
+///
+/// This is deliberately a distinct type from `CertifiedFrozenLinearOutput`:
+/// callers that need the OLS decomposition and its certificate must continue
+/// to use `solve_frozen`.
+pub(crate) struct CertifiedFrozenPpmlLinearOutput<'a> {
+    step: &'a CertifiedFrozenLinearStep,
+    basis: &'a FrozenLinearBasis,
+    response: &'a [f64],
+    within: &'a RetainedWithinDesign,
+    reconstruction: LinearReconstructionCertificate,
+    reuse: LinearSessionReuseReport,
+}
+
+impl<'a> CertifiedFrozenPpmlLinearOutput<'a> {
+    pub(crate) fn coefficients(&self) -> &'a [f64] {
+        &self.step.coefficients
+    }
+
+    pub(crate) fn reported_coefficients(&self) -> &'a [Option<f64>] {
+        &self.step.reported_coefficients
+    }
+
+    pub(crate) fn within_residuals(&self) -> &'a [f64] {
+        &self.step.within_residuals
+    }
+
+    pub(crate) const fn response_absorption_report(&self) -> &'a SolveReport {
+        &self.step.response_absorption_report
+    }
+
+    pub(crate) const fn certificate(&self) -> FrozenLinearSolveCertificate {
+        self.step.certificate
+    }
+
+    pub(crate) const fn basis(&self) -> &'a FrozenLinearBasis {
+        self.basis
+    }
+
+    pub(crate) const fn response(&self) -> &'a [f64] {
+        self.response
     }
 
     pub(crate) const fn within_certificate(&self) -> LinearWithinDesignCertificate {
@@ -936,6 +1001,7 @@ struct FrozenLinearWorkspace {
     candidate_positions: Vec<usize>,
     candidate_ids: Vec<usize>,
     candidate_scales: Vec<f64>,
+    reference_mean_corrections: Vec<f64>,
     basis_slots: Vec<FrozenLinearBasisSlot>,
 }
 
@@ -967,6 +1033,7 @@ impl FrozenLinearWorkspace {
             && self.candidate_positions.capacity() >= rank
             && self.candidate_ids.capacity() >= rank
             && self.candidate_scales.capacity() >= rank
+            && self.reference_mean_corrections.capacity() >= stored_columns
     }
 }
 
@@ -1069,9 +1136,9 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
 /// final-state certificates that deliberately remain independent of the fast
 /// projection kernel.
 enum ReusableLinearMapProjector<'a> {
-    Generic(ReusableMapAbsorber),
+    Generic(Box<ReusableMapAbsorber>),
     PpmlCategorical {
-        projector: ReusableCategoricalMapAbsorber<'a>,
+        projector: Box<ReusableCategoricalMapAbsorber<'a>>,
         score_design: FeDesign,
     },
 }
@@ -1236,7 +1303,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// Construct from the estimator's one owned FE design. PPML uses this
     /// boundary after initialization so it does not duplicate categorical
     /// topology solely for the reusable projector.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     pub(crate) fn new_with_fe_design(
         prepared: &'a P,
         frame: LinearSolveFrame<'_>,
@@ -1303,11 +1370,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 (
                     None,
                     Some(ReusableLinearMapProjector::PpmlCategorical {
-                        projector: ReusableCategoricalMapAbsorber::new(
+                        projector: Box::new(ReusableCategoricalMapAbsorber::new(
                             categorical,
                             maximum_fe_rhs,
                             config.execution.threads.resolved(),
-                        )?,
+                        )?),
                         score_design: fe_design,
                     }),
                     fallible_copy(
@@ -1318,9 +1385,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             } else {
                 (
                     None,
-                    Some(ReusableLinearMapProjector::Generic(
+                    Some(ReusableLinearMapProjector::Generic(Box::new(
                         ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?,
-                    )),
+                    ))),
                     fallible_filled(
                         response.len(),
                         0.0,
@@ -1516,6 +1583,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .capacity(),
             frozen_candidate_identity_elements: self.frozen_workspace.candidate_ids.capacity(),
             frozen_candidate_scale_elements: self.frozen_workspace.candidate_scales.capacity(),
+            frozen_reference_mean_correction_elements: self
+                .frozen_workspace
+                .reference_mean_corrections
+                .capacity(),
             frozen_basis_slot_elements: self.frozen_workspace.basis_slots.capacity(),
             map_weight_elements: self.map_weights.capacity(),
             projection_block_elements: self.projection_block.capacity(),
@@ -1567,7 +1638,26 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     /// Absorb only the changing response and stream the retained finite within
     /// design into a frozen-basis solve. This is the PPML iteration path.
+    #[cfg(test)]
     pub(crate) fn solve_frozen(&mut self) -> Result<CertifiedFrozenLinearOutput<'_>> {
+        self.check_frozen_failure_injection()?;
+        let team = ThreadTeam::new(self.config.execution.threads);
+        team.install(|| self.solve_frozen_internal(FrozenLinearOutputKind::FullOlsDecomposition))??;
+        self.frozen_output()
+    }
+
+    /// PPML frozen-basis solve that certifies the exact combined predictor
+    /// identity without rebuilding separate finite and absorbed predictors.
+    pub(crate) fn solve_frozen_ppml(&mut self) -> Result<CertifiedFrozenPpmlLinearOutput<'_>> {
+        self.check_frozen_failure_injection()?;
+        let team = ThreadTeam::new(self.config.execution.threads);
+        team.install(|| {
+            self.solve_frozen_internal(FrozenLinearOutputKind::PpmlCombinedPredictor)
+        })??;
+        self.frozen_ppml_output()
+    }
+
+    fn check_frozen_failure_injection(&self) -> Result<()> {
         #[cfg(test)]
         match FROZEN_FAILURE_INJECTION.get() {
             1 => {
@@ -1597,9 +1687,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
             _ => {}
         }
-        let team = ThreadTeam::new(self.config.execution.threads);
-        team.install(|| self.solve_frozen_internal().map(|_| ()))??;
-        self.frozen_output()
+        Ok(())
     }
 
     #[cfg(test)]
@@ -2200,7 +2288,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             })
     }
 
-    fn solve_frozen_internal(&mut self) -> Result<CertifiedFrozenLinearOutput<'_>> {
+    fn solve_frozen_internal(&mut self, output_kind: FrozenLinearOutputKind) -> Result<()> {
         self.ensure_bound()?;
         self.recycle_frozen_step();
         if let Some(fit) = self.fit.take() {
@@ -2441,10 +2529,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .ok_or_else(|| invalid_argument("frozen weighted-linear design is absent"))?
             .certificate = within_certificate;
 
-        let predictor_workspace_reused = self.finite_predictor.capacity() >= self.response.len()
-            && self.absorbed_predictor.capacity() >= self.response.len();
-        let reconstruction =
-            self.rebuild_frozen_predictors(&kept, &frozen.coefficients, &frozen.within_residuals)?;
+        let (predictor_workspace_reused, reconstruction) = match output_kind {
+            #[cfg(test)]
+            FrozenLinearOutputKind::FullOlsDecomposition => (
+                self.finite_predictor.capacity() >= self.response.len()
+                    && self.absorbed_predictor.capacity() >= self.response.len(),
+                self.rebuild_frozen_predictors(
+                    &kept,
+                    &frozen.coefficients,
+                    &frozen.within_residuals,
+                )?,
+            ),
+            FrozenLinearOutputKind::PpmlCombinedPredictor => (
+                true,
+                certify_frozen_combined_predictor(&self.response, &frozen.within_residuals)?,
+            ),
+        };
         let mut reported_coefficients =
             std::mem::take(&mut self.frozen_workspace.reported_coefficients);
         // Reborrow the authoritative immutable basis after predictor rebuild;
@@ -2455,12 +2555,25 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .ok_or_else(|| invalid_argument("frozen weighted-linear basis disappeared"))?
             .slots();
-        self.build_frozen_reported_coefficients(
-            basis_slots,
-            &kept,
-            &frozen.coefficients,
-            &mut reported_coefficients,
-        )?;
+        match output_kind {
+            #[cfg(test)]
+            FrozenLinearOutputKind::FullOlsDecomposition => {
+                self.build_frozen_reported_coefficients(
+                    basis_slots,
+                    &kept,
+                    &frozen.coefficients,
+                    &mut reported_coefficients,
+                )?;
+            }
+            FrozenLinearOutputKind::PpmlCombinedPredictor => {
+                self.build_frozen_ppml_reported_coefficients(
+                    basis_slots,
+                    &kept,
+                    &frozen.coefficients,
+                    &mut reported_coefficients,
+                )?;
+            }
+        }
         self.frozen_workspace.kept = kept;
         report.predictor_workspace_reused = predictor_workspace_reused;
         report.kernel_moment_workspace_reused = kernel_workspace_reused;
@@ -2490,9 +2603,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.pending_response_buffer_reused = false;
         self.pending_weight_buffer_reused = false;
         self.projection_refresh_required = false;
-        self.frozen_output()
+        Ok(())
     }
 
+    #[cfg(test)]
     fn frozen_output(&self) -> Result<CertifiedFrozenLinearOutput<'_>> {
         let step = self.frozen_step.as_ref().ok_or_else(|| {
             invalid_argument("weighted-linear session has no current frozen solve")
@@ -2508,9 +2622,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .frozen_basis
                 .as_ref()
                 .ok_or_else(|| invalid_argument("weighted-linear session has no frozen basis"))?,
-            response: &self.response,
-            finite_predictor: &self.finite_predictor,
-            absorbed_predictor: &self.absorbed_predictor,
             within: self.within.as_ref().ok_or_else(|| {
                 invalid_argument("weighted-linear session has no retained within design")
             })?,
@@ -2523,6 +2634,34 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         })
     }
 
+    fn frozen_ppml_output(&self) -> Result<CertifiedFrozenPpmlLinearOutput<'_>> {
+        let step = self.frozen_step.as_ref().ok_or_else(|| {
+            invalid_argument("weighted-linear session has no current PPML frozen solve")
+        })?;
+        if step.generations != self.generations {
+            return Err(invalid_argument(
+                "weighted-linear PPML frozen solve has stale generations",
+            ));
+        }
+        Ok(CertifiedFrozenPpmlLinearOutput {
+            step,
+            basis: self.frozen_basis.as_ref().ok_or_else(|| {
+                invalid_argument("weighted-linear session has no PPML frozen basis")
+            })?,
+            response: &self.response,
+            within: self.within.as_ref().ok_or_else(|| {
+                invalid_argument("weighted-linear session has no PPML retained within design")
+            })?,
+            reconstruction: self.reconstruction.ok_or_else(|| {
+                invalid_argument("weighted-linear PPML reconstruction is not certified")
+            })?,
+            reuse: self.reuse.ok_or_else(|| {
+                invalid_argument("weighted-linear PPML solve has no reuse report")
+            })?,
+        })
+    }
+
+    #[cfg(test)]
     fn rebuild_frozen_predictors(
         &mut self,
         kept: &[usize],
@@ -2576,6 +2715,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         })
     }
 
+    #[cfg(test)]
     fn build_frozen_reported_coefficients(
         &self,
         slots: &[FrozenLinearBasisSlot],
@@ -2647,6 +2787,98 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
+    fn build_frozen_ppml_reported_coefficients(
+        &self,
+        slots: &[FrozenLinearBasisSlot],
+        kept: &[usize],
+        coefficients: &[f64],
+        reported: &mut Vec<Option<f64>>,
+    ) -> Result<()> {
+        if kept.len() != coefficients.len() {
+            return Err(invalid_argument(
+                "frozen PPML reported coefficient dimensions are inconsistent",
+            ));
+        }
+        let needs_normalized_intercept = slots
+            .iter()
+            .any(|slot| slot.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept);
+        let normalized_intercept = if needs_normalized_intercept {
+            let within = self
+                .within
+                .as_ref()
+                .ok_or_else(|| invalid_argument("frozen PPML retained design is unavailable"))?;
+            if within.active_positions.len() != kept.len()
+                || within.reference_means.len() != within.storage.columns()
+            {
+                return Err(invalid_argument(
+                    "frozen PPML retained means are inconsistent",
+                ));
+            }
+            let outcome_mean = weighted_mean_slice(
+                &self.response,
+                self.weights.borrowed(),
+                self.bread_weight_scale,
+            )?;
+            let mut finite_mean = 0.0_f64;
+            let mut finite_mean_correction = 0.0_f64;
+            for ((position, generated), coefficient) in within
+                .active_positions
+                .iter()
+                .copied()
+                .zip(kept.iter().copied())
+                .zip(coefficients.iter().copied())
+            {
+                if within.stored_generated_columns.get(position).copied() != Some(generated) {
+                    return Err(invalid_argument(
+                        "frozen PPML retained mean identity is inconsistent",
+                    ));
+                }
+                compensated_add(
+                    coefficient * within.reference_means[position],
+                    &mut finite_mean,
+                    &mut finite_mean_correction,
+                )?;
+            }
+            let value = outcome_mean - (finite_mean + finite_mean_correction);
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "frozen PPML normalized intercept is not finite",
+                ));
+            }
+            Some(value)
+        } else {
+            None
+        };
+
+        reported.clear();
+        reported
+            .try_reserve(slots.len())
+            .map_err(|_| allocation("unable to reserve frozen PPML reported coefficients"))?;
+        reported.resize(slots.len(), None);
+        for (target, slot) in reported.iter_mut().zip(slots) {
+            *target = match slot.status {
+                PreparedOlsFitStatus::Kept => {
+                    let generated = slot.generated_column_index.ok_or_else(|| {
+                        invalid_argument("frozen PPML kept slot has no generated column")
+                    })?;
+                    let position = kept
+                        .iter()
+                        .position(|candidate| *candidate == generated)
+                        .ok_or_else(|| {
+                            invalid_argument("frozen PPML kept slot is outside the basis")
+                        })?;
+                    Some(coefficients[position])
+                }
+                PreparedOlsFitStatus::NormalizedAbsorbedIntercept => normalized_intercept,
+                PreparedOlsFitStatus::SyntaxOmitted
+                | PreparedOlsFitStatus::AbsorbedInterceptDeferred
+                | PreparedOlsFitStatus::CollinearWithFixedEffects
+                | PreparedOlsFitStatus::NumericallyRankDeficient => None,
+            };
+        }
+        Ok(())
+    }
+
     fn solve_full_retained_rank(
         &mut self,
         within_response: &[f64],
@@ -2665,6 +2897,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             || retained.storage.rows() != rows
             || retained.storage.columns() != retained.stored_generated_columns.len()
             || retained.reference_norms.len() != retained.storage.columns()
+            || retained.reference_means.len() != retained.storage.columns()
             || retained.within_norms.len() != retained.storage.columns()
         {
             return Err(invalid_argument(
@@ -3479,6 +3712,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             0.0_f64,
             "unable to reserve weighted-linear retained reference norms",
         )?;
+        let mut reference_means = fallible_filled(
+            stored_columns,
+            0.0_f64,
+            "unable to reserve weighted-linear retained reference means",
+        )?;
         let mut within_norms = fallible_filled(
             stored_columns,
             0.0_f64,
@@ -3501,10 +3739,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     ));
                 }
                 let raw_norms = self.weighted_dense_column_norms(&raw)?;
+                let raw_means = self.weighted_dense_column_means(&raw)?;
                 for (position, generated) in stored_generated_columns.iter().copied().enumerate() {
                     reference_norms[position] = raw_norms[generated + 1];
+                    reference_means[position] = raw_means[generated + 1];
                 }
                 drop(raw_norms);
+                drop(raw_means);
                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                     self.fill_reusable_map_weights()?;
                     self.absorb_reusable_map(raw)?
@@ -3626,8 +3867,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     }
                     let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
                     let norms = self.weighted_dense_column_norms(&raw)?;
+                    let means = self.weighted_dense_column_means(&raw)?;
                     reference_norms[start..end].copy_from_slice(&norms);
+                    reference_means[start..end].copy_from_slice(&means);
                     drop(norms);
+                    drop(means);
                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                         self.absorb_reusable_map(raw)?
                     } else {
@@ -3662,6 +3906,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 stored_generated_columns,
                 active_positions: Vec::new(),
                 reference_norms,
+                reference_means,
                 within_norms,
                 generations: WithinGenerations::from_session(self.generations),
                 certificate: LinearWithinDesignCertificate {
@@ -3708,6 +3953,53 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             scales[column] = stable_norm(scales[column], sums[column])?;
         }
         Ok(scales)
+    }
+
+    fn weighted_dense_column_means(&self, values: &DenseMatrix) -> Result<Vec<f64>> {
+        if values.nrows() != self.response.len() {
+            return Err(invalid_argument(
+                "weighted-linear mean matrix is not aligned on observations",
+            ));
+        }
+        let columns = values.ncols();
+        let mut sums = fallible_filled(
+            columns,
+            0.0_f64,
+            "unable to reserve weighted-linear matrix mean sums",
+        )?;
+        let mut corrections = fallible_filled(
+            columns,
+            0.0_f64,
+            "unable to reserve weighted-linear matrix mean corrections",
+        )?;
+        let mut weight_sum = 0.0_f64;
+        let mut weight_correction = 0.0_f64;
+        let weights = self.weights.borrowed();
+        let weight_scale = self.bread_weight_scale;
+        for row in 0..values.nrows() {
+            let weight = normalized_solver_weight(weights, weight_scale, row)?;
+            compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
+            for column in 0..columns {
+                compensated_add(
+                    weight * values[(row, column)],
+                    &mut sums[column],
+                    &mut corrections[column],
+                )?;
+            }
+        }
+        let denominator = weight_sum + weight_correction;
+        if !denominator.is_finite() || denominator <= 0.0 {
+            return Err(invalid_data(
+                "weighted-linear matrix mean denominator is invalid",
+            ));
+        }
+        for column in 0..columns {
+            sums[column] = (sums[column] + corrections[column]) / denominator;
+            if !sums[column].is_finite() {
+                return Err(invalid_data("weighted-linear matrix mean is not finite"));
+            }
+        }
+        Ok(sums)
     }
 
     fn fill_weighted_dense_column_norms_reusing(
@@ -3762,13 +4054,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .ok_or_else(|| invalid_argument("weighted-linear retained design disappeared"))?;
         let result = (|| -> Result<()> {
             let columns = retained.stored_generated_columns.len();
-            if retained.reference_norms.len() != columns || retained.within_norms.len() != columns {
+            if retained.reference_norms.len() != columns
+                || retained.reference_means.len() != columns
+                || retained.within_norms.len() != columns
+            {
                 return Err(invalid_argument(
-                    "weighted-linear refreshed norm workspaces are absent",
+                    "weighted-linear refreshed reference workspaces are absent",
                 ));
             }
             let reused = self.frozen_workspace.scores.capacity() >= columns
-                && self.frozen_workspace.solve.capacity() >= columns;
+                && self.frozen_workspace.solve.capacity() >= columns
+                && self.frozen_workspace.reference_mean_corrections.capacity() >= columns;
             resize_zeroed(
                 &mut self.frozen_workspace.scores,
                 columns,
@@ -3779,29 +4075,57 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 columns,
                 "unable to reserve weighted-linear refreshed reference sums",
             )?;
+            resize_zeroed(
+                &mut self.frozen_workspace.reference_mean_corrections,
+                columns,
+                "unable to reserve weighted-linear refreshed mean corrections",
+            )?;
             self.frozen_workspace.solve.fill(1.0);
+            retained.reference_means.fill(0.0);
             let weights = self.weights.borrowed();
             let weight_scale = self.bread_weight_scale;
+            let mut weight_sum = 0.0_f64;
+            let mut weight_correction = 0.0_f64;
             for row in 0..self.response.len() {
-                let root = normalized_solver_weight(weights, weight_scale, row)?.sqrt();
+                let weight = normalized_solver_weight(weights, weight_scale, row)?;
+                compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
+                let root = weight.sqrt();
                 for (column, generated) in retained
                     .stored_generated_columns
                     .iter()
                     .copied()
                     .enumerate()
                 {
+                    let raw_value = self.prepared.fit_column_value(generated, row)?;
                     update_scaled_square(
-                        root * self.prepared.fit_column_value(generated, row)?,
+                        root * raw_value,
                         &mut self.frozen_workspace.scores[column],
                         &mut self.frozen_workspace.solve[column],
                     )?;
+                    compensated_add(
+                        weight * raw_value,
+                        &mut retained.reference_means[column],
+                        &mut self.frozen_workspace.reference_mean_corrections[column],
+                    )?;
                 }
+            }
+            let denominator = weight_sum + weight_correction;
+            if !denominator.is_finite() || denominator <= 0.0 {
+                return Err(invalid_data(
+                    "weighted-linear refreshed mean denominator is invalid",
+                ));
             }
             for column in 0..columns {
                 retained.reference_norms[column] = stable_norm(
                     self.frozen_workspace.scores[column],
                     self.frozen_workspace.solve[column],
                 )?;
+                retained.reference_means[column] = (retained.reference_means[column]
+                    + self.frozen_workspace.reference_mean_corrections[column])
+                    / denominator;
+                if !retained.reference_means[column].is_finite() {
+                    return Err(invalid_data("weighted-linear refreshed mean is not finite"));
+                }
             }
             retained.generations = WithinGenerations::from_session(self.generations);
             if let Some(report) = self.reuse.as_mut() {
@@ -4014,6 +4338,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             stored_generated_columns,
             active_positions,
             reference_norms,
+            reference_means,
             mut within_norms,
             ..
         } = prior;
@@ -4023,7 +4348,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         let mut workspace_reused = true;
-        if reference_norms.len() != columns || within_norms.len() != columns {
+        if reference_norms.len() != columns
+            || reference_means.len() != columns
+            || within_norms.len() != columns
+        {
             return Err(invalid_argument(
                 "weighted-linear reusable norm workspaces are inconsistent",
             ));
@@ -4140,6 +4468,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             stored_generated_columns,
             active_positions,
             reference_norms,
+            reference_means,
             within_norms,
             generations: WithinGenerations::from_session(self.generations),
             certificate: LinearWithinDesignCertificate {
@@ -4177,6 +4506,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             stored_generated_columns,
             active_positions,
             reference_norms,
+            reference_means,
             within_norms,
             ..
         } = prior;
@@ -4189,6 +4519,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             || self.frozen_workspace.response.len() != rows
             || self.map_weights.len() != rows
             || reference_norms.len() != columns
+            || reference_means.len() != columns
             || within_norms.len() != columns
         {
             return Err(invalid_argument(
@@ -4259,6 +4590,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             stored_generated_columns,
             active_positions,
             reference_norms,
+            reference_means,
             within_norms,
             generations: WithinGenerations::from_session(self.generations),
             certificate: LinearWithinDesignCertificate {
@@ -4755,6 +5087,69 @@ fn normalized_solver_weight(
     }
 }
 
+fn weighted_mean_slice(
+    values: &[f64],
+    weights: BorrowedMapWeights<'_>,
+    bread_weight_scale: super::PreparedOlsBreadWeightScale,
+) -> Result<f64> {
+    let mut numerator = 0.0_f64;
+    let mut numerator_correction = 0.0_f64;
+    let mut denominator = 0.0_f64;
+    let mut denominator_correction = 0.0_f64;
+    for (row, value) in values.iter().copied().enumerate() {
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "frozen weighted-linear mean input is not finite",
+            ));
+        }
+        let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
+        compensated_add(weight * value, &mut numerator, &mut numerator_correction)?;
+        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+    }
+    let denominator = denominator + denominator_correction;
+    let mean = (numerator + numerator_correction) / denominator;
+    if denominator.is_finite() && denominator > 0.0 && mean.is_finite() {
+        Ok(mean)
+    } else {
+        Err(invalid_data("frozen weighted-linear mean is not finite"))
+    }
+}
+
+fn certify_frozen_combined_predictor(
+    response: &[f64],
+    within_residuals: &[f64],
+) -> Result<LinearReconstructionCertificate> {
+    if response.len() != within_residuals.len() {
+        return Err(invalid_argument(
+            "frozen PPML combined predictor dimensions are inconsistent",
+        ));
+    }
+    let mut relative_infinity_norm = 0.0_f64;
+    for (response, residual) in response
+        .iter()
+        .copied()
+        .zip(within_residuals.iter().copied())
+    {
+        let predictor = response - residual;
+        let reconstructed = predictor + residual;
+        let scale = response.abs().max(reconstructed.abs()).max(1.0);
+        relative_infinity_norm =
+            relative_infinity_norm.max((reconstructed - response).abs() / scale);
+        if !predictor.is_finite()
+            || !reconstructed.is_finite()
+            || !relative_infinity_norm.is_finite()
+        {
+            return Err(invalid_data(
+                "frozen PPML combined predictor reconstruction is not finite",
+            ));
+        }
+    }
+    Ok(LinearReconstructionCertificate {
+        relative_infinity_norm,
+        passed: relative_infinity_norm <= 64.0 * f64::EPSILON,
+    })
+}
+
 fn fill_identified_bread(
     fit: &CertifiedPreparedOlsFit,
     basis: &FrozenLinearBasis,
@@ -4865,6 +5260,28 @@ where
         update_scaled_square(root * value, &mut scale, &mut scaled_square_sum)?;
     }
     stable_norm(scale, scaled_square_sum)
+}
+
+fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+    if !value.is_finite() || !sum.is_finite() || !correction.is_finite() {
+        return Err(invalid_data(
+            "weighted-linear compensated sum input is not finite",
+        ));
+    }
+    let next = *sum + value;
+    if sum.abs() >= value.abs() {
+        *correction += (*sum - next) + value;
+    } else {
+        *correction += (value - next) + *sum;
+    }
+    *sum = next;
+    if sum.is_finite() && correction.is_finite() {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "weighted-linear compensated sum is not finite",
+        ))
+    }
 }
 
 fn update_scaled_square(value: f64, scale: &mut f64, sum: &mut f64) -> Result<()> {

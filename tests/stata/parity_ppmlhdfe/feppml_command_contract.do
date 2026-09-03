@@ -307,10 +307,19 @@ capture noisily `feppml_test_command' y c.x, ///
     absorb(cl1##c.x cl2) separation(none) solver(lsmr) memory(fast)
 assert _rc == 498
 capture noisily `feppml_test_command' y c.x, ///
-    absorb(__unsupported_solver_fe=cl1 cl2) separation(none) ///
+    absorb(__solver_lsmr_fe=cl1 cl2) separation(none) ///
+    solver(lsmr) memory(fast)
+assert _rc == 0
+confirm variable __solver_lsmr_fe
+assert __solver_lsmr_fe < . if e(sample)
+drop __solver_lsmr_fe
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(__solver_fe=cl1 cl2) separation(none) ///
     solver(cmg) memory(fast)
-assert _rc == 498
-confirm new variable __unsupported_solver_fe
+assert _rc == 0
+confirm variable __solver_fe
+assert __solver_fe < . if e(sample)
+drop __solver_fe
 capture noisily `feppml_test_command' y c.x, threads(-1)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, poolsize(0)

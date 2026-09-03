@@ -73,11 +73,14 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     let dimensions = governing_k50_dimensions();
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("frozen governing estimate");
-    assert_eq!(base.fast.peak_bytes, 22_280_226_658);
-    assert_eq!(base.fast.separation_peak_bytes, 22_050_261_287);
+    // Fast retains the complete two-FE PCG state for all K+1 projected RHS:
+    // L + 2 * L_left * (K+1) + 4 * L_right * (K+1) f64 cells,
+    // plus five recurrence scalars per RHS.
+    assert_eq!(base.fast.peak_bytes, 47_400_229_554);
+    assert_eq!(base.fast.separation_peak_bytes, 47_170_264_183);
     assert_eq!(base.low.peak_bytes, 21_430_041_598);
     assert_eq!(base.low.separation_peak_bytes, 21_430_041_598);
-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 850_185_060);
+    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 25_970_187_956);
 
     let numeric_vector_bytes = 53_u128 * OBSERVATIONS as u128 * 8;
     let bit_vector_bytes = 54_u128 * OBSERVATIONS as u128 / 8;
@@ -95,7 +98,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
         ),
     )
     .expect("embedded governing estimate");
-    assert_eq!(embedded.fast.peak_bytes, 26_587_726_658);
+    assert_eq!(embedded.fast.peak_bytes, 51_707_729_554);
     assert_eq!(embedded.low.peak_bytes, 25_737_541_598);
 
     let auto = plan_ppml_memory(
@@ -116,7 +119,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     );
     assert_eq!(
         embedded.fast.peak_bytes - auto.usable_bytes.expect("imposed usable memory"),
-        107_726_658
+        25_227_729_554
     );
 
     let low = plan_ppml_memory(
@@ -155,7 +158,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
 }
 
 #[test]
-fn previous_k10_four_gigabyte_shape_cannot_prove_low_memory_fallback() {
+fn previous_k10_four_gigabyte_shape_still_rejects_every_route() {
     let dimensions = PpmlMemoryDimensions {
         loaded_numeric_columns: 12,
         finite_columns: 11,
@@ -166,9 +169,9 @@ fn previous_k10_four_gigabyte_shape_cannot_prove_low_memory_fallback() {
     };
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("previous constrained estimate");
-    assert_eq!(base.fast.peak_bytes, 15_880_046_578);
-    assert_eq!(base.low.peak_bytes, 16_521_095_114);
-    assert_eq!(base.low.peak_bytes - base.fast.peak_bytes, 641_048_536);
+    assert_eq!(base.fast.peak_bytes, 21_800_047_234);
+    assert_eq!(base.low.peak_bytes, 16_521_095_290);
+    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 5_278_951_944);
 
     // Outcome plus twelve sources and their missingness masks, plus candidate.
     let old_embedding_resident_floor_bytes =

@@ -17,7 +17,8 @@ use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_lsmr::{
-    add_relative, CategoricalLsmrPolicy, FeTopologyIdentity, FiniteCompensatedSum,
+    add_relative, bytes_for_memory, checked_add_memory, checked_mul_memory, checked_sum_memory,
+    CategoricalLsmrMemoryShape, CategoricalLsmrPolicy, FeTopologyIdentity, FiniteCompensatedSum,
     JointLsmrCertificate, ScaledSquareSum,
 };
 use super::PpmlIterationWorkspace;
@@ -60,23 +61,6 @@ pub(crate) struct ReusableCategoricalFwlLsmr {
 }
 
 impl ReusableCategoricalFwlLsmr {
-    /// Temporary compatibility entry point until the prepared IRLS caller is
-    /// switched atomically to `new_with_threads`.
-    pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
-        prepared: &P,
-        active_generated: &[usize],
-        fe_design: &FeDesign,
-        policy: CategoricalLsmrPolicy,
-    ) -> Result<Self> {
-        Self::new_with_threads(
-            prepared,
-            active_generated,
-            fe_design,
-            ThreadConfig::default(),
-            policy,
-        )
-    }
-
     pub(crate) fn new_with_threads<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
         active_generated: &[usize],
@@ -632,6 +616,124 @@ fn within_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
     Ok(effects)
 }
 
+/// Conservative heap peak added by the fused PPML FWL-LSMR engine.
+///
+/// `within::solve_batch` owns an independent LSMR recurrence and result for
+/// each concurrently executing RHS. It then allocates the consolidated batch
+/// output while the per-RHS outputs are still live. The generic FE estimate
+/// models neither behavior and is therefore not safe for this route.
+pub(crate) fn estimate_fused_fwl_lsmr_workspace_bytes(
+    rows: usize,
+    active_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+) -> Result<u128> {
+    if local_reorthogonalization_size == Some(0) {
+        return Err(invalid_argument(
+            "fused PPML LSMR memory estimate has an invalid reorthogonalization count",
+        ));
+    }
+    let shape =
+        CategoricalLsmrMemoryShape::new(rows, active_columns, effect_level_counts, threads)?;
+    let n = shape.rows;
+    let k = shape.active_columns;
+    let rhs = checked_add_memory(k, 1, "fused PPML LSMR RHS count")?;
+    let square = checked_mul_memory(k, k, "fused PPML finite square")?;
+
+    // Fit-lifetime buffers in ReusableCategoricalFwlLsmr, including the
+    // retained factor that can be reused by the next changing-weight frame.
+    let retained_values = checked_sum_memory(&[
+        checked_mul_memory(n, k, "fused PPML retained active controls")?,
+        checked_mul_memory(n, 2, "fused PPML retained observation buffers")?,
+        checked_mul_memory(square, 2, "fused PPML retained finite squares")?,
+        checked_mul_memory(k, 5, "fused PPML retained finite vectors")?,
+    ])?;
+    let retained_indices = checked_sum_memory(&[
+        checked_mul_memory(k, 2, "fused PPML retained finite indices")?,
+        checked_mul_memory(shape.effects, 4, "fused PPML topology identity words")?,
+    ])?;
+    let retained_engine = checked_sum_memory(&[
+        bytes_for_memory::<f64>(retained_values, "fused PPML retained values")?,
+        bytes_for_memory::<usize>(retained_indices, "fused PPML retained indices")?,
+        shape.schwarz.retained_bytes,
+    ])?;
+
+    let local = local_reorthogonalization_size.unwrap_or(0) as u128;
+    // Per active RHS: caller-order and locality-sorted/weighted response
+    // copies, Modified Golub-Kahan's buffers/history, the three-vector LSMR
+    // solution recurrence, and DesignOperator's maximum-level scatter scratch.
+    let recurrence_vectors = checked_add_memory(
+        6,
+        checked_mul_memory(local, 2, "fused PPML local history lanes")?,
+        "fused PPML recurrence vector count",
+    )?;
+    let active_rhs_values = checked_sum_memory(&[
+        checked_mul_memory(n, 2, "fused PPML active RHS response copies")?,
+        checked_mul_memory(
+            shape.levels,
+            recurrence_vectors,
+            "fused PPML active RHS recurrence",
+        )?,
+        shape.maximum_levels,
+    ])?;
+    let active_rhs_bytes =
+        bytes_for_memory::<f64>(active_rhs_values, "fused PPML active RHS recurrence bytes")?;
+    let result_values = checked_add_memory(n, shape.levels, "fused PPML per-RHS result")?;
+    let result_bytes = bytes_for_memory::<f64>(result_values, "fused PPML per-RHS result bytes")?;
+    let concurrent_rhs = rhs.min(shape.threads);
+
+    // Completed RHS results accumulate while the remaining Rayon tasks still
+    // own recurrences. Charging every result plus every concurrently live
+    // recurrence is a simple upper bound independent of scheduling order.
+    let parallel_solve_peak = checked_sum_memory(&[
+        checked_mul_memory(rhs, result_bytes, "fused PPML retained RHS results")?,
+        checked_mul_memory(
+            concurrent_rhs,
+            active_rhs_bytes,
+            "fused PPML concurrent RHS recurrences",
+        )?,
+        shape.schwarz.apply_peak_bytes,
+    ])?;
+
+    // Batch consolidation reserves final x and demeaned buffers before it
+    // consumes the individual results, temporarily doubling result storage.
+    let consolidated_results = checked_mul_memory(
+        checked_mul_memory(rhs, result_bytes, "fused PPML batch result bytes")?,
+        2,
+        "fused PPML doubled batch result storage",
+    )?;
+    let batch_scalars = checked_sum_memory(&[
+        bytes_for_memory::<bool>(rhs, "fused PPML convergence flags")?,
+        bytes_for_memory::<usize>(rhs, "fused PPML iteration counts")?,
+        bytes_for_memory::<f64>(
+            checked_mul_memory(rhs, 2, "fused PPML result scalar arrays")?,
+            "fused PPML result scalar bytes",
+        )?,
+        checked_mul_memory(
+            rhs,
+            2 * std::mem::size_of::<usize>() as u128,
+            "fused PPML response views",
+        )?,
+    ])?;
+    let consolidation_peak = checked_add_memory(
+        consolidated_results,
+        batch_scalars,
+        "fused PPML batch consolidation peak",
+    )?;
+    let solve_peak = checked_add_memory(
+        shape.schwarz.solver_frame_bytes,
+        parallel_solve_peak.max(consolidation_peak),
+        "fused PPML solve peak",
+    )?;
+
+    checked_add_memory(
+        retained_engine,
+        shape.schwarz.build_peak_bytes.max(solve_peak),
+        "fused PPML FWL LSMR workspace peak",
+    )
+}
+
 fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
@@ -692,7 +794,7 @@ mod tests {
             1e-14,
         )
         .expect("solve");
-        let mut canonical = vec![0.0; 2];
+        let mut canonical = [0.0; 2];
         for position in 0..2 {
             canonical[permutation[position]] = solution[position];
         }
@@ -753,5 +855,35 @@ mod tests {
             TEST_FUSED_LSMR_EXECUTING_WIDTH.load(std::sync::atomic::Ordering::Relaxed),
             3,
         );
+    }
+
+    #[test]
+    fn fused_memory_estimate_scales_with_rhs_concurrency_and_history() {
+        let serial = estimate_fused_fwl_lsmr_workspace_bytes(10_000, 3, &[2_000, 1_000], 1, None)
+            .expect("serial estimate");
+        let parallel = estimate_fused_fwl_lsmr_workspace_bytes(10_000, 3, &[2_000, 1_000], 4, None)
+            .expect("parallel estimate");
+        let with_history =
+            estimate_fused_fwl_lsmr_workspace_bytes(10_000, 3, &[2_000, 1_000], 4, Some(8))
+                .expect("history estimate");
+        assert!(parallel > serial);
+        assert!(with_history > parallel);
+    }
+
+    #[test]
+    fn fused_memory_estimate_rejects_invalid_and_overflowing_shapes() {
+        let invalid = estimate_fused_fwl_lsmr_workspace_bytes(100, 2, &[20, 10], 4, Some(0))
+            .expect_err("zero local history must fail");
+        assert_eq!(invalid.code, ErrorCode::InvalidArgument);
+
+        let overflow = estimate_fused_fwl_lsmr_workspace_bytes(
+            usize::MAX,
+            usize::MAX,
+            &[usize::MAX, usize::MAX],
+            usize::MAX,
+            Some(usize::MAX),
+        )
+        .expect_err("adversarial dimensions must fail closed");
+        assert_eq!(overflow.code, ErrorCode::Allocation);
     }
 }

@@ -5,9 +5,6 @@ import re
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
-
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIRECTORY = ROOT / "tests" / "stata" / "parity_ppmlhdfe"
 SCIENTIFIC_FIXTURES = (
@@ -145,15 +142,11 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, source)
 
-    def test_ci_preserves_hidden_ppml_and_matches_public_state(self) -> None:
+    def test_ci_preserves_hidden_and_public_ppml_profiles(self) -> None:
         profiles = json.loads((ROOT / "ci" / "stata_profiles.json").read_text(encoding="utf-8"))[
             "profiles"
         ]
-        activated = public_state(ROOT) == ACTIVATED
-        if activated:
-            self.assertIn("ppml-scientific", profiles)
-        else:
-            self.assertNotIn("ppml-scientific", profiles)
+        self.assertIn("ppml-scientific", profiles)
         profile = profiles["ppml-hidden"]
         expected_wrappers = [
             f"tests/stata/parity_ppmlhdfe/{name}" for name in HIDDEN_WRAPPERS
@@ -187,10 +180,7 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
         self.assertTrue(profiles["full"]["run_ppml_break_fixture"])
         for name in SCIENTIFIC_FIXTURES:
             relative = f"tests/stata/parity_ppmlhdfe/{name}"
-            if activated:
-                self.assertIn(relative, profiles["full"]["fixtures"])
-            else:
-                self.assertNotIn(relative, profiles["full"]["fixtures"])
+            self.assertIn(relative, profiles["full"]["fixtures"])
         self.assertFalse(
             any("parity_ppmlhdfe" in fixture for fixture in profiles["fereg-regression"]["fixtures"]),
             "the frozen fereg regression boundary must remain PPML-free",
@@ -198,12 +188,8 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
 
         workflow = (ROOT / ".github" / "workflows" / "stata-ci.yml").read_text(encoding="utf-8")
         self.assertIn("          - ppml-hidden", workflow)
-        if activated:
-            self.assertIn("          - ppml-scientific", workflow)
-            self.assertNotIn("          - ppml-fail-closed", workflow)
-        else:
-            self.assertNotIn("          - ppml-scientific", workflow)
-            self.assertIn("          - ppml-fail-closed", workflow)
+        self.assertIn("          - ppml-scientific", workflow)
+        self.assertNotIn("          - ppml-fail-closed", workflow)
 
     def test_production_config_cannot_inherit_ols_vce_or_dof_policy(self) -> None:
         core = (ROOT / "crates" / "fereg-core" / "src" / "ppml" / "mod.rs").read_text(

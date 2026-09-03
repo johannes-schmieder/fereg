@@ -41,7 +41,7 @@ uses an exact-version Rayon dependency and a local pool while preserving the
 same `ThreadTeam` abstraction. The crate and transitive dependency inventory is
 captured in Cargo.lock and the release SBOM/license notices.
 
-ADR 0020 fixes the private PPML rule that retained projection, finite moments,
+ADR 0020 fixes the PPML rule that retained projection, finite moments,
 solve/reconstruction, and sandwich phases all run under the preflight-frozen
 team count, including when an ambient pool has a different size. Qualification
 checks the exact installed Rayon pool width with `rayon::current_num_threads()`;

@@ -59,18 +59,16 @@ pub use result::{
     PpmlPredictionKind, PpmlReconstructionCertificate, PpmlResultCertificate,
     PpmlSavedEffectOutput,
 };
-pub use solver::{
-    PpmlSolverEngine, PpmlSolverEngineReport, PpmlSolverFallbackReason, PpmlSolverFamily,
-    PpmlSolverReport,
-};
-pub(crate) use solver::{
-    PpmlSolverFrameKind, PpmlSolverObservation, PpmlSolverPlan,
-};
 #[allow(unused_imports)]
 pub(crate) use result::{
     prepare_ppml_fixed_effect_report, recover_ppml_fixed_effects, CertifiedPpmlResultInput,
     PreparedPpmlFixedEffectReport, PreparedPpmlRecoveredFixedEffects,
 };
+pub use solver::{
+    PpmlSolverEngine, PpmlSolverEngineReport, PpmlSolverFallbackReason, PpmlSolverFamily,
+    PpmlSolverReport,
+};
+pub(crate) use solver::{PpmlSolverFrameKind, PpmlSolverObservation, PpmlSolverPlan};
 pub use vce::{
     compute_ppml_dof, compute_ppml_inference, PpmlClusterSubsetReport, PpmlDofReport,
     PpmlInferenceCertificate, PpmlInferenceDesign, PpmlInferenceInput, PpmlInferenceResult,

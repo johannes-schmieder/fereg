@@ -14,9 +14,9 @@ use crate::fe::{
     absorb_fixed_effects, BorrowedMapWeights, CmgTopologyProfile, FeDesign, FeSolverKind,
     PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
 };
-use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
+use crate::memory::FeSolverMemoryBudget;
 use crate::ols::{
-    classify_frozen_linear_fallback, CertifiedFrozenLinearOutput, CertifiedLinearSession,
+    classify_frozen_linear_fallback, CertifiedFrozenPpmlLinearOutput, CertifiedLinearSession,
     CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, FrozenLinearFallbackKind,
     LinearSessionGenerations, LinearSessionPhaseAllocatorProbe, LinearSessionReuseReport,
     LinearSessionWorkspaceCapacities, LinearSolveFrame, PreparedOlsBreadWeightScale,
@@ -26,12 +26,15 @@ use crate::ols::{
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_fwl_cmg::{
-    estimate_fused_cmg_workspace_bytes, FusedFwlCmgConfig, FusedFwlCmgReport,
-    ReusableCategoricalFwlCmg,
+    estimate_fused_cmg_workspace_bytes, FusedFwlCmgConfig, FusedFwlCmgFailureReport,
+    FusedFwlCmgReport, FusedFwlCmgSolveOutcome, ReusableCategoricalFwlCmg,
 };
-use super::categorical_fwl_lsmr::{FusedFwlLsmrReport, ReusableCategoricalFwlLsmr};
+use super::categorical_fwl_lsmr::{
+    estimate_fused_fwl_lsmr_workspace_bytes, FusedFwlLsmrReport, ReusableCategoricalFwlLsmr,
+};
 use super::categorical_lsmr::{
-    CategoricalLsmrPolicy, JointLsmrReport, ReusableCategoricalJointLsmr,
+    estimate_joint_lsmr_workspace_bytes, CategoricalLsmrPolicy, JointLsmrReport,
+    ReusableCategoricalJointLsmr,
 };
 use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 use super::memory::{begin_phase_allocation, end_phase_allocation};
@@ -43,10 +46,9 @@ use super::{
     PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlConfig, PpmlFallbackKind,
     PpmlInnerToleranceProgress, PpmlIterationWorkspace, PpmlLinearWorkspaceCapacityReport,
     PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan, PpmlMemoryRoute, PpmlMemoryTelemetry,
-    PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlSolverEngine,
-    PpmlSolverFrameKind, PpmlSolverObservation, PpmlSolverPlan, PpmlSolverReport,
-    PpmlSteadyStateAllocationObservation, PpmlWorkspaceCapacityReport,
-    PPML_STEADY_STATE_AUDIT_ITERATIONS,
+    PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlSolverEngine, PpmlSolverFrameKind,
+    PpmlSolverObservation, PpmlSolverPlan, PpmlSolverReport, PpmlSteadyStateAllocationObservation,
+    PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
@@ -118,13 +120,12 @@ pub(crate) struct PreparedPpmlIrlsConfig {
 
 impl Default for PreparedPpmlIrlsConfig {
     fn default() -> Self {
-        let ppml = PpmlConfig::default();
-        let mut absorb = ppml.absorb;
-        if absorb.solver == FeSolverKind::Auto {
-            absorb.solver = FeSolverKind::Map;
+        let mut ppml = PpmlConfig::default();
+        if ppml.absorb.solver == FeSolverKind::Auto {
+            ppml.absorb.solver = FeSolverKind::Map;
         }
         let linear = PreparedOlsFitConfig {
-            absorb,
+            absorb: ppml.absorb,
             fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
             ..PreparedOlsFitConfig::default()
         };
@@ -616,6 +617,7 @@ fn summarize_linear_workspace(
         capacity.frozen_candidate_position_elements,
         capacity.frozen_candidate_identity_elements,
         capacity.frozen_candidate_scale_elements,
+        capacity.frozen_reference_mean_correction_elements,
         capacity.frozen_basis_slot_elements,
         capacity.map_weight_elements,
         capacity.projection_block_elements,
@@ -676,7 +678,7 @@ pub(crate) fn fit_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prior_weights: &[f64],
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
-    mut memory_plan: PpmlMemoryPlan,
+    memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
 ) -> Result<PreparedPpmlIrlsFit> {
     fit_prepared_ppml_irls_interruptible(
@@ -786,11 +788,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prior_weights: &[f64],
     offset: &[f64],
     mut config: PreparedPpmlIrlsConfig,
-    memory_plan: PpmlMemoryPlan,
+    mut memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
+    // Direct internal callers may start from the shared FE default. Resolve
+    // that default to the canonical PPML checkpoint engine before enforcing
+    // the invariant; public route selection remains fixed in `solver_plan`.
+    if config.ppml.absorb.solver == FeSolverKind::Auto {
+        config.ppml.absorb.solver = FeSolverKind::Map;
+    }
+    if config.linear.absorb.solver == FeSolverKind::Auto {
+        config.linear.absorb.solver = FeSolverKind::Map;
+    }
     begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::Preparation);
     let preparation_clock = PpmlPhaseClock::start();
     validate_inputs(prepared, outcome, prior_weights, offset, config)?;
@@ -809,13 +820,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .finite_columns
         .checked_add(1)
         .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-    let solver_workspace = public_solver_workspace_bytes(
-        prepared,
-        &fe_design,
-        &config,
-        solver_rhs,
-        purpose,
-    )?;
+    let solver_workspace =
+        public_solver_workspace_bytes(prepared, &fe_design, &config, solver_rhs, purpose)?;
     memory_plan = memory_plan.with_solver_workspace(solver_workspace)?;
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: memory_plan.selected_inventory().peak_bytes,
@@ -981,7 +987,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 output.reuse_report(),
                 output.fit().absorption_report().used_solver,
             );
-            drop(output);
             match selected_engine {
                 PpmlSolverEngine::Map => {}
                 PpmlSolverEngine::LsmrJoint => {
@@ -991,10 +996,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             "joint PPML LSMR activation lacks the frozen active basis",
                         )
                     })?;
-                    joint_lsmr = Some(ReusableCategoricalJointLsmr::new(
+                    joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
                         prepared,
                         active_columns,
                         session.fe_design(),
+                        config.linear.execution.threads,
                         CategoricalLsmrPolicy::Reuse,
                     )?);
                 }
@@ -1005,10 +1011,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             "fused PPML LSMR activation lacks the frozen active basis",
                         )
                     })?;
-                    fused_lsmr = Some(ReusableCategoricalFwlLsmr::new(
+                    fused_lsmr = Some(ReusableCategoricalFwlLsmr::new_with_threads(
                         prepared,
                         active_columns,
                         session.fe_design(),
+                        config.linear.execution.threads,
                         CategoricalLsmrPolicy::Reuse,
                     )?);
                 }
@@ -1102,9 +1109,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     workspace.working_response(),
                     workspace.hessian_weights(),
                     inner_tolerance,
-                );
+                )?;
             match attempt {
-                Ok(report) => {
+                FusedFwlCmgSolveOutcome::Certified(report) => {
                     let cmg = fused_cmg
                         .as_ref()
                         .expect("successful fused CMG is retained");
@@ -1131,11 +1138,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         FeSolverKind::Cmg,
                     )
                 }
-                Err(error) if error.code == ErrorCode::NonConvergence => {
+                FusedFwlCmgSolveOutcome::NumericalFailure(report) => {
                     solver_report
                         .as_mut()
                         .ok_or_else(|| internal("PPML CMG fallback lacks solver diagnostics"))?
-                        .record_cmg_numerical_fallback()?;
+                        .record_cmg_numerical_fallback(cmg_failure_observation(report))?;
                     fused_cmg = None;
                     memory.record_fallback(PpmlFallbackKind::Route);
                     // The specialized route deliberately leaves the canonical
@@ -1176,7 +1183,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         canonical.fit().absorption_report().used_solver,
                     )
                 }
-                Err(error) => return Err(error),
             }
         } else {
             #[derive(Clone, Copy)]
@@ -1189,7 +1195,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 },
                 Fallback(FrozenLinearFallbackKind),
             }
-            let frozen_attempt = match session.solve_frozen() {
+            let frozen_attempt = match session.solve_frozen_ppml() {
                 Ok(output) if output.certified() => {
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
                     accumulate_inner_iterations(
@@ -1622,19 +1628,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 match specialized_engine {
                     Some(PpmlSolverEngine::LsmrJoint) => {
                         drop(joint_lsmr.take());
-                        joint_lsmr = Some(ReusableCategoricalJointLsmr::new(
+                        joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
                             prepared,
                             active_columns,
                             session.fe_design(),
+                            config.linear.execution.threads,
                             CategoricalLsmrPolicy::Reuse,
                         )?);
                     }
                     Some(PpmlSolverEngine::LsmrFused) => {
                         drop(fused_lsmr.take());
-                        fused_lsmr = Some(ReusableCategoricalFwlLsmr::new(
+                        fused_lsmr = Some(ReusableCategoricalFwlLsmr::new_with_threads(
                             prepared,
                             active_columns,
                             session.fe_design(),
+                            config.linear.execution.threads,
                             CategoricalLsmrPolicy::Reuse,
                         )?);
                     }
@@ -1896,15 +1904,28 @@ fn public_solver_workspace_bytes<P: PreparedOlsFitView + ?Sized>(
         .try_reserve_exact(design.effects().len())
         .map_err(|_| allocation("unable to reserve PPML FE solver preflight levels"))?;
     levels.extend(design.effects().iter().map(|effect| effect.n_levels()));
-    let estimate = estimate_fe_solver_memory(
-        design.nobs(),
-        rhs,
-        &levels,
-        config.linear.execution.threads.resolved(),
-        config.ppml.absorb.lsmr.local_size,
-    )?;
     Ok(match solver {
-        super::PpmlSolverFamily::Lsmr => estimate.lsmr_schwarz_bytes,
+        super::PpmlSolverFamily::Lsmr => {
+            let active_columns = rhs.saturating_sub(1);
+            let fused_zero_control = estimate_fused_fwl_lsmr_workspace_bytes(
+                design.nobs(),
+                0,
+                &levels,
+                config.linear.execution.threads.resolved(),
+                config.ppml.absorb.lsmr.local_size,
+            )?;
+            if active_columns == 0 {
+                fused_zero_control
+            } else {
+                estimate_joint_lsmr_workspace_bytes(
+                    design.nobs(),
+                    active_columns,
+                    &levels,
+                    config.linear.execution.threads.resolved(),
+                )?
+                .max(fused_zero_control)
+            }
+        }
         super::PpmlSolverFamily::Cmg => {
             let workspace = estimate_fused_cmg_workspace_bytes(
                 design.nobs(),
@@ -2019,6 +2040,24 @@ fn cmg_solver_observation(report: FusedFwlCmgReport) -> PpmlSolverObservation {
         normal_equation: None,
         projection_absolute_infinity_norm: Some(report.projection_absolute_infinity_norm),
         backward_error: Some(report.backward_error),
+    }
+}
+
+fn cmg_failure_observation(report: FusedFwlCmgFailureReport) -> PpmlSolverObservation {
+    PpmlSolverObservation {
+        engine: PpmlSolverEngine::CmgPrepared,
+        frame: PpmlSolverFrameKind::Ordinary,
+        retries: report.retries,
+        iterations: report.iterations,
+        setup_seconds: report.setup_seconds,
+        solve_seconds: report.solve_seconds,
+        certification_seconds: report.certification_seconds,
+        absolute_infinity_norm: report.absolute_infinity_norm,
+        relative_infinity_norm: report.relative_infinity_norm,
+        relative_two_norm: report.relative_two_norm,
+        normal_equation: None,
+        projection_absolute_infinity_norm: report.projection_absolute_infinity_norm,
+        backward_error: report.backward_error,
     }
 }
 
@@ -2551,13 +2590,12 @@ fn fill_candidate_coefficients_from_linear_output(
 }
 
 fn fill_candidate_eta_from_frozen_output(
-    output: &CertifiedFrozenLinearOutput<'_>,
+    output: &CertifiedFrozenPpmlLinearOutput<'_>,
     offset: &[f64],
     eta: &mut [f64],
 ) -> Result<()> {
-    if output.finite_predictor().len() != offset.len()
-        || output.absorbed_predictor().len() != offset.len()
-        || output.response().len() != offset.len()
+    if output.response().len() != offset.len()
+        || output.within_residuals().len() != offset.len()
         || eta.len() != offset.len()
         || output.coefficients().len() != output.basis().kept_generated_columns().len()
     {
@@ -2567,7 +2605,7 @@ fn fill_candidate_eta_from_frozen_output(
         ));
     }
     for row in 0..offset.len() {
-        eta[row] = offset[row] + output.finite_predictor()[row] + output.absorbed_predictor()[row];
+        eta[row] = offset[row] + output.response()[row] - output.within_residuals()[row];
         if !eta[row].is_finite() {
             return Err(numerical_nonconvergence(
                 "prepared PPML frozen candidate predictor is not finite",
@@ -2578,7 +2616,7 @@ fn fill_candidate_eta_from_frozen_output(
 }
 
 fn fill_candidate_coefficients_from_frozen_output(
-    output: &CertifiedFrozenLinearOutput<'_>,
+    output: &CertifiedFrozenPpmlLinearOutput<'_>,
     coefficients: &mut [f64],
 ) -> Result<()> {
     if coefficients.len() != output.basis().slots().len() {
@@ -2708,6 +2746,7 @@ fn fresh_warm_linear_equivalent(
         && coefficient_difference <= tolerance)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn strict_profile_consistent(
     eta: &[f64],
     coefficients: &[f64],

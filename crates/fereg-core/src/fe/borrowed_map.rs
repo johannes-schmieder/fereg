@@ -1616,25 +1616,23 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     cg_tolerance,
                     &mut self.workspace,
                 )?;
-                if certificate.passed {
-                    if iterations < config.max_iterations {
-                        borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
-                            &self.design,
-                            weights,
-                            &mut values,
-                            &mut self.workspace,
-                            None,
-                            config.symmetric,
-                        )?;
-                        iterations += 1;
-                        certificate = certify(
-                            &self.design,
-                            weights,
-                            &values,
-                            cg_tolerance,
-                            &mut self.workspace,
-                        )?;
-                    }
+                if certificate.passed && iterations < config.max_iterations {
+                    borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                        &self.design,
+                        weights,
+                        &mut values,
+                        &mut self.workspace,
+                        None,
+                        config.symmetric,
+                    )?;
+                    iterations += 1;
+                    certificate = certify(
+                        &self.design,
+                        weights,
+                        &values,
+                        cg_tolerance,
+                        &mut self.workspace,
+                    )?;
                 }
                 if certificate.passed {
                     let mut result = certified_result(
@@ -1916,11 +1914,11 @@ fn absorb_two_fe_pcg_reusing(
     }
     for level in 0..right_levels {
         let denominator = graph.right_weights[level];
-        for rhs in 0..rhs_count {
+        for (rhs, residual_sum) in residual_square.iter_mut().enumerate() {
             let index = level * stride + rhs;
             let residual = graph.residual[index];
             graph.direction[index] = residual / denominator;
-            residual_square[rhs] = residual.mul_add(graph.direction[index], residual_square[rhs]);
+            *residual_sum = residual.mul_add(graph.direction[index], *residual_sum);
         }
     }
     if residual_square
@@ -1955,25 +1953,13 @@ fn absorb_two_fe_pcg_reusing(
     let mut reconstruct = active_rhs == 0;
     let mut breakdown = false;
     while !reconstruct && iterations < pcg_iteration_limit {
-        apply_two_fe_schur(
-            design,
-            weights,
-            graph.left_effect,
-            graph.right_effect,
-            &graph.left_weights,
-            &graph.right_weights,
-            &mut graph.left_work,
-            &mut graph.operator,
-            &graph.direction,
-            rhs_count,
-            stride,
-        )?;
+        graph.apply_schur(design, weights, rhs_count, stride)?;
         direction_projection.fill(0.0);
         for level in 0..right_levels {
-            for rhs in 0..rhs_count {
+            for (rhs, projection_sum) in direction_projection.iter_mut().enumerate() {
                 let index = level * stride + rhs;
-                direction_projection[rhs] = graph.direction[index]
-                    .mul_add(graph.operator[index], direction_projection[rhs]);
+                *projection_sum =
+                    graph.direction[index].mul_add(graph.operator[index], *projection_sum);
             }
         }
         for rhs in 0..rhs_count {
@@ -2000,23 +1986,21 @@ fn absorb_two_fe_pcg_reusing(
             break;
         }
         for level in 0..right_levels {
-            for rhs in 0..rhs_count {
+            for (rhs, &step) in ratio.iter().enumerate() {
                 let index = level * stride + rhs;
-                graph.solution[index] =
-                    ratio[rhs].mul_add(graph.direction[index], graph.solution[index]);
+                graph.solution[index] = step.mul_add(graph.direction[index], graph.solution[index]);
                 graph.residual[index] =
-                    (-ratio[rhs]).mul_add(graph.operator[index], graph.residual[index]);
+                    (-step).mul_add(graph.operator[index], graph.residual[index]);
             }
         }
         iterations += 1;
         next_residual_square.fill(0.0);
         for level in 0..right_levels {
             let denominator = graph.right_weights[level];
-            for rhs in 0..rhs_count {
+            for (rhs, next_square) in next_residual_square.iter_mut().enumerate() {
                 let index = level * stride + rhs;
                 let preconditioned = graph.residual[index] / denominator;
-                next_residual_square[rhs] =
-                    graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
+                *next_square = graph.residual[index].mul_add(preconditioned, *next_square);
             }
         }
         if next_residual_square
@@ -2152,59 +2136,56 @@ fn absorb_two_fe_pcg_reusing(
     Err(invalid_data(reason))
 }
 
-fn apply_two_fe_schur(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: ValidatedWeights<'_>,
-    left_effect: usize,
-    right_effect: usize,
-    left_weights: &[f64],
-    right_weights: &[f64],
-    left_work: &mut [f64],
-    operator: &mut [f64],
-    vector: &[f64],
-    rhs_count: usize,
-    stride: usize,
-) -> Result<()> {
-    left_work.fill(0.0);
-    operator.fill(0.0);
-    let left = &design.effects()[left_effect];
-    let right = &design.effects()[right_effect];
-    let left_codes = left.codes();
-    let right_codes = right.codes();
-    for row in 0..design.nobs() {
-        let weight = weights.normalized(row);
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        for rhs in 0..rhs_count {
-            left_work[left_level * stride + rhs] += weight * vector[right_level * stride + rhs];
+impl TwoFePcgWorkspace {
+    fn apply_schur(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: ValidatedWeights<'_>,
+        rhs_count: usize,
+        stride: usize,
+    ) -> Result<()> {
+        self.left_work.fill(0.0);
+        self.operator.fill(0.0);
+        let left = &design.effects()[self.left_effect];
+        let right = &design.effects()[self.right_effect];
+        let left_codes = left.codes();
+        let right_codes = right.codes();
+        for row in 0..design.nobs() {
+            let weight = weights.normalized(row);
+            let left_level = left_codes[row] as usize;
+            let right_level = right_codes[row] as usize;
+            for rhs in 0..rhs_count {
+                self.left_work[left_level * stride + rhs] +=
+                    weight * self.direction[right_level * stride + rhs];
+            }
         }
-    }
-    for level in 0..left.n_levels() {
-        let denominator = left_weights[level];
-        for rhs in 0..rhs_count {
-            left_work[level * stride + rhs] /= denominator;
+        for (level, &denominator) in self.left_weights.iter().enumerate() {
+            for rhs in 0..rhs_count {
+                self.left_work[level * stride + rhs] /= denominator;
+            }
         }
-    }
-    for level in 0..right.n_levels() {
-        for rhs in 0..rhs_count {
-            let index = level * stride + rhs;
-            operator[index] = right_weights[level] * vector[index];
+        for (level, &right_weight) in self.right_weights.iter().enumerate() {
+            for rhs in 0..rhs_count {
+                let index = level * stride + rhs;
+                self.operator[index] = right_weight * self.direction[index];
+            }
         }
-    }
-    for row in 0..design.nobs() {
-        let weight = weights.normalized(row);
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        for rhs in 0..rhs_count {
-            operator[right_level * stride + rhs] -= weight * left_work[left_level * stride + rhs];
+        for row in 0..design.nobs() {
+            let weight = weights.normalized(row);
+            let left_level = left_codes[row] as usize;
+            let right_level = right_codes[row] as usize;
+            for rhs in 0..rhs_count {
+                self.operator[right_level * stride + rhs] -=
+                    weight * self.left_work[left_level * stride + rhs];
+            }
         }
-    }
-    if operator.iter().any(|value| !value.is_finite()) {
-        Err(invalid_data(
-            "two-FE categorical MAP PCG operator product is nonfinite",
-        ))
-    } else {
-        Ok(())
+        if self.operator.iter().any(|value| !value.is_finite()) {
+            Err(invalid_data(
+                "two-FE categorical MAP PCG operator product is nonfinite",
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 

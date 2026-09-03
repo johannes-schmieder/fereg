@@ -295,8 +295,10 @@ engine. The requested family, selected family and engine, final effective
 route, and MAP checkpoint route are reported separately.
 
 {pstd}
-The initial LSMR and CMG rollout supports two or three categorical intercept
-fixed effects, no saved fixed-effect channels, and the fast memory route.
+The initial LSMR rollout supports at least two categorical intercept fixed
+effects; CMG supports exactly two or three. Both retain the full PPML output
+surface, including saved fixed effects recovered from the final MAP-owned
+Hessian, and require the fast memory route.
 {cmd:memory(auto)} may select that route; explicit {cmd:memory(low)} is not yet
 supported for these two solvers. Recognized requests outside this envelope
 return {cmd:r(498)}. A viable selected route that cannot fit its modeled

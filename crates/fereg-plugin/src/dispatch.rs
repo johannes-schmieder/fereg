@@ -4,8 +4,7 @@ use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::options::ThreadConfig;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION,
-    PPML_RESULT_WIRE_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION, PPML_RESULT_WIRE_VERSION,
 };
 use fereg_core::selftest::run_native_selftest;
 

@@ -64,7 +64,7 @@ The driver performs one fail-closed sequence:
    selected mode, target commit/tree/archive/hash/size/build date, controller
    and harness identities, artifact and capture hashes, capture-program hash,
    and licensed load result.
-7. Run the bounded OLS/public-fail-closed fixtures in both modes and the private
+7. Run the bounded OLS fixture in both modes and the public command plus private
    PPML transaction only in candidate mode.
 8. Create deterministic `feppml-windows-results.zip` with the exact closed
    inventory `artifact/fereg_windows.plugin`, `evidence/capture.json`, and

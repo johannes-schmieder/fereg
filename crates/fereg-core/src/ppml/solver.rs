@@ -121,9 +121,7 @@ impl PpmlSolverPlan {
     pub(crate) const fn selected_engine(self, active_finite_columns: usize) -> PpmlSolverEngine {
         match self.selected {
             PpmlSolverFamily::Auto | PpmlSolverFamily::Map => PpmlSolverEngine::Map,
-            PpmlSolverFamily::Lsmr if active_finite_columns == 0 => {
-                PpmlSolverEngine::LsmrFused
-            }
+            PpmlSolverFamily::Lsmr if active_finite_columns == 0 => PpmlSolverEngine::LsmrFused,
             PpmlSolverFamily::Lsmr => PpmlSolverEngine::LsmrJoint,
             PpmlSolverFamily::Cmg => PpmlSolverEngine::CmgPrepared,
         }
@@ -233,10 +231,7 @@ impl PpmlSolverReport {
             &mut row.relative_two_norm_max,
             observation.relative_two_norm,
         );
-        update_max(
-            &mut row.normal_equation_max,
-            observation.normal_equation,
-        );
+        update_max(&mut row.normal_equation_max, observation.normal_equation);
         update_max(
             &mut row.projection_absolute_infinity_norm_max,
             observation.projection_absolute_infinity_norm,
@@ -245,7 +240,19 @@ impl PpmlSolverReport {
         Ok(())
     }
 
-    pub(crate) fn record_cmg_numerical_fallback(&mut self) -> Result<()> {
+    pub(crate) fn record_cmg_numerical_fallback(
+        &mut self,
+        failed_attempt: PpmlSolverObservation,
+    ) -> Result<()> {
+        if failed_attempt.engine != PpmlSolverEngine::CmgPrepared
+            || failed_attempt.frame != PpmlSolverFrameKind::Ordinary
+        {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "PPML CMG fallback lacks its failed ordinary-frame observation",
+            ));
+        }
+        self.observe(failed_attempt)?;
         increment(&mut self.fallback_count, 1)?;
         increment(
             &mut self.engines[PpmlSolverEngine::CmgPrepared.index()].fallback_count,
@@ -312,12 +319,14 @@ impl PpmlSolverReport {
                     ));
                 }
             }
-            row_fallbacks = row_fallbacks.checked_add(row.fallback_count).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Internal,
-                    "PPML solver fallback counter overflowed",
-                )
-            })?;
+            row_fallbacks = row_fallbacks
+                .checked_add(row.fallback_count)
+                .ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "PPML solver fallback counter overflowed",
+                    )
+                })?;
         }
         if row_fallbacks != self.fallback_count {
             return Err(FeregError::new(
@@ -452,7 +461,21 @@ mod tests {
         let plan = PpmlSolverPlan::new(PpmlSolverFamily::Cmg);
         let mut report = PpmlSolverReport::new(plan, PpmlSolverEngine::CmgPrepared);
         report
-            .record_cmg_numerical_fallback()
+            .record_cmg_numerical_fallback(PpmlSolverObservation {
+                engine: PpmlSolverEngine::CmgPrepared,
+                frame: PpmlSolverFrameKind::Ordinary,
+                retries: 2,
+                iterations: 17,
+                setup_seconds: 0.25,
+                solve_seconds: 0.5,
+                certification_seconds: 0.125,
+                absolute_infinity_norm: Some(0.01),
+                relative_infinity_norm: Some(0.02),
+                relative_two_norm: Some(0.03),
+                normal_equation: None,
+                projection_absolute_infinity_norm: Some(0.04),
+                backward_error: Some(0.05),
+            })
             .expect("fallback report");
         assert_eq!(report.effective, PpmlSolverFamily::Map);
         assert_eq!(report.effective_engine, PpmlSolverEngine::Map);
@@ -461,5 +484,16 @@ mod tests {
             PpmlSolverFallbackReason::CmgNumericalNonconvergence
         );
         assert_eq!(report.fallback_count, 1);
+        let cmg = &report.engines()[PpmlSolverEngine::CmgPrepared.index()];
+        assert_eq!(cmg.ordinary_frames, 1);
+        assert_eq!(cmg.retries, 2);
+        assert_eq!(cmg.iterations, 17);
+        assert_eq!(cmg.setup_seconds, 0.25);
+        assert_eq!(cmg.solve_seconds, 0.5);
+        assert_eq!(cmg.certification_seconds, 0.125);
+        assert_eq!(cmg.absolute_infinity_norm_max, Some(0.01));
+        assert_eq!(cmg.projection_absolute_infinity_norm_max, Some(0.04));
+        assert_eq!(cmg.backward_error_max, Some(0.05));
+        assert_eq!(cmg.fallback_count, 1);
     }
 }

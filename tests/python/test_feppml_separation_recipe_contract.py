@@ -15,7 +15,6 @@ ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = ROOT / "scripts/feppml_separation_recipe_contract.py"
 ORACLE_PATH = ROOT / "tests/python/ppml_recession_cone_oracle.py"
 QUALIFICATION_COMPILER_PATH = ROOT / "scripts/generate_feppml_qualification_recipes.py"
-PUBLIC_STATE_PATH = ROOT / "scripts/feppml_public_state.py"
 FIXTURE = ROOT / "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do"
 
 
@@ -32,7 +31,6 @@ ORACLE = load("feppml_phase7_oracle_test", ORACLE_PATH)
 QUALIFICATION_COMPILER = load(
     "feppml_phase7_qualification_compiler_test", QUALIFICATION_COMPILER_PATH
 )
-PUBLIC_STATE = load("feppml_phase7_public_state_test", PUBLIC_STATE_PATH)
 
 
 class FeppmlSeparationRecipeContractTests(unittest.TestCase):
@@ -192,32 +190,23 @@ class FeppmlSeparationRecipeContractTests(unittest.TestCase):
             )
             for relative in (
                 binding["hidden_wrapper"], "ci/stata_profiles.json",
-                binding["aggregate"], "stata/feppml.ado",
+                "stata/feppml.ado",
             ):
                 source = ROOT / relative
                 (root / relative).write_bytes(source.read_bytes())
             with self.assertRaisesRegex(CONTRACT.SeparationRecipeError, "byte-for-byte"):
                 CONTRACT.validate_stata_and_formal_binding(self.document, root)
 
-    def test_formal_binding_reaches_phase12_and_matches_public_state(self) -> None:
+    def test_formal_binding_reaches_qualification_and_public_wrapper(self) -> None:
         CONTRACT.validate_stata_and_formal_binding(self.document)
         binding = self.document["formal_binding"]
         profiles = json.loads((ROOT / "ci/stata_profiles.json").read_text(encoding="utf-8"))[
             "profiles"
         ]
         self.assertIn(binding["hidden_wrapper"], profiles["ppml-hidden"]["fixtures"])
-        aggregate = (ROOT / binding["aggregate"]).read_text(encoding="utf-8")
-        self.assertIn('"stata_ppml_hidden"', aggregate)
-        self.assertIn('"python"', aggregate)
-        state = PUBLIC_STATE.public_state(ROOT)
         public = (ROOT / "stata/feppml.ado").read_text(encoding="utf-8")
-        if state == PUBLIC_STATE.ACTIVATED:
-            self.assertNotIn("exit 498", public)
-            self.assertEqual(public.count("_fereg_ppml `0'"), 1)
-        else:
-            self.assertEqual(state, PUBLIC_STATE.PREACTIVATION)
-            self.assertIn("exit 498", public)
-            self.assertNotIn("_fereg_ppml", public)
+        self.assertNotIn("exit 498", public)
+        self.assertEqual(public.count("_fereg_ppml `0'"), 1)
 
     def test_contract_cli_is_deterministic_and_dependency_free(self) -> None:
         completed = subprocess.run(

@@ -499,7 +499,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
                 + ") -> Result<()> {\n"
                 + "    let fe_design = prepared.fit_owned_fe_design()?;\n"
                 + "    let _session = super::linear_session::CertifiedLinearSession::"
-                + "new_with_fe_design(\n"
+                + "new_with_ppml_fe_design(\n"
                 + "        prepared, frame, config, "
                 + "super::linear_session::LinearSessionGenerations::default(), "
                 + "fe_design,\n"
@@ -516,7 +516,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             )
             self.assertIn(
                 "retained QR/session symbol escaped PPML-only route: "
-                "crates/fereg-core/src/ols/prepared_fit.rs:new_with_fe_design",
+                "crates/fereg-core/src/ols/prepared_fit.rs:new_with_ppml_fe_design",
                 violations,
             )
 
@@ -666,6 +666,25 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
                 "pub(crate) struct RowMajorSandwichDesign<'a> {",
             )
             self.assertEqual(CONTRACT.audit_repository(candidate, MANIFEST), [])
+
+    def test_test_only_enum_variant_does_not_hide_following_production_item(self) -> None:
+        tokens = CONTRACT._production_tokens(
+            "enum Route {\n"
+            "    #[cfg(test)]\n"
+            "    TestOnly,\n"
+            "    Public,\n"
+            "}\n"
+            "pub enum Visible { Value }\n"
+        )
+        values = [token.value for token in tokens]
+        self.assertNotIn("TestOnly", values)
+        self.assertIn("Public", values)
+        self.assertTrue(
+            any(
+                values[index : index + 3] == ["pub", "enum", "Visible"]
+                for index in range(len(values) - 2)
+            )
+        )
 
     def test_new_ols_helper_file_is_not_outside_the_closed_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

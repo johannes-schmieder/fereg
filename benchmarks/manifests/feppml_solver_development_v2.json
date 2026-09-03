@@ -7,8 +7,8 @@
   "purpose": "Scientific and performance development for the three explicit public PPML FE solvers. This manifest cannot select auto routing or support qualification claims.",
   "public_command": "feppml",
   "protocols": {
-    "request_wire": "1.4",
-    "result_wire": "1.1",
+    "request_wire": "1.5",
+    "result_wire": "1.2",
     "action_protocol": "1.5",
     "trace_schema": 1
   },

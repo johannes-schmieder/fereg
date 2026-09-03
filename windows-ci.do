@@ -69,7 +69,7 @@ foreach required_file in windows-ci-source.json ///
     tests/stata/installation/windows_ci_smoke.do ///
     tests/stata/installation/feppml_platform_load_capture.do ///
     tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do ///
-    tests/stata/parity_ppmlhdfe/feppml_fail_closed.do {
+    tests/stata/parity_ppmlhdfe/feppml_command_contract.do {
     confirm file `"`root'/`required_file'"'
 }
 
@@ -220,9 +220,9 @@ if `"`built_verification_line'"' != ///
     exit 610
 }
 
-* Stage the package from the target, never from the controller.  Only candidate
+* Stage the package from the target, never from the controller. Only candidate
 * mode receives controller-owned private PPML adapters; F0 remains its exact
-* public historical package and runs only the load/OLS/fail-closed contract.
+* historical package and runs only the load/OLS contract.
 capture mkdir `"`private_stage'"'
 if _rc {
     exit 693
@@ -468,8 +468,8 @@ if `manifest_rc' {
 }
 confirm file `"`platform_source_manifest'"'
 
-* All fixtures are deliberately small.  Both modes prove target OLS and the
-* public PPML failure contract; only candidate mode runs trusted private PPML.
+* All fixtures are deliberately small. Both modes prove target OLS; candidate
+* mode additionally exercises the public command and guarded private PPML path.
 capture noisily do `"`root'/tests/stata/installation/windows_ci_smoke.do"'
 local smoke_rc = _rc
 if `smoke_rc' {
@@ -477,16 +477,17 @@ if `smoke_rc' {
 }
 if `"`target_mode'"' == "candidate" {
     capture noisily do ///
+        `"`root'/tests/stata/parity_ppmlhdfe/feppml_command_contract.do"'
+    local public_ppml_rc = _rc
+    if `public_ppml_rc' {
+        exit `public_ppml_rc'
+    }
+    capture noisily do ///
         `"`root'/tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do"'
     local hidden_ppml_rc = _rc
     if `hidden_ppml_rc' {
         exit `hidden_ppml_rc'
     }
-}
-capture noisily do `"`root'/tests/stata/parity_ppmlhdfe/feppml_fail_closed.do"'
-local fail_closed_rc = _rc
-if `fail_closed_rc' {
-    exit `fail_closed_rc'
 }
 
 * Package only the verifier's closed result inventory.  The accepted backend

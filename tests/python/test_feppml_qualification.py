@@ -131,7 +131,9 @@ class FeppmlQualificationTests(unittest.TestCase):
             ),
             timezone.utc,
         ).date().isoformat()
-        cls.manifest = QUAL.load_manifest(MANIFEST_PATH)
+        # The v1 qualification manifest is immutable historical evidence. Its
+        # frozen file hashes intentionally do not describe the live prototype.
+        cls.manifest = QUAL.load_manifest(MANIFEST_PATH, verify_files=False)
         cls.manifest_sha = QUAL.sha256_file(MANIFEST_PATH)
         cls.platform_records = []
         for platform in cls.manifest["platform_gates"]["required_artifacts"]:
@@ -460,7 +462,10 @@ class FeppmlQualificationTests(unittest.TestCase):
         evidence = self._evidence()
         with mock.patch.object(QUAL, "_load_development", self._fake_load):
             result = QUAL.evaluate_evidence(
-                self.manifest, evidence, manifest_sha256=self.manifest_sha
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha,
+                manifest_root=None,
             )
         self.assertEqual(result["status"], "pass")
         self.assertEqual(result["stage"], "complete")
@@ -476,7 +481,10 @@ class FeppmlQualificationTests(unittest.TestCase):
         evidence["paired_cells"] = "timing must not be inspected"
         with mock.patch.object(QUAL, "_load_development", self._fake_load):
             result = QUAL.evaluate_evidence(
-                self.manifest, evidence, manifest_sha256=self.manifest_sha
+                self.manifest,
+                evidence,
+                manifest_sha256=self.manifest_sha,
+                manifest_root=None,
             )
         self.assertEqual(result["status"], "fail")
         self.assertEqual(result["stage"], "scientific")
@@ -509,7 +517,10 @@ class FeppmlQualificationTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(QUAL.QualificationError, message):
                     QUAL.evaluate_evidence(
-                        self.manifest, evidence, manifest_sha256=self.manifest_sha
+                        self.manifest,
+                        evidence,
+                        manifest_sha256=self.manifest_sha,
+                        manifest_root=None,
                     )
 
     def test_mock_only_platform_receipt_cannot_claim_licensed_load_or_science(self) -> None:
@@ -527,7 +538,10 @@ class FeppmlQualificationTests(unittest.TestCase):
                     QUAL.QualificationError, "qualification eligible"
                 ):
                     QUAL.evaluate_evidence(
-                        self.manifest, evidence, manifest_sha256=self.manifest_sha
+                        self.manifest,
+                        evidence,
+                        manifest_sha256=self.manifest_sha,
+                        manifest_root=None,
                     )
 
     def test_stale_platform_source_cannot_match_candidate(self) -> None:
@@ -539,7 +553,10 @@ class FeppmlQualificationTests(unittest.TestCase):
         with mock.patch.object(QUAL, "_load_development", self._fake_load):
             with self.assertRaisesRegex(QUAL.QualificationError, "stale relative"):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
     def test_platform_capture_program_is_the_frozen_controller(self) -> None:
@@ -550,7 +567,10 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.QualificationError, "qualification eligible"
             ):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
     def test_candidate_and_platform_build_date_are_exact(self) -> None:
@@ -561,7 +581,10 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.QualificationError, "deterministic UTC build date"
             ):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
         evidence = self._evidence()
@@ -569,7 +592,10 @@ class FeppmlQualificationTests(unittest.TestCase):
         with mock.patch.object(QUAL, "_load_development", self._fake_load):
             with self.assertRaisesRegex(QUAL.QualificationError, "stale relative"):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
     def test_oracle_receipt_digest_is_derived_from_actual_registered_bundles(self) -> None:
@@ -580,7 +606,10 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.QualificationError, "registered cell bundles"
             ):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
         evidence = self._evidence()
@@ -596,7 +625,10 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.QualificationError, "one-through-five-way"
             ):
                 QUAL.evaluate_evidence(
-                    self.manifest, evidence, manifest_sha256=self.manifest_sha
+                    self.manifest,
+                    evidence,
+                    manifest_sha256=self.manifest_sha,
+                    manifest_root=None,
                 )
 
     def _check_source_audit_uses_committed_bytes_and_rejects_legacy_route(self) -> None:

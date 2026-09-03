@@ -4,13 +4,9 @@ import json
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
-
 ROOT = Path(__file__).resolve().parents[2]
 PROFILES = ROOT / "ci" / "stata_profiles.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "stata-ci.yml"
-PPML_FIXTURE = "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do"
 HIDDEN_TRANSACTION = (
     "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do"
 )
@@ -76,7 +72,7 @@ class StataProfileSeparationContractTests(unittest.TestCase):
         self.assertTrue(regression["build_plugin"])
         self.assertTrue(regression["run_break_fixture"])
         self.assertIn(TRANSACTION_FIXTURE, fixtures)
-        self.assertNotIn(PPML_FIXTURE, fixtures)
+        self.assertNotIn("parity_ppmlhdfe", "\n".join(fixtures))
         self.assertTrue(set(fixtures).issubset(set(full["fixtures"])))
 
         for relative in fixtures:
@@ -90,36 +86,21 @@ class StataProfileSeparationContractTests(unittest.TestCase):
             if "parity_ppmlhdfe" not in relative and "feppml" not in text:
                 self.assertIn(relative, fixtures)
 
-    def test_public_ppml_profile_matches_public_state(self) -> None:
+    def test_public_ppml_profile_is_active(self) -> None:
         profiles = load_profiles()
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("- fereg-regression", workflow)
-        if public_state(ROOT) == ACTIVATED:
-            self.assertNotIn("ppml-fail-closed", profiles)
-            ppml = profiles["ppml-scientific"]
-            self.assertEqual(ppml["driver"], "fereg-fixtures")
-            self.assertTrue(ppml["build_plugin"])
-            self.assertEqual(ppml["fixtures"], PUBLIC_PPML_FIXTURES)
-            self.assertNotIn(PPML_FIXTURE, profiles["quick"]["fixtures"])
-            self.assertNotIn(PPML_FIXTURE, profiles["full"]["fixtures"])
-            self.assertTrue(
-                set(PUBLIC_PPML_FIXTURES).issubset(profiles["full"]["fixtures"])
-            )
-            self.assertIn(PUBLIC_HELP_FIXTURE, profiles["full"]["fixtures"])
-            self.assertIn("- ppml-scientific", workflow)
-            self.assertNotIn("- ppml-fail-closed", workflow)
-        else:
-            ppml = profiles["ppml-fail-closed"]
-            self.assertEqual(ppml["driver"], "fereg-fixtures")
-            self.assertFalse(ppml["build_plugin"])
-            self.assertEqual(ppml["fixtures"], [PPML_FIXTURE])
-            self.assertEqual(ppml["required_outputs"], [])
-            for name in ("quick", "full"):
-                self.assertIn(PPML_FIXTURE, profiles[name]["fixtures"])
-            self.assertIn("- ppml-fail-closed", workflow)
-            self.assertNotIn("- ppml-scientific", workflow)
+        self.assertNotIn("ppml-fail-closed", profiles)
+        ppml = profiles["ppml-scientific"]
+        self.assertEqual(ppml["driver"], "fereg-fixtures")
+        self.assertTrue(ppml["build_plugin"])
+        self.assertEqual(ppml["fixtures"], PUBLIC_PPML_FIXTURES)
+        self.assertTrue(set(PUBLIC_PPML_FIXTURES).issubset(profiles["full"]["fixtures"]))
+        self.assertIn(PUBLIC_HELP_FIXTURE, profiles["full"]["fixtures"])
+        self.assertIn("- ppml-scientific", workflow)
+        self.assertNotIn("- ppml-fail-closed", workflow)
 
-    def test_hidden_ppml_profile_is_preserved_across_public_states(self) -> None:
+    def test_hidden_ppml_profile_is_preserved_for_regression_coverage(self) -> None:
         profiles = load_profiles()
         hidden = profiles["ppml-hidden"]
         self.assertTrue(hidden["build_plugin"])
@@ -131,36 +112,15 @@ class StataProfileSeparationContractTests(unittest.TestCase):
 
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("- ppml-hidden", workflow)
-        if public_state(ROOT) == ACTIVATED:
-            self.assertIn("ppml-scientific", profiles)
-            self.assertIn("- ppml-scientific", workflow)
-        else:
-            self.assertNotIn("ppml-scientific", profiles)
-            self.assertNotIn("- ppml-scientific", workflow)
+        self.assertIn("ppml-scientific", profiles)
+        self.assertIn("- ppml-scientific", workflow)
 
         for name, profile in profiles.items():
             self.assertNotIn(
                 PUBLIC_STAGED_INSTALL,
                 profile.get("fixtures", []),
-                f"{name} must not schedule the public staged install before activation",
+                f"{name} must not mix staged-installation tests into source-tree profiles",
             )
-
-    def test_ppml_fixture_proves_failures_are_atomic(self) -> None:
-        text = (ROOT / PPML_FIXTURE).read_text(encoding="utf-8")
-        for required in (
-            "quietly regress y x",
-            "assert _rc == 498",
-            "assert _rc == 198",
-            "assert _N == `before_n'",
-            "assert c(k) == `before_k'",
-            "assert mreldif(e(b), `before_b') == 0",
-            "assert mreldif(e(V), `before_v') == 0",
-            "confirm new variable __ppml_resid",
-            "confirm new variable __ppml_fe",
-            "datasignature",
-            'END_FIXTURE|feppml_fail_closed|rc=0',
-        ):
-            self.assertIn(required, text)
 
 
 if __name__ == "__main__":

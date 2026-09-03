@@ -124,10 +124,12 @@ class BundledReferenceRootContractTests(unittest.TestCase):
     def test_probe_workflow_attempts_bundled_resolver_before_fallback(self) -> None:
         text = PROBE_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("scripts/materialize_bundled_reference_root.py", text)
-        self.assertIn("tests/python/test_bundled_reference_root_contract.py", text)
-        self.assertIn("ci/reference-bundles/stata-require/**", text)
         self.assertIn("BUNDLED_REFERENCE_OUTCOME", text)
         self.assertIn("scripts/resolve_reference_root.py", text)
+        self.assertLess(
+            text.index("scripts/materialize_bundled_reference_root.py"),
+            text.index("scripts/resolve_reference_root.py"),
+        )
         self.assertNotIn("echo $FEREG_REFERENCE_ROOT", text)
         self.assertNotIn("cat $REFERENCE_ROOT_FILE", text)
 

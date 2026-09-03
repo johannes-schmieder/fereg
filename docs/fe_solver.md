@@ -149,9 +149,11 @@ Two concrete categorical LSMR engines operate between canonical checkpoints:
 
 The public LSMR family selects one of those engines once per fit. Its
 preconditioner and reuse policy are internal implementation choices, not
-additional command options. The initial rollout requires exactly two or three
-categorical intercept-only effects, the fast memory route, no saved FE, and no
-allocation audit. `memory(auto)` may select fast; explicit `memory(low)` and
+additional command options. The initial rollout requires at least two
+categorical intercept-only effects, the fast memory route, and no allocation
+audit. Saved fixed effects are recovered once from the final MAP-owned Hessian
+without disabling the fast ordinary-frame engine. `memory(auto)` may select
+fast; explicit `memory(low)` and
 other recognized but unsupported combinations return `r(498)`.
 
 The first weighted-linear frame remains a production-MAP solve so it freezes
@@ -195,8 +197,10 @@ Unsupported topology, invalid input, memory failure, interruption, and internal
 errors remain visible failures. First, Mu, strict, and final-Hessian frames are
 always MAP.
 
-CMG has the same initial fast-memory envelope as LSMR. Three-FE nuisance width
-is capped at 64, no FE is saved, and allocation audit is disallowed. Its
+CMG has the same initial fast-memory requirement as LSMR but accepts exactly
+two or three FE dimensions. Three-FE nuisance width is capped at 64, saved
+effects use the same final MAP-owned recovery, and allocation audit is
+disallowed. Its
 retained fereg-owned buffers and the
 topology-aware CMG hierarchy are charged before use. It makes no cross-frame
 hierarchy-reuse claim: prior-frame preconditioning and warm starts remain off

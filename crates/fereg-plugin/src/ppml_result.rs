@@ -682,7 +682,8 @@ fn build_solver_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
         output[start + 8] = exact_count(engine.checkpoint_frames, "solver checkpoint frames")?;
         output[start + 9] = exact_count(engine.retries, "solver retries")?;
         output[start + 10] = exact_count(engine.fallback_count, "solver fallback count")?;
-        output[start + 11] = f64::from(report.fallback_reason.code());
+        output[start + 11] =
+            solver_row_fallback_reason(engine.fallback_count, report.fallback_reason.code());
         output[start + 12] = exact_count(engine.iterations, "solver iterations")?;
         output[start + 13] = engine.setup_seconds;
         output[start + 14] = engine.solve_seconds;
@@ -704,6 +705,14 @@ fn build_solver_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
         }
     }
     Ok(output)
+}
+
+fn solver_row_fallback_reason(fallback_count: usize, fallback_reason: u8) -> f64 {
+    if fallback_count == 0 {
+        0.0
+    } else {
+        f64::from(fallback_reason)
+    }
 }
 
 fn build_fixed_effect_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize)> {
@@ -2340,6 +2349,12 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn solver_fallback_reason_is_row_local() {
+        assert_eq!(solver_row_fallback_reason(0, 1), 0.0);
+        assert_eq!(solver_row_fallback_reason(1, 1), 1.0);
+    }
 
     fn ledger_digest_fixture() -> SeparationReport {
         SeparationReport {

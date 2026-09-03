@@ -4,9 +4,6 @@ import re
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
-
 ROOT = Path(__file__).resolve().parents[2]
 TRANSACTION = ROOT / "stata/_fereg_estimate_ppml.ado"
 ADAPTER = ROOT / "stata/_fereg_ppml.ado"
@@ -374,14 +371,28 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         ):
             self.assertIn(f"ereturn scalar {scalar_name} =", text)
 
-    def test_public_command_matches_the_reviewed_public_state(self) -> None:
+    def test_solver_fallback_reason_is_engine_row_local(self) -> None:
+        native = PLUGIN_RESULT.read_text(encoding="utf-8")
+        plugin = PLUGIN.read_text(encoding="utf-8")
+        stata = TRANSACTION.read_text(encoding="utf-8")
+        self.assertIn("solver_row_fallback_reason(", native)
+        self.assertIn("engine.fallback_count,", native)
+        self.assertIn("let cmg_start = 3 * SOLVER_COLUMNS;", plugin)
+        self.assertIn(
+            "(row_fallback_count == 0) != (row_fallback_reason == 0.0)",
+            plugin,
+        )
+        self.assertIn(
+            "(`solver'[`row',11] == 0) != (`solver'[`row',12] == 0)",
+            stata,
+        )
+        self.assertIn("local failed_cmg_attempt", stata)
+        self.assertIn("!`failed_cmg_attempt'", stata)
+
+    def test_public_command_is_the_one_call_wrapper(self) -> None:
         public = PUBLIC.read_text(encoding="utf-8")
-        if public_state(ROOT) == ACTIVATED:
-            self.assertIn("_fereg_ppml `0'", public)
-            self.assertNotIn("exit 498", public)
-        else:
-            self.assertIn("exit 498", public)
-            self.assertNotIn("_fereg_ppml `0'", public)
+        self.assertIn("_fereg_ppml `0'", public)
+        self.assertNotIn("exit 498", public)
         self.assertNotIn("_fereg_estimate_ppml", public)
 
     def test_staged_public_adapter_has_the_closed_ppml_policy(self) -> None:
@@ -918,6 +929,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "matrix `drop_counts' = J(14,2,0)",
             "matrix `separation_sequence' = J(5,13,0)",
             "matrix `solver' = J(4,22,.)",
+            "CMG fallback reason/count belong only to the CMG engine row",
+            "matrix `bad'[4,11] = 1",
+            "matrix `bad'[4,12] = 1",
+            "matrix `bad'[1,12] = 1",
+            "requestedsolvercode(7)",
             "matrix `runtime' = J(108,1,.)",
             "matrix `receipt' = J(1,33,0)",
             "matrix `receipt'[1,3] = 2",

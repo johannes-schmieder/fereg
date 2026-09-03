@@ -45,22 +45,19 @@
 Sanitized qualification receipts may be committed. Generated archives and raw
 logs remain outside the repository.
 
-## PPML activation and qualification sequence
+## PPML qualification
 
-The public `feppml` wrapper is active for full testing. The formal release
-sequence still requires one exact pre-activation source to pass `ppml-hidden`
-transaction/science matrix, pinned-comparator and independent-oracle gates,
-memory/performance and constrained-resource gates, supported build/ABI and
-licensed-platform checks, and the complete direct-F0 `fereg` regression
-contract. Every receipt must bind the same source, artifact, dependencies,
+The public `feppml` wrapper is part of the production package inventory. A
+source-qualified release still requires its transaction/science matrix,
+pinned-comparator and independent-oracle gates, memory/performance and
+constrained-resource gates, supported build/ABI and licensed-platform checks,
+and the complete direct-F0 `fereg` regression contract on the exact release
+source. Every receipt must bind the same source, artifact, dependencies,
 datasets, and environment required by its manifest.
 
-The activation commit updates only the public wrapper, help, package inventory,
-installation profiles, and release metadata. It contains no shared numerical
-refactor, solver or memory-policy change, OLS wire/syntax change, or unrelated
-release work. The full local, F0, PPML, SCC, platform, clean-install,
-transaction/Break, and deterministic-package gates must run again on the exact
-activated source. Pre-activation receipts cannot be inferred across the
-activation commit. By explicit user decision, Windows licensed-Stata testing
-and the formal cross-platform activated aggregate are deferred; activation is
-therefore not a tag, publication, or source-qualified release decision.
+Public availability is not a release verdict. The local, F0, PPML, SCC,
+platform, clean-install, transaction/Break, and deterministic-package gates
+must apply to the exact source under consideration; evidence from another
+source revision cannot be inferred forward. Windows licensed-Stata testing and
+formal cross-platform qualification remain deferred by explicit decision, so
+the current beta is not yet a tag, publication, or source-qualified release.

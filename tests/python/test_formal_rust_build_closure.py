@@ -312,7 +312,7 @@ echo '{c_libraries / 'ld-linux-x86-64.so.2'} (0x00000002)'
             revisions,
             {
                 "https://github.com/johannes-schmieder/CMG": (
-                    "ce126358a82cc1a461cfe7b9f9318b4c3c1c1316"
+                    "90e1fe0b0c14065155532711246ede6678bb4935"
                 ),
                 "https://github.com/py-econometrics/within": (
                     "b7779cbab7a3116be56aae4389fde1f6e6a99a9f"

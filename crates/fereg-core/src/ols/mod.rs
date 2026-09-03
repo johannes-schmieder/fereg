@@ -25,11 +25,11 @@ pub use fit::FitStatistics;
 #[cfg(test)]
 pub(crate) use linear_session::{
     begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
-    inject_frozen_linear_failure, FrozenLinearFailureInjection,
+    inject_frozen_linear_failure, CertifiedFrozenLinearOutput, FrozenLinearFailureInjection,
 };
 #[allow(unused_imports)]
 pub(crate) use linear_session::{
-    classify_frozen_linear_fallback, CertifiedFrozenLinearOutput, CertifiedLinearSession,
+    classify_frozen_linear_fallback, CertifiedFrozenPpmlLinearOutput, CertifiedLinearSession,
     CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, CertifiedLinearWithinDesign,
     FrozenLinearBasis, FrozenLinearBasisSlot, FrozenLinearFallbackKind,
     FrozenLinearSolveCertificate, LinearReconstructionCertificate, LinearSessionGenerations,

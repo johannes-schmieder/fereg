@@ -1359,13 +1359,14 @@ fn estimate_route(
     let fe_workspace_bytes = bytes_f64(fe_workspace_cells)?;
     // Session response, owned weights, two predictors, frozen response and
     // residual, and normalized reusable-MAP weights remain live together.
-    // The rank-vector bank is separately exact: retained reference/within
-    // norms consume two K vectors, while rhs/row/solve/scores/scales and the
-    // accepted frozen-step coefficients consume six more. Strict's second
+    // The rank-vector bank is separately exact: retained reference norms,
+    // reference means, and within norms consume three K vectors; refreshed
+    // mean corrections consume one more; rhs/row/solve/scores/scales and the
+    // accepted frozen-step coefficients consume six. Strict's second
     // coefficient bank is charged only in its transient below.
     let linear_vector_bytes = checked_sum(&[
         bytes_f64(checked_mul(n, 7, "PPML linear observation vectors")?)?,
-        bytes_f64(checked_mul(k, 8, "PPML linear rank vectors")?)?,
+        bytes_f64(checked_mul(k, 10, "PPML linear rank vectors")?)?,
         checked_mul(
             coefficient_slots,
             checked_mul(4, word, "PPML linear slot bookkeeping width")?,
@@ -2267,9 +2268,11 @@ impl PpmlIterationWorkspace {
                 "PPML incremental candidate dimensions are inconsistent",
             ));
         }
-        for row in 0..self.eta.len() {
-            self.candidate_eta[row] = self.eta[row] + delta_eta[row];
-            if !self.candidate_eta[row].is_finite() {
+        for ((candidate, &eta), &delta) in
+            self.candidate_eta.iter_mut().zip(&self.eta).zip(delta_eta)
+        {
+            *candidate = eta + delta;
+            if !candidate.is_finite() {
                 return Err(FeregError::new(
                     ErrorCode::NonConvergence,
                     "PPML incremental candidate predictor is nonfinite",
@@ -4352,9 +4355,9 @@ mod tests {
         assert_eq!(
             inventory.linear_vector_bytes,
             metadata_dimensions.observations as u128 * 7 * size_of::<f64>() as u128
-                + 8 * size_of::<f64>() as u128
+                + 10 * size_of::<f64>() as u128
                 + 4 * size_of::<usize>() as u128,
-            "observation vectors, eight retained rank vectors, and four reusable index banks are all resident",
+            "observation vectors, ten retained rank vectors, and four reusable index banks are all resident",
         );
     }
 
@@ -4447,6 +4450,7 @@ mod tests {
     fn auto_falls_back_to_low_and_explicit_fast_fails_before_workspace() {
         let base = PpmlMemoryConfig {
             requested: MemoryMode::Auto,
+            require_fast_route: false,
             available_bytes: None,
             embedding_resident_bytes: 0,
             poolsize: 4,
@@ -4489,6 +4493,52 @@ mod tests {
             },
         )
         .expect_err("no usable memory");
+        assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn public_solver_workspace_is_bound_to_fit_and_nested_phase_peaks() {
+        let base = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+            .expect("base PPML memory plan");
+        let execution = base.selected_inventory().peak_bytes;
+        let solver_workspace = 4_096_u128;
+        let bound = base
+            .with_solver_workspace(solver_workspace)
+            .expect("solver workspace binding");
+        assert_eq!(bound.selected_bytes(), execution + solver_workspace);
+        for phase in [
+            PpmlPhase::WeightResponseRefresh,
+            PpmlPhase::FeProjection,
+            PpmlPhase::FiniteSolve,
+            PpmlPhase::ObjectiveLineSearch,
+            PpmlPhase::StrictFinalSolve,
+        ] {
+            assert_eq!(
+                bound.modeled_phase_peak_bytes(phase),
+                base.modeled_phase_peak_bytes(phase) + solver_workspace,
+            );
+        }
+        assert_eq!(
+            bound.modeled_phase_peak_bytes(PpmlPhase::Inference),
+            base.modeled_phase_peak_bytes(PpmlPhase::Inference),
+            "the ordinary-frame solver is released before inference",
+        );
+    }
+
+    #[test]
+    fn public_solver_workspace_fails_closed_one_byte_above_usable_memory() {
+        let mut plan = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+            .expect("base PPML memory plan");
+        let solver_workspace = 4_096_u128;
+        plan.usable_bytes = Some(
+            plan.selected_inventory()
+                .peak_bytes
+                .checked_add(solver_workspace - 1)
+                .expect("test memory boundary"),
+        );
+        let error = plan
+            .with_solver_workspace(solver_workspace)
+            .expect_err("solver workspace above the usable cap must fail");
         assert_eq!(error.code, ErrorCode::Allocation);
     }
 
@@ -4756,6 +4806,7 @@ mod tests {
             small_dimensions,
             PpmlMemoryConfig {
                 requested: MemoryMode::Fast,
+                require_fast_route: false,
                 available_bytes: None,
                 embedding_resident_bytes: 0,
                 poolsize: 2,
@@ -4824,6 +4875,7 @@ mod tests {
             small_dimensions,
             PpmlMemoryConfig {
                 requested: MemoryMode::Fast,
+                require_fast_route: false,
                 available_bytes: None,
                 embedding_resident_bytes: 0,
                 poolsize: 2,
@@ -4868,6 +4920,7 @@ mod tests {
             small_dimensions,
             PpmlMemoryConfig {
                 requested: MemoryMode::Fast,
+                require_fast_route: false,
                 available_bytes: None,
                 embedding_resident_bytes: 0,
                 poolsize: 1,

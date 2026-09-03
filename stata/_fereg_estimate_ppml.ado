@@ -475,13 +475,14 @@ program define _fereg_estimate_ppml, eclass sortpreserve
         confirm new variable `output'
     }
     local requested_saved_count : word count `saved_target_variables'
-    if inlist(`"`solver_mode'"', "lsmr", "cmg") & ///
-       (!inlist(`n_absorb_intercepts', 2, 3) | `n_absorb_slopes' != 0) {
-        di as error "solver(`solver_mode') currently requires two or three categorical intercept fixed effects"
+    if `"`solver_mode'"' == "lsmr" & ///
+       (`n_absorb_intercepts' < 2 | `n_absorb_slopes' != 0) {
+        di as error "solver(lsmr) currently requires at least two categorical intercept fixed effects"
         exit 498
     }
-    if inlist(`"`solver_mode'"', "lsmr", "cmg") & `requested_saved_count' != 0 {
-        di as error "solver(`solver_mode') does not support saved fixed effects in this release"
+    if `"`solver_mode'"' == "cmg" & ///
+       (!inlist(`n_absorb_intercepts', 2, 3) | `n_absorb_slopes' != 0) {
+        di as error "solver(cmg) currently requires two or three categorical intercept fixed effects"
         exit 498
     }
     local coefficient_capacity = `n_terms' + 1
@@ -1517,7 +1518,9 @@ program define _fereg_eppml_validate, rclass
                 }
             }
         }
-        if `frame_count' > 0 & ///
+        local failed_cmg_attempt = (`row' == 4 & `solver'[`row',11] == 1 & ///
+            `solver'[`row',12] == 1)
+        if `frame_count' > 0 & !`failed_cmg_attempt' & ///
            (`solver'[`row',17] >= . | `solver'[`row',18] >= . | ///
             `solver'[`row',19] >= .) {
             di as error "PPML observed solver engine lacks certificate maxima"

@@ -159,14 +159,17 @@ class WindowsCiDriverContractTests(unittest.TestCase):
     def test_bounded_mode_specific_fixtures_precede_pass(self) -> None:
         fixtures = (
             "tests/stata/installation/windows_ci_smoke.do",
+            "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
             "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
-            "tests/stata/parity_ppmlhdfe/feppml_fail_closed.do",
         )
         status = self.driver.index('file write `status_handle\' "WINDOWS_CI=PASS"')
         self.assertTrue(all(self.lower.rindex(path) < status for path in fixtures))
-        hidden = self.lower.rindex(fixtures[1])
+        hidden = self.lower.rindex(fixtures[2])
         candidate_branch = self.lower.rfind('target_mode\'"\' == "candidate"', 0, hidden)
         self.assertGreater(candidate_branch, 0)
+        public = self.lower.rindex(fixtures[1])
+        self.assertGreater(public, candidate_branch)
+        self.assertLess(public, hidden)
         smoke = (ROOT / fixtures[0]).read_text(encoding="utf-8").lower()
         self.assertIn("doctor threads(2)", smoke)
         self.assertIn("selftest threads(2)", smoke)

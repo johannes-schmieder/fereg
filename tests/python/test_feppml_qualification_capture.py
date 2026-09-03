@@ -34,7 +34,9 @@ RUNNER = load_module("feppml_qualification_capture_test_runner", RUNNER_PATH)
 class FeppmlQualificationCaptureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.manifest = QUAL.load_manifest(MANIFEST_PATH)
+        # Exercise the immutable v1 evidence grammar without pretending its
+        # source-file hashes qualify the current development checkout.
+        cls.manifest = QUAL.load_manifest(MANIFEST_PATH, verify_files=False)
         cls.manifest_sha = QUAL.sha256_file(MANIFEST_PATH)
 
     def _spec(self, program: Path, plan: Path) -> dict:

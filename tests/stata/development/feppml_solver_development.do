@@ -282,8 +282,8 @@ forvalues repetition = 1/`repetitions' {
         capture local inner_iterations = e(inner_iterations)
         if _rc capture local inner_iterations = e(ic)
         if _rc capture local inner_iterations = e(iterations)
-        capture local route_code = e(feppml_linear_route)
-        capture local fallback_count = e(feppml_fallback_count)
+        capture local route_code = e(feppml_solver)[1,4]
+        capture local fallback_count = e(feppml_solver_fallback_count)
         capture local effective_threads = e(feppml_threads)
         local b_names : colfullnames e(b)
         mata: st_local("b_values", invtokens(strofreal(st_matrix("e(b)"), "%21.17e")))

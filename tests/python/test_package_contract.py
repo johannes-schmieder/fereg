@@ -7,8 +7,6 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
 ROOT = Path(__file__).resolve().parents[2]
 MIN_NATIVE_PLUGIN_BYTES = 4096
 NATIVE_PLUGIN_MAGICS = frozenset(
@@ -133,7 +131,7 @@ class PackageContractTests(unittest.TestCase):
             )
             self.assertEqual(invalid_native_plugins(tracked_plugins(repository)), [placeholder])
 
-    def test_fereg_and_feppml_package_match_public_state(self):
+    def test_fereg_and_feppml_package_public_commands(self):
         fereg = (ROOT / "stata/fereg.ado").read_text(encoding="utf-8").lower()
         package = (ROOT / "stata/fereg.pkg").read_text(encoding="utf-8")
         self.assertIn("_fereg_estimate_public `0'", fereg)
@@ -148,15 +146,10 @@ class PackageContractTests(unittest.TestCase):
             "f _fereg_estimate_ppml.ado",
             "f feppml_p.ado",
         )
-        if public_state(ROOT) == ACTIVATED:
-            for entry in private:
-                self.assertIn(entry, package)
-            self.assertIn("_fereg_ppml `0'", feppml)
-            self.assertNotIn("exit 498", feppml)
-        else:
-            for entry in private:
-                self.assertNotIn(entry, package)
-            self.assertIn("exit 498", feppml)
+        for entry in private:
+            self.assertIn(entry, package)
+        self.assertIn("_fereg_ppml `0'", feppml)
+        self.assertNotIn("exit 498", feppml)
         self.assertNotIn("plugin call", feppml)
 
     def test_legacy_stata_commands_are_not_shipped(self):

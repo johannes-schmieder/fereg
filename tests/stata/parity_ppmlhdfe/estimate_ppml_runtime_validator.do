@@ -161,6 +161,40 @@ capture noisily _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
 assert _rc == 0
 assert r(coefficients) == 2
 
+* CMG fallback reason/count belong only to the CMG engine row.  Repeating the
+* reason on an inactive engine would make the per-engine report ambiguous.
+matrix `bad' = `solver'
+forvalues row = 1/4 {
+    matrix `bad'[`row',1] = 7
+    matrix `bad'[`row',2] = 7
+    matrix `bad'[`row',3] = 4
+    matrix `bad'[`row',4] = 2
+    matrix `bad'[`row',5] = 1
+}
+matrix `bad'[4,8] = 1
+matrix `bad'[4,11] = 1
+matrix `bad'[4,12] = 1
+matrix `bad'[4,13] = 1
+forvalues column = 17/19 {
+    matrix `bad'[4,`column'] = 0
+}
+local cmg_validator_options `"clusters(0) ferows(0) subsets(0) separations(1) residual(0) saved(0) adjustment(0) vcecode(2) requestedvcecode(2) weightcode(0) memorycode(0) requestedthreads(0) feterms(0) sources(0) methodcodes("1") dropsingletons(1) requestedsolvercode(7)"'
+_fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
+    `subset' `separation' `inference' `drop_counts' `separation_sequence' ///
+    `certificate' `bad' `runtime' `receipt', capacity(2) `cmg_validator_options'
+forvalues column = 17/19 {
+    matrix `bad'[4,`column'] = .
+}
+_fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
+    `subset' `separation' `inference' `drop_counts' `separation_sequence' ///
+    `certificate' `bad' `runtime' `receipt', capacity(2) `cmg_validator_options'
+matrix `bad'[1,12] = 1
+capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
+    `fe' `cluster' `subset' `separation' `inference' `drop_counts' ///
+    `separation_sequence' `certificate' `bad' `runtime' `receipt', ///
+    capacity(2) `cmg_validator_options'
+assert _rc == 3499
+
 * Every result-1.2 matrix is dimension-bound.  Structural mismatches and the
 * receipt header/COMPLETE marker are protocol r(499), never semantic errors.
 capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///

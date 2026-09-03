@@ -106,9 +106,9 @@ pub use options::{MemoryMode, ThreadConfig};
 pub use parallel::ThreadTeam;
 pub use ppml::{
     fit_prepared_ppml, offset_from_exposure, poisson_objective, LoadedPpmlInput, PoissonObjective,
-    PpmlCertificate, PpmlConfig, PpmlIterationReport, PreparedPpmlOutputRequest,
-    PreparedPpmlRequestV1, PpmlSolverEngine, PpmlSolverEngineReport, PpmlSolverFallbackReason,
-    PpmlSolverFamily, PpmlSolverReport,
+    PpmlCertificate, PpmlConfig, PpmlIterationReport, PpmlSolverEngine, PpmlSolverEngineReport,
+    PpmlSolverFallbackReason, PpmlSolverFamily, PpmlSolverReport, PreparedPpmlOutputRequest,
+    PreparedPpmlRequestV1,
 };
 pub use ppml_separation::{
     MethodStatus, SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,

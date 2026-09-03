@@ -1217,8 +1217,7 @@ impl GraphCmg {
                     weight_scale,
                     values,
                     column,
-                    &mut moments,
-                    &mut moment_corrections,
+                    (&mut moments, &mut moment_corrections),
                 )?;
                 let gamma_start = local * nuisance_columns;
                 self.nuisance_factor.solve_into(
@@ -1563,12 +1562,15 @@ fn build_graph_route_from_numeric(
         && auto_direct_terminal_cg_preferred(
             report.terminal_reason(),
             work,
-            report.vertex_counts().len(),
-            design.nobs(),
-            profile.nuisance_columns,
-            initial_rhs_columns.expect("guarded CMG setup has an initial RHS width"),
-            config.threads.resolved(),
-            terminal_factor_dimension,
+            AutoDirectTerminalCgInputs {
+                hierarchy_levels: report.vertex_counts().len(),
+                observations: design.nobs(),
+                nuisance_columns: profile.nuisance_columns,
+                rhs_columns: initial_rhs_columns
+                    .expect("guarded CMG setup has an initial RHS width"),
+                threads: config.threads.resolved(),
+                terminal_factor_dimension,
+            },
         )
     {
         if trace_enabled {
@@ -1633,19 +1635,36 @@ fn build_graph_route_from_numeric(
 }
 
 fn auto_hierarchy_guard_rejects(terminal: TerminalReason, work_over_finest: f64) -> bool {
-    terminal.is_iterative() && !(work_over_finest <= AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST)
+    terminal.is_iterative()
+        && !matches!(
+            work_over_finest.partial_cmp(&AUTO_MAX_ITERATIVE_HIERARCHY_WORK_OVER_FINEST),
+            Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+        )
 }
 
-fn auto_direct_terminal_cg_preferred(
-    terminal: TerminalReason,
-    work: CmgHierarchyWork,
+#[derive(Clone, Copy)]
+struct AutoDirectTerminalCgInputs {
     hierarchy_levels: usize,
     observations: usize,
     nuisance_columns: usize,
     rhs_columns: usize,
     threads: usize,
     terminal_factor_dimension: usize,
+}
+
+fn auto_direct_terminal_cg_preferred(
+    terminal: TerminalReason,
+    work: CmgHierarchyWork,
+    inputs: AutoDirectTerminalCgInputs,
 ) -> bool {
+    let AutoDirectTerminalCgInputs {
+        hierarchy_levels,
+        observations,
+        nuisance_columns,
+        rhs_columns,
+        threads,
+        terminal_factor_dimension,
+    } = inputs;
     if terminal != TerminalReason::Direct || observations == 0 || rhs_columns == 0 || threads == 0 {
         return false;
     }
@@ -2382,9 +2401,9 @@ fn nuisance_moments_into(
     weight_scale: f64,
     values: &DenseMatrix,
     column: usize,
-    moments: &mut [f64],
-    corrections: &mut [f64],
+    workspace: (&mut [f64], &mut [f64]),
 ) -> Result<()> {
+    let (moments, corrections) = workspace;
     if moments.len() != corrections.len() {
         return Err(invalid_argument(
             "CMG nuisance moment workspace dimensions are inconsistent",
@@ -2891,66 +2910,58 @@ mod tests {
             deepest_visits: 1,
             maximum_repeat: 1,
         };
+        let base = AutoDirectTerminalCgInputs {
+            hierarchy_levels: 10,
+            observations: 1_000,
+            nuisance_columns: 0,
+            rhs_columns: 5,
+            threads: 8,
+            terminal_factor_dimension: 0,
+        };
 
         assert!(!auto_direct_terminal_cg_preferred(
             TerminalReason::StagnatedFill,
             work(20_001),
-            10,
-            1_000,
-            0,
-            5,
-            8,
-            0,
+            base,
         ));
         assert!(!auto_direct_terminal_cg_preferred(
             TerminalReason::Direct,
             work(20_000),
-            10,
-            1_000,
-            0,
-            5,
-            8,
-            0,
+            base,
         ));
         assert!(auto_direct_terminal_cg_preferred(
             TerminalReason::Direct,
             work(20_001),
-            10,
-            1_000,
-            0,
-            5,
-            8,
-            0,
+            base,
         ));
         assert!(auto_direct_terminal_cg_preferred(
             TerminalReason::Direct,
             work(300_001),
-            1,
-            1_000_000,
-            9,
-            5,
-            8,
-            0,
+            AutoDirectTerminalCgInputs {
+                hierarchy_levels: 1,
+                observations: 1_000_000,
+                nuisance_columns: 9,
+                ..base
+            },
         ));
         assert!(!auto_direct_terminal_cg_preferred(
             TerminalReason::Direct,
             work(20_001),
-            10,
-            1_000,
-            0,
-            9,
-            8,
-            100,
+            AutoDirectTerminalCgInputs {
+                rhs_columns: 9,
+                terminal_factor_dimension: 100,
+                ..base
+            },
         ));
         assert!(auto_direct_terminal_cg_preferred(
             TerminalReason::Direct,
             work(20_001),
-            10,
-            1_000,
-            0,
-            17,
-            1,
-            100,
+            AutoDirectTerminalCgInputs {
+                rhs_columns: 17,
+                threads: 1,
+                terminal_factor_dimension: 100,
+                ..base
+            },
         ));
     }
 

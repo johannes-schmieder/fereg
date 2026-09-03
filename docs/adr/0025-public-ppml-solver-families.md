@@ -32,8 +32,10 @@ solver use impossible to interpret from stored results.
    `fe_lsmr_mode`, `fe_lsmr_policy`, `fe_cmg_mode`, `solver_trace`, and
    `solver_experiment` with one required `solver` field. Those retired keys are
    not aliases. Exact older request versions fail with `r(499)`.
-6. The first public LSMR/CMG envelope is two or three categorical intercept
-   effects, no saved fixed-effect channels, and fast-memory execution.
+6. The first public LSMR envelope is two or more categorical intercept
+   effects; CMG accepts exactly two or three. Both support the ordinary PPML
+   result and saved-fixed-effect surface through final MAP-owned recovery and
+   require fast-memory execution.
    `memory(auto)` may select fast; explicit `memory(low)` and allocation audit
    are not yet supported for these families. Recognized requests outside the
    envelope return `r(498)`. A supported selected route that cannot fit its

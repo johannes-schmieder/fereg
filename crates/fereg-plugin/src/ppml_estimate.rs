@@ -1322,13 +1322,16 @@ fn validate_solver_evidence(
     shadow: &PpmlShadowResult<'_>,
 ) -> Result<()> {
     let expected_requested = f64::from(action.solver.code());
-    let expected_selected = f64::from(match action.solver {
-        PpmlSolverFamily::Auto => PpmlSolverFamily::Map,
-        solver => solver,
-    }
-    .code());
+    let expected_selected = f64::from(
+        match action.solver {
+            PpmlSolverFamily::Auto => PpmlSolverFamily::Map,
+            solver => solver,
+        }
+        .code(),
+    );
     let selected_engine = shadow.solver[2];
-    let fallback_reason = shadow.solver[11];
+    let cmg_start = 3 * SOLVER_COLUMNS;
+    let fallback_reason = shadow.solver[cmg_start + 11];
     let mut fallback_count = 0_usize;
     for row in 0..SOLVER_ROWS {
         let start = row * SOLVER_COLUMNS;
@@ -1339,18 +1342,27 @@ fn validate_solver_evidence(
             || shadow.solver[start + 4] != shadow.solver[4]
             || shadow.solver[start + 5] != f64::from(PpmlSolverFamily::Map.code())
             || shadow.solver[start + 6] != (row + 1) as f64
-            || shadow.solver[start + 11] != fallback_reason
         {
-            return Err(internal("PPML solver evidence has inconsistent row identity"));
+            return Err(internal(
+                "PPML solver evidence has inconsistent row identity",
+            ));
         }
         for column in [7_usize, 8, 9, 10, 12] {
             exact_shadow_count(shadow.solver[start + column], "PPML solver counter")?;
         }
+        let row_fallback_count =
+            exact_shadow_count(shadow.solver[start + 10], "PPML solver fallback count")?;
+        let row_fallback_reason = shadow.solver[start + 11];
+        if (row_fallback_reason != 0.0 && row_fallback_reason != 1.0)
+            || (row_fallback_count == 0) != (row_fallback_reason == 0.0)
+            || (row != 3 && (row_fallback_count != 0 || row_fallback_reason != 0.0))
+        {
+            return Err(internal(
+                "PPML solver fallback reason is inconsistent with its engine row",
+            ));
+        }
         fallback_count = fallback_count
-            .checked_add(exact_shadow_count(
-                shadow.solver[start + 10],
-                "PPML solver fallback count",
-            )?)
+            .checked_add(row_fallback_count)
             .ok_or_else(|| internal("PPML solver fallback total overflows"))?;
         if shadow.solver[start + 13..start + 16]
             .iter()
@@ -1376,17 +1388,17 @@ fn validate_solver_evidence(
         && shadow.solver[3] == expected_selected
         && shadow.solver[4] == selected_engine;
     let cmg_fallback = fallback_reason == 1.0
-        && fallback_count > 0
+        && fallback_count == 1
         && expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
         && selected_engine == 4.0
         && shadow.solver[3] == f64::from(PpmlSolverFamily::Map.code())
         && shadow.solver[4] == 1.0
-        && exact_shadow_count(
-            shadow.solver[3 * SOLVER_COLUMNS + 10],
-            "PPML CMG fallback count",
-        )? == fallback_count;
+        && exact_shadow_count(shadow.solver[cmg_start + 10], "PPML CMG fallback count")?
+            == fallback_count;
     if !selected_engine_valid || !(no_fallback || cmg_fallback) {
-        return Err(internal("PPML solver evidence is inconsistent with the request"));
+        return Err(internal(
+            "PPML solver evidence is inconsistent with the request",
+        ));
     }
     Ok(())
 }
@@ -2394,11 +2406,7 @@ fn validate_matrix_layout(
             CERTIFICATE_ROWS,
             1,
         )?,
-        solver: PreparedMatrixStoreName::try_new(
-            &matrices.solver,
-            SOLVER_ROWS,
-            SOLVER_COLUMNS,
-        )?,
+        solver: PreparedMatrixStoreName::try_new(&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS)?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 1)?,
         receipt: PreparedMatrixStoreName::try_new(
             &matrices.receipt,
@@ -3524,7 +3532,7 @@ mod tests {
     }
 
     #[test]
-    fn ppml_bundle_decoder_accepts_the_closed_89_field_protocol_only() {
+    fn ppml_bundle_decoder_accepts_the_closed_83_field_protocol_only() {
         fn encode(fields: &[String]) -> String {
             let mut bundle = format!("{}:", fields.len());
             for field in fields {
@@ -3537,7 +3545,7 @@ mod tests {
             .map(|index| format!("field_{index}=value_{index}"))
             .collect::<Vec<_>>();
         assert_eq!(
-            decode_ppml_estimate_bundle(&encode(&fields)).expect("88-field PPML bundle"),
+            decode_ppml_estimate_bundle(&encode(&fields)).expect("83-field PPML bundle"),
             fields,
         );
 
@@ -3545,9 +3553,9 @@ mod tests {
             .map(|index| format!("field_{index}=value_{index}"))
             .collect::<Vec<_>>();
         let error = decode_ppml_estimate_bundle(&encode(&oversized))
-            .expect_err("88-field PPML bundle must fail closed");
+            .expect_err("84-field PPML bundle must fail closed");
         assert_eq!(error.code, ErrorCode::Syntax);
-        assert!(error.message.contains("between one and 89"));
+        assert!(error.message.contains("between one and 83"));
     }
 
     #[test]
@@ -3557,7 +3565,7 @@ mod tests {
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(spi.matrices["RREC"][0][0], fereg_core::PPML_RESULT_MAGIC);
         assert_eq!(spi.matrices["RREC"][0][1], 1.0);
-        assert_eq!(spi.matrices["RREC"][0][2], 1.0);
+        assert_eq!(spi.matrices["RREC"][0][2], 2.0);
         assert_eq!(spi.matrices["RREC"][0][4], 2.0);
         assert_eq!(spi.matrices["RREC"][0][6], 10.0);
         assert_eq!(spi.matrices["RREC"][0][8], 10.0);
@@ -3667,7 +3675,10 @@ mod tests {
             let (mut args, _spi) = fixture();
             replace_argument(&mut args, "solver", format!("solver={name}"));
             let specification = EstimatePpmlSpec::parse(&args).expect("solver specification");
-            assert_eq!(specification.decode_solver().expect("public solver"), expected);
+            assert_eq!(
+                specification.decode_solver().expect("public solver"),
+                expected
+            );
         }
     }
 
@@ -3679,13 +3690,15 @@ mod tests {
             .expect("complete request")
             .decode_solver()
             .expect_err("unknown public solver must fail closed");
-        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert_eq!(error.code, ErrorCode::Syntax);
 
         let (mut args, _spi) = fixture();
         args.push("fe_solver=lsmr".to_owned());
         let error = EstimatePpmlSpec::parse(&args)
             .expect_err("retired private solver key must be rejected");
-        assert!(error.message.contains("unknown estimate-ppml field fe_solver"));
+        assert!(error
+            .message
+            .contains("unknown estimate-ppml field fe_solver"));
     }
 
     fn with_unpublished_shadow(

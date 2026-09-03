@@ -17,14 +17,12 @@ try:
         audit_repository as audit_fereg_allocation_contract,
     )
     from scripts.ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
-    from scripts.feppml_public_state import ACTIVATED, public_state
 except ModuleNotFoundError:
     from fereg_allocation_source_contract import (
         ContractError as FeregAllocationContractError,
         audit_repository as audit_fereg_allocation_contract,
     )
     from ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
-    from feppml_public_state import ACTIVATED, public_state
 
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
@@ -169,7 +167,6 @@ required_files = [
     "fuzz/fuzz_targets/interaction_tuples.rs",
     "tests/fuzz/README.md",
     "docs/adr/0007-fereg-050-beta-qualification-contract.md",
-    "docs/feppml_activation_checklist.md",
     "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
@@ -301,19 +298,23 @@ require(
     "fereg.ado bypasses the single guarded substantive plugin boundary",
 )
 
-feppml_ado = read("stata/feppml.ado").lower()
-try:
-    feppml_state = public_state(ROOT)
-except ValueError as error:
-    require(False, str(error))
-    feppml_state = None
-if feppml_state == ACTIVATED:
-    require(
-        "_fereg_ppml `0'" in feppml_ado and "exit 498" not in feppml_ado,
-        "activated feppml.ado is not the exact public transaction wrapper",
-    )
-else:
-    require("exit 498" in feppml_ado, "feppml.ado does not fail closed")
+feppml_source = read("stata/feppml.ado")
+feppml_ado = feppml_source.lower()
+feppml_executable = tuple(
+    line.strip()
+    for line in feppml_source.splitlines()
+    if line.strip() and not line.lstrip().startswith(("*", "//"))
+)
+require(
+    feppml_executable
+    == (
+        "program define feppml, eclass sortpreserve",
+        "version 18.0",
+        "_fereg_ppml `0'",
+        "end",
+    ),
+    "feppml.ado is not the exact public one-call transaction wrapper",
+)
 require(
     "plugin call" not in feppml_ado,
     "feppml.ado bypasses the guarded private PPML transaction",

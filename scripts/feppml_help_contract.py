@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Validate the frozen future-public ``feppml`` help contract.
+"""Validate the public ``feppml`` help contract.
 
-The activation help is executable source as well as documentation.  This
+The help is executable source as well as documentation.  This
 module deliberately parses only the exact marker syntax understood by
-``fereg_run`` and fails closed on structural ambiguity.  The public-activation
-gate can use :func:`require_activated_public_help` to require byte identity
-between the reviewed contract and the installed public help.
+``fereg_run`` and fails closed on structural ambiguity. The file contract
+requires byte identity between the reviewed fixture and installed public help.
 """
 from __future__ import annotations
 
@@ -79,7 +78,7 @@ CLICKABLE_FEREG_RUN = re.compile(
 
 
 class HelpContractError(ValueError):
-    """The future-public help source is incomplete or ambiguous."""
+    """The public help source is incomplete or ambiguous."""
 
 
 class HelpExample(NamedTuple):
@@ -233,7 +232,7 @@ def _validate_clickable_links(text: str) -> None:
 
 
 def validate_canonical_help(text: str) -> tuple[HelpExample, ...]:
-    """Validate and return the complete future-public example inventory."""
+    """Validate and return the complete public example inventory."""
 
     if not text.startswith("{smcl}"):
         raise HelpContractError("canonical feppml help must begin with {smcl}")
@@ -259,42 +258,16 @@ def validate_canonical_help(text: str) -> tuple[HelpExample, ...]:
 def validate_canonical_help_file(
     path: Path = CANONICAL_HELP_PATH,
 ) -> tuple[HelpExample, ...]:
-    """Read and validate the canonical activation help source."""
+    """Read and validate the canonical public help source."""
 
     value = _read_help(path, "canonical feppml help")
     return validate_canonical_help(_decode_help(value, "canonical feppml help"))
 
 
-def validate_preactivation_public_help(text: str) -> None:
-    """Require the currently installed public help to describe a closed stub."""
-
-    if MARKER_LIKE.search(text) or END_MARKER in text:
-        raise HelpContractError(
-            "preactivation public feppml help must not contain example markers"
-        )
-    normalized = " ".join(text.split())
-    required = (
-        "Every invocation returns {cmd:r(498)}",
-        "without posting {cmd:e()} results.",
-    )
-    for statement in required:
-        if statement not in normalized:
-            raise HelpContractError(
-                f"preactivation public feppml help lacks fail-closed statement {statement!r}"
-            )
-
-
-def validate_preactivation_public_help_file(path: Path = PUBLIC_HELP_PATH) -> None:
-    """Read and validate the current installed fail-closed help."""
-
-    value = _read_help(path, "public feppml help")
-    validate_preactivation_public_help(_decode_help(value, "public feppml help"))
-
-
-def require_activated_public_help_bytes(
+def require_public_help_bytes(
     public_help: bytes, canonical_help: bytes
 ) -> tuple[HelpExample, ...]:
-    """Require activated public help to be the reviewed canonical bytes."""
+    """Require public help to be the reviewed canonical bytes."""
 
     examples = validate_canonical_help(
         _decode_help(canonical_help, "canonical feppml help")
@@ -303,18 +276,18 @@ def require_activated_public_help_bytes(
         public_hash = hashlib.sha256(public_help).hexdigest()
         canonical_hash = hashlib.sha256(canonical_help).hexdigest()
         raise HelpContractError(
-            "activated public feppml help differs from canonical bytes; "
+            "public feppml help differs from canonical bytes; "
             f"public_sha256={public_hash}, canonical_sha256={canonical_hash}"
         )
     return examples
 
 
-def require_activated_public_help(
+def require_public_help(
     public_path: Path = PUBLIC_HELP_PATH,
     canonical_path: Path = CANONICAL_HELP_PATH,
 ) -> tuple[HelpExample, ...]:
-    """File-oriented activation-gate entry point with exact byte comparison."""
+    """Validate the public help file against the canonical fixture."""
 
-    public_help = _read_help(public_path, "activated public feppml help")
+    public_help = _read_help(public_path, "public feppml help")
     canonical_help = _read_help(canonical_path, "canonical feppml help")
-    return require_activated_public_help_bytes(public_help, canonical_help)
+    return require_public_help_bytes(public_help, canonical_help)

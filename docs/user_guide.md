@@ -46,9 +46,11 @@ drop codes, stored results, failure atomicity, and runnable examples.
 `solver(auto)` currently selects MAP while automatic routing is calibrated.
 Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
 for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
-LSMR and CMG initially support two or three categorical intercept effects, no
-saved FE channels, and fast-memory execution; a recognized request outside
-that envelope returns `r(498)`. Numerical CMG nonconvergence falls back
+LSMR initially supports at least two categorical intercept effects and CMG
+exactly two or three. Both retain the full PPML output surface, including
+saved fixed effects recovered from the final MAP-owned Hessian, and require
+fast-memory execution; a recognized request outside that envelope returns
+`r(498)`. Numerical CMG nonconvergence falls back
 permanently and visibly to MAP. Other CMG errors and every LSMR error remain
 fatal. `e(feppml_solver)` and the accompanying macros distinguish requested,
 selected, concrete, effective, checkpoint, and fallback identities.

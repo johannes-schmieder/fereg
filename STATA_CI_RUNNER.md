@@ -80,10 +80,11 @@ wall-clock date.
 The public PPML installation fixture is run through
 `scripts/run_staged_stata_tests.py`, which consumes a checksum-bound binary
 release ZIP, safely extracts its sealed flat package, and supplies only that
-directory to Stata's isolated ado path.  A source-tree `which` check is not
-installation evidence.  See `docs/feppml_activation_checklist.md` for the
-exact command and required path assertions. Windows testing is currently
-deferred and must not be inferred from the macOS profile.
+directory to Stata's isolated ado path. A source-tree `which` check is not
+installation evidence. The staged runner's summary and per-fixture sentinels
+must pass, and every resolved package path must stay inside the extracted
+release. Windows testing is currently deferred and must not be inferred from
+the macOS profile.
 
 ## Durable GitHub workflows
 

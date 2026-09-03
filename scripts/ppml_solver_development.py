@@ -121,7 +121,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     ):
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
-        "request_wire": "1.4", "result_wire": "1.1", "action_protocol": "1.5", "trace_schema": 1
+        "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5", "trace_schema": 1
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]

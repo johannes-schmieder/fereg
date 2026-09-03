@@ -5,8 +5,6 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from scripts.feppml_public_state import ACTIVATED, public_state
-
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "crates/fereg-core/src"
 PLUGIN = ROOT / "crates/fereg-plugin/src"
@@ -74,12 +72,8 @@ class RustSourceContractTests(unittest.TestCase):
         self.assertIn("ErrorCode::Unsupported", dispatch)
         self.assertIn("ACTION_ESTIMATE_OLS", estimate)
         self.assertIn("_fereg_estimate_public `0'", fereg)
-        if public_state(ROOT) == ACTIVATED:
-            self.assertIn("_fereg_ppml `0'", feppml)
-            self.assertNotIn("exit 498", feppml)
-        else:
-            self.assertIn("exit 498", feppml)
-            self.assertNotIn("_fereg_ppml `0'", feppml)
+        self.assertIn("_fereg_ppml `0'", feppml)
+        self.assertNotIn("exit 498", feppml)
         self.assertNotIn("plugin call", feppml)
 
     def test_final_native_builds_audit_then_load_before_hashing(self):

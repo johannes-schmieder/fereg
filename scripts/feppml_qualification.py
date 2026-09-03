@@ -1254,12 +1254,13 @@ def evaluate_evidence(
     evidence: Mapping[str, Any],
     *,
     manifest_sha256: str | None = None,
+    manifest_root: Path | None = ROOT,
     development_root: Path = ROOT,
     platform_verifier: Callable[
         [Mapping[str, Any]], Mapping[str, Any]
     ] | None = None,
 ) -> dict[str, Any]:
-    validate_manifest(manifest)
+    validate_manifest(manifest, root=manifest_root)
     manifest_sha256 = manifest_sha256 or sha256_bytes(canonical_json_bytes(manifest))
     evidence = _mapping(evidence, "evidence")
     _expect_keys(
@@ -1754,6 +1755,7 @@ def verify_qualification_receipt(
         manifest,
         evidence,
         manifest_sha256=sha256_file(manifest_path),
+        manifest_root=source_root,
         development_root=source_root,
         platform_verifier=platform_verifier,
     )

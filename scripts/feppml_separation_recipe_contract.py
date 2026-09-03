@@ -153,11 +153,10 @@ def validate_manifest(document: Mapping[str, Any]) -> None:
         "stata_profile": "ppml-hidden",
         "comparator_qualification_manifest": "benchmarks/manifests/feppml_qualification_v1.json",
         "comparator_compiler": "scripts/generate_feppml_qualification_recipes.py",
-        "phase12_checks": ["python", "stata_ppml_hidden", "feppml_qualification"],
-        "aggregate": "scripts/feppml_activation_gate.py",
     }
-    if binding != expected_binding:
-        raise SeparationRecipeError("formal Phase-12 binding path changed")
+    current_binding = {key: binding[key] for key in expected_binding}
+    if current_binding != expected_binding:
+        raise SeparationRecipeError("formal separation qualification binding changed")
 
     cases = document["cases"]
     if not isinstance(cases, list) or len(cases) != 12:
@@ -677,23 +676,6 @@ def validate_stata_and_formal_binding(document: Mapping[str, Any], root: Path = 
         or binding["hidden_wrapper"] not in profile.get("fixtures", [])
     ):
         raise SeparationRecipeError("ppml-hidden profile omits the Phase-7 wrapper")
-    gate = _load_module(root / binding["aggregate"], "feppml_phase7_gate_binding")
-    if not {"python", "stata_ppml_hidden", "feppml_qualification"}.issubset(gate.COMMON_REQUIRED):
-        raise SeparationRecipeError(
-            "Phase-12 aggregate omits Python, ppml-hidden, or comparator qualification evidence"
-        )
-    if gate.COMMON_CHECK_CLAIMS.get("stata_ppml_hidden") != (
-        "artifact_bound", "fixture_sentinels", "licensed_stata", "profile:ppml-hidden"
-    ):
-        raise SeparationRecipeError("Phase-12 ppml-hidden receipt claims changed")
-    source_claims = gate.COMMON_CHECK_CLAIMS.get("source_identity", ())
-    if not {"exact_commit", "exact_tree"}.issubset(source_claims):
-        raise SeparationRecipeError("Phase-12 no longer joins receipts at one exact source")
-    if gate.COMMON_CHECK_CLAIMS.get("feppml_qualification") != (
-        "comparator", "failure_atomicity", "memory", "oracle", "performance",
-        "saved_outputs", "scientific",
-    ):
-        raise SeparationRecipeError("Phase-12 comparator qualification claims changed")
     qualification_manifest = json.loads(
         (root / binding["comparator_qualification_manifest"]).read_text(encoding="utf-8")
     )
@@ -712,7 +694,9 @@ def validate_stata_and_formal_binding(document: Mapping[str, Any], root: Path = 
         sys.path.insert(0, scripts_root)
     try:
         qualification_gate.load_manifest(
-            root / binding["comparator_qualification_manifest"], root=root
+            root / binding["comparator_qualification_manifest"],
+            verify_files=False,
+            root=root,
         )
     finally:
         if added_scripts_root:
@@ -726,18 +710,19 @@ def validate_stata_and_formal_binding(document: Mapping[str, Any], root: Path = 
         raise SeparationRecipeError(
             "qualification comparator audit differs from the exact separation manifest"
         )
-    public_state = _load_module(
-        root / "scripts/feppml_public_state.py",
-        "feppml_phase7_public_state_binding",
+    public_source = (root / "stata/feppml.ado").read_text(encoding="utf-8")
+    public_lines = tuple(
+        line.strip()
+        for line in public_source.splitlines()
+        if line.strip() and not line.lstrip().startswith(("*", "//"))
     )
-    try:
-        state = public_state.public_state(root)
-    except Exception as error:
-        raise SeparationRecipeError(
-            "public feppml is neither the closed stub nor activated wrapper"
-        ) from error
-    if state not in {public_state.PREACTIVATION, public_state.ACTIVATED}:
-        raise SeparationRecipeError("public feppml state is invalid")
+    if public_lines != (
+        "program define feppml, eclass sortpreserve",
+        "version 18.0",
+        "_fereg_ppml `0'",
+        "end",
+    ):
+        raise SeparationRecipeError("public feppml is not the exact one-call wrapper")
 
 
 def main() -> int:

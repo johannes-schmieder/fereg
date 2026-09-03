@@ -10,14 +10,11 @@ from scripts.feppml_help_contract import (
     SHARED_FIXTURE_PATH,
     HelpContractError,
     extract_example_blocks,
-    require_activated_public_help,
-    require_activated_public_help_bytes,
+    require_public_help,
+    require_public_help_bytes,
     validate_canonical_help,
     validate_canonical_help_file,
-    validate_preactivation_public_help,
-    validate_preactivation_public_help_file,
 )
-from scripts.feppml_public_state import ACTIVATED, public_state
 
 
 def _example(example_id: str, index: int) -> str:
@@ -175,55 +172,33 @@ class CanonicalContractTests(unittest.TestCase):
             validate_canonical_help(source)
 
 
-class ActivationBoundaryTests(unittest.TestCase):
-    def test_current_public_help_matches_the_exact_public_state(self) -> None:
-        current = PUBLIC_HELP_PATH.read_text(encoding="utf-8")
-        if public_state() == ACTIVATED:
-            require_activated_public_help_bytes(
-                PUBLIC_HELP_PATH.read_bytes(), CANONICAL_HELP_PATH.read_bytes()
-            )
-        else:
-            validate_preactivation_public_help_file()
-            self.assertNotIn("{* example_start", current)
-            self.assertNotIn("{* example_end", current)
-
-    def test_stub_rejects_missing_statements_or_examples(self) -> None:
-        valid = (
-            "Every invocation returns {cmd:r(498)}\n"
-            "without posting {cmd:e()} results.\n"
+class PublicHelpBoundaryTests(unittest.TestCase):
+    def test_current_public_help_matches_the_canonical_fixture(self) -> None:
+        require_public_help_bytes(
+            PUBLIC_HELP_PATH.read_bytes(), CANONICAL_HELP_PATH.read_bytes()
         )
-        validate_preactivation_public_help(valid)
-        invalid = (
-            valid.replace("r(498)", "r(199)"),
-            valid.replace("without posting {cmd:e()} results.", ""),
-            valid + "{* example_start - ppml_basic}{...}\n",
-            valid + "{* example_end}{...}\n",
-        )
-        for source in invalid:
-            with self.subTest(source=source), self.assertRaises(HelpContractError):
-                validate_preactivation_public_help(source)
 
-    def test_activation_requires_exact_full_bytes(self) -> None:
+    def test_public_help_requires_exact_full_bytes(self) -> None:
         canonical = _canonical().encode("utf-8")
-        examples = require_activated_public_help_bytes(canonical, canonical)
+        examples = require_public_help_bytes(canonical, canonical)
         self.assertEqual(
             tuple(example.example_id for example in examples),
             EXPECTED_EXAMPLE_IDS,
         )
         with self.assertRaisesRegex(HelpContractError, "differs from canonical bytes"):
-            require_activated_public_help_bytes(canonical + b"\n", canonical)
+            require_public_help_bytes(canonical + b"\n", canonical)
 
-    def test_file_entry_point_is_gate_ready(self) -> None:
+    def test_file_entry_point_requires_the_canonical_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             canonical = root / "canonical.sthlp"
             public = root / "public.sthlp"
             canonical.write_bytes(_canonical().encode("utf-8"))
             public.write_bytes(canonical.read_bytes())
-            require_activated_public_help(public, canonical)
+            require_public_help(public, canonical)
             public.write_bytes(public.read_bytes().replace(b"Examples", b"Examplez"))
             with self.assertRaises(HelpContractError):
-                require_activated_public_help(public, canonical)
+                require_public_help(public, canonical)
 
 
 class SharedFixtureTests(unittest.TestCase):
@@ -238,11 +213,11 @@ class SharedFixtureTests(unittest.TestCase):
 
     def test_invalid_utf8_fails_closed(self) -> None:
         with self.assertRaisesRegex(HelpContractError, "not UTF-8"):
-            require_activated_public_help_bytes(b"\xff", b"\xff")
+            require_public_help_bytes(b"\xff", b"\xff")
 
 
 class RepositorySourceContractTests(unittest.TestCase):
-    def test_canonical_future_help_contract(self) -> None:
+    def test_canonical_public_help_contract(self) -> None:
         examples = validate_canonical_help_file()
         self.assertEqual(
             tuple(example.example_id for example in examples),

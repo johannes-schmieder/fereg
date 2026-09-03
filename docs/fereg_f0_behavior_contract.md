@@ -90,10 +90,9 @@ both public help files, `fereg.pkg`, and `stata.toc`. The plugin is bound
 separately by source, platform, SHA-256, size, and embedded commit and is
 exercised by the frozen fixtures.
 
-Activation uses `--phase activation` and permits only the additive allowance
-frozen in the behavior manifest: the three PPML package members may be added
-in their prescribed order, and only the enumerated shared package/toc/help
-files may change. Every `fereg`-owned control-plane byte and executable help
-block remains exact. This allowance does not activate `feppml`; public
-activation remains governed by the separate
-[`feppml` activation checklist](feppml_activation_checklist.md).
+The historical activation capture uses `--phase activation` and permits only
+the additive allowance frozen in the behavior manifest: the three PPML package
+members may be added in their prescribed order, and only the enumerated shared
+package/toc/help files may change. Every `fereg`-owned control-plane byte and
+executable help block remains exact. This phase label preserves interpretation
+of existing receipts; it is not a current public-surface switch.

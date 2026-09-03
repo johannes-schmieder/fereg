@@ -3,8 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from scripts.feppml_help_contract import require_activated_public_help_bytes
-from scripts.feppml_public_state import ACTIVATED, public_state
+from scripts.feppml_help_contract import require_public_help_bytes
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,7 +111,7 @@ class PpmlFullModelSimplexContractTests(unittest.TestCase):
         self.assertIn("| Retain after audit |", internals_row)
         self.assertNotIn("Quarantine", internals_row)
 
-    def test_architecture_performance_and_public_help_match_state(self) -> None:
+    def test_architecture_performance_and_public_help_contract(self) -> None:
         architecture = ARCHITECTURE.read_text(encoding="utf-8")
         self.assertIn("complete prepared model span", architecture)
         self.assertIn("level-by-raw-slope columns", architecture)
@@ -123,16 +122,8 @@ class PpmlFullModelSimplexContractTests(unittest.TestCase):
         self.assertIn("same ledger generation", performance)
         self.assertIn("simplex-only `r(909)`", performance)
 
-        help_text = HELP.read_text(encoding="utf-8")
-        if public_state(ROOT) == ACTIVATED:
-            canonical = ROOT / "tests/stata/documentation/feppml_activation.sthlp"
-            require_activated_public_help_bytes(HELP.read_bytes(), canonical.read_bytes())
-        else:
-            self.assertIn("planned Rust-first fixed-effect PPML command", help_text)
-            self.assertIn("PPML is outside the", help_text)
-            self.assertIn("Every invocation returns {cmd:r(498)}", help_text)
-            self.assertNotIn("hidden native qualification transaction", help_text)
-            self.assertNotIn("The inactive candidate default", help_text)
+        canonical = ROOT / "tests/stata/documentation/feppml_activation.sthlp"
+        require_public_help_bytes(HELP.read_bytes(), canonical.read_bytes())
 
 
 if __name__ == "__main__":
