@@ -66,6 +66,129 @@ def adjudicator_row(scope: dict[str, object], source: dict[str, object]) -> dict
     }
 
 
+def evidence_receipt(name: str) -> dict[str, object]:
+    return {"path": f"/tmp/{name}", "size": 10, "sha256": name[0] * 64}
+
+
+def add_public_state_kkt(document: dict[str, object]) -> dict[str, object]:
+    scope = document["scopes"][0]
+    candidate = next(
+        row for row in document["records"]
+        if row["implementation"] == "candidate" and row["arm"] == "map"
+    )
+    default = next(row for row in document["records"] if row["arm"] == "ppmlhdfe")
+    strict = next(row for row in document["records"] if row["arm"] == DEVELOPMENT.ADJUDICATOR)
+
+    def fit(source: dict[str, object], implementation: str, arm: str) -> dict[str, object]:
+        candidate_arm = arm == "map"
+        return {
+            **scope, "scope_id": scope["id"], "implementation": implementation,
+            "arm": arm, "sample_n": source["sample_n"], "ll": source["ll"],
+            "deviance": source["deviance"], "converged": source["converged"],
+            "rank": source["rank"], "df_a": source["df_a"],
+            "df_resid": source["df_resid"],
+            "route_code": 2.0 if candidate_arm else None,
+            "selected_engine_code": 1.0 if candidate_arm else None,
+            "effective_engine_code": 1.0 if candidate_arm else None,
+            "fallback_count": 0.0 if candidate_arm else None,
+            "effective_threads": float(scope["threads"]) if candidate_arm else None,
+            "certificate_passed": 1.0 if candidate_arm else None,
+            "b_names": source["b_names"], "b_values": source["b_values"],
+            "reference_acceleration": "" if candidate_arm else "conjugate_gradient",
+            "reference_transform": "" if candidate_arm else "symmetric_kaczmarz",
+        }
+
+    states = {
+        "map": evidence_receipt("a-state"),
+        "ppmlhdfe": evidence_receipt("b-state"),
+        DEVELOPMENT.ADJUDICATOR: evidence_receipt("c-state"),
+    }
+    audit_result = evidence_receipt("d-audit")
+    document["public_state_adjudications"] = [{
+        **scope, "scope_id": scope["id"], "implementation": "candidate",
+        "method": DEVELOPMENT.KKT_ADJUDICATOR,
+        "fits": {
+            "map": fit(candidate, "candidate", "map"),
+            "ppmlhdfe": fit(default, "reference", "ppmlhdfe"),
+            DEVELOPMENT.ADJUDICATOR: fit(
+                strict, "reference", DEVELOPMENT.ADJUDICATOR,
+            ),
+        },
+        "states": states, "audit_result": audit_result,
+        "metrics": {
+            "map": {
+                "finite_score_absinf": 1e-10, "fe_score_absinf": 1e-11,
+                "score_relinf": 1e-12, "score_rel2": 1e-13, "score_scale": 10.0,
+                "recomputed_ll": -10.0, "recomputed_deviance": 2.0,
+                "min_mu": 0.5, "max_mu": 2.0,
+            },
+            "ppmlhdfe": {
+                "finite_score_absinf": 1e-3, "fe_score_absinf": 1e-4,
+                "score_relinf": 2e-7, "score_rel2": 2e-9, "score_scale": 10.0,
+                "recomputed_ll": -10.01, "recomputed_deviance": 2.02,
+                "min_mu": 0.5, "max_mu": 2.0,
+            },
+            DEVELOPMENT.ADJUDICATOR: {
+                "finite_score_absinf": 1e-4, "fe_score_absinf": 1e-5,
+                "score_relinf": 2e-8, "score_rel2": 2e-9, "score_scale": 10.0,
+                "recomputed_ll": -10.001, "recomputed_deviance": 2.002,
+                "min_mu": 0.5, "max_mu": 2.0,
+            },
+        },
+    }]
+    evidence = document["public_state_adjudications"][0]
+    dataset_sha = document["datasets"][0]["dta"]["sha256"]
+    candidate_source = DEVELOPMENT.canonical_sha256(document["sources"]["candidate"])
+    reference_source = DEVELOPMENT.canonical_sha256(document["references"])
+    artifact_sha = document["artifacts"]["candidate"]["sha256"]
+    common = {
+        "scope_id": scope["id"], "dataset_id": "unit-dataset",
+        "dataset_sha256": dataset_sha, "accepted_rc": 0,
+    }
+    map_result = evidence_receipt("e-map-result")
+    default_result = evidence_receipt("f-default-result")
+    strict_result = evidence_receipt("0-strict-result")
+    document["processes"].extend([
+        {
+            **common, "stage": "public-state-fit", "implementation": "candidate",
+            "arm": "map", "source_sha256": candidate_source,
+            "artifact_sha256": artifact_sha, "state": states["map"],
+            "result": map_result,
+            "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
+                map_result, evidence["fits"]["map"],
+            ),
+        },
+        {
+            **common, "stage": "public-state-fit", "implementation": "reference",
+            "arm": "ppmlhdfe", "source_sha256": reference_source,
+            "artifact_sha256": None, "state": states["ppmlhdfe"],
+            "result": default_result,
+            "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
+                default_result, evidence["fits"]["ppmlhdfe"],
+            ),
+        },
+        {
+            **common, "stage": "public-state-fit", "implementation": "reference",
+            "arm": DEVELOPMENT.ADJUDICATOR, "source_sha256": reference_source,
+            "artifact_sha256": None, "state": states[DEVELOPMENT.ADJUDICATOR],
+            "result": strict_result,
+            "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
+                strict_result, evidence["fits"][DEVELOPMENT.ADJUDICATOR],
+            ),
+        },
+        {
+            **common, "stage": "public-state-audit", "implementation": "candidate",
+            "arm": DEVELOPMENT.KKT_ADJUDICATOR, "source_sha256": candidate_source,
+            "artifact_sha256": artifact_sha, "inputs": states,
+            "result": audit_result,
+            "parsed_result_sha256": DEVELOPMENT.parsed_file_binding(
+                audit_result, evidence["metrics"],
+            ),
+        },
+    ])
+    return document
+
+
 def run_document() -> dict[str, object]:
     scope = {
         "id": "unit-scope", "n": 100, "topology": "balanced_2fe", "controls": 1,
@@ -89,13 +212,17 @@ def run_document() -> dict[str, object]:
         "include_comparators": True,
         "include_oracle": False,
         "sources": {"candidate": {"commit": "a" * 40}},
+        "artifacts": {"candidate": {"sha256": "9" * 64}},
+        "references": {"ppmlhdfe": {"commit": "8" * 40}},
         "scopes": [scope],
         "datasets": [{
             "scope": copy.deepcopy(scope), "dataset_id": "unit-dataset",
             "generated_by_scope_id": "unit-scope", "metadata": metadata,
+            "dta": {"sha256": "7" * 64, "size": 100},
             "solver_eligibility": eligibility,
         }],
         "records": records,
+        "public_state_adjudications": [],
         "processes": [
             {
                 "stage": "generate", "scope_id": "unit-scope",
@@ -120,15 +247,21 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(manifest["auto_calibration"])
         self.assertEqual([row["id"] for row in manifest["solvers"]], ["map", "lsmr", "cmg"])
         self.assertEqual([row["id"] for row in manifest["comparators"]], ["ppmlhdfe"])
-        self.assertFalse(manifest["scientific_adjudicator"]["timed"])
-        self.assertEqual(manifest["scientific_adjudicator"]["tolerance"], 1e-10)
-        self.assertEqual(manifest["scientific_adjudicator"]["itolerance"], 1e-12)
+        adjudication = manifest["scientific_adjudication"]
+        self.assertFalse(adjudication["strict_reference"]["timed"])
+        self.assertEqual(adjudication["strict_reference"]["tolerance"], 1e-10)
+        self.assertEqual(adjudication["strict_reference"]["itolerance"], 1e-12)
+        self.assertEqual(
+            adjudication["public_state_kkt"]["id"],
+            "independent_public_state_kkt_v1",
+        )
+        self.assertEqual(adjudication["public_state_kkt"]["score_tolerance"], 1e-8)
         serialized = json.dumps(manifest).lower()
         self.assertNotIn("recommendation", serialized)
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
-        self.assertEqual(manifest["protocols"]["development_result_table"], "2.3")
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.4")
 
     def test_solver_eligibility_uses_the_prepared_cmg_core_order_and_cap(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -385,6 +518,142 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertFalse(analysis["science_pass"])
         self.assertTrue(any("not_required" in item for item in analysis["science_failures"]))
 
+    def test_public_state_kkt_adjudicates_only_absolute_coefficient_conflicts(self) -> None:
+        document = run_document()
+        for row in document["records"]:
+            if row["arm"] == "ppmlhdfe":
+                row["b_values"] = [0.2501]
+        scope = document["scopes"][0]
+        strict_source = next(
+            row for row in document["records"]
+            if row["implementation"] == "candidate" and row["arm"] == "map"
+        )
+        strict = adjudicator_row(scope, strict_source)
+        strict["b_values"] = [0.2502]
+        document["records"].append(strict)
+        document["processes"].append({
+            "stage": "adjudicate", "scope_id": scope["id"],
+            "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
+            "accepted_rc": 0,
+        })
+        add_public_state_kkt(document)
+        analysis = DEVELOPMENT.analyze_document(document)
+        self.assertTrue(analysis["science_pass"])
+        kkt_rows = [
+            row for row in analysis["reference_adjudications"]
+            if row["adjudicator"] == DEVELOPMENT.KKT_ADJUDICATOR
+        ]
+        self.assertEqual(len(kkt_rows), 6)
+        self.assertTrue(all(
+            row["default_science_mismatches"] == ["ppmlhdfe_coefficients"]
+            and row["strict_science_mismatches"] == ["strict_ppmlhdfe_coefficients"]
+            for row in kkt_rows
+        ))
+
+        candidate_failure = copy.deepcopy(document)
+        candidate_failure["public_state_adjudications"][0]["metrics"]["map"]["score_relinf"] = 2e-8
+        failed = DEVELOPMENT.analyze_document(candidate_failure)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "candidate_score_certificate" in issue
+            for issue in failed["science_failures"]
+        ))
+
+        reference_pass = copy.deepcopy(document)
+        reference_pass["public_state_adjudications"][0]["metrics"]["ppmlhdfe_strict"]["score_relinf"] = 1e-9
+        failed = DEVELOPMENT.analyze_document(reference_pass)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "score_certificate_passed" in issue
+            for issue in failed["science_failures"]
+        ))
+
+        noncoefficient = copy.deepcopy(document)
+        strict_row = next(
+            row for row in noncoefficient["records"]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        strict_row["v_values"] = [0.02]
+        failed = DEVELOPMENT.analyze_document(noncoefficient)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("strict_ppmlhdfe_vce" in issue for issue in failed["science_failures"]))
+
+    def test_public_state_kkt_evidence_and_processes_are_exactly_bound(self) -> None:
+        document = run_document()
+        for row in document["records"]:
+            if row["arm"] == "ppmlhdfe":
+                row["b_values"] = [0.2501]
+        scope = document["scopes"][0]
+        strict_source = next(
+            row for row in document["records"]
+            if row["implementation"] == "candidate" and row["arm"] == "map"
+        )
+        strict = adjudicator_row(scope, strict_source)
+        strict["b_values"] = [0.2502]
+        document["records"].append(strict)
+        document["processes"].append({
+            "stage": "adjudicate", "scope_id": scope["id"],
+            "implementation": "adjudicator", "arm": DEVELOPMENT.ADJUDICATOR,
+            "accepted_rc": 0,
+        })
+        add_public_state_kkt(document)
+
+        tampered = copy.deepcopy(document)
+        audit = next(
+            process for process in tampered["processes"]
+            if process["stage"] == "public-state-audit"
+        )
+        audit["inputs"] = copy.deepcopy(audit["inputs"])
+        audit["inputs"]["map"]["sha256"] = "f" * 64
+        failed = DEVELOPMENT.analyze_document(tampered)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("process_binding" in issue for issue in failed["science_failures"]))
+
+        missing = copy.deepcopy(document)
+        missing["processes"] = [
+            process for process in missing["processes"]
+            if process["stage"] != "public-state-audit"
+        ]
+        failed = DEVELOPMENT.analyze_document(missing)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "missing_public_state_audit_process" in issue
+            for issue in failed["science_failures"]
+        ))
+
+        metrics_tamper = copy.deepcopy(document)
+        metrics_tamper["public_state_adjudications"][0]["metrics"]["map"][
+            "score_relinf"
+        ] = 9e-9
+        failed = DEVELOPMENT.analyze_document(metrics_tamper)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("process_binding" in issue for issue in failed["science_failures"]))
+
+        fit_result_tamper = copy.deepcopy(document)
+        map_fit = next(
+            process for process in fit_result_tamper["processes"]
+            if process["stage"] == "public-state-fit" and process["arm"] == "map"
+        )
+        map_fit["result"]["sha256"] = "1" * 64
+        failed = DEVELOPMENT.analyze_document(fit_result_tamper)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("process_binding" in issue for issue in failed["science_failures"]))
+
+        dataset_tamper = copy.deepcopy(document)
+        audit = next(
+            process for process in dataset_tamper["processes"]
+            if process["stage"] == "public-state-audit"
+        )
+        audit["dataset_id"] = "unrelated-dataset"
+        failed = DEVELOPMENT.analyze_document(dataset_tamper)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any("unexpected_kkt_process" in issue for issue in failed["science_failures"]))
+
+        digest_tamper = copy.deepcopy(document)
+        digest_tamper["datasets"][0]["dta"]["sha256"] = ""
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.analyze_document(digest_tamper)
+
     def test_analysis_rejects_fallback_and_missing_comparator(self) -> None:
         changed = run_document()
         target = next(row for row in changed["records"] if row["arm"] == "cmg" and row["repetition"] == 2)
@@ -525,6 +794,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
 
     def test_driver_uses_public_solver_surface_and_default_comparator(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
+        kkt_source = DEVELOPMENT.KKT_DRIVER.read_text(encoding="utf-8")
         self.assertIn("feppml y `control_list'", source)
         self.assertIn("solver(`arm')", source)
         self.assertNotIn("_fereg_estimate_ppml", source)
@@ -545,6 +815,11 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertNotIn("e(feppml_linear_route)", source)
         self.assertNotIn("e(feppml_fallback_count)", source)
         self.assertIn("data_meta", source)
+        self.assertIn("solver(map) mu(`fitted_mu')", kkt_source)
+        self.assertIn("tolerance(1e-10)", kkt_source)
+        self.assertIn("itolerance(1e-12)", kkt_source)
+        self.assertNotIn("accel(lsmr)", kkt_source)
+        self.assertNotIn("ppmlhdfe_lsmr", kkt_source)
 
     def test_scc_scripts_encode_exact_array_and_full_lifecycle(self) -> None:
         array = (ROOT / "benchmarks/scc/feppml_solver_dev_job.sh").read_text()

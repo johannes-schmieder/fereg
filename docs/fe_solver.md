@@ -187,7 +187,19 @@ default fit, the harness runs one untimed fit from the same pinned closure with
 `tolerance(1e-10) itolerance(1e-12)`. That strict fit keeps the same
 conjugate-gradient/symmetric-Kaczmarz technique. Agreement with the strict fit
 adjudicates the stopping discrepancy while retaining the original default-fit
-mismatch in the analysis; disagreement remains fatal.
+mismatch in the analysis. If both default and strict comparisons still differ
+only in finite coefficients, the development harness may run a final untimed
+public-state audit. Fresh processes save the public fitted means from MAP and
+from both pinned reference fits; a separate Mata calculation recomputes every
+control, constant, and FE-level score plus likelihood and deviance from the raw
+data. The discrepancy is adjudicated only when MAP independently satisfies the
+public `1e-8` score tolerance, both reference public states fail it, MAP's
+published objective replays from its public mean, and MAP's recomputed
+objective is no worse than either reference. Sample, VCE, likelihood,
+deviance, total-DoF, route, fallback, certificate, or non-coefficient failures
+remain fatal. The analysis retains both original reference mismatches and all
+hashed public-state inputs. This development-only audit never forces a
+different `ppmlhdfe` solver.
 
 The version-2 development manifest derives explicit-solver eligibility from
 the generated dataset metadata before timing. It excludes an unsupported

@@ -23,9 +23,11 @@ from typing import Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v2.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
+KKT_DRIVER = ROOT / "tests/stata/development/feppml_public_state_kkt.do"
 SOLVERS = ("map", "lsmr", "cmg")
 COMPARATORS = ("ppmlhdfe",)
 ADJUDICATOR = "ppmlhdfe_strict"
+KKT_ADJUDICATOR = "independent_public_state_kkt_v1"
 REFERENCE_ACCELERATION = "conjugate_gradient"
 REFERENCE_TRANSFORM = "symmetric_kaczmarz"
 ROUTE_CODES = {"map": 2, "lsmr": 3, "cmg": 7}
@@ -44,6 +46,7 @@ IMPLEMENTATION_FILES = (
     "tests/python/test_ppml_solver_development.py",
     "tests/python/ppml_explicit_dummy_oracle.py",
     "tests/stata/development/feppml_solver_development.do",
+    "tests/stata/development/feppml_public_state_kkt.do",
 )
 
 
@@ -55,12 +58,57 @@ def canonical_bytes(value: object) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode()
 
 
+def canonical_sha256(value: object) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
         for block in iter(lambda: source.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def file_receipt(path: Path) -> dict[str, object]:
+    return {
+        "path": str(path.resolve()),
+        "size": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+
+
+def valid_file_receipt(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"path", "size", "sha256"}
+        and isinstance(value["path"], str)
+        and bool(value["path"])
+        and isinstance(value["size"], int)
+        and not isinstance(value["size"], bool)
+        and value["size"] > 0
+        and isinstance(value["sha256"], str)
+        and bool(re.fullmatch(r"[0-9a-f]{64}", value["sha256"]))
+    )
+
+
+def valid_content_receipt(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"size", "sha256"}
+        and isinstance(value["size"], int)
+        and not isinstance(value["size"], bool)
+        and value["size"] > 0
+        and isinstance(value["sha256"], str)
+        and bool(re.fullmatch(r"[0-9a-f]{64}", value["sha256"]))
+    )
+
+
+def parsed_file_binding(receipt: Mapping[str, object], value: object) -> str:
+    return canonical_sha256({
+        "file": {"size": receipt["size"], "sha256": receipt["sha256"]},
+        "parsed": value,
+    })
 
 
 def exclusive_json(path: Path, value: object) -> None:
@@ -109,7 +157,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         {
             "schema_version", "manifest_id", "status", "qualification_eligible",
             "auto_calibration", "purpose", "public_command", "protocols", "solvers",
-            "solver_eligibility", "comparators", "scientific_adjudicator", "fixed_policy", "science",
+            "solver_eligibility", "comparators", "scientific_adjudication", "fixed_policy", "science",
             "generator", "topologies", "profiles", "scc_campaign", "receipt_contract",
         },
         "manifest",
@@ -125,7 +173,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         raise DevelopmentError("invalid v2 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
-        "development_result_table": "2.3",
+        "development_result_table": "2.4",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -153,12 +201,28 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         "acceleration": REFERENCE_ACCELERATION, "transform": REFERENCE_TRANSFORM,
     }]:
         raise DevelopmentError("default comparator contract changed")
-    if manifest["scientific_adjudicator"] != {
-        "id": ADJUDICATOR, "timed": False,
-        "invoke_only_after_default_reference_mismatch": True,
-        "tolerance": 1e-10, "itolerance": 1e-12,
-        "acceleration": REFERENCE_ACCELERATION, "transform": REFERENCE_TRANSFORM,
-        "preserve_default_mismatch": True,
+    if manifest["scientific_adjudication"] != {
+        "strict_reference": {
+            "id": ADJUDICATOR, "timed": False,
+            "invoke_only_after_default_reference_mismatch": True,
+            "tolerance": 1e-10, "itolerance": 1e-12,
+            "acceleration": REFERENCE_ACCELERATION,
+            "transform": REFERENCE_TRANSFORM,
+            "preserve_default_mismatch": True,
+        },
+        "public_state_kkt": {
+            "id": KKT_ADJUDICATOR, "timed": False,
+            "invoke_only_after_default_and_strict_coefficient_mismatch": True,
+            "candidate_solver": "map",
+            "reference_arms": ["ppmlhdfe", "ppmlhdfe_strict"],
+            "score_tolerance": 1e-8,
+            "candidate_objective_replay_rtol": 1e-8,
+            "candidate_objective_replay_atol": 1e-10,
+            "objective_dominance_rtol": 1e-8,
+            "objective_dominance_atol": 1e-10,
+            "both_reference_states_must_fail_score_tolerance": True,
+            "preserve_default_and_strict_mismatches": True,
+        },
     }:
         raise DevelopmentError("strict scientific adjudicator contract changed")
     if manifest["topologies"] != [
@@ -442,14 +506,16 @@ def verified_reference_route(console: Path) -> dict[str, str]:
     }
 
 
-def run_stata(stata: str, environment: Mapping[str, str], console: Path) -> dict[str, object]:
+def run_stata(
+    stata: str, environment: Mapping[str, str], console: Path, driver: Path = DRIVER,
+) -> dict[str, object]:
     console.parent.mkdir(parents=True, exist_ok=True)
     clean = {key: value for key, value in os.environ.items() if not key.startswith("FEREG_PPML_SOLVER_")}
     clean.update(environment)
     clean["FEREG_PPML_SOLVER_STATA_LOG"] = str(console.with_suffix(".stata.log"))
     with console.open("wb") as target:
-        completed = subprocess.run([stata, "-b", "do", str(DRIVER)], cwd=console.parent, env=clean, stdout=target, stderr=subprocess.STDOUT, check=False)
-    return {"command": [stata, "-b", "do", str(DRIVER)], "console": str(console), "process_returncode": completed.returncode}
+        completed = subprocess.run([stata, "-b", "do", str(driver)], cwd=console.parent, env=clean, stdout=target, stderr=subprocess.STDOUT, check=False)
+    return {"command": [stata, "-b", "do", str(driver)], "console": str(console), "process_returncode": completed.returncode}
 
 
 def base_environment(repository: Path, reference_root: Path, scope: Mapping[str, object], dataset: Path, result: Path) -> dict[str, str]:
@@ -571,6 +637,78 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
     return output
 
 
+def parse_public_state_fit(
+    path: Path, scope: Mapping[str, object], implementation: str, expected_arm: str,
+) -> dict[str, object]:
+    required = {
+        "arm", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
+        "route_code", "selected_engine_code", "effective_engine_code", "fallback_count",
+        "effective_threads", "certificate_passed", "b_names", "b_values",
+        "reference_acceleration", "reference_transform",
+    }
+    with path.open(encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source, delimiter="\t")
+        if set(reader.fieldnames or []) != required:
+            raise DevelopmentError(f"public-state fit columns differ: {path}")
+        rows = list(reader)
+    if len(rows) != 1 or rows[0]["arm"] != expected_arm:
+        raise DevelopmentError("public-state fit arm inventory differs")
+    row = rows[0]
+    reference = expected_arm in (*COMPARATORS, ADJUDICATOR)
+    if reference != (implementation == "reference"):
+        raise DevelopmentError("public-state fit implementation differs from arm")
+    if reference and (
+        row["reference_acceleration"] != REFERENCE_ACCELERATION
+        or row["reference_transform"] != REFERENCE_TRANSFORM
+    ):
+        raise DevelopmentError("public-state reference route differs")
+    if not reference and (
+        row["reference_acceleration"] or row["reference_transform"]
+    ):
+        raise DevelopmentError("public-state candidate has a reference route")
+    return {
+        **scope, "scope_id": str(scope["id"]), "implementation": implementation,
+        "arm": expected_arm, "sample_n": optional_float(row["N"]),
+        "ll": optional_float(row["ll"]), "deviance": optional_float(row["deviance"]),
+        "converged": optional_float(row["converged"]), "rank": optional_float(row["rank"]),
+        "df_a": optional_float(row["df_a"]), "df_resid": optional_float(row["df_resid"]),
+        "route_code": optional_float(row["route_code"]),
+        "selected_engine_code": optional_float(row["selected_engine_code"]),
+        "effective_engine_code": optional_float(row["effective_engine_code"]),
+        "fallback_count": optional_float(row["fallback_count"]),
+        "effective_threads": optional_float(row["effective_threads"]),
+        "certificate_passed": optional_float(row["certificate_passed"]),
+        "b_names": row["b_names"].split(), "b_values": _float_vector(row["b_values"]),
+        "reference_acceleration": row["reference_acceleration"],
+        "reference_transform": row["reference_transform"],
+    }
+
+
+def parse_public_state_kkt(path: Path) -> dict[str, dict[str, float]]:
+    required = {
+        "arm", "finite_score_absinf", "fe_score_absinf", "score_relinf",
+        "score_rel2", "score_scale", "recomputed_ll", "recomputed_deviance",
+        "min_mu", "max_mu",
+    }
+    with path.open(encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source, delimiter="\t")
+        if set(reader.fieldnames or []) != required:
+            raise DevelopmentError(f"public-state KKT columns differ: {path}")
+        rows = list(reader)
+    if [row["arm"] for row in rows] != ["map", "ppmlhdfe", ADJUDICATOR]:
+        raise DevelopmentError("public-state KKT arm inventory differs")
+    parsed: dict[str, dict[str, float]] = {}
+    for row in rows:
+        metrics: dict[str, float] = {}
+        for field in required - {"arm"}:
+            value = optional_float(row[field])
+            if value is None:
+                raise DevelopmentError("public-state KKT metric is missing")
+            metrics[field] = value
+        parsed[row["arm"]] = metrics
+    return parsed
+
+
 def parse_data_meta(path: Path) -> dict[str, int]:
     with path.open(encoding="utf-8", newline="") as source:
         rows = list(csv.DictReader(source, delimiter="\t"))
@@ -654,6 +792,7 @@ def execute_scopes(
     records: list[dict[str, object]] = []
     processes: list[dict[str, object]] = []
     datasets: list[dict[str, object]] = []
+    public_state_adjudications: list[dict[str, object]] = []
     dataset_cache: dict[str, tuple[Path, Path, Path, str, dict[str, object]]] = {}
     if prepare_comparators:
         console = output_dir / "reference-setup.log"
@@ -765,6 +904,145 @@ def execute_scopes(
             })
             if result.is_file():
                 records.extend(parse_table(result, scope, "adjudicator"))
+        kkt_implementations = _public_state_kkt_implementations(
+            records, scope, list(repositories), repetitions, manifest["science"],
+            eligibility["eligible_solvers"],
+        ) if include_comparators else []
+        if kkt_implementations:
+            state_fits: dict[tuple[str, str], dict[str, object]] = {}
+            state_files: dict[tuple[str, str], dict[str, object]] = {}
+            fit_specs = [
+                (implementation, "map", repositories[implementation])
+                for implementation in kkt_implementations
+            ]
+            fit_specs.extend([
+                ("reference", "ppmlhdfe", candidate_root),
+                ("reference", ADJUDICATOR, candidate_root),
+            ])
+            for implementation, arm, repository in fit_specs:
+                stem = f"public-state-{implementation}-{arm}"
+                result = scope_dir / f"{stem}.tsv"
+                state = scope_dir / f"{stem}.dta"
+                console = scope_dir / f"{stem}.log"
+                run_env = base_environment(repository, reference_root, scope, dataset, result)
+                run_env.update({
+                    "FEREG_PPML_SOLVER_KKT_MODE": "fit",
+                    "FEREG_PPML_SOLVER_ARM": arm,
+                    "FEREG_PPML_SOLVER_KKT_STATE": str(state),
+                    "FEREG_PPML_SOLVER_KKT_PLUGIN": (
+                        str(artifacts[implementation]["path"])
+                        if implementation != "reference" else ""
+                    ),
+                })
+                process = run_stata(stata, run_env, console, KKT_DRIVER)
+                status, reason = stata_stage_status(
+                    console, int(process["process_returncode"]),
+                    "FEREG_PPML_SOLVER_KKT_FIT_PASS",
+                )
+                reference_route = None
+                if not status and implementation == "reference":
+                    try:
+                        reference_route = verified_reference_route(console)
+                    except DevelopmentError:
+                        status, reason = 498, "unverified-reference-route"
+                state_receipt = file_receipt(state) if state.is_file() else None
+                result_receipt = file_receipt(result) if result.is_file() else None
+                parsed_fit = None
+                parsed_result_sha256 = None
+                if not status and state_receipt is not None and result_receipt is not None:
+                    parsed_fit = parse_public_state_fit(
+                        result, scope, implementation, arm,
+                    )
+                    parsed_result_sha256 = parsed_file_binding(
+                        result_receipt, parsed_fit,
+                    )
+                processes.append({
+                    **process, "stage": "public-state-fit", "scope_id": scope["id"],
+                    "dataset_id": generated_id,
+                    "dataset_sha256": file_identity["dta"]["sha256"],
+                    "implementation": implementation, "arm": arm,
+                    "source_sha256": canonical_sha256(
+                        references_before if implementation == "reference" else sources[implementation]
+                    ),
+                    "artifact_sha256": (
+                        None if implementation == "reference"
+                        else artifacts[implementation]["sha256"]
+                    ),
+                    "accepted_rc": status, "status_reason": reason,
+                    "reference_route": reference_route,
+                    "state": state_receipt, "result": result_receipt,
+                    "parsed_result_sha256": parsed_result_sha256,
+                })
+                if parsed_fit is None:
+                    continue
+                key = (implementation, arm)
+                state_fits[key] = parsed_fit
+                state_files[key] = state_receipt
+            reference_keys = [
+                ("reference", "ppmlhdfe"), ("reference", ADJUDICATOR),
+            ]
+            for implementation in kkt_implementations:
+                candidate_key = (implementation, "map")
+                required_keys = [candidate_key, *reference_keys]
+                if any(key not in state_fits for key in required_keys):
+                    continue
+                result = scope_dir / f"public-state-audit-{implementation}.tsv"
+                console = scope_dir / f"public-state-audit-{implementation}.log"
+                before = {arm: dict(state_files[key]) for arm, key in (
+                    ("map", candidate_key),
+                    ("ppmlhdfe", reference_keys[0]),
+                    (ADJUDICATOR, reference_keys[1]),
+                )}
+                run_env = base_environment(
+                    repositories[implementation], reference_root, scope, dataset, result,
+                )
+                run_env.update({
+                    "FEREG_PPML_SOLVER_KKT_MODE": "audit",
+                    "FEREG_PPML_SOLVER_KKT_CANDIDATE_STATE": str(Path(before["map"]["path"])),
+                    "FEREG_PPML_SOLVER_KKT_DEFAULT_STATE": str(Path(before["ppmlhdfe"]["path"])),
+                    "FEREG_PPML_SOLVER_KKT_STRICT_STATE": str(Path(before[ADJUDICATOR]["path"])),
+                })
+                process = run_stata(stata, run_env, console, KKT_DRIVER)
+                status, reason = stata_stage_status(
+                    console, int(process["process_returncode"]),
+                    "FEREG_PPML_SOLVER_KKT_AUDIT_PASS",
+                )
+                after = {
+                    arm: file_receipt(Path(receipt["path"]))
+                    for arm, receipt in before.items()
+                }
+                if before != after:
+                    raise DevelopmentError("public-state KKT input changed during audit")
+                result_receipt = file_receipt(result) if result.is_file() else None
+                metrics = None
+                parsed_result_sha256 = None
+                if not status and result_receipt is not None:
+                    metrics = parse_public_state_kkt(result)
+                    parsed_result_sha256 = parsed_file_binding(result_receipt, metrics)
+                processes.append({
+                    **process, "stage": "public-state-audit", "scope_id": scope["id"],
+                    "dataset_id": generated_id,
+                    "dataset_sha256": file_identity["dta"]["sha256"],
+                    "implementation": implementation, "arm": KKT_ADJUDICATOR,
+                    "source_sha256": canonical_sha256(sources[implementation]),
+                    "artifact_sha256": artifacts[implementation]["sha256"],
+                    "accepted_rc": status, "status_reason": reason,
+                    "inputs": before, "result": result_receipt,
+                    "parsed_result_sha256": parsed_result_sha256,
+                })
+                if metrics is None:
+                    continue
+                public_state_adjudications.append({
+                    **scope, "scope_id": str(scope["id"]),
+                    "implementation": implementation, "method": KKT_ADJUDICATOR,
+                    "fits": {
+                        "map": state_fits[candidate_key],
+                        "ppmlhdfe": state_fits[reference_keys[0]],
+                        ADJUDICATOR: state_fits[reference_keys[1]],
+                    },
+                    "states": before, "audit_result": result_receipt,
+                    "metrics": metrics,
+                })
     references_after = reference_identity(reference_root)
     if references_before != references_after:
         raise DevelopmentError("pinned reference closure changed during execution")
@@ -774,7 +1052,9 @@ def execute_scopes(
         "implementation": implementation_identity(), "repetitions": repetitions, "include_comparators": include_comparators,
         "include_oracle": include_oracle, "sources": sources, "artifacts": artifacts, "references": references_after,
         "host": cpu_identity(), "task_identity": dict(task_identity) if task_identity else None,
-        "scopes": [dict(scope) for scope in scopes], "datasets": datasets, "records": records, "processes": processes,
+        "scopes": [dict(scope) for scope in scopes], "datasets": datasets, "records": records,
+        "public_state_adjudications": public_state_adjudications,
+        "processes": processes,
     }
 
 
@@ -899,6 +1179,204 @@ def _needs_strict_adjudication(
     return False
 
 
+def _public_state_kkt_implementations(
+    records: Sequence[Mapping[str, object]], scope: Mapping[str, object],
+    implementations: Sequence[str], repetitions: int, science: Mapping[str, object],
+    eligible_solvers: Sequence[str],
+) -> list[str]:
+    scope_id = str(scope["id"])
+    controls = int(scope["controls"])
+    indexed = {
+        (str(row["implementation"]), str(row["arm"]), int(row["repetition"])): row
+        for row in records if str(row["scope_id"]) == scope_id and row["arm_type"] != "oracle"
+    }
+    strict = indexed.get(("adjudicator", ADJUDICATOR, 1))
+    if strict is None or int(strict["rc"]) != 0 or strict["converged"] != 1.0:
+        return []
+    required: list[str] = []
+    for implementation in implementations:
+        unresolved = False
+        eligible = True
+        for repetition in range(1, repetitions + 1):
+            default = indexed.get(("reference", "ppmlhdfe", repetition))
+            if default is None or int(default["rc"]) != 0 or default["converged"] != 1.0:
+                eligible = False
+                break
+            for solver in eligible_solvers:
+                row = indexed.get((implementation, solver, repetition))
+                if row is None or int(row["rc"]) != 0 or row["converged"] != 1.0:
+                    eligible = False
+                    break
+                default_issues = _science_issues(
+                    row, default, controls, science, "ppmlhdfe", set(),
+                )
+                if not default_issues:
+                    continue
+                if default_issues != ["ppmlhdfe_coefficients"]:
+                    eligible = False
+                    break
+                strict_issues = _science_issues(
+                    row, strict, controls, science, "strict_ppmlhdfe", set(),
+                )
+                if not strict_issues:
+                    continue
+                if strict_issues != ["strict_ppmlhdfe_coefficients"]:
+                    eligible = False
+                    break
+                unresolved = True
+            if not eligible:
+                break
+        if eligible and unresolved:
+            required.append(implementation)
+    return required
+
+
+def _fit_binding_issues(
+    fit: Mapping[str, object], target: Mapping[str, object], controls: int,
+    science: Mapping[str, object], label: str,
+) -> list[str]:
+    issues: list[str] = []
+    for field in ("sample_n", "converged", "rank", "df_a", "df_resid"):
+        if fit.get(field) != target.get(field):
+            issues.append(f"{label}_{field}")
+    if (
+        fit.get("b_names", [])[:controls] != target.get("b_names", [])[:controls]
+        or not _vectors_close(
+            fit.get("b_values", [])[:controls], target.get("b_values", [])[:controls],
+            float(science["coefficient_rtol"]), float(science["coefficient_atol"]),
+        )
+    ):
+        issues.append(f"{label}_coefficients")
+    for field in ("ll", "deviance"):
+        if not _close(
+            fit.get(field), target.get(field),
+            float(science["likelihood_rtol"]), float(science["likelihood_atol"]),
+        ):
+            issues.append(f"{label}_{field}")
+    return issues
+
+
+def _public_state_kkt_issues(
+    evidence: Mapping[str, object], indexed: Mapping[tuple[str, str, str, int], Mapping[str, object]],
+    strict: Mapping[str, object], scope: Mapping[str, object], implementation: str,
+    repetitions: int, science: Mapping[str, object], policy: Mapping[str, object],
+) -> list[str]:
+    issues: list[str] = []
+    scope_id = str(scope["id"])
+    controls = int(scope["controls"])
+    fits = evidence["fits"]
+    metrics = evidence["metrics"]
+    candidate_fit = fits["map"]
+    if (
+        candidate_fit.get("route_code") != float(ROUTE_CODES["map"])
+        or candidate_fit.get("selected_engine_code") != 1.0
+        or candidate_fit.get("effective_engine_code") != 1.0
+        or candidate_fit.get("fallback_count") != 0.0
+        or candidate_fit.get("effective_threads") != float(scope["threads"])
+        or candidate_fit.get("certificate_passed") != 1.0
+    ):
+        issues.append("candidate_route_or_certificate")
+    for arm in ("ppmlhdfe", ADJUDICATOR):
+        fit = fits[arm]
+        if (
+            fit.get("reference_acceleration") != REFERENCE_ACCELERATION
+            or fit.get("reference_transform") != REFERENCE_TRANSFORM
+            or any(
+                fit.get(field) is not None
+                for field in (
+                    "route_code", "selected_engine_code", "effective_engine_code",
+                    "fallback_count", "effective_threads", "certificate_passed",
+                )
+            )
+        ):
+            issues.append(f"{arm}_route")
+    for repetition in range(1, repetitions + 1):
+        candidate = indexed.get((scope_id, implementation, "map", repetition))
+        default = indexed.get((scope_id, "reference", "ppmlhdfe", repetition))
+        if candidate is None or default is None:
+            issues.append(f"trigger_r{repetition}_missing")
+            continue
+        issues.extend(
+            _fit_binding_issues(
+                candidate_fit, candidate, controls, science,
+                f"candidate_map_r{repetition}",
+            )
+        )
+        issues.extend(
+            _fit_binding_issues(
+                fits["ppmlhdfe"], default, controls, science,
+                f"ppmlhdfe_r{repetition}",
+            )
+        )
+    issues.extend(
+        _fit_binding_issues(
+            fits[ADJUDICATOR], strict, controls, science, ADJUDICATOR,
+        )
+    )
+    if any(
+        fit.get("sample_n") != float(scope["n"])
+        or fit.get("converged") != 1.0
+        for fit in fits.values()
+    ):
+        issues.append("fit_sample_or_convergence")
+
+    for arm, row in metrics.items():
+        if (
+            row["finite_score_absinf"] < 0.0
+            or row["fe_score_absinf"] < 0.0
+            or row["score_relinf"] < 0.0
+            or row["score_rel2"] < 0.0
+            or row["score_scale"] <= 0.0
+            or row["min_mu"] <= 0.0
+            or row["max_mu"] < row["min_mu"]
+        ):
+            issues.append(f"{arm}_invalid_metric")
+    tolerance = float(policy["score_tolerance"])
+    candidate_metrics = metrics["map"]
+    if (
+        candidate_metrics["score_relinf"] > tolerance
+        or candidate_metrics["score_rel2"] > tolerance
+    ):
+        issues.append("candidate_score_certificate")
+    for arm in ("ppmlhdfe", ADJUDICATOR):
+        reference_metrics = metrics[arm]
+        if (
+            reference_metrics["score_relinf"] <= tolerance
+            and reference_metrics["score_rel2"] <= tolerance
+        ):
+            issues.append(f"{arm}_score_certificate_passed")
+    replay_rtol = float(policy["candidate_objective_replay_rtol"])
+    replay_atol = float(policy["candidate_objective_replay_atol"])
+    for metric, fit_field in (
+        ("recomputed_ll", "ll"), ("recomputed_deviance", "deviance"),
+    ):
+        if not _close(
+            candidate_metrics[metric], candidate_fit[fit_field],
+            replay_rtol, replay_atol,
+        ):
+            issues.append(f"candidate_{metric}_replay")
+    dominance_rtol = float(policy["objective_dominance_rtol"])
+    dominance_atol = float(policy["objective_dominance_atol"])
+    for arm in ("ppmlhdfe", ADJUDICATOR):
+        reference_metrics = metrics[arm]
+        ll_slack = dominance_atol + dominance_rtol * max(
+            abs(candidate_metrics["recomputed_ll"]),
+            abs(reference_metrics["recomputed_ll"]),
+        )
+        deviance_slack = dominance_atol + dominance_rtol * max(
+            abs(candidate_metrics["recomputed_deviance"]),
+            abs(reference_metrics["recomputed_deviance"]),
+        )
+        if candidate_metrics["recomputed_ll"] + ll_slack < reference_metrics["recomputed_ll"]:
+            issues.append(f"candidate_ll_worse_than_{arm}")
+        if (
+            candidate_metrics["recomputed_deviance"]
+            > reference_metrics["recomputed_deviance"] + deviance_slack
+        ):
+            issues.append(f"candidate_deviance_worse_than_{arm}")
+    return issues
+
+
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
     if document.get("schema_version") != 2 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
@@ -911,6 +1389,9 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         raise DevelopmentError("solver development analysis requires its pinned comparator")
     scopes = document["scopes"]
     records = document["records"]
+    public_state_evidence = document.get("public_state_adjudications")
+    if not isinstance(public_state_evidence, list):
+        raise DevelopmentError("run must contain a public-state adjudication inventory")
     datasets = document.get("datasets")
     if not isinstance(datasets, list) or len(datasets) != len(scopes):
         raise DevelopmentError("run must contain one dataset receipt per scope")
@@ -919,6 +1400,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         raise DevelopmentError("duplicate run scope")
     eligibility_by_scope: dict[str, dict[str, object]] = {}
     metadata_n_by_scope: dict[str, int] = {}
+    dataset_sha_by_scope: dict[str, str] = {}
+    dataset_id_by_scope: dict[str, str] = {}
     generated_scope_to_dataset: dict[str, str] = {}
     for dataset in datasets:
         if not isinstance(dataset, dict) or not isinstance(dataset.get("scope"), dict):
@@ -937,6 +1420,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         )
         if previous_dataset != dataset_id_value:
             raise DevelopmentError("one generator scope is bound to multiple datasets")
+        if not valid_content_receipt(dataset.get("dta")):
+            raise DevelopmentError("dataset DTA receipt is invalid")
         derived = solver_eligibility(
             dataset.get("metadata", {}), str(scope_by_id[scope_id]["topology"]), manifest,
         )
@@ -946,6 +1431,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             raise DevelopmentError("dataset solver eligibility differs from metadata")
         eligibility_by_scope[scope_id] = derived
         metadata_n_by_scope[scope_id] = int(dataset["metadata"]["N"])
+        dataset_sha_by_scope[scope_id] = str(dataset.get("dta", {}).get("sha256", ""))
+        dataset_id_by_scope[scope_id] = dataset_id_value
     indexed: dict[tuple[str, str, str, int], Mapping[str, object]] = {}
     adjudicators: dict[str, Mapping[str, object]] = {}
     oracle: dict[str, Mapping[str, object]] = {}
@@ -953,6 +1440,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     route_failures: list[str] = []
     reference_adjudications: list[dict[str, object]] = []
     used_adjudicators: set[str] = set()
+    public_state_by_key: dict[tuple[str, str], Mapping[str, object]] = {}
+    used_public_state: set[tuple[str, str]] = set()
     dof_convention_notes: set[str] = set()
     for row in records:
         if row["arm_type"] == "oracle":
@@ -1026,6 +1515,61 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         if key in indexed:
             failures.append(":".join(map(str, key)) + ":duplicate")
         indexed[key] = row
+    metric_fields = {
+        "finite_score_absinf", "fe_score_absinf", "score_relinf", "score_rel2",
+        "score_scale", "recomputed_ll", "recomputed_deviance", "min_mu", "max_mu",
+    }
+    for evidence in public_state_evidence:
+        scope_id = str(evidence.get("scope_id"))
+        implementation = str(evidence.get("implementation"))
+        key = (scope_id, implementation)
+        fits = evidence.get("fits")
+        states = evidence.get("states")
+        metrics = evidence.get("metrics")
+        if (
+            scope_id not in scope_by_id
+            or implementation not in implementations
+            or evidence.get("method") != KKT_ADJUDICATOR
+            or not _row_matches_scope(evidence, scope_by_id.get(scope_id, {}))
+            or key in public_state_by_key
+            or not isinstance(fits, dict)
+            or set(fits) != {"map", "ppmlhdfe", ADJUDICATOR}
+            or not isinstance(states, dict)
+            or set(states) != {"map", "ppmlhdfe", ADJUDICATOR}
+            or not all(valid_file_receipt(receipt) for receipt in states.values())
+            or not valid_file_receipt(evidence.get("audit_result"))
+            or not isinstance(metrics, dict)
+            or set(metrics) != {"map", "ppmlhdfe", ADJUDICATOR}
+            or any(
+                not isinstance(row, dict)
+                or set(row) != metric_fields
+                or any(
+                    isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(float(value))
+                    for value in row.values()
+                )
+                for row in metrics.values()
+            )
+        ):
+            failures.append(f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:unexpected")
+            continue
+        expected_fit_identity = {
+            "map": implementation,
+            "ppmlhdfe": "reference",
+            ADJUDICATOR: "reference",
+        }
+        if any(
+            not isinstance(fit, dict)
+            or fit.get("scope_id") != scope_id
+            or fit.get("implementation") != expected_fit_identity[arm]
+            or fit.get("arm") != arm
+            or not _row_matches_scope(fit, scope_by_id[scope_id])
+            for arm, fit in fits.items()
+        ):
+            failures.append(f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:fit_identity")
+            continue
+        public_state_by_key[key] = evidence
+
     expected_runs = {
         (scope_id, implementation, solver)
         for scope_id, eligibility in eligibility_by_scope.items()
@@ -1039,6 +1583,8 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
     observed_runs: set[tuple[str, str, str]] = set()
     observed_generators: set[str] = set()
     observed_adjudicators: set[str] = set()
+    observed_public_fits: dict[tuple[str, str, str], Mapping[str, object]] = {}
+    observed_public_audits: dict[tuple[str, str], Mapping[str, object]] = {}
     prepare_reference_processes = 0
     processes = document.get("processes", [])
     if not isinstance(processes, list):
@@ -1078,6 +1624,64 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 failures.append(f"{process_scope}:adjudicator:{process_arm}:duplicate_process")
             else:
                 observed_adjudicators.add(process_scope)
+        elif stage == "public-state-fit":
+            fit_key = (process_scope, process_implementation, process_arm)
+            valid_pair = (
+                process_implementation in implementations and process_arm == "map"
+            ) or (
+                process_implementation == "reference"
+                and process_arm in {"ppmlhdfe", ADJUDICATOR}
+            )
+            expected_source = canonical_sha256(
+                document["references"]
+                if process_implementation == "reference"
+                else document["sources"].get(process_implementation, {})
+            )
+            expected_artifact = (
+                None if process_implementation == "reference"
+                else document["artifacts"].get(process_implementation, {}).get("sha256")
+            )
+            if (
+                process_scope not in scope_by_id
+                or not valid_pair
+                or process.get("dataset_id") != dataset_id_by_scope.get(process_scope)
+                or process.get("dataset_sha256") != dataset_sha_by_scope.get(process_scope)
+                or process.get("source_sha256") != expected_source
+                or process.get("artifact_sha256") != expected_artifact
+                or not valid_file_receipt(process.get("state"))
+                or not valid_file_receipt(process.get("result"))
+                or not isinstance(process.get("parsed_result_sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", process["parsed_result_sha256"])
+                or fit_key in observed_public_fits
+            ):
+                failures.append(":".join(fit_key) + ":unexpected_process")
+            else:
+                observed_public_fits[fit_key] = process
+        elif stage == "public-state-audit":
+            audit_key = (process_scope, process_implementation)
+            inputs = process.get("inputs")
+            if (
+                process_scope not in scope_by_id
+                or process_implementation not in implementations
+                or process_arm != KKT_ADJUDICATOR
+                or process.get("dataset_id") != dataset_id_by_scope.get(process_scope)
+                or process.get("dataset_sha256") != dataset_sha_by_scope.get(process_scope)
+                or process.get("source_sha256") != canonical_sha256(
+                    document["sources"].get(process_implementation, {})
+                )
+                or process.get("artifact_sha256")
+                != document["artifacts"].get(process_implementation, {}).get("sha256")
+                or not isinstance(inputs, dict)
+                or set(inputs) != {"map", "ppmlhdfe", ADJUDICATOR}
+                or not all(valid_file_receipt(receipt) for receipt in inputs.values())
+                or not valid_file_receipt(process.get("result"))
+                or not isinstance(process.get("parsed_result_sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", process["parsed_result_sha256"])
+                or audit_key in observed_public_audits
+            ):
+                failures.append(":".join(audit_key) + ":unexpected_kkt_process")
+            else:
+                observed_public_audits[audit_key] = process
         elif stage == "generate":
             if (
                 process_scope not in generated_scope_to_dataset
@@ -1108,9 +1712,52 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
         failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:missing_process")
     for scope_id in sorted(observed_adjudicators - set(adjudicators)):
         failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:missing_record")
+    expected_public_audits = set(public_state_by_key)
+    expected_public_fits = {
+        (scope_id, implementation, "map")
+        for scope_id, implementation in expected_public_audits
+    }
+    expected_public_fits.update(
+        (scope_id, "reference", arm)
+        for scope_id in {key[0] for key in expected_public_audits}
+        for arm in ("ppmlhdfe", ADJUDICATOR)
+    )
+    for key in sorted(expected_public_fits - set(observed_public_fits)):
+        failures.append(":".join(key) + ":missing_public_state_fit_process")
+    for key in sorted(set(observed_public_fits) - expected_public_fits):
+        failures.append(":".join(key) + ":unneeded_public_state_fit_process")
+    for key in sorted(expected_public_audits - set(observed_public_audits)):
+        failures.append(":".join(key) + ":missing_public_state_audit_process")
+    for key in sorted(set(observed_public_audits) - expected_public_audits):
+        failures.append(":".join(key) + ":unneeded_public_state_audit_process")
+    for key, evidence in public_state_by_key.items():
+        audit = observed_public_audits.get(key)
+        if audit is None:
+            continue
+        scope_id, implementation = key
+        fit_processes = {
+            "map": observed_public_fits.get((scope_id, implementation, "map")),
+            "ppmlhdfe": observed_public_fits.get((scope_id, "reference", "ppmlhdfe")),
+            ADJUDICATOR: observed_public_fits.get((scope_id, "reference", ADJUDICATOR)),
+        }
+        if (
+            audit.get("inputs") != evidence["states"]
+            or audit.get("result") != evidence["audit_result"]
+            or audit.get("parsed_result_sha256")
+            != parsed_file_binding(evidence["audit_result"], evidence["metrics"])
+            or any(
+                process is None
+                or process.get("state") != evidence["states"][arm]
+                or process.get("parsed_result_sha256")
+                != parsed_file_binding(process["result"], evidence["fits"][arm])
+                for arm, process in fit_processes.items()
+            )
+        ):
+            failures.append(f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:process_binding")
     if prepare_reference_processes > 1:
         failures.append("prepare-reference:duplicate_process")
     science = manifest["science"]
+    kkt_policy = manifest["scientific_adjudication"]["public_state_kkt"]
     summaries: list[dict[str, object]] = []
     solver_exclusions: list[dict[str, object]] = []
     for scope in scopes:
@@ -1199,6 +1846,37 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         dof_convention_notes,
                     )
                     if strict_issues:
+                        public_state_key = (scope_id, implementation)
+                        evidence = public_state_by_key.get(public_state_key)
+                        if (
+                            default_issues == ["ppmlhdfe_coefficients"]
+                            and strict_issues == ["strict_ppmlhdfe_coefficients"]
+                            and evidence is not None
+                        ):
+                            kkt_issues = _public_state_kkt_issues(
+                                evidence, indexed, strict_reference, scope,
+                                implementation, repetitions, science, kkt_policy,
+                            )
+                            if not kkt_issues:
+                                used_public_state.add(public_state_key)
+                                reference_adjudications.append({
+                                    "scope_id": scope_id,
+                                    "implementation": implementation,
+                                    "solver": solver,
+                                    "repetition": repetition,
+                                    "default_reference": "ppmlhdfe",
+                                    "default_science_mismatches": default_issues,
+                                    "strict_reference": ADJUDICATOR,
+                                    "strict_science_mismatches": strict_issues,
+                                    "adjudicator": KKT_ADJUDICATOR,
+                                    "timed": False,
+                                    "score_tolerance": float(kkt_policy["score_tolerance"]),
+                                })
+                                continue
+                            failures.extend(
+                                prefix + ":public_state_kkt_" + issue
+                                for issue in kkt_issues
+                            )
                         failures.extend(prefix + ":" + issue for issue in default_issues)
                         failures.extend(prefix + ":" + issue for issue in strict_issues)
                         continue
@@ -1270,6 +1948,10 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 })
     for scope_id in sorted(set(adjudicators) - used_adjudicators):
         failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:not_required")
+    for scope_id, implementation in sorted(set(public_state_by_key) - used_public_state):
+        failures.append(
+            f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:not_required_or_failed"
+        )
     return {
         "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
@@ -1487,6 +2169,10 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
         "task_receipts": [str(run_root / f"receipts/task-{task_id:02d}.json") for task_id in range(1, 17)],
         "scopes": scopes, "datasets": [row for document in documents for row in document["datasets"]],
         "records": [row for document in documents for row in document["records"]],
+        "public_state_adjudications": [
+            row for document in documents
+            for row in document["public_state_adjudications"]
+        ],
         "processes": [row for document in documents for row in document["processes"]],
     }
     run_path = run_root / "output/merged-run.json"

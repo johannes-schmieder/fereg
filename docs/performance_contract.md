@@ -79,7 +79,12 @@ profiles. The default comparator alone is timed. A strict, untimed fit from
 the same pinned comparator closure may adjudicate a candidate-versus-default
 stopping discrepancy, but only after such a discrepancy is observed; both
 reference paths must verify conjugate-gradient acceleration with the symmetric-
-Kaczmarz transform, and the default discrepancy remains recorded. Thread-
+Kaczmarz transform, and the default discrepancy remains recorded. When both
+reference fits still have a coefficient-only mismatch, a final untimed audit
+may adjudicate it only by an independent absolute public-state score and
+objective check: MAP must meet the public score tolerance, both reference
+states must fail it, and MAP's replayed objective must be internally consistent
+and no worse. Every other scientific mismatch fails closed. Thread-
 scaling scopes within one campaign bundle reuse one generated dataset and
 seed. The development runner derives solver eligibility from that generated
 dataset's level-count metadata. In particular, it times public CMG only for

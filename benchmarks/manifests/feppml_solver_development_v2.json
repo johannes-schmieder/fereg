@@ -10,7 +10,7 @@
     "request_wire": "1.5",
     "result_wire": "1.2",
     "action_protocol": "1.5",
-    "development_result_table": "2.3"
+    "development_result_table": "2.4"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
@@ -31,15 +31,31 @@
   "comparators": [
     {"id": "ppmlhdfe", "timed": true, "acceleration": "conjugate_gradient", "transform": "symmetric_kaczmarz"}
   ],
-  "scientific_adjudicator": {
-    "id": "ppmlhdfe_strict",
-    "timed": false,
-    "invoke_only_after_default_reference_mismatch": true,
-    "tolerance": 1e-10,
-    "itolerance": 1e-12,
-    "acceleration": "conjugate_gradient",
-    "transform": "symmetric_kaczmarz",
-    "preserve_default_mismatch": true
+  "scientific_adjudication": {
+    "strict_reference": {
+      "id": "ppmlhdfe_strict",
+      "timed": false,
+      "invoke_only_after_default_reference_mismatch": true,
+      "tolerance": 1e-10,
+      "itolerance": 1e-12,
+      "acceleration": "conjugate_gradient",
+      "transform": "symmetric_kaczmarz",
+      "preserve_default_mismatch": true
+    },
+    "public_state_kkt": {
+      "id": "independent_public_state_kkt_v1",
+      "timed": false,
+      "invoke_only_after_default_and_strict_coefficient_mismatch": true,
+      "candidate_solver": "map",
+      "reference_arms": ["ppmlhdfe", "ppmlhdfe_strict"],
+      "score_tolerance": 1e-8,
+      "candidate_objective_replay_rtol": 1e-8,
+      "candidate_objective_replay_atol": 1e-10,
+      "objective_dominance_rtol": 1e-8,
+      "objective_dominance_atol": 1e-10,
+      "both_reference_states_must_fail_score_tolerance": true,
+      "preserve_default_and_strict_mismatches": true
+    }
   },
   "fixed_policy": {
     "memory": "fast",
