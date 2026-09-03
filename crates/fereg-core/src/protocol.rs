@@ -32,10 +32,12 @@ pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
 /// Version of the PPML-specific request layout, independent of the action,
 /// model, OLS-result, and PPML-result wires.
-/// Minor 4 adds the doubly gated fused-CMG development mode field.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
+/// Minor 5 replaces the private solver-development cross-product with the
+/// single public `solver(auto|map|lsmr|cmg)` family field.
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
 /// Version of the separately versioned PPML shadow-result layout.
-pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1);
+/// Minor 2 adds the fixed-shape public PPML solver report.
+pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2);
 
 /// Exact integer magic stored in the first column of every PPML result receipt.
 ///
@@ -43,11 +45,11 @@ pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 1)
 /// exactly representable in a Stata/Rust double, so native validation never
 /// depends on floating-point tolerance.
 pub const PPML_RESULT_MAGIC: f64 = 5_354_602.0;
-/// Fixed row counts in the mandatory PPML 1.1 evidence matrices.
+/// Fixed row counts in the mandatory PPML 1.2 evidence matrices.
 pub const PPML_RESULT_INFERENCE_ROWS: usize = 16;
 pub const PPML_RESULT_DROP_COUNT_ROWS: usize = 14;
 pub const PPML_RESULT_SEPARATION_SEQUENCE_ROWS: usize = 5;
-/// Number of columns in the PPML 1.1 result receipt.
+/// Number of columns in the PPML 1.2 result receipt.
 pub const PPML_RESULT_RECEIPT_COLUMNS: usize = 33;
 /// One-based column containing the receipt-last transaction sentinel.
 pub const PPML_RESULT_RECEIPT_COMPLETE_COLUMN: usize = PPML_RESULT_RECEIPT_COLUMNS;
@@ -57,7 +59,7 @@ pub const PPML_RESULT_RECEIPT_COMPLETE_VALUE: f64 = 1.0;
 
 const MAX_EXACT_F64_INTEGER: u128 = 9_007_199_254_740_992;
 
-/// One-based PPML result-receipt columns for wire version 1.1.
+/// One-based PPML result-receipt columns for wire version 1.2.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
 pub enum PpmlResultReceiptFieldV1 {
@@ -602,8 +604,8 @@ mod tests {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 5));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 4));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 4));
-        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 1));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 5));
+        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 2));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
         assert_ne!(OLS_RESULT_WIRE_VERSION, PPML_RESULT_WIRE_VERSION);
     }

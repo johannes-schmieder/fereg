@@ -17,10 +17,9 @@ use crate::ppml_result::{
     PpmlRuntimeFinalObservation, PpmlShadowResult, CERTIFICATE_ROWS, CLUSTER_COLUMNS,
     COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, DROP_COUNT_COLUMNS, DROP_COUNT_ROWS, FE_COLUMNS,
     FIT_ROWS, INFERENCE_ROWS, RUNTIME_ROWS, SEPARATION_COLUMNS, SEPARATION_SEQUENCE_COLUMNS,
-    SEPARATION_SEQUENCE_ROWS, SUBSET_COLUMNS,
+    SEPARATION_SEQUENCE_ROWS, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::fe::{FeSolverKind, LsmrPreconditioner};
 use fereg_core::metadata::{
     AbsorbedTerm, CompiledTermGraph, ExpandedTerm, MetadataFlag, ModelWireV2, SourceEntry,
     SourceId, TermComponent, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
@@ -33,10 +32,9 @@ use fereg_core::ols::{
 #[cfg(test)]
 use fereg_core::ppml::fit_prepared_ppml;
 use fereg_core::ppml::{
-    fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlCmgDevelopmentMode, PpmlConfig,
-    PpmlDevelopmentSolverRequest, PpmlFixedEffectChannelKind, PpmlInterruptPoint,
-    PpmlLsmrDevelopmentMode, PpmlLsmrDevelopmentPolicy, PpmlMemoryConfig, PpmlPhase,
-    PpmlPhaseAllocatorEvent, PpmlPhaseAllocatorProbe, PpmlResidualKind, PpmlVceRequest,
+    fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlConfig, PpmlFixedEffectChannelKind,
+    PpmlInterruptPoint, PpmlMemoryConfig, PpmlPhase, PpmlPhaseAllocatorEvent,
+    PpmlPhaseAllocatorProbe, PpmlResidualKind, PpmlSolverFamily, PpmlVceRequest,
     PreparedPpmlAdjustmentKind, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
 };
 use fereg_core::ppml_separation::{SeparationConfig, SeparationMethods};
@@ -52,7 +50,7 @@ const CONFIRMATION: &str = "feppml-estimation";
 const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
-const MAX_PPML_PROTOCOL_FIELDS: usize = 89;
+const MAX_PPML_PROTOCOL_FIELDS: usize = 83;
 const NATIVE_BREAK_MARKER: &str = "FEPPML_NATIVE_BREAK_ARMED\n";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -116,6 +114,7 @@ struct ResultMatrices {
     drop_counts: String,
     separation_sequence: String,
     certificates: String,
+    solver: String,
     runtime: String,
     receipt: String,
 }
@@ -135,6 +134,7 @@ struct PreparedResultMatrices {
     drop_counts: PreparedMatrixStoreName,
     separation_sequence: PreparedMatrixStoreName,
     certificates: PreparedMatrixStoreName,
+    solver: PreparedMatrixStoreName,
     runtime: PreparedMatrixStoreName,
     receipt: PreparedMatrixStoreName,
 }
@@ -212,7 +212,7 @@ struct EstimatePpmlAction {
     config: PpmlConfig,
     linear: PreparedOlsFitConfig,
     memory: PpmlMemoryConfig,
-    development_solver: Option<PpmlDevelopmentSolverRequest>,
+    solver: PpmlSolverFamily,
     separation: SeparationConfig,
     requested_observation_columns: usize,
     publication_matrix_cells: usize,
@@ -263,14 +263,7 @@ struct EstimatePpmlSpec {
     threads: usize,
     deterministic: bool,
     allocation_audit: bool,
-    finite_solver: String,
-    fe_solver: String,
-    fe_preconditioner: String,
-    fe_lsmr_mode: String,
-    fe_lsmr_policy: String,
-    fe_cmg_mode: String,
-    solver_trace: bool,
-    solver_experiment: bool,
+    solver: String,
     tolerance: f64,
     iterate: usize,
     separation: String,
@@ -331,7 +324,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             requested_observation_columns: action.requested_observation_columns,
             publication_matrix_cells: action.publication_matrix_cells,
         },
-        development_solver: action.development_solver,
+        solver: action.solver,
         inject_fe_recovery_allocation_failure: action.injection
             == PpmlDeveloperInjection::Allocation,
     };
@@ -539,14 +532,7 @@ impl EstimatePpmlSpec {
                 .map(|_| parse_bool(&values, "allocation_audit"))
                 .transpose()?
                 .unwrap_or(false),
-            finite_solver: required(&values, "finite_solver")?.to_ascii_lowercase(),
-            fe_solver: required(&values, "fe_solver")?.to_ascii_lowercase(),
-            fe_preconditioner: required(&values, "fe_preconditioner")?.to_ascii_lowercase(),
-            fe_lsmr_mode: required(&values, "fe_lsmr_mode")?.to_ascii_lowercase(),
-            fe_lsmr_policy: required(&values, "fe_lsmr_policy")?.to_ascii_lowercase(),
-            fe_cmg_mode: required(&values, "fe_cmg_mode")?.to_ascii_lowercase(),
-            solver_trace: parse_bool(&values, "solver_trace")?,
-            solver_experiment: parse_bool(&values, "solver_experiment")?,
+            solver: required(&values, "solver")?.to_ascii_lowercase(),
             tolerance: parse_positive_f64(&values, "tolerance")?,
             iterate: parse_positive_usize(&values, "iterate")?,
             separation: required(&values, "separation")?.to_ascii_lowercase(),
@@ -582,6 +568,7 @@ impl EstimatePpmlSpec {
                 separation_sequence: required(&values, "output_separation_sequence_matrix")?
                     .to_owned(),
                 certificates: required(&values, "output_certificate_matrix")?.to_owned(),
+                solver: required(&values, "output_solver_matrix")?.to_owned(),
                 runtime: required(&values, "output_runtime_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
@@ -655,14 +642,7 @@ impl EstimatePpmlSpec {
             "threads",
             "deterministic",
             "allocation_audit",
-            "finite_solver",
-            "fe_solver",
-            "fe_preconditioner",
-            "fe_lsmr_mode",
-            "fe_lsmr_policy",
-            "fe_cmg_mode",
-            "solver_trace",
-            "solver_experiment",
+            "solver",
             "tolerance",
             "iterate",
             "separation",
@@ -692,6 +672,7 @@ impl EstimatePpmlSpec {
             "output_drop_counts_matrix",
             "output_separation_sequence_matrix",
             "output_certificate_matrix",
+            "output_solver_matrix",
             "output_runtime_matrix",
             "output_receipt_matrix",
             "inject",
@@ -863,13 +844,8 @@ impl EstimatePpmlSpec {
             clustered.validate_ppml_and_compile()?;
             (clustered.ols, clustered.clusters)
         };
-        if self.finite_solver != "auto" {
-            return Err(unsupported(
-                "prepared PPML currently requires finite_solver=auto",
-            ));
-        }
         let config = PpmlConfig::with_outer_controls(self.tolerance, self.iterate)?;
-        let development_solver = self.decode_development_solver()?;
+        let solver = self.decode_solver()?;
         let threads = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let execution_mode = match self.memory {
             MemoryMode::Low => PreparedOlsExecutionMode::Low,
@@ -931,7 +907,7 @@ impl EstimatePpmlSpec {
             config,
             linear,
             memory,
-            development_solver,
+            solver,
             separation,
             requested_observation_columns,
             publication_matrix_cells,
@@ -943,107 +919,16 @@ impl EstimatePpmlSpec {
         })
     }
 
-    fn decode_development_solver(&self) -> Result<Option<PpmlDevelopmentSolverRequest>> {
-        let solver = match self.fe_solver.as_str() {
-            "auto" => None,
-            "map" => Some(FeSolverKind::Map),
-            "cg" => Some(FeSolverKind::Cg),
-            "lsmr" => Some(FeSolverKind::Lsmr),
-            "cmg" => Some(FeSolverKind::Cmg),
-            other => return Err(syntax(format!("unknown private PPML FE solver {other:?}"))),
-        };
-        let explicit_preconditioner = match self.fe_preconditioner.as_str() {
-            "none" => None,
-            "schwarz" if solver == Some(FeSolverKind::Lsmr) => Some(LsmrPreconditioner::Schwarz),
-            "schwarz" => {
-                return Err(syntax(
-                    "private PPML Schwarz preconditioning requires fe_solver=lsmr",
-                ));
-            }
-            other => {
-                return Err(syntax(format!(
-                    "unknown private PPML FE preconditioner {other:?}"
-                )));
-            }
-        };
-        let lsmr_mode = match self.fe_lsmr_mode.as_str() {
-            "none" => None,
-            "legacy" => Some(PpmlLsmrDevelopmentMode::Legacy),
-            "fused" => Some(PpmlLsmrDevelopmentMode::FusedFwl),
-            "joint" => Some(PpmlLsmrDevelopmentMode::JointIncremental),
-            other => {
-                return Err(syntax(format!("unknown private PPML LSMR mode {other:?}")));
-            }
-        };
-        let lsmr_policy = match self.fe_lsmr_policy.as_str() {
-            "none" => None,
-            "diagonal" => Some(PpmlLsmrDevelopmentPolicy::Diagonal),
-            "reuse" => Some(PpmlLsmrDevelopmentPolicy::Reuse),
-            "rebuild" => Some(PpmlLsmrDevelopmentPolicy::Rebuild),
-            other => {
-                return Err(syntax(format!(
-                    "unknown private PPML LSMR policy {other:?}"
-                )));
-            }
-        };
-        let cmg_mode = match self.fe_cmg_mode.as_str() {
-            "none" => None,
-            "fused" => Some(PpmlCmgDevelopmentMode::FusedFwl),
-            other => {
-                return Err(syntax(format!("unknown private PPML CMG mode {other:?}")));
-            }
-        };
-        match (lsmr_mode, lsmr_policy) {
-            (None, None) => {}
-            (Some(_), None) | (None, Some(_)) => {
-                return Err(syntax(
-                    "private PPML LSMR mode and policy must be specified together",
-                ));
-            }
-            (Some(_), Some(_)) if solver != Some(FeSolverKind::Lsmr) => {
-                return Err(syntax(
-                    "private PPML LSMR mode and policy require fesolver(lsmr)",
-                ));
-            }
-            (Some(PpmlLsmrDevelopmentMode::Legacy), Some(PpmlLsmrDevelopmentPolicy::Reuse)) => {
-                return Err(syntax(
-                    "private PPML legacy LSMR cannot reuse Schwarz state across frames",
-                ));
-            }
-            (Some(_), Some(_)) if explicit_preconditioner.is_some() => {
-                return Err(syntax(
-                    "private PPML LSMR policy cannot be combined with fepreconditioner()",
-                ));
-            }
-            (Some(_), Some(_)) => {}
+    fn decode_solver(&self) -> Result<PpmlSolverFamily> {
+        match self.solver.as_str() {
+            "auto" => Ok(PpmlSolverFamily::Auto),
+            "map" => Ok(PpmlSolverFamily::Map),
+            "lsmr" => Ok(PpmlSolverFamily::Lsmr),
+            "cmg" => Ok(PpmlSolverFamily::Cmg),
+            other => Err(syntax(format!(
+                "solver() must be one of auto, map, lsmr, or cmg; received {other:?}"
+            ))),
         }
-        if cmg_mode.is_some() && solver != Some(FeSolverKind::Cmg) {
-            return Err(syntax("private PPML CMG mode requires fesolver(cmg)"));
-        }
-        let preconditioner = match lsmr_policy {
-            Some(PpmlLsmrDevelopmentPolicy::Diagonal) => Some(LsmrPreconditioner::Diagonal),
-            Some(PpmlLsmrDevelopmentPolicy::Reuse | PpmlLsmrDevelopmentPolicy::Rebuild) => {
-                Some(LsmrPreconditioner::Schwarz)
-            }
-            None => explicit_preconditioner,
-        };
-        if solver.is_none() && !self.solver_trace {
-            if self.solver_experiment {
-                return Err(syntax(
-                    "solver_experiment cannot be enabled without a private PPML solver or trace",
-                ));
-            }
-            return Ok(None);
-        }
-        Ok(Some(PpmlDevelopmentSolverRequest {
-            solver: solver.unwrap_or(FeSolverKind::Map),
-            preconditioner,
-            lsmr_mode,
-            lsmr_policy,
-            cmg_mode,
-            trace: self.solver_trace,
-            adapter_authorized: self.solver_experiment,
-        }))
     }
 }
 
@@ -1235,6 +1120,7 @@ fn validate_shadow(
         || shadow.separation_sequence.len()
             != SEPARATION_SEQUENCE_ROWS.saturating_mul(SEPARATION_SEQUENCE_COLUMNS)
         || shadow.certificates.len() != CERTIFICATE_ROWS
+        || shadow.solver.len() != SOLVER_ROWS.saturating_mul(SOLVER_COLUMNS)
         || shadow.runtime.len() != RUNTIME_ROWS
         || shadow.drop_reasons.len() != shadow.receipt[6] as usize
         || shadow.retained_original_rows.len() != shadow.receipt[8] as usize
@@ -1291,6 +1177,8 @@ fn validate_shadow(
         || action.matrices.separation_sequence.columns() != SEPARATION_SEQUENCE_COLUMNS
         || action.matrices.certificates.rows() != CERTIFICATE_ROWS
         || action.matrices.certificates.columns() != 1
+        || action.matrices.solver.rows() != SOLVER_ROWS
+        || action.matrices.solver.columns() != SOLVER_COLUMNS
         || action.matrices.runtime.rows() != RUNTIME_ROWS
         || action.matrices.runtime.columns() != 1
         || action.matrices.receipt.rows() != 1
@@ -1301,6 +1189,7 @@ fn validate_shadow(
         ));
     }
     validate_result_request_identity(action, shadow)?;
+    validate_solver_evidence(action, shadow)?;
     validate_bounded_evidence(action, shadow)?;
     if shadow.receipt.iter().any(|value| !value.is_finite())
         || shadow.receipt[0] != fereg_core::PPML_RESULT_MAGIC
@@ -1424,6 +1313,80 @@ fn validate_shadow(
         return Err(invalid(
             "PPML result receipt must be incomplete before publication",
         ));
+    }
+    Ok(())
+}
+
+fn validate_solver_evidence(
+    action: &EstimatePpmlAction,
+    shadow: &PpmlShadowResult<'_>,
+) -> Result<()> {
+    let expected_requested = f64::from(action.solver.code());
+    let expected_selected = f64::from(match action.solver {
+        PpmlSolverFamily::Auto => PpmlSolverFamily::Map,
+        solver => solver,
+    }
+    .code());
+    let selected_engine = shadow.solver[2];
+    let fallback_reason = shadow.solver[11];
+    let mut fallback_count = 0_usize;
+    for row in 0..SOLVER_ROWS {
+        let start = row * SOLVER_COLUMNS;
+        if shadow.solver[start] != expected_requested
+            || shadow.solver[start + 1] != expected_selected
+            || shadow.solver[start + 2] != selected_engine
+            || shadow.solver[start + 3] != shadow.solver[3]
+            || shadow.solver[start + 4] != shadow.solver[4]
+            || shadow.solver[start + 5] != f64::from(PpmlSolverFamily::Map.code())
+            || shadow.solver[start + 6] != (row + 1) as f64
+            || shadow.solver[start + 11] != fallback_reason
+        {
+            return Err(internal("PPML solver evidence has inconsistent row identity"));
+        }
+        for column in [7_usize, 8, 9, 10, 12] {
+            exact_shadow_count(shadow.solver[start + column], "PPML solver counter")?;
+        }
+        fallback_count = fallback_count
+            .checked_add(exact_shadow_count(
+                shadow.solver[start + 10],
+                "PPML solver fallback count",
+            )?)
+            .ok_or_else(|| internal("PPML solver fallback total overflows"))?;
+        if shadow.solver[start + 13..start + 16]
+            .iter()
+            .any(|value| !crate::ppml_result::is_stata_publishable(*value) || *value < 0.0)
+            || shadow.solver[start + 16..start + SOLVER_COLUMNS]
+                .iter()
+                .any(|value| crate::ppml_result::is_stata_publishable(*value) && *value < 0.0)
+        {
+            return Err(internal("PPML solver evidence contains an invalid metric"));
+        }
+    }
+    let selected_engine_valid = if expected_selected == 2.0 {
+        selected_engine == 1.0
+    } else if expected_selected == 3.0 {
+        selected_engine == 2.0 || selected_engine == 3.0
+    } else if expected_selected == 7.0 {
+        selected_engine == 4.0
+    } else {
+        false
+    };
+    let no_fallback = fallback_reason == 0.0
+        && fallback_count == 0
+        && shadow.solver[3] == expected_selected
+        && shadow.solver[4] == selected_engine;
+    let cmg_fallback = fallback_reason == 1.0
+        && fallback_count > 0
+        && expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
+        && selected_engine == 4.0
+        && shadow.solver[3] == f64::from(PpmlSolverFamily::Map.code())
+        && shadow.solver[4] == 1.0
+        && exact_shadow_count(
+            shadow.solver[3 * SOLVER_COLUMNS + 10],
+            "PPML CMG fallback count",
+        )? == fallback_count;
+    if !selected_engine_valid || !(no_fallback || cmg_fallback) {
+        return Err(internal("PPML solver evidence is inconsistent with the request"));
     }
     Ok(())
 }
@@ -2032,6 +1995,13 @@ fn store_shadow_prefix(
         1,
         &shadow.certificates,
     )?;
+    store_matrix(
+        spi,
+        &action.matrices.solver,
+        SOLVER_ROWS,
+        SOLVER_COLUMNS,
+        &shadow.solver,
+    )?;
     for column in 1..PPML_RESULT_RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,
@@ -2350,6 +2320,7 @@ fn validate_matrix_layout(
             SEPARATION_SEQUENCE_COLUMNS,
         ),
         (&matrices.certificates, CERTIFICATE_ROWS, 1),
+        (&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS),
         (&matrices.runtime, RUNTIME_ROWS, 1),
         (&matrices.receipt, 1, PPML_RESULT_RECEIPT_COLUMNS),
     ];
@@ -2423,6 +2394,11 @@ fn validate_matrix_layout(
             CERTIFICATE_ROWS,
             1,
         )?,
+        solver: PreparedMatrixStoreName::try_new(
+            &matrices.solver,
+            SOLVER_ROWS,
+            SOLVER_COLUMNS,
+        )?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 1)?,
         receipt: PreparedMatrixStoreName::try_new(
             &matrices.receipt,
@@ -2432,7 +2408,7 @@ fn validate_matrix_layout(
     })
 }
 
-fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixStoreName; 15] {
+fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixStoreName; 16] {
     [
         &matrices.b,
         &matrices.covariance,
@@ -2447,6 +2423,7 @@ fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixS
         &matrices.drop_counts,
         &matrices.separation_sequence,
         &matrices.certificates,
+        &matrices.solver,
         &matrices.runtime,
         &matrices.receipt,
     ]
@@ -3027,6 +3004,10 @@ mod tests {
                 zero_matrix(SEPARATION_SEQUENCE_ROWS, SEPARATION_SEQUENCE_COLUMNS),
             ),
             ("RCERT".to_owned(), zero_matrix(CERTIFICATE_ROWS, 1)),
+            (
+                "RSOLVER".to_owned(),
+                zero_matrix(SOLVER_ROWS, SOLVER_COLUMNS),
+            ),
             ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 1)),
             (
                 "RREC".to_owned(),
@@ -3099,14 +3080,7 @@ mod tests {
             "poolsize=10".to_owned(),
             "threads=0".to_owned(),
             "deterministic=0".to_owned(),
-            "finite_solver=auto".to_owned(),
-            "fe_solver=auto".to_owned(),
-            "fe_preconditioner=none".to_owned(),
-            "fe_lsmr_mode=none".to_owned(),
-            "fe_lsmr_policy=none".to_owned(),
-            "fe_cmg_mode=none".to_owned(),
-            "solver_trace=0".to_owned(),
-            "solver_experiment=0".to_owned(),
+            "solver=auto".to_owned(),
             "tolerance=1e-8".to_owned(),
             "iterate=10000".to_owned(),
             "separation=default".to_owned(),
@@ -3136,6 +3110,7 @@ mod tests {
             "output_drop_counts_matrix=RDROP".to_owned(),
             "output_separation_sequence_matrix=RSEQ".to_owned(),
             "output_certificate_matrix=RCERT".to_owned(),
+            "output_solver_matrix=RSOLVER".to_owned(),
             "output_runtime_matrix=RRUNTIME".to_owned(),
             "output_receipt_matrix=RREC".to_owned(),
         ];
@@ -3682,75 +3657,35 @@ mod tests {
     }
 
     #[test]
-    fn private_lsmr_mode_and_policy_decode_to_typed_development_state() {
-        let (mut args, _spi) = fixture();
-        replace_argument(&mut args, "fe_solver", "fe_solver=lsmr".to_owned());
-        replace_argument(&mut args, "fe_lsmr_mode", "fe_lsmr_mode=joint".to_owned());
-        replace_argument(
-            &mut args,
-            "fe_lsmr_policy",
-            "fe_lsmr_policy=reuse".to_owned(),
-        );
-        replace_argument(
-            &mut args,
-            "solver_experiment",
-            "solver_experiment=1".to_owned(),
-        );
-        let specification = EstimatePpmlSpec::parse(&args).expect("typed LSMR specification");
-        let development = specification
-            .decode_development_solver()
-            .expect("valid typed LSMR request")
-            .expect("development request");
-        assert_eq!(development.solver, FeSolverKind::Lsmr);
-        assert_eq!(
-            development.preconditioner,
-            Some(LsmrPreconditioner::Schwarz)
-        );
-        assert_eq!(
-            development.lsmr_mode,
-            Some(PpmlLsmrDevelopmentMode::JointIncremental),
-        );
-        assert_eq!(
-            development.lsmr_policy,
-            Some(PpmlLsmrDevelopmentPolicy::Reuse),
-        );
-
-        replace_argument(
-            &mut args,
-            "fe_lsmr_policy",
-            "fe_lsmr_policy=none".to_owned(),
-        );
-        let error = EstimatePpmlSpec::parse(&args)
-            .expect("syntactically complete request")
-            .decode_development_solver()
-            .expect_err("unpaired LSMR mode must fail closed");
-        assert!(error.message.contains("specified together"));
+    fn public_solver_names_decode_to_typed_families() {
+        for (name, expected) in [
+            ("auto", PpmlSolverFamily::Auto),
+            ("map", PpmlSolverFamily::Map),
+            ("lsmr", PpmlSolverFamily::Lsmr),
+            ("cmg", PpmlSolverFamily::Cmg),
+        ] {
+            let (mut args, _spi) = fixture();
+            replace_argument(&mut args, "solver", format!("solver={name}"));
+            let specification = EstimatePpmlSpec::parse(&args).expect("solver specification");
+            assert_eq!(specification.decode_solver().expect("public solver"), expected);
+        }
     }
 
     #[test]
-    fn private_fused_cmg_mode_decodes_to_typed_development_state() {
+    fn unknown_and_retired_solver_spellings_fail_closed() {
         let (mut args, _spi) = fixture();
-        replace_argument(&mut args, "fe_solver", "fe_solver=cmg".to_owned());
-        replace_argument(&mut args, "fe_cmg_mode", "fe_cmg_mode=fused".to_owned());
-        replace_argument(
-            &mut args,
-            "solver_experiment",
-            "solver_experiment=1".to_owned(),
-        );
-        let specification = EstimatePpmlSpec::parse(&args).expect("typed CMG specification");
-        let development = specification
-            .decode_development_solver()
-            .expect("valid typed CMG request")
-            .expect("development request");
-        assert_eq!(development.solver, FeSolverKind::Cmg);
-        assert_eq!(development.cmg_mode, Some(PpmlCmgDevelopmentMode::FusedFwl),);
-
-        replace_argument(&mut args, "fe_solver", "fe_solver=map".to_owned());
+        replace_argument(&mut args, "solver", "solver=cg".to_owned());
         let error = EstimatePpmlSpec::parse(&args)
-            .expect("syntactically complete request")
-            .decode_development_solver()
-            .expect_err("fused CMG mode must fail closed without solver(cmg)");
-        assert!(error.message.contains("requires fesolver(cmg)"));
+            .expect("complete request")
+            .decode_solver()
+            .expect_err("unknown public solver must fail closed");
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+
+        let (mut args, _spi) = fixture();
+        args.push("fe_solver=lsmr".to_owned());
+        let error = EstimatePpmlSpec::parse(&args)
+            .expect_err("retired private solver key must be rejected");
+        assert!(error.message.contains("unknown estimate-ppml field fe_solver"));
     }
 
     fn with_unpublished_shadow(
@@ -3795,7 +3730,7 @@ mod tests {
                     requested_observation_columns: action.requested_observation_columns,
                     publication_matrix_cells: action.publication_matrix_cells,
                 },
-                development_solver: action.development_solver,
+                solver: action.solver,
                 inject_fe_recovery_allocation_failure: false,
             },
             LoadedPpmlInput {
@@ -3952,7 +3887,7 @@ mod tests {
                     requested_observation_columns: action.requested_observation_columns,
                     publication_matrix_cells: action.publication_matrix_cells,
                 },
-                development_solver: action.development_solver,
+                solver: action.solver,
                 inject_fe_recovery_allocation_failure: false,
             };
             let prepared_input = LoadedPpmlInput {
@@ -4320,6 +4255,7 @@ mod tests {
             ("output_sample", "2", ErrorCode::InvalidArgument),
             ("residual", "none", ErrorCode::Syntax),
             ("residual", "bogus", ErrorCode::Syntax),
+            ("solver", "cg", ErrorCode::Syntax),
         ] {
             let (mut args, mut spi) = fixture();
             replace_argument(&mut args, key, format!("{key}={value}"));
@@ -4328,19 +4264,6 @@ mod tests {
             assert_eq!(spi.reads, 0, "{key}");
             assert_eq!(spi.store_calls, 0, "{key}");
             assert_eq!(spi.receipt_complete(), 0.0, "{key}");
-        }
-        for solver in ["qr", "cpqr", "cholesky", "pivoted-cholesky"] {
-            let (mut args, mut spi) = fixture();
-            replace_argument(
-                &mut args,
-                "finite_solver",
-                format!("finite_solver={solver}"),
-            );
-            let error = estimate_ppml_test(&args, &mut spi).expect_err("must fail closed");
-            assert_eq!(error.code, ErrorCode::Unsupported, "{solver}");
-            assert_eq!(spi.reads, 0, "{solver}");
-            assert_eq!(spi.store_calls, 0, "{solver}");
-            assert_eq!(spi.receipt_complete(), 0.0, "{solver}");
         }
     }
 

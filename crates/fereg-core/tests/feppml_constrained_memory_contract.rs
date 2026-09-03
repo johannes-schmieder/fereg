@@ -60,6 +60,7 @@ fn planner_config(
 ) -> PpmlMemoryConfig {
     PpmlMemoryConfig {
         requested,
+        require_fast_route: false,
         available_bytes: Some(available_bytes),
         embedding_resident_bytes,
         poolsize: DEFAULT_POOLSIZE,

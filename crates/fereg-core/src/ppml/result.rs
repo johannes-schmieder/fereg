@@ -10,8 +10,8 @@ use super::{
     poisson_null_objective, poisson_objective, PoissonObjective, PpmlAllocationTelemetry,
     PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
     PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlTestDistribution,
-    PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind, PreparedPpmlAdjustmentReport,
-    PreparedPpmlWeightReport,
+    PpmlSolverReport, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
+    PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
 };
 use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
@@ -1008,6 +1008,7 @@ pub(crate) struct CertifiedPpmlResultInput {
     pub(crate) separation_config: SeparationConfig,
     pub(crate) separation_seal: CertifiedSeparationSeal,
     pub(crate) memory: PpmlMemoryTelemetry,
+    pub(crate) solver: PpmlSolverReport,
     pub(crate) certificate_tolerance: f64,
 }
 
@@ -1030,6 +1031,7 @@ pub struct CertifiedPpmlResult {
     separation: SeparationReport,
     separation_config: SeparationConfig,
     memory: PpmlMemoryTelemetry,
+    solver: PpmlSolverReport,
     certificate: PpmlResultCertificate,
 }
 
@@ -1400,6 +1402,7 @@ impl CertifiedPpmlResult {
             separation_config,
             separation_seal,
             memory,
+            solver,
             certificate_tolerance,
         } = input;
         if !certificate_tolerance.is_finite()
@@ -1421,6 +1424,9 @@ impl CertifiedPpmlResult {
         memory
             .validate()
             .map_err(|error| composed_result_error("PPML final memory report is invalid", error))?;
+        solver
+            .validate()
+            .map_err(|error| composed_result_error("PPML final solver report is invalid", error))?;
         validate_memory_sample_axes(&sample, weights, adjustment, separation_config, &memory)?;
         separation_seal.validate(
             separation_config,
@@ -1510,6 +1516,7 @@ impl CertifiedPpmlResult {
             separation,
             separation_config,
             memory,
+            solver,
             certificate: PpmlResultCertificate {
                 objective_deviance_relative_error,
                 objective_log_likelihood_relative_error,
@@ -1653,6 +1660,11 @@ impl CertifiedPpmlResult {
     #[must_use]
     pub const fn memory(&self) -> &PpmlMemoryTelemetry {
         &self.memory
+    }
+
+    #[must_use]
+    pub const fn solver(&self) -> PpmlSolverReport {
+        self.solver
     }
 
     #[must_use]
@@ -3768,7 +3780,8 @@ mod tests {
     use crate::options::MemoryMode;
     use crate::ppml::{
         compute_ppml_inference, plan_ppml_memory, PpmlInferenceInput, PpmlMemoryConfig,
-        PpmlMemoryDimensions, PpmlVceRequest,
+        PpmlMemoryDimensions, PpmlSolverEngine, PpmlSolverFamily, PpmlSolverPlan,
+        PpmlVceRequest,
     };
 
     fn exact_state(saved: bool) -> PpmlOutputState {
@@ -4013,6 +4026,10 @@ mod tests {
             separation_config,
             separation_seal,
             memory,
+            solver: PpmlSolverReport::new(
+                PpmlSolverPlan::new(PpmlSolverFamily::Auto),
+                PpmlSolverEngine::Map,
+            ),
             certificate_tolerance: 1e-10,
         }
     }

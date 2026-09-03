@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::data::{NumericColumnView, NumericSourceUse, WeightInput, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{FeSolverKind, LsmrPreconditioner};
+use crate::fe::FeSolverKind;
 use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
     OlsRequestV1, PreparedOlsColumnKind, PreparedOlsFitConfig, PreparedOlsFitStatus,
@@ -43,7 +43,7 @@ use super::{
     PpmlAllocatorSnapshotProbe, PpmlClusterDimensionResult, PpmlCoefficientOutput,
     PpmlCoefficientStatus, PpmlConfig, PpmlConvergenceReport, PpmlFinalSample, PpmlMemoryConfig,
     PpmlMemoryDimensions, PpmlMemoryRoute, PpmlOutputState, PpmlPhase, PpmlPhaseAllocatorProbe,
-    PpmlPhaseClock, PpmlResidualKind, PpmlVceRequest,
+    PpmlPhaseClock, PpmlResidualKind, PpmlSolverFamily, PpmlSolverPlan, PpmlVceRequest,
 };
 
 #[cfg(test)]
@@ -66,47 +66,6 @@ pub struct PreparedPpmlOutputRequest {
     /// transaction instead of trusting a caller-supplied scalar alone.
     pub requested_observation_columns: usize,
     pub publication_matrix_cells: usize,
-}
-
-/// Hidden, development-only explicit FE solver request for PPML calibration.
-///
-/// Production callers must leave `PreparedPpmlRequestV1::development_solver`
-/// at `None`. The core rechecks the process environment and the deliberately
-/// narrow experiment envelope before it mutates the PPML numerical policy.
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PpmlLsmrDevelopmentMode {
-    Legacy,
-    FusedFwl,
-    JointIncremental,
-}
-
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PpmlLsmrDevelopmentPolicy {
-    Diagonal,
-    Reuse,
-    Rebuild,
-}
-
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PpmlCmgDevelopmentMode {
-    FusedFwl,
-}
-
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PpmlDevelopmentSolverRequest {
-    pub solver: FeSolverKind,
-    pub preconditioner: Option<LsmrPreconditioner>,
-    pub lsmr_mode: Option<PpmlLsmrDevelopmentMode>,
-    pub lsmr_policy: Option<PpmlLsmrDevelopmentPolicy>,
-    pub cmg_mode: Option<PpmlCmgDevelopmentMode>,
-    pub trace: bool,
-    /// Adapter-side observation of the opt-in environment variable. This is
-    /// redundant by design; the core independently observes the environment.
-    pub adapter_authorized: bool,
 }
 
 impl PreparedPpmlOutputRequest {
@@ -164,9 +123,9 @@ pub struct PreparedPpmlRequestV1 {
     pub action_allocation_previous_baseline_bytes: Option<u64>,
     pub separation: SeparationConfig,
     pub output: PreparedPpmlOutputRequest,
-    /// Private calibration route. Public and ordinary core callers use None.
-    #[doc(hidden)]
-    pub development_solver: Option<PpmlDevelopmentSolverRequest>,
+    /// Public PPML fixed-effect solver family. `Auto` remains a distinct
+    /// request identity even while its selected family is conservatively MAP.
+    pub solver: PpmlSolverFamily,
     /// Hidden, action-local qualification hook.  It reaches the ordinary
     /// fallible FE-recovery reservation; it never alters process-global
     /// allocator state and therefore cannot leak into a later action.
@@ -231,7 +190,11 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<CertifiedPpmlResult> {
     validate_request(&request, &loaded)?;
-    apply_development_solver_policy(&mut request)?;
+    let solver_plan = PpmlSolverPlan::new(request.solver);
+    request.memory.require_fast_route = matches!(
+        solver_plan.selected,
+        PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
+    );
     interrupt(PpmlInterruptPoint::Preparation)?;
     // Singleton policy belongs to the model request.  Derive the detector
     // switch here so two caller-controlled booleans cannot silently disagree.
@@ -242,16 +205,16 @@ pub fn fit_prepared_ppml_interruptible(
     // either separation or IRLS. In particular, leaving PPML at `Auto` while
     // resolving only the linear copy to `Map` creates two nominally valid but
     // unequal numerical policies at the production boundary.
-    let retain_coefficients = requested_saved_channel_count > 0;
-    if request.inject_fe_recovery_allocation_failure && !retain_coefficients {
+    if request.inject_fe_recovery_allocation_failure && requested_saved_channel_count == 0 {
         return Err(invalid_argument(
             "PPML FE-recovery allocation injection requires a requested saved fixed effect",
         ));
     }
-    request.ppml.absorb.retain_coefficients = retain_coefficients;
-    if request.ppml.absorb.solver == FeSolverKind::Auto {
-        request.ppml.absorb.solver = FeSolverKind::Map;
-    }
+    // Saved effects are recovered once from the final MAP-owned Hessian.
+    // Retaining FE coefficients throughout IRLS would disable the borrowed
+    // categorical MAP fast lane for every preceding frame.
+    request.ppml.absorb.retain_coefficients = false;
+    request.ppml.absorb.solver = FeSolverKind::Map;
     request.linear.fixed_effect_collinearity_tolerance =
         request.ppml.fixed_effect_collinearity_tolerance;
     request.linear.absorb = request.ppml.absorb;
@@ -368,8 +331,7 @@ pub fn fit_prepared_ppml_interruptible(
                     allocation_snapshot_probe: None,
                     phase_allocation_probe,
                     linear_phase_allocation_probe,
-                    solver_admission: solver_admission(request.development_solver),
-                    solver_trace: request.development_solver.is_some_and(|value| value.trace),
+                    solver_plan,
                 },
                 final_plan,
                 None,
@@ -401,8 +363,7 @@ pub fn fit_prepared_ppml_interruptible(
                     allocation_snapshot_probe,
                     phase_allocation_probe,
                     linear_phase_allocation_probe,
-                    solver_admission: solver_admission(request.development_solver),
-                    solver_trace: request.development_solver.is_some_and(|value| value.trace),
+                    solver_plan,
                 },
                 final_plan,
                 None,
@@ -558,6 +519,7 @@ pub fn fit_prepared_ppml_interruptible(
         separation_config: separation,
         separation_seal: separation_outcome.certification_seal,
         memory,
+        solver: fit.diagnostics().solver,
         certificate_tolerance: request.ppml.tolerance,
     })?
     .retain_requested_outputs();
@@ -572,25 +534,7 @@ pub fn fit_prepared_ppml_interruptible(
 }
 
 fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> Result<()> {
-    // The pinned `within` implementation used by modified LSMR still owns
-    // infallible observation-, coefficient-, and fixed-effect-sized
-    // allocations.  Keep the shared implementation available to OLS, but do
-    // not let the private PPML API enter it until the upstream boundary is
-    // fallible.  The deployed PPML wire exposes no solver option and `Auto`
-    // is resolved to MAP below, so this rejects only an explicit internal
-    // request and does so before the first fit-lifetime allocation phase.
-    if request.development_solver.is_none()
-        && !matches!(
-            request.ppml.absorb.solver,
-            FeSolverKind::Auto | FeSolverKind::Map
-        )
-    {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "production prepared PPML cannot activate an explicit non-MAP FE solver",
-        ));
-    }
-    validate_development_solver_request(request)?;
+    validate_public_solver_request(request)?;
     request.ols.model.validate_executable_metadata()?;
     if !request.ols.include_intercept {
         return Err(FeregError::new(
@@ -640,149 +584,49 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
     Ok(())
 }
 
-fn solver_admission(
-    request: Option<PpmlDevelopmentSolverRequest>,
-) -> super::prepared_irls::PpmlSolverAdmission {
-    match request {
-        None => super::prepared_irls::PpmlSolverAdmission::ProductionMap,
-        Some(value) => super::prepared_irls::PpmlSolverAdmission::Development(value),
-    }
-}
-
-fn validate_development_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
-    let Some(development) = request.development_solver else {
+fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
+    if matches!(request.solver, PpmlSolverFamily::Auto | PpmlSolverFamily::Map) {
         return Ok(());
-    };
-    if !matches!(
-        development.solver,
-        FeSolverKind::Map | FeSolverKind::Cg | FeSolverKind::Lsmr | FeSolverKind::Cmg
-    ) {
-        return Err(invalid_argument(
-            "private PPML calibration admits only MAP, CG, LSMR, or CMG",
-        ));
     }
-    match (development.solver, development.preconditioner) {
-        (
-            FeSolverKind::Lsmr,
-            None | Some(LsmrPreconditioner::Diagonal | LsmrPreconditioner::Schwarz),
-        ) => {}
-        (_, None) => {}
-        _ => {
-            return Err(invalid_argument(
-                "private PPML LSMR preconditioning is valid only for LSMR",
-            ));
-        }
-    }
-    match (development.lsmr_mode, development.lsmr_policy) {
-        (None, None) => {}
-        (Some(_), None) | (None, Some(_)) => {
-            return Err(invalid_argument(
-                "private PPML LSMR mode and policy must be specified together",
-            ));
-        }
-        (Some(_), Some(_)) if development.solver != FeSolverKind::Lsmr => {
-            return Err(invalid_argument(
-                "private PPML LSMR mode and policy require the LSMR solver",
-            ));
-        }
-        (Some(PpmlLsmrDevelopmentMode::Legacy), Some(PpmlLsmrDevelopmentPolicy::Reuse)) => {
-            return Err(invalid_argument(
-                "private PPML legacy LSMR cannot reuse Schwarz state across frames",
-            ));
-        }
-        (Some(_), Some(PpmlLsmrDevelopmentPolicy::Diagonal))
-            if development.preconditioner != Some(LsmrPreconditioner::Diagonal) =>
-        {
-            return Err(invalid_argument(
-                "private PPML diagonal LSMR policy requires diagonal preconditioning",
-            ));
-        }
-        (Some(_), Some(PpmlLsmrDevelopmentPolicy::Reuse | PpmlLsmrDevelopmentPolicy::Rebuild))
-            if development.preconditioner != Some(LsmrPreconditioner::Schwarz) =>
-        {
-            return Err(invalid_argument(
-                "private PPML Schwarz LSMR policy requires Schwarz preconditioning",
-            ));
-        }
-        (Some(_), Some(_)) => {}
-    }
-    if development.cmg_mode.is_some() && development.solver != FeSolverKind::Cmg {
-        return Err(invalid_argument(
-            "private PPML CMG mode requires the CMG solver",
-        ));
-    }
-    let requires_gate = !matches!(development.solver, FeSolverKind::Map) || development.trace;
-    let core_authorized =
-        std::env::var("FEREG_PPML_EXPERIMENTAL_SOLVERS").is_ok_and(|value| value.trim() == "1");
-    if requires_gate && (!development.adapter_authorized || !core_authorized) {
+    if request.memory.requested == MemoryMode::Low {
         return Err(FeregError::new(
             ErrorCode::Unsupported,
-            "private PPML FE-solver experiment was not authorized at both adapter and core boundaries",
+            "explicit PPML LSMR and CMG currently require memory(auto) or memory(fast)",
         ));
     }
-    if request.memory.requested != MemoryMode::Fast {
-        return Err(invalid_argument(
-            "private PPML FE-solver experiments require memory(fast)",
-        ));
-    }
-    if request.ols.absorbed_terms.len() < 2 || request.ols.absorbed_terms.len() > 3 {
-        return Err(invalid_argument(
-            "private PPML FE-solver experiments require exactly two or three absorbed FE dimensions",
+    let fe_dimensions = request.ols.absorbed_terms.len();
+    let topology_supported = match request.solver {
+        PpmlSolverFamily::Lsmr => fe_dimensions >= 2,
+        PpmlSolverFamily::Cmg => (2..=3).contains(&fe_dimensions),
+        PpmlSolverFamily::Auto | PpmlSolverFamily::Map => true,
+    };
+    if !topology_supported {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            match request.solver {
+                PpmlSolverFamily::Lsmr => {
+                    "solver(lsmr) requires at least two categorical fixed-effect dimensions"
+                }
+                PpmlSolverFamily::Cmg => {
+                    "solver(cmg) requires exactly two or three categorical fixed-effect dimensions"
+                }
+                PpmlSolverFamily::Auto | PpmlSolverFamily::Map => unreachable!(),
+            },
         ));
     }
     if request.ols.absorbed_terms.iter().any(|term| {
         !term.intercept || !term.slope_sources.is_empty() || term.categorical_sources.is_empty()
     }) {
-        return Err(invalid_argument(
-            "private PPML FE-solver experiments require categorical intercept-only absorbed effects",
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "explicit PPML LSMR and CMG require categorical intercept-only fixed effects",
         ));
     }
-    if request
-        .ols
-        .absorbed_terms
-        .iter()
-        .any(|term| !term.saved_name.trim().is_empty())
-    {
-        return Err(invalid_argument(
-            "private PPML FE-solver experiments do not support saved fixed effects",
+    if request.allocation_snapshot_probe.is_some() {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "the warmed PPML allocation audit is currently MAP-only",
         ));
-    }
-    if request.allocation_snapshot_probe.is_some()
-        || request.phase_allocation_probe.is_some()
-        || request.linear_phase_allocation_probe.is_some()
-    {
-        return Err(invalid_argument(
-            "private PPML FE-solver experiments do not support allocation audit",
-        ));
-    }
-    Ok(())
-}
-
-fn apply_development_solver_policy(request: &mut PreparedPpmlRequestV1) -> Result<()> {
-    let Some(development) = request.development_solver else {
-        return Ok(());
-    };
-    let canonical_solver = if matches!(
-        development.lsmr_mode,
-        Some(PpmlLsmrDevelopmentMode::FusedFwl | PpmlLsmrDevelopmentMode::JointIncremental)
-    ) || development.cmg_mode == Some(PpmlCmgDevelopmentMode::FusedFwl)
-    {
-        // Freeze the active basis and certify strict/final-Hessian frames with
-        // the production MAP authority.  The private ordinary-frame engine
-        // still runs the requested LSMR policy.  This avoids making a
-        // speculative LSMR preconditioner its own convergence oracle.
-        FeSolverKind::Map
-    } else {
-        development.solver
-    };
-    request.ppml.absorb.solver = canonical_solver;
-    request.linear.absorb.solver = canonical_solver;
-    if let Some(preconditioner) = development.preconditioner {
-        // Retain the experimental LSMR memory dimensions even when MAP owns
-        // canonical checkpoints; the ordinary-frame engine consumes the
-        // declared diagonal or Schwarz policy directly from admission.
-        request.ppml.absorb.lsmr.preconditioner = preconditioner;
-        request.linear.absorb.lsmr.preconditioner = preconditioner;
     }
     Ok(())
 }
@@ -1641,151 +1485,65 @@ mod tests {
     }
 
     #[test]
-    fn explicit_lsmr_fails_before_fit_lifetime_allocation_or_publication() {
-        let (mut request, loaded) = fixture(2, true, false, false, false, false);
-        request.ppml.absorb.solver = FeSolverKind::Lsmr;
+    fn unsupported_public_solver_topology_fails_before_fit_lifetime_allocation() {
+        let (mut request, loaded) = fixture(1, true, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
         request.phase_allocation_probe = Some(count_fit_phase_begins);
         FIT_PHASE_BEGINS.store(0, Ordering::SeqCst);
 
         let error = fit_prepared_ppml(request, loaded)
-            .expect_err("unqualified PPML LSMR must not produce a composite result");
+            .expect_err("one-FE PPML LSMR must fail closed");
         assert_eq!(error.code, ErrorCode::Unsupported);
         assert_eq!(error.return_code(), 498);
-        assert!(error.message.contains("cannot activate"));
+        assert!(error.message.contains("at least two"));
         assert_eq!(
             FIT_PHASE_BEGINS.load(Ordering::SeqCst),
             0,
-            "PPML LSMR rejection must precede preparation and every publication phase",
+            "PPML solver rejection must precede preparation and every publication phase",
         );
     }
 
     #[test]
-    fn private_solver_envelope_rejects_unauthorized_or_out_of_scope_requests_preparation_free() {
-        let (mut request, loaded) = fixture(2, false, false, false, false, false);
-        request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Cg,
-            preconditioner: None,
-            lsmr_mode: None,
-            lsmr_policy: None,
-            cmg_mode: None,
-            trace: false,
-            adapter_authorized: false,
-        });
-        request.phase_allocation_probe = Some(count_fit_phase_begins);
-        FIT_PHASE_BEGINS.store(0, Ordering::SeqCst);
-        let error = fit_prepared_ppml(request, loaded)
-            .expect_err("one-sided experimental authorization must fail closed");
-        assert_eq!(error.code, ErrorCode::Unsupported);
-        assert_eq!(FIT_PHASE_BEGINS.load(Ordering::SeqCst), 0);
-
-        let (mut request, loaded) = fixture(1, false, false, false, false, false);
-        request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Map,
-            preconditioner: None,
-            lsmr_mode: None,
-            lsmr_policy: None,
-            cmg_mode: None,
-            trace: false,
-            adapter_authorized: false,
-        });
-        let error = fit_prepared_ppml(request, loaded)
-            .expect_err("one-FE development topology must remain outside the tranche");
-        assert_eq!(error.code, ErrorCode::InvalidArgument);
-        assert!(error.message.contains("two or three"));
-    }
-
-    #[test]
-    fn private_lsmr_mode_and_policy_are_typed_validated_and_preserved_by_admission() {
-        let development = PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Lsmr,
-            preconditioner: Some(LsmrPreconditioner::Schwarz),
-            lsmr_mode: Some(PpmlLsmrDevelopmentMode::FusedFwl),
-            lsmr_policy: Some(PpmlLsmrDevelopmentPolicy::Reuse),
-            cmg_mode: None,
-            trace: true,
-            adapter_authorized: true,
-        };
-        assert_eq!(
-            solver_admission(Some(development)),
-            super::super::prepared_irls::PpmlSolverAdmission::Development(development),
-        );
-
-        let (mut request, _loaded) = fixture(2, false, false, false, false, false);
-        request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(PpmlDevelopmentSolverRequest {
-            lsmr_policy: None,
-            ..development
-        });
-        let error = validate_development_solver_request(&request)
-            .expect_err("an unpaired LSMR mode must fail closed before authorization");
-        assert!(error.message.contains("specified together"));
-
-        request.development_solver = Some(PpmlDevelopmentSolverRequest {
-            lsmr_mode: Some(PpmlLsmrDevelopmentMode::Legacy),
-            lsmr_policy: Some(PpmlLsmrDevelopmentPolicy::Reuse),
-            ..development
-        });
-        let error = validate_development_solver_request(&request)
-            .expect_err("legacy LSMR cannot claim cross-frame Schwarz reuse");
-        assert!(error.message.contains("cannot reuse"));
-
-        let (mut request, _loaded) = fixture(2, false, false, false, false, false);
-        request.development_solver = Some(development);
-        apply_development_solver_policy(&mut request).expect("apply private LSMR policy");
-        assert_eq!(request.ppml.absorb.solver, FeSolverKind::Map);
-        assert_eq!(request.linear.absorb.solver, FeSolverKind::Map);
-        assert_eq!(
-            request.ppml.absorb.lsmr.preconditioner,
-            LsmrPreconditioner::Schwarz
-        );
-        assert_eq!(
-            request.linear.absorb.lsmr.preconditioner,
-            LsmrPreconditioner::Schwarz
-        );
-    }
-
-    #[test]
-    fn private_cmg_mode_is_typed_validated_and_preserves_map_checkpoints() {
-        let development = PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Cmg,
-            preconditioner: None,
-            lsmr_mode: None,
-            lsmr_policy: None,
-            cmg_mode: Some(PpmlCmgDevelopmentMode::FusedFwl),
-            trace: false,
-            adapter_authorized: true,
-        };
-        assert_eq!(
-            solver_admission(Some(development)),
-            super::super::prepared_irls::PpmlSolverAdmission::Development(development),
-        );
-
-        let (mut invalid, _loaded) = fixture(2, false, false, false, false, false);
-        invalid.memory.requested = MemoryMode::Fast;
-        invalid.development_solver = Some(PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Map,
-            adapter_authorized: false,
-            ..development
-        });
-        let error = validate_development_solver_request(&invalid)
-            .expect_err("fused CMG mode must require solver(cmg)");
-        assert!(error.message.contains("CMG mode requires"));
-
-        let (mut request, _loaded) = fixture(2, false, false, false, false, false);
-        request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(development);
-        apply_development_solver_policy(&mut request).expect("apply private fused CMG policy");
-        assert_eq!(request.ppml.absorb.solver, FeSolverKind::Map);
-        assert_eq!(request.linear.absorb.solver, FeSolverKind::Map);
-    }
-
-    #[test]
-    fn authorized_private_fused_cmg_matches_the_map_ppml_oracle() {
-        if !private_solver_test_is_authorized() {
-            return;
+    fn public_specialized_solvers_reject_memory_low() {
+        for solver in [PpmlSolverFamily::Lsmr, PpmlSolverFamily::Cmg] {
+            let (mut request, _loaded) = fixture(2, false, false, false, false, false);
+            request.solver = solver;
+            request.memory.requested = MemoryMode::Low;
+            let error = validate_public_solver_request(&request)
+                .expect_err("specialized PPML solvers must reject memory(low)");
+            assert_eq!(error.code, ErrorCode::Unsupported);
+            assert_eq!(error.return_code(), 498);
         }
+    }
+
+    #[test]
+    fn explicit_lsmr_matches_map_and_reports_its_concrete_engine() {
+        let (baseline_request, baseline_loaded) =
+            fixture(2, false, false, false, false, false);
+        let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
+            .expect("production MAP PPML oracle");
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        let candidate = fit_prepared_ppml(request, loaded).expect("public LSMR PPML");
+        assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
+        assert_eq!(candidate.solver().selected, PpmlSolverFamily::Lsmr);
+        assert_eq!(candidate.solver().selected_engine, super::super::PpmlSolverEngine::LsmrJoint);
+        assert_ppml_results_close(&candidate, &baseline);
+    }
+
+    #[test]
+    fn public_cmg_rejects_four_fixed_effect_dimensions() {
+        let (mut request, _loaded) = fixture(4, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Cmg;
+        let error = validate_public_solver_request(&request)
+            .expect_err("public CMG must be limited to two or three FE dimensions");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(error.message.contains("exactly two or three"));
+    }
+
+    #[test]
+    fn public_cmg_matches_the_map_ppml_oracle() {
         for effects in [2, 3] {
             let (baseline_request, baseline_loaded) =
                 fixture(effects, false, false, false, false, false);
@@ -1793,9 +1551,11 @@ mod tests {
                 .expect("production MAP PPML oracle");
 
             let (mut request, loaded) = fixture(effects, false, false, false, false, false);
+            request.solver = PpmlSolverFamily::Cmg;
             request.memory.requested = MemoryMode::Fast;
-            request.development_solver = Some(fused_cmg_request());
-            let candidate = fit_prepared_ppml(request, loaded).expect("private fused CMG PPML");
+            let candidate = fit_prepared_ppml(request, loaded).expect("public prepared CMG PPML");
+            assert_eq!(candidate.solver().requested, PpmlSolverFamily::Cmg);
+            assert_eq!(candidate.solver().effective, PpmlSolverFamily::Cmg);
             assert_eq!(
                 candidate.memory().fallback_mask & (1_u32 << PpmlFallbackKind::Route as u8),
                 0,
@@ -1806,16 +1566,13 @@ mod tests {
     }
 
     #[test]
-    fn authorized_private_fused_cmg_retries_only_the_failed_projection_rhs() {
-        if !private_solver_test_is_authorized() {
-            return;
-        }
+    fn public_cmg_retries_only_the_failed_projection_rhs() {
         let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
             .expect("production MAP PPML oracle");
         let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Cmg;
         request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(fused_cmg_request());
         super::super::categorical_fwl_cmg::inject_projection_certificate_failure_once(0);
         let candidate = fit_prepared_ppml(request, loaded).expect("retried fused CMG PPML");
         assert_eq!(
@@ -1830,16 +1587,13 @@ mod tests {
     }
 
     #[test]
-    fn authorized_private_fused_cmg_numerical_failure_falls_back_to_map_permanently() {
-        if !private_solver_test_is_authorized() {
-            return;
-        }
+    fn public_cmg_numerical_failure_falls_back_to_map_permanently() {
         let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
             .expect("production MAP PPML oracle");
         let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Cmg;
         request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(fused_cmg_request());
         super::super::categorical_fwl_cmg::inject_numerical_failure_once();
         let candidate = fit_prepared_ppml(request, loaded).expect("MAP fallback PPML");
         assert_ne!(
@@ -1847,23 +1601,14 @@ mod tests {
             0,
         );
         assert_eq!(candidate.memory().linear_route, Some(FeSolverKind::Map));
+        assert_eq!(candidate.solver().requested, PpmlSolverFamily::Cmg);
+        assert_eq!(candidate.solver().effective, PpmlSolverFamily::Map);
+        assert_eq!(candidate.solver().fallback_count, 1);
+        assert_eq!(
+            candidate.solver().fallback_reason,
+            super::super::PpmlSolverFallbackReason::CmgNumericalNonconvergence
+        );
         assert_ppml_results_close(&candidate, &baseline);
-    }
-
-    fn private_solver_test_is_authorized() -> bool {
-        std::env::var("FEREG_PPML_EXPERIMENTAL_SOLVERS").is_ok_and(|value| value.trim() == "1")
-    }
-
-    fn fused_cmg_request() -> PpmlDevelopmentSolverRequest {
-        PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Cmg,
-            preconditioner: None,
-            lsmr_mode: None,
-            lsmr_policy: None,
-            cmg_mode: Some(PpmlCmgDevelopmentMode::FusedFwl),
-            trace: false,
-            adapter_authorized: true,
-        }
     }
 
     fn assert_ppml_results_close(candidate: &CertifiedPpmlResult, baseline: &CertifiedPpmlResult) {
@@ -1882,22 +1627,15 @@ mod tests {
     }
 
     #[test]
-    fn explicit_development_map_matches_the_production_ppml_oracle() {
+    fn explicit_public_map_matches_auto_bitwise() {
         let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
             .expect("production MAP PPML oracle");
         let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Map;
         request.memory.requested = MemoryMode::Fast;
-        request.development_solver = Some(PpmlDevelopmentSolverRequest {
-            solver: FeSolverKind::Map,
-            preconditioner: None,
-            lsmr_mode: None,
-            lsmr_policy: None,
-            cmg_mode: None,
-            trace: false,
-            adapter_authorized: false,
-        });
-        let candidate = fit_prepared_ppml(request, loaded).expect("explicit development MAP PPML");
+        let candidate = fit_prepared_ppml(request, loaded).expect("explicit public MAP PPML");
+        assert_eq!(candidate.solver().requested, PpmlSolverFamily::Map);
         assert_eq!(candidate.memory().linear_route, Some(FeSolverKind::Map));
         for (left, right) in candidate
             .coefficients()
@@ -2883,7 +2621,7 @@ mod tests {
                 requested_observation_columns: 4 + usize::from(save_first && effects > 0),
                 publication_matrix_cells: 512,
             },
-            development_solver: None,
+            solver: PpmlSolverFamily::Auto,
             inject_fe_recovery_allocation_failure: false,
         };
         let outcome = if separated {
@@ -3026,7 +2764,7 @@ mod tests {
                     requested_observation_columns: 0,
                     publication_matrix_cells: 512,
                 },
-                development_solver: None,
+                solver: PpmlSolverFamily::Auto,
                 inject_fe_recovery_allocation_failure: false,
             },
             loaded,

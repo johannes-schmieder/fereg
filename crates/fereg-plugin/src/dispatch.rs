@@ -4,7 +4,8 @@ use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::options::ThreadConfig;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,
-    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
+    OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, PPML_REQUEST_WIRE_VERSION,
+    PPML_RESULT_WIRE_VERSION,
 };
 use fereg_core::selftest::run_native_selftest;
 
@@ -59,6 +60,8 @@ fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
             "fereg.action_protocol={}.{}\n",
             "fereg.model_wire={}.{}\n",
             "fereg.ols_result_wire={}.{}\n",
+            "fereg.ppml_request_wire={}.{}\n",
+            "fereg.ppml_result_wire={}.{}\n",
             "fereg.plugin_abi={}.{}\n",
             "fereg.git_commit={}\n",
             "fereg.build_date={}\n"
@@ -71,6 +74,10 @@ fn version(args: &[String], output: &dyn OutputSink) -> Result<()> {
         MODEL_WIRE_VERSION.minor,
         OLS_RESULT_WIRE_VERSION.major,
         OLS_RESULT_WIRE_VERSION.minor,
+        PPML_REQUEST_WIRE_VERSION.major,
+        PPML_REQUEST_WIRE_VERSION.minor,
+        PPML_RESULT_WIRE_VERSION.major,
+        PPML_RESULT_WIRE_VERSION.minor,
         build.plugin_abi_major,
         build.plugin_abi_minor,
         build.git_commit,
@@ -160,8 +167,8 @@ mod tests {
         assert!(sink.displayed().contains("fereg.action_protocol=1.5"));
         assert!(sink.displayed().contains("fereg.model_wire=2.1"));
         assert!(sink.displayed().contains("fereg.ols_result_wire=1.4"));
-        assert!(!sink.displayed().contains("fereg.ppml_request_wire="));
-        assert!(!sink.displayed().contains("fereg.ppml_result_wire="));
+        assert!(sink.displayed().contains("fereg.ppml_request_wire=1.5"));
+        assert!(sink.displayed().contains("fereg.ppml_result_wire=1.2"));
         assert!(!sink.displayed().contains("fereg.model_protocol="));
     }
 

@@ -20,6 +20,7 @@ mod prepared_separation;
 mod psd;
 mod residuals;
 mod result;
+mod solver;
 mod vce;
 
 pub use certificate::PpmlCertificate;
@@ -46,9 +47,8 @@ pub use prepared::{
     PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
 };
 pub use prepared_estimator::{
-    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlCmgDevelopmentMode,
-    PpmlDevelopmentSolverRequest, PpmlInterruptPoint, PpmlLsmrDevelopmentMode,
-    PpmlLsmrDevelopmentPolicy, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+    fit_prepared_ppml, fit_prepared_ppml_interruptible, LoadedPpmlInput, PpmlInterruptPoint,
+    PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
 };
 pub use psd::{PpmlPsdReport, PpmlPsdState};
 pub use residuals::{fill_ppml_residuals, ppml_residuals, PpmlResidualKind};
@@ -58,6 +58,13 @@ pub use result::{
     PpmlFixedEffectChannelKind, PpmlFixedEffectResult, PpmlLikelihoodStatistics, PpmlOutputState,
     PpmlPredictionKind, PpmlReconstructionCertificate, PpmlResultCertificate,
     PpmlSavedEffectOutput,
+};
+pub use solver::{
+    PpmlSolverEngine, PpmlSolverEngineReport, PpmlSolverFallbackReason, PpmlSolverFamily,
+    PpmlSolverReport,
+};
+pub(crate) use solver::{
+    PpmlSolverFrameKind, PpmlSolverObservation, PpmlSolverPlan,
 };
 #[allow(unused_imports)]
 pub(crate) use result::{

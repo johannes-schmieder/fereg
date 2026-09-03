@@ -27,6 +27,8 @@ pub(crate) const DROP_COUNT_ROWS: usize = PPML_RESULT_DROP_COUNT_ROWS;
 pub(crate) const DROP_COUNT_COLUMNS: usize = 2;
 pub(crate) const SEPARATION_SEQUENCE_ROWS: usize = PPML_RESULT_SEPARATION_SEQUENCE_ROWS;
 pub(crate) const SEPARATION_SEQUENCE_COLUMNS: usize = 13;
+pub(crate) const SOLVER_ROWS: usize = 4;
+pub(crate) const SOLVER_COLUMNS: usize = 22;
 /// Hidden PPML runtime wire. Rows 1--40 preserve the original additive 1.0
 /// layout. Rows 41--108 carry the explicit convergence, warmed-allocation,
 /// action-allocation, and per-phase peak evidence required for qualification.
@@ -71,6 +73,7 @@ pub(crate) struct PpmlShadowResult<'a> {
     pub(crate) drop_counts: Vec<f64>,
     pub(crate) separation_sequence: Vec<f64>,
     pub(crate) certificates: Vec<f64>,
+    pub(crate) solver: Vec<f64>,
     pub(crate) runtime: Vec<f64>,
     pub(crate) receipt: [f64; PPML_RESULT_RECEIPT_COLUMNS],
     pub(crate) retained_original_rows: &'a [usize],
@@ -462,6 +465,7 @@ pub(crate) fn build_certified_ppml_shadow(
         ));
     }
     let certificates = fallible_copy(&certificate_values, "PPML certificate shadow")?;
+    let solver = build_solver_shadow(result)?;
 
     let runtime = build_runtime_shadow(result, context.elapsed_seconds)?;
     let residuals = context
@@ -584,6 +588,13 @@ pub(crate) fn build_certified_ppml_shadow(
         &runtime_optional,
         StataCellClass::Structural,
     )?;
+    let solver_optional = optional_columns(SOLVER_ROWS, SOLVER_COLUMNS, 16..22)?;
+    validate_stata_cells(
+        "solver diagnostics",
+        &solver,
+        &solver_optional,
+        StataCellClass::Structural,
+    )?;
     for (label, values) in [
         ("residual", residuals),
         ("xb", xb),
@@ -615,6 +626,7 @@ pub(crate) fn build_certified_ppml_shadow(
         drop_counts,
         separation_sequence,
         certificates,
+        solver,
         runtime,
         receipt,
         retained_original_rows: sample.original_rows(),
@@ -648,6 +660,50 @@ pub(crate) fn build_certified_ppml_shadow(
         fixed_effect_metadata: result.fixed_effects(),
         cluster_metadata: result.clusters(),
     })
+}
+
+fn build_solver_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
+    let report = result.solver();
+    let mut output = reserved_filled(
+        checked_product(SOLVER_ROWS, SOLVER_COLUMNS, "PPML solver shadow")?,
+        STATA_SYSTEM_MISSING,
+        "PPML solver shadow",
+    )?;
+    for (row, engine) in report.engines().iter().enumerate() {
+        let start = row * SOLVER_COLUMNS;
+        output[start] = f64::from(report.requested.code());
+        output[start + 1] = f64::from(report.selected.code());
+        output[start + 2] = f64::from(report.selected_engine.code());
+        output[start + 3] = f64::from(report.effective.code());
+        output[start + 4] = f64::from(report.effective_engine.code());
+        output[start + 5] = f64::from(report.checkpoint.code());
+        output[start + 6] = f64::from(engine.engine.code());
+        output[start + 7] = exact_count(engine.ordinary_frames, "solver ordinary frames")?;
+        output[start + 8] = exact_count(engine.checkpoint_frames, "solver checkpoint frames")?;
+        output[start + 9] = exact_count(engine.retries, "solver retries")?;
+        output[start + 10] = exact_count(engine.fallback_count, "solver fallback count")?;
+        output[start + 11] = f64::from(report.fallback_reason.code());
+        output[start + 12] = exact_count(engine.iterations, "solver iterations")?;
+        output[start + 13] = engine.setup_seconds;
+        output[start + 14] = engine.solve_seconds;
+        output[start + 15] = engine.certification_seconds;
+        for (column, value) in [
+            engine.absolute_infinity_norm_max,
+            engine.relative_infinity_norm_max,
+            engine.relative_two_norm_max,
+            engine.normal_equation_max,
+            engine.projection_absolute_infinity_norm_max,
+            engine.backward_error_max,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            if let Some(value) = value {
+                output[start + 16 + column] = value;
+            }
+        }
+    }
+    Ok(output)
 }
 
 fn build_fixed_effect_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize)> {

@@ -90,6 +90,11 @@ const DIAGNOSTIC_RECORD_BYTES: u128 = 256;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMemoryConfig {
     pub requested: MemoryMode,
+    /// Require the dense fast execution route while preserving the user's
+    /// `memory(auto)` request identity. Public PPML LSMR and CMG currently
+    /// use this because their retained ordinary-frame engines have no
+    /// certified low-memory implementation.
+    pub require_fast_route: bool,
     /// Process/application memory visible to the caller before the fit.  A
     /// missing value retains the requested mode; `Auto` then prefers fast.
     pub available_bytes: Option<u128>,
@@ -110,6 +115,7 @@ impl Default for PpmlMemoryConfig {
     fn default() -> Self {
         Self {
             requested: MemoryMode::Auto,
+            require_fast_route: false,
             available_bytes: None,
             embedding_resident_bytes: 0,
             poolsize: 10,
@@ -639,6 +645,9 @@ pub struct PpmlMemoryPlan {
     pub embedding_resident_bytes: u128,
     pub safety_headroom_bytes: u128,
     pub usable_bytes: Option<u128>,
+    /// Retained workspace for the selected PPML-specific ordinary-frame
+    /// engine. MAP is already included in the base route inventory.
+    pub solver_workspace_bytes: u128,
 }
 
 impl PpmlMemoryPlan {
@@ -651,6 +660,7 @@ impl PpmlMemoryPlan {
         let diagnostic_capacity = self.estimate_diagnostic_capacity();
         dimensions.validate(PpmlMemoryConfig {
             requested: self.requested,
+            require_fast_route: self.selected == PpmlMemoryRoute::Fast,
             available_bytes: self.available_bytes,
             embedding_resident_bytes: self.embedding_resident_bytes,
             poolsize: self.estimate.recommended_poolsize.max(1),
@@ -671,7 +681,26 @@ impl PpmlMemoryPlan {
 
     #[must_use]
     pub const fn selected_bytes(self) -> u128 {
-        self.selected_inventory().peak_bytes
+        self.selected_inventory()
+            .peak_bytes
+            .saturating_add(self.solver_workspace_bytes)
+    }
+
+    pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
+        let peak = self
+            .selected_inventory()
+            .peak_bytes
+            .checked_add(bytes)
+            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
+        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+            return Err(allocation(format!(
+                "public PPML FE solver workspace does not fit the selected memory plan: solver_workspace={bytes}, execution={}, usable={}",
+                self.selected_inventory().peak_bytes,
+                self.usable_bytes.unwrap_or(0),
+            )));
+        }
+        self.solver_workspace_bytes = bytes;
+        Ok(self)
     }
 
     /// Fit-lifetime resident peak assigned to one stable timing phase.  A
@@ -681,7 +710,7 @@ impl PpmlMemoryPlan {
     #[must_use]
     pub const fn modeled_phase_peak_bytes(self, phase: PpmlPhase) -> u128 {
         let inventory = self.selected_inventory();
-        match phase {
+        let base = match phase {
             PpmlPhase::Preparation => inventory.preparation_peak_bytes,
             PpmlPhase::SeparationFe | PpmlPhase::SeparationSimplex | PpmlPhase::SeparationIr => {
                 inventory.separation_peak_bytes
@@ -697,6 +726,21 @@ impl PpmlMemoryPlan {
             PpmlPhase::Inference => inventory.inference_peak_bytes,
             PpmlPhase::FeRecovery => inventory.fe_recovery_peak_bytes,
             PpmlPhase::Publication => inventory.publication_peak_bytes,
+        };
+        match phase {
+            PpmlPhase::WeightResponseRefresh
+            | PpmlPhase::FeProjection
+            | PpmlPhase::FiniteSolve
+            | PpmlPhase::ObjectiveLineSearch
+            | PpmlPhase::StrictFinalSolve => base.saturating_add(self.solver_workspace_bytes),
+            PpmlPhase::Preparation
+            | PpmlPhase::SeparationFe
+            | PpmlPhase::SeparationSimplex
+            | PpmlPhase::SeparationIr
+            | PpmlPhase::SeparationMu
+            | PpmlPhase::Inference
+            | PpmlPhase::FeRecovery
+            | PpmlPhase::Publication => base,
         }
     }
 }
@@ -746,12 +790,12 @@ pub(crate) fn plan_ppml_memory_with_probe(
         .available_bytes
         .map(|available| available.saturating_sub(safety_headroom_bytes));
     let fits = |bytes: u128| usable_bytes.is_none_or(|usable| bytes <= usable);
-    let selected = match config.requested {
-        MemoryMode::Fast if fits(estimate.fast.peak_bytes) => Some(PpmlMemoryRoute::Fast),
-        MemoryMode::Low if fits(estimate.low.peak_bytes) => Some(PpmlMemoryRoute::Low),
-        MemoryMode::Auto if fits(estimate.fast.peak_bytes) => Some(PpmlMemoryRoute::Fast),
-        MemoryMode::Auto if fits(estimate.low.peak_bytes) => Some(PpmlMemoryRoute::Low),
-        MemoryMode::Fast | MemoryMode::Low | MemoryMode::Auto => None,
+    let selected = match (config.requested, config.require_fast_route) {
+        (MemoryMode::Fast, _) if fits(estimate.fast.peak_bytes) => Some(PpmlMemoryRoute::Fast),
+        (MemoryMode::Low, false) if fits(estimate.low.peak_bytes) => Some(PpmlMemoryRoute::Low),
+        (MemoryMode::Auto, _) if fits(estimate.fast.peak_bytes) => Some(PpmlMemoryRoute::Fast),
+        (MemoryMode::Auto, false) if fits(estimate.low.peak_bytes) => Some(PpmlMemoryRoute::Low),
+        (MemoryMode::Fast | MemoryMode::Low | MemoryMode::Auto, _) => None,
     };
     if let Some(probe) = probe {
         probe(PpmlMemoryPreflightEvent::Decision(
@@ -794,6 +838,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         embedding_resident_bytes: config.embedding_resident_bytes,
         safety_headroom_bytes,
         usable_bytes,
+        solver_workspace_bytes: 0,
     })
 }
 
@@ -2989,13 +3034,15 @@ impl PpmlMemoryTelemetry {
             self.plan.preflight_dimensions,
             PpmlMemoryConfig {
                 requested: self.plan.requested,
+                require_fast_route: self.plan.selected == PpmlMemoryRoute::Fast,
                 available_bytes: self.plan.available_bytes,
                 embedding_resident_bytes: self.plan.embedding_resident_bytes,
                 poolsize: self.plan.estimate.recommended_poolsize.max(1),
                 diagnostic_capacity,
             },
         )?
-        .with_final_dimensions(self.plan.dimensions)?;
+        .with_final_dimensions(self.plan.dimensions)?
+        .with_solver_workspace(self.plan.solver_workspace_bytes)?;
         if reconstructed != self.plan {
             return Err(invalid_argument(
                 "PPML memory telemetry plan does not match a fresh preflight reconstruction",
@@ -3304,6 +3351,7 @@ mod tests {
             dimensions(),
             PpmlMemoryConfig {
                 requested: MemoryMode::Fast,
+                require_fast_route: false,
                 available_bytes: None,
                 embedding_resident_bytes: 0,
                 poolsize: 4,
@@ -3520,6 +3568,7 @@ mod tests {
     fn generation_zero_plan_rebases_only_to_a_bounded_final_generation() {
         let config = PpmlMemoryConfig {
             requested: MemoryMode::Auto,
+            require_fast_route: false,
             available_bytes: None,
             embedding_resident_bytes: 0,
             poolsize: 4,

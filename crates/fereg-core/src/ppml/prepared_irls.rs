@@ -10,7 +10,10 @@ use std::time::{Duration, Instant};
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{absorb_fixed_effects, BorrowedMapWeights, FeDesign, FeSolverKind, SolveReport};
+use crate::fe::{
+    absorb_fixed_effects, BorrowedMapWeights, CmgTopologyProfile, FeDesign, FeSolverKind,
+    PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
+};
 use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
 use crate::ols::{
     classify_frozen_linear_fallback, CertifiedFrozenLinearOutput, CertifiedLinearSession,
@@ -34,16 +37,16 @@ use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 #[cfg(test)]
 use super::plan_ppml_memory;
-use super::prepared_estimator::{
-    PpmlCmgDevelopmentMode, PpmlInterruptPoint, PpmlLsmrDevelopmentMode, PpmlLsmrDevelopmentPolicy,
-};
+use super::prepared_estimator::PpmlInterruptPoint;
 use super::{
     scheduled_inner_tolerance, strict_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot,
     PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlConfig, PpmlFallbackKind,
     PpmlInnerToleranceProgress, PpmlIterationWorkspace, PpmlLinearWorkspaceCapacityReport,
     PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan, PpmlMemoryRoute, PpmlMemoryTelemetry,
-    PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlSteadyStateAllocationObservation,
-    PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
+    PpmlPhase, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlSolverEngine,
+    PpmlSolverFrameKind, PpmlSolverObservation, PpmlSolverPlan, PpmlSolverReport,
+    PpmlSteadyStateAllocationObservation, PpmlWorkspaceCapacityReport,
+    PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
@@ -107,17 +110,10 @@ pub(crate) struct PreparedPpmlIrlsConfig {
     /// session. It observes projection and finite-solve segments without
     /// coupling the OLS engine to PPML phase types.
     pub(crate) linear_phase_allocation_probe: Option<LinearSessionPhaseAllocatorProbe>,
-    /// Explicit admission state for the FE route. Production is pinned to
-    /// MAP; development arms carry the one route authorized by core preflight.
-    pub(crate) solver_admission: PpmlSolverAdmission,
-    /// Emit the stable, diagnostic-only solver trace to stderr.
-    pub(crate) solver_trace: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PpmlSolverAdmission {
-    ProductionMap,
-    Development(super::prepared_estimator::PpmlDevelopmentSolverRequest),
+    /// Public request/selection identity. MAP remains the canonical linear
+    /// configuration even when the selected ordinary-frame engine is LSMR
+    /// or prepared CMG.
+    pub(crate) solver_plan: PpmlSolverPlan,
 }
 
 impl Default for PreparedPpmlIrlsConfig {
@@ -139,8 +135,7 @@ impl Default for PreparedPpmlIrlsConfig {
             allocation_snapshot_probe: None,
             phase_allocation_probe: None,
             linear_phase_allocation_probe: None,
-            solver_admission: PpmlSolverAdmission::ProductionMap,
-            solver_trace: false,
+            solver_plan: PpmlSolverPlan::new(super::PpmlSolverFamily::Auto),
         }
     }
 }
@@ -262,6 +257,7 @@ pub(crate) struct PreparedPpmlIrlsDiagnostics {
     pub(crate) total_step_halvings: usize,
     pub(crate) strict_profile_rejections: usize,
     pub(crate) final_score: PpmlCertificate,
+    pub(crate) solver: PpmlSolverReport,
     pub(crate) memory: PpmlMemoryTelemetry,
 }
 
@@ -680,7 +676,7 @@ pub(crate) fn fit_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prior_weights: &[f64],
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
-    memory_plan: PpmlMemoryPlan,
+    mut memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
 ) -> Result<PreparedPpmlIrlsFit> {
     fit_prepared_ppml_irls_interruptible(
@@ -807,8 +803,22 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         PpmlMemoryRoute::Low => PreparedOlsExecutionMode::Low,
     };
     config.linear.execution.poolsize = config.memory.poolsize;
+    let fe_design = prepared.fit_owned_fe_design()?;
+    let solver_rhs = memory_plan
+        .dimensions
+        .finite_columns
+        .checked_add(1)
+        .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
+    let solver_workspace = public_solver_workspace_bytes(
+        prepared,
+        &fe_design,
+        &config,
+        solver_rhs,
+        purpose,
+    )?;
+    memory_plan = memory_plan.with_solver_workspace(solver_workspace)?;
     let solver_memory_budget = FeSolverMemoryBudget {
-        execution_bytes: memory_plan.selected_bytes(),
+        execution_bytes: memory_plan.selected_inventory().peak_bytes,
         usable_bytes: memory_plan.usable_bytes.unwrap_or(u128::MAX),
     };
     config.ppml.absorb.solver_memory_budget = Some(solver_memory_budget);
@@ -822,17 +832,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
-
-    let fe_design = prepared.fit_owned_fe_design()?;
-    let solver_rhs = memory_plan
-        .dimensions
-        .finite_columns
-        .checked_add(1)
-        .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-    preflight_development_solver_workspace(&fe_design, &config, solver_memory_budget, solver_rhs)?;
-    if config.solver_trace {
-        trace_fit_begin(prepared, &fe_design, config, memory_plan, solver_rhs);
-    }
     let (coefficient_values, eta) = initialize(
         prepared,
         outcome,
@@ -845,12 +844,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
     workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
-    let mut trace_previous_hessian = Vec::new();
-    if config.solver_trace {
-        trace_previous_hessian
-            .try_reserve_exact(workspace.hessian_weights().len())
-            .map_err(|_| allocation("unable to reserve PPML solver-trace Hessian state"))?;
-    }
     let mut objective =
         poisson_objective_from_eta(outcome, workspace.eta(), workspace.mean(), prior_weights)?;
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design)?;
@@ -870,12 +863,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         fe_design,
     )?;
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
-    let joint_policy = joint_lsmr_policy(config, purpose)?;
-    let fused_policy = fused_lsmr_policy(config, purpose)?;
-    let fused_cmg_enabled = fused_cmg_enabled(config, purpose);
     let mut joint_lsmr = None;
     let mut fused_lsmr = None;
     let mut fused_cmg = None;
+    let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
         .min(config.memory.diagnostic_capacity)
         .min(config.ppml.max_iterations);
@@ -937,7 +928,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.set_config(ppml_linear_config(config, inner_tolerance)?)?;
         if iteration > 1 {
             frame_generation = next_frame_generation(frame_generation)?;
-            refresh_linear_frame(&mut session, &workspace, frame_generation)?;
+            if joint_lsmr.is_none() && fused_lsmr.is_none() && fused_cmg.is_none() {
+                refresh_linear_frame(&mut session, &workspace, frame_generation)?;
+            }
         }
         memory.record_phase(PpmlPhase::WeightResponseRefresh, refresh_clock.elapsed());
         record_phase_allocation(
@@ -957,77 +950,89 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 &mut total_inner_iterations,
                 output.fit().absorption_report(),
             )?;
-            if config.solver_trace {
-                trace_linear_solve(
-                    "fresh",
-                    iteration,
-                    frame_generation,
-                    inner_tolerance,
-                    output.fit().absorption_report(),
-                    output.reuse_report(),
-                    workspace.hessian_weights(),
-                    &mut trace_previous_hessian,
-                );
-            }
+            let selected_engine = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication) {
+                config
+                    .solver_plan
+                    .selected_engine(output.fit().kept_generated_columns().len())
+            } else {
+                PpmlSolverEngine::Map
+            };
+            let mut initial_solver_report =
+                PpmlSolverReport::new(config.solver_plan, selected_engine);
+            initial_solver_report.observe(map_solver_observation(
+                output.fit().absorption_report(),
+                PpmlSolverFrameKind::Checkpoint,
+            ))?;
             fill_candidate_eta_from_linear_output(&output, offset, workspace.candidate_eta_mut())?;
             fill_candidate_coefficients_from_linear_output(
                 &output,
                 workspace.candidate_coefficients_mut(),
             )?;
-            let experimental_columns =
-                if joint_policy.is_some() || fused_policy.is_some() || fused_cmg_enabled {
-                    Some(fallible_copy(
+            let specialized_columns = (selected_engine != PpmlSolverEngine::Map)
+                .then(|| {
+                    fallible_copy(
                         output.fit().kept_generated_columns(),
-                        "unable to reserve joint PPML active-column identity",
-                    )?)
-                } else {
-                    None
-                };
+                        "unable to reserve PPML specialized active-column identity",
+                    )
+                })
+                .transpose()?;
             let result = (
                 output.fit().finite_rank(),
                 output.reuse_report(),
                 output.fit().absorption_report().used_solver,
             );
             drop(output);
-            if let (Some(policy), Some(active_columns)) =
-                (joint_policy, experimental_columns.as_ref())
-            {
-                joint_lsmr = Some(ReusableCategoricalJointLsmr::new(
-                    prepared,
-                    active_columns,
-                    session.fe_design(),
-                    policy,
-                )?);
+            match selected_engine {
+                PpmlSolverEngine::Map => {}
+                PpmlSolverEngine::LsmrJoint => {
+                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "joint PPML LSMR activation lacks the frozen active basis",
+                        )
+                    })?;
+                    joint_lsmr = Some(ReusableCategoricalJointLsmr::new(
+                        prepared,
+                        active_columns,
+                        session.fe_design(),
+                        CategoricalLsmrPolicy::Reuse,
+                    )?);
+                }
+                PpmlSolverEngine::LsmrFused => {
+                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "fused PPML LSMR activation lacks the frozen active basis",
+                        )
+                    })?;
+                    fused_lsmr = Some(ReusableCategoricalFwlLsmr::new(
+                        prepared,
+                        active_columns,
+                        session.fe_design(),
+                        CategoricalLsmrPolicy::Reuse,
+                    )?);
+                }
+                PpmlSolverEngine::CmgPrepared => {
+                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "fused PPML CMG activation lacks the frozen active basis",
+                        )
+                    })?;
+                    fused_cmg = Some(ReusableCategoricalFwlCmg::new(
+                        prepared,
+                        active_columns,
+                        session.fe_design(),
+                        FusedFwlCmgConfig {
+                            map: config.ppml.absorb.map,
+                            threads: config.linear.execution.threads,
+                            batch_size: config.memory.poolsize.min(solver_rhs).max(1),
+                            solver_memory_budget,
+                        },
+                    )?);
+                }
             }
-            if let (Some(policy), Some(active_columns)) =
-                (fused_policy, experimental_columns.as_ref())
-            {
-                fused_lsmr = Some(ReusableCategoricalFwlLsmr::new(
-                    prepared,
-                    active_columns,
-                    session.fe_design(),
-                    policy,
-                )?);
-            }
-            if fused_cmg_enabled {
-                let active_columns = experimental_columns.as_ref().ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        "fused PPML CMG activation lacks the frozen active basis",
-                    )
-                })?;
-                fused_cmg = Some(ReusableCategoricalFwlCmg::new(
-                    prepared,
-                    active_columns,
-                    session.fe_design(),
-                    FusedFwlCmgConfig {
-                        map: config.ppml.absorb.map,
-                        threads: config.linear.execution.threads,
-                        batch_size: config.memory.poolsize.min(solver_rhs).max(1),
-                        solver_memory_budget,
-                    },
-                )?);
-            }
+            solver_report = Some(initial_solver_report);
             result
         } else if let Some(joint) = joint_lsmr.as_mut() {
             let report = joint.solve(
@@ -1048,16 +1053,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         "prepared PPML total inner iteration count overflowed",
                     )
                 })?;
-            if config.solver_trace {
-                trace_joint_lsmr(
-                    iteration,
-                    frame_generation,
-                    inner_tolerance,
-                    report,
-                    workspace.hessian_weights(),
-                    &mut trace_previous_hessian,
-                );
-            }
+            solver_report
+                .as_mut()
+                .ok_or_else(|| internal("PPML LSMR solve lacks solver diagnostics"))?
+                .observe(joint_solver_observation(report))?;
             rank_frozen = true;
             (
                 joint.active_rank(),
@@ -1083,16 +1082,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         "prepared PPML total inner iteration count overflowed",
                     )
                 })?;
-            if config.solver_trace {
-                trace_fused_fwl_lsmr(
-                    iteration,
-                    frame_generation,
-                    inner_tolerance,
-                    report,
-                    workspace.hessian_weights(),
-                    &mut trace_previous_hessian,
-                );
-            }
+            solver_report
+                .as_mut()
+                .ok_or_else(|| internal("PPML fused LSMR solve lacks solver diagnostics"))?
+                .observe(fused_lsmr_solver_observation(report))?;
             rank_frozen = true;
             (
                 fused.active_rank(),
@@ -1125,16 +1118,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                                 "prepared PPML total inner iteration count overflowed",
                             )
                         })?;
-                    if config.solver_trace {
-                        trace_fused_fwl_cmg(
-                            iteration,
-                            frame_generation,
-                            inner_tolerance,
-                            report,
-                            workspace.hessian_weights(),
-                            &mut trace_previous_hessian,
-                        );
-                    }
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML CMG solve lacks solver diagnostics"))?
+                        .observe(cmg_solver_observation(report))?;
                     rank_frozen = true;
                     (
                         cmg.active_rank(),
@@ -1145,16 +1132,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     )
                 }
                 Err(error) if error.code == ErrorCode::NonConvergence => {
-                    if config.solver_trace {
-                        trace_fused_fwl_cmg_fallback(
-                            iteration,
-                            frame_generation,
-                            inner_tolerance,
-                            &error,
-                        );
-                    }
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML CMG fallback lacks solver diagnostics"))?
+                        .record_cmg_numerical_fallback()?;
                     fused_cmg = None;
                     memory.record_fallback(PpmlFallbackKind::Route);
+                    // The specialized route deliberately leaves the canonical
+                    // MAP session stale between checkpoints. Rebind it to this
+                    // exact frame before the one permitted numerical fallback.
+                    refresh_linear_frame(&mut session, &workspace, frame_generation)?;
                     let canonical = session.solve_fresh()?;
                     if !canonical.certified() {
                         return Err(numerical_nonconvergence(
@@ -1166,18 +1153,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         canonical.fit().absorption_report(),
                     )?;
-                    if config.solver_trace {
-                        trace_linear_solve(
-                            "fresh_route_fallback",
-                            iteration,
-                            frame_generation,
-                            inner_tolerance,
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML MAP fallback lacks solver diagnostics"))?
+                        .observe(map_solver_observation(
                             canonical.fit().absorption_report(),
-                            canonical.reuse_report(),
-                            workspace.hessian_weights(),
-                            &mut trace_previous_hessian,
-                        );
-                    }
+                            PpmlSolverFrameKind::Ordinary,
+                        ))?;
                     fill_candidate_eta_from_linear_output(
                         &canonical,
                         offset,
@@ -1214,18 +1196,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         output.response_absorption_report(),
                     )?;
-                    if config.solver_trace {
-                        trace_linear_solve(
-                            "frozen",
-                            iteration,
-                            frame_generation,
-                            inner_tolerance,
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML MAP solve lacks solver diagnostics"))?
+                        .observe(map_solver_observation(
                             output.response_absorption_report(),
-                            output.reuse_report(),
-                            workspace.hessian_weights(),
-                            &mut trace_previous_hessian,
-                        );
-                    }
+                            PpmlSolverFrameKind::Ordinary,
+                        ))?;
                     fill_candidate_eta_from_frozen_output(
                         &output,
                         offset,
@@ -1276,18 +1253,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         canonical.fit().absorption_report(),
                     )?;
-                    if config.solver_trace {
-                        trace_linear_solve(
-                            "fresh_equivalence",
-                            iteration,
-                            frame_generation,
-                            inner_tolerance,
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML MAP equivalence solve lacks diagnostics"))?
+                        .observe(map_solver_observation(
                             canonical.fit().absorption_report(),
-                            canonical.reuse_report(),
-                            workspace.hessian_weights(),
-                            &mut trace_previous_hessian,
-                        );
-                    }
+                            PpmlSolverFrameKind::Ordinary,
+                        ))?;
                     let canonical_route = canonical.fit().absorption_report().used_solver;
                     let mut equivalent = frozen_certified
                         && frozen_route == FeSolverKind::Map
@@ -1343,18 +1315,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     &mut total_inner_iterations,
                     canonical.fit().absorption_report(),
                 )?;
-                if config.solver_trace {
-                    trace_linear_solve(
-                        "fresh_fallback",
-                        iteration,
-                        frame_generation,
-                        inner_tolerance,
+                solver_report
+                    .as_mut()
+                    .ok_or_else(|| internal("PPML MAP fallback lacks solver diagnostics"))?
+                    .observe(map_solver_observation(
                         canonical.fit().absorption_report(),
-                        canonical.reuse_report(),
-                        workspace.hessian_weights(),
-                        &mut trace_previous_hessian,
-                    );
-                }
+                        PpmlSolverFrameKind::Ordinary,
+                    ))?;
                 fill_candidate_eta_from_linear_output(
                     &canonical,
                     offset,
@@ -1429,7 +1396,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             })?;
         let relative_change = relative_deviance_change(objective, accepted.objective);
         objective = accepted.objective;
-        workspace.refresh_score_residuals(outcome)?;
         final_score = prepared_score_certificate(
             prepared,
             session.fe_design(),
@@ -1502,30 +1468,43 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let strict_tolerance = strict_inner_tolerance(config.ppml);
             previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
             session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
+            let specialized_engine = if joint_lsmr.is_some() {
+                Some(PpmlSolverEngine::LsmrJoint)
+            } else if fused_lsmr.is_some() {
+                Some(PpmlSolverEngine::LsmrFused)
+            } else if fused_cmg.is_some() {
+                Some(PpmlSolverEngine::CmgPrepared)
+            } else {
+                None
+            };
             let strict_transaction = session.strict_candidate()?;
             let strict_basis_unchanged = strict_transaction.basis_unchanged();
             #[cfg(test)]
             let strict_basis_unchanged = strict_basis_unchanged && !take_strict_basis_change(1);
-            let (strict_certified, strict_rank) = {
+            let (strict_certified, strict_rank, strict_active_columns) = {
                 let strict = strict_transaction.candidate();
                 let strict_certified = strict.certified();
                 let strict_rank = strict.fit().finite_rank();
+                let strict_active_columns =
+                    if !strict_basis_unchanged && specialized_engine.is_some() {
+                        Some(fallible_copy(
+                            strict.fit().kept_generated_columns(),
+                            "unable to reserve PPML strict active-column identity",
+                        )?)
+                    } else {
+                        None
+                    };
                 accumulate_inner_iterations(
                     &mut total_inner_iterations,
                     strict.fit().absorption_report(),
                 )?;
-                if config.solver_trace {
-                    trace_linear_solve(
-                        "strict",
-                        iteration,
-                        frame_generation,
-                        strict_tolerance,
+                solver_report
+                    .as_mut()
+                    .ok_or_else(|| internal("PPML strict solve lacks solver diagnostics"))?
+                    .observe(map_solver_observation(
                         strict.fit().absorption_report(),
-                        strict.reuse_report(),
-                        workspace.hessian_weights(),
-                        &mut trace_previous_hessian,
-                    );
-                }
+                        PpmlSolverFrameKind::Checkpoint,
+                    ))?;
                 fill_candidate_eta_from_linear_output(
                     &strict,
                     offset,
@@ -1535,7 +1514,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     &strict,
                     workspace.candidate_coefficients_mut(),
                 )?;
-                (strict_certified, strict_rank)
+                (strict_certified, strict_rank, strict_active_columns)
             };
             #[cfg(test)]
             let injected_strict_movement = take_strict_resume(1);
@@ -1552,57 +1531,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 Err(error) if error.code == ErrorCode::NonConvergence => None,
                 Err(error) => return Err(error),
             };
-            if config.solver_trace
-                && (joint_lsmr.is_some() || fused_lsmr.is_some() || fused_cmg.is_some())
-            {
-                let eta_relative =
-                    relative_infinity_difference(workspace.eta(), workspace.candidate_eta());
-                let (
-                    coefficient_relative,
-                    coefficient_index,
-                    accepted_coefficient,
-                    candidate_coefficient,
-                ) = relative_infinity_difference_detail(
-                    workspace.coefficients(),
-                    workspace.candidate_coefficients(),
-                );
-                let active_coefficient_slots = joint_lsmr
-                    .as_ref()
-                    .map(ReusableCategoricalJointLsmr::active_slots)
-                    .or_else(|| {
-                        fused_lsmr
-                            .as_ref()
-                            .map(ReusableCategoricalFwlLsmr::active_slots)
-                            .or_else(|| {
-                                fused_cmg
-                                    .as_ref()
-                                    .map(ReusableCategoricalFwlCmg::active_slots)
-                            })
-                    });
-                let active_coefficient_relative =
-                    active_coefficient_slots.map_or(coefficient_relative, |slots| {
-                        relative_infinity_difference_at_slots(
-                            workspace.coefficients(),
-                            workspace.candidate_coefficients(),
-                            slots,
-                        )
-                    });
-                let (deviance_relative, likelihood_relative) =
-                    strict_objective.map_or((f64::INFINITY, f64::INFINITY), |candidate| {
-                        (
-                            relative_scalar_difference(objective.deviance, candidate.deviance),
-                            relative_scalar_difference(
-                                objective.log_likelihood,
-                                candidate.log_likelihood,
-                            ),
-                        )
-                    });
-                eprintln!(
-                    "FEREG_PPML_SOLVER_TRACE|schema=1|event=strict_compare|iteration={iteration}|generation={frame_generation}|certified={}|basis_unchanged={}|accepted_rank={finite_rank}|candidate_rank={strict_rank}|eta_relative={eta_relative:.17e}|coefficient_relative={coefficient_relative:.17e}|active_coefficient_relative={active_coefficient_relative:.17e}|coefficient_index={coefficient_index}|accepted_coefficient={accepted_coefficient:.17e}|candidate_coefficient={candidate_coefficient:.17e}|deviance_relative={deviance_relative:.17e}|likelihood_relative={likelihood_relative:.17e}",
-                    u8::from(strict_certified),
-                    u8::from(strict_basis_unchanged),
-                );
-            }
             let active_coefficient_slots = joint_lsmr
                 .as_ref()
                 .map(ReusableCategoricalJointLsmr::active_slots)
@@ -1631,6 +1559,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 active_coefficient_slots,
             ) == FinalHessianSynchronization::Certified;
 
+            let mut accepted_strict_basis_change = false;
             if strict_consistent {
                 // Publish the strict state itself. A unit trial copies the
                 // already-certified strict eta/beta and its evaluated means
@@ -1671,6 +1600,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         objective = strict_step.objective;
                         total_step_halvings = updated_step_halvings;
                         strict_transaction.commit();
+                        accepted_strict_basis_change = strict_active_columns.is_some();
                     }
                     Err(error) if error.code == ErrorCode::NonConvergence => {
                         strict_transaction.rollback();
@@ -1682,7 +1612,53 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     Err(error) => return Err(error),
                 }
             }
-            workspace.refresh_score_residuals(outcome)?;
+            if accepted_strict_basis_change {
+                let active_columns = strict_active_columns.as_deref().ok_or_else(|| {
+                    internal("accepted PPML strict basis change lacks active-column identity")
+                })?;
+                // The committed MAP basis is now canonical. Drop the stale
+                // specialized workspace before its fallible replacement so a
+                // checkpoint pivot does not double the route's memory peak.
+                match specialized_engine {
+                    Some(PpmlSolverEngine::LsmrJoint) => {
+                        drop(joint_lsmr.take());
+                        joint_lsmr = Some(ReusableCategoricalJointLsmr::new(
+                            prepared,
+                            active_columns,
+                            session.fe_design(),
+                            CategoricalLsmrPolicy::Reuse,
+                        )?);
+                    }
+                    Some(PpmlSolverEngine::LsmrFused) => {
+                        drop(fused_lsmr.take());
+                        fused_lsmr = Some(ReusableCategoricalFwlLsmr::new(
+                            prepared,
+                            active_columns,
+                            session.fe_design(),
+                            CategoricalLsmrPolicy::Reuse,
+                        )?);
+                    }
+                    Some(PpmlSolverEngine::CmgPrepared) => {
+                        drop(fused_cmg.take());
+                        fused_cmg = Some(ReusableCategoricalFwlCmg::new(
+                            prepared,
+                            active_columns,
+                            session.fe_design(),
+                            FusedFwlCmgConfig {
+                                map: config.ppml.absorb.map,
+                                threads: config.linear.execution.threads,
+                                batch_size: config.memory.poolsize.min(solver_rhs).max(1),
+                                solver_memory_budget,
+                            },
+                        )?);
+                    }
+                    Some(PpmlSolverEngine::Map) | None => {
+                        return Err(internal(
+                            "accepted PPML strict basis change lacks a specialized engine",
+                        ));
+                    }
+                }
+            }
             final_score = prepared_score_certificate(
                 prepared,
                 session.fe_design(),
@@ -1701,7 +1677,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     prior_weights,
                     offset,
                     config,
-                    &mut trace_previous_hessian,
                     &mut frame_generation,
                     &mut total_inner_iterations,
                     finite_rank,
@@ -1734,7 +1709,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         Err(error) if error.code == ErrorCode::NonConvergence => {}
                         Err(error) => return Err(error),
                     }
-                    workspace.refresh_score_residuals(outcome)?;
                     final_score = prepared_score_certificate(
                         prepared,
                         session.fe_design(),
@@ -1804,7 +1778,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
 
     if matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. }) {
-        workspace.refresh_score_residuals(outcome)?;
         let (_coefficient_values, eta, mean, _score_residuals) = workspace.into_final_buffers();
         let mean_reconstruction_relative = mean
             .iter()
@@ -1849,18 +1822,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         ));
     }
     let final_output = session.output()?;
-    if config.solver_trace {
-        trace_linear_solve(
-            "fit_end",
-            completed_iterations,
-            frame_generation,
-            strict_inner_tolerance(config.ppml),
+    solver_report
+        .as_mut()
+        .ok_or_else(|| internal("PPML final Hessian lacks solver diagnostics"))?
+        .observe(map_solver_observation(
             final_output.fit().absorption_report(),
-            final_output.reuse_report(),
-            workspace.hessian_weights(),
-            &mut trace_previous_hessian,
-        );
-    }
+            PpmlSolverFrameKind::Checkpoint,
+        ))?;
     let coefficients = final_coefficients(final_output.fit(), workspace.coefficients())?;
     let retained_memory = final_output.retained_within_memory();
     memory.observe_scratch(retained_memory.scratch_bytes);
@@ -1898,24 +1866,30 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 total_step_halvings,
                 strict_profile_rejections,
                 final_score,
+                solver: solver_report.ok_or_else(|| {
+                    internal("prepared PPML publication lacks solver diagnostics")
+                })?,
                 memory,
             },
         },
     )))
 }
 
-fn preflight_development_solver_workspace(
+fn public_solver_workspace_bytes<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
     design: &crate::fe::FeDesign,
     config: &PreparedPpmlIrlsConfig,
-    budget: FeSolverMemoryBudget,
     rhs: usize,
-) -> Result<()> {
-    let PpmlSolverAdmission::Development(development) = config.solver_admission else {
-        return Ok(());
-    };
-    let solver = development.solver;
-    if solver == FeSolverKind::Map || design.effects().is_empty() {
-        return Ok(());
+    purpose: PreparedPpmlIrlsPurpose,
+) -> Result<u128> {
+    let solver = config.solver_plan.selected;
+    if matches!(
+        solver,
+        super::PpmlSolverFamily::Auto | super::PpmlSolverFamily::Map
+    ) || design.effects().is_empty()
+        || matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. })
+    {
+        return Ok(0);
     }
     let mut levels = Vec::new();
     levels
@@ -1929,397 +1903,122 @@ fn preflight_development_solver_workspace(
         config.linear.execution.threads.resolved(),
         config.ppml.absorb.lsmr.local_size,
     )?;
-    let required = match solver {
-        FeSolverKind::Cg => estimate.cg_bytes,
-        FeSolverKind::Lsmr => estimate.lsmr_bytes(config.ppml.absorb.lsmr.preconditioner),
-        // CMG performs its topology-specific check at construction using the
-        // same budget; this conservative bound rejects obvious impossibility
-        // before its hierarchy allocation begins.
-        FeSolverKind::Cmg => {
-            let route = estimate.cg_bytes.max(estimate.lsmr_schwarz_bytes);
-            if development.cmg_mode == Some(PpmlCmgDevelopmentMode::FusedFwl) {
-                // The CMG constructor performs a topology-specific preflight
-                // before allocating its hierarchy. Charge only the exact
-                // fereg-owned fused buffers here so an unrelated CG/LSMR
-                // upper bound cannot reject an otherwise viable CMG frame.
-                estimate_fused_cmg_workspace_bytes(
-                    design.nobs(),
-                    rhs.saturating_sub(1),
-                    config.linear.execution.threads.resolved(),
-                )?
-            } else {
-                route
+    Ok(match solver {
+        super::PpmlSolverFamily::Lsmr => estimate.lsmr_schwarz_bytes,
+        super::PpmlSolverFamily::Cmg => {
+            let workspace = estimate_fused_cmg_workspace_bytes(
+                design.nobs(),
+                rhs.saturating_sub(1),
+                config.linear.execution.threads.resolved(),
+            )?;
+            let borrowed = prepared.fit_borrowed_cmg_design()?;
+            let profile = CmgTopologyProfile::analyze(&borrowed)?;
+            if profile.nuisance_columns() > CMG_MAX_NUISANCE_COLUMNS {
+                return Err(FeregError::new(
+                    ErrorCode::Unsupported,
+                    format!(
+                        "solver(cmg) supports at most {CMG_MAX_NUISANCE_COLUMNS} non-base nuisance columns; found {}",
+                        profile.nuisance_columns()
+                    ),
+                ));
             }
+            workspace
+                .checked_add(PreparedCmgTopology::conservative_prepare_peak_bytes(
+                    &borrowed,
+                )?)
+                .ok_or_else(|| allocation("prepared PPML CMG workspace peak overflows"))?
         }
-        _ => 0,
-    };
-    if !budget.fits(required) {
-        return Err(FeregError::new(
-            ErrorCode::Allocation,
-            format!(
-                "private PPML FE solver workspace does not fit the selected memory plan: solver={solver:?}, required={required}, execution={}, usable={}",
-                budget.execution_bytes, budget.usable_bytes,
-            ),
-        ));
-    }
-    Ok(())
+        super::PpmlSolverFamily::Auto | super::PpmlSolverFamily::Map => 0,
+    })
 }
 
-fn joint_lsmr_policy(
-    config: PreparedPpmlIrlsConfig,
-    purpose: PreparedPpmlIrlsPurpose,
-) -> Result<Option<CategoricalLsmrPolicy>> {
-    let PpmlSolverAdmission::Development(development) = config.solver_admission else {
-        return Ok(None);
-    };
-    if development.solver != FeSolverKind::Lsmr {
-        return Ok(None);
-    }
-    match development.lsmr_mode {
-        None | Some(PpmlLsmrDevelopmentMode::Legacy) => Ok(None),
-        Some(PpmlLsmrDevelopmentMode::FusedFwl) => Ok(None),
-        Some(PpmlLsmrDevelopmentMode::JointIncremental) => {
-            // Mu separation retains the canonical linear path. Only the
-            // publication IRLS trajectory may use the incremental prototype.
-            if !matches!(purpose, PreparedPpmlIrlsPurpose::Publication) {
-                return Ok(None);
-            }
-            let policy = match development.lsmr_policy {
-                Some(PpmlLsmrDevelopmentPolicy::Diagonal) => CategoricalLsmrPolicy::Diagonal,
-                Some(PpmlLsmrDevelopmentPolicy::Reuse) => CategoricalLsmrPolicy::Reuse,
-                Some(PpmlLsmrDevelopmentPolicy::Rebuild) => CategoricalLsmrPolicy::Rebuild,
-                None => {
-                    return Err(FeregError::new(
-                        ErrorCode::InvalidArgument,
-                        "private PPML joint LSMR requires an explicit state policy",
-                    ));
-                }
-            };
-            Ok(Some(policy))
-        }
-    }
-}
-
-fn fused_lsmr_policy(
-    config: PreparedPpmlIrlsConfig,
-    purpose: PreparedPpmlIrlsPurpose,
-) -> Result<Option<CategoricalLsmrPolicy>> {
-    let PpmlSolverAdmission::Development(development) = config.solver_admission else {
-        return Ok(None);
-    };
-    if development.solver != FeSolverKind::Lsmr
-        || development.lsmr_mode != Some(PpmlLsmrDevelopmentMode::FusedFwl)
-        || !matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-    {
-        return Ok(None);
-    }
-    let policy = match development.lsmr_policy {
-        Some(PpmlLsmrDevelopmentPolicy::Diagonal) => CategoricalLsmrPolicy::Diagonal,
-        Some(PpmlLsmrDevelopmentPolicy::Reuse) => CategoricalLsmrPolicy::Reuse,
-        Some(PpmlLsmrDevelopmentPolicy::Rebuild) => CategoricalLsmrPolicy::Rebuild,
-        None => {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "private PPML fused LSMR requires an explicit state policy",
-            ));
-        }
-    };
-    Ok(Some(policy))
-}
-
-fn fused_cmg_enabled(config: PreparedPpmlIrlsConfig, purpose: PreparedPpmlIrlsPurpose) -> bool {
-    matches!(
-        config.solver_admission,
-        PpmlSolverAdmission::Development(development)
-            if development.solver == FeSolverKind::Cmg
-                && development.cmg_mode == Some(PpmlCmgDevelopmentMode::FusedFwl)
-                && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-    )
-}
-
-fn trace_fit_begin<P: PreparedOlsFitView + ?Sized>(
-    prepared: &P,
-    design: &crate::fe::FeDesign,
-    config: PreparedPpmlIrlsConfig,
-    memory_plan: PpmlMemoryPlan,
-    rhs: usize,
-) {
-    let requested_solver = match config.solver_admission {
-        PpmlSolverAdmission::ProductionMap => config.linear.absorb.solver,
-        PpmlSolverAdmission::Development(development) => development.solver,
-    };
-    let requested_preconditioner = if requested_solver == FeSolverKind::Lsmr {
-        preconditioner_name(config.linear.absorb.lsmr.preconditioner)
-    } else {
-        "none"
-    };
-    let levels = design
-        .effects()
-        .iter()
-        .map(|effect| effect.n_levels().to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=fit_begin|n={}|k={}|fe_dims={}|levels={}|rhs={}|requested_solver={}|requested_preconditioner={}|memory={}|threads={}",
-        design.nobs(),
-        prepared.fit_model().columns.len(),
-        design.effects().len(),
-        levels,
-        rhs,
-        solver_name(requested_solver),
-        requested_preconditioner,
-        match memory_plan.selected {
-            PpmlMemoryRoute::Fast => "fast",
-            PpmlMemoryRoute::Low => "low",
-        },
-        config.linear.execution.threads.resolved(),
-    );
-}
-
-fn trace_linear_solve(
-    kind: &str,
-    iteration: usize,
-    generation: u64,
-    tolerance: f64,
+fn map_solver_observation(
     report: &SolveReport,
-    reuse: LinearSessionReuseReport,
-    hessian_weights: &[f64],
-    previous_hessian: &mut Vec<f64>,
-) {
-    let (hessian_min, hessian_max) = hessian_weights
-        .iter()
-        .fold((f64::INFINITY, 0.0_f64), |(minimum, maximum), value| {
-            (minimum.min(*value), maximum.max(*value))
-        });
-    let dynamic_range = if hessian_min > 0.0 {
-        hessian_max / hessian_min
-    } else {
-        f64::INFINITY
-    };
-    let maximum_relative_change = if previous_hessian.len() == hessian_weights.len() {
-        hessian_weights
-            .iter()
-            .zip(previous_hessian.iter())
-            .map(|(current, previous)| {
-                (current - previous).abs() / previous.abs().max(f64::MIN_POSITIVE)
-            })
-            .fold(0.0_f64, f64::max)
-    } else {
-        f64::NAN
-    };
-    previous_hessian.clear();
-    previous_hessian.extend_from_slice(hessian_weights);
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=solve|kind={kind}|iteration={iteration}|generation={generation}|tolerance={tolerance:.17e}|requested_solver={}|used_solver={}|requested_preconditioner={}|used_preconditioner={}|fe_iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_seconds={:.17e}|finite_seconds={:.17e}|warm_attempted={}|warm_certified={}|fallback={}|certified={}|fe_abs_inf={:.17e}|fe_rel_inf={:.17e}|fe_rel_two={:.17e}|hessian_min={hessian_min:.17e}|hessian_max={hessian_max:.17e}|hessian_dynamic_range={dynamic_range:.17e}|hessian_max_relative_change={maximum_relative_change:.17e}",
-        solver_name(report.requested_solver),
-        solver_name(report.used_solver),
-        report.requested_preconditioner.map_or("none", preconditioner_name),
-        report.used_preconditioner.map_or("none", preconditioner_name),
-        report.iterations,
-        report.setup_seconds,
-        report.solve_seconds,
-        reuse.phase_timing.projection_seconds.unwrap_or(f64::NAN),
-        reuse.phase_timing.finite_solve_seconds.unwrap_or(f64::NAN),
-        u8::from(reuse.warm_projection_attempted),
-        u8::from(reuse.warm_projection_certified),
-        u8::from(report.fallback_used || reuse.canonical_fallback),
-        u8::from(report.certified()),
-        report.certificate.absolute_infinity_norm,
-        report.certificate.relative_infinity_norm,
-        report.certificate.relative_two_norm,
-    );
-}
-
-fn trace_joint_lsmr(
-    iteration: usize,
-    generation: u64,
-    tolerance: f64,
-    report: JointLsmrReport,
-    hessian_weights: &[f64],
-    previous_hessian: &mut Vec<f64>,
-) {
-    let (hessian_min, hessian_max) = hessian_weights
-        .iter()
-        .fold((f64::INFINITY, 0.0_f64), |(minimum, maximum), value| {
-            (minimum.min(*value), maximum.max(*value))
-        });
-    let dynamic_range = if hessian_min > 0.0 {
-        hessian_max / hessian_min
-    } else {
-        f64::INFINITY
-    };
-    let maximum_relative_change = if previous_hessian.len() == hessian_weights.len() {
-        hessian_weights
-            .iter()
-            .zip(previous_hessian.iter())
-            .map(|(current, previous)| {
-                (current - previous).abs() / previous.abs().max(f64::MIN_POSITIVE)
-            })
-            .fold(0.0_f64, f64::max)
-    } else {
-        f64::NAN
-    };
-    previous_hessian.clear();
-    previous_hessian.extend_from_slice(hessian_weights);
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=solve|kind=joint_incremental|iteration={iteration}|generation={generation}|tolerance={tolerance:.17e}|effective_tolerance={:.17e}|requested_solver=lsmr|used_solver=lsmr|requested_preconditioner={}|used_preconditioner={}|fe_iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|warm_attempted={}|warm_certified={}|fallback=0|certified={}|continued_after_certificate={}|rebuilt_preconditioner={}|recurrence_residual={:.17e}|finite_abs_inf={:.17e}|fe_abs_inf={:.17e}|joint_rel_inf={:.17e}|joint_rel_two={:.17e}|hessian_min={hessian_min:.17e}|hessian_max={hessian_max:.17e}|hessian_dynamic_range={dynamic_range:.17e}|hessian_max_relative_change={maximum_relative_change:.17e}",
-        report.effective_tolerance,
-        if report.requested_schwarz { "schwarz" } else { "diagonal" },
-        if report.used_schwarz { "schwarz" } else { "diagonal" },
-        report.iterations,
-        report.setup_seconds,
-        report.solve_seconds,
-        u8::from(report.warm_start_attempted),
-        u8::from(report.warm_start_attempted && report.certificate.passed),
-        u8::from(report.certificate.passed),
-        u8::from(report.continued_after_certificate),
-        u8::from(report.rebuilt_preconditioner),
-        report.recurrence_residual,
-        report.certificate.finite_absolute_infinity_norm,
-        report.certificate.fixed_effect_absolute_infinity_norm,
-        report.certificate.relative_infinity_norm,
-        report.certificate.relative_two_norm,
-    );
-}
-
-fn trace_fused_fwl_lsmr(
-    iteration: usize,
-    generation: u64,
-    tolerance: f64,
-    report: FusedFwlLsmrReport,
-    hessian_weights: &[f64],
-    previous_hessian: &mut Vec<f64>,
-) {
-    let (hessian_min, hessian_max) = hessian_weights
-        .iter()
-        .fold((f64::INFINITY, 0.0_f64), |(minimum, maximum), value| {
-            (minimum.min(*value), maximum.max(*value))
-        });
-    let dynamic_range = if hessian_min > 0.0 {
-        hessian_max / hessian_min
-    } else {
-        f64::INFINITY
-    };
-    let maximum_relative_change = if previous_hessian.len() == hessian_weights.len() {
-        hessian_weights
-            .iter()
-            .zip(previous_hessian.iter())
-            .map(|(current, previous)| {
-                (current - previous).abs() / previous.abs().max(f64::MIN_POSITIVE)
-            })
-            .fold(0.0_f64, f64::max)
-    } else {
-        f64::NAN
-    };
-    previous_hessian.clear();
-    previous_hessian.extend_from_slice(hessian_weights);
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=solve|kind=fused_fwl|iteration={iteration}|generation={generation}|tolerance={tolerance:.17e}|effective_tolerance={:.17e}|requested_solver=lsmr|used_solver=lsmr|requested_preconditioner={}|used_preconditioner={}|fe_iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|warm_attempted={}|warm_certified={}|fallback=0|certified={}|continued_after_certificate={}|rebuilt_preconditioner={}|finite_abs_inf={:.17e}|fe_abs_inf={:.17e}|joint_rel_inf={:.17e}|joint_rel_two={:.17e}|hessian_min={hessian_min:.17e}|hessian_max={hessian_max:.17e}|hessian_dynamic_range={dynamic_range:.17e}|hessian_max_relative_change={maximum_relative_change:.17e}",
-        report.effective_tolerance,
-        if report.used_schwarz { "schwarz" } else { "diagonal" },
-        if report.used_schwarz { "schwarz" } else { "diagonal" },
-        report.iterations,
-        report.setup_seconds,
-        report.solve_seconds,
-        u8::from(report.preconditioner_reuse_attempted),
-        u8::from(report.preconditioner_reuse_certified),
-        u8::from(report.certificate.passed),
-        u8::from(report.continued_after_certificate),
-        u8::from(report.rebuilt_preconditioner),
-        report.certificate.finite_absolute_infinity_norm,
-        report.certificate.fixed_effect_absolute_infinity_norm,
-        report.certificate.relative_infinity_norm,
-        report.certificate.relative_two_norm,
-    );
-}
-
-fn trace_fused_fwl_cmg(
-    iteration: usize,
-    generation: u64,
-    tolerance: f64,
-    report: FusedFwlCmgReport,
-    hessian_weights: &[f64],
-    previous_hessian: &mut Vec<f64>,
-) {
-    let (hessian_min, hessian_max) = hessian_weights
-        .iter()
-        .fold((f64::INFINITY, 0.0_f64), |(minimum, maximum), value| {
-            (minimum.min(*value), maximum.max(*value))
-        });
-    let dynamic_range = if hessian_min > 0.0 {
-        hessian_max / hessian_min
-    } else {
-        f64::INFINITY
-    };
-    let maximum_relative_change = if previous_hessian.len() == hessian_weights.len() {
-        hessian_weights
-            .iter()
-            .zip(previous_hessian.iter())
-            .map(|(current, previous)| {
-                (current - previous).abs() / previous.abs().max(f64::MIN_POSITIVE)
-            })
-            .fold(0.0_f64, f64::max)
-    } else {
-        f64::NAN
-    };
-    previous_hessian.clear();
-    previous_hessian.extend_from_slice(hessian_weights);
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=solve|kind=fused_fwl_cmg|iteration={iteration}|generation={generation}|tolerance={tolerance:.17e}|effective_tolerance={:.17e}|requested_solver=cmg|used_solver=cmg|requested_preconditioner=cmg|used_preconditioner=cmg|fe_iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|finite_seconds={:.17e}|rhs={}|graph_batches={}|nuisance_columns={}|failed_rhs={}|retried_rhs={}|fallback=0|certified={}|continued_after_certificate={}|observation_cg_polish=0|backward_error={:.17e}|projection_abs_inf={:.17e}|projection_rel_inf={:.17e}|projection_rel_two={:.17e}|finite_abs_inf={:.17e}|fe_abs_inf={:.17e}|joint_rel_inf={:.17e}|joint_rel_two={:.17e}|hessian_min={hessian_min:.17e}|hessian_max={hessian_max:.17e}|hessian_dynamic_range={dynamic_range:.17e}|hessian_max_relative_change={maximum_relative_change:.17e}",
-        report.effective_tolerance,
-        report.iterations,
-        report.setup_seconds,
-        report.solve_seconds,
-        report.finish_seconds,
-        report.graph_right_hand_sides,
-        report.graph_batches,
-        report.nuisance_columns,
-        report.failed_right_hand_sides,
-        report.retried_right_hand_sides,
-        u8::from(report.certificate.passed),
-        u8::from(report.continued_after_certificate),
-        report.backward_error,
-        report.projection_absolute_infinity_norm,
-        report.projection_relative_infinity_norm,
-        report.projection_relative_two_norm,
-        report.certificate.finite_absolute_infinity_norm,
-        report.certificate.fixed_effect_absolute_infinity_norm,
-        report.certificate.relative_infinity_norm,
-        report.certificate.relative_two_norm,
-    );
-}
-
-fn trace_fused_fwl_cmg_fallback(
-    iteration: usize,
-    generation: u64,
-    tolerance: f64,
-    error: &FeregError,
-) {
-    eprintln!(
-        "FEREG_PPML_SOLVER_TRACE|schema=1|event=solve|kind=fused_fwl_cmg|iteration={iteration}|generation={generation}|tolerance={tolerance:.17e}|requested_solver=cmg|used_solver=map|fallback=1|certified=0|observation_cg_polish=0|failure_code={}|failure={:?}",
-        error.code.label(),
-        error.message,
-    );
-}
-
-const fn solver_name(solver: FeSolverKind) -> &'static str {
-    match solver {
-        FeSolverKind::Auto => "auto",
-        FeSolverKind::Map => "map",
-        FeSolverKind::Lsmr => "lsmr",
-        FeSolverKind::Cmg => "cmg",
-        FeSolverKind::Cg => "cg",
-        FeSolverKind::IronsTuck => "it",
-        FeSolverKind::Squarem => "squarem",
+    frame: PpmlSolverFrameKind,
+) -> PpmlSolverObservation {
+    PpmlSolverObservation {
+        engine: PpmlSolverEngine::Map,
+        frame,
+        retries: usize::from(report.fallback_used),
+        iterations: report.iterations,
+        setup_seconds: report.setup_seconds,
+        solve_seconds: report.solve_seconds,
+        certification_seconds: 0.0,
+        absolute_infinity_norm: Some(report.certificate.absolute_infinity_norm),
+        relative_infinity_norm: Some(report.certificate.relative_infinity_norm),
+        relative_two_norm: Some(report.certificate.relative_two_norm),
+        normal_equation: Some(report.normal_equation_residual),
+        projection_absolute_infinity_norm: None,
+        backward_error: None,
     }
 }
 
-const fn preconditioner_name(preconditioner: crate::fe::LsmrPreconditioner) -> &'static str {
-    match preconditioner {
-        crate::fe::LsmrPreconditioner::Auto => "auto",
-        crate::fe::LsmrPreconditioner::Off => "off",
-        crate::fe::LsmrPreconditioner::Diagonal => "diagonal",
-        crate::fe::LsmrPreconditioner::Schwarz => "schwarz",
+fn joint_solver_observation(report: JointLsmrReport) -> PpmlSolverObservation {
+    PpmlSolverObservation {
+        engine: PpmlSolverEngine::LsmrJoint,
+        frame: PpmlSolverFrameKind::Ordinary,
+        retries: usize::from(report.continued_after_certificate),
+        iterations: report.iterations,
+        setup_seconds: report.setup_seconds,
+        solve_seconds: report.solve_seconds,
+        certification_seconds: 0.0,
+        absolute_infinity_norm: Some(
+            report
+                .certificate
+                .finite_absolute_infinity_norm
+                .max(report.certificate.fixed_effect_absolute_infinity_norm),
+        ),
+        relative_infinity_norm: Some(report.certificate.relative_infinity_norm),
+        relative_two_norm: Some(report.certificate.relative_two_norm),
+        normal_equation: Some(report.recurrence_residual),
+        projection_absolute_infinity_norm: None,
+        backward_error: None,
+    }
+}
+
+fn fused_lsmr_solver_observation(report: FusedFwlLsmrReport) -> PpmlSolverObservation {
+    PpmlSolverObservation {
+        engine: PpmlSolverEngine::LsmrFused,
+        frame: PpmlSolverFrameKind::Ordinary,
+        retries: usize::from(report.continued_after_certificate),
+        iterations: report.iterations,
+        setup_seconds: report.setup_seconds,
+        solve_seconds: report.solve_seconds,
+        certification_seconds: 0.0,
+        absolute_infinity_norm: Some(
+            report
+                .certificate
+                .finite_absolute_infinity_norm
+                .max(report.certificate.fixed_effect_absolute_infinity_norm),
+        ),
+        relative_infinity_norm: Some(report.certificate.relative_infinity_norm),
+        relative_two_norm: Some(report.certificate.relative_two_norm),
+        normal_equation: None,
+        projection_absolute_infinity_norm: None,
+        backward_error: None,
+    }
+}
+
+fn cmg_solver_observation(report: FusedFwlCmgReport) -> PpmlSolverObservation {
+    PpmlSolverObservation {
+        engine: PpmlSolverEngine::CmgPrepared,
+        frame: PpmlSolverFrameKind::Ordinary,
+        retries: report.retried_right_hand_sides,
+        iterations: report.iterations,
+        setup_seconds: report.setup_seconds,
+        solve_seconds: report.solve_seconds,
+        certification_seconds: report.finish_seconds,
+        absolute_infinity_norm: Some(
+            report
+                .certificate
+                .finite_absolute_infinity_norm
+                .max(report.certificate.fixed_effect_absolute_infinity_norm),
+        ),
+        relative_infinity_norm: Some(report.certificate.relative_infinity_norm),
+        relative_two_norm: Some(report.certificate.relative_two_norm),
+        normal_equation: None,
+        projection_absolute_infinity_norm: Some(report.projection_absolute_infinity_norm),
+        backward_error: Some(report.backward_error),
     }
 }
 
@@ -2455,7 +2154,6 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     prior_weights: &[f64],
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
-    trace_previous_hessian: &mut Vec<f64>,
     frame_generation: &mut u64,
     total_inner_iterations: &mut usize,
     expected_rank: usize,
@@ -2479,18 +2177,6 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             total_inner_iterations,
             synchronized.fit().absorption_report(),
         )?;
-        if config.solver_trace {
-            trace_linear_solve(
-                "final_hessian",
-                0,
-                *frame_generation,
-                strict_tolerance,
-                synchronized.fit().absorption_report(),
-                synchronized.reuse_report(),
-                workspace.hessian_weights(),
-                trace_previous_hessian,
-            );
-        }
         fill_candidate_eta_from_linear_output(
             &synchronized,
             offset,
@@ -2776,37 +2462,15 @@ fn ppml_linear_config(
 }
 
 fn validate_solver_admission(config: PreparedPpmlIrlsConfig) -> Result<()> {
-    let solver = config.linear.absorb.solver;
-    match config.solver_admission {
-        PpmlSolverAdmission::ProductionMap if solver == FeSolverKind::Map => Ok(()),
-        PpmlSolverAdmission::Development(admitted) if solver == admitted.solver => Ok(()),
-        PpmlSolverAdmission::Development(admitted)
-            if solver == FeSolverKind::Map
-                && admitted.solver == FeSolverKind::Lsmr
-                && matches!(
-                    admitted.lsmr_mode,
-                    Some(
-                        PpmlLsmrDevelopmentMode::FusedFwl
-                            | PpmlLsmrDevelopmentMode::JointIncremental
-                    )
-                ) =>
-        {
-            Ok(())
-        }
-        PpmlSolverAdmission::Development(admitted)
-            if solver == FeSolverKind::Map
-                && admitted.solver == FeSolverKind::Cmg
-                && admitted.cmg_mode == Some(PpmlCmgDevelopmentMode::FusedFwl) =>
-        {
-            Ok(())
-        }
-        PpmlSolverAdmission::ProductionMap => Err(invalid_argument(
-            "production prepared PPML is pinned to MAP",
-        )),
-        PpmlSolverAdmission::Development(_) => Err(invalid_argument(
-            "prepared PPML solver does not match its development admission",
-        )),
+    if config.linear.absorb.solver != FeSolverKind::Map
+        || config.ppml.absorb.solver != FeSolverKind::Map
+        || config.solver_plan.selected == super::PpmlSolverFamily::Auto
+    {
+        return Err(invalid_argument(
+            "prepared PPML checkpoints must use MAP under a resolved public solver plan",
+        ));
     }
+    Ok(())
 }
 
 fn strict_absorb(mut config: PreparedOlsFitConfig, tolerance: f64) -> PreparedOlsFitConfig {
@@ -3155,28 +2819,6 @@ fn relative_infinity_difference(left: &[f64], right: &[f64]) -> f64 {
         .fold(0.0_f64, f64::max)
 }
 
-fn relative_infinity_difference_detail(left: &[f64], right: &[f64]) -> (f64, usize, f64, f64) {
-    if left.len() != right.len() || left.is_empty() {
-        return (f64::INFINITY, usize::MAX, f64::NAN, f64::NAN);
-    }
-    let mut maximum = -1.0_f64;
-    let mut maximum_index = 0_usize;
-    for (index, (left_value, right_value)) in left.iter().zip(right).enumerate() {
-        let relative =
-            (left_value - right_value).abs() / left_value.abs().max(right_value.abs()).max(1.0);
-        if relative > maximum {
-            maximum = relative;
-            maximum_index = index;
-        }
-    }
-    (
-        maximum,
-        maximum_index,
-        left[maximum_index],
-        right[maximum_index],
-    )
-}
-
 fn relative_infinity_difference_at_slots(left: &[f64], right: &[f64], slots: &[usize]) -> f64 {
     if left.len() != right.len() || slots.iter().any(|slot| *slot >= left.len()) {
         return f64::INFINITY;
@@ -3446,6 +3088,10 @@ fn allocation(message: &'static str) -> FeregError {
 
 fn invalid_argument(message: &'static str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
+}
+
+fn internal(message: &'static str) -> FeregError {
+    FeregError::new(ErrorCode::Internal, message)
 }
 
 fn invalid_data(message: &'static str) -> FeregError {
