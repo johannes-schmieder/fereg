@@ -113,9 +113,9 @@
       "h_rt": "02:00:00"
     },
     "bundle_shapes": {
-      "breadth": {"n": 250000, "controls": [0, 10, 50], "threads": [14]},
-      "difficulty": {"n": 250000, "controls": [2, 20], "difficulties": ["easy", "long"], "threads": [14]},
-      "scaling": {"n": 500000, "controls": [10], "threads": [1, 7, 14, 28]}
+      "breadth": {"n": 25000, "controls": [0, 10, 50], "threads": [14]},
+      "difficulty": {"n": 25000, "controls": [2, 20], "difficulties": ["easy", "long"], "threads": [14]},
+      "scaling": {"n": 25000, "controls": [10], "threads": [1, 7, 14, 28]}
     },
     "bundles": [
       {"task": 1, "id": "breadth_balanced_2fe", "shape": "breadth", "topology": "balanced_2fe", "difficulty": "easy"},
