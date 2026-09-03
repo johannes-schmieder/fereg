@@ -1,7 +1,8 @@
 # OLS parity tests
 
-`fereg` remains disabled. This directory contains developer-only differential
-fixtures and evidence contracts; none of them enable the public estimator.
+`fereg` is public. This directory contains source-bound differential fixtures
+and evidence contracts; each receipt supports only the exact historical
+checkpoint it names.
 
 The first categorical-interaction reference gate is the successful,
 source-bound receipt:
@@ -72,7 +73,8 @@ level. It checks final-sample base/name rebasing for a factor main effect and a
 factor interaction, native status and transaction invariants, and fail-closed
 explicit/FV-set base policies. The independent explicit-dummy Rust oracle is
 the mathematical authority for the corresponding compact fit. The accepted
-activation is source `0e2aa609f9cbb17f8a205261d80680e68a752cef` and consumes
+rebasing checkpoint is source `0e2aa609f9cbb17f8a205261d80680e68a752cef`
+and consumes
 the sanitized reference receipt
 `.ci/reference-probes/fe-interaction/0e2aa609f9cbb17f8a205261d80680e68a752cef.json`,
 whose sealed payload is
@@ -90,15 +92,17 @@ The active frozen-projection gate at source
 `multi_fe_interactions` manifest case and the guarded `intercept_and_slope`
 case. Its sealed 32-case/8-blocker receipt is
 `benchmarks/reports/captured/darwin-arm64/stata18/ols_hidden_numeric/20260824T114506Z-6bbe04d`.
-Public activation and performance claims remain false.
+That historical receipt makes no current public-surface or performance claim.
 
 `estimate_ols_intercept_slope_parity.do` consumes the frozen
 `intercept_and_slope` comparator case on its dedicated topology-preserving
 48-row fixture. It binds the hidden omitted coefficient, positive iid
-covariance, positive `df_r=22`, three-row extended absorbed-DoF table, solver and transaction
-certificates, the reference inexact slope-count flag, and continued public
-failure. The independent Rust explicit-dummy oracle remains the mathematical
-authority for projection rank, residuals, RSS, bread, and covariance formula;
+covariance, positive `df_r=22`, three-row extended absorbed-DoF table, solver
+and transaction
+certificates, the reference inexact slope-count flag, and the then-current
+public-failure condition. The independent Rust explicit-dummy oracle remains
+the mathematical authority for projection rank, residuals, RSS, bread, and
+covariance formula;
 the licensed comparator supplies pinned Stata-facing metadata.
 
 `estimate_ols_intercept_slope_overabsorbed_fail_closed.do` retains the former

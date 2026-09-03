@@ -66,7 +66,7 @@ and exposes no requested outputs.
 ## Public PPML transaction
 
 The PPML adapter implements the same control-plane/data-plane boundary used by
-the activated public command. Stata parses syntax and model
+the public command. Stata parses syntax and model
 metadata, constructs the candidate marker, allocates private shadows, and
 makes exactly one guarded `estimate-ppml` call. Rust validates the complete
 request, PPML request/result wire identities, source and output bindings,

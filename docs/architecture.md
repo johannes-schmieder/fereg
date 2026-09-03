@@ -74,11 +74,11 @@ PPML transport is additive: its request/result wires and live-SPI action do
 not alter the OLS action or result layout. Receipt-last publication and the
 direct `fereg` baseline are governed by
 [ADR 0019](adr/0019-additive-ppml-transaction-and-fereg-regression-boundary.md).
-The pre-migration modules are classified in
-[the stale PPML disposition inventory](ppml_stale_module_inventory.md); they
-are not a second production engine. Public activation does not by itself close
-the final scientific, platform, memory, performance, or release gates;
-Windows licensed-Stata testing and the formal activated aggregate remain
+The prepared PPML transaction is the sole production estimator path. Obsolete
+alternate production modules were removed or reduced to explicitly test-only
+helpers; they are not a second engine. Public availability does not by itself
+close the final scientific, platform, memory, performance, or release gates;
+Windows licensed-Stata testing and formal cross-platform qualification remain
 deferred.
 
 The separation coordinator is the only production owner of sample mutation.

@@ -222,7 +222,8 @@ reopens baseline and candidate bundles on one identical native host/platform
 artifact for that platform. SCC science, performance, and memory compare the
 Linux baseline/candidate artifacts on the same node. Both comparisons must
 name the same exact source commit/tree, but their platform plugin bytes are
-expected to differ. The Phase 12 aggregate cross-binds each candidate artifact
+expected to differ. The formal PPML qualification aggregate cross-binds each
+candidate artifact
 to its own authoritative platform build/load receipt, including the same
 source archive and toolchain contract.
 

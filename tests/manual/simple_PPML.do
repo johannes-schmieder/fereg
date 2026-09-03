@@ -1,9 +1,6 @@
 version 18.0
 
-* Public activation uses feppml.  During preactivation, developers can set
-* global FEREG_PPML_TEST_COMMAND _fereg_ppml before running this file.
-local feppml_command `"$FEREG_PPML_TEST_COMMAND"'
-if strtrim(`"`feppml_command'"') == "" local feppml_command "feppml"
+local feppml_command "feppml"
 
 clear all
 set more off

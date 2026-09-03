@@ -27,20 +27,21 @@ outputs, prediction, memory modes, and native threading described by
 HAC/Driscoll–Kraay, other GLMs, GPU execution, and undocumented compatibility
 modes are not part of 0.5.0.
 
-## PPML activated testing boundary
+## PPML public testing boundary
 
 The public wrapper delegates once to `_fereg_ppml`, which enters the guarded
 `_fereg_estimate_ppml` transaction, and additive `estimate-ppml` plugin action.
-The three ado files are now part of the package inventory and exercise public
-PPML semantics through request wire 1.5 and result wire 1.2 without altering
+The public PPML ado files are part of the package inventory and exercise
+public PPML semantics through request wire 1.5 and result wire 1.2 without altering
 the OLS action or result layout.
 
-Activation requires exact-source scientific agreement with the pinned
+Qualification requires exact-source scientific agreement with the pinned
 `ppmlhdfe` closure and independent oracles; transaction, interruption,
 allocation, memory, performance, and supported-platform qualification; and the
 direct F0 `fereg` non-regression gate. The macOS and Linux implementation gates
 have been exercised, but Windows licensed-Stata testing and the formal
-cross-platform activated aggregate are explicitly deferred. The rows describe
+cross-platform qualification aggregate are explicitly deferred. The rows
+describe
 implemented behavior for testing, not a qualified release claim.
 
 ## Platform qualification

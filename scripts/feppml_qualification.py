@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate and seal the exact-SHA Phase 12 ``feppml`` qualification.
+"""Evaluate and seal the exact-SHA ``feppml`` qualification.
 
 The lower-level PPML memory/performance evaluator owns the mathematical
 candidate/comparator/oracle comparisons and operational gates.  This module
@@ -1428,7 +1428,7 @@ def write_receipt(path: Path, payload: Mapping[str, Any]) -> None:
 def verify_receipt(path: Path) -> Mapping[str, Any]:
     """Verify only the immutable JSON envelope.
 
-    This helper is intentionally insufficient for activation.  Use
+    This helper is intentionally insufficient for qualification. Use
     :func:`verify_qualification_receipt` to recompute the complete evaluation
     from its committed manifest and evidence.
     """

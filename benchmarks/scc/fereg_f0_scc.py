@@ -4557,7 +4557,7 @@ def _verify_closed_run(
 ) -> dict[str, Any]:
     """Verify a collected final frozen run without querying SCC or writing.
 
-    This is the Phase 12 read boundary.  The held collector is not sufficient:
+    This is the PPML qualification read boundary. The held collector is not sufficient:
     every source/archive, setup, submitted job, task, scientific cell, evaluator
     receipt, raw qacct record, and final hash-bound sentinel must agree.
     """

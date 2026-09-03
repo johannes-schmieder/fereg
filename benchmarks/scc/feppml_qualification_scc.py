@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Immutable SCC lifecycle for the Phase 12 feppml qualification.
+"""Immutable SCC lifecycle for the feppml qualification.
 
 The lifecycle is intentionally split into prepare, setup, task, collect, and
 close stages.  Preparation archives exact committed candidate and comparator

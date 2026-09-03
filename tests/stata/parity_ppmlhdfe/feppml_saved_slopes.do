@@ -5,9 +5,9 @@ if strtrim(`"`feppml_test_command'"') == "" local feppml_test_command "feppml"
 clear all
 set more off
 
-* This fixture is shared by the hidden pre-activation adapter and the eventual
-* public command.  Saved FE channels are observation-level contributions, so
-* the intercept and slope channels must add directly to d.
+* This fixture is shared by the public command and direct hidden-transaction
+* regression wrapper. Saved FE channels are observation-level contributions,
+* so the intercept and slope channels must add directly to d.
 set obs 144
 generate long obs_id = _n
 generate byte g = 1 + mod(_n - 1, 6)

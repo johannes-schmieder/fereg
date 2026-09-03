@@ -2427,7 +2427,7 @@ mod tests {
             // With one absorbed effect these are two internally equal FE
             // groups. Their local means are well-defined, but the common
             // canonical q vector spans more than one positive-f64 scale can
-            // represent. Pre-activation policy therefore fails numerically
+            // represent. The public policy therefore fails numerically
             // and publishes no shape-dependent partial result.
             weights[0] = f64::MAX;
             weights[1] = f64::MAX;

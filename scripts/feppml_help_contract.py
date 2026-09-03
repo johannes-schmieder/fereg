@@ -16,7 +16,7 @@ from typing import NamedTuple, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_HELP_PATH = (
-    ROOT / "tests" / "stata" / "documentation" / "feppml_activation.sthlp"
+    ROOT / "tests" / "stata" / "documentation" / "feppml_public.sthlp"
 )
 PUBLIC_HELP_PATH = ROOT / "stata" / "feppml.sthlp"
 SHARED_FIXTURE_PATH = (

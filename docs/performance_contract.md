@@ -18,8 +18,8 @@ PPML timing is inadmissible until the same cell passes the frozen candidate,
 exact pinned `ppmlhdfe`, and independent-oracle scientific checks. The PPML
 matrix, memory model, route calibration, warm/fresh equivalence, leak checks,
 and constrained-memory behavior are governed by ADR 0018 and
-`benchmarks/manifests/ppml_memory_performance_v1.json`. The final
-pre-activation source must also pass the direct candidate-versus-F0 `fereg`
+`benchmarks/manifests/ppml_memory_performance_v1.json`. The exact candidate
+source must also pass the direct candidate-versus-F0 `fereg`
 gate so shared-engine reuse cannot hide an OLS regression.
 
 The PPML runtime threshold is evaluated only from source-, artifact-, dataset-,
@@ -73,19 +73,14 @@ The governing memory gates are:
 
 Process-RSS and old comparator/MAP ratios remain diagnostic, including cases
 where a faster certified route deliberately spends more resident memory.
-Solver development first uses the five-family
-dense/sparse/slope/cluster/moderate-K matrix with shortened repetition counts;
-the frozen release-grade matrix is rerun after `solver(auto)` routing is fixed.
-
-The local solver-development cadence is intentionally separate from release
-qualification:
-
-- `quick`: the four decision-relevant arms on every 100k topology after each
-  substantive solver change;
-- `matrix`: every registered 100k topology and algorithm arm at a phase
-  boundary;
-- `milestone`: selected one-million-row cases; and
-- `freeze`: selected ten-million-row cases with one cold and five warm runs.
+Solver development compares the three public families with separate
+`ppmlhdfe` default and forced-LSMR comparator arms. It starts with the
+versioned local science and smoke profiles. When an SCC development campaign
+is explicitly authorized, it uses small diagnostic cells on comparable
+28-core nodes with roughly 10--20 independent tasks in parallel. Those runs
+are not qualification evidence. Large-sample and broad route-calibration work
+requires separate authorization, and the frozen release-grade matrix is rerun
+only after `solver(auto)` routing is fixed.
 
 Generated datasets are created before timing and identified by generator and
 dataset SHA-256. Scientific preflights request residuals and samples separately

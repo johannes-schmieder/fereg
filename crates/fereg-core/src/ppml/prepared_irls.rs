@@ -993,7 +993,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let active_columns = specialized_columns.as_ref().ok_or_else(|| {
                         FeregError::new(
                             ErrorCode::Internal,
-                            "joint PPML LSMR activation lacks the frozen active basis",
+                            "joint PPML LSMR requires the frozen active basis",
                         )
                     })?;
                     joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
@@ -1008,7 +1008,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let active_columns = specialized_columns.as_ref().ok_or_else(|| {
                         FeregError::new(
                             ErrorCode::Internal,
-                            "fused PPML LSMR activation lacks the frozen active basis",
+                            "fused PPML LSMR requires the frozen active basis",
                         )
                     })?;
                     fused_lsmr = Some(ReusableCategoricalFwlLsmr::new_with_threads(
@@ -1023,7 +1023,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let active_columns = specialized_columns.as_ref().ok_or_else(|| {
                         FeregError::new(
                             ErrorCode::Internal,
-                            "fused PPML CMG activation lacks the frozen active basis",
+                            "fused PPML CMG requires the frozen active basis",
                         )
                     })?;
                     fused_cmg = Some(ReusableCategoricalFwlCmg::new(

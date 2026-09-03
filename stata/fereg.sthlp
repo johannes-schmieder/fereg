@@ -742,7 +742,7 @@ not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
 {pstd}
 Version 0.5.0 is unreleased beta source. Public OLS and the additive
 {cmd:feppml} testing surface are active. Windows licensed-Stata testing and the
-formal activated cross-platform aggregate remain deferred. See
+formal cross-platform qualification remain deferred. See
 {cmd:STATUS.md} and {cmd:docs/compatibility_matrix.md} in the source
 distribution for exact-SHA qualification evidence and platform caveats.
 

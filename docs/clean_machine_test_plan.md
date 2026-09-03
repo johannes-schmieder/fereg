@@ -33,11 +33,11 @@ accepted exact-source controller receipt. Rosetta is not native Intel-host
 certification, which is also deferred.
 
 The retained `ppml-hidden` profile continues to test the private transaction
-boundary directly. The activated archive must also contain `feppml.ado`,
+boundary directly. The production archive must also contain `feppml.ado`,
 `_fereg_ppml.ado`, `_fereg_estimate_ppml.ado`, and `feppml_p.ado`, and must run
 both the existing `fereg` and additive `feppml` staged-installation smokes.
 Windows execution of this plan is deferred; no macOS/Linux result substitutes
-for it or closes the formal cross-platform aggregate.
+for it or closes formal cross-platform qualification.
 
 Every do-file prints `END_FIXTURE|<name>|rc=0` only after its final assertion.
 Process exit, Stata code, fixture status, and the unique sentinel must agree.

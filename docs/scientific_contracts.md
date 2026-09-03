@@ -3,7 +3,7 @@
 Architecture, source presence, and native unit tests are not estimator
 validation. Public `fereg` OLS and `feppml` PPML are implemented for 0.5.0 but
 are not source-qualified until the exact candidate passes their release gates.
-Windows licensed-Stata testing and the formal activated aggregate are
+Windows licensed-Stata testing and formal cross-platform qualification are
 currently deferred.
 
 Accepted scientific decisions are recorded under `docs/adr/`. ADR 0006
@@ -22,15 +22,14 @@ the shared mechanisms of ADR 0015.
 
 The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
 explicit-dummy Poisson and recession-cone calculations are the independent
-authority. The old core is classified in
-[the stale PPML disposition inventory](ppml_stale_module_inventory.md) and is
-not activation evidence. The prepared PPML transaction, public and hidden
-Stata fixtures, and one-call wrapper make these contracts executable through
-`feppml`; source presence and activation alone are not scientific
-qualification. The scientific, memory, transaction, platform, and `fereg`
-non-regression gates in ADRs 0016--0020 remain the release boundary, with
-Windows and the final aggregate deferred by explicit testing-activation
-decision.
+authority. The prepared PPML transaction is the sole production estimator;
+obsolete alternate production paths were removed or made explicitly
+test-only. Public and hidden Stata fixtures and the one-call wrapper make
+these contracts executable through `feppml`, but source presence and public
+availability are not scientific qualification. The scientific, memory,
+transaction, platform, and `fereg` non-regression gates in ADRs 0016--0020
+remain the release boundary, with Windows and the final aggregate deferred by
+explicit qualification decision.
 
 ## Core contracts
 
@@ -44,7 +43,7 @@ decision.
 | Residual DoF and iid covariance | Successful OLS inference requires `df_r > 0`; `V_iid = RSS/df_r * bread`; negative iid variance is not publishable | ADR 0006 positive-DoF slope recapture plus fail-closed nonpositive-DoF test |
 | Robust and clustered covariance | HC1 and multiway cluster rules, corrections, nesting, and CGM repair are centralized and independently certified | Exact structure/count/DoF parity and registered numerical tolerances |
 | Result transport | Rust validates all N/K/K² outputs before stores; private receipt `COMPLETE` is last; partial SPI writes have no logical meaning | Preserve receipt-last atomicity and Stata transaction rollback |
-| Public activation | One substantive native call; no partial `e()` state; unsupported surfaces return explicit errors | Every documented semantic, output, postestimation, memory, performance, and platform gate exact-green |
+| Public transaction | One substantive native call; no partial `e()` state; unsupported surfaces return explicit errors | Every documented semantic, output, postestimation, memory, performance, and platform gate exact-green |
 
 ## Absorbed-slope policy
 
@@ -140,7 +139,7 @@ diagnostic rather than release thresholds.
 ## Current boundary
 
 The OLS and PPML surfaces, public postestimation, saved outputs, and low-memory
-execution are implemented. Exact-SHA full activated scientific qualification,
+execution are implemented. Exact-SHA full scientific qualification,
 the governing performance/memory gates, deterministic packaging, Windows
 licensed-Stata testing, and cross-platform release validation remain open. See
 `STATUS.md` for the current blocker inventory.

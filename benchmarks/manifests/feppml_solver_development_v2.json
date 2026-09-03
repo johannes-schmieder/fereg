@@ -9,8 +9,7 @@
   "protocols": {
     "request_wire": "1.5",
     "result_wire": "1.2",
-    "action_protocol": "1.5",
-    "trace_schema": 1
+    "action_protocol": "1.5"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
@@ -27,7 +26,6 @@
     "absorbed_effects": "two_or_three_categorical_intercept_only",
     "saved_fixed_effects": false,
     "allocation_audit": false,
-    "timed_trace": false,
     "warmups": 1,
     "screen_repetitions": 3,
     "confirmation_repetitions": 5,

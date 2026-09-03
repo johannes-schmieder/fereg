@@ -11,7 +11,6 @@ SEPARATION = ROOT / "crates/fereg-core/src/ppml/prepared_separation.rs"
 SEPARATION_MOD = ROOT / "crates/fereg-core/src/ppml_separation/mod.rs"
 SIMPLEX = ROOT / "crates/fereg-core/src/ppml_separation/simplex/mod.rs"
 ADR = ROOT / "docs/adr/0017-certified-ppml-separation-ledger.md"
-INVENTORY = ROOT / "docs/ppml_stale_module_inventory.md"
 ARCHITECTURE = ROOT / "docs/architecture.md"
 PERFORMANCE = ROOT / "docs/performance_contract.md"
 HELP = ROOT / "stata/feppml.sthlp"
@@ -87,32 +86,16 @@ class PpmlFullModelSimplexContractTests(unittest.TestCase):
             coordinator,
         )
 
-    def test_documented_contract_no_longer_quarantines_a_finite_only_simplex(self) -> None:
+    def test_accepted_contract_requires_the_full_model_simplex(self) -> None:
         adr = ADR.read_text(encoding="utf-8")
         self.assertIn("bounded full-model simplex over the finite-plus-FE model span", adr)
         self.assertIn("level indicator times the raw", adr)
         self.assertIn("same ledger generation", adr)
         self.assertNotIn("finite-regressor simplex", adr)
 
-        inventory = INVENTORY.read_text(encoding="utf-8")
-        simplex_row = next(
-            line
-            for line in inventory.splitlines()
-            if "simplex/mod.rs" in line and "workspace planner" in line
-        )
-        internals_row = next(
-            line
-            for line in inventory.splitlines()
-            if "simplex/nullspace.rs" in line
-        )
-        self.assertIn("| Rewrite |", simplex_row)
-        self.assertIn("full-model span", simplex_row)
-        self.assertNotIn("Quarantine", simplex_row)
-        self.assertIn("| Retain after audit |", internals_row)
-        self.assertNotIn("Quarantine", internals_row)
-
     def test_architecture_performance_and_public_help_contract(self) -> None:
         architecture = ARCHITECTURE.read_text(encoding="utf-8")
+        self.assertIn("sole production estimator path", architecture)
         self.assertIn("complete prepared model span", architecture)
         self.assertIn("level-by-raw-slope columns", architecture)
         self.assertIn("never a fitting or inference", architecture)
@@ -122,7 +105,7 @@ class PpmlFullModelSimplexContractTests(unittest.TestCase):
         self.assertIn("same ledger generation", performance)
         self.assertIn("simplex-only `r(909)`", performance)
 
-        canonical = ROOT / "tests/stata/documentation/feppml_activation.sthlp"
+        canonical = ROOT / "tests/stata/documentation/feppml_public.sthlp"
         require_public_help_bytes(HELP.read_bytes(), canonical.read_bytes())
 
 

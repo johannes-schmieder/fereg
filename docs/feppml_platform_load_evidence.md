@@ -1,6 +1,6 @@
 # feppml platform load evidence
 
-Phase 12 platform evidence is deliberately narrower than scientific
+PPML platform evidence is deliberately narrower than scientific
 qualification.  The shared receipt proves that one exact source-bound plugin
 artifact loaded in licensed Stata; native build/audit/actual-loader proof is a
 separate platform authority (the Linux closed run includes both).  It sets
@@ -27,7 +27,7 @@ and capture-program identities to the candidate.  An otherwise valid receipt
 for another archive, build date, artifact, or controller therefore fails.
 The sealed `qualification_profile` is `candidate` only when the reviewed
 target/harness lineage is exact; a deliberately distinct historical target is
-typed `f0-baseline` and is ineligible for candidate activation.
+typed `f0-baseline` and is ineligible for current-candidate qualification.
 
 ## macOS capture and seal
 
@@ -73,7 +73,7 @@ signed macOS runner service.
 
 Linux evidence must exist before the 33-cell SCC qualification can be
 prepared.  The standalone lifecycle avoids that dependency cycle and is
-reusable for both the preactivation and activation commits.  Target source
+reusable for current and historical targets.  Target source
 and controller source are deliberately separate: an old F0 target need not
 contain today's trusted capture, receipt, or SCC controller code.
 

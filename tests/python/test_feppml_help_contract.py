@@ -155,7 +155,7 @@ class CanonicalContractTests(unittest.TestCase):
             ),
             (
                 "fereg_run ppml_basic using feppml.sthlp",
-                "fereg_run ppml_basic using feppml_activation.sthlp",
+                "fereg_run ppml_basic using feppml_public.sthlp",
             ),
             (
                 "{stata fereg_run ppml_basic using feppml.sthlp:click to run}",
@@ -227,7 +227,7 @@ class RepositorySourceContractTests(unittest.TestCase):
     def test_documentation_fixtures_use_the_canonical_source(self) -> None:
         self.assertEqual(
             CANONICAL_HELP_PATH.relative_to(CANONICAL_HELP_PATH.parents[3]).as_posix(),
-            "tests/stata/documentation/feppml_activation.sthlp",
+            "tests/stata/documentation/feppml_public.sthlp",
         )
         shared = SHARED_FIXTURE_PATH.read_text(encoding="utf-8")
         wrapper = HIDDEN_WRAPPER_PATH.read_text(encoding="utf-8")
@@ -236,7 +236,7 @@ class RepositorySourceContractTests(unittest.TestCase):
             self.assertIn(example_id, shared)
         self.assertIn("$FEREG_PPML_TEST_COMMAND", shared)
         self.assertIn("_fereg_ppml", wrapper)
-        self.assertIn("feppml_activation.sthlp", wrapper)
+        self.assertIn("feppml_public.sthlp", wrapper)
         self.assertIn(SHARED_FIXTURE_PATH.name, wrapper)
 
 

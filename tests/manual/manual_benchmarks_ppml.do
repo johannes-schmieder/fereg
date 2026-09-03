@@ -13,11 +13,7 @@
     This is an accessible diagnostic benchmark, not release evidence.  Run
     tests/manual/manual_validation_ppml.do separately for correctness checks.
 
-    The file uses public feppml by default.  Developers working from a
-    pre-activation source can use
-
-        global FEREG_PPML_TEST_COMMAND _fereg_ppml
-        do tests/manual/manual_benchmarks_ppml.do
+    The file exercises the public feppml command.
 */
 
 version 18.0
@@ -89,8 +85,7 @@ if !`fixed_found' {
     exit 198
 }
 
-local feppml_command `"$FEREG_PPML_TEST_COMMAND"'
-if strtrim(`"`feppml_command'"') == "" local feppml_command "feppml"
+local feppml_command "feppml"
 
 capture findfile `feppml_command'.ado
 if _rc {
@@ -199,10 +194,6 @@ foreach countries of local country_counts {
                 "`feppml_command' warm-up failed at C=`countries', threads=`requested_threads' with r(`warm_candidate_rc')"
             quietly set processors `original_processors'
             frame drop __fpmb_results
-            if `warm_candidate_rc' == 498 & `"`feppml_command'"' == "feppml" {
-                display as error ///
-                    "this source has fail-closed public feppml; use the hidden adapter only for pre-activation development"
-            }
             exit `warm_candidate_rc'
         }
         capture quietly `comparator_command'

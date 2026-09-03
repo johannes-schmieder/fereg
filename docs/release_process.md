@@ -28,7 +28,7 @@
    The binary archive includes exactly one checksum-verified plugin for each
    supported platform, production Stata files, checksums, release manifest,
    SBOM, dependency audit, licenses/notices, and explicit Windows/native-Intel
-   caveats. The activated inventory includes the three guarded PPML ado files;
+   caveats. The production inventory includes the public PPML ado files;
    exclude other developer adapters, raw logs, reference PDFs, generated
    reference libraries, and build caches.
 8. Bind every receipt and archive to the exact beta SHA and update

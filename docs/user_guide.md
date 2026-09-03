@@ -9,8 +9,8 @@ checks the result, and writes the requested outputs.
 This guide describes the public OLS and PPML commands in the unreleased 0.5.0
 beta. `feppml` is active through the same guarded Rust-backed transaction and
 shared certified-linear engine as `fereg`. Windows licensed-Stata testing and
-the formal activated cross-platform aggregate are deferred; activation makes
-the command available for full user testing, not a qualified release claim.
+formal cross-platform qualification are deferred; public availability permits
+full user testing but is not a qualified release claim.
 
 ## Syntax
 
@@ -24,8 +24,9 @@ fereg, selftest [threads(#)]
 feppml depvar [indepvars] [if] [in] [fweight|pweight], [options]
 ```
 
-The estimation command accepts `aweight`, `fweight`, and `pweight`. It
-recognizes `iweight` only to return the pinned `r(101)` rejection.
+`fereg` accepts `aweight`, `fweight`, and `pweight`; it recognizes `iweight`
+only to return the pinned `r(101)` rejection. PPML weight support is described
+below.
 
 ### PPML surface
 
@@ -55,7 +56,10 @@ permanently and visibly to MAP. Other CMG errors and every LSMR error remain
 fatal. `e(feppml_solver)` and the accompanying macros distinguish requested,
 selected, concrete, effective, checkpoint, and fallback identities.
 
-### Model and inference options
+### OLS model and inference options
+
+The following option tables describe `fereg`. PPML options and their narrower
+solver eligibility rules are described above and in `help feppml`.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -75,7 +79,7 @@ If `vce()` is omitted, the command uses IID inference unless probability
 weights are supplied. `vce(cluster ...)` must name at least one cluster
 dimension. Cluster interactions use `#`, not `##`.
 
-### Numerical and execution options
+### OLS numerical and execution options
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -141,7 +145,7 @@ Saved names and `residuals()` must refer to new, distinct variables. The
 legacy-style `savefes()` option is not a saving interface in this beta; name
 each requested effect inside `absorb()` instead.
 
-## Samples, weights, and fixed effects
+## OLS samples, weights, and fixed effects
 
 Stata evaluates `if` and `in`. The native estimator then applies outcome,
 regressor, fixed-effect, cluster, and weight rules and removes singletons to a
@@ -164,7 +168,7 @@ materializes supported time-series terms so that panel gaps, leads, lags, and
 differences retain Stata's semantics. Absorbed and cluster interactions are
 constructed natively.
 
-## Results and postestimation
+## OLS results and postestimation
 
 The command posts the standard `e(b)`, `e(V)`, `e(sample)`, sample size, rank,
 residual and absorbed degrees of freedom, fit statistics, weight metadata,
@@ -195,7 +199,7 @@ predict residual, residuals
 absorbed contribution alone. `test` uses the posted coefficient and covariance
 matrices, and `estat summarize` reports estimation-sample summaries.
 
-## Benchmarking
+## OLS benchmarking
 
 Benchmark estimates are meaningful only when the commands use the same data,
 sample, fixed effects, singleton rule, weights, covariance estimator, degree-

@@ -166,8 +166,9 @@ objective, score, rank, basis, and all estimable coefficients must agree; an
 unidentified normalization coordinate cannot force another IRLS frame, and
 the canonical strict state replaces it before publication.
 
-The initial public tranche makes no allocation-free, scale, thread, or
-automatic-routing claim. The fused engine still owns per-frame weight and
+The initial public tranche makes no allocation-free, large-scale, or
+thread-scaling claim and no automatic-routing claim. The fused engine still
+owns per-frame weight and
 projected-result storage, and either engine can spend one tighter recurrence
 pass after an uncertified result. A retained Schwarz preconditioner is rebuilt
 for that pass; the original publication certificate tolerance is unchanged.
@@ -217,7 +218,11 @@ route as MAP. LSMR has no silent MAP fallback. A viable route that cannot fit
 its checked workspace returns `r(909)`; unsupported topology or feature
 combinations return `r(498)`.
 
-## Saved fixed-effect recovery
+## OLS saved fixed-effect recovery
+
+This section describes `fereg` solver products. PPML saved effects are
+recovered once from the final MAP-owned Hessian as specified for the public
+PPML families above.
 
 Saving absorbed effects is treated as an optional solver product, not as a
 second estimation problem. In `memory(fast)`, categorical intercept routes use
@@ -280,7 +285,7 @@ oracle and large fixtures must remain within the registered envelope against a
 this route; sample, singleton, coefficient/status, VCE, DoF, RSS, fit, FE-score,
 and OLS-score contracts remain hard publication gates.
 
-## Residual reuse and projection cutoff
+## OLS residual reuse and projection cutoff
 
 Fast OLS always reconstructs the within-regression residual from the QR state.
 That residual is submitted directly to the selected FE certificate/solver: an

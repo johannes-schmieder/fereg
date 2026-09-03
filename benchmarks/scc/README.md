@@ -39,7 +39,7 @@ The paper AKM runner uses `BENCH_MODE=benchmark-canary` for its single
 schedule. The canary is still a large focused benchmark, not a smoke test; run
 it only to answer a concrete performance or memory question.
 
-## feppml Phase 12 qualification
+## feppml qualification
 
 `feppml_qualification_scc.py` is the governing exact-source execution layer
 for the frozen manifest in
@@ -326,25 +326,25 @@ python3 -I -B -S scripts/fereg_f0_regression.py validate-manifest \
   --evidence-root .
 ```
 
-After the frozen manifest and exact preactivation candidate SHA are committed,
+After the frozen manifest and exact public candidate SHA are committed,
 prepare the final candidate-versus-F0 run. Reuse the exact baseline observation
 and bundle already sealed above, then capture the candidate on that same
 licensed host, native platform, and Stata environment:
 
 ```bash
 python3 -I -B -S scripts/fereg_f0_behavior.py capture \
-  --role candidate --phase preactivation \
+  --role candidate --phase activation \
   --source /clean/candidate --plugin /evidence/macos/candidate/fereg_macos.plugin \
   --stata /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp \
   --run-root build_evidence/f0/behavior/candidate-run \
-  --output build_evidence/f0/behavior/candidate-observation.json \
-  --bundle-output build_evidence/f0/behavior/candidate-bundle.tar \
-  --identity-output build_evidence/f0/behavior/candidate-observation.identity.json
+  --output build_evidence/f0/behavior/candidate-public-observation.json \
+  --bundle-output build_evidence/f0/behavior/candidate-public-bundle.tar \
+  --identity-output build_evidence/f0/behavior/candidate-public-observation.identity.json
 python3 -I -B -S scripts/fereg_f0_behavior.py evaluate \
   --baseline-receipt build_evidence/f0/behavior/baseline-observation.json \
   --baseline-bundle build_evidence/f0/behavior/baseline-bundle.tar \
-  --candidate-receipt build_evidence/f0/behavior/candidate-observation.json \
-  --candidate-bundle build_evidence/f0/behavior/candidate-bundle.tar \
+  --candidate-receipt build_evidence/f0/behavior/candidate-public-observation.json \
+  --candidate-bundle build_evidence/f0/behavior/candidate-public-bundle.tar \
   --output build_evidence/f0/behavior/candidate-vs-f0-comparison.json \
   --identity-output build_evidence/f0/behavior/candidate-vs-f0-comparison.identity.json
 python3 -I -B -S scripts/fereg_f0_behavior.py verify \
@@ -352,13 +352,16 @@ python3 -I -B -S scripts/fereg_f0_behavior.py verify \
   --identity build_evidence/f0/behavior/candidate-vs-f0-comparison.identity.json \
   --baseline-receipt build_evidence/f0/behavior/baseline-observation.json \
   --baseline-bundle build_evidence/f0/behavior/baseline-bundle.tar \
-  --candidate-receipt build_evidence/f0/behavior/candidate-observation.json \
-  --candidate-bundle build_evidence/f0/behavior/candidate-bundle.tar
+  --candidate-receipt build_evidence/f0/behavior/candidate-public-observation.json \
+  --candidate-bundle build_evidence/f0/behavior/candidate-public-bundle.tar
 ```
+
+`activation` is the frozen behavior-capture schema label for the package that
+contains public PPML files; it is not a switch that changes source behavior.
 
 This licensed-host comparison and the Linux SCC comparison intentionally use
 platform-specific plugin bytes. Both must name the same exact baseline and
-candidate source commit/tree; the Phase 12 aggregate additionally cross-binds
+candidate source commit/tree; the formal qualification aggregate also binds
 the licensed-host candidate artifact to that platform's authoritative
 source-archive/build/toolchain receipt, while SCC independently binds the
 Linux artifacts and same-node measurements. No cross-format plugin-byte
@@ -372,14 +375,14 @@ LOCAL_RUN_ROOT=/private/tmp/fereg-f0-runs/$RUN_ID
 python3 -I -B -S benchmarks/scc/fereg_f0_scc.py prepare \
   --run-root "$LOCAL_RUN_ROOT" \
   --baseline-repo /path/to/fereg --baseline-commit "$F0_SHA" \
-  --candidate-repo /path/to/fereg --candidate-commit "$PREACTIVATION_SHA" \
-  --harness-repo /path/to/fereg --harness-commit "$PREACTIVATION_SHA" \
+  --candidate-repo /path/to/fereg --candidate-commit "$CANDIDATE_SHA" \
+  --harness-repo /path/to/fereg --harness-commit "$CANDIDATE_SHA" \
   --manifest /path/to/fereg/benchmarks/manifests/fereg_f0_regression_v1.json \
   --seal-root /path/to/fereg \
   --behavior-baseline /path/to/f0-baseline-observation.json \
   --behavior-baseline-bundle /path/to/f0-baseline-bundle.tar \
-  --behavior-candidate /path/to/candidate-preactivation-observation.json \
-  --behavior-candidate-bundle /path/to/candidate-preactivation-bundle.tar \
+  --behavior-candidate /path/to/candidate-public-observation.json \
+  --behavior-candidate-bundle /path/to/candidate-public-bundle.tar \
   --behavior-comparison /path/to/candidate-vs-f0-comparison.json
 bash benchmarks/scc/fereg_f0_deploy.sh "$LOCAL_RUN_ROOT"
 ssh scc "bash /projectnb/welfgr/fereg/runs/$RUN_ID/input/harness/fereg_f0_submit.sh /projectnb/welfgr/fereg/runs/$RUN_ID"

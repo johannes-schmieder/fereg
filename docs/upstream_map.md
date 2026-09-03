@@ -7,7 +7,7 @@ Exact commits are machine-readable in `references.lock.toml`.
 | PyFixest | Model matrix, OLS/PPML orchestration, result semantics, tests | Behavioral map only; no copied code |
 | within | Modified LSMR, FE operator, diagonal/Schwarz preconditioners | Exact git-revision dependency used by `fe/lsmr.rs`; fereg recomputes its own final FE certificate |
 | reghdfe | Stata syntax, FE/singleton/DoF/VCE compatibility oracle | Exact pinned reference capture and differential qualification; never called at runtime |
-| ppmlhdfe | PPML syntax, sample, separation, inference, and result compatibility oracle | Exact pinned pre-activation qualification reference; never called at runtime |
+| ppmlhdfe | PPML syntax, sample, separation, inference, and result compatibility oracle | Exact pinned qualification reference; never called at runtime |
 | Stata SPI 3.0 | Native ABI | Official `stplugin.c/h` compiled into plugin |
 
 Later code adaptation must identify the exact upstream file/function, preserve
@@ -36,7 +36,7 @@ independent explicit-dummy test oracle is used only in `fereg-testkit`.
 ## Active PPML qualification oracle
 
 The `ppmlhdfe` commit in `references.lock.toml` is an active compatibility
-oracle for PPML pre-activation qualification. Its digest-bound source archive
+oracle for PPML qualification. Its digest-bound source archive
 is combined outside the repository with the exact pinned `reghdfe`, `ftools`,
 and `require` trees. `scripts/ppml_reference_closure.py` verifies those source
 identities and required files, then materializes a deterministic offline

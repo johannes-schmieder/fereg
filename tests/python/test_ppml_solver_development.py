@@ -84,6 +84,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         serialized = json.dumps(manifest).lower()
         self.assertNotIn("recommendation", serialized)
         self.assertNotIn("candidate_routes", serialized)
+        self.assertNotIn("trace_schema", serialized)
+        self.assertNotIn("timed_trace", serialized)
 
     def test_local_profiles_are_bounded_and_campaign_is_16_bundled_tasks(self) -> None:
         manifest = DEVELOPMENT.load_manifest()

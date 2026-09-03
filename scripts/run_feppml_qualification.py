@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the closed local Phase 12 feppml capture protocol.
+"""Run the closed local feppml qualification capture protocol.
 
 The estimator-specific capture program is deliberately separate from this
 orchestrator.  It must implement two machine interfaces:

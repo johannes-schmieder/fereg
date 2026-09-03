@@ -60,7 +60,7 @@ locations, binds fixtures to the freshly built plugin, and stores sanitized
 local output in the ignored `.ci/stata/run/` directory. Formal evidence rejects
 the `FEREG_TRACKED_FILES_MANIFEST` override.
 
-After public PPML activation, `ppml-scientific` builds the plugin and runs the
+For public PPML validation, `ppml-scientific` builds the plugin and runs the
 seven shared public scientific fixtures. `ppml-hidden` continues to exercise
 the guarded transaction directly through `_fereg_ppml`, its 108-row result
 validator, and interactive Break rollback. `full` runs public and hidden PPML

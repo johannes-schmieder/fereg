@@ -64,8 +64,7 @@ fixture that exercises the changed boundary:
 ```
 
 `ppml-hidden` and `fereg-regression` remain useful focused regression profiles,
-but they are not standing requirements. The historical fail-closed profile is
-pre-activation evidence and is not the current public surface.
+but they are not standing requirements or substitutes for the public surface.
 
 ### PPML solver development
 

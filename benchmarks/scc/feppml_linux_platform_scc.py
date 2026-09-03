@@ -1574,7 +1574,7 @@ def verify_closed_run(
 ) -> Mapping[str, Any]:
     """Verify the complete Linux bootstrap and return normalized identities.
 
-    This is the sole read-only schema authority consumed by F0 and Phase 12.
+    This is the sole read-only schema authority consumed by F0 and PPML qualification.
     Callers must not reimplement preparation/job/close JSON validation.
     """
 

@@ -12,12 +12,7 @@
       - feppml and ppmlhdfe on the ado-path
       - a fresh Stata session after installing or replacing the native plugin
 
-    The file uses public feppml by default.  Developers working from a
-    pre-activation source can run the same test against the private adapter
-    with
-
-        global FEREG_PPML_TEST_COMMAND _fereg_ppml
-        do tests/manual/manual_validation_ppml.do
+    The file exercises the public feppml command.
 */
 
 version 18.0
@@ -56,8 +51,7 @@ if `coefficient_tol' <= 0 | `se_tol' <= 0 {
     exit 198
 }
 
-local feppml_command `"$FEREG_PPML_TEST_COMMAND"'
-if strtrim(`"`feppml_command'"') == "" local feppml_command "feppml"
+local feppml_command "feppml"
 
 capture findfile `feppml_command'.ado
 if _rc {
@@ -137,10 +131,6 @@ capture noisily `feppml_command' trade log_distance common_border ///
 local warm_feppml_rc = _rc
 if `warm_feppml_rc' {
     display as error "`feppml_command' warm-up failed with r(`warm_feppml_rc')"
-    if `warm_feppml_rc' == 498 & `"`feppml_command'"' == "feppml" {
-        display as error ///
-            "this source has fail-closed public feppml; use the hidden adapter only for pre-activation development"
-    }
     exit `warm_feppml_rc'
 }
 
