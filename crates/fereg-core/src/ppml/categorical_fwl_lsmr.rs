@@ -12,6 +12,8 @@ use within::{
 
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use crate::options::ThreadConfig;
+use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_lsmr::{
@@ -19,6 +21,10 @@ use super::categorical_lsmr::{
     JointLsmrCertificate, ScaledSquareSum,
 };
 use super::PpmlIterationWorkspace;
+
+#[cfg(test)]
+static TEST_FUSED_LSMR_EXECUTING_WIDTH: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct FusedFwlLsmrReport {
@@ -35,6 +41,7 @@ pub(crate) struct FusedFwlLsmrReport {
 }
 
 pub(crate) struct ReusableCategoricalFwlLsmr {
+    team: InstalledThreadTeam,
     active_columns: Vec<Vec<f64>>,
     active_slots: Vec<usize>,
     topology: FeTopologyIdentity,
@@ -53,10 +60,28 @@ pub(crate) struct ReusableCategoricalFwlLsmr {
 }
 
 impl ReusableCategoricalFwlLsmr {
+    /// Temporary compatibility entry point until the prepared IRLS caller is
+    /// switched atomically to `new_with_threads`.
     pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
         active_generated: &[usize],
         fe_design: &FeDesign,
+        policy: CategoricalLsmrPolicy,
+    ) -> Result<Self> {
+        Self::new_with_threads(
+            prepared,
+            active_generated,
+            fe_design,
+            ThreadConfig::default(),
+            policy,
+        )
+    }
+
+    pub(crate) fn new_with_threads<P: PreparedOlsFitView + Sync + ?Sized>(
+        prepared: &P,
+        active_generated: &[usize],
+        fe_design: &FeDesign,
+        threads: ThreadConfig,
         policy: CategoricalLsmrPolicy,
     ) -> Result<Self> {
         let rows = fe_design.nobs();
@@ -71,6 +96,7 @@ impl ReusableCategoricalFwlLsmr {
             ));
         }
         let topology = FeTopologyIdentity::capture(fe_design)?;
+        let team = ThreadTeam::new(threads).acquire()?;
         let mut active_columns = Vec::new();
         active_columns
             .try_reserve_exact(active_generated.len())
@@ -103,6 +129,7 @@ impl ReusableCategoricalFwlLsmr {
             .checked_mul(columns)
             .ok_or_else(|| allocation("fused PPML finite dimensions overflow"))?;
         Ok(Self {
+            team,
             active_columns,
             active_slots,
             topology,
@@ -141,6 +168,33 @@ impl ReusableCategoricalFwlLsmr {
             tolerance,
             max_iterations,
         )?;
+        let team = self.team.clone();
+        team.install(|| {
+            self.solve_installed(
+                fe_design,
+                working_response,
+                weights,
+                tolerance,
+                max_iterations,
+                local_size,
+            )
+        })
+    }
+
+    fn solve_installed(
+        &mut self,
+        fe_design: &FeDesign,
+        working_response: &[f64],
+        weights: &[f64],
+        tolerance: f64,
+        max_iterations: usize,
+        local_size: Option<usize>,
+    ) -> Result<FusedFwlLsmrReport> {
+        #[cfg(test)]
+        TEST_FUSED_LSMR_EXECUTING_WIDTH.store(
+            rayon::current_num_threads(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
         let preconditioner_reuse_attempted =
             self.policy == CategoricalLsmrPolicy::Reuse && self.preconditioner.is_some();
         let mut setup_seconds = 0.0_f64;
@@ -264,12 +318,14 @@ impl ReusableCategoricalFwlLsmr {
         workspace: &mut PpmlIterationWorkspace,
         offset: &[f64],
     ) -> Result<()> {
-        workspace.fill_absolute_candidate(
-            &self.fitted_without_offset,
-            offset,
-            &self.active_slots,
-            &self.coefficients,
-        )
+        self.team.install(|| {
+            workspace.fill_absolute_candidate(
+                &self.fitted_without_offset,
+                offset,
+                &self.active_slots,
+                &self.coefficients,
+            )
+        })
     }
 
     pub(crate) fn active_rank(&self) -> usize {
@@ -656,5 +712,46 @@ mod tests {
             .expect("finite scaled certificate");
         assert!(!certificate.passed);
         assert!((certificate.relative_infinity_norm - 1.0).abs() <= 1e-15);
+    }
+
+    #[test]
+    fn fused_solver_runs_upstream_work_under_the_retained_team() {
+        let design = FeDesign::new(
+            4,
+            vec![EffectTerm::new(vec![0, 0, 1, 1], 2, true, Vec::new()).expect("effect")],
+        )
+        .expect("design");
+        let mut solver = ReusableCategoricalFwlLsmr {
+            team: ThreadTeam::new(ThreadConfig::from_requested(3, true).expect("thread config"))
+                .acquire()
+                .expect("installed team"),
+            active_columns: Vec::new(),
+            active_slots: Vec::new(),
+            topology: FeTopologyIdentity::capture(&design).expect("topology"),
+            preconditioner: None,
+            gram: Vec::new(),
+            rhs: Vec::new(),
+            factor: Vec::new(),
+            forward: Vec::new(),
+            standardized_solution: Vec::new(),
+            scales: Vec::new(),
+            coefficients: Vec::new(),
+            permutation: Vec::new(),
+            residual: vec![0.0; 4],
+            fitted_without_offset: vec![0.0; 4],
+            policy: CategoricalLsmrPolicy::Diagonal,
+        };
+        let unrelated_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .expect("unrelated pool");
+        let report = unrelated_pool
+            .install(|| solver.solve(&design, &[1.0, 1.0, 2.0, 2.0], &[1.0; 4], 1e-10, 100, None))
+            .expect("fused solve");
+        assert!(report.certificate.passed);
+        assert_eq!(
+            TEST_FUSED_LSMR_EXECUTING_WIDTH.load(std::sync::atomic::Ordering::Relaxed),
+            3,
+        );
     }
 }

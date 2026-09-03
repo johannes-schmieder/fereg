@@ -1,10 +1,7 @@
-//! PPML-only augmented LSMR over finite controls and categorical intercepts.
+//! PPML augmented LSMR over finite controls and categorical intercepts.
 //!
-//! This module deliberately bypasses the one-shot weighted-linear projection
-//! route only for an explicitly admitted development PPML fit.  It never
-//! participates in OLS or public PPML routing.  Exact normal-equation moments
-//! are recomputed after every recurrence stop; LSMR diagnostics alone never
-//! authorize an IRLS step.
+//! Exact normal-equation moments are recomputed after every recurrence stop;
+//! LSMR diagnostics alone never authorize an IRLS step.
 
 use std::time::Instant;
 
@@ -15,11 +12,17 @@ use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use crate::options::ThreadConfig;
+use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::PpmlIterationWorkspace;
 
-/// Numeric preconditioner lifecycle selected by the private PPML experiment.
+#[cfg(test)]
+static TEST_JOINT_LSMR_EXECUTING_WIDTH: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// Numeric preconditioner lifecycle for categorical PPML LSMR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CategoricalLsmrPolicy {
     Diagonal,
@@ -111,6 +114,7 @@ pub(crate) struct JointLsmrReport {
 
 /// Fit-lifetime state for the ordinary (non-strict) IRLS Newton correction.
 pub(crate) struct ReusableCategoricalJointLsmr {
+    team: InstalledThreadTeam,
     active_design: DenseMatrix,
     active_slots: Vec<usize>,
     topology: FeTopologyIdentity,
@@ -129,10 +133,28 @@ pub(crate) struct ReusableCategoricalJointLsmr {
 }
 
 impl ReusableCategoricalJointLsmr {
+    /// Temporary compatibility entry point until the prepared IRLS caller is
+    /// switched atomically to `new_with_threads`.
     pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
         active_generated: &[usize],
         fe_design: &FeDesign,
+        policy: CategoricalLsmrPolicy,
+    ) -> Result<Self> {
+        Self::new_with_threads(
+            prepared,
+            active_generated,
+            fe_design,
+            ThreadConfig::default(),
+            policy,
+        )
+    }
+
+    pub(crate) fn new_with_threads<P: PreparedOlsFitView + Sync + ?Sized>(
+        prepared: &P,
+        active_generated: &[usize],
+        fe_design: &FeDesign,
+        threads: ThreadConfig,
         policy: CategoricalLsmrPolicy,
     ) -> Result<Self> {
         let rows = fe_design.nobs();
@@ -148,7 +170,8 @@ impl ReusableCategoricalJointLsmr {
         }
 
         let topology = FeTopologyIdentity::capture(fe_design)?;
-        let active_design = build_active_design(prepared, active_generated)?;
+        let team = ThreadTeam::new(threads).acquire()?;
+        let active_design = team.install(|| build_active_design(prepared, active_generated))?;
         let mut active_slots = Vec::new();
         active_slots
             .try_reserve_exact(active_generated.len())
@@ -189,6 +212,7 @@ impl ReusableCategoricalJointLsmr {
             .checked_add(fe_coefficients)
             .ok_or_else(|| allocation("joint PPML augmented width overflows"))?;
         Ok(Self {
+            team,
             active_design,
             active_slots,
             topology,
@@ -233,6 +257,28 @@ impl ReusableCategoricalJointLsmr {
             max_iterations,
         )?;
 
+        let team = self.team.clone();
+        team.install(|| {
+            self.solve_installed(
+                fe_design,
+                outcome,
+                mean,
+                hessian_weights,
+                tolerance,
+                max_iterations,
+            )
+        })
+    }
+
+    fn solve_installed(
+        &mut self,
+        fe_design: &FeDesign,
+        outcome: &[f64],
+        mean: &[f64],
+        hessian_weights: &[f64],
+        tolerance: f64,
+        max_iterations: usize,
+    ) -> Result<JointLsmrReport> {
         for row in 0..outcome.len() {
             self.sqrt_weights[row] = hessian_weights[row].sqrt();
             self.target[row] = if outcome[row] == 0.0 {
@@ -375,11 +421,13 @@ impl ReusableCategoricalJointLsmr {
     }
 
     pub(crate) fn fill_candidate(&self, workspace: &mut PpmlIterationWorkspace) -> Result<()> {
-        workspace.fill_incremental_candidate(
-            &self.delta_eta,
-            &self.active_slots,
-            &self.warm_start[..self.active_slots.len()],
-        )
+        self.team.install(|| {
+            workspace.fill_incremental_candidate(
+                &self.delta_eta,
+                &self.active_slots,
+                &self.warm_start[..self.active_slots.len()],
+            )
+        })
     }
 
     pub(crate) fn active_rank(&self) -> usize {
@@ -416,6 +464,11 @@ impl ReusableCategoricalJointLsmr {
         escalation: Option<&dyn schwarz_precond::EscalationPolicy>,
         local_size: Option<usize>,
     ) -> Result<schwarz_precond::LsmrResult> {
+        #[cfg(test)]
+        TEST_JOINT_LSMR_EXECUTING_WIDTH.store(
+            rayon::current_num_threads(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
         let operator = AugmentedCategoricalOperator::new(
             fe_design,
             &self.active_design,
@@ -1172,6 +1225,7 @@ mod tests {
         assert!(!identity.matches(&replacement));
 
         let mut solver = ReusableCategoricalJointLsmr {
+            team: test_team(1),
             active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
             active_slots: Vec::new(),
             topology: identity,
@@ -1221,6 +1275,7 @@ mod tests {
             .collect::<Vec<_>>();
         let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
         let mut solver = ReusableCategoricalJointLsmr {
+            team: test_team(2),
             active_design,
             active_slots: vec![0],
             topology: FeTopologyIdentity::capture(&design).expect("topology"),
@@ -1237,9 +1292,17 @@ mod tests {
             preconditioner: None,
             policy: CategoricalLsmrPolicy::Reuse,
         };
-        let first = solver
-            .solve(&design, &outcome, &[1.0; 12], &[1.0; 12], 1e-10, 1_000)
+        let unrelated_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .expect("unrelated pool");
+        let first = unrelated_pool
+            .install(|| solver.solve(&design, &outcome, &[1.0; 12], &[1.0; 12], 1e-10, 1_000))
             .expect("first correction");
+        assert_eq!(
+            TEST_JOINT_LSMR_EXECUTING_WIDTH.load(std::sync::atomic::Ordering::Relaxed),
+            2,
+        );
         assert!(first.certificate.passed);
         assert!(first.requested_schwarz);
         assert!(first.used_schwarz);
@@ -1262,5 +1325,11 @@ mod tests {
         assert!(!second.rebuilt_preconditioner);
         assert!(solver.warm_start_valid);
         assert!(solver.delta_eta.iter().all(|value| value.is_finite()));
+    }
+
+    fn test_team(threads: usize) -> InstalledThreadTeam {
+        ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("thread config"))
+            .acquire()
+            .expect("installed thread team")
     }
 }
