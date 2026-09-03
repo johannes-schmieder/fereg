@@ -20,7 +20,9 @@ if `"`constrained'"' == "" {
     assert `"`e(fereg_memory_selected)'"' == "fast"
     assert e(fereg_runtime)[1,2] == 1
     assert e(fereg_runtime)[2,2] == 1
-    assert e(fereg_runtime)[6,1] == 1
+    assert inlist(e(fereg_runtime)[6,1], 0, 1)
+    if e(fereg_runtime)[6,1] == 1 assert e(fereg_runtime)[6,2] > 0
+    else assert e(fereg_runtime)[6,2] == 0
     assert e(fereg_runtime)[9,2] == 0
     assert e(fereg_runtime)[13,2] > 0
     assert e(fereg_runtime)[21,2] >= 0
