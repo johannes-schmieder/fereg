@@ -180,11 +180,12 @@ class FeInteractionDifferentialContractTests(unittest.TestCase):
         for name in ("quick", "differential", "full"):
             self.assertIn(relative, profiles[name]["fixtures"])
 
-    def test_readme_preserves_the_fail_closed_boundary(self) -> None:
+    def test_readme_preserves_the_source_bound_oracle_boundary(self) -> None:
         text = README.read_text(encoding="utf-8")
         self.assertIn(SOURCE_SHA, text)
         self.assertIn(PAYLOAD_SHA256, text)
-        self.assertIn("fereg` remains disabled", text)
+        self.assertIn("`fereg` is public", text)
+        self.assertIn("each receipt supports only the exact historical", text)
         self.assertIn("does not invoke `reghdfe`", text)
         self.assertIn("does not close `multi_fe_interactions`", text)
 
