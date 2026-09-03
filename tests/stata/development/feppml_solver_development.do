@@ -7,13 +7,13 @@ local mode : environment FEREG_PPML_SOLVER_MODE
 local repository : environment FEREG_PPML_SOLVER_REPOSITORY
 local dataset : environment FEREG_PPML_SOLVER_DATASET
 local result : environment FEREG_PPML_SOLVER_RESULT
+local data_csv : environment FEREG_PPML_SOLVER_DATA_CSV
+local data_meta : environment FEREG_PPML_SOLVER_DATA_META
 local topology : environment FEREG_PPML_SOLVER_TOPOLOGY
 local difficulty : environment FEREG_PPML_SOLVER_DIFFICULTY
 local arm : environment FEREG_PPML_SOLVER_ARM
-local trace : environment FEREG_PPML_SOLVER_TRACE
 local reference_root : environment FEREG_PPML_SOLVER_REFERENCE_ROOT
 local stata_log : environment FEREG_PPML_SOLVER_STATA_LOG
-local data_csv : environment FEREG_PPML_SOLVER_DATA_CSV
 local n = real(`"`: environment FEREG_PPML_SOLVER_N'"')
 local controls = real(`"`: environment FEREG_PPML_SOLVER_K'"')
 local threads = real(`"`: environment FEREG_PPML_SOLVER_THREADS'"')
@@ -82,34 +82,45 @@ if `"`mode'"' == "generate" {
     if `controls' > 1 replace eta_data = eta_data - .04 * x2
     generate long y = 1 + mod(floor(100 * exp(eta_data) + mod(_n, 17)), 19)
     assert y > 0 & y < .
+
+    quietly egen byte __tag1 = tag(g1)
+    quietly count if __tag1
+    local observed_levels1 = r(N)
+    drop __tag1
+    quietly egen byte __tag2 = tag(g2)
+    quietly count if __tag2
+    local observed_levels2 = r(N)
+    drop __tag2
+    local observed_levels3 0
+    capture confirm variable g3
+    if !_rc {
+        quietly egen byte __tag3 = tag(g3)
+        quietly count if __tag3
+        local observed_levels3 = r(N)
+        drop __tag3
+    }
+    file open metadata using `"`data_meta'"', write text replace
+    file write metadata "N" _tab "levels1" _tab "levels2" _tab "levels3" _n
+    file write metadata %18.0f (_N) _tab %18.0f (`observed_levels1') _tab ///
+        %18.0f (`observed_levels2') _tab %18.0f (`observed_levels3') _n
+    file close metadata
+
     compress
     sort observation
-    if strtrim(`"`data_csv'"') != "" {
-        export delimited y `control_list' g* using `"`data_csv'"', replace
-    }
+    export delimited y `control_list' g* using `"`data_csv'"', replace
     save `"`dataset'"', replace
     display as text "FEREG_PPML_SOLVER_DATA_PASS|N=" _N "|K=`controls'|topology=`topology'|difficulty=`difficulty'"
     exit 0
 }
 
-if `"`mode'"' != "run" {
-    display as error "unknown PPML solver-development mode"
-    exit 198
-}
-if missing(`threads') | `threads' <= 0 | missing(`repetitions') | `repetitions' <= 0 {
-    display as error "invalid PPML solver-development execution dimensions"
-    exit 198
-}
-
-adopath ++ `"`repository'/stata"'
-adopath ++ `"`repository'/dist"'
-if strtrim(`"`reference_root'"') != "" {
+if inlist(`"`mode'"', "prepare-reference", "run") {
     adopath ++ `"`reference_root'/require/src"'
     adopath ++ `"`reference_root'/ftools/src"'
     adopath ++ `"`reference_root'/reghdfe/src"'
     adopath ++ `"`reference_root'/ppmlhdfe/src"'
 }
-if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
+
+if `"`mode'"' == "prepare-reference" {
     foreach package in require ftools reghdfe ppmlhdfe {
         capture findfile `package'.ado
         if _rc exit _rc
@@ -138,9 +149,53 @@ if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
         exit 603
     }
     display as text "FEREG_PPML_SOLVER_REFERENCE_PASS|ppmlhdfe=pinned|lftools=private"
+    exit 0
+}
+
+if `"`mode'"' != "run" {
+    display as error "unknown PPML solver-development mode"
+    exit 198
+}
+if missing(`threads') | `threads' <= 0 | missing(`repetitions') | `repetitions' <= 0 {
+    display as error "invalid PPML solver-development execution dimensions"
+    exit 198
+}
+
+adopath ++ `"`repository'/stata"'
+adopath ++ `"`repository'/dist"'
+if inlist(`"`arm'"', "map", "lsmr", "cmg") {
+    capture findfile feppml.ado
+    if _rc exit _rc
+    local found_feppml = subinstr(`"`r(fn)'"', "\", "/", .)
+    local expected_feppml = subinstr(`"`repository'/stata/feppml.ado"', "\", "/", .)
+    if `"`found_feppml'"' != `"`expected_feppml'"' {
+        display as error "PPML solver-development candidate escaped its captured source"
+        exit 603
+    }
+}
+if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
+    foreach package in require ftools reghdfe ppmlhdfe {
+        capture findfile `package'.ado
+        if _rc exit _rc
+        local found = subinstr(`"`r(fn)'"', "\", "/", .)
+        local expected = subinstr(`"`reference_root'/`package'/src/`package'.ado"', "\", "/", .)
+        if `"`found'"' != `"`expected'"' {
+            display as error "PPML solver-development comparator escaped its pinned source: `package'"
+            exit 603
+        }
+    }
+    local expected_mlib = subinstr(`"`reference_root'/ppmlhdfe/src/l/lftools.mlib"', "\", "/", .)
+    capture findfile lftools.mlib
+    if _rc exit _rc
+    local found_mlib = subinstr(`"`r(fn)'"', "\", "/", .)
+    if `"`found_mlib'"' != `"`expected_mlib'"' {
+        display as error "PPML solver-development comparator did not resolve the setup library"
+        exit 603
+    }
+    local stata_processors = min(`threads', c(processors_mach), c(processors_lic))
+    quietly set processors `stata_processors'
 }
 use `"`dataset'"', clear
-quietly set processors `threads'
 
 local control_list
 if `controls' > 0 {
@@ -162,26 +217,8 @@ else if `"`arm'"' == "ppmlhdfe_lsmr" {
     local command `"ppmlhdfe y `control_list', absorb(`absorb_list') vce(robust) separation(none) accel(lsmr)"'
     local route_command `"`command' verbose(2)"'
 }
-else if inlist(`"`arm'"', "map", "cg", "lsmr", "cmg") {
-    local preconditioner
-    if `"`arm'"' == "lsmr" local preconditioner "fepreconditioner(schwarz)"
-    local trace_option
-    if `"`trace'"' == "1" local trace_option "solvertrace iterate(100)"
-    local command `"_fereg_estimate_ppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') fesolver(`arm') `preconditioner' `trace_option'"'
-}
-else if `"`arm'"' == "cmg_fused" {
-    local trace_option
-    if `"`trace'"' == "1" local trace_option "solvertrace iterate(100)"
-    local command `"_fereg_estimate_ppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') fesolver(cmg) fecmgmode(fused) `trace_option'"'
-}
-else if inlist(`"`arm'"', "lsmr_legacy_diagonal", ///
-    "lsmr_fused_diagonal", "lsmr_fused_reuse", "lsmr_fused_rebuild", ///
-    "lsmr_joint_diagonal", "lsmr_joint_reuse", "lsmr_joint_rebuild") {
-    local lsmr_mode = word(subinstr(`"`arm'"', "_", " ", .), 2)
-    local lsmr_policy = word(subinstr(`"`arm'"', "_", " ", .), 3)
-    local trace_option
-    if `"`trace'"' == "1" local trace_option "solvertrace iterate(100)"
-    local command `"_fereg_estimate_ppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') fesolver(lsmr) felsmrmode(`lsmr_mode') felsmrpolicy(`lsmr_policy') `trace_option'"'
+else if inlist(`"`arm'"', "map", "lsmr", "cmg") {
+    local command `"feppml y `control_list', absorb(`absorb_list') vce(robust) separation(none) memory(fast) threads(`threads') solver(`arm')"'
 }
 else {
     display as error "unknown PPML solver-development arm"
@@ -194,7 +231,6 @@ capture noisily `warm_command'
 local warm_rc = _rc
 if `warm_rc' {
     display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`warm_rc'"
-    display as error "PPML solver-development warm-up failed: arm=`arm' r(`warm_rc')"
     exit `warm_rc'
 }
 if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
@@ -202,16 +238,13 @@ if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_lsmr") {
     if `"`arm'"' == "ppmlhdfe_lsmr" local expected_acceleration "lsmr"
     display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`expected_acceleration'"
 }
-if `"`trace'"' == "1" {
-    display as text "FEREG_PPML_SOLVER_TRACE_PASS|arm=`arm'"
-    exit 0
-}
 
 file open output using `"`result'"', write text replace
 file write output "arm" _tab "repetition" _tab "rc" _tab "seconds" _tab ///
     "N" _tab "ll" _tab "deviance" _tab "converged" _tab "rank" _tab ///
-    "df_a" _tab "df_resid" _tab "b_names" _tab "b_values" _tab ///
-    "v_names" _tab "v_values" _n
+    "df_a" _tab "df_resid" _tab "inner_iterations" _tab "route_code" _tab ///
+    "fallback_count" _tab "effective_threads" _tab "b_names" _tab "b_values" _tab ///
+    "v_names" _tab "v_values" _tab "certificate_values" _tab "runtime_values" _n
 forvalues repetition = 1/`repetitions' {
     timer clear 91
     timer on 91
@@ -227,37 +260,51 @@ forvalues repetition = 1/`repetitions' {
     local rank .
     local df_a .
     local df_resid .
+    local inner_iterations .
+    local route_code .
+    local fallback_count .
+    local effective_threads .
     local b_names
     local b_values
     local v_names
     local v_values
+    local certificate_values
+    local runtime_values
     if !`rc' {
         local sample_n = e(N)
-        capture scalar __solver_ll = e(ll)
-        if !_rc local ll = scalar(__solver_ll)
-        capture scalar __solver_deviance = e(deviance)
-        if !_rc local deviance = scalar(__solver_deviance)
-        capture scalar __solver_converged = e(converged)
-        if !_rc local converged = scalar(__solver_converged)
-        capture scalar __solver_rank = e(rank)
-        if !_rc local rank = scalar(__solver_rank)
-        capture scalar __solver_df_a = e(df_a)
-        if !_rc local df_a = scalar(__solver_df_a)
-        capture scalar __solver_df_resid = e(df_resid)
-        if _rc capture scalar __solver_df_resid = e(df_r)
-        if !_rc local df_resid = scalar(__solver_df_resid)
+        capture local ll = e(ll)
+        capture local deviance = e(deviance)
+        capture local converged = e(converged)
+        capture local rank = e(rank)
+        capture local df_a = e(df_a)
+        capture local df_resid = e(df_resid)
+        if _rc capture local df_resid = e(df_r)
+        capture local inner_iterations = e(inner_iterations)
+        if _rc capture local inner_iterations = e(ic)
+        if _rc capture local inner_iterations = e(iterations)
+        capture local route_code = e(feppml_linear_route)
+        capture local fallback_count = e(feppml_fallback_count)
+        capture local effective_threads = e(feppml_threads)
         local b_names : colfullnames e(b)
         mata: st_local("b_values", invtokens(strofreal(st_matrix("e(b)"), "%21.17e")))
         local v_names : colfullnames e(V)
         mata: st_local("v_values", invtokens(strofreal(vec(st_matrix("e(V)")')', "%21.17e")))
+        capture matrix __certificate = e(feppml_certificate)
+        if !_rc mata: st_local("certificate_values", invtokens(strofreal(vec(st_matrix("__certificate"))', "%21.17e")))
+        capture matrix __runtime = e(feppml_runtime)
+        if !_rc mata: st_local("runtime_values", invtokens(strofreal(vec(st_matrix("__runtime"))', "%21.17e")))
     }
     file write output `"`arm'"' _tab %9.0f (`repetition') _tab %9.0f (`rc') _tab ///
         %21.17e (`seconds') _tab %21.17e (`sample_n') _tab %21.17e (`ll') _tab ///
         %21.17e (`deviance') _tab %21.17e (`converged') _tab %21.17e (`rank') _tab ///
-        %21.17e (`df_a') _tab %21.17e (`df_resid') _tab ///
-        `"`b_names'"' _tab `"`b_values'"' _tab `"`v_names'"' _tab `"`v_values'"' _n
+        %21.17e (`df_a') _tab %21.17e (`df_resid') _tab %21.17e (`inner_iterations') _tab ///
+        %21.17e (`route_code') _tab %21.17e (`fallback_count') _tab ///
+        %21.17e (`effective_threads') _tab `"`b_names'"' _tab `"`b_values'"' _tab ///
+        `"`v_names'"' _tab `"`v_values'"' _tab `"`certificate_values'"' _tab ///
+        `"`runtime_values'"' _n
     if `rc' {
         file close output
+        display as error "FEREG_PPML_SOLVER_RUN_FAIL|arm=`arm'|rc=`rc'"
         exit `rc'
     }
 }

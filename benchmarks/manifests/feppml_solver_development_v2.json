@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "manifest_id": "feppml_solver_development_v2",
+  "status": "development_only",
+  "qualification_eligible": false,
+  "auto_calibration": false,
+  "purpose": "Scientific and performance development for the three explicit public PPML FE solvers. This manifest cannot select auto routing or support qualification claims.",
+  "public_command": "feppml",
+  "protocols": {
+    "request_wire": "1.4",
+    "result_wire": "1.1",
+    "action_protocol": "1.5",
+    "trace_schema": 1
+  },
+  "solvers": [
+    {"id": "map", "option": "map", "route_code": 2},
+    {"id": "lsmr", "option": "lsmr", "route_code": 3},
+    {"id": "cmg", "option": "cmg", "route_code": 7}
+  ],
+  "comparators": [
+    {"id": "ppmlhdfe", "acceleration": "conjugate_gradient"},
+    {"id": "ppmlhdfe_lsmr", "acceleration": "lsmr"}
+  ],
+  "fixed_policy": {
+    "memory": "fast",
+    "separation": "none_after_all_positive_outcome_oracle",
+    "absorbed_effects": "two_or_three_categorical_intercept_only",
+    "saved_fixed_effects": false,
+    "allocation_audit": false,
+    "timed_trace": false,
+    "warmups": 1,
+    "screen_repetitions": 3,
+    "confirmation_repetitions": 5,
+    "ordinary_frame_route_must_match_requested_solver": true,
+    "fallback_cells_are_not_performance_eligible": true
+  },
+  "science": {
+    "coefficient_rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-6,
+    "vce_atol": 1e-9,
+    "likelihood_rtol": 1e-8,
+    "likelihood_atol": 1e-10,
+    "sample_must_match": true,
+    "rank_and_dof_must_match": true,
+    "certificate_must_pass": true,
+    "every_repetition_must_match": true,
+    "independent_oracle": "tests/python/ppml_explicit_dummy_oracle.py"
+  },
+  "generator": {
+    "driver": "tests/stata/development/feppml_solver_development.do",
+    "seed_namespace": 2026090200,
+    "data_generated_outside_timing": true,
+    "same_data_for_every_solver_and_comparator": true,
+    "outcome": "strictly_positive_integer_counts"
+  },
+  "topologies": [
+    "balanced_2fe",
+    "skewed_2fe",
+    "chain_2fe",
+    "hub_2fe",
+    "dense_2fe",
+    "many_levels_2fe",
+    "balanced_3fe",
+    "sparse_3fe"
+  ],
+  "profiles": {
+    "local_science": {
+      "observations": 400,
+      "topologies": [
+        "balanced_2fe",
+        "skewed_2fe",
+        "chain_2fe",
+        "hub_2fe",
+        "dense_2fe",
+        "many_levels_2fe",
+        "balanced_3fe",
+        "sparse_3fe"
+      ],
+      "controls": [2],
+      "difficulties": ["easy"],
+      "threads": [1],
+      "repetitions": 1,
+      "independent_oracle": true,
+      "comparators": true,
+      "expected_scopes": 8
+    },
+    "local_smoke": {
+      "scopes": [
+        {"id": "local_balanced", "n": 25000, "topology": "balanced_2fe", "controls": 10, "difficulty": "easy", "threads": 1},
+        {"id": "local_chain", "n": 25000, "topology": "chain_2fe", "controls": 10, "difficulty": "long", "threads": 1},
+        {"id": "local_three_fe", "n": 25000, "topology": "balanced_3fe", "controls": 10, "difficulty": "easy", "threads": 1}
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 3
+    }
+  },
+  "scc_campaign": {
+    "task_count": 16,
+    "expected_scopes": 56,
+    "artifact_roles": ["candidate", "baseline"],
+    "baseline_optional": true,
+    "scheduler": {
+      "project": "welfgr",
+      "parallel_environment": "omp",
+      "slots": 28,
+      "m_core": 28,
+      "cpu_arch": "broadwell",
+      "cpu_type": "E5-2680v4",
+      "mem_per_core": "4G",
+      "h_rt": "02:00:00"
+    },
+    "bundle_shapes": {
+      "breadth": {"n": 250000, "controls": [0, 10, 50], "threads": [14]},
+      "difficulty": {"n": 250000, "controls": [2, 20], "difficulties": ["easy", "long"], "threads": [14]},
+      "scaling": {"n": 500000, "controls": [10], "threads": [1, 7, 14, 28]}
+    },
+    "bundles": [
+      {"task": 1, "id": "breadth_balanced_2fe", "shape": "breadth", "topology": "balanced_2fe", "difficulty": "easy"},
+      {"task": 2, "id": "breadth_skewed_2fe", "shape": "breadth", "topology": "skewed_2fe", "difficulty": "easy"},
+      {"task": 3, "id": "breadth_chain_2fe", "shape": "breadth", "topology": "chain_2fe", "difficulty": "long"},
+      {"task": 4, "id": "breadth_hub_2fe", "shape": "breadth", "topology": "hub_2fe", "difficulty": "easy"},
+      {"task": 5, "id": "breadth_dense_2fe", "shape": "breadth", "topology": "dense_2fe", "difficulty": "easy"},
+      {"task": 6, "id": "breadth_many_levels_2fe", "shape": "breadth", "topology": "many_levels_2fe", "difficulty": "long"},
+      {"task": 7, "id": "breadth_balanced_3fe", "shape": "breadth", "topology": "balanced_3fe", "difficulty": "easy"},
+      {"task": 8, "id": "breadth_sparse_3fe", "shape": "breadth", "topology": "sparse_3fe", "difficulty": "long"},
+      {"task": 9, "id": "difficulty_balanced_2fe", "shape": "difficulty", "topology": "balanced_2fe"},
+      {"task": 10, "id": "difficulty_chain_2fe", "shape": "difficulty", "topology": "chain_2fe"},
+      {"task": 11, "id": "difficulty_balanced_3fe", "shape": "difficulty", "topology": "balanced_3fe"},
+      {"task": 12, "id": "difficulty_sparse_3fe", "shape": "difficulty", "topology": "sparse_3fe"},
+      {"task": 13, "id": "scaling_balanced_2fe", "shape": "scaling", "topology": "balanced_2fe", "difficulty": "easy"},
+      {"task": 14, "id": "scaling_chain_2fe", "shape": "scaling", "topology": "chain_2fe", "difficulty": "long"},
+      {"task": 15, "id": "scaling_balanced_3fe", "shape": "scaling", "topology": "balanced_3fe", "difficulty": "easy"},
+      {"task": 16, "id": "scaling_sparse_3fe", "shape": "scaling", "topology": "sparse_3fe", "difficulty": "long"}
+    ]
+  },
+  "receipt_contract": {
+    "immutable_json": true,
+    "setup_receipt": "receipts/setup.json",
+    "task_receipt_pattern": "receipts/task-{task:02d}.json",
+    "merge_receipt": "receipts/merge.json",
+    "close_receipt": "receipts/close.json",
+    "success_marker": "RUN.SUCCESS",
+    "required_task_identity": [
+      "job_id",
+      "task_id",
+      "host",
+      "cpu_model",
+      "logical_cpus",
+      "slots",
+      "m_core",
+      "cpu_arch",
+      "cpu_type"
+    ],
+    "qacct_required": ["jobnumber", "taskid", "owner", "project", "hostname", "slots", "failed", "exit_status", "ru_wallclock", "cpu", "maxvmem"]
+  }
+}
