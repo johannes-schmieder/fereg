@@ -253,13 +253,16 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             "#$ -l cpu_type=E5-2680v4", "#$ -t 1-16", "run-task",
         ):
             self.assertIn(expected, array)
+        self.assertLess(array.index("source /etc/bashrc"), array.index("set -euo pipefail"))
         for name, marker in (
             ("feppml_solver_dev_setup_job.sh", "record-setup"),
             ("feppml_solver_dev_collector_job.sh", "merge --run-root"),
             ("feppml_solver_dev_submit.sh", "record-submission"),
             ("feppml_solver_dev_close.sh", "qacct -j"),
         ):
-            self.assertIn(marker, (ROOT / "benchmarks/scc" / name).read_text())
+            source = (ROOT / "benchmarks/scc" / name).read_text()
+            self.assertIn(marker, source)
+            self.assertLess(source.index("source /etc/bashrc"), source.index("set -euo pipefail"))
         submit = (ROOT / "benchmarks/scc/feppml_solver_dev_submit.sh").read_text()
         self.assertIn('--local-science "$local_science" --local-smoke "$local_smoke"', submit)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
 source /etc/bashrc
+set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
     echo "usage: $0 RUN_ROOT CANDIDATE_ROOT" >&2

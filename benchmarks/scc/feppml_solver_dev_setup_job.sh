@@ -7,8 +7,8 @@
 #$ -j y
 #$ -m a
 
-set -euo pipefail
 source /etc/bashrc
+set -euo pipefail
 
 : "${RUN_ROOT:?RUN_ROOT is required}"
 if [[ ! "$RUN_ROOT" =~ ^/projectnb/welfgr/fereg/dev/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$ ]]; then

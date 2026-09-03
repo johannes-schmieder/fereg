@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
 source /etc/bashrc
+set -euo pipefail
 
 if [[ $# -lt 5 || $# -gt 6 ]]; then
     echo "usage: $0 RUN_ROOT CANDIDATE_ROOT REFERENCE_ROOT LOCAL_SCIENCE LOCAL_SMOKE [BASELINE_ROOT]" >&2
