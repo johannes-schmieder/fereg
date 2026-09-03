@@ -226,9 +226,14 @@ def campaign_tasks(manifest: dict[str, object]) -> list[dict[str, object]]:
         scopes: list[dict[str, object]] = []
         for control, difficulty, thread in dimensions:
             ordinal += 1
+            observations = (
+                int(campaign["long_observations"])
+                if difficulty == "long"
+                else int(shape["n"])
+            )
             scopes.append({
                 "id": f"{bundle['id']}-k{control}-{difficulty}-t{thread}",
-                "n": int(shape["n"]), "topology": str(bundle["topology"]),
+                "n": observations, "topology": str(bundle["topology"]),
                 "controls": control, "difficulty": difficulty, "threads": thread,
                 "seed": seed_base + ordinal,
             })

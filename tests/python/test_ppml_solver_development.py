@@ -92,7 +92,15 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         tasks = DEVELOPMENT.campaign_tasks(manifest)
         self.assertEqual(len(tasks), 16)
         self.assertEqual(sum(len(task["scopes"]) for task in tasks), 56)
-        self.assertTrue(all(scope["n"] == 25_000 for task in tasks for scope in task["scopes"]))
+        self.assertTrue(all(
+            scope["n"] == 25_000
+            for task in tasks for scope in task["scopes"]
+            if scope["difficulty"] == "long"
+        ))
+        self.assertEqual(
+            {scope["n"] for task in tasks for scope in task["scopes"] if scope["difficulty"] == "easy"},
+            {250_000, 500_000},
+        )
         self.assertEqual([len(task["scopes"]) for task in tasks[:8]], [3] * 8)
         self.assertEqual([len(task["scopes"]) for task in tasks[8:]], [4] * 8)
         self.assertTrue(all(2 <= len(task["scopes"]) <= 4 for task in tasks))
