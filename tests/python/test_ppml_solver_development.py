@@ -265,6 +265,9 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             self.assertLess(source.index("source /etc/bashrc"), source.index("set -euo pipefail"))
         submit = (ROOT / "benchmarks/scc/feppml_solver_dev_submit.sh").read_text()
         self.assertIn('--local-science "$local_science" --local-smoke "$local_smoke"', submit)
+        setup = (ROOT / "benchmarks/scc/feppml_solver_dev_setup_job.sh").read_text()
+        self.assertIn('cd "$candidate"', setup)
+        self.assertIn('cd "$baseline"', setup)
 
     def test_qacct_acceptance_requires_complete_array_and_success(self) -> None:
         required = DEVELOPMENT.load_manifest()["receipt_contract"]["qacct_required"]

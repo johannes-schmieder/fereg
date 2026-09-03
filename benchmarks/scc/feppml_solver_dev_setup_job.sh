@@ -42,10 +42,16 @@ reference=$(python3 -I -B -S -c 'import json,sys; print(json.load(open(sys.argv[
 stata=$(python3 -I -B -S -c 'import json,sys; print(json.load(open(sys.argv[1]))["stata"])' "$RUN_ROOT/input/config.json")
 
 export CARGO_TARGET_DIR="$RUN_ROOT/work/target-candidate"
-"$candidate/scripts/build_linux.sh"
+(
+    cd "$candidate"
+    ./scripts/build_linux.sh
+)
 if [[ -n "$baseline" ]]; then
     export CARGO_TARGET_DIR="$RUN_ROOT/work/target-baseline"
-    "$baseline/scripts/build_linux.sh"
+    (
+        cd "$baseline"
+        ./scripts/build_linux.sh
+    )
 fi
 
 export FEREG_PPML_SOLVER_MODE=prepare-reference
