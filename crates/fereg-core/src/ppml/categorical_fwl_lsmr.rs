@@ -1,9 +1,8 @@
-//! PPML-only fused FWL baseline for categorical LSMR experiments.
+//! PPML-only fused FWL engine for categorical LSMR.
 //!
 //! Unlike the legacy frozen session, this route residualizes the active
 //! controls and current working response in one shared `within::Solver`
-//! batch. It exists to measure the value of eliminating repeated solver setup
-//! before the stronger joint-incremental route is considered for activation.
+//! batch and certifies the resulting finite-plus-FE normal equations exactly.
 
 use std::time::Instant;
 
@@ -15,7 +14,10 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
 use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::categorical_lsmr::{CategoricalLsmrPolicy, JointLsmrCertificate};
+use super::categorical_lsmr::{
+    add_relative, CategoricalLsmrPolicy, FeTopologyIdentity, FiniteCompensatedSum,
+    JointLsmrCertificate, ScaledSquareSum,
+};
 use super::PpmlIterationWorkspace;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -35,6 +37,7 @@ pub(crate) struct FusedFwlLsmrReport {
 pub(crate) struct ReusableCategoricalFwlLsmr {
     active_columns: Vec<Vec<f64>>,
     active_slots: Vec<usize>,
+    topology: FeTopologyIdentity,
     preconditioner: Option<Preconditioner>,
     gram: Vec<f64>,
     rhs: Vec<f64>,
@@ -67,6 +70,7 @@ impl ReusableCategoricalFwlLsmr {
                 "fused PPML FWL requires an aligned categorical intercept-only design",
             ));
         }
+        let topology = FeTopologyIdentity::capture(fe_design)?;
         let mut active_columns = Vec::new();
         active_columns
             .try_reserve_exact(active_generated.len())
@@ -101,6 +105,7 @@ impl ReusableCategoricalFwlLsmr {
         Ok(Self {
             active_columns,
             active_slots,
+            topology,
             preconditioner: None,
             gram: fallible_filled(square, 0.0, "fused PPML finite Gram")?,
             rhs: fallible_filled(columns, 0.0, "fused PPML finite RHS")?,
@@ -143,23 +148,22 @@ impl ReusableCategoricalFwlLsmr {
         let mut iterations = 0_usize;
         let mut rebuilt_preconditioner = false;
         let mut retry = false;
+        let mut continued_after_certificate = false;
+        let mut used_schwarz = false;
         let mut effective_tolerance = tolerance;
 
         loop {
             let setup_started = Instant::now();
             let effects = within_effects(fe_design)?;
             let owned_weights = fallible_copy(weights, "fused PPML LSMR weights")?;
-            let prebuilt = if !retry && self.policy == CategoricalLsmrPolicy::Reuse {
-                self.preconditioner.clone()
-            } else {
-                None
-            };
-            let reused_this_attempt = prebuilt.is_some();
-            let preconditioner = match (self.policy, prebuilt.as_ref()) {
+            let reused_this_attempt = !retry
+                && self.policy == CategoricalLsmrPolicy::Reuse
+                && self.preconditioner.is_some();
+            let preconditioner = match (self.policy, self.preconditioner.as_ref()) {
                 (CategoricalLsmrPolicy::Diagonal, _) => {
                     PreconditionerInput::Config(PreconditionerConfig::Diagonal)
                 }
-                (CategoricalLsmrPolicy::Reuse, Some(value)) => {
+                (CategoricalLsmrPolicy::Reuse, Some(value)) if !retry => {
                     PreconditionerInput::Prebuilt(value.clone())
                 }
                 (CategoricalLsmrPolicy::Reuse | CategoricalLsmrPolicy::Rebuild, _) => {
@@ -170,7 +174,8 @@ impl ReusableCategoricalFwlLsmr {
             let solver =
                 Solver::new(effects, Some(owned_weights), preconditioner).map_err(within_error)?;
             setup_seconds += setup_started.elapsed().as_secs_f64();
-            let rebuilt = solver.preconditioner().cloned();
+            used_schwarz |=
+                self.policy != CategoricalLsmrPolicy::Diagonal && solver.preconditioner().is_some();
 
             let mut responses = Vec::new();
             responses
@@ -192,7 +197,7 @@ impl ReusableCategoricalFwlLsmr {
                 .checked_add(projected.iterations.iter().copied().max().unwrap_or(0))
                 .ok_or_else(|| allocation("fused PPML FWL iteration count overflowed"))?;
             if self.policy == CategoricalLsmrPolicy::Reuse && !reused_this_attempt {
-                self.preconditioner = rebuilt;
+                self.preconditioner = solver.preconditioner().cloned();
             }
 
             let converged = projected.converged.iter().all(|value| *value);
@@ -236,8 +241,8 @@ impl ReusableCategoricalFwlLsmr {
                     preconditioner_reuse_attempted,
                     preconditioner_reuse_certified: preconditioner_reuse_attempted && !retry,
                     rebuilt_preconditioner,
-                    continued_after_certificate: retry,
-                    used_schwarz: self.policy != CategoricalLsmrPolicy::Diagonal,
+                    continued_after_certificate,
+                    used_schwarz,
                     certificate,
                 });
             }
@@ -249,6 +254,7 @@ impl ReusableCategoricalFwlLsmr {
                 }));
             }
             retry = true;
+            continued_after_certificate = converged;
             effective_tolerance = (tolerance * 0.01).max(1e-14);
         }
     }
@@ -283,6 +289,7 @@ impl ReusableCategoricalFwlLsmr {
         max_iterations: usize,
     ) -> Result<()> {
         if fe_design.nobs() == 0
+            || !self.topology.matches(fe_design)
             || working_response.len() != fe_design.nobs()
             || weights.len() != fe_design.nobs()
             || self
@@ -479,58 +486,63 @@ fn certify_fwl(
     residual: &[f64],
     tolerance: f64,
 ) -> Result<JointLsmrCertificate> {
-    let mut target_square = 0.0_f64;
-    let mut residual_square = 0.0_f64;
+    let mut target_square = ScaledSquareSum::default();
+    let mut residual_square = ScaledSquareSum::default();
     for row in 0..design.nobs() {
-        target_square = (weights[row] * target[row]).mul_add(target[row], target_square);
-        residual_square = (weights[row] * residual[row]).mul_add(residual[row], residual_square);
+        let root_weight = weights[row].sqrt();
+        target_square.add(root_weight * target[row])?;
+        residual_square.add(root_weight * residual[row])?;
     }
-    let reference = target_square.sqrt().max(residual_square.sqrt());
+    let reference = target_square.norm()?.max(residual_square.norm()?);
     let mut finite_absolute = 0.0_f64;
     let mut fe_absolute = 0.0_f64;
     let mut relative_infinity = 0.0_f64;
-    let mut relative_square = 0.0_f64;
+    let mut relative_square = FiniteCompensatedSum::default();
     let mut count = 0_usize;
     for column in active {
-        let mut moment = 0.0_f64;
-        let mut basis_square = 0.0_f64;
+        let mut moment = FiniteCompensatedSum::default();
+        let mut basis_square = ScaledSquareSum::default();
         for row in 0..design.nobs() {
-            moment = (weights[row] * residual[row]).mul_add(column[row], moment);
-            basis_square = (weights[row] * column[row]).mul_add(column[row], basis_square);
+            let root_weight = weights[row].sqrt();
+            moment.add((root_weight * residual[row]) * (root_weight * column[row]))?;
+            basis_square.add(root_weight * column[row])?;
         }
+        let moment = moment.total()?;
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative(
             moment,
-            basis_square.sqrt(),
+            basis_square.norm()?,
             reference,
             &mut relative_infinity,
             &mut relative_square,
             &mut count,
-        );
+        )?;
     }
     for effect in design.effects() {
         for level in 0..effect.n_levels() {
-            let mut moment = 0.0_f64;
-            let mut basis_square = 0.0_f64;
+            let mut moment = FiniteCompensatedSum::default();
+            let mut basis_square = ScaledSquareSum::default();
             for &row in effect.level_index().members(level) {
-                moment += weights[row] * residual[row];
-                basis_square += weights[row];
+                let root_weight = weights[row].sqrt();
+                moment.add((root_weight * residual[row]) * root_weight)?;
+                basis_square.add(root_weight)?;
             }
+            let moment = moment.total()?;
             fe_absolute = fe_absolute.max(moment.abs());
             add_relative(
                 moment,
-                basis_square.sqrt(),
+                basis_square.norm()?,
                 reference,
                 &mut relative_infinity,
                 &mut relative_square,
                 &mut count,
-            );
+            )?;
         }
     }
     let relative_two = if count == 0 {
         0.0
     } else {
-        (relative_square / count as f64).sqrt()
+        (relative_square.total()?.max(0.0) / count as f64).sqrt()
     };
     if !finite_absolute.is_finite()
         || !fe_absolute.is_finite()
@@ -548,27 +560,6 @@ fn certify_fwl(
         relative_two_norm: relative_two,
         passed: relative_infinity <= tolerance && relative_two <= tolerance,
     })
-}
-
-fn add_relative(
-    moment: f64,
-    basis_norm: f64,
-    reference: f64,
-    infinity: &mut f64,
-    square: &mut f64,
-    count: &mut usize,
-) {
-    let denominator = basis_norm * reference;
-    let relative = if denominator > 0.0 {
-        moment.abs() / denominator
-    } else if moment == 0.0 {
-        0.0
-    } else {
-        f64::INFINITY
-    };
-    *infinity = (*infinity).max(relative);
-    *square = relative.mul_add(relative, *square);
-    *count += 1;
 }
 
 fn within_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
@@ -625,6 +616,7 @@ fn nonconvergence(message: &'static str) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fe::EffectTerm;
 
     #[test]
     fn pivoted_cholesky_recovers_a_permuted_spd_system() {
@@ -650,5 +642,19 @@ mod tests {
         }
         assert!((canonical[0] - 14.0 / 15.0).abs() <= 1e-12);
         assert!((canonical[1] - 32.0 / 15.0).abs() <= 1e-12);
+    }
+
+    #[test]
+    fn exact_certificate_does_not_turn_overflowing_squares_into_a_false_pass() {
+        let design = FeDesign::new(
+            2,
+            vec![EffectTerm::new(vec![0, 0], 1, true, Vec::new()).expect("effect")],
+        )
+        .expect("design");
+        let values = [1e200, 1e200];
+        let certificate = certify_fwl(&design, &[], &[1.0; 2], &values, &values, 1e-8)
+            .expect("finite scaled certificate");
+        assert!(!certificate.passed);
+        assert!((certificate.relative_infinity_norm - 1.0).abs() <= 1e-15);
     }
 }

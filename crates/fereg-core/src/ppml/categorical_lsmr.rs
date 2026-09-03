@@ -27,6 +27,63 @@ pub(crate) enum CategoricalLsmrPolicy {
     Rebuild,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EffectTopologyIdentity {
+    codes_address: usize,
+    membership_address: usize,
+    observations: usize,
+    levels: usize,
+}
+
+/// Identity of the immutable categorical topology captured by a reusable
+/// ordinary-frame engine. Pointer identity is intentional: accepting an equal-
+/// shaped replacement would let cached offsets or factors operate on different
+/// memberships. `FeDesign` exposes no mutation of these backing allocations.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct FeTopologyIdentity {
+    observations: usize,
+    total_coefficients: usize,
+    effects: Vec<EffectTopologyIdentity>,
+}
+
+impl FeTopologyIdentity {
+    pub(super) fn capture(design: &FeDesign) -> Result<Self> {
+        let mut effects = Vec::new();
+        effects
+            .try_reserve_exact(design.effects().len())
+            .map_err(|_| allocation("unable to reserve PPML LSMR topology identity"))?;
+        for effect in design.effects() {
+            effects.push(EffectTopologyIdentity {
+                codes_address: effect.codes().as_ptr() as usize,
+                membership_address: effect.level_index() as *const _ as usize,
+                observations: effect.codes().len(),
+                levels: effect.n_levels(),
+            });
+        }
+        Ok(Self {
+            observations: design.nobs(),
+            total_coefficients: design.total_coefficients(),
+            effects,
+        })
+    }
+
+    pub(super) fn matches(&self, design: &FeDesign) -> bool {
+        self.observations == design.nobs()
+            && self.total_coefficients == design.total_coefficients()
+            && self.effects.len() == design.effects().len()
+            && self
+                .effects
+                .iter()
+                .zip(design.effects())
+                .all(|(identity, effect)| {
+                    identity.codes_address == effect.codes().as_ptr() as usize
+                        && identity.membership_address == effect.level_index() as *const _ as usize
+                        && identity.observations == effect.codes().len()
+                        && identity.levels == effect.n_levels()
+                })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct JointLsmrCertificate {
     pub(crate) finite_absolute_infinity_norm: f64,
@@ -56,11 +113,9 @@ pub(crate) struct JointLsmrReport {
 pub(crate) struct ReusableCategoricalJointLsmr {
     active_design: DenseMatrix,
     active_slots: Vec<usize>,
+    topology: FeTopologyIdentity,
     effect_offsets: Vec<usize>,
-    coefficient_effect: Vec<usize>,
-    coefficient_level: Vec<usize>,
     sqrt_weights: Vec<f64>,
-    factor_weights: Vec<f64>,
     rhs: Vec<f64>,
     target: Vec<f64>,
     delta_eta: Vec<f64>,
@@ -70,7 +125,6 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     fe_inverse: Vec<f64>,
     warm_start_valid: bool,
     preconditioner: Option<Preconditioner>,
-    previous_iterations: usize,
     policy: CategoricalLsmrPolicy,
 }
 
@@ -93,6 +147,7 @@ impl ReusableCategoricalJointLsmr {
             ));
         }
 
+        let topology = FeTopologyIdentity::capture(fe_design)?;
         let active_design = build_active_design(prepared, active_generated)?;
         let mut active_slots = Vec::new();
         active_slots
@@ -129,20 +184,6 @@ impl ReusableCategoricalJointLsmr {
             );
         }
         let fe_coefficients = effect_offsets.last().copied().unwrap_or(0);
-        let mut coefficient_effect = Vec::new();
-        let mut coefficient_level = Vec::new();
-        coefficient_effect
-            .try_reserve_exact(fe_coefficients)
-            .map_err(|_| allocation("unable to reserve joint PPML FE effect map"))?;
-        coefficient_level
-            .try_reserve_exact(fe_coefficients)
-            .map_err(|_| allocation("unable to reserve joint PPML FE level map"))?;
-        for (effect_index, effect) in fe_design.effects().iter().enumerate() {
-            for level in 0..effect.n_levels() {
-                coefficient_effect.push(effect_index);
-                coefficient_level.push(level);
-            }
-        }
         let columns = active_generated
             .len()
             .checked_add(fe_coefficients)
@@ -150,11 +191,9 @@ impl ReusableCategoricalJointLsmr {
         Ok(Self {
             active_design,
             active_slots,
+            topology,
             effect_offsets,
-            coefficient_effect,
-            coefficient_level,
             sqrt_weights: fallible_filled(rows, 0.0, "joint PPML square-root weights")?,
-            factor_weights: fallible_filled(rows, 0.0, "joint PPML factor weights")?,
             rhs: fallible_filled(rows, 0.0, "joint PPML LSMR right-hand side")?,
             target: fallible_filled(rows, 0.0, "joint PPML Newton target")?,
             delta_eta: fallible_filled(rows, 0.0, "joint PPML predictor correction")?,
@@ -172,7 +211,6 @@ impl ReusableCategoricalJointLsmr {
             )?,
             warm_start_valid: false,
             preconditioner: None,
-            previous_iterations: 0,
             policy,
         })
     }
@@ -225,7 +263,10 @@ impl ReusableCategoricalJointLsmr {
                 format!("invalid joint PPML LSMR staleness policy: {error}"),
             )
         })?;
-        let use_escalation = self.policy == CategoricalLsmrPolicy::Reuse && use_schwarz;
+        // Recurrence escalation is meaningful only for a factor carried from a
+        // previous Hessian frame. A factor built from the current weights
+        // cannot be made fresher by immediately rebuilding it unchanged.
+        let use_escalation = self.policy == CategoricalLsmrPolicy::Reuse && use_schwarz && !rebuilt;
         let first = {
             let block_preconditioner = self.block_preconditioner(use_schwarz)?;
             self.run_once(
@@ -242,9 +283,11 @@ impl ReusableCategoricalJointLsmr {
         let mut iterations = result.iterations;
         let mut effective_tolerance = tolerance;
         if result.stop_reason == LsmrStopReason::Escalated {
-            self.rebuild_schwarz(fe_design, hessian_weights)?;
+            use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
             rebuilt = true;
-            use_schwarz = true;
+            if !use_schwarz {
+                fill_fe_diagonal_inverse(fe_design, hessian_weights, &mut self.fe_inverse)?;
+            }
             let continued = {
                 let block_preconditioner = self.block_preconditioner(use_schwarz)?;
                 self.run_once(
@@ -274,9 +317,11 @@ impl ReusableCategoricalJointLsmr {
         if !certificate.passed {
             continued_after_certificate = true;
             if !rebuilt && self.policy != CategoricalLsmrPolicy::Diagonal {
-                self.rebuild_schwarz(fe_design, hessian_weights)?;
+                use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
                 rebuilt = true;
-                use_schwarz = true;
+                if !use_schwarz {
+                    fill_fe_diagonal_inverse(fe_design, hessian_weights, &mut self.fe_inverse)?;
+                }
             }
             effective_tolerance = (tolerance * 0.01).max(1e-14);
             let continued = {
@@ -312,7 +357,6 @@ impl ReusableCategoricalJointLsmr {
 
         self.warm_start.copy_from_slice(&result.x);
         self.warm_start_valid = true;
-        self.previous_iterations = result.iterations;
 
         Ok(JointLsmrReport {
             iterations,
@@ -376,8 +420,6 @@ impl ReusableCategoricalJointLsmr {
             fe_design,
             &self.active_design,
             &self.effect_offsets,
-            &self.coefficient_effect,
-            &self.coefficient_level,
             &self.sqrt_weights,
         )?;
         mlsmr(
@@ -406,6 +448,7 @@ impl ReusableCategoricalJointLsmr {
     ) -> Result<()> {
         let rows = fe_design.nobs();
         if rows == 0
+            || !self.topology.matches(fe_design)
             || self.active_design.nrows() != rows
             || self.sqrt_weights.len() != rows
             || [outcome.len(), mean.len(), hessian_weights.len()]
@@ -439,23 +482,27 @@ impl ReusableCategoricalJointLsmr {
         fe_design: &FeDesign,
         weights: &[f64],
     ) -> Result<(bool, bool)> {
-        self.refresh_diagonal_preconditioner(fe_design, weights)?;
-        let use_schwarz =
-            self.policy != CategoricalLsmrPolicy::Diagonal && fe_design.total_coefficients() >= 256;
-        if !use_schwarz {
+        self.refresh_finite_diagonal_preconditioner(weights)?;
+        if self.policy == CategoricalLsmrPolicy::Diagonal {
+            fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)?;
             return Ok((false, false));
         }
-        let weight_change = maximum_weight_ratio(weights, &self.factor_weights);
-        let rebuild = self.preconditioner.is_none()
-            || self.policy == CategoricalLsmrPolicy::Rebuild
-            || (weight_change > 4.0 && self.previous_iterations > 8);
+        // Reuse until the recurrence or the exact certificate demonstrates
+        // that the retained factor is inadequate. This avoids an unmeasured
+        // FE-size or weight-ratio routing threshold.
+        let rebuild =
+            self.preconditioner.is_none() || self.policy == CategoricalLsmrPolicy::Rebuild;
         if rebuild {
-            self.rebuild_schwarz(fe_design, weights)?;
+            let use_schwarz = self.rebuild_schwarz(fe_design, weights)?;
+            if !use_schwarz {
+                fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)?;
+            }
+            return Ok((use_schwarz, true));
         }
-        Ok((true, rebuild))
+        Ok((true, false))
     }
 
-    fn rebuild_schwarz(&mut self, fe_design: &FeDesign, weights: &[f64]) -> Result<()> {
+    fn rebuild_schwarz(&mut self, fe_design: &FeDesign, weights: &[f64]) -> Result<bool> {
         let effects = within_effects(fe_design)?;
         let solver = Solver::new(
             effects,
@@ -469,15 +516,10 @@ impl ReusableCategoricalJointLsmr {
             )
         })?;
         self.preconditioner = solver.preconditioner().cloned();
-        self.factor_weights.copy_from_slice(weights);
-        Ok(())
+        Ok(self.preconditioner.is_some())
     }
 
-    fn refresh_diagonal_preconditioner(
-        &mut self,
-        fe_design: &FeDesign,
-        weights: &[f64],
-    ) -> Result<()> {
+    fn refresh_finite_diagonal_preconditioner(&mut self, weights: &[f64]) -> Result<()> {
         self.finite_inverse
             .par_iter_mut()
             .enumerate()
@@ -494,7 +536,7 @@ impl ReusableCategoricalJointLsmr {
                 "joint PPML finite diagonal preconditioner is nonfinite",
             ));
         }
-        fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)
+        Ok(())
     }
 
     fn block_preconditioner(&self, use_schwarz: bool) -> Result<BlockPreconditioner<'_>> {
@@ -525,8 +567,6 @@ impl ReusableCategoricalJointLsmr {
             fe_design,
             &self.active_design,
             &self.effect_offsets,
-            &self.coefficient_effect,
-            &self.coefficient_level,
             &self.sqrt_weights,
         )?;
         operator.fill_unweighted_predictor(solution, &mut self.delta_eta)?;
@@ -573,8 +613,6 @@ struct AugmentedCategoricalOperator<'a> {
     fe_design: &'a FeDesign,
     active_design: &'a DenseMatrix,
     effect_offsets: &'a [usize],
-    coefficient_effect: &'a [usize],
-    coefficient_level: &'a [usize],
     sqrt_weights: &'a [f64],
 }
 
@@ -583,15 +621,18 @@ impl<'a> AugmentedCategoricalOperator<'a> {
         fe_design: &'a FeDesign,
         active_design: &'a DenseMatrix,
         effect_offsets: &'a [usize],
-        coefficient_effect: &'a [usize],
-        coefficient_level: &'a [usize],
         sqrt_weights: &'a [f64],
     ) -> Result<Self> {
         if fe_design.nobs() != active_design.nrows()
             || sqrt_weights.len() != fe_design.nobs()
             || effect_offsets.len() != fe_design.effects().len() + 1
-            || coefficient_effect.len() != fe_design.total_coefficients()
-            || coefficient_level.len() != fe_design.total_coefficients()
+            || effect_offsets.first().copied() != Some(0)
+            || effect_offsets.last().copied() != Some(fe_design.total_coefficients())
+            || fe_design
+                .effects()
+                .iter()
+                .zip(effect_offsets.windows(2))
+                .any(|(effect, offsets)| offsets[1].saturating_sub(offsets[0]) != effect.n_levels())
         {
             return Err(invalid_argument(
                 "joint PPML augmented operator dimensions are inconsistent",
@@ -601,8 +642,6 @@ impl<'a> AugmentedCategoricalOperator<'a> {
             fe_design,
             active_design,
             effect_offsets,
-            coefficient_effect,
-            coefficient_level,
             sqrt_weights,
         })
     }
@@ -681,18 +720,20 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                 }
                 *output = sum;
             });
-        fe_output
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(coefficient, output)| {
-                let effect = &self.fe_design.effects()[self.coefficient_effect[coefficient]];
-                let level = self.coefficient_level[coefficient];
-                let mut sum = 0.0_f64;
-                for &row in effect.level_index().members(level) {
-                    sum = self.sqrt_weights[row].mul_add(x[row], sum);
-                }
-                *output = sum;
-            });
+        for (effect_index, effect) in self.fe_design.effects().iter().enumerate() {
+            let start = self.effect_offsets[effect_index];
+            let end = self.effect_offsets[effect_index + 1];
+            fe_output[start..end]
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(level, output)| {
+                    let mut sum = 0.0_f64;
+                    for &row in effect.level_index().members(level) {
+                        sum = self.sqrt_weights[row].mul_add(x[row], sum);
+                    }
+                    *output = sum;
+                });
+        }
         Ok(())
     }
 }
@@ -800,59 +841,64 @@ fn certify_joint(
     residual: &[f64],
     tolerance: f64,
 ) -> Result<JointLsmrCertificate> {
-    let mut target_square = 0.0_f64;
-    let mut residual_square = 0.0_f64;
+    let mut target_square = ScaledSquareSum::default();
+    let mut residual_square = ScaledSquareSum::default();
     for row in 0..design.nobs() {
-        target_square = (weights[row] * target[row]).mul_add(target[row], target_square);
-        residual_square = (weights[row] * residual[row]).mul_add(residual[row], residual_square);
+        let root_weight = weights[row].sqrt();
+        target_square.add(root_weight * target[row])?;
+        residual_square.add(root_weight * residual[row])?;
     }
-    let reference = target_square.sqrt().max(residual_square.sqrt());
+    let reference = target_square.norm()?.max(residual_square.norm()?);
     let mut finite_absolute = 0.0_f64;
     let mut fe_absolute = 0.0_f64;
     let mut relative_infinity = 0.0_f64;
-    let mut relative_square = 0.0_f64;
+    let mut relative_square = FiniteCompensatedSum::default();
     let mut count = 0_usize;
     for column in 0..active.ncols() {
-        let mut moment = 0.0_f64;
-        let mut basis_square = 0.0_f64;
+        let mut moment = FiniteCompensatedSum::default();
+        let mut basis_square = ScaledSquareSum::default();
         for row in 0..active.nrows() {
             let basis = active[(row, column)];
-            moment = (weights[row] * residual[row]).mul_add(basis, moment);
-            basis_square = (weights[row] * basis).mul_add(basis, basis_square);
+            let root_weight = weights[row].sqrt();
+            moment.add((root_weight * residual[row]) * (root_weight * basis))?;
+            basis_square.add(root_weight * basis)?;
         }
+        let moment = moment.total()?;
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative(
             moment,
-            basis_square.sqrt(),
+            basis_square.norm()?,
             reference,
             &mut relative_infinity,
             &mut relative_square,
             &mut count,
-        );
+        )?;
     }
     for effect in design.effects() {
         for level in 0..effect.n_levels() {
-            let mut moment = 0.0_f64;
-            let mut basis_square = 0.0_f64;
+            let mut moment = FiniteCompensatedSum::default();
+            let mut basis_square = ScaledSquareSum::default();
             for &row in effect.level_index().members(level) {
-                moment += weights[row] * residual[row];
-                basis_square += weights[row];
+                let root_weight = weights[row].sqrt();
+                moment.add((root_weight * residual[row]) * root_weight)?;
+                basis_square.add(root_weight)?;
             }
+            let moment = moment.total()?;
             fe_absolute = fe_absolute.max(moment.abs());
             add_relative(
                 moment,
-                basis_square.sqrt(),
+                basis_square.norm()?,
                 reference,
                 &mut relative_infinity,
                 &mut relative_square,
                 &mut count,
-            );
+            )?;
         }
     }
     let relative_two = if count == 0 {
         0.0
     } else {
-        (relative_square / count as f64).sqrt()
+        (relative_square.total()?.max(0.0) / count as f64).sqrt()
     };
     if !finite_absolute.is_finite()
         || !fe_absolute.is_finite()
@@ -872,42 +918,127 @@ fn certify_joint(
     })
 }
 
-fn add_relative(
+pub(super) fn add_relative(
     moment: f64,
     basis_norm: f64,
     reference: f64,
     infinity: &mut f64,
-    square: &mut f64,
+    square: &mut FiniteCompensatedSum,
     count: &mut usize,
-) {
-    let denominator = basis_norm * reference;
-    let relative = if denominator > 0.0 {
-        moment.abs() / denominator
+) -> Result<()> {
+    if !moment.is_finite() || !basis_norm.is_finite() || !reference.is_finite() {
+        return Err(nonconvergence(
+            "PPML LSMR certificate scale or moment is nonfinite",
+        ));
+    }
+    let relative = if basis_norm > 0.0 && reference > 0.0 {
+        // Divide by the larger scale first so the product of two finite norms
+        // cannot overflow and turn a material moment into a false zero.
+        if basis_norm >= reference {
+            (moment.abs() / basis_norm) / reference
+        } else {
+            (moment.abs() / reference) / basis_norm
+        }
     } else if moment == 0.0 {
         0.0
     } else {
         f64::INFINITY
     };
     *infinity = (*infinity).max(relative);
-    *square = relative.mul_add(relative, *square);
-    *count += 1;
+    square.add(relative * relative)?;
+    *count = count
+        .checked_add(1)
+        .ok_or_else(|| allocation("PPML LSMR certificate direction count overflows"))?;
+    Ok(())
 }
 
-fn maximum_weight_ratio(current: &[f64], factor: &[f64]) -> f64 {
-    if current.len() != factor.len() || factor.iter().all(|value| *value == 0.0) {
-        return f64::INFINITY;
+#[derive(Debug, Default)]
+pub(super) struct FiniteCompensatedSum {
+    sum: f64,
+    correction: f64,
+}
+
+impl FiniteCompensatedSum {
+    pub(super) fn add(&mut self, value: f64) -> Result<()> {
+        if !value.is_finite() {
+            return Err(nonconvergence(
+                "PPML LSMR certificate accumulation is nonfinite",
+            ));
+        }
+        let updated = self.sum + value;
+        self.correction += if self.sum.abs() >= value.abs() {
+            (self.sum - updated) + value
+        } else {
+            (value - updated) + self.sum
+        };
+        self.sum = updated;
+        if self.sum.is_finite() && self.correction.is_finite() {
+            Ok(())
+        } else {
+            Err(nonconvergence(
+                "PPML LSMR certificate accumulation is nonfinite",
+            ))
+        }
     }
-    current
-        .iter()
-        .zip(factor)
-        .map(|(left, right)| {
-            if *left > 0.0 && *right > 0.0 {
-                (left / right).max(right / left)
+
+    pub(super) fn total(&self) -> Result<f64> {
+        let total = self.sum + self.correction;
+        if total.is_finite() {
+            Ok(total)
+        } else {
+            Err(nonconvergence(
+                "PPML LSMR certificate accumulation is nonfinite",
+            ))
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub(super) struct ScaledSquareSum {
+    scale: f64,
+    square_sum: f64,
+}
+
+impl ScaledSquareSum {
+    pub(super) fn add(&mut self, value: f64) -> Result<()> {
+        if !value.is_finite() {
+            return Err(nonconvergence("PPML LSMR weighted norm is nonfinite"));
+        }
+        let absolute = value.abs();
+        if absolute == 0.0 {
+            return Ok(());
+        }
+        if self.scale < absolute {
+            let ratio = if self.scale == 0.0 {
+                0.0
             } else {
-                f64::INFINITY
-            }
-        })
-        .fold(1.0_f64, f64::max)
+                self.scale / absolute
+            };
+            self.square_sum = 1.0 + self.square_sum * ratio * ratio;
+            self.scale = absolute;
+        } else {
+            let ratio = absolute / self.scale;
+            self.square_sum += ratio * ratio;
+        }
+        if self.scale.is_finite() && self.square_sum.is_finite() {
+            Ok(())
+        } else {
+            Err(nonconvergence("PPML LSMR weighted norm is nonfinite"))
+        }
+    }
+
+    pub(super) fn norm(&self) -> Result<f64> {
+        let norm = if self.scale == 0.0 {
+            0.0
+        } else {
+            self.scale * self.square_sum.sqrt()
+        };
+        if norm.is_finite() {
+            Ok(norm)
+        } else {
+            Err(nonconvergence("PPML LSMR weighted norm is nonfinite"))
+        }
+    }
 }
 
 fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
@@ -973,13 +1104,9 @@ mod tests {
         .expect("design");
         let active = DenseMatrix::from_row_major(4, 1, vec![1.0, 2.0, -1.0, 0.5]).expect("active");
         let offsets = vec![0, 2, 4];
-        let effects = vec![0, 0, 1, 1];
-        let levels = vec![0, 1, 0, 1];
         let weights = vec![1.0, 2.0_f64.sqrt(), 0.5_f64.sqrt(), 1.5_f64.sqrt()];
-        let operator = AugmentedCategoricalOperator::new(
-            &design, &active, &offsets, &effects, &levels, &weights,
-        )
-        .expect("operator");
+        let operator = AugmentedCategoricalOperator::new(&design, &active, &offsets, &weights)
+            .expect("operator");
         let x = vec![0.25, 1.0, -0.5, 0.75, -1.25];
         let y = vec![0.3, -0.2, 0.8, 1.1];
         let mut ax = vec![0.0; operator.nrows()];
@@ -1014,6 +1141,60 @@ mod tests {
     }
 
     #[test]
+    fn exact_certificate_does_not_turn_overflowing_squares_into_a_false_pass() {
+        let design = FeDesign::new(
+            2,
+            vec![EffectTerm::new(vec![0, 0], 1, true, Vec::new()).expect("effect")],
+        )
+        .expect("design");
+        let active = DenseMatrix::from_row_major(2, 0, Vec::new()).expect("active");
+        let values = [1e200, 1e200];
+        let certificate = certify_joint(&design, &active, &[1.0; 2], &values, &values, 1e-8)
+            .expect("finite scaled certificate");
+        assert!(!certificate.passed);
+        assert!((certificate.relative_infinity_norm - 1.0).abs() <= 1e-15);
+    }
+
+    #[test]
+    fn topology_identity_rejects_an_equal_shaped_replacement() {
+        let first = FeDesign::new(
+            4,
+            vec![EffectTerm::new(vec![0, 0, 1, 1], 2, true, Vec::new()).expect("first")],
+        )
+        .expect("first design");
+        let replacement = FeDesign::new(
+            4,
+            vec![EffectTerm::new(vec![0, 1, 0, 1], 2, true, Vec::new()).expect("replacement")],
+        )
+        .expect("replacement design");
+        let identity = FeTopologyIdentity::capture(&first).expect("identity");
+        assert!(identity.matches(&first));
+        assert!(!identity.matches(&replacement));
+
+        let mut solver = ReusableCategoricalJointLsmr {
+            active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
+            active_slots: Vec::new(),
+            topology: identity,
+            effect_offsets: vec![0, 2],
+            sqrt_weights: vec![0.0; 4],
+            rhs: vec![0.0; 4],
+            target: vec![0.0; 4],
+            delta_eta: vec![0.0; 4],
+            residual: vec![0.0; 4],
+            warm_start: vec![0.0; 2],
+            finite_inverse: Vec::new(),
+            fe_inverse: vec![0.0; 2],
+            warm_start_valid: false,
+            preconditioner: None,
+            policy: CategoricalLsmrPolicy::Diagonal,
+        };
+        let error = solver
+            .solve(&replacement, &[1.0; 4], &[1.0; 4], &[1.0; 4], 1e-8, 100)
+            .expect_err("replacement topology must fail before operator use");
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+    }
+
+    #[test]
     fn joint_solver_reuses_a_certified_incremental_state_across_weight_frames() {
         let first_codes = vec![0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
         let second_codes = vec![0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0];
@@ -1042,11 +1223,9 @@ mod tests {
         let mut solver = ReusableCategoricalJointLsmr {
             active_design,
             active_slots: vec![0],
+            topology: FeTopologyIdentity::capture(&design).expect("topology"),
             effect_offsets: vec![0, 4, 6],
-            coefficient_effect: vec![0, 0, 0, 0, 1, 1],
-            coefficient_level: vec![0, 1, 2, 3, 0, 1],
             sqrt_weights: vec![0.0; 12],
-            factor_weights: vec![0.0; 12],
             rhs: vec![0.0; 12],
             target: vec![0.0; 12],
             delta_eta: vec![0.0; 12],
@@ -1056,13 +1235,15 @@ mod tests {
             fe_inverse: vec![0.0; 6],
             warm_start_valid: false,
             preconditioner: None,
-            previous_iterations: 0,
-            policy: CategoricalLsmrPolicy::Diagonal,
+            policy: CategoricalLsmrPolicy::Reuse,
         };
         let first = solver
             .solve(&design, &outcome, &[1.0; 12], &[1.0; 12], 1e-10, 1_000)
             .expect("first correction");
         assert!(first.certificate.passed);
+        assert!(first.requested_schwarz);
+        assert!(first.used_schwarz);
+        assert!(first.rebuilt_preconditioner);
         for (actual, expected) in solver.delta_eta.iter().zip(&target) {
             assert!((actual - expected).abs() <= 1e-9);
         }
@@ -1077,6 +1258,8 @@ mod tests {
             .solve(&design, &outcome, &mean, &weights, 1e-10, 1_000)
             .expect("second correction");
         assert!(second.certificate.passed);
+        assert!(second.used_schwarz);
+        assert!(!second.rebuilt_preconditioner);
         assert!(solver.warm_start_valid);
         assert!(solver.delta_eta.iter().all(|value| value.is_finite()));
     }
