@@ -19,11 +19,19 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 use super::map::ReusableMapCapacities;
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
-pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 8;
-pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
+pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+// Fixed row partitions make the compensated dot reduction independent of the
+// installed team width. The 512-row crossover is measured on the wide PPML
+// checkpoint shape; smaller chunks add scheduling overhead and larger chunks
+// leave the deterministic reduction under-parallelized.
+pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 512;
 const PARALLEL_GROUP_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
 const PARALLEL_LEVEL_CHUNKS_PER_THREAD: usize = 4;
 const TWO_FE_PCG_PARALLEL_MIN_ROWS: usize = 16_384;
+// The level-disjoint recurrence wins through seven workers on the difficult
+// chain, then loses to scheduling and memory traffic. Above the measured
+// crossover retain the canonical serial recurrence inside the threaded solve.
+const TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS: usize = 7;
 /// Keep the PPML accelerator available through the development matrix's
 /// control-heavy cases. The exact three-matrix state is charged by the PPML
 /// memory planner, so wider fits fall back to the bounded route rather than
@@ -1691,16 +1699,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             {
                 break;
             }
-            cg_update_solution_and_residual(
+            cg_update_solution_residual_and_weighted_norm(
                 &mut values,
                 residual,
                 direction,
                 projection,
                 &self.cg_ratio,
-            )?;
-            weighted_dot_columns_into(
-                residual,
-                residual,
                 weights,
                 &mut self.cg_next_residual_square,
                 &mut self.workspace.group_corrections,
@@ -2042,6 +2046,8 @@ fn absorb_two_fe_pcg_reusing(
     let pcg_iteration_limit = config.max_iterations.saturating_sub(map_fallback_reserve);
     let mut iterations = completed_pilot_iterations;
     let mut active_rhs = 0_usize;
+    let parallel_recurrence = design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS
+        && (2..=TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS).contains(&rayon::current_num_threads());
     active_rhs_state.fill(0.0);
     for rhs in 0..rhs_count {
         if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance)? {
@@ -2092,16 +2098,53 @@ fn absorb_two_fe_pcg_reusing(
             break;
         }
         next_residual_square.fill(0.0);
-        for level in 0..right_levels {
-            let denominator = graph.right_weights[level];
-            for (rhs, &step) in ratio.iter().enumerate() {
-                let index = level * stride + rhs;
-                graph.solution[index] = step.mul_add(graph.direction[index], graph.solution[index]);
-                graph.residual[index] =
-                    (-step).mul_add(graph.operator[index], graph.residual[index]);
-                let preconditioned = graph.residual[index] / denominator;
-                next_residual_square[rhs] =
-                    graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
+        if parallel_recurrence {
+            let level_chunk = parallel_level_chunk_size(right_levels);
+            let cell_chunk = level_chunk
+                .checked_mul(stride)
+                .ok_or_else(|| allocation("two-FE PCG recurrence chunk dimensions overflow"))?;
+            let direction = &graph.direction;
+            let operator = &graph.operator;
+            graph
+                .solution
+                .par_chunks_mut(cell_chunk)
+                .zip(graph.residual.par_chunks_mut(cell_chunk))
+                .enumerate()
+                .for_each(|(chunk, (solution, residual))| {
+                    for local_level in 0..solution.len() / stride {
+                        for (rhs, &step) in ratio.iter().enumerate() {
+                            let local = local_level * stride + rhs;
+                            let global = chunk * cell_chunk + local;
+                            solution[local] = step.mul_add(direction[global], solution[local]);
+                            residual[local] = (-step).mul_add(operator[global], residual[local]);
+                        }
+                    }
+                });
+            // The state update is level-disjoint. Keep this scalar reduction
+            // serial in canonical level/RHS order so thread count cannot alter
+            // the recurrence or its stopping decision.
+            for level in 0..right_levels {
+                let denominator = graph.right_weights[level];
+                for (rhs, residual_square) in next_residual_square.iter_mut().enumerate() {
+                    let index = level * stride + rhs;
+                    let preconditioned = graph.residual[index] / denominator;
+                    *residual_square =
+                        graph.residual[index].mul_add(preconditioned, *residual_square);
+                }
+            }
+        } else {
+            for level in 0..right_levels {
+                let denominator = graph.right_weights[level];
+                for (rhs, &step) in ratio.iter().enumerate() {
+                    let index = level * stride + rhs;
+                    graph.solution[index] =
+                        step.mul_add(graph.direction[index], graph.solution[index]);
+                    graph.residual[index] =
+                        (-step).mul_add(graph.operator[index], graph.residual[index]);
+                    let preconditioned = graph.residual[index] / denominator;
+                    next_residual_square[rhs] =
+                        graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
+                }
             }
         }
         iterations += 1;
@@ -2155,16 +2198,45 @@ fn absorb_two_fe_pcg_reusing(
         if breakdown {
             break;
         }
-        for level in 0..right_levels {
-            let denominator = graph.right_weights[level];
-            for rhs in 0..rhs_count {
-                if active_rhs_state[rhs] == 0.0 {
-                    continue;
+        if parallel_recurrence {
+            let level_chunk = parallel_level_chunk_size(right_levels);
+            let cell_chunk = level_chunk
+                .checked_mul(stride)
+                .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
+            let right_weights = &graph.right_weights;
+            let residual = &graph.residual;
+            graph
+                .direction
+                .par_chunks_mut(cell_chunk)
+                .enumerate()
+                .for_each(|(chunk, direction)| {
+                    let first_level = chunk * level_chunk;
+                    for local_level in 0..direction.len() / stride {
+                        let denominator = right_weights[first_level + local_level];
+                        for rhs in 0..rhs_count {
+                            if active_rhs_state[rhs] == 0.0 {
+                                continue;
+                            }
+                            let local = local_level * stride + rhs;
+                            let global = chunk * cell_chunk + local;
+                            let preconditioned = residual[global] / denominator;
+                            direction[local] =
+                                preconditioned.mul_add(1.0, ratio[rhs] * direction[local]);
+                        }
+                    }
+                });
+        } else {
+            for level in 0..right_levels {
+                let denominator = graph.right_weights[level];
+                for rhs in 0..rhs_count {
+                    if active_rhs_state[rhs] == 0.0 {
+                        continue;
+                    }
+                    let index = level * stride + rhs;
+                    let preconditioned = graph.residual[index] / denominator;
+                    graph.direction[index] =
+                        preconditioned.mul_add(1.0, ratio[rhs] * graph.direction[index]);
                 }
-                let index = level * stride + rhs;
-                let preconditioned = graph.residual[index] / denominator;
-                graph.direction[index] =
-                    preconditioned.mul_add(1.0, ratio[rhs] * graph.direction[index]);
             }
         }
         residual_square.copy_from_slice(next_residual_square);
@@ -5147,9 +5219,77 @@ fn project_effect_recording<R: InterceptCoefficientRecorder>(
     workspace: &mut BorrowedMapWorkspace,
     coefficients: Option<(&mut R, usize)>,
 ) -> Result<()> {
+    project_effect_recording_impl::<R, false, false>(
+        effect,
+        weights,
+        values,
+        workspace,
+        coefficients,
+        None,
+    )
+}
+
+fn project_effect_recording_with_complement<R: InterceptCoefficientRecorder>(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: Option<(&mut R, usize)>,
+    complement_from: &DenseMatrix,
+) -> Result<()> {
+    project_effect_recording_impl::<R, false, true>(
+        effect,
+        weights,
+        values,
+        workspace,
+        coefficients,
+        Some(complement_from),
+    )
+}
+
+fn project_effect_recording_from_input<R: InterceptCoefficientRecorder>(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    input: &DenseMatrix,
+    output: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: Option<(&mut R, usize)>,
+) -> Result<()> {
+    project_effect_recording_impl::<R, true, false>(
+        effect,
+        weights,
+        output,
+        workspace,
+        coefficients,
+        Some(input),
+    )
+}
+
+fn project_effect_recording_impl<
+    R: InterceptCoefficientRecorder,
+    const FROM_INPUT: bool,
+    const COMPLEMENT: bool,
+>(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: Option<(&mut R, usize)>,
+    auxiliary: Option<&DenseMatrix>,
+) -> Result<()> {
+    debug_assert!(!(FROM_INPUT && COMPLEMENT));
     if effect.codes().len() != values.nrows() {
         return Err(invalid_argument(
             "borrowed MAP effect and matrix observation counts differ",
+        ));
+    }
+    if (FROM_INPUT || COMPLEMENT)
+        && auxiliary.is_none_or(|source| {
+            source.nrows() != values.nrows() || source.ncols() != values.ncols()
+        })
+    {
+        return Err(invalid_argument(
+            "borrowed MAP auxiliary projection matrix dimensions differ",
         ));
     }
     let parallel_mean_count = effect
@@ -5160,24 +5300,37 @@ fn project_effect_recording<R: InterceptCoefficientRecorder>(
         && workspace.parallel_group_means.len() >= parallel_mean_count
         && (values.ncols() > 1 || values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
     {
-        return project_effect_parallel(
+        return project_effect_parallel::<R, FROM_INPUT, COMPLEMENT>(
             effect,
             weights,
             values,
             workspace,
             parallel_mean_count,
             coefficients,
+            auxiliary,
         );
     }
-    project_effect_serial(effect, weights, values, workspace, coefficients)
+    project_effect_serial::<R, FROM_INPUT, COMPLEMENT>(
+        effect,
+        weights,
+        values,
+        workspace,
+        coefficients,
+        auxiliary,
+    )
 }
 
-fn project_effect_serial<R: InterceptCoefficientRecorder>(
+fn project_effect_serial<
+    R: InterceptCoefficientRecorder,
+    const FROM_INPUT: bool,
+    const COMPLEMENT: bool,
+>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     mut coefficients: Option<(&mut R, usize)>,
+    auxiliary: Option<&DenseMatrix>,
 ) -> Result<()> {
     for level in 0..effect.n_levels() {
         let members = effect.level_index().checked_members(level)?;
@@ -5186,7 +5339,16 @@ fn project_effect_serial<R: InterceptCoefficientRecorder>(
                 "borrowed MAP effect contains an empty final level",
             ));
         }
-        group_means(members, weights, values, workspace)?;
+        if FROM_INPUT {
+            group_means(
+                members,
+                weights,
+                auxiliary.expect("validated input projection source"),
+                workspace,
+            )?;
+        } else {
+            group_means(members, weights, values, workspace)?;
+        }
         if let Some((batch, effect_index)) = coefficients.as_mut() {
             batch.add_intercept_level(
                 *effect_index,
@@ -5201,89 +5363,143 @@ fn project_effect_serial<R: InterceptCoefficientRecorder>(
                 ));
             }
             for rhs in 0..values.ncols() {
-                let residual = values[(observation, rhs)] - workspace.group_sums[rhs];
-                if !residual.is_finite() {
+                let source = if FROM_INPUT {
+                    auxiliary.expect("validated input projection source")[(observation, rhs)]
+                } else {
+                    values[(observation, rhs)]
+                };
+                let projected = source - workspace.group_sums[rhs];
+                let output = if COMPLEMENT {
+                    auxiliary.expect("validated complement")[(observation, rhs)] - projected
+                } else {
+                    projected
+                };
+                if !output.is_finite() {
                     return Err(invalid_data(
                         "borrowed MAP projection produced a nonfinite residual",
                     ));
                 }
-                values[(observation, rhs)] = residual;
+                values[(observation, rhs)] = output;
             }
         }
     }
     Ok(())
 }
 
-fn project_effect_parallel<R: InterceptCoefficientRecorder>(
+fn project_effect_parallel<
+    R: InterceptCoefficientRecorder,
+    const FROM_INPUT: bool,
+    const COMPLEMENT: bool,
+>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
     coefficients: Option<(&mut R, usize)>,
+    auxiliary: Option<&DenseMatrix>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
     if columns <= PARALLEL_GROUP_MAX_RHS {
-        return project_effect_parallel_fused(
+        return project_effect_parallel_fused::<R, FROM_INPUT, COMPLEMENT>(
             effect,
             weights,
             values,
             workspace,
             parallel_mean_count,
             coefficients,
+            auxiliary,
         );
     }
-    let values_read = &*values;
-    fill_parallel_group_statistics(
-        effect,
-        weights,
-        values_read,
-        &mut workspace.parallel_group_weights[..levels],
-        &mut workspace.parallel_group_means[..parallel_mean_count],
-    )?;
+    {
+        let values_read = if FROM_INPUT {
+            auxiliary.expect("validated input projection source")
+        } else {
+            &*values
+        };
+        fill_parallel_group_statistics(
+            effect,
+            weights,
+            values_read,
+            &mut workspace.parallel_group_weights[..levels],
+            &mut workspace.parallel_group_means[..parallel_mean_count],
+        )?;
+    }
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
     if let Some((batch, effect_index)) = coefficients {
         record_parallel_group_means(batch, effect_index, means, levels, columns)?;
     }
     let codes = effect.codes();
-    values
-        .as_mut_slice()
-        .par_chunks_mut(columns)
-        .enumerate()
-        .try_for_each(|(observation, row)| -> Result<()> {
-            let level = codes[observation] as usize;
-            if level >= levels {
-                return Err(invalid_argument(
-                    "borrowed MAP code exceeds the finalized level count",
+    let update_row = |observation: usize, row: &mut [f64], auxiliary: Option<&[f64]>| {
+        let level = codes[observation] as usize;
+        if level >= levels {
+            return Err(invalid_argument(
+                "borrowed MAP code exceeds the finalized level count",
+            ));
+        }
+        for (rhs, value) in row.iter_mut().enumerate() {
+            let source = if FROM_INPUT {
+                auxiliary.expect("validated input projection row")[rhs]
+            } else {
+                *value
+            };
+            let projected = source - means[level * columns + rhs];
+            let output = if COMPLEMENT {
+                auxiliary.expect("validated complement row")[rhs] - projected
+            } else {
+                projected
+            };
+            if !output.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP projection produced a nonfinite residual",
                 ));
             }
-            for (rhs, value) in row.iter_mut().enumerate() {
-                let residual = *value - means[level * columns + rhs];
-                if !residual.is_finite() {
-                    return Err(invalid_data(
-                        "borrowed MAP projection produced a nonfinite residual",
-                    ));
-                }
-                *value = residual;
-            }
-            Ok(())
-        })?;
+            *value = output;
+        }
+        Ok(())
+    };
+    if FROM_INPUT || COMPLEMENT {
+        let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
+        values
+            .as_mut_slice()
+            .par_chunks_mut(columns)
+            .zip(auxiliary.as_slice().par_chunks(columns))
+            .enumerate()
+            .try_for_each(|(observation, (row, auxiliary))| {
+                update_row(observation, row, Some(auxiliary))
+            })?;
+    } else {
+        values
+            .as_mut_slice()
+            .par_chunks_mut(columns)
+            .enumerate()
+            .try_for_each(|(observation, row)| update_row(observation, row, None))?;
+    }
     Ok(())
 }
 
-fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
+fn project_effect_parallel_fused<
+    R: InterceptCoefficientRecorder,
+    const FROM_INPUT: bool,
+    const COMPLEMENT: bool,
+>(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
     parallel_mean_count: usize,
     coefficients: Option<(&mut R, usize)>,
+    auxiliary: Option<&DenseMatrix>,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
-    let values_read = &*values;
+    let values_read = if FROM_INPUT {
+        auxiliary.expect("validated input projection source")
+    } else {
+        &*values
+    };
     let level_chunk = parallel_level_chunk_size(levels);
     let mean_chunk = level_chunk
         .checked_mul(columns)
@@ -5358,28 +5574,51 @@ fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
         }
     }
     let codes = effect.codes();
-    values
-        .as_mut_slice()
-        .par_chunks_mut(columns)
-        .enumerate()
-        .try_for_each(|(observation, row)| -> Result<()> {
-            let level = codes[observation] as usize;
-            if level >= levels {
-                return Err(invalid_argument(
-                    "borrowed MAP code exceeds the finalized level count",
+    let update_row = |observation: usize, row: &mut [f64], auxiliary: Option<&[f64]>| {
+        let level = codes[observation] as usize;
+        if level >= levels {
+            return Err(invalid_argument(
+                "borrowed MAP code exceeds the finalized level count",
+            ));
+        }
+        for (rhs, value) in row.iter_mut().enumerate() {
+            let source = if FROM_INPUT {
+                auxiliary.expect("validated input projection row")[rhs]
+            } else {
+                *value
+            };
+            let projected = source - means[level * columns + rhs];
+            let output = if COMPLEMENT {
+                auxiliary.expect("validated complement row")[rhs] - projected
+            } else {
+                projected
+            };
+            if !output.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP projection produced a nonfinite residual",
                 ));
             }
-            for (rhs, value) in row.iter_mut().enumerate() {
-                let residual = *value - means[level * columns + rhs];
-                if !residual.is_finite() {
-                    return Err(invalid_data(
-                        "borrowed MAP projection produced a nonfinite residual",
-                    ));
-                }
-                *value = residual;
-            }
-            Ok(())
-        })?;
+            *value = output;
+        }
+        Ok(())
+    };
+    if FROM_INPUT || COMPLEMENT {
+        let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
+        values
+            .as_mut_slice()
+            .par_chunks_mut(columns)
+            .zip(auxiliary.as_slice().par_chunks(columns))
+            .enumerate()
+            .try_for_each(|(observation, (row, auxiliary))| {
+                update_row(observation, row, Some(auxiliary))
+            })?;
+    } else {
+        values
+            .as_mut_slice()
+            .par_chunks_mut(columns)
+            .enumerate()
+            .try_for_each(|(observation, row)| update_row(observation, row, None))?;
+    }
     Ok(())
 }
 
@@ -5930,20 +6169,23 @@ fn borrowed_symmetric_projection_into_recording(
             "borrowed CG projection buffer dimensions differ",
         ));
     }
-    residual.as_mut_slice().copy_from_slice(input.as_slice());
-    for (effect_index, effect) in design.effects().iter().enumerate() {
-        project_effect_recording(
-            effect,
+    let effect_count = design.effects().len();
+    if effect_count == 0 {
+        residual.as_mut_slice().fill(0.0);
+        return Ok(());
+    }
+    if effect_count > 1 {
+        project_effect_recording_from_input(
+            &design.effects()[0],
             weights,
+            input,
             residual,
             workspace,
             coefficients
                 .as_deref_mut()
-                .map(|coefficients| (coefficients, effect_index)),
+                .map(|coefficients| (coefficients, 0)),
         )?;
-    }
-    if design.effects().len() > 1 {
-        for effect_index in (0..design.effects().len() - 1).rev() {
+        for effect_index in 1..effect_count {
             project_effect_recording(
                 &design.effects()[effect_index],
                 weights,
@@ -5954,16 +6196,28 @@ fn borrowed_symmetric_projection_into_recording(
                     .map(|coefficients| (coefficients, effect_index)),
             )?;
         }
-    }
-    for (output, original) in residual.as_mut_slice().iter_mut().zip(input.as_slice()) {
-        *output = *original - *output;
-        if !output.is_finite() {
-            return Err(invalid_data(
-                "borrowed CG symmetric projection produced a nonfinite value",
-            ));
+        for effect_index in (1..effect_count - 1).rev() {
+            project_effect_recording(
+                &design.effects()[effect_index],
+                weights,
+                residual,
+                workspace,
+                coefficients
+                    .as_deref_mut()
+                    .map(|coefficients| (coefficients, effect_index)),
+            )?;
         }
+    } else {
+        residual.as_mut_slice().copy_from_slice(input.as_slice());
     }
-    Ok(())
+    project_effect_recording_with_complement(
+        &design.effects()[0],
+        weights,
+        residual,
+        workspace,
+        coefficients.map(|coefficients| (coefficients, 0)),
+        input,
+    )
 }
 
 fn borrowed_residual_sweep_recording<R: InterceptCoefficientRecorder>(
@@ -6357,6 +6611,149 @@ fn cg_update_solution_and_residual(
                     "borrowed CG update produced a nonfinite value",
                 ));
             }
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn cg_update_solution_residual_and_weighted_norm(
+    values: &mut DenseMatrix,
+    residual: &mut DenseMatrix,
+    direction: &DenseMatrix,
+    projection: &DenseMatrix,
+    alpha: &[f64],
+    weights: ValidatedWeights<'_>,
+    output: &mut [f64],
+    corrections: &mut [f64],
+    parallel_sums: &mut [f64],
+) -> Result<()> {
+    if alpha.len() != values.ncols()
+        || residual.nrows() != values.nrows()
+        || residual.ncols() != values.ncols()
+        || direction.nrows() != values.nrows()
+        || direction.ncols() != values.ncols()
+        || projection.nrows() != values.nrows()
+        || projection.ncols() != values.ncols()
+        || output.len() != values.ncols()
+        || corrections.len() != values.ncols()
+    {
+        return Err(invalid_argument("borrowed CG update dimensions differ"));
+    }
+    output.fill(0.0);
+    corrections.fill(0.0);
+    let columns = values.ncols();
+    let chunks = values.nrows().div_ceil(PARALLEL_DOT_CHUNK_ROWS);
+    let parallel_elements = chunks
+        .checked_mul(columns)
+        .ok_or_else(|| allocation("borrowed CG parallel dot dimensions overflow"))?;
+    if values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS
+        && columns <= FUSED_PARALLEL_MAX_RHS
+        && rayon::current_num_threads() > 1
+        && parallel_sums.len() >= parallel_elements
+    {
+        let row_chunk = PARALLEL_DOT_CHUNK_ROWS
+            .checked_mul(columns)
+            .ok_or_else(|| allocation("borrowed CG parallel row chunk dimensions overflow"))?;
+        parallel_sums[..parallel_elements]
+            .par_chunks_mut(columns)
+            .zip(values.as_mut_slice().par_chunks_mut(row_chunk))
+            .zip(residual.as_mut_slice().par_chunks_mut(row_chunk))
+            .zip(direction.as_slice().par_chunks(row_chunk))
+            .zip(projection.as_slice().par_chunks(row_chunk))
+            .enumerate()
+            .try_for_each(
+                |(chunk, ((((sums, values), residual), direction), projection))| -> Result<()> {
+                    sums.fill(0.0);
+                    let mut chunk_corrections = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
+                    let first_row = chunk * PARALLEL_DOT_CHUNK_ROWS;
+                    for local_row in 0..values.len() / columns {
+                        let weight = weights.normalized(first_row + local_row);
+                        let offset = local_row * columns;
+                        for rhs in 0..columns {
+                            let index = offset + rhs;
+                            values[index] -= alpha[rhs] * direction[index];
+                            residual[index] -= alpha[rhs] * projection[index];
+                            if !values[index].is_finite() || !residual[index].is_finite() {
+                                return Err(invalid_data(
+                                    "borrowed CG update produced a nonfinite value",
+                                ));
+                            }
+                            let term = weight * residual[index] * residual[index];
+                            if !term.is_finite() {
+                                return Err(invalid_data(
+                                    "borrowed CG weighted inner product produced a nonfinite term",
+                                ));
+                            }
+                            compensated_add(term, &mut sums[rhs], &mut chunk_corrections[rhs])?;
+                        }
+                    }
+                    for rhs in 0..columns {
+                        sums[rhs] += chunk_corrections[rhs];
+                        if !sums[rhs].is_finite() {
+                            return Err(invalid_data(
+                                "borrowed CG weighted inner product is nonfinite",
+                            ));
+                        }
+                    }
+                    Ok(())
+                },
+            )?;
+        for chunk in 0..chunks {
+            for rhs in 0..columns {
+                compensated_add(
+                    parallel_sums[chunk * columns + rhs],
+                    &mut output[rhs],
+                    &mut corrections[rhs],
+                )?;
+            }
+        }
+        for rhs in 0..columns {
+            output[rhs] += corrections[rhs];
+            if !output[rhs].is_finite() {
+                return Err(invalid_data(
+                    "borrowed CG weighted inner product is nonfinite",
+                ));
+            }
+        }
+        return Ok(());
+    }
+    if values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS && rayon::current_num_threads() > 1 {
+        cg_update_solution_and_residual(values, residual, direction, projection, alpha)?;
+        return weighted_dot_columns_into(
+            residual,
+            residual,
+            weights,
+            output,
+            corrections,
+            parallel_sums,
+        );
+    }
+    for row in 0..values.nrows() {
+        let weight = weights.normalized(row);
+        for rhs in 0..columns {
+            values[(row, rhs)] -= alpha[rhs] * direction[(row, rhs)];
+            residual[(row, rhs)] -= alpha[rhs] * projection[(row, rhs)];
+            if !values[(row, rhs)].is_finite() || !residual[(row, rhs)].is_finite() {
+                return Err(invalid_data(
+                    "borrowed CG update produced a nonfinite value",
+                ));
+            }
+            let term = weight * residual[(row, rhs)] * residual[(row, rhs)];
+            if !term.is_finite() {
+                return Err(invalid_data(
+                    "borrowed CG weighted inner product produced a nonfinite term",
+                ));
+            }
+            compensated_add(term, &mut output[rhs], &mut corrections[rhs])?;
+        }
+    }
+    for rhs in 0..columns {
+        output[rhs] += corrections[rhs];
+        if !output[rhs].is_finite() {
+            return Err(invalid_data(
+                "borrowed CG weighted inner product is nonfinite",
+            ));
         }
     }
     Ok(())
@@ -6958,6 +7355,71 @@ mod tests {
     }
 
     #[test]
+    fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
+        let rows = TWO_FE_PCG_PARALLEL_MIN_ROWS;
+        let first_levels = 1_024;
+        let second_levels = 997;
+        let first_codes = (0..rows)
+            .map(|row| (row % first_levels) as u32)
+            .collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|row| ((7 * row + row / first_levels) % second_levels) as u32)
+            .collect::<Vec<_>>();
+        let first_index = LevelIndex::from_codes(&first_codes, first_levels).expect("first index");
+        let second_index =
+            LevelIndex::from_codes(&second_codes, second_levels).expect("second index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, first_levels, &first_index)
+            .expect("first source");
+        let second =
+            ValidatedBorrowedInterceptSource::new(&second_codes, second_levels, &second_index)
+                .expect("second source");
+        let columns = (0..3)
+            .map(|column| {
+                (0..rows)
+                    .map(|row| {
+                        ((row * (column + 3) % 103) as f64 - 51.0)
+                            .mul_add(column as f64 + 0.5, (row % 29) as f64 / 31.0)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let weights = (0..rows)
+            .map(|row| 1.0 + (row % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    let design =
+                        BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
+                            .expect("design");
+                    let mut reusable =
+                        ReusableCategoricalMapAbsorber::new(design, columns.len(), threads)
+                            .expect("reusable map");
+                    assert!(reusable.two_fe_pcg.is_some());
+                    reusable
+                        .absorb(
+                            BorrowedMapWeights::Provided(&weights),
+                            DenseMatrix::from_columns(&columns).expect("matrix"),
+                            config(),
+                        )
+                        .expect("certified PCG")
+                })
+        };
+        let serial = run(1);
+        assert!(serial.report().iterations > CATEGORICAL_MAP_PILOT_SWEEPS);
+        for threads in [7, 14] {
+            let parallel = run(threads);
+            assert_eq!(serial.residualized(), parallel.residualized());
+            assert_eq!(serial.report().iterations, parallel.report().iterations);
+            assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
+            assert_eq!(serial.report().certificate, parallel.report().certificate);
+        }
+    }
+
+    #[test]
     fn every_workspace_reservation_and_capacity_guard_fails_closed() {
         let codes = [0_u32, 0, 1, 1];
         let index = LevelIndex::from_codes(&codes, 2).expect("index");
@@ -7246,6 +7708,188 @@ mod tests {
                 serial.report().fallback_used,
                 parallel.report().fallback_used
             );
+        }
+    }
+
+    #[test]
+    fn fused_symmetric_complement_and_cg_update_match_separate_passes() {
+        let observations = 20_000;
+        let level_counts = [257, 263, 269];
+        let code_sets = level_counts
+            .iter()
+            .enumerate()
+            .map(|(effect, &levels)| {
+                (0..observations)
+                    .map(|row| ((row * (2 * effect + 1) + row / 17) % levels) as u32)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let indexes = code_sets
+            .iter()
+            .zip(level_counts)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).expect("index"))
+            .collect::<Vec<_>>();
+        let sources = code_sets
+            .iter()
+            .zip(indexes.iter())
+            .zip(level_counts)
+            .map(|((codes, index), levels)| {
+                ValidatedBorrowedInterceptSource::new(codes, levels, index).expect("source")
+            })
+            .collect::<Vec<_>>();
+        let design = BorrowedInterceptFeDesign::new(
+            observations,
+            sources.iter().map(|source| source.effect()).collect(),
+        )
+        .expect("design");
+        let columns = (0..11)
+            .map(|column| {
+                (0..observations)
+                    .map(|row| {
+                        ((row % 101) as f64 - 50.0).mul_add(
+                            column as f64 + 0.25,
+                            ((row * (column + 5)) % 4_103) as f64 / 19.0,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let input = DenseMatrix::from_columns(&columns).expect("matrix");
+        let weight_values = (0..observations)
+            .map(|row| 1.0 + (row % 13) as f64 / 17.0)
+            .collect::<Vec<_>>();
+        let weights = validate_weights(BorrowedMapWeights::Provided(&weight_values), observations)
+            .expect("weights");
+
+        for threads in [1, 7] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    let mut reservation = SystemWorkspaceReservation;
+                    let mut workspace = BorrowedMapWorkspace::new_with_parallelism(
+                        &design,
+                        observations,
+                        columns.len(),
+                        threads,
+                        &mut reservation,
+                    )
+                    .expect("workspace");
+                    let mut expected_initial = input.clone();
+                    let mut expected_initial_coefficients =
+                        FeCoefficientBatch::intercept_zeros(&design, columns.len())
+                            .expect("coefficients");
+                    project_effect_recording(
+                        &design.effects()[0],
+                        weights,
+                        &mut expected_initial,
+                        &mut workspace,
+                        Some((&mut expected_initial_coefficients, 0)),
+                    )
+                    .expect("separate initial effect projection");
+                    let mut actual_initial =
+                        DenseMatrix::zeros(observations, columns.len()).expect("initial matrix");
+                    let mut actual_initial_coefficients =
+                        FeCoefficientBatch::intercept_zeros(&design, columns.len())
+                            .expect("coefficients");
+                    project_effect_recording_from_input(
+                        &design.effects()[0],
+                        weights,
+                        &input,
+                        &mut actual_initial,
+                        &mut workspace,
+                        Some((&mut actual_initial_coefficients, 0)),
+                    )
+                    .expect("fused initial effect projection");
+                    assert_eq!(expected_initial, actual_initial);
+                    assert_eq!(expected_initial_coefficients, actual_initial_coefficients);
+
+                    let mut expected = input.clone();
+                    let mut expected_coefficients =
+                        FeCoefficientBatch::intercept_zeros(&design, columns.len())
+                            .expect("coefficients");
+                    borrowed_residual_sweep_recording(
+                        &design,
+                        weights,
+                        &mut expected,
+                        &mut workspace,
+                        Some(&mut expected_coefficients),
+                        true,
+                    )
+                    .expect("separate symmetric projection");
+                    for (projected, original) in
+                        expected.as_mut_slice().iter_mut().zip(input.as_slice())
+                    {
+                        *projected = *original - *projected;
+                    }
+
+                    let mut actual =
+                        DenseMatrix::zeros(observations, columns.len()).expect("actual matrix");
+                    let mut actual_coefficients =
+                        FeCoefficientBatch::intercept_zeros(&design, columns.len())
+                            .expect("coefficients");
+                    borrowed_symmetric_projection_into_recording(
+                        &design,
+                        weights,
+                        &input,
+                        &mut actual,
+                        &mut workspace,
+                        Some(&mut actual_coefficients),
+                    )
+                    .expect("fused symmetric projection");
+
+                    assert_eq!(expected, actual);
+                    assert_eq!(expected_coefficients, actual_coefficients);
+
+                    let alpha = (0..columns.len())
+                        .map(|rhs| 0.01 * (rhs + 1) as f64)
+                        .collect::<Vec<_>>();
+                    let direction = input.clone();
+                    let projection = actual.clone();
+                    let mut expected_values = input.clone();
+                    let mut expected_residual = expected.clone();
+                    cg_update_solution_and_residual(
+                        &mut expected_values,
+                        &mut expected_residual,
+                        &direction,
+                        &projection,
+                        &alpha,
+                    )
+                    .expect("separate CG update");
+                    let mut expected_norms = vec![0.0; columns.len()];
+                    let mut expected_corrections = vec![0.0; columns.len()];
+                    weighted_dot_columns_into(
+                        &expected_residual,
+                        &expected_residual,
+                        weights,
+                        &mut expected_norms,
+                        &mut expected_corrections,
+                        &mut workspace.parallel_dot_sums,
+                    )
+                    .expect("separate residual norm");
+
+                    let mut actual_values = input.clone();
+                    let mut actual_residual = expected.clone();
+                    let mut actual_norms = vec![0.0; columns.len()];
+                    let mut actual_corrections = vec![0.0; columns.len()];
+                    cg_update_solution_residual_and_weighted_norm(
+                        &mut actual_values,
+                        &mut actual_residual,
+                        &direction,
+                        &projection,
+                        &alpha,
+                        weights,
+                        &mut actual_norms,
+                        &mut actual_corrections,
+                        &mut workspace.parallel_dot_sums,
+                    )
+                    .expect("fused CG update and residual norm");
+
+                    assert_eq!(expected_values, actual_values);
+                    assert_eq!(expected_residual, actual_residual);
+                    assert_eq!(expected_norms, actual_norms);
+                });
         }
     }
 

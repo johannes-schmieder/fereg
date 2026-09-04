@@ -93,12 +93,13 @@ architecture decisions remain under `docs/adr/`.
   directions with canonical reductions. Its topology, buffers, preconditioner,
   predictor state, and warm solution remain fit-owned and reusable.
 - For three or more effects, joint LSMR retains one two-effect Schwarz core and
-  applies a fresh current-weight positive diagonal action to all remaining FE
-  coordinates. This replaces the poorly conditioned diagonal-only route
-  without restoring the rejected all-pairs Schwarz policy. The memory preflight
-  charges exactly that retained topology plus the full diagonal and recurrence
-  state; exact post-recurrence finite and per-level normal equations remain the
-  authority.
+  couples it to a fresh current-weight positive diagonal action for the
+  remaining FE coordinates through the symmetric block factor
+  `T diag(C,D) T'`. The current-weight core/extra cross action is matrix-free
+  over finalized memberships, so no additional pair graph is retained. Two
+  core-width bridge buffers are fallibly preallocated and charged to the memory
+  plan. The action is symmetric positive semidefinite; exact post-recurrence
+  finite and per-level normal equations remain the authority.
 - Prepared CMG binds exact topology, preflights before observation-scale
   preparation, reuses fereg-owned thread and numeric buffers, and uses direct
   row-to-nuisance lookup for three-FE Schur work. The generic OLS CMG builder,
@@ -140,18 +141,19 @@ has been launched.
   formatting and Clippy, 691 core tests, 74 normal plugin tests, and 89 FFI
   plugin tests. The final development-harness patch passes all 758 repository
   tests plus the portable shell, Python, TOML, C, and mock-SPI checks.
-- The current working tree derived from `5f9d0f7` passes the universal
-  arm64/x86_64 macOS build and actual-plugin ABI/self-test; Rust 1.85.1
-  formatting and Clippy; 699 core tests, the complete workspace oracle suite,
-  and 89 FFI plugin tests; all 758 repository tests; and the portable shell,
-  Python, TOML, C, mock-SPI, allocation-source, parser, protocol, and
-  transaction checks. This is development evidence, not exact-SHA
-  qualification.
-- The final v3 local science run under
-  `/private/tmp/fereg-ppml-final-science` passed all eight topology scopes
+- Commit `b545b2f` preserves the preceding green local optimization round. The
+  current follow-on tree passes the universal arm64/x86_64 macOS build, binary
+  audit, and actual-plugin ABI/panic-containment self-test; Rust formatting and
+  workspace Clippy; 703 core unit tests plus the constrained
+  memory, adversarial wire, roundtrip, and numerical-oracle suites; and 52
+  focused development-harness parser, protocol, transaction, and adjudication
+  tests. This is development evidence, not exact-SHA qualification.
+- The current v3 local science run under
+  `/private/tmp/fereg-ppml-next-final2-science` passed all eight topology scopes
   against both the independent explicit-dummy oracle and pinned comparator.
-  The one-repetition local smoke under `/private/tmp/fereg-ppml-final-smoke`
-  passed all science and route checks for all nine eligible candidate arms.
+  The one-repetition local smoke under
+  `/private/tmp/fereg-ppml-next-final2-smoke` passed all science and route checks
+  for all nine eligible candidate arms.
 - After the checkpoint change, the v3 local science profile under
   `/private/tmp/fereg-ppml-checkpoint-science-gated` again passed all eight
   topology scopes against the independent explicit-dummy oracle and pinned
@@ -243,34 +245,36 @@ has been launched.
   compatibility state. Strict candidates still project design and response
   together, use RAII rollback, and reset specialized warm state only after the
   certified candidate commits.
-- ADR-0027's independently certified current-weight LSMR checkpoint removes
-  that floor. On the current plugin, the three-run N=50,000, K=10 sparse-3FE
-  median is 4.729 seconds versus the preceding 36.455-second worktree
-  baseline. Strict/final time fell from 32.514 to 0.264 seconds; the computed
-  checkpoint uses 41 LSMR iterations, about 0.032 seconds setup, 0.104 seconds
-  solve, and 0.009 seconds independent certification. The first MAP frame now
-  dominates at 410 iterations and about 3.19 seconds; seven ordinary LSMR
-  frames use 1,601 iterations, four retries, about 0.013 seconds setup, 1.11
-  seconds solve, and 0.009 seconds certification. Pinned `ppmlhdfe` has a
-  66.228-second median on the same data, making this local diagnostic about
-  14.0x faster. The 148.2 MB modeled peak covers the observed 102.3--111.1 MB
-  peak delta.
-- In the current v3 difficult-chain smoke, MAP/LSMR/CMG took
-  13.187/1.602/2.302 seconds versus 73.765 seconds for pinned `ppmlhdfe`.
-  LSMR and CMG are therefore about 46.0x and 32.0x faster in this diagnostic.
-  Their strict/final phase is about 0.049 seconds; the one computed checkpoint
-  projection needs one LSMR iteration, while the initial MAP frame still needs
-  2,004 iterations and about 1.18 seconds. CMG ordinary work still has 11
-  certificate-driven retries; LSMR has one.
+- ADR-0027's independently certified current-weight LSMR checkpoint removed
+  the former strict/final floor. The next matched five-run N=50,000, K=10
+  sparse-3FE round compares `b545b2f` with the current implementation on the
+  same data and seven threads. Median total time fell from 4.255 to 2.763
+  seconds. Initial MAP solve time fell from 2.820 to 1.498 seconds at the same
+  410 iterations; ordinary joint LSMR fell from 1.001 to 0.862 seconds and
+  from 1,601 to 1,101 iterations. It used seven frames and five tighter
+  retries rather than four. The computed checkpoint used 40 iterations,
+  about 0.030 seconds setup, 0.099 seconds solve, and 0.009 seconds independent
+  certification; complete strict/final time was 0.240 seconds. FE-projection
+  phase time fell from 3.840 to 2.382 seconds. Pinned `ppmlhdfe` has a
+  66.228-second median on the same data, so the current local diagnostic is
+  about 24.0x faster. Every public certificate passed with no fallback.
+- In the current v3 one-thread difficult-chain smoke, MAP/LSMR/CMG took
+  12.885/1.624/2.348 seconds versus 71.725 seconds for pinned `ppmlhdfe`.
+  LSMR and CMG are therefore about 44.2x and 30.5x faster in this diagnostic.
+  A separate five-run seven-thread LSMR repeat had a 1.027-second median: the
+  initial MAP solve used 2,004 iterations and 0.641 seconds, strict/final used
+  0.034 seconds, and six ordinary joint-LSMR frames used 61 iterations, one
+  retry, 0.004 seconds setup, 0.026 seconds solve, and 0.005 seconds
+  certification.
 - On the difficult N=25,000 two-FE chain, certificate-aware CMG continuation
   reduced RHS retries from 66 to 11, CMG iterations from 382 to 237, CMG solve
   time from 1.192 to 0.696 seconds, and total time from 6.042 to 5.419 seconds.
   MAP and LSMR behavior on that scope was unchanged within local timing noise.
-- In the final one-repetition comparator smoke, candidate/reference ratios for
-  balanced 2FE, difficult-chain 2FE, and balanced 3FE respectively were
-  0.359/0.184/0.376 for MAP, 0.314/0.070/0.372 for LSMR, and
-  0.303/0.080/0.427 for CMG. The three-scope geometric means were 0.292,
-  0.201, and 0.218. These are diagnostic local timings, not a replacement for
+- In the current one-repetition comparator smoke, candidate/reference ratios
+  for balanced 2FE, difficult-chain 2FE, and balanced 3FE respectively were
+  0.357/0.180/0.379 for MAP, 0.361/0.0226/0.369 for LSMR, and
+  0.334/0.0327/0.392 for CMG. The three-scope geometric means were about 0.290,
+  0.145, and 0.162. These are diagnostic local timings, not a replacement for
   the failed SCC evidence or an auto-routing calibration.
 - A five-repetition matched N=50,000, K=0 two-FE check reproduced the starting
   commit's likelihood, deviance, rank, and absorbed DoF exactly. Candidate
@@ -285,6 +289,12 @@ has been launched.
   `/private/tmp/fereg-ppml-checkpoint-shapes` again exercised MAP, LSMR, and
   CMG at K=0 and K=50. Every arm converged to the same objective with the
   expected concrete route and no fallback.
+- Current-plugin checks under `/private/tmp/fereg-final-shapes2` exercised all
+  three families on three-FE K=0 and difficult two-FE K=50 data. All six fits
+  converged to identical within-shape objectives with complete public
+  certificates and expected ordinary-engine identities. The K=50 LSMR and CMG
+  fits each visibly used one certified checkpoint fallback; neither changed
+  its effective ordinary engine.
 
 ## Completed, evidence-backed baseline
 
@@ -296,31 +306,34 @@ not inherit release or cross-platform qualification from earlier sources.
 
 ## Current blockers
 
-- The required initial MAP frame is now the dominant specialized-fit cost:
-  about 3.19 of 4.71 native seconds in the sparse-3FE diagnostic and 1.18 of
-  1.59 seconds on the difficult chain. This frame still owns active-basis
+- The required initial MAP frame is still the dominant specialized-fit cost:
+  about 1.50 of 2.76 seconds in the sparse-3FE diagnostic and 0.64 of 1.03
+  seconds on the seven-thread difficult chain. This frame owns active-basis
   freeze and is intentionally outside ADR-0027.
-- Sparse-three-FE ordinary joint LSMR is the next floor at about 1.11 seconds,
-  1,601 iterations, and four tighter retries. Its two-effect core plus diagonal
-  extra-effect action is much better than the former diagonal-only policy but
-  leaves conditioning and certificate-target prediction work.
+- Sparse-three-FE ordinary joint LSMR is the next floor at about 0.86 seconds,
+  1,101 iterations, and five tighter retries. The symmetric core/extra bridge
+  materially improves conditioning without another pair graph, but the first
+  recurrence tolerance still predicts the independent certificate poorly.
 - Explicit MAP, and therefore `solver(auto)`, remains weak on poorly connected
   graphs. The difficult-chain MAP smoke needs 20,842 total inner iterations
-  and 13.187 seconds even after its per-pass kernels were accelerated.
+  and 12.885 seconds even after its per-pass kernels were accelerated.
 - Prepared CMG still performs 11 certificate-driven RHS retries on the hard
   chain. Executor construction remains below the threshold for upstream API
   work.
 
 ## Development plan
 
-1. Profile and improve the initial MAP solve on poorly connected two- and
-   three-FE graphs without changing its basis-freeze authority. A materially
-   different initial-frame algorithm would require another explicit ADR;
-   kernel, ordering, gauge, or certified preconditioner improvements do not.
-2. Improve the three-FE joint-LSMR extra-effect correction and make its first
-   recurrence tolerance predict the independent certificate more accurately.
-   Preserve the exact post-recurrence normal equations and do not restore the
-   rejected retained all-pairs Schwarz policy.
+1. Improve the initial MAP solve on poorly connected two- and three-FE graphs
+   without changing its basis-freeze authority. Its symmetric observation
+   operator remains the main kernel; the next useful experiment is a
+   topology-aware coarse correction or gauge-reduced preconditioner with the
+   current canonical projection and rank certificates unchanged. A materially
+   different initial-frame algorithm would require another explicit ADR.
+2. Make three-FE joint LSMR's first recurrence tolerance predict the
+   independent certificate more accurately, carrying forward measured
+   certificate scale so the five tighter retries become continuation rather
+   than repeated oversolving. Preserve the exact post-recurrence normal
+   equations and publication tolerance.
 3. Reduce CMG's remaining hard-chain RHS retries through certificate-aware
    continuation or recycled block work, without changing the publication
    tolerance or cadence.

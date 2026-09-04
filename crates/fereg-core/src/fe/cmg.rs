@@ -222,6 +222,9 @@ pub(crate) struct CmgAbsorber<'a> {
 
 /// Private outcome of post-topology automatic CMG setup. A rejected hierarchy
 /// is a planned route decision, not a numerical fallback or setup failure.
+// Keep the fit-lifetime state inline so this fallible setup boundary does not
+// acquire a second allocation after memory preflight.
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum CmgAutoBuildOutcome<'a> {
     Ready(CmgAbsorber<'a>),
     HierarchyRejected { setup_seconds: f64 },
@@ -238,6 +241,9 @@ enum CmgRoute {
     Failed(String),
 }
 
+// As above, the bounded graph is deliberately transferred inline after its
+// allocations have already been preflighted.
+#[allow(clippy::large_enum_variant)]
 enum GraphBuildOutcome {
     Ready(GraphCmg),
     HierarchyRejected,

@@ -145,11 +145,16 @@ retaining the public `lsmr_fused` concrete identity; positive-rank fits report
 `lsmr_joint`. Two-effect problems retain Schwarz state and rebuild it only when
 recurrence or certificate evidence requires that work. Problems with three or
 more effects retain one Schwarz core for the first two contiguous effect
-blocks and apply a fresh current-weight positive diagonal action to every
-additional effect. This covers the full FE axis while avoiding the former
-all-pairs Schwarz policy, whose extra factors made the augmented recurrence
-dramatically slower. Exact finite and per-level normal equations still certify
-the completed recurrence; the preconditioner is never evidence.
+blocks and a fresh current-weight positive diagonal action for every additional
+effect. A matrix-free symmetric block-factor bridge applies the current-weight
+cross Gram between that core and the additional effects. Its action is
+`T diag(C,D) T'`, where `C` is the retained core action and `D` is the positive
+extra-effect diagonal action, so the combined preconditioner remains symmetric
+positive semidefinite. The bridge uses finalized memberships directly and
+retains no additional pair graph. This covers the full FE axis while avoiding
+the former all-pairs Schwarz policy, whose extra factors made the augmented
+recurrence dramatically slower. Exact finite and per-level normal equations
+still certify the completed recurrence; the preconditioner is never evidence.
 
 The preconditioner and reuse policy are internal implementation choices, not
 additional command options. The initial rollout requires at least two

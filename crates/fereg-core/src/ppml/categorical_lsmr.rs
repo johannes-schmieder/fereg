@@ -3,6 +3,7 @@
 //! Exact normal-equation moments are recomputed after every recurrence stop;
 //! LSMR diagnostics alone never authorize an IRLS step.
 
+use std::sync::Mutex;
 use std::time::Instant;
 
 use rayon::prelude::*;
@@ -147,9 +148,33 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     fe_certificate: Vec<DirectionCertificate>,
     warm_start_valid: bool,
     preconditioner: Option<Preconditioner>,
+    core_pair_bridge_scratch: Mutex<CorePairBridgeScratch>,
     policy: CategoricalLsmrPolicy,
     #[cfg(test)]
     instrumentation: JointLsmrInstrumentation,
+}
+
+#[derive(Default)]
+struct CorePairBridgeScratch {
+    core_rhs: Vec<f64>,
+    core_correction: Vec<f64>,
+}
+
+impl CorePairBridgeScratch {
+    fn new(core_width: usize) -> Result<Self> {
+        Ok(Self {
+            core_rhs: fallible_filled(
+                core_width,
+                0.0,
+                "joint PPML core-pair bridge right-hand side",
+            )?,
+            core_correction: fallible_filled(
+                core_width,
+                0.0,
+                "joint PPML core-pair bridge correction",
+            )?,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -217,6 +242,14 @@ impl ReusableCategoricalJointLsmr {
             );
         }
         let fe_coefficients = effect_offsets.last().copied().unwrap_or(0);
+        let core_pair_bridge_scratch = if policy == CategoricalLsmrPolicy::CorePair {
+            let core_width = effect_offsets.get(2).copied().ok_or_else(|| {
+                invalid_argument("joint PPML core-pair policy requires at least two effects")
+            })?;
+            CorePairBridgeScratch::new(core_width)?
+        } else {
+            CorePairBridgeScratch::default()
+        };
         let columns = active_generated
             .len()
             .checked_add(fe_coefficients)
@@ -255,6 +288,7 @@ impl ReusableCategoricalJointLsmr {
             )?,
             warm_start_valid: false,
             preconditioner: None,
+            core_pair_bridge_scratch: Mutex::new(core_pair_bridge_scratch),
             policy,
             #[cfg(test)]
             instrumentation: JointLsmrInstrumentation::default(),
@@ -339,7 +373,8 @@ impl ReusableCategoricalJointLsmr {
         }
         let solve_started = Instant::now();
         let first = {
-            let block_preconditioner = self.block_preconditioner(use_schwarz)?;
+            let block_preconditioner =
+                self.block_preconditioner(fe_design, hessian_weights, use_schwarz)?;
             self.run_once(
                 fe_design,
                 &block_preconditioner,
@@ -370,7 +405,8 @@ impl ReusableCategoricalJointLsmr {
             })?;
             let solve_started = Instant::now();
             let continued = {
-                let block_preconditioner = self.block_preconditioner(use_schwarz)?;
+                let block_preconditioner =
+                    self.block_preconditioner(fe_design, hessian_weights, use_schwarz)?;
                 self.run_once(
                     fe_design,
                     &block_preconditioner,
@@ -420,7 +456,8 @@ impl ReusableCategoricalJointLsmr {
             })?;
             let solve_started = Instant::now();
             let continued = {
-                let block_preconditioner = self.block_preconditioner(use_schwarz)?;
+                let block_preconditioner =
+                    self.block_preconditioner(fe_design, hessian_weights, use_schwarz)?;
                 self.run_once(
                     fe_design,
                     &block_preconditioner,
@@ -633,7 +670,12 @@ impl ReusableCategoricalJointLsmr {
         Ok(self.preconditioner.is_some())
     }
 
-    fn block_preconditioner(&self, use_schwarz: bool) -> Result<BlockPreconditioner<'_>> {
+    fn block_preconditioner<'a>(
+        &'a self,
+        fe_design: &'a FeDesign,
+        weights: &'a [f64],
+        use_schwarz: bool,
+    ) -> Result<BlockPreconditioner<'a>> {
         let fe = if use_schwarz {
             let preconditioner = self.preconditioner.as_ref().ok_or_else(|| {
                 FeregError::new(
@@ -645,6 +687,10 @@ impl ReusableCategoricalJointLsmr {
                 FePreconditioner::CorePair {
                     core: preconditioner,
                     diagonal: &self.fe_inverse,
+                    design: fe_design,
+                    effect_offsets: &self.effect_offsets,
+                    weights,
+                    scratch: &self.core_pair_bridge_scratch,
                 }
             } else {
                 FePreconditioner::Schwarz(preconditioner)
@@ -931,6 +977,10 @@ enum FePreconditioner<'a> {
     CorePair {
         core: &'a Preconditioner,
         diagonal: &'a [f64],
+        design: &'a FeDesign,
+        effect_offsets: &'a [usize],
+        weights: &'a [f64],
+        scratch: &'a Mutex<CorePairBridgeScratch>,
     },
 }
 
@@ -973,20 +1023,28 @@ impl Operator for BlockPreconditioner<'_> {
             FePreconditioner::Schwarz(preconditioner) => {
                 Operator::apply(*preconditioner, &x[finite..], &mut y[finite..])
             }
-            FePreconditioner::CorePair { core, diagonal } => {
+            FePreconditioner::CorePair {
+                core,
+                diagonal,
+                design,
+                effect_offsets,
+                weights,
+                scratch,
+            } => {
                 let core_width = core.nrows();
                 if core_width > diagonal.len() {
                     return Err(solve_shape_error("core-pair preconditioner apply"));
                 }
-                Operator::apply(
-                    *core,
-                    &x[finite..finite + core_width],
-                    &mut y[finite..finite + core_width],
-                )?;
-                for index in core_width..diagonal.len() {
-                    y[finite + index] = diagonal[index] * x[finite + index];
-                }
-                Ok(())
+                apply_core_pair_bridge(
+                    core,
+                    diagonal,
+                    design,
+                    effect_offsets,
+                    weights,
+                    scratch,
+                    &x[finite..],
+                    &mut y[finite..],
+                )
             }
         }
     }
@@ -994,6 +1052,111 @@ impl Operator for BlockPreconditioner<'_> {
     fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> std::result::Result<(), SolveError> {
         self.apply(x, y)
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_core_pair_bridge(
+    core: &Preconditioner,
+    diagonal: &[f64],
+    design: &FeDesign,
+    effect_offsets: &[usize],
+    weights: &[f64],
+    scratch: &Mutex<CorePairBridgeScratch>,
+    x: &[f64],
+    y: &mut [f64],
+) -> std::result::Result<(), SolveError> {
+    let core_width = core.nrows();
+    if core.ncols() != core_width
+        || design.effects().len() < 2
+        || effect_offsets.len() != design.effects().len() + 1
+        || effect_offsets.get(2).copied() != Some(core_width)
+        || effect_offsets.last().copied() != Some(diagonal.len())
+        || weights.len() != design.nobs()
+        || x.len() != diagonal.len()
+        || y.len() != diagonal.len()
+    {
+        return Err(solve_shape_error("core-pair bridge apply"));
+    }
+
+    let (x_core, x_extra) = x.split_at(core_width);
+    let (y_core, y_extra) = y.split_at_mut(core_width);
+    Operator::apply(core, x_core, y_core)?;
+    if x_extra.is_empty() {
+        return Ok(());
+    }
+
+    // This is the symmetric block factor T diag(C, D) T', where C is the
+    // retained core action and T's off-diagonal block is -C B. Apply
+    // D(x_e - B' C x_c) first. Each output level owns its canonical member
+    // order, so the exact cross-block correction remains deterministic across
+    // thread counts without retaining another pairwise graph.
+    let effects = design.effects();
+    for effect_index in 2..effects.len() {
+        let global_start = effect_offsets[effect_index];
+        let global_end = effect_offsets[effect_index + 1];
+        let extra_start = global_start - core_width;
+        let extra_end = global_end - core_width;
+        y_extra[extra_start..extra_end]
+            .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
+            .enumerate()
+            .for_each(|(chunk_index, outputs)| {
+                let first_level = chunk_index * ADJOINT_LEVEL_CHUNK;
+                for (within_chunk, output) in outputs.iter_mut().enumerate() {
+                    let level = first_level + within_chunk;
+                    let mut cross = 0.0_f64;
+                    for &row in effects[effect_index].level_index().members(level) {
+                        let core_predictor = y_core[effects[0].codes()[row] as usize]
+                            + y_core[effect_offsets[1] + effects[1].codes()[row] as usize];
+                        cross = weights[row].mul_add(core_predictor, cross);
+                    }
+                    let extra_index = extra_start + level;
+                    *output = diagonal[global_start + level] * (x_extra[extra_index] - cross);
+                }
+            });
+    }
+
+    let mut bridge = scratch.lock().map_err(|_| SolveError::Synchronization {
+        context: "joint PPML core-pair bridge scratch",
+    })?;
+    if bridge.core_rhs.len() != core_width || bridge.core_correction.len() != core_width {
+        return Err(solve_shape_error("core-pair bridge scratch"));
+    }
+
+    // Form B e directly from the borrowed memberships and current frame
+    // weights. The retained core remains the sole graph preconditioner.
+    for effect_index in 0..2 {
+        let start = effect_offsets[effect_index];
+        let end = effect_offsets[effect_index + 1];
+        bridge.core_rhs[start..end]
+            .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
+            .enumerate()
+            .for_each(|(chunk_index, outputs)| {
+                let first_level = chunk_index * ADJOINT_LEVEL_CHUNK;
+                for (within_chunk, output) in outputs.iter_mut().enumerate() {
+                    let level = first_level + within_chunk;
+                    let mut cross = 0.0_f64;
+                    for &row in effects[effect_index].level_index().members(level) {
+                        let mut extra_predictor = 0.0_f64;
+                        for extra_effect in 2..effects.len() {
+                            let extra_index = effect_offsets[extra_effect] - core_width
+                                + effects[extra_effect].codes()[row] as usize;
+                            extra_predictor += y_extra[extra_index];
+                        }
+                        cross = weights[row].mul_add(extra_predictor, cross);
+                    }
+                    *output = cross;
+                }
+            });
+    }
+    let CorePairBridgeScratch {
+        core_rhs,
+        core_correction,
+    } = &mut *bridge;
+    Operator::apply(core, core_rhs, core_correction)?;
+    for (output, correction) in y_core.iter_mut().zip(core_correction) {
+        *output -= *correction;
+    }
+    Ok(())
 }
 
 fn fill_fe_diagonal_inverse(design: &FeDesign, weights: &[f64], values: &mut [f64]) -> Result<()> {
@@ -1407,6 +1570,7 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     let n = shape.rows;
     let k = shape.active_columns;
     let p = checked_add_memory(k, shape.levels, "joint PPML augmented width")?;
+    let core_pair_bridge_bytes = core_pair_bridge_scratch_bytes(effect_level_counts, policy)?;
 
     // Fit-lifetime allocations owned directly by ReusableCategoricalJointLsmr.
     let retained_values = checked_sum_memory(&[
@@ -1429,6 +1593,7 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
             "joint PPML certificate scratch",
         )?,
         shape.schwarz.retained_bytes,
+        core_pair_bridge_bytes,
     ])?;
 
     // The continuation path uses a four-vector local reorthogonalization
@@ -1473,6 +1638,29 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
         retained_engine,
         solve_peak,
         "joint PPML LSMR workspace peak",
+    )
+}
+
+fn core_pair_bridge_scratch_bytes(
+    effect_level_counts: &[usize],
+    policy: CategoricalLsmrPolicy,
+) -> Result<u128> {
+    if policy != CategoricalLsmrPolicy::CorePair {
+        return Ok(0);
+    }
+    if effect_level_counts.len() < 2 {
+        return Err(invalid_argument(
+            "PPML LSMR core-pair bridge memory estimate requires two effects",
+        ));
+    }
+    let core_width = checked_add_memory(
+        effect_level_counts[0] as u128,
+        effect_level_counts[1] as u128,
+        "PPML LSMR core-pair bridge width",
+    )?;
+    bytes_for_memory::<f64>(
+        checked_mul_memory(core_width, 2, "PPML LSMR core-pair bridge scratch")?,
+        "PPML LSMR core-pair bridge scratch bytes",
     )
 }
 
@@ -1842,6 +2030,139 @@ mod tests {
     }
 
     #[test]
+    fn core_pair_bridge_matches_its_dense_symmetric_block_factor() {
+        let first = vec![0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
+        let second = vec![0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0];
+        let third = vec![0, 1, 2, 0, 1, 2, 2, 0, 1, 1, 2, 0];
+        let design = FeDesign::new(
+            first.len(),
+            vec![
+                EffectTerm::new(first, 3, true, Vec::new()).expect("first"),
+                EffectTerm::new(second, 2, true, Vec::new()).expect("second"),
+                EffectTerm::new(third, 3, true, Vec::new()).expect("third"),
+            ],
+        )
+        .expect("design");
+        let weights = vec![
+            0.75, 1.25, 0.9, 1.4, 0.65, 1.1, 1.6, 0.8, 1.35, 0.95, 1.2, 0.7,
+        ];
+        let offsets = vec![0, 3, 5, 8];
+        let core_width = offsets[2];
+        let mut effects = within_effects(&design).expect("within effects");
+        effects.truncate(2);
+        let solver = Solver::new(
+            effects,
+            Some(weights.clone()),
+            PreconditionerConfig::default(),
+        )
+        .expect("core solver");
+        let core = solver
+            .preconditioner()
+            .cloned()
+            .expect("core preconditioner");
+        assert_eq!(core.nrows(), core_width);
+
+        let mut diagonal = vec![0.0; design.total_coefficients()];
+        fill_fe_diagonal_inverse(&design, &weights, &mut diagonal).expect("diagonal");
+        let scratch = Mutex::new(CorePairBridgeScratch::new(core_width).expect("scratch"));
+        let preconditioner = BlockPreconditioner {
+            finite_inverse: &[],
+            fe: FePreconditioner::CorePair {
+                core: &core,
+                diagonal: &diagonal,
+                design: &design,
+                effect_offsets: &offsets,
+                weights: &weights,
+                scratch: &scratch,
+            },
+        };
+        let input = vec![0.4, -0.7, 0.2, 0.9, -0.3, 0.6, -0.8, 0.5];
+        let mut actual = vec![0.0; input.len()];
+        preconditioner
+            .apply(&input, &mut actual)
+            .expect("bridge apply");
+
+        let mut dense_core = vec![vec![0.0; core_width]; core_width];
+        for column in 0..core_width {
+            let mut basis = vec![0.0; core_width];
+            let mut image = vec![0.0; core_width];
+            basis[column] = 1.0;
+            core.apply(&basis, &mut image).expect("core basis apply");
+            for row in 0..core_width {
+                dense_core[row][column] = image[row];
+            }
+        }
+        let extra_width = input.len() - core_width;
+        let mut dense_cross = vec![vec![0.0; extra_width]; core_width];
+        for (row, weight) in weights.iter().copied().enumerate() {
+            for core_effect in 0..2 {
+                let core_index =
+                    offsets[core_effect] + design.effects()[core_effect].codes()[row] as usize;
+                for (extra_effect, effect) in design.effects().iter().enumerate().skip(2) {
+                    let extra_index =
+                        offsets[extra_effect] - core_width + effect.codes()[row] as usize;
+                    dense_cross[core_index][extra_index] += weight;
+                }
+            }
+        }
+        let dense_apply = |matrix: &[Vec<f64>], vector: &[f64]| {
+            matrix
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .zip(vector)
+                        .map(|(left, right)| left * right)
+                        .sum()
+                })
+                .collect::<Vec<f64>>()
+        };
+        let core_input = &input[..core_width];
+        let extra_input = &input[core_width..];
+        let core_image = dense_apply(&dense_core, core_input);
+        let mut extra_image = vec![0.0; extra_width];
+        for extra in 0..extra_width {
+            let cross = (0..core_width)
+                .map(|core_index| dense_cross[core_index][extra] * core_image[core_index])
+                .sum::<f64>();
+            extra_image[extra] = diagonal[core_width + extra] * (extra_input[extra] - cross);
+        }
+        let cross_image = dense_apply(&dense_cross, &extra_image);
+        let core_correction = dense_apply(&dense_core, &cross_image);
+        let mut expected = core_image
+            .iter()
+            .zip(&core_correction)
+            .map(|(image, correction)| image - correction)
+            .collect::<Vec<_>>();
+        expected.extend_from_slice(&extra_image);
+        for (observed, reference) in actual.iter().zip(&expected) {
+            assert!((observed - reference).abs() <= 2e-13);
+        }
+
+        let other = vec![-0.2, 0.3, 0.8, -0.4, 0.6, 0.1, -0.5, 0.7];
+        let mut other_image = vec![0.0; other.len()];
+        let mut adjoint_image = vec![0.0; input.len()];
+        preconditioner
+            .apply(&other, &mut other_image)
+            .expect("second bridge apply");
+        preconditioner
+            .apply_adjoint(&input, &mut adjoint_image)
+            .expect("bridge adjoint");
+        let left = actual.iter().zip(&other).map(|(a, b)| a * b).sum::<f64>();
+        let right = input
+            .iter()
+            .zip(&other_image)
+            .map(|(a, b)| a * b)
+            .sum::<f64>();
+        assert!((left - right).abs() <= 2e-12);
+        assert!(adjoint_image
+            .iter()
+            .zip(&actual)
+            .all(|(adjoint, forward)| (adjoint - forward).abs() <= 2e-13));
+        let quadratic = input.iter().zip(&actual).map(|(a, b)| a * b).sum::<f64>();
+        assert!(quadratic >= -2e-12);
+    }
+
+    #[test]
     fn frame_preparation_preserves_column_order_diagonals() {
         let active = DenseMatrix::from_row_major(
             5,
@@ -2052,6 +2373,7 @@ mod tests {
             fe_certificate: vec![DirectionCertificate::default(); 2],
             warm_start_valid: false,
             preconditioner: None,
+            core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Diagonal,
             instrumentation: JointLsmrInstrumentation::default(),
         };
@@ -2131,6 +2453,7 @@ mod tests {
             fe_certificate: vec![DirectionCertificate::default(); 6],
             warm_start_valid: false,
             preconditioner: None,
+            core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Reuse,
             instrumentation: JointLsmrInstrumentation::default(),
         };
@@ -2150,6 +2473,13 @@ mod tests {
         assert!(first.rebuilt_preconditioner);
         assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
         assert_eq!(solver.instrumentation.escalation_armed, 0);
+        let bridge_scratch = solver
+            .core_pair_bridge_scratch
+            .lock()
+            .expect("bridge scratch");
+        assert!(bridge_scratch.core_rhs.is_empty());
+        assert!(bridge_scratch.core_correction.is_empty());
+        drop(bridge_scratch);
         let expected_finite_inverse = 1.0 / x.iter().map(|value| value * value).sum::<f64>();
         assert!((solver.finite_inverse[0] - expected_finite_inverse).abs() <= 1e-15);
         assert!(solver.fe_inverse.iter().all(|value| value.is_nan()));
@@ -2234,6 +2564,7 @@ mod tests {
                 fe_certificate: vec![DirectionCertificate::default(); 6],
                 warm_start_valid: false,
                 preconditioner: None,
+                core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
                 policy: CategoricalLsmrPolicy::Diagonal,
                 instrumentation: JointLsmrInstrumentation::default(),
             };
@@ -2294,7 +2625,10 @@ mod tests {
             fe_certificate: vec![DirectionCertificate::default(); 12],
             warm_start_valid: false,
             preconditioner: None,
-            policy: CategoricalLsmrPolicy::Diagonal,
+            core_pair_bridge_scratch: Mutex::new(
+                CorePairBridgeScratch::new(9).expect("bridge scratch"),
+            ),
+            policy: CategoricalLsmrPolicy::CorePair,
             instrumentation: JointLsmrInstrumentation::default(),
         };
 
@@ -2302,6 +2636,8 @@ mod tests {
             .solve(&design, &outcome, &[1.0; 60], &[1.0; 60], 1e-10, 1_000)
             .expect("FE-only correction");
         assert!(report.certificate.passed);
+        assert!(report.requested_schwarz);
+        assert!(report.used_schwarz);
         assert_eq!(solver.active_rank(), 0);
         assert!(solver.finite_inverse.is_empty());
         for (actual, expected) in solver.delta_eta.iter().zip(&target) {
@@ -2410,6 +2746,28 @@ mod tests {
         assert_eq!(diagonal_one, diagonal_eight);
         assert!(diagonal_eight < core_pair);
         assert!(core_pair < schwarz);
+    }
+
+    #[test]
+    fn core_pair_memory_charges_exactly_two_core_width_bridge_buffers() {
+        let levels = [2_000, 1_000, 500];
+        let expected =
+            2_u128 * (levels[0] + levels[1]) as u128 * std::mem::size_of::<f64>() as u128;
+        assert_eq!(
+            core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::CorePair)
+                .expect("core-pair bridge bytes"),
+            expected
+        );
+        assert_eq!(
+            core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::Reuse)
+                .expect("reuse bridge bytes"),
+            0
+        );
+        assert_eq!(
+            core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::Diagonal)
+                .expect("diagonal bridge bytes"),
+            0
+        );
     }
 
     #[test]
