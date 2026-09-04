@@ -2,9 +2,6 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::time::Instant;
 
-#[cfg(test)]
-use std::cell::Cell;
-
 use super::auto::{auto_lsmr_route_at_cap, direct_lsmr_tolerance, AutoLsmrRoute};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -41,21 +38,6 @@ const CATEGORICAL_MAP_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_CONTINUATION_CAP: usize = 4;
 const SD_RECOVERY_LSMR_TOLERANCE_CAP: f64 = 1e-4;
-
-#[cfg(test)]
-thread_local! {
-    static CHECKPOINT_LSMR_CERTIFICATE_FAILURE: Cell<bool> = const { Cell::new(false) };
-}
-
-#[cfg(test)]
-fn inject_checkpoint_lsmr_certificate_failure() {
-    CHECKPOINT_LSMR_CERTIFICATE_FAILURE.set(true);
-}
-
-#[cfg(test)]
-fn take_checkpoint_lsmr_certificate_failure() -> bool {
-    CHECKPOINT_LSMR_CERTIFICATE_FAILURE.replace(false)
-}
 
 fn emit_solver_trace(line: &str) {
     eprintln!("{line}");
@@ -1081,6 +1063,10 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     max_rhs: usize,
     max_level_members: usize,
     checkpoint_lsmr_enabled: bool,
+    #[cfg(test)]
+    checkpoint_lsmr_certificate_failure: bool,
+    #[cfg(test)]
+    checkpoint_lsmr_fatal_failure: u8,
 }
 
 /// Reusable level-space PCG state for two-way categorical graphs.
@@ -1266,11 +1252,46 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             max_rhs,
             max_level_members,
             checkpoint_lsmr_enabled: false,
+            #[cfg(test)]
+            checkpoint_lsmr_certificate_failure: false,
+            #[cfg(test)]
+            checkpoint_lsmr_fatal_failure: 0,
         })
     }
 
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {
         self.checkpoint_lsmr_enabled = true;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_checkpoint_lsmr_certificate_failure(&mut self) {
+        self.checkpoint_lsmr_certificate_failure = true;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_checkpoint_lsmr_fatal_failure(&mut self, code: ErrorCode) {
+        self.checkpoint_lsmr_fatal_failure = match code {
+            ErrorCode::Allocation => 1,
+            ErrorCode::Interrupted => 2,
+            _ => panic!("checkpoint LSMR test injection supports allocation or interruption"),
+        };
+    }
+
+    #[cfg(test)]
+    fn take_checkpoint_lsmr_fatal_failure(&mut self) -> Option<FeregError> {
+        let state = std::mem::take(&mut self.checkpoint_lsmr_fatal_failure);
+        match state {
+            0 => None,
+            1 => Some(FeregError::new(
+                ErrorCode::Allocation,
+                "injected checkpoint LSMR allocation failure",
+            )),
+            2 => Some(FeregError::new(
+                ErrorCode::Interrupted,
+                "injected checkpoint LSMR interruption",
+            )),
+            _ => unreachable!("checkpoint LSMR failure injection is validated"),
+        }
     }
 
     pub(crate) const fn max_rhs(&self) -> usize {
@@ -1383,6 +1404,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
 
         if self.checkpoint_lsmr_enabled && matches!(self.design.effects().len(), 2 | 3) {
+            #[cfg(test)]
+            if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
+                return Err(error);
+            }
             let lsmr = LsmrConfig {
                 tolerance: config.tolerance,
                 max_iterations: config.max_iterations,
@@ -1409,7 +1434,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 &mut self.workspace,
             )?;
             #[cfg(test)]
-            if take_checkpoint_lsmr_certificate_failure() {
+            if std::mem::take(&mut self.checkpoint_lsmr_certificate_failure) {
                 canonical_certificate.passed = false;
             }
             report.certification_seconds +=
@@ -7189,7 +7214,7 @@ mod tests {
             .expect("reusable projector");
         reusable.enable_checkpoint_lsmr();
 
-        inject_checkpoint_lsmr_certificate_failure();
+        reusable.inject_checkpoint_lsmr_certificate_failure();
         let fallback = reusable
             .absorb(
                 BorrowedMapWeights::Provided(&weights),

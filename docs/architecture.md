@@ -42,9 +42,12 @@ certified weighted-linear kernels, and sandwich reductions below the
 estimator-policy boundary. OLS remains a one-shot caller; PPML owns separation
 and a reusable changing-weight IRLS session. Public solver requests are the
 four closed families `auto`, `map`, `lsmr`, and `cmg`; Rust selects the concrete
-engine and owns every changing-weight solve. Auto remains MAP until calibrated,
-and strict/final checkpoints remain MAP for every family. The ownership, invalidation, and
-zero-cost OLS rules are fixed by
+engine and owns every changing-weight solve. Auto remains MAP until calibrated.
+The canonical session owns checkpoint authority and active-basis freeze;
+eligible explicit LSMR/CMG fits may compute initial, strict, and final-Hessian
+projections with independently re-certified current-weight LSMR under
+[ADR 0027](adr/0027-canonical-ppml-checkpoint-projection.md). The ownership,
+invalidation, and zero-cost OLS rules are fixed by
 [ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
 memory/routing rules by
 [ADR 0018](adr/0018-ppml-memory-routing-performance.md). The concrete

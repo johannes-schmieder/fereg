@@ -1,8 +1,9 @@
 //! Public PPML solver-family identity and bounded execution diagnostics.
 //!
 //! PPML keeps one canonical independently certified checkpoint session. The
-//! initial frame is MAP; explicit specialized families may use current-weight
-//! LSMR to compute later checkpoint projections before canonical recertification.
+//! eligible explicit specialized families may use current-weight LSMR to
+//! compute initial, strict, and final projections before canonical
+//! recertification and rank/status authority.
 
 use crate::error::{ErrorCode, FeregError, Result};
 

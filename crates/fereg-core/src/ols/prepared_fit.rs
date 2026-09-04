@@ -6629,6 +6629,185 @@ mod tests {
         .expect("prepared data")
     }
 
+    fn prepared_multiway_categorical(
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+        effects: &[Vec<f64>],
+    ) -> crate::PreparedCategoricalOlsData {
+        assert!(matches!(effects.len(), 2 | 3));
+        assert!(regressors
+            .iter()
+            .chain(effects)
+            .all(|values| values.len() == outcome.len()));
+        let mut sources = Vec::new();
+        let mut terms = Vec::new();
+        let mut absorbed_terms = Vec::new();
+        let mut numeric_sources = Vec::new();
+        let mut bindings = vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+        ];
+        for (index, values) in regressors.iter().enumerate() {
+            let one_based = u32::try_from(index + 1).expect("small control identity");
+            let entry = source(one_based, &format!("x{one_based}"));
+            terms.push(continuous_term(one_based, entry.id, false));
+            bindings.push(OlsInputBinding {
+                stata_var_position: u32::try_from(bindings.len() + 1)
+                    .expect("small control binding"),
+                role: OlsInputRole::NumericSource(entry.id),
+            });
+            numeric_sources.push((entry.id, loaded(values)));
+            sources.push(entry);
+        }
+        for (effect, values) in effects.iter().enumerate() {
+            let source_id =
+                u32::try_from(regressors.len() + effect + 1).expect("small fixed-effect identity");
+            let entry = source(source_id, &format!("g{}", effect + 1));
+            bindings.push(OlsInputBinding {
+                stata_var_position: u32::try_from(bindings.len() + 1)
+                    .expect("small fixed-effect binding"),
+                role: OlsInputRole::NumericSource(entry.id),
+            });
+            numeric_sources.push((entry.id, loaded(values)));
+            absorbed_terms.push(AbsorbedTerm {
+                id: AbsorbTermId::new(u32::try_from(effect + 1).expect("small absorb identity"))
+                    .expect("absorb identity"),
+                intercept: true,
+                categorical_sources: vec![entry.id],
+                slope_sources: Vec::new(),
+                label: format!("g{}", effect + 1),
+                saved_name: String::new(),
+            });
+            sources.push(entry);
+        }
+        crate::prepare_categorical_ols_data(
+            &OlsRequestV1 {
+                model: CompiledTermGraph { sources, terms },
+                absorbed_terms,
+                bindings,
+                include_intercept: true,
+                keep_singletons: true,
+            },
+            &LoadedOlsInput {
+                candidate: vec![true; outcome.len()],
+                outcome: loaded(outcome),
+                numeric_sources,
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("prepared multiway categorical data")
+    }
+
+    fn assert_initial_checkpoint_lsmr_matches_map(
+        prepared: &crate::PreparedCategoricalOlsData,
+        threads: usize,
+    ) -> FeSolverKind {
+        let mut config = PreparedOlsFitConfig {
+            execution: PreparedOlsExecutionConfig {
+                mode: PreparedOlsExecutionMode::Fast,
+                poolsize: 8,
+                threads: ThreadConfig::from_requested(threads, true).expect("test thread config"),
+            },
+            ..PreparedOlsFitConfig::default()
+        };
+        config.absorb.solver = FeSolverKind::Map;
+        config.absorb.map.tolerance = 1e-6;
+        config.absorb.lsmr.tolerance = 1e-6;
+        let frame = LinearSolveFrame::from_prepared_ols(prepared).expect("initial frame");
+        let generations = LinearSessionGenerations::new(1, 1, 1, 1, 1);
+        let mut map = CertifiedLinearSession::new_with_ppml_fe_design(
+            prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().expect("MAP FE design"),
+        )
+        .expect("MAP initial session");
+        let mut lsmr = CertifiedLinearSession::new_with_ppml_fe_design(
+            prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().expect("LSMR FE design"),
+        )
+        .expect("LSMR initial session");
+        lsmr.enable_checkpoint_lsmr();
+        let expected = map.solve_fresh().expect("MAP initial solve");
+        let actual = lsmr.solve_fresh().expect("LSMR initial solve");
+        assert!(actual.certified());
+        assert_eq!(
+            actual.fit().absorption_report().requested_solver,
+            FeSolverKind::Lsmr,
+            "initial projection report: {:?}",
+            actual.fit().absorption_report(),
+        );
+        let used_solver = actual.fit().absorption_report().used_solver;
+        assert!(matches!(
+            used_solver,
+            FeSolverKind::Lsmr | FeSolverKind::Map
+        ));
+        assert_eq!(
+            actual.fit().absorption_report().fallback_used,
+            used_solver == FeSolverKind::Map,
+        );
+        assert_eq!(actual.fit().finite_rank(), expected.fit().finite_rank());
+        assert_eq!(
+            actual.fit().kept_generated_columns(),
+            expected.fit().kept_generated_columns()
+        );
+        assert_eq!(
+            actual.fit().dropped_generated_columns(),
+            expected.fit().dropped_generated_columns()
+        );
+        assert_eq!(
+            actual
+                .fit()
+                .coefficients()
+                .iter()
+                .map(|coefficient| coefficient.status)
+                .collect::<Vec<_>>(),
+            expected
+                .fit()
+                .coefficients()
+                .iter()
+                .map(|coefficient| coefficient.status)
+                .collect::<Vec<_>>()
+        );
+        for (actual, expected) in actual
+            .fit()
+            .coefficients()
+            .iter()
+            .zip(expected.fit().coefficients())
+        {
+            match (actual.value, expected.value) {
+                (Some(actual), Some(expected)) => assert_close(actual, expected, 2e-6),
+                (None, None) => {}
+                _ => panic!("initial checkpoint coefficient presence differs"),
+            }
+        }
+        for (&actual, &expected) in actual
+            .fit()
+            .bread()
+            .values()
+            .iter()
+            .zip(expected.fit().bread().values())
+        {
+            assert_close(actual, expected, 2e-6);
+        }
+        assert!(actual.fit().rank_certificate().passed);
+        assert!(actual.fit().score_certificate().passed);
+        assert!(actual.fit().bread().certificate().passed);
+        used_solver
+    }
+
     fn assert_packed_and_strided_score_caches_match(prepared: &PreparedOlsData) {
         let mut packed_reservation = InjectedReservation::default();
         let packed_fit = fit_with_controls_internal_mode(
@@ -7674,6 +7853,253 @@ mod tests {
             without_solve_timings(framed),
             without_solve_timings(adapter)
         );
+    }
+
+    #[test]
+    fn initial_full_width_lsmr_preserves_canonical_multiway_rank_policy() {
+        let rows = 384_usize;
+        let effects = [
+            (0..rows)
+                .map(|row| (row % 17 + 1) as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((7 * row + row / 17) % 13 + 1) as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((11 * row + row / 13) % 9 + 1) as f64)
+                .collect::<Vec<_>>(),
+        ];
+        let axis = (0..rows)
+            .map(|row| row as f64 - (rows - 1) as f64 / 2.0)
+            .collect::<Vec<_>>();
+        let independent = (0..8_usize)
+            .map(|column| {
+                axis.iter()
+                    .enumerate()
+                    .map(|(row, value)| {
+                        (value * (column + 3) as f64 / 97.0).sin()
+                            + ((row * (column + 5) % 23) as f64 - 11.0) / 29.0
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let perturbation = axis
+            .iter()
+            .enumerate()
+            .map(|(row, value)| (value / 31.0).cos() + (row % 7) as f64 / 19.0)
+            .collect::<Vec<_>>();
+        let outcome = (0..rows)
+            .map(|row| {
+                0.4 * independent[0][row] - 0.25 * independent[1][row]
+                    + 0.15 * independent[2][row]
+                    + 0.03 * effects[0][row]
+                    - 0.02 * effects[1][row]
+                    + (row % 5) as f64 / 41.0
+            })
+            .collect::<Vec<_>>();
+
+        let mut rank_edges = independent.clone();
+        rank_edges.push(effects[0].clone());
+        rank_edges.push(independent[0].clone());
+        rank_edges.push(
+            independent[1]
+                .iter()
+                .zip(&perturbation)
+                .map(|(value, perturbation)| value + 1e-13 * perturbation)
+                .collect(),
+        );
+        rank_edges.push(
+            independent[2]
+                .iter()
+                .zip(&perturbation)
+                .map(|(value, perturbation)| value + 1e-5 * perturbation)
+                .collect(),
+        );
+        let mut reordered = rank_edges.clone();
+        reordered.reverse();
+        let wide = (1..=50_usize)
+            .map(|mask| {
+                (0..rows)
+                    .map(|row| {
+                        if (row & mask).count_ones() % 2 == 0 {
+                            1.0
+                        } else {
+                            -1.0
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        let mut certified_lsmr_cases = 0_usize;
+        for effect_count in [2_usize, 3] {
+            for threads in [1_usize, 7] {
+                for regressors in [
+                    Vec::new(),
+                    rank_edges.clone(),
+                    reordered.clone(),
+                    wide.clone(),
+                ] {
+                    let prepared = prepared_multiway_categorical(
+                        &outcome,
+                        &regressors,
+                        &effects[..effect_count],
+                    );
+                    certified_lsmr_cases += usize::from(
+                        assert_initial_checkpoint_lsmr_matches_map(&prepared, threads)
+                            == FeSolverKind::Lsmr,
+                    );
+                }
+            }
+        }
+        assert!(
+            certified_lsmr_cases > 0,
+            "the rank matrix must exercise a certified LSMR initial projection"
+        );
+    }
+
+    #[test]
+    fn initial_checkpoint_lsmr_falls_back_only_after_numerical_noncertification() {
+        let rows = 192_usize;
+        let effects = vec![
+            (0..rows)
+                .map(|row| (row % 17 + 1) as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((5 * row + row / 17) % 13 + 1) as f64)
+                .collect::<Vec<_>>(),
+        ];
+        let regressors = vec![
+            (0..rows)
+                .map(|row| (row as f64 / 17.0).sin())
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| (row as f64 / 23.0).cos())
+                .collect::<Vec<_>>(),
+        ];
+        let outcome = (0..rows)
+            .map(|row| {
+                0.5 * regressors[0][row] - 0.2 * regressors[1][row]
+                    + 0.03 * effects[0][row]
+                    + (row % 7) as f64 / 31.0
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared_multiway_categorical(&outcome, &regressors, &effects);
+        let mut config = PreparedOlsFitConfig::default();
+        config.absorb.solver = FeSolverKind::Map;
+        config.absorb.map.tolerance = 1e-6;
+        config.absorb.lsmr.tolerance = 1e-6;
+        let frame = LinearSolveFrame::from_prepared_ols(&prepared).expect("initial frame");
+        let generations = LinearSessionGenerations::new(1, 1, 1, 1, 1);
+
+        let mut expected_session = CertifiedLinearSession::new_with_ppml_fe_design(
+            &prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().expect("MAP FE design"),
+        )
+        .expect("MAP initial session");
+        let expected = expected_session.solve_fresh().expect("MAP initial solve");
+
+        let mut fallback_session = CertifiedLinearSession::new_with_ppml_fe_design(
+            &prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().expect("fallback FE design"),
+        )
+        .expect("fallback initial session");
+        fallback_session.enable_checkpoint_lsmr();
+        fallback_session.inject_checkpoint_lsmr_certificate_failure();
+        let fallback = fallback_session
+            .solve_fresh()
+            .expect("independently certified MAP fallback");
+        assert_eq!(
+            fallback.fit().absorption_report().requested_solver,
+            FeSolverKind::Lsmr
+        );
+        assert_eq!(
+            fallback.fit().absorption_report().used_solver,
+            FeSolverKind::Map,
+            "design={:?}, residual={:?}",
+            fallback.fit().absorption_report(),
+            fallback.fit().residual_absorption_report(),
+        );
+        assert!(fallback.fit().absorption_report().fallback_used);
+        assert_eq!(fallback.fit().finite_rank(), expected.fit().finite_rank());
+        assert_eq!(
+            fallback.fit().kept_generated_columns(),
+            expected.fit().kept_generated_columns()
+        );
+        assert_eq!(
+            fallback.fit().dropped_generated_columns(),
+            expected.fit().dropped_generated_columns()
+        );
+        for (fallback, expected) in fallback
+            .fit()
+            .coefficients()
+            .iter()
+            .zip(expected.fit().coefficients())
+        {
+            assert_eq!(fallback.status, expected.status);
+            match (fallback.value, expected.value) {
+                (Some(fallback), Some(expected)) => assert_close(fallback, expected, 2e-12),
+                (None, None) => {}
+                _ => panic!("fallback coefficient presence differs"),
+            }
+        }
+
+        for code in [ErrorCode::Allocation, ErrorCode::Interrupted] {
+            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                &prepared,
+                frame,
+                config,
+                generations,
+                prepared.fit_owned_fe_design().expect("fatal FE design"),
+            )
+            .expect("fatal initial session");
+            session.enable_checkpoint_lsmr();
+            session.inject_checkpoint_lsmr_fatal_failure(code);
+            let error = match session.solve_fresh() {
+                Ok(_) => panic!("fatal LSMR failure must not fall back"),
+                Err(error) => error,
+            };
+            assert_eq!(error.code, code);
+            assert!(session.output().is_err());
+            let retry = session
+                .solve_fresh()
+                .expect("fatal injection must leave the session reusable");
+            assert_eq!(
+                retry.fit().absorption_report().used_solver,
+                FeSolverKind::Lsmr
+            );
+            assert!(retry.certified());
+        }
+
+        for code in [ErrorCode::Allocation, ErrorCode::Interrupted] {
+            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                &prepared,
+                frame,
+                config,
+                generations,
+                prepared.fit_owned_fe_design().expect("rank FE design"),
+            )
+            .expect("rank initial session");
+            session.enable_checkpoint_lsmr();
+            session.inject_fresh_rank_failure(code);
+            let error = match session.solve_fresh() {
+                Ok(_) => panic!("canonical rank failure must remain fatal"),
+                Err(error) => error,
+            };
+            assert_eq!(error.code, code);
+            assert!(session.output().is_err());
+            let retry = session
+                .solve_fresh()
+                .expect("rank failure must leave the private session reusable");
+            assert_eq!(retry.fit().finite_rank(), expected.fit().finite_rank());
+            assert!(retry.certified());
+        }
     }
 
     #[test]

@@ -296,7 +296,9 @@ route, and checkpoint family are reported separately. Explicit LSMR and CMG
 fits with two or three categorical effects use an independently re-certified
 current-weight LSMR checkpoint projector once the observation count reaches
 the native large-projection threshold; smaller fits retain MAP checkpoints.
-The first frame always remains MAP.
+The canonical session still owns the first full-width frame and freezes its
+rank basis, but the independently certified LSMR projector may compute that
+frame on the same eligible route.
 
 {pstd}
 The initial LSMR rollout supports at least two categorical intercept fixed

@@ -164,18 +164,19 @@ final-Hessian state without disabling the fast ordinary-frame engine.
 `memory(auto)` may select fast; explicit `memory(low)` and
 other recognized but unsupported combinations return `r(498)`.
 
-The first weighted-linear frame remains a production-MAP solve so it freezes
-the canonical active basis, and Mu separation remains canonical MAP. Under
-ADR 0027, explicit LSMR and CMG fits with two or three categorical effects and
-at least 16,384 observations use a fresh current-weight batch LSMR projection
-for strict and final-Hessian checkpoints. Smaller fits retain MAP checkpoints,
-because the independent topology build is not an amortized large-projection
-operation. The LSMR candidate is independently re-certified by the canonical
-session before the unchanged rank, bread, score, objective, reconstruction,
-and exact `q_i * mu_i` final-Hessian checks run. An uncertified numerical
-candidate falls back to MAP on the untouched authoritative inputs; other
-errors remain fatal. At a strict checkpoint, the predictor, objective, score,
-rank, basis, and all estimable coefficients must agree; an unidentified
+The canonical retained session still owns the first weighted-linear frame and
+freezes its active basis; Mu separation remains canonical MAP. Under ADR 0027,
+explicit LSMR and CMG fits with two or three categorical effects, fast memory,
+and at least 16,384 observations use a fresh current-weight batch LSMR
+projection for the initial response-plus-all-controls frame as well as strict
+and final-Hessian checkpoints. Smaller fits retain MAP checkpoints because the
+independent topology build is not an amortized large-projection operation. The
+LSMR candidate is independently re-certified by the canonical session before
+the unchanged all-width rank/status decision, bread, score, objective,
+reconstruction, and exact `q_i * mu_i` final-Hessian checks run. An uncertified
+numerical candidate falls back to MAP on the untouched authoritative inputs;
+other errors remain fatal. At a strict checkpoint, the predictor, objective,
+score, rank, basis, and all estimable coefficients must agree; an unidentified
 normalization coordinate cannot force another IRLS frame, and the canonical
 strict state replaces it before publication.
 

@@ -55,6 +55,21 @@ fn use_checkpoint_lsmr_accelerator(observations: usize, effects: usize) -> bool 
     matches!(effects, 2 | 3) && observations >= PARALLEL_PROJECTION_MIN_ROWS
 }
 
+fn use_initial_checkpoint_lsmr_accelerator(
+    config: &PreparedPpmlIrlsConfig,
+    purpose: PreparedPpmlIrlsPurpose,
+    observations: usize,
+    effects: usize,
+) -> bool {
+    matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && matches!(
+            config.solver_plan.selected,
+            super::PpmlSolverFamily::Lsmr | super::PpmlSolverFamily::Cmg
+        )
+        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
+        && use_checkpoint_lsmr_accelerator(observations, effects)
+}
+
 #[cfg(test)]
 thread_local! {
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
@@ -868,6 +883,18 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         fe_design,
     )?;
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
+    let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(
+        &config,
+        purpose,
+        session.fe_design().nobs(),
+        session.fe_design().effects().len(),
+    );
+    if initial_checkpoint_lsmr {
+        // This changes only how the untouched full-width frame is projected.
+        // The canonical session still makes the first rank/status decision
+        // and independently certifies every downstream linear product.
+        session.enable_checkpoint_lsmr();
+    }
     let mut joint_lsmr = None;
     let mut joint_lsmr_engine = None;
     let mut fused_cmg = None;
@@ -964,10 +991,18 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             };
             let mut initial_solver_report =
                 PpmlSolverReport::new(config.solver_plan, selected_engine);
-            initial_solver_report.observe(map_solver_observation(
-                output.fit().absorption_report(),
-                PpmlSolverFrameKind::Checkpoint,
-            ))?;
+            if initial_checkpoint_lsmr {
+                initial_solver_report.enable_lsmr_checkpoint();
+                record_checkpoint_solver_observation(
+                    &mut initial_solver_report,
+                    output.fit().absorption_report(),
+                )?;
+            } else {
+                initial_solver_report.observe(map_solver_observation(
+                    output.fit().absorption_report(),
+                    PpmlSolverFrameKind::Checkpoint,
+                ))?;
+            }
             fill_candidate_eta_from_linear_output(&output, offset, workspace.candidate_eta_mut())?;
             fill_candidate_coefficients_from_linear_output(
                 &output,
@@ -1041,6 +1076,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 }
             }
             if selected_engine != PpmlSolverEngine::Map
+                && !initial_checkpoint_lsmr
                 && use_checkpoint_lsmr_accelerator(
                     session.fe_design().nobs(),
                     session.fe_design().effects().len(),
@@ -1975,6 +2011,11 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
         }
         super::PpmlSolverFamily::Auto | super::PpmlSolverFamily::Map => 0,
     };
+    // Initial basis freezing, strict convergence, and final-Hessian
+    // synchronization execute serially with the same maximum full width.
+    // The existing full-width checkpoint peak therefore admits the initial
+    // accelerator exactly once; summing three mutually exclusive workspaces
+    // would overstate the fit-lifetime peak.
     let checkpoint_workspace =
         if use_checkpoint_lsmr_accelerator(dimensions.observations, levels.len()) {
             estimate_checkpoint_lsmr_workspace_bytes(
@@ -3516,6 +3557,68 @@ mod tests {
             publication_matrix_cells: prepared.fit_model().coefficients.len().saturating_pow(2),
             threads: config.linear.execution.threads.resolved(),
             allocation_audit_enabled: config.allocation_snapshot_probe.is_some(),
+        }
+    }
+
+    #[test]
+    fn initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit() {
+        let mut config = PreparedPpmlIrlsConfig::default();
+        config.linear.execution.mode = PreparedOlsExecutionMode::Fast;
+        for family in [
+            super::super::PpmlSolverFamily::Lsmr,
+            super::super::PpmlSolverFamily::Cmg,
+        ] {
+            config.solver_plan = PpmlSolverPlan::new(family);
+            assert!(use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS,
+                2,
+            ));
+            assert!(use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS,
+                3,
+            ));
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS - 1,
+                3,
+            ));
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS,
+                4,
+            ));
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-8 },
+                PARALLEL_PROJECTION_MIN_ROWS,
+                3,
+            ));
+            config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS,
+                3,
+            ));
+            config.linear.execution.mode = PreparedOlsExecutionMode::Fast;
+        }
+        for family in [
+            super::super::PpmlSolverFamily::Auto,
+            super::super::PpmlSolverFamily::Map,
+        ] {
+            config.solver_plan = PpmlSolverPlan::new(family);
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                PARALLEL_PROJECTION_MIN_ROWS,
+                3,
+            ));
         }
     }
 

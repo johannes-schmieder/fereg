@@ -23,19 +23,25 @@ check on the result.
 
 ## Decision
 
-1. This decision supersedes only decision 3 of ADR 0025. MAP still owns the
-   first weighted-linear frame, active-basis freeze, separation and Mu work.
-   `solver(auto)` remains MAP-only.
+1. This decision supersedes decision 3 of ADR 0025. The canonical retained
+   session still owns the first weighted-linear frame and active-basis freeze,
+   but MAP need not compute that frame on the eligible route below. MAP still
+   computes every checkpoint for MAP/auto and unsupported specialized fits,
+   and remains the numerical checkpoint fallback. Separation and Mu work stay
+   MAP-owned. `solver(auto)` remains MAP-only.
 2. Scientific checkpoint authority belongs to the canonical linear session,
    its complete rank policy, and its independent certificates rather than to
    a particular projection recurrence. Strict convergence and final-Hessian
    synchronization remain distinct mandatory facts.
 3. On explicit LSMR or CMG fits with exactly two or three categorical
-   intercept effects, strict and final-Hessian checkpoints may project the
-   retained controls and authoritative response with a fresh current-weight
-   batch LSMR solve. The checkpoint reconstructs its weights, response, and
-   residual inputs from the accepted PPML state. It never consumes a stale
-   specialized-engine residual as evidence.
+   intercept effects, the initial full-width basis-freezing frame and the
+   strict and final-Hessian checkpoints may project the authoritative response
+   and every generated finite column with a fresh current-weight batch LSMR
+   solve. The initial input is the untouched prepared weighted-linear frame;
+   later checkpoints reconstruct weights, response, and residual inputs from
+   the accepted PPML state. No checkpoint consumes a stale specialized-engine
+   residual as evidence. Canonical all-width rank revelation, status ordering,
+   active-basis freeze, and every downstream certificate remain unchanged.
 4. The LSMR candidate is held outside the accepted session until a fresh
    canonical FE projection certificate passes at the exact requested
    tolerance. The recurrence residual and Schwarz preconditioner are
@@ -53,16 +59,20 @@ check on the result.
    state and differs from the rejected retained all-pairs Schwarz policy for
    joint three-FE PPML. Memory admission charges its copied inputs, batch
    outputs, full Schwarz construction, and concurrent RHS recurrences while
-   the selected ordinary engine remains live.
+   the selected ordinary engine remains live. Initial, strict, and final
+   checkpoints are serial and have the same maximum response-plus-all-controls
+   width, so one full-width transient peak admits all three without double
+   counting mutually exclusive work.
    It is enabled only at the existing 16,384-row large-projection threshold;
    below that boundary MAP remains the configured checkpoint route, avoiding
    an unamortized speculative topology build.
-7. Result wire 1.2 remains 4x22. The initial MAP frame and no-work MAP
-   certificates appear on the MAP row; computed checkpoint projections appear
-   on the `lsmr_fused` row. `checkpoint_family` is LSMR when the accelerator is
-   enabled. A numerical LSMR-to-MAP checkpoint fallback is separately counted
-   and named. Requested, selected, concrete ordinary, effective ordinary,
-   checkpoint, retry, and fallback identities remain visible.
+7. Result wire 1.2 remains 4x22. Computed initial, strict, and final-Hessian
+   checkpoint projections appear on the `lsmr_fused` row. No-work MAP
+   certificates and MAP fallback work appear on the MAP row.
+   `checkpoint_family` is LSMR when the accelerator is enabled. A numerical
+   LSMR-to-MAP checkpoint fallback is separately counted and named. Requested,
+   selected, concrete ordinary, effective ordinary, checkpoint, retry, and
+   fallback identities remain visible.
 8. Saved FE recovery and every published product use the accepted canonical
    final-Hessian state. This decision does not weaken sample, separation,
    singleton, weight, offset/exposure, rank/status, VCE, DoF, prediction,

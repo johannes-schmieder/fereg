@@ -1136,6 +1136,8 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     pending_weight_buffer_reused: bool,
     projection_refresh_required: bool,
     phase_allocator_probe: Option<LinearSessionPhaseAllocatorProbe>,
+    #[cfg(test)]
+    fresh_rank_failure_injection: u8,
 }
 
 /// The generic variant is the unchanged reusable path used by existing
@@ -1184,6 +1186,24 @@ impl ReusableLinearMapProjector<'_> {
     fn enable_checkpoint_lsmr(&mut self) {
         if let Self::PpmlCategorical { projector, .. } = self {
             projector.enable_checkpoint_lsmr();
+        }
+    }
+
+    #[cfg(test)]
+    fn inject_checkpoint_lsmr_certificate_failure(&mut self) {
+        if let Self::PpmlCategorical { projector, .. } = self {
+            projector.inject_checkpoint_lsmr_certificate_failure();
+        } else {
+            panic!("checkpoint LSMR injection requires the PPML categorical projector");
+        }
+    }
+
+    #[cfg(test)]
+    fn inject_checkpoint_lsmr_fatal_failure(&mut self, code: ErrorCode) {
+        if let Self::PpmlCategorical { projector, .. } = self {
+            projector.inject_checkpoint_lsmr_fatal_failure(code);
+        } else {
+            panic!("checkpoint LSMR injection requires the PPML categorical projector");
         }
     }
 
@@ -1439,6 +1459,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             pending_weight_buffer_reused: false,
             projection_refresh_required: false,
             phase_allocator_probe: None,
+            #[cfg(test)]
+            fresh_rank_failure_injection: 0,
         })
     }
 
@@ -1646,6 +1668,46 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {
         if let Some(projector) = self.fe_projector.as_mut() {
             projector.enable_checkpoint_lsmr();
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_checkpoint_lsmr_certificate_failure(&mut self) {
+        self.fe_projector
+            .as_mut()
+            .expect("checkpoint LSMR injection requires a projector")
+            .inject_checkpoint_lsmr_certificate_failure();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_checkpoint_lsmr_fatal_failure(&mut self, code: ErrorCode) {
+        self.fe_projector
+            .as_mut()
+            .expect("checkpoint LSMR injection requires a projector")
+            .inject_checkpoint_lsmr_fatal_failure(code);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_fresh_rank_failure(&mut self, code: ErrorCode) {
+        self.fresh_rank_failure_injection = match code {
+            ErrorCode::Allocation => 1,
+            ErrorCode::Interrupted => 2,
+            _ => panic!("fresh-rank test injection supports allocation or interruption"),
+        };
+    }
+
+    #[cfg(test)]
+    fn take_fresh_rank_failure(&mut self) -> Option<FeregError> {
+        match std::mem::take(&mut self.fresh_rank_failure_injection) {
+            0 => None,
+            1 => Some(allocation(
+                "injected fresh canonical-rank allocation failure",
+            )),
+            2 => Some(FeregError::new(
+                ErrorCode::Interrupted,
+                "injected fresh canonical-rank interruption",
+            )),
+            _ => unreachable!("fresh-rank failure injection is validated"),
         }
     }
 
@@ -2266,6 +2328,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             phase_probe.map(|_| &mut phase_allocation),
             LinearSessionAllocationPhase::FiniteSolve,
         );
+        #[cfg(test)]
+        let candidate = match self.take_fresh_rank_failure() {
+            Some(error) => Err(error),
+            None => self.solve_full_retained_rank(
+                &within_response,
+                absorption_report,
+                prior_active_positions,
+            ),
+        };
+        #[cfg(not(test))]
         let candidate = self.solve_full_retained_rank(
             &within_response,
             absorption_report,

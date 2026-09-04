@@ -31,11 +31,12 @@ architecture decisions remain under `docs/adr/`.
 ## Public PPML solver behavior
 
 - The canonical retained linear session, rank policy, and independent
-  certificates are scientific authority. MAP still owns the first
-  weighted-linear frame, active-basis freeze, Mu separation work, and the
-  checkpoint fallback. On eligible large explicit LSMR/CMG fits, current-weight
-  LSMR may compute strict and final-Hessian projections before the canonical
-  session independently certifies them.
+  certificates are scientific authority. It still owns the first full-width
+  weighted-linear frame and active-basis freeze; on eligible large explicit
+  LSMR/CMG fits, current-weight LSMR may compute that initial projection plus
+  strict and final-Hessian projections before the canonical session
+  independently certifies them. MAP owns Mu separation work and remains the
+  checkpoint fallback.
 - `solver(lsmr)` is a public family backed by one reusable joint categorical
   engine after the active basis freezes. With no active finite controls it
   retains the public `lsmr_fused` concrete identity; with active controls it
@@ -78,15 +79,17 @@ architecture decisions remain under `docs/adr/`.
   the final response and performs the solve, predictor reconstruction, bread,
   and full numerical certification.
 - [ADR 0027](docs/adr/0027-canonical-ppml-checkpoint-projection.md) supersedes
-  only ADR-0025's MAP-computation requirement. Explicit LSMR/CMG fits with two
-  or three categorical effects and at least 16,384 observations use an
-  ephemeral full-Schwarz current-weight batch LSMR checkpoint projection. Its
-  inputs are recomputed from the accepted PPML state and remain untouched; the
-  candidate is accepted only after the canonical FE projection and normal
-  equations, rank, bread, score, objective, reconstruction, and exact final
-  `q_i * mu_i` certificates pass. Numerical rejection visibly falls back to
-  MAP on those untouched inputs; other errors remain fatal. The memory plan
-  charges the ordinary engine and checkpoint workspace together.
+  ADR-0025's MAP-computation requirement. Explicit LSMR/CMG fits with two or
+  three categorical effects and at least 16,384 observations use an ephemeral
+  full-Schwarz current-weight batch LSMR checkpoint projection for the initial
+  response-plus-all-controls frame and later strict/final frames. Initial
+  inputs come from the untouched prepared frame; later inputs are recomputed
+  from the accepted PPML state. A candidate is accepted only after canonical
+  FE projection and normal equations, all-width rank/status, bread, score,
+  objective, reconstruction, and exact final `q_i * mu_i` certificates pass.
+  Numerical rejection visibly falls back to MAP on untouched inputs; other
+  errors remain fatal. The serial checkpoints share one exactly admitted
+  full-width transient peak while the ordinary engine remains live.
 - The joint LSMR engine fuses target, square-root-weight, right-hand-side, and
   finite-diagonal preparation; uses a measured narrow/wide adjoint policy;
   coarsens FE work ownership; and parallelizes independent certificate
@@ -258,6 +261,35 @@ has been launched.
   phase time fell from 3.840 to 2.382 seconds. Pinned `ppmlhdfe` has a
   66.228-second median on the same data, so the current local diagnostic is
   about 24.0x faster. Every public certificate passed with no fallback.
+- Extending that same certified batch projection to the initial full-width
+  frame clears the remaining checkpoint floor. Against an exact clean
+  `26ae660` five-run baseline on the identical N=50,000, K=10 sparse-3FE data
+  and seven threads, median wall time fell from 2.776 to 1.201 seconds (56.7%)
+  and native total time from 2.757 to 1.180 seconds. The prior initial MAP row
+  used 444 iterations and 1.691 seconds of solve time. It is now absent: all
+  three checkpoint projections are on the LSMR row and together use 51
+  iterations, 0.047 seconds setup, 0.131 seconds solve, and 0.014 seconds
+  independent certification. FE-projection phase time fell from 2.441 to
+  0.866 seconds. Ordinary joint LSMR changed from 896 iterations/four retries
+  and 0.727 seconds solve to 949 iterations/four retries and 0.787 seconds;
+  the material total improvement therefore comes from the intended initial
+  checkpoint boundary rather than a favorable ordinary-frame fluctuation.
+  Likelihood and deviance differ from the baseline by at most 3.0e-9 and
+  6.0e-9, coefficients by 3.9e-14, covariance cells by 1.8e-18, and every
+  public certificate passes with no fallback. The admitted selected peak is
+  unchanged at 148,353,390 bytes, including the same 75,940,704-byte solver
+  workspace. Relative to the existing 66.228-second pinned-reference median,
+  this local diagnostic is about 55.1x faster.
+- The current eight-scope local science profile and three-scope licensed smoke
+  both pass their science and route adjudicators with no failures. In the
+  one-thread smoke, balanced-2FE MAP/LSMR/CMG took 0.164/0.164/0.158 seconds,
+  difficult-chain 2FE took 13.439/0.195/0.941 seconds, and balanced-3FE took
+  0.208/0.206/0.219 seconds. Every specialized fit retained its requested
+  effective engine with no fallback. Focused seven-thread Stata checks also
+  passed complete certificates at K=0 (balanced-2FE LSMR/CMG 0.099/0.094
+  seconds) and K=50 (balanced-2FE 0.400/0.501 and balanced-3FE 0.438/0.604
+  seconds). These remain diagnostic local timings, not qualification or
+  auto-routing evidence.
 - In the current v3 one-thread difficult-chain smoke, MAP/LSMR/CMG took
   12.885/1.624/2.348 seconds versus 71.725 seconds for pinned `ppmlhdfe`.
   LSMR and CMG are therefore about 44.2x and 30.5x faster in this diagnostic.
@@ -306,37 +338,32 @@ not inherit release or cross-platform qualification from earlier sources.
 
 ## Current blockers
 
-- The required initial MAP frame is still the dominant specialized-fit cost:
-  about 1.50 of 2.76 seconds in the sparse-3FE diagnostic and 0.64 of 1.03
-  seconds on the seven-thread difficult chain. This frame owns active-basis
-  freeze and is intentionally outside ADR-0027.
-- Sparse-three-FE ordinary joint LSMR is the next floor at about 0.86 seconds,
-  1,101 iterations, and five tighter retries. The symmetric core/extra bridge
-  materially improves conditioning without another pair graph, but the first
-  recurrence tolerance still predicts the independent certificate poorly.
+- Sparse-three-FE ordinary joint LSMR is now the specialized-fit floor. In the
+  matched promoted run it used about 0.79 seconds of solve time, 949
+  iterations, and four tighter retries out of a 1.20-second total. The
+  symmetric core/extra bridge materially improves conditioning without
+  another pair graph, but the first recurrence tolerance still predicts the
+  independent certificate poorly.
 - Explicit MAP, and therefore `solver(auto)`, remains weak on poorly connected
   graphs. The difficult-chain MAP smoke needs 20,842 total inner iterations
-  and 12.885 seconds even after its per-pass kernels were accelerated.
+  and about 13 seconds even after its per-pass kernels were accelerated.
 - Prepared CMG still performs 11 certificate-driven RHS retries on the hard
   chain. Executor construction remains below the threshold for upstream API
   work.
 
 ## Development plan
 
-1. Improve the initial MAP solve on poorly connected two- and three-FE graphs
-   without changing its basis-freeze authority. Its symmetric observation
-   operator remains the main kernel; the next useful experiment is a
-   topology-aware coarse correction or gauge-reduced preconditioner with the
-   current canonical projection and rank certificates unchanged. A materially
-   different initial-frame algorithm would require another explicit ADR.
-2. Make three-FE joint LSMR's first recurrence tolerance predict the
+1. Make three-FE joint LSMR's first recurrence tolerance predict the
    independent certificate more accurately, carrying forward measured
-   certificate scale so the five tighter retries become continuation rather
+   certificate scale so the four tighter retries become continuation rather
    than repeated oversolving. Preserve the exact post-recurrence normal
    equations and publication tolerance.
-3. Reduce CMG's remaining hard-chain RHS retries through certificate-aware
+2. Reduce CMG's remaining hard-chain RHS retries through certificate-aware
    continuation or recycled block work, without changing the publication
    tolerance or cadence.
+3. Improve explicit MAP on poorly connected graphs with a topology-aware
+   coarse correction or gauge-reduced preconditioner while preserving its
+   canonical projection certificates and `solver(auto)` behavior.
 4. Reconsider an upstream CMG shared-executor API only if a future profile puts
    executor construction above the five-percent promotion threshold. A minimal
    candidate would accept an `Arc<ParallelExecutor>` while still rebuilding
