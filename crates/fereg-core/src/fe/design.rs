@@ -341,6 +341,28 @@ fn checked_intercept_term_slots(level_counts: impl IntoIterator<Item = usize>) -
     })
 }
 
+/// Rank retained categorical effects without changing their canonical order.
+///
+/// Solver-specific graph roles use descending retained level count. Original
+/// effect position is the deterministic tie-breaker, while coefficient and
+/// result storage continue to follow the caller's original effect order.
+pub(crate) fn retained_effect_order_by_levels(
+    effect_count: usize,
+    mut level_count: impl FnMut(usize) -> usize,
+) -> Result<Vec<usize>> {
+    let mut order = Vec::new();
+    order
+        .try_reserve_exact(effect_count)
+        .map_err(|_| allocation("unable to reserve retained fixed-effect role order"))?;
+    order.extend(0..effect_count);
+    order.sort_unstable_by(|left, right| {
+        level_count(*right)
+            .cmp(&level_count(*left))
+            .then_with(|| left.cmp(right))
+    });
+    Ok(order)
+}
+
 fn reserved_filled<T: Clone, R: LevelIndexReservation>(
     reservation: &mut R,
     elements: usize,
@@ -663,5 +685,15 @@ mod tests {
         let error = checked_intercept_term_slots([usize::MAX, 1])
             .expect_err("term-slot overflow must fail");
         assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn retained_effect_roles_rank_levels_and_break_ties_by_original_position() {
+        let levels = [5, 17, 9, 17, 2];
+        assert_eq!(
+            retained_effect_order_by_levels(levels.len(), |effect| levels[effect])
+                .expect("role order"),
+            vec![1, 3, 2, 0, 4]
+        );
     }
 }

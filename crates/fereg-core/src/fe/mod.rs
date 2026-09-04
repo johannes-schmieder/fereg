@@ -63,7 +63,7 @@ pub(crate) use cmg::{
 };
 pub(crate) use components::connected_components_all_fallible;
 pub use components::{connected_components, ComponentInfo};
-pub(crate) use design::ValidatedBorrowedInterceptSource;
+pub(crate) use design::{retained_effect_order_by_levels, ValidatedBorrowedInterceptSource};
 pub use design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
 };

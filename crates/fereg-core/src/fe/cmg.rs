@@ -25,9 +25,9 @@ use super::{
     absorb_borrowed_intercept_map_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     borrowed_map::polish_borrowed_intercept_cg_with_reference_norms_certified,
-    certify_borrowed_intercept_candidate, BorrowedInterceptFeDesign, BorrowedMapWeights,
-    CertifiedBorrowedMap, FeCoefficientBatch, FeSolverKind, MapConfig, SolveReport,
-    SolveStopReason,
+    certify_borrowed_intercept_candidate, retained_effect_order_by_levels,
+    BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap, FeCoefficientBatch,
+    FeSolverKind, MapConfig, SolveReport, SolveStopReason,
 };
 
 pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
@@ -106,13 +106,14 @@ pub(crate) struct CmgTopologyProfile {
 
 impl CmgTopologyProfile {
     pub(crate) fn analyze(design: &BorrowedInterceptFeDesign<'_>) -> Result<Self> {
-        let mut effect_order: Vec<usize> = (0..design.effects().len()).collect();
-        effect_order.sort_by(|left, right| {
-            design.effects()[*right]
-                .n_levels()
-                .cmp(&design.effects()[*left].n_levels())
-                .then_with(|| left.cmp(right))
-        });
+        let effect_order = retained_effect_order_by_levels(design.effects().len(), |effect| {
+            design.effects()[effect].n_levels()
+        })?;
+        // The Laplacian is algebraically invariant to swapping its bipartition;
+        // core[0] is nevertheless fixed as the larger retained dimension so
+        // unequal-cardinality vertex numbering and hierarchy construction do
+        // not depend on absorb syntax order. Equal sizes use original position.
+        // Coefficients are always scattered by original index.
         let core_effects = (effect_order.len() >= 2).then(|| [effect_order[0], effect_order[1]]);
         let highest_cardinality_levels = core_effects
             .map(|core| design.effects()[core[0]].n_levels())
@@ -3616,6 +3617,71 @@ mod tests {
             assert_eq!(selected_original_effects, [0, 1]);
             assert_eq!(order[profile.effect_order[2]], 2);
         }
+    }
+
+    #[test]
+    fn swapping_cmg_bipartition_orientation_preserves_the_certified_projection() {
+        let rows = 240;
+        let large = (0..rows).map(|row| (row % 24) as u32).collect::<Vec<_>>();
+        let medium = (0..rows)
+            .map(|row| ((row * 5 + row / 24) % 9) as u32)
+            .collect::<Vec<_>>();
+        let nuisance = (0..rows)
+            .map(|row| ((row * 7 + row / 11) % 4) as u32)
+            .collect::<Vec<_>>();
+        let large_index = LevelIndex::from_codes(&large, 24).expect("large index");
+        let medium_index = LevelIndex::from_codes(&medium, 9).expect("medium index");
+        let nuisance_index = LevelIndex::from_codes(&nuisance, 4).expect("nuisance index");
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(
+                rows,
+                vec![
+                    effect(&large, 24, &large_index),
+                    effect(&medium, 9, &medium_index),
+                    effect(&nuisance, 4, &nuisance_index),
+                ],
+            )
+            .expect("orientation design")
+        };
+        let canonical_profile =
+            CmgTopologyProfile::analyze(&make_design()).expect("canonical profile");
+        assert_eq!(canonical_profile.core_effects, Some([0, 1]));
+        let mut reversed_profile = canonical_profile.clone();
+        reversed_profile.effect_order.swap(0, 1);
+        reversed_profile.core_effects = Some([1, 0]);
+        std::mem::swap(
+            &mut reversed_profile.highest_cardinality_levels,
+            &mut reversed_profile.second_cardinality_levels,
+        );
+
+        let values = DenseMatrix::from_columns(&[
+            (0..rows).map(|row| (row as f64 * 0.071).sin()).collect(),
+            (0..rows).map(|row| (row as f64 * 0.113).cos()).collect(),
+        ])
+        .expect("orientation values");
+        let mut canonical = CmgAbsorber::build_profiled(
+            make_design(),
+            BorrowedMapWeights::Unit,
+            config(2),
+            false,
+            canonical_profile,
+        )
+        .expect("canonical orientation");
+        let mut reversed = CmgAbsorber::build_profiled(
+            make_design(),
+            BorrowedMapWeights::Unit,
+            config(2),
+            false,
+            reversed_profile,
+        )
+        .expect("reversed orientation");
+        let canonical = canonical.absorb(values.clone()).expect("canonical solve");
+        let reversed = reversed.absorb(values).expect("reversed solve");
+        assert!(canonical.report().certified());
+        assert!(reversed.report().certified());
+        assert_matrix_close(canonical.residualized(), reversed.residualized(), 5e-10);
+        assert!(canonical.report().certificate.relative_infinity_norm <= 1e-10);
+        assert!(reversed.report().certificate.relative_infinity_norm <= 1e-10);
     }
 
     #[test]

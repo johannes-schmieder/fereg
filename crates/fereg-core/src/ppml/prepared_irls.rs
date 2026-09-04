@@ -3331,6 +3331,7 @@ const fn ppml_fallback_kind(kind: FrozenLinearFallbackKind) -> PpmlFallbackKind 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fe::retained_effect_order_by_levels;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
         ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, RawTermKind, SourceEntry, SourceId,
@@ -3494,6 +3495,185 @@ mod tests {
             },
         )
         .expect("prepared two-FE fixture")
+    }
+
+    fn prepared_three_fe(order: [usize; 3]) -> (PreparedOlsData, Vec<f64>) {
+        let rows = 240;
+        let x_values = (0..rows)
+            .map(|row| (row as f64 * 0.173).sin() + (row as f64 * 0.071).cos())
+            .collect::<Vec<_>>();
+        let categorical = [
+            (0..rows)
+                .map(|row| (row % 24 + 1) as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row * 5 + row / 24) % 9 + 1) as f64)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row * 7 + row / 11) % 4 + 1) as f64)
+                .collect::<Vec<_>>(),
+        ];
+        let outcome = (0..rows)
+            .map(|row| {
+                1.0 + ((row * 17
+                    + categorical[0][row] as usize * 3
+                    + categorical[1][row] as usize * 5
+                    + categorical[2][row] as usize * 7)
+                    % 11) as f64
+            })
+            .collect::<Vec<_>>();
+        let x = source(1, "x");
+        let effects = [source(2, "large"), source(3, "medium"), source(4, "small")];
+        let labels = ["large", "medium", "small"];
+        let absorbed_terms = order
+            .iter()
+            .enumerate()
+            .map(|(position, &effect)| AbsorbedTerm {
+                id: AbsorbTermId::new(u32::try_from(position + 1).expect("small position"))
+                    .expect("absorb id"),
+                intercept: true,
+                categorical_sources: vec![effects[effect].id],
+                slope_sources: Vec::new(),
+                label: labels[effect].to_owned(),
+                saved_name: format!("__fe_{}", labels[effect]),
+            })
+            .collect();
+        let prepared = prepare_ols_data(
+            &OlsRequestV1 {
+                model: CompiledTermGraph {
+                    sources: vec![
+                        x.clone(),
+                        effects[0].clone(),
+                        effects[1].clone(),
+                        effects[2].clone(),
+                    ],
+                    terms: vec![continuous_term(1, x.id)],
+                },
+                absorbed_terms,
+                bindings: vec![
+                    OlsInputBinding {
+                        stata_var_position: 1,
+                        role: OlsInputRole::Candidate,
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 2,
+                        role: OlsInputRole::Outcome,
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 3,
+                        role: OlsInputRole::NumericSource(x.id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 4,
+                        role: OlsInputRole::NumericSource(effects[0].id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 5,
+                        role: OlsInputRole::NumericSource(effects[1].id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 6,
+                        role: OlsInputRole::NumericSource(effects[2].id),
+                    },
+                ],
+                include_intercept: true,
+                keep_singletons: true,
+            },
+            &LoadedOlsInput {
+                candidate: vec![true; rows],
+                outcome: loaded(&outcome),
+                numeric_sources: vec![
+                    (x.id, loaded(&x_values)),
+                    (effects[0].id, loaded(&categorical[0])),
+                    (effects[1].id, loaded(&categorical[1])),
+                    (effects[2].id, loaded(&categorical[2])),
+                ],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("prepared three-FE fixture");
+        (prepared, outcome)
+    }
+
+    #[test]
+    fn explicit_three_fe_solver_roles_are_permutation_invariant_and_certified() {
+        let orders = [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ];
+        let mut reference_eta: Option<Vec<f64>> = None;
+        let mut reference_mean: Option<Vec<f64>> = None;
+        let mut reference_objective: Option<PoissonObjective> = None;
+
+        for family in [
+            super::super::PpmlSolverFamily::Lsmr,
+            super::super::PpmlSolverFamily::Cmg,
+        ] {
+            for order in orders {
+                let (prepared, outcome) = prepared_three_fe(order);
+                let design = prepared.fit_owned_fe_design().expect("three-FE design");
+                let selected = retained_effect_order_by_levels(design.effects().len(), |effect| {
+                    design.effects()[effect].n_levels()
+                })
+                .expect("effect role order");
+                let selected_original = [order[selected[0]], order[selected[1]]];
+                assert_eq!(selected_original, [0, 1]);
+
+                let mut config = PreparedPpmlIrlsConfig {
+                    solver_plan: PpmlSolverPlan::new(family),
+                    ..PreparedPpmlIrlsConfig::default()
+                };
+                config.linear.execution.threads =
+                    crate::options::ThreadConfig::from_requested(2, true).expect("threads");
+                config.ppml.absorb.lsmr.threads = config.linear.execution.threads;
+                config.linear.absorb.lsmr.threads = config.linear.execution.threads;
+                let prior_weights = vec![1.0; outcome.len()];
+                let offset = vec![0.0; outcome.len()];
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &outcome,
+                    &prior_weights,
+                    &offset,
+                    config,
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                        .expect("three-FE memory plan"),
+                    None,
+                )
+                .expect("permuted three-FE fit");
+                assert!(fit.diagnostics().converged);
+                assert!(fit.diagnostics().two_consecutive_convergence);
+                assert!(fit.diagnostics().final_score.passed);
+                assert_eq!(fit.diagnostics().solver.effective, family);
+                assert_eq!(fit.diagnostics().solver.fallback_count, 0);
+
+                if let (Some(eta), Some(mean), Some(objective)) =
+                    (&reference_eta, &reference_mean, reference_objective)
+                {
+                    assert!(relative_infinity_difference(fit.eta(), eta) <= 2e-9);
+                    assert!(relative_infinity_difference(fit.mean(), mean) <= 2e-9);
+                    assert!(
+                        (fit.objective().deviance - objective.deviance).abs()
+                            <= 2e-9 * objective.deviance.abs().max(1.0)
+                    );
+                    assert!(
+                        (fit.objective().log_likelihood - objective.log_likelihood).abs()
+                            <= 2e-9 * objective.log_likelihood.abs().max(1.0)
+                    );
+                    assert!(fit.diagnostics().final_score.relative_infinity_norm <= 1e-8);
+                    assert!(fit.diagnostics().final_score.relative_two_norm <= 1e-8);
+                } else {
+                    reference_eta = Some(fit.eta().to_vec());
+                    reference_mean = Some(fit.mean().to_vec());
+                    reference_objective = Some(fit.objective());
+                }
+            }
+        }
     }
 
     fn memory_dimensions(

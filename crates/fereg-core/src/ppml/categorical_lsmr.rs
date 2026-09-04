@@ -14,7 +14,7 @@ use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::FeDesign;
+use crate::fe::{retained_effect_order_by_levels, FeDesign};
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -50,6 +50,18 @@ pub(crate) const fn joint_lsmr_policy(effect_count: usize) -> CategoricalLsmrPol
     } else {
         CategoricalLsmrPolicy::Reuse
     }
+}
+
+fn largest_retained_core_pair(design: &FeDesign) -> Result<[usize; 2]> {
+    let order = retained_effect_order_by_levels(design.effects().len(), |effect| {
+        design.effects()[effect].n_levels()
+    })?;
+    if order.len() < 2 {
+        return Err(invalid_argument(
+            "joint PPML core-pair policy requires at least two effects",
+        ));
+    }
+    Ok([order[0], order[1]])
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -293,6 +305,7 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     active_slots: Vec<usize>,
     topology: FeTopologyIdentity,
     effect_offsets: Vec<usize>,
+    core_effects: Option<[usize; 2]>,
     sqrt_weights: Vec<f64>,
     rhs: Vec<f64>,
     target: Vec<f64>,
@@ -400,9 +413,16 @@ impl ReusableCategoricalJointLsmr {
             );
         }
         let fe_coefficients = effect_offsets.last().copied().unwrap_or(0);
-        let core_pair_bridge_scratch = if policy == CategoricalLsmrPolicy::CorePair {
-            let core_width = effect_offsets.get(2).copied().ok_or_else(|| {
-                invalid_argument("joint PPML core-pair policy requires at least two effects")
+        let core_effects = if policy == CategoricalLsmrPolicy::CorePair {
+            Some(largest_retained_core_pair(fe_design)?)
+        } else {
+            None
+        };
+        let core_pair_bridge_scratch = if let Some(core_effects) = core_effects {
+            let core_width = core_effects.iter().try_fold(0_usize, |total, &effect| {
+                total
+                    .checked_add(fe_design.effects()[effect].n_levels())
+                    .ok_or_else(|| allocation("joint PPML core-pair width overflows"))
             })?;
             CorePairBridgeScratch::new(core_width)?
         } else {
@@ -418,6 +438,7 @@ impl ReusableCategoricalJointLsmr {
             active_slots,
             topology,
             effect_offsets,
+            core_effects,
             sqrt_weights: fallible_filled(rows, 0.0, "joint PPML square-root weights")?,
             rhs: fallible_filled(rows, 0.0, "joint PPML LSMR right-hand side")?,
             target: fallible_filled(rows, 0.0, "joint PPML Newton target")?,
@@ -850,7 +871,7 @@ impl ReusableCategoricalJointLsmr {
             return Ok((false, false));
         }
         if self.policy == CategoricalLsmrPolicy::CorePair {
-            // The graph core covers only the first two effect blocks. Every
+            // The graph core covers only the selected two effect blocks. Every
             // additional coordinate retains a current-weight positive
             // diagonal action, so the combined preconditioner spans the full
             // augmented FE axis without an uncovered null direction.
@@ -876,10 +897,17 @@ impl ReusableCategoricalJointLsmr {
             self.instrumentation.schwarz_rebuilds =
                 self.instrumentation.schwarz_rebuilds.saturating_add(1);
         }
-        let mut effects = within_effects(fe_design)?;
-        if self.policy == CategoricalLsmrPolicy::CorePair {
-            effects.truncate(2);
-        }
+        let effects = if self.policy == CategoricalLsmrPolicy::CorePair {
+            let core_effects = self.core_effects.ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Internal,
+                    "joint PPML core-pair route has no selected effects",
+                )
+            })?;
+            within_effects_selected(fe_design, &core_effects)?
+        } else {
+            within_effects(fe_design)?
+        };
         let solver = Solver::new(
             effects,
             Some(fallible_copy(weights, "joint PPML Schwarz weights")?),
@@ -911,6 +939,12 @@ impl ReusableCategoricalJointLsmr {
             if self.policy == CategoricalLsmrPolicy::CorePair {
                 FePreconditioner::CorePair {
                     core: preconditioner,
+                    core_effects: self.core_effects.ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "joint PPML core-pair route has no selected effects",
+                        )
+                    })?,
                     diagonal: &self.fe_inverse,
                     design: fe_design,
                     effect_offsets: &self.effect_offsets,
@@ -1219,6 +1253,7 @@ enum FePreconditioner<'a> {
     Schwarz(&'a Preconditioner),
     CorePair {
         core: &'a Preconditioner,
+        core_effects: [usize; 2],
         diagonal: &'a [f64],
         design: &'a FeDesign,
         effect_offsets: &'a [usize],
@@ -1268,6 +1303,7 @@ impl Operator for BlockPreconditioner<'_> {
             }
             FePreconditioner::CorePair {
                 core,
+                core_effects,
                 diagonal,
                 design,
                 effect_offsets,
@@ -1280,6 +1316,7 @@ impl Operator for BlockPreconditioner<'_> {
                 }
                 apply_core_pair_bridge(
                     core,
+                    *core_effects,
                     diagonal,
                     design,
                     effect_offsets,
@@ -1300,6 +1337,7 @@ impl Operator for BlockPreconditioner<'_> {
 #[allow(clippy::too_many_arguments)]
 fn apply_core_pair_bridge(
     core: &Preconditioner,
+    core_effects: [usize; 2],
     diagonal: &[f64],
     design: &FeDesign,
     effect_offsets: &[usize],
@@ -1309,10 +1347,17 @@ fn apply_core_pair_bridge(
     y: &mut [f64],
 ) -> std::result::Result<(), SolveError> {
     let core_width = core.nrows();
+    let [first_core, second_core] = core_effects;
     if core.ncols() != core_width
         || design.effects().len() < 2
+        || first_core == second_core
+        || first_core >= design.effects().len()
+        || second_core >= design.effects().len()
         || effect_offsets.len() != design.effects().len() + 1
-        || effect_offsets.get(2).copied() != Some(core_width)
+        || design.effects()[first_core]
+            .n_levels()
+            .checked_add(design.effects()[second_core].n_levels())
+            != Some(core_width)
         || effect_offsets.last().copied() != Some(diagonal.len())
         || weights.len() != design.nobs()
         || x.len() != diagonal.len()
@@ -1321,10 +1366,36 @@ fn apply_core_pair_bridge(
         return Err(solve_shape_error("core-pair bridge apply"));
     }
 
-    let (x_core, x_extra) = x.split_at(core_width);
-    let (y_core, y_extra) = y.split_at_mut(core_width);
-    Operator::apply(core, x_core, y_core)?;
-    if x_extra.is_empty() {
+    let effects = design.effects();
+    let mut bridge = scratch.lock().map_err(|_| SolveError::Synchronization {
+        context: "joint PPML core-pair bridge scratch",
+    })?;
+    if bridge.core_rhs.len() != core_width || bridge.core_correction.len() != core_width {
+        return Err(solve_shape_error("core-pair bridge scratch"));
+    }
+    let mut packed_start = 0_usize;
+    for effect_index in core_effects {
+        let global_start = effect_offsets[effect_index];
+        let width = effects[effect_index].n_levels();
+        bridge.core_rhs[packed_start..packed_start + width]
+            .copy_from_slice(&x[global_start..global_start + width]);
+        packed_start += width;
+    }
+    let CorePairBridgeScratch {
+        core_rhs,
+        core_correction,
+    } = &mut *bridge;
+    Operator::apply(core, core_rhs, core_correction)?;
+    packed_start = 0;
+    for effect_index in core_effects {
+        let global_start = effect_offsets[effect_index];
+        let width = effects[effect_index].n_levels();
+        y[global_start..global_start + width]
+            .copy_from_slice(&core_correction[packed_start..packed_start + width]);
+        packed_start += width;
+    }
+
+    if effects.len() == 2 {
         return Ok(());
     }
 
@@ -1333,13 +1404,14 @@ fn apply_core_pair_bridge(
     // D(x_e - B' C x_c) first. Each output level owns its canonical member
     // order, so the exact cross-block correction remains deterministic across
     // thread counts without retaining another pairwise graph.
-    let effects = design.effects();
-    for effect_index in 2..effects.len() {
+    let second_packed_start = effects[first_core].n_levels();
+    for effect_index in 0..effects.len() {
+        if core_effects.contains(&effect_index) {
+            continue;
+        }
         let global_start = effect_offsets[effect_index];
         let global_end = effect_offsets[effect_index + 1];
-        let extra_start = global_start - core_width;
-        let extra_end = global_end - core_width;
-        y_extra[extra_start..extra_end]
+        y[global_start..global_end]
             .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
             .enumerate()
             .for_each(|(chunk_index, outputs)| {
@@ -1348,29 +1420,23 @@ fn apply_core_pair_bridge(
                     let level = first_level + within_chunk;
                     let mut cross = 0.0_f64;
                     for &row in effects[effect_index].level_index().members(level) {
-                        let core_predictor = y_core[effects[0].codes()[row] as usize]
-                            + y_core[effect_offsets[1] + effects[1].codes()[row] as usize];
+                        let core_predictor = core_correction
+                            [effects[first_core].codes()[row] as usize]
+                            + core_correction
+                                [second_packed_start + effects[second_core].codes()[row] as usize];
                         cross = weights[row].mul_add(core_predictor, cross);
                     }
-                    let extra_index = extra_start + level;
-                    *output = diagonal[global_start + level] * (x_extra[extra_index] - cross);
+                    *output = diagonal[global_start + level] * (x[global_start + level] - cross);
                 }
             });
     }
 
-    let mut bridge = scratch.lock().map_err(|_| SolveError::Synchronization {
-        context: "joint PPML core-pair bridge scratch",
-    })?;
-    if bridge.core_rhs.len() != core_width || bridge.core_correction.len() != core_width {
-        return Err(solve_shape_error("core-pair bridge scratch"));
-    }
-
     // Form B e directly from the borrowed memberships and current frame
     // weights. The retained core remains the sole graph preconditioner.
-    for effect_index in 0..2 {
-        let start = effect_offsets[effect_index];
-        let end = effect_offsets[effect_index + 1];
-        bridge.core_rhs[start..end]
+    packed_start = 0;
+    for effect_index in core_effects {
+        let width = effects[effect_index].n_levels();
+        core_rhs[packed_start..packed_start + width]
             .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
             .enumerate()
             .for_each(|(chunk_index, outputs)| {
@@ -1380,24 +1446,33 @@ fn apply_core_pair_bridge(
                     let mut cross = 0.0_f64;
                     for &row in effects[effect_index].level_index().members(level) {
                         let mut extra_predictor = 0.0_f64;
-                        for extra_effect in 2..effects.len() {
-                            let extra_index = effect_offsets[extra_effect] - core_width
+                        for extra_effect in 0..effects.len() {
+                            if core_effects.contains(&extra_effect) {
+                                continue;
+                            }
+                            let extra_index = effect_offsets[extra_effect]
                                 + effects[extra_effect].codes()[row] as usize;
-                            extra_predictor += y_extra[extra_index];
+                            extra_predictor += y[extra_index];
                         }
                         cross = weights[row].mul_add(extra_predictor, cross);
                     }
                     *output = cross;
                 }
             });
+        packed_start += width;
     }
-    let CorePairBridgeScratch {
-        core_rhs,
-        core_correction,
-    } = &mut *bridge;
     Operator::apply(core, core_rhs, core_correction)?;
-    for (output, correction) in y_core.iter_mut().zip(core_correction) {
-        *output -= *correction;
+    packed_start = 0;
+    for effect_index in core_effects {
+        let global_start = effect_offsets[effect_index];
+        let width = effects[effect_index].n_levels();
+        for (output, correction) in y[global_start..global_start + width]
+            .iter_mut()
+            .zip(&core_correction[packed_start..packed_start + width])
+        {
+            *output -= *correction;
+        }
+        packed_start += width;
     }
     Ok(())
 }
@@ -1446,6 +1521,31 @@ fn within_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
                 FeregError::new(
                     ErrorCode::InvalidData,
                     format!("unable to build joint PPML categorical effect: {error}"),
+                )
+            })?,
+        );
+    }
+    Ok(effects)
+}
+
+fn within_effects_selected<'a>(
+    design: &'a FeDesign,
+    effect_indices: &[usize],
+) -> Result<Vec<Effect<'a>>> {
+    let mut effects = Vec::new();
+    effects
+        .try_reserve_exact(effect_indices.len())
+        .map_err(|_| allocation("unable to reserve selected joint PPML within effects"))?;
+    for &effect_index in effect_indices {
+        let effect = design
+            .effects()
+            .get(effect_index)
+            .ok_or_else(|| invalid_argument("joint PPML selected effect index is out of range"))?;
+        effects.push(
+            Effect::new(effect.codes(), true, std::iter::empty::<&[f64]>()).map_err(|error| {
+                FeregError::new(
+                    ErrorCode::InvalidData,
+                    format!("unable to build selected joint PPML categorical effect: {error}"),
                 )
             })?,
         );
@@ -1896,9 +1996,12 @@ fn core_pair_bridge_scratch_bytes(
             "PPML LSMR core-pair bridge memory estimate requires two effects",
         ));
     }
+    let order = retained_effect_order_by_levels(effect_level_counts.len(), |effect| {
+        effect_level_counts[effect]
+    })?;
     let core_width = checked_add_memory(
-        effect_level_counts[0] as u128,
-        effect_level_counts[1] as u128,
+        effect_level_counts[order[0]] as u128,
+        effect_level_counts[order[1]] as u128,
         "PPML LSMR core-pair bridge width",
     )?;
     bytes_for_memory::<f64>(
@@ -2029,14 +2132,20 @@ impl CategoricalLsmrMemoryShape {
                         "PPML LSMR core-pair memory estimate requires two effects",
                     ));
                 }
+                let order = retained_effect_order_by_levels(effect_level_counts.len(), |effect| {
+                    effect_level_counts[effect]
+                })?;
                 let core_levels =
-                    effect_level_counts[..2]
+                    [order[0], order[1]]
                         .iter()
-                        .try_fold(0_u128, |total, &levels| {
-                            checked_add_memory(total, levels as u128, "PPML LSMR core-pair levels")
+                        .try_fold(0_u128, |total, &effect| {
+                            checked_add_memory(
+                                total,
+                                effect_level_counts[effect] as u128,
+                                "PPML LSMR core-pair levels",
+                            )
                         })?;
-                let core_maximum_levels =
-                    effect_level_counts[..2].iter().copied().max().unwrap_or(0) as u128;
+                let core_maximum_levels = effect_level_counts[order[0]] as u128;
                 estimate_categorical_schwarz_memory(
                     rows,
                     2,
@@ -2462,9 +2571,9 @@ mod tests {
             0.75, 1.25, 0.9, 1.4, 0.65, 1.1, 1.6, 0.8, 1.35, 0.95, 1.2, 0.7,
         ];
         let offsets = vec![0, 3, 5, 8];
-        let core_width = offsets[2];
-        let mut effects = within_effects(&design).expect("within effects");
-        effects.truncate(2);
+        let core_effects = [0, 2];
+        let core_width = 6;
+        let effects = within_effects_selected(&design, &core_effects).expect("within effects");
         let solver = Solver::new(
             effects,
             Some(weights.clone()),
@@ -2484,6 +2593,7 @@ mod tests {
             finite_inverse: &[],
             fe: FePreconditioner::CorePair {
                 core: &core,
+                core_effects,
                 diagonal: &diagonal,
                 design: &design,
                 effect_offsets: &offsets,
@@ -2507,17 +2617,18 @@ mod tests {
                 dense_core[row][column] = image[row];
             }
         }
-        let extra_width = input.len() - core_width;
+        let extra_effects = [1];
+        let extra_width = design.effects()[extra_effects[0]].n_levels();
         let mut dense_cross = vec![vec![0.0; extra_width]; core_width];
         for (row, weight) in weights.iter().copied().enumerate() {
-            for core_effect in 0..2 {
+            let mut packed_core_start = 0_usize;
+            for core_effect in core_effects {
                 let core_index =
-                    offsets[core_effect] + design.effects()[core_effect].codes()[row] as usize;
-                for (extra_effect, effect) in design.effects().iter().enumerate().skip(2) {
-                    let extra_index =
-                        offsets[extra_effect] - core_width + effect.codes()[row] as usize;
-                    dense_cross[core_index][extra_index] += weight;
-                }
+                    packed_core_start + design.effects()[core_effect].codes()[row] as usize;
+                let extra_effect = extra_effects[0];
+                let extra_index = design.effects()[extra_effect].codes()[row] as usize;
+                dense_cross[core_index][extra_index] += weight;
+                packed_core_start += design.effects()[core_effect].n_levels();
             }
         }
         let dense_apply = |matrix: &[Vec<f64>], vector: &[f64]| {
@@ -2531,24 +2642,34 @@ mod tests {
                 })
                 .collect::<Vec<f64>>()
         };
-        let core_input = &input[..core_width];
-        let extra_input = &input[core_width..];
-        let core_image = dense_apply(&dense_core, core_input);
+        let mut core_input = Vec::with_capacity(core_width);
+        for core_effect in core_effects {
+            core_input.extend_from_slice(&input[offsets[core_effect]..offsets[core_effect + 1]]);
+        }
+        let extra_effect = extra_effects[0];
+        let extra_input = &input[offsets[extra_effect]..offsets[extra_effect + 1]];
+        let core_image = dense_apply(&dense_core, &core_input);
         let mut extra_image = vec![0.0; extra_width];
         for extra in 0..extra_width {
             let cross = (0..core_width)
                 .map(|core_index| dense_cross[core_index][extra] * core_image[core_index])
                 .sum::<f64>();
-            extra_image[extra] = diagonal[core_width + extra] * (extra_input[extra] - cross);
+            extra_image[extra] =
+                diagonal[offsets[extra_effect] + extra] * (extra_input[extra] - cross);
         }
         let cross_image = dense_apply(&dense_cross, &extra_image);
         let core_correction = dense_apply(&dense_core, &cross_image);
-        let mut expected = core_image
-            .iter()
-            .zip(&core_correction)
-            .map(|(image, correction)| image - correction)
-            .collect::<Vec<_>>();
-        expected.extend_from_slice(&extra_image);
+        let mut expected = vec![0.0; input.len()];
+        let mut packed_core_start = 0_usize;
+        for core_effect in core_effects {
+            let width = design.effects()[core_effect].n_levels();
+            for level in 0..width {
+                expected[offsets[core_effect] + level] = core_image[packed_core_start + level]
+                    - core_correction[packed_core_start + level];
+            }
+            packed_core_start += width;
+        }
+        expected[offsets[extra_effect]..offsets[extra_effect + 1]].copy_from_slice(&extra_image);
         for (observed, reference) in actual.iter().zip(&expected) {
             assert!((observed - reference).abs() <= 2e-13);
         }
@@ -2778,6 +2899,7 @@ mod tests {
             active_slots: Vec::new(),
             topology: identity,
             effect_offsets: vec![0, 2],
+            core_effects: None,
             sqrt_weights: vec![0.0; 4],
             rhs: vec![0.0; 4],
             target: vec![0.0; 4],
@@ -2867,6 +2989,7 @@ mod tests {
             active_slots: vec![0],
             topology: FeTopologyIdentity::capture(&design).expect("topology"),
             effect_offsets: vec![0, 4, 6],
+            core_effects: None,
             sqrt_weights: vec![0.0; 12],
             rhs: vec![0.0; 12],
             target: vec![0.0; 12],
@@ -2991,6 +3114,7 @@ mod tests {
                 active_slots: vec![0],
                 topology: FeTopologyIdentity::capture(&design).expect("topology"),
                 effect_offsets: vec![0, 4, 6],
+                core_effects: None,
                 sqrt_weights: vec![0.0; 12],
                 rhs: vec![0.0; 12],
                 target: vec![0.0; 12],
@@ -3053,6 +3177,7 @@ mod tests {
             active_slots: Vec::new(),
             topology: FeTopologyIdentity::capture(&design).expect("topology"),
             effect_offsets: vec![0, 5, 9, 12],
+            core_effects: Some([0, 1]),
             sqrt_weights: vec![0.0; rows],
             rhs: vec![0.0; rows],
             target: vec![0.0; rows],
@@ -3150,8 +3275,45 @@ mod tests {
     }
 
     #[test]
+    fn joint_core_pair_uses_the_same_two_largest_effects_under_every_permutation() {
+        let rows = 120;
+        let sources = [
+            (
+                (0..rows).map(|row| (row % 20) as u32).collect::<Vec<_>>(),
+                20,
+            ),
+            ((0..rows).map(|row| (row % 9) as u32).collect::<Vec<_>>(), 9),
+            ((0..rows).map(|row| (row % 4) as u32).collect::<Vec<_>>(), 4),
+        ];
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let effects = order
+                .iter()
+                .map(|&effect| {
+                    EffectTerm::new(
+                        sources[effect].0.clone(),
+                        sources[effect].1,
+                        true,
+                        Vec::new(),
+                    )
+                    .expect("effect")
+                })
+                .collect();
+            let design = FeDesign::new(rows, effects).expect("permuted design");
+            let selected = largest_retained_core_pair(&design).expect("core pair");
+            assert_eq!([order[selected[0]], order[selected[1]]], [0, 1]);
+        }
+    }
+
+    #[test]
     fn joint_memory_charges_only_the_selected_schwarz_topology() {
-        let levels = [2_000, 1_000, 500];
+        let levels = [500, 2_000, 1_000];
         let diagonal_one = estimate_joint_lsmr_workspace_bytes(
             10_000,
             8,
@@ -3187,16 +3349,30 @@ mod tests {
         assert_eq!(diagonal_one, diagonal_eight);
         assert!(diagonal_eight < core_pair);
         assert!(core_pair < schwarz);
+        let permuted = estimate_joint_lsmr_workspace_bytes(
+            10_000,
+            8,
+            &[1_000, 500, 2_000],
+            8,
+            CategoricalLsmrPolicy::CorePair,
+        )
+        .expect("permuted core-pair estimate");
+        assert_eq!(core_pair, permuted);
     }
 
     #[test]
     fn core_pair_memory_charges_exactly_two_core_width_bridge_buffers() {
-        let levels = [2_000, 1_000, 500];
+        let levels = [500, 2_000, 1_000];
         let expected =
-            2_u128 * (levels[0] + levels[1]) as u128 * std::mem::size_of::<f64>() as u128;
+            2_u128 * (levels[1] + levels[2]) as u128 * std::mem::size_of::<f64>() as u128;
         assert_eq!(
             core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::CorePair)
                 .expect("core-pair bridge bytes"),
+            expected
+        );
+        assert_eq!(
+            core_pair_bridge_scratch_bytes(&[1_000, 500, 2_000], CategoricalLsmrPolicy::CorePair)
+                .expect("permuted core-pair bridge bytes"),
             expected
         );
         assert_eq!(
