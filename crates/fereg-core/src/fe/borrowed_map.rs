@@ -2,6 +2,9 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::time::Instant;
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use super::auto::{auto_lsmr_route_at_cap, direct_lsmr_tolerance, AutoLsmrRoute};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -15,9 +18,12 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 
-pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 65_536;
+pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
 pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 8;
 pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 32_768;
+const PARALLEL_GROUP_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+const PARALLEL_LEVEL_CHUNKS_PER_THREAD: usize = 4;
+const TWO_FE_PCG_PARALLEL_MIN_ROWS: usize = 16_384;
 /// Keep the PPML accelerator available through the development matrix's
 /// control-heavy cases. The exact three-matrix state is charged by the PPML
 /// memory planner, so wider fits fall back to the bounded route rather than
@@ -27,6 +33,21 @@ const CATEGORICAL_MAP_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_PILOT_SWEEPS: usize = 4;
 pub(crate) const SD_RECOVERY_CONTINUATION_CAP: usize = 4;
 const SD_RECOVERY_LSMR_TOLERANCE_CAP: f64 = 1e-4;
+
+#[cfg(test)]
+thread_local! {
+    static CHECKPOINT_LSMR_CERTIFICATE_FAILURE: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(test)]
+fn inject_checkpoint_lsmr_certificate_failure() {
+    CHECKPOINT_LSMR_CERTIFICATE_FAILURE.set(true);
+}
+
+#[cfg(test)]
+fn take_checkpoint_lsmr_certificate_failure() -> bool {
+    CHECKPOINT_LSMR_CERTIFICATE_FAILURE.replace(false)
+}
 
 fn emit_solver_trace(line: &str) {
     eprintln!("{line}");
@@ -1051,6 +1072,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     cg_ratio: Vec<f64>,
     max_rhs: usize,
     max_level_members: usize,
+    checkpoint_lsmr_enabled: bool,
 }
 
 /// Reusable level-space PCG state for two-way categorical graphs.
@@ -1235,7 +1257,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             )?,
             max_rhs,
             max_level_members,
+            checkpoint_lsmr_enabled: false,
         })
+    }
+
+    pub(crate) fn enable_checkpoint_lsmr(&mut self) {
+        self.checkpoint_lsmr_enabled = true;
     }
 
     pub(crate) const fn max_rhs(&self) -> usize {
@@ -1327,6 +1354,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         )?;
         let setup_seconds = setup_started.elapsed().as_secs_f64();
         let solve_started = Instant::now();
+        let initial_certification_started = Instant::now();
         let initial = certify_initial(
             &self.design,
             weights,
@@ -1334,6 +1362,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             config.tolerance,
             &mut self.workspace,
         )?;
+        let initial_certification_seconds = initial_certification_started.elapsed().as_secs_f64();
         if initial.passed {
             return certified_result(
                 values,
@@ -1343,6 +1372,83 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
             );
+        }
+
+        if self.checkpoint_lsmr_enabled && matches!(self.design.effects().len(), 2 | 3) {
+            let lsmr = LsmrConfig {
+                tolerance: config.tolerance,
+                max_iterations: config.max_iterations,
+                ..LsmrConfig::default()
+            };
+            let (candidate, mut report, owned_setup_seconds, _) = run_borrowed_lsmr(
+                &self.design,
+                weights,
+                &values,
+                config.tolerance,
+                config.max_iterations,
+                lsmr,
+                Some(&self.workspace.reference_norms),
+                false,
+            )?;
+            report.setup_seconds += setup_seconds + owned_setup_seconds;
+            let certification_started = Instant::now();
+            #[allow(unused_mut)]
+            let mut canonical_certificate = certify(
+                &self.design,
+                weights,
+                &candidate,
+                config.tolerance,
+                &mut self.workspace,
+            )?;
+            #[cfg(test)]
+            if take_checkpoint_lsmr_certificate_failure() {
+                canonical_certificate.passed = false;
+            }
+            report.certification_seconds +=
+                initial_certification_seconds + certification_started.elapsed().as_secs_f64();
+            let canonical_passed = canonical_certificate.passed;
+            report.certificate = canonical_certificate;
+            if canonical_passed {
+                report.stop_reason = SolveStopReason::Certified;
+                return CertifiedBorrowedMap::from_certified_parts(candidate, report);
+            }
+            report.stop_reason = SolveStopReason::Uncertified;
+
+            // The LSMR candidate never aliases `values`. A numerical failure
+            // therefore leaves the authoritative checkpoint inputs untouched
+            // and permits the existing MAP projector to certify them. Other
+            // error classes returned above remain fatal.
+            let raw_weights = borrowed_weights(weights);
+            self.checkpoint_lsmr_enabled = false;
+            let fallback = self.absorb(raw_weights, values, config);
+            self.checkpoint_lsmr_enabled = true;
+            let fallback = fallback?;
+            let (residualized, mut fallback_report, coefficients) = fallback.into_full_parts();
+            fallback_report.requested_solver = FeSolverKind::Lsmr;
+            fallback_report.iterations =
+                fallback_report.iterations.saturating_add(report.iterations);
+            fallback_report.setup_seconds += report.setup_seconds;
+            fallback_report.solve_seconds += report.solve_seconds;
+            fallback_report.certification_seconds += report.certification_seconds;
+            fallback_report.fallback_used = true;
+            fallback_report.requested_preconditioner = report.requested_preconditioner;
+            fallback_report.used_preconditioner = report.used_preconditioner;
+            fallback_report.warnings.insert(
+                0,
+                format!(
+                    "current-weight checkpoint LSMR did not certify after {} iterations; MAP certified the untouched authoritative checkpoint inputs",
+                    report.iterations,
+                ),
+            );
+            return if let Some(coefficients) = coefficients {
+                CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                    residualized,
+                    fallback_report,
+                    coefficients,
+                )
+            } else {
+                CertifiedBorrowedMap::from_certified_parts(residualized, fallback_report)
+            };
         }
 
         let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
@@ -1985,24 +2091,20 @@ fn absorb_two_fe_pcg_reusing(
         if breakdown {
             break;
         }
+        next_residual_square.fill(0.0);
         for level in 0..right_levels {
+            let denominator = graph.right_weights[level];
             for (rhs, &step) in ratio.iter().enumerate() {
                 let index = level * stride + rhs;
                 graph.solution[index] = step.mul_add(graph.direction[index], graph.solution[index]);
                 graph.residual[index] =
                     (-step).mul_add(graph.operator[index], graph.residual[index]);
+                let preconditioned = graph.residual[index] / denominator;
+                next_residual_square[rhs] =
+                    graph.residual[index].mul_add(preconditioned, next_residual_square[rhs]);
             }
         }
         iterations += 1;
-        next_residual_square.fill(0.0);
-        for level in 0..right_levels {
-            let denominator = graph.right_weights[level];
-            for (rhs, next_square) in next_residual_square.iter_mut().enumerate() {
-                let index = level * stride + rhs;
-                let preconditioned = graph.residual[index] / denominator;
-                *next_square = graph.residual[index].mul_add(preconditioned, *next_square);
-            }
-        }
         if next_residual_square
             .iter()
             .any(|value| !value.is_finite() || *value < 0.0)
@@ -2144,6 +2246,9 @@ impl TwoFePcgWorkspace {
         rhs_count: usize,
         stride: usize,
     ) -> Result<()> {
+        if design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS && rayon::current_num_threads() > 1 {
+            return self.apply_schur_parallel(design, weights, rhs_count, stride);
+        }
         self.left_work.fill(0.0);
         self.operator.fill(0.0);
         let left = &design.effects()[self.left_effect];
@@ -2179,6 +2284,98 @@ impl TwoFePcgWorkspace {
                     weight * self.left_work[left_level * stride + rhs];
             }
         }
+        if self.operator.iter().any(|value| !value.is_finite()) {
+            Err(invalid_data(
+                "two-FE categorical MAP PCG operator product is nonfinite",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn apply_schur_parallel(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: ValidatedWeights<'_>,
+        rhs_count: usize,
+        stride: usize,
+    ) -> Result<()> {
+        let left = &design.effects()[self.left_effect];
+        let right = &design.effects()[self.right_effect];
+        let left_codes = left.codes();
+        let right_codes = right.codes();
+        let direction = &self.direction;
+        let left_weights = &self.left_weights;
+        let left_level_chunk = parallel_level_chunk_size(left.n_levels());
+        let left_cell_chunk = left_level_chunk
+            .checked_mul(stride)
+            .ok_or_else(|| allocation("two-FE PCG left operator chunk dimensions overflow"))?;
+        self.left_work
+            .par_chunks_mut(left_cell_chunk)
+            .enumerate()
+            .try_for_each(|(chunk, work)| -> Result<()> {
+                work.fill(0.0);
+                let first_level = chunk * left_level_chunk;
+                for local_level in 0..work.len() / stride {
+                    let level = first_level + local_level;
+                    let level_work = &mut work[local_level * stride..(local_level + 1) * stride];
+                    let members = left.level_index().checked_members(level)?;
+                    for &row in members {
+                        if row >= design.nobs() {
+                            return Err(invalid_argument(
+                                "two-FE PCG membership exceeds the observation axis",
+                            ));
+                        }
+                        let weight = weights.normalized(row);
+                        let right_level = right_codes[row] as usize;
+                        for rhs in 0..rhs_count {
+                            level_work[rhs] += weight * direction[right_level * stride + rhs];
+                        }
+                    }
+                    let denominator = left_weights[level];
+                    for value in &mut level_work[..rhs_count] {
+                        *value /= denominator;
+                    }
+                }
+                Ok(())
+            })?;
+
+        let left_work = &self.left_work;
+        let right_weights = &self.right_weights;
+        let right_level_chunk = parallel_level_chunk_size(right.n_levels());
+        let right_cell_chunk = right_level_chunk
+            .checked_mul(stride)
+            .ok_or_else(|| allocation("two-FE PCG right operator chunk dimensions overflow"))?;
+        self.operator
+            .par_chunks_mut(right_cell_chunk)
+            .enumerate()
+            .try_for_each(|(chunk, operator)| -> Result<()> {
+                operator.fill(0.0);
+                let first_level = chunk * right_level_chunk;
+                for local_level in 0..operator.len() / stride {
+                    let level = first_level + local_level;
+                    let level_operator =
+                        &mut operator[local_level * stride..(local_level + 1) * stride];
+                    for rhs in 0..rhs_count {
+                        level_operator[rhs] =
+                            right_weights[level] * direction[level * stride + rhs];
+                    }
+                    let members = right.level_index().checked_members(level)?;
+                    for &row in members {
+                        if row >= design.nobs() {
+                            return Err(invalid_argument(
+                                "two-FE PCG membership exceeds the observation axis",
+                            ));
+                        }
+                        let weight = weights.normalized(row);
+                        let left_level = left_codes[row] as usize;
+                        for rhs in 0..rhs_count {
+                            level_operator[rhs] -= weight * left_work[left_level * stride + rhs];
+                        }
+                    }
+                }
+                Ok(())
+            })?;
         if self.operator.iter().any(|value| !value.is_finite()) {
             Err(invalid_data(
                 "two-FE categorical MAP PCG operator product is nonfinite",
@@ -3805,6 +4002,7 @@ fn run_borrowed_lsmr(
     certificate_reference_norms: Option<&[f64]>,
     retain_coefficients: bool,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
+    let total_started = Instant::now();
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
     if !tolerance.is_finite() || tolerance <= 0.0 {
         return Err(invalid_argument(
@@ -3922,6 +4120,7 @@ fn run_borrowed_lsmr(
             .reference_norms
             .copy_from_slice(reference_norms);
     }
+    let certification_started = Instant::now();
     let certificate = certify(
         design,
         weights,
@@ -3929,6 +4128,7 @@ fn run_borrowed_lsmr(
         tolerance,
         &mut certificate_workspace,
     )?;
+    let certification_seconds = certification_started.elapsed().as_secs_f64();
     if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
         for rhs in 0..lsmr_values.ncols() {
             emit_solver_trace(&format!(
@@ -3965,6 +4165,8 @@ fn run_borrowed_lsmr(
                 .to_owned(),
         );
     }
+    let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
+    let postprocess_seconds = (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
     let report = SolveReport {
         requested_solver: FeSolverKind::Lsmr,
         used_solver: FeSolverKind::Lsmr,
@@ -3972,8 +4174,9 @@ fn run_borrowed_lsmr(
         stop_reason,
         certificate,
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
-        setup_seconds: solved.time_setup,
-        solve_seconds: solved.time_solve.iter().copied().sum(),
+        setup_seconds: solved.time_setup + postprocess_seconds,
+        solve_seconds: (solved.time_total - solved.time_setup).max(0.0),
+        certification_seconds,
         fallback_used: preconditioner_fallback,
         requested_preconditioner: Some(lsmr_config.preconditioner),
         used_preconditioner: Some(if preconditioner_fallback {
@@ -5021,7 +5224,7 @@ fn project_effect_parallel<R: InterceptCoefficientRecorder>(
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
-    if columns <= FUSED_PARALLEL_MAX_RHS {
+    if columns <= PARALLEL_GROUP_MAX_RHS {
         return project_effect_parallel_fused(
             effect,
             weights,
@@ -5031,37 +5234,14 @@ fn project_effect_parallel<R: InterceptCoefficientRecorder>(
             coefficients,
         );
     }
-    workspace.parallel_group_weights[..levels]
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(level, group_weight)| -> Result<()> {
-            let members = effect.level_index().checked_members(level)?;
-            *group_weight = group_weight_sum(members, weights, values.nrows())?;
-            Ok(())
-        })?;
-    let group_weights = &workspace.parallel_group_weights[..levels];
     let values_read = &*values;
-    workspace.parallel_group_means[..parallel_mean_count]
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(slot, mean)| -> Result<()> {
-            let level = slot / columns;
-            let rhs = slot % columns;
-            let members = effect.level_index().checked_members(level)?;
-            if members.is_empty() {
-                return Err(invalid_argument(
-                    "borrowed MAP effect contains an empty final level",
-                ));
-            }
-            *mean = group_mean_for_column_with_weight(
-                members,
-                rhs,
-                weights,
-                group_weights[level],
-                values_read,
-            )?;
-            Ok(())
-        })?;
+    fill_parallel_group_statistics(
+        effect,
+        weights,
+        values_read,
+        &mut workspace.parallel_group_weights[..levels],
+        &mut workspace.parallel_group_means[..parallel_mean_count],
+    )?;
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
     if let Some((batch, effect_index)) = coefficients {
@@ -5104,6 +5284,10 @@ fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
     let levels = effect.n_levels();
     let columns = values.ncols();
     let values_read = &*values;
+    let level_chunk = parallel_level_chunk_size(levels);
+    let mean_chunk = level_chunk
+        .checked_mul(columns)
+        .ok_or_else(|| allocation("borrowed MAP parallel level chunk dimensions overflow"))?;
     let mut coefficients = coefficients;
     let mut recorded_inline = false;
     if let Some((batch, effect_index)) = coefficients.as_mut() {
@@ -5114,17 +5298,32 @@ fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
         }
         if let Some(accumulated) = batch.level_major_values_mut(*effect_index, levels)? {
             workspace.parallel_group_means[..parallel_mean_count]
-                .par_chunks_mut(columns)
-                .zip(accumulated.par_chunks_mut(columns))
+                .par_chunks_mut(mean_chunk)
+                .zip(accumulated.par_chunks_mut(mean_chunk))
                 .enumerate()
-                .try_for_each(|(level, (means, accumulated))| -> Result<()> {
-                    fused_group_means_for_level(effect, level, weights, values_read, means)?;
-                    for (destination, &mean) in accumulated.iter_mut().zip(means.iter()) {
-                        *destination += mean;
-                        if !destination.is_finite() {
-                            return Err(invalid_data(
-                                "MAP coefficient group accumulation is nonfinite",
-                            ));
+                .try_for_each(|(chunk, (means, accumulated))| -> Result<()> {
+                    let first_level = chunk * level_chunk;
+                    for local_level in 0..means.len() / columns {
+                        let level = first_level + local_level;
+                        let start = local_level * columns;
+                        let level_means = &mut means[start..start + columns];
+                        fused_group_means_for_level(
+                            effect,
+                            level,
+                            weights,
+                            values_read,
+                            level_means,
+                        )?;
+                        for (destination, &mean) in accumulated[start..start + columns]
+                            .iter_mut()
+                            .zip(level_means.iter())
+                        {
+                            *destination += mean;
+                            if !destination.is_finite() {
+                                return Err(invalid_data(
+                                    "MAP coefficient group accumulation is nonfinite",
+                                ));
+                            }
                         }
                     }
                     Ok(())
@@ -5134,10 +5333,21 @@ fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
     }
     if !recorded_inline {
         workspace.parallel_group_means[..parallel_mean_count]
-            .par_chunks_mut(columns)
+            .par_chunks_mut(mean_chunk)
             .enumerate()
-            .try_for_each(|(level, means)| {
-                fused_group_means_for_level(effect, level, weights, values_read, means)
+            .try_for_each(|(chunk, means)| -> Result<()> {
+                let first_level = chunk * level_chunk;
+                for local_level in 0..means.len() / columns {
+                    let start = local_level * columns;
+                    fused_group_means_for_level(
+                        effect,
+                        first_level + local_level,
+                        weights,
+                        values_read,
+                        &mut means[start..start + columns],
+                    )?;
+                }
+                Ok(())
             })?;
     }
 
@@ -5173,22 +5383,88 @@ fn project_effect_parallel_fused<R: InterceptCoefficientRecorder>(
     Ok(())
 }
 
+fn parallel_level_chunk_size(levels: usize) -> usize {
+    let target_chunks = rayon::current_num_threads()
+        .saturating_mul(PARALLEL_LEVEL_CHUNKS_PER_THREAD)
+        .max(1);
+    levels.div_ceil(target_chunks).max(1)
+}
+
+fn fill_parallel_group_statistics(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    group_weights: &mut [f64],
+    means: &mut [f64],
+) -> Result<()> {
+    let levels = effect.n_levels();
+    let columns = values.ncols();
+    if group_weights.len() != levels
+        || means.len()
+            != levels
+                .checked_mul(columns)
+                .ok_or_else(|| allocation("borrowed MAP parallel group dimensions overflow"))?
+    {
+        return Err(invalid_argument(
+            "borrowed MAP parallel group workspaces are not aligned",
+        ));
+    }
+    let level_chunk = parallel_level_chunk_size(levels);
+    let mean_chunk = level_chunk
+        .checked_mul(columns)
+        .ok_or_else(|| allocation("borrowed MAP parallel level chunk dimensions overflow"))?;
+    group_weights
+        .par_chunks_mut(level_chunk)
+        .zip(means.par_chunks_mut(mean_chunk))
+        .enumerate()
+        .try_for_each(|(chunk, (group_weights, means))| -> Result<()> {
+            let first_level = chunk * level_chunk;
+            for (local_level, group_weight) in group_weights.iter_mut().enumerate() {
+                let level = first_level + local_level;
+                let start = local_level * columns;
+                let level_means = &mut means[start..start + columns];
+                if columns <= PARALLEL_GROUP_MAX_RHS {
+                    *group_weight =
+                        fused_group_means_for_level(effect, level, weights, values, level_means)?;
+                } else {
+                    let members = effect.level_index().checked_members(level)?;
+                    if members.is_empty() {
+                        return Err(invalid_argument(
+                            "borrowed MAP effect contains an empty final level",
+                        ));
+                    }
+                    *group_weight = group_weight_sum(members, weights, values.nrows())?;
+                    for (rhs, mean) in level_means.iter_mut().enumerate() {
+                        *mean = group_mean_for_column_with_weight(
+                            members,
+                            rhs,
+                            weights,
+                            *group_weight,
+                            values,
+                        )?;
+                    }
+                }
+            }
+            Ok(())
+        })
+}
+
 fn fused_group_means_for_level(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     level: usize,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
     means: &mut [f64],
-) -> Result<()> {
+) -> Result<f64> {
     let members = effect.level_index().checked_members(level)?;
-    if members.is_empty() || means.len() > FUSED_PARALLEL_MAX_RHS {
+    if members.is_empty() || means.len() > PARALLEL_GROUP_MAX_RHS {
         return Err(invalid_argument(
             "borrowed MAP fused group dimensions are invalid",
         ));
     }
-    let mut scales = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
-    let mut sums = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
-    let mut corrections = [0.0_f64; FUSED_PARALLEL_MAX_RHS];
+    let mut scales = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    let mut sums = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    let mut corrections = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
     for &observation in members {
@@ -5255,7 +5531,7 @@ fn fused_group_means_for_level(
         }
         means[rhs] = mean;
     }
-    Ok(())
+    Ok(total_weight)
 }
 
 fn record_parallel_group_means<R: InterceptCoefficientRecorder>(
@@ -5450,23 +5726,22 @@ fn certify_with_current_norms(
         workspace.rhs_scales[rhs] = scale;
     }
 
-    if design.effects().len() == 1
+    let maximum_levels = design
+        .effects()
+        .iter()
+        .map(crate::fe::BorrowedInterceptEffect::n_levels)
+        .max()
+        .unwrap_or(0);
+    let maximum_mean_count = maximum_levels
+        .checked_mul(residuals.ncols())
+        .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
+    if !design.effects().is_empty()
         && residuals.nrows() >= PARALLEL_PROJECTION_MIN_ROWS
         && rayon::current_num_threads() > 1
-        && workspace.parallel_group_weights.len() >= design.effects()[0].n_levels()
-        && workspace.parallel_group_means.len()
-            >= design.effects()[0]
-                .n_levels()
-                .checked_mul(residuals.ncols())
-                .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?
+        && workspace.parallel_group_weights.len() >= maximum_levels
+        && workspace.parallel_group_means.len() >= maximum_mean_count
     {
-        return certify_one_effect_parallel(
-            &design.effects()[0],
-            weights,
-            residuals,
-            tolerance,
-            workspace,
-        );
+        return certify_effects_parallel(design, weights, residuals, tolerance, workspace);
     }
 
     let mut absolute_infinity_norm = 0.0_f64;
@@ -5549,97 +5824,79 @@ fn certify_with_current_norms(
     })
 }
 
-fn certify_one_effect_parallel(
-    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+fn certify_effects_parallel(
+    design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
     residuals: &DenseMatrix,
     tolerance: f64,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
-    let levels = effect.n_levels();
     let columns = residuals.ncols();
-    workspace.parallel_group_weights[..levels]
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(level, group_weight)| -> Result<()> {
-            let members = effect.level_index().checked_members(level)?;
-            if members.is_empty() {
-                return Err(invalid_argument(
-                    "borrowed MAP certificate contains an empty final level",
-                ));
-            }
-            *group_weight = group_weight_sum(members, weights, residuals.nrows())?;
-            Ok(())
-        })?;
-    let group_weights = &workspace.parallel_group_weights[..levels];
-    let means = &mut workspace.parallel_group_means[..levels * columns];
-    means
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(slot, mean)| -> Result<()> {
-            let level = slot / columns;
-            let rhs = slot % columns;
-            let members = effect.level_index().checked_members(level)?;
-            *mean = group_mean_for_column_with_weight(
-                members,
-                rhs,
-                weights,
-                group_weights[level],
-                residuals,
-            )?;
-            Ok(())
-        })?;
-
     let mut absolute_infinity_norm = 0.0_f64;
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
     let mut relative_count = 0_usize;
-    for level in 0..levels {
-        let group_weight = group_weights[level];
-        let root_group_weight = group_weight.sqrt();
-        if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
-            return Err(invalid_data(
-                "borrowed MAP certificate group weight is invalid",
-            ));
-        }
-        for rhs in 0..columns {
-            let mean = means[level * columns + rhs];
-            let denominator = workspace.rhs_scales[rhs];
-            let relative = if denominator == 0.0 {
-                if mean == 0.0 {
-                    0.0
-                } else {
-                    return Err(invalid_data(
-                        "borrowed MAP zero-scale certificate has a nonzero moment",
-                    ));
-                }
-            } else {
-                (mean.abs() / denominator) * root_group_weight
-            };
-            if !relative.is_finite() {
-                return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
-            }
-            relative_infinity_norm = relative_infinity_norm.max(relative);
-            workspace.rhs_relative_infinity_norms[rhs] =
-                workspace.rhs_relative_infinity_norms[rhs].max(relative);
-            relative_square_sum = relative.mul_add(relative, relative_square_sum);
-            if !relative_square_sum.is_finite() {
+    for effect in design.effects() {
+        let levels = effect.n_levels();
+        let mean_count = levels
+            .checked_mul(columns)
+            .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
+        fill_parallel_group_statistics(
+            effect,
+            weights,
+            residuals,
+            &mut workspace.parallel_group_weights[..levels],
+            &mut workspace.parallel_group_means[..mean_count],
+        )?;
+        let group_weights = &workspace.parallel_group_weights[..levels];
+        let means = &workspace.parallel_group_means[..mean_count];
+        for level in 0..levels {
+            let group_weight = group_weights[level];
+            let root_group_weight = group_weight.sqrt();
+            if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
                 return Err(invalid_data(
-                    "borrowed MAP certificate two-norm accumulation is not finite",
+                    "borrowed MAP certificate group weight is invalid",
                 ));
             }
-            relative_count = relative_count
-                .checked_add(1)
-                .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
-            let normalized_moment = mean.abs() * group_weight;
-            let raw_moment = normalized_moment * weights.raw_scale;
-            absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
-                raw_moment
-            } else if normalized_moment == 0.0 {
-                0.0
-            } else {
-                f64::INFINITY
-            });
+            for rhs in 0..columns {
+                let mean = means[level * columns + rhs];
+                let denominator = workspace.rhs_scales[rhs];
+                let relative = if denominator == 0.0 {
+                    if mean == 0.0 {
+                        0.0
+                    } else {
+                        return Err(invalid_data(
+                            "borrowed MAP zero-scale certificate has a nonzero moment",
+                        ));
+                    }
+                } else {
+                    (mean.abs() / denominator) * root_group_weight
+                };
+                if !relative.is_finite() {
+                    return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
+                }
+                relative_infinity_norm = relative_infinity_norm.max(relative);
+                workspace.rhs_relative_infinity_norms[rhs] =
+                    workspace.rhs_relative_infinity_norms[rhs].max(relative);
+                relative_square_sum = relative.mul_add(relative, relative_square_sum);
+                if !relative_square_sum.is_finite() {
+                    return Err(invalid_data(
+                        "borrowed MAP certificate two-norm accumulation is not finite",
+                    ));
+                }
+                relative_count = relative_count
+                    .checked_add(1)
+                    .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
+                let normalized_moment = mean.abs() * group_weight;
+                let raw_moment = normalized_moment * weights.raw_scale;
+                absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
+                    raw_moment
+                } else if normalized_moment == 0.0 {
+                    0.0
+                } else {
+                    f64::INFINITY
+                });
+            }
         }
     }
     let relative_two_norm = if relative_count == 0 {
@@ -6315,6 +6572,7 @@ fn certified_solver_result(
         certificate,
         setup_seconds,
         solve_seconds,
+        certification_seconds: 0.0,
         fallback_used: false,
         requested_preconditioner: None,
         used_preconditioner: None,
@@ -6511,6 +6769,64 @@ mod tests {
     }
 
     #[test]
+    fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally() {
+        let first_codes = [0_u32, 0, 1, 1, 2, 2, 0, 1, 2];
+        let second_codes = [0_u32, 1, 0, 1, 0, 1, 2, 2, 2];
+        let first_index = LevelIndex::from_codes(&first_codes, 3).expect("first index");
+        let second_index = LevelIndex::from_codes(&second_codes, 3).expect("second index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, 3, &first_index)
+            .expect("first source");
+        let second = ValidatedBorrowedInterceptSource::new(&second_codes, 3, &second_index)
+            .expect("second source");
+        let design = BorrowedInterceptFeDesign::new(
+            first_codes.len(),
+            vec![first.effect(), second.effect()],
+        )
+        .expect("design");
+        let columns = [
+            vec![1.0, 2.0, 4.0, 8.0, 3.0, 5.0, 9.0, 7.0, 6.0],
+            vec![2.0, -1.0, 3.0, 0.5, 4.0, 1.0, -2.0, 8.0, 6.0],
+        ];
+        let weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0, 6.0, 8.0, 9.0];
+        let mut reusable = ReusableCategoricalMapAbsorber::new(design, columns.len(), 1)
+            .expect("reusable projector");
+        reusable.enable_checkpoint_lsmr();
+
+        inject_checkpoint_lsmr_certificate_failure();
+        let fallback = reusable
+            .absorb(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).expect("fallback values"),
+                config(),
+            )
+            .expect("certified MAP fallback");
+        assert_eq!(fallback.report().requested_solver, FeSolverKind::Lsmr);
+        assert_eq!(fallback.report().used_solver, FeSolverKind::Map);
+        assert!(fallback.report().fallback_used);
+        assert!(fallback.report().certified());
+
+        let accelerated = reusable
+            .absorb(
+                BorrowedMapWeights::Provided(&weights),
+                DenseMatrix::from_columns(&columns).expect("accelerated values"),
+                config(),
+            )
+            .expect("recertified LSMR checkpoint");
+        assert_eq!(accelerated.report().requested_solver, FeSolverKind::Lsmr);
+        assert_eq!(accelerated.report().used_solver, FeSolverKind::Lsmr);
+        assert!(!accelerated.report().fallback_used);
+        assert!(accelerated.report().certification_seconds >= 0.0);
+        for (&left, &right) in accelerated
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(fallback.residualized().as_slice())
+        {
+            assert!((left - right).abs() <= 5e-10, "{left} != {right}");
+        }
+    }
+
+    #[test]
     fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
         let rows = 256_usize;
         let first_levels = 80_usize;
@@ -6579,6 +6895,65 @@ mod tests {
             .zip(oracle.residualized().as_slice())
         {
             assert!((left - right).abs() <= 5e-11, "{left} != {right}");
+        }
+    }
+
+    #[test]
+    fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
+        let rows = TWO_FE_PCG_PARALLEL_MIN_ROWS;
+        let first_levels = 1_024;
+        let second_levels = 997;
+        let first_codes = (0..rows)
+            .map(|row| (row % first_levels) as u32)
+            .collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|row| ((7 * row + row / first_levels) % second_levels) as u32)
+            .collect::<Vec<_>>();
+        let first_index = LevelIndex::from_codes(&first_codes, first_levels).expect("first index");
+        let second_index =
+            LevelIndex::from_codes(&second_codes, second_levels).expect("second index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, first_levels, &first_index)
+            .expect("first source");
+        let second =
+            ValidatedBorrowedInterceptSource::new(&second_codes, second_levels, &second_index)
+                .expect("second source");
+        let design = BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
+            .expect("design");
+        let raw_weights = (0..rows)
+            .map(|row| 1.0 + (row % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
+        let weights =
+            validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).expect("weights");
+        let build = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    let mut reservation = SystemWorkspaceReservation;
+                    let mut graph =
+                        TwoFePcgWorkspace::new(&design, 11, &mut reservation).expect("graph");
+                    let left_codes = design.effects()[graph.left_effect].codes();
+                    let right_codes = design.effects()[graph.right_effect].codes();
+                    for row in 0..rows {
+                        let weight = weights.normalized(row);
+                        graph.left_weights[left_codes[row] as usize] += weight;
+                        graph.right_weights[right_codes[row] as usize] += weight;
+                    }
+                    for (index, direction) in graph.direction.iter_mut().enumerate() {
+                        *direction = ((17 * index % 101) as f64 - 50.0) / 37.0;
+                    }
+                    graph
+                        .apply_schur(&design, weights, 11, 11)
+                        .expect("Schur operator");
+                    graph
+                })
+        };
+        let serial = build(1);
+        for threads in [2, 4, 8, 16] {
+            let parallel = build(threads);
+            assert_eq!(serial.left_work, parallel.left_work);
+            assert_eq!(serial.operator, parallel.operator);
         }
     }
 
@@ -6871,6 +7246,79 @@ mod tests {
                 serial.report().fallback_used,
                 parallel.report().fallback_used
             );
+        }
+    }
+
+    #[test]
+    fn large_wide_three_fe_projection_and_certificate_are_bit_stable() {
+        let observations = 50_000;
+        assert!(observations >= PARALLEL_PROJECTION_MIN_ROWS);
+        let level_counts = [4_096, 2_048, 1_024];
+        let code_sets = level_counts
+            .iter()
+            .map(|&levels| {
+                (0..observations)
+                    .map(|row| (row % levels) as u32)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let indexes = code_sets
+            .iter()
+            .zip(level_counts)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).expect("index"))
+            .collect::<Vec<_>>();
+        let sources = code_sets
+            .iter()
+            .zip(indexes.iter())
+            .zip(level_counts)
+            .map(|((codes, index), levels)| {
+                ValidatedBorrowedInterceptSource::new(codes, levels, index).expect("source")
+            })
+            .collect::<Vec<_>>();
+        let design = BorrowedInterceptFeDesign::new(
+            observations,
+            sources.iter().map(|source| source.effect()).collect(),
+        )
+        .expect("design");
+        let columns = (0..11)
+            .map(|column| {
+                (0..observations)
+                    .map(|row| {
+                        let centered = (row % 97) as f64 - 48.0;
+                        centered.mul_add(
+                            column as f64 + 0.5,
+                            ((row * (column + 3)) % 4_099) as f64 / 17.0,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let weights = (0..observations)
+            .map(|row| 1.0 + (row % 11) as f64 / 13.0)
+            .collect::<Vec<_>>();
+
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    absorb_borrowed_intercept_map_certified(
+                        &design,
+                        BorrowedMapWeights::Provided(&weights),
+                        DenseMatrix::from_columns(&columns).expect("matrix"),
+                        config(),
+                    )
+                    .expect("certified wide projection")
+                })
+        };
+        let serial = run(1);
+        for threads in [2, 4, 8, 16] {
+            let parallel = run(threads);
+            assert_eq!(serial.residualized(), parallel.residualized());
+            assert_eq!(serial.report().iterations, parallel.report().iterations);
+            assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
+            assert_eq!(serial.report().certificate, parallel.report().certificate);
         }
     }
 

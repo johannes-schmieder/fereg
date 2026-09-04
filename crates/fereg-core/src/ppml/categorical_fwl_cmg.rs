@@ -24,7 +24,6 @@ use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::categorical_fwl_lsmr::pivoted_cholesky_solve;
 use super::categorical_lsmr::JointLsmrCertificate;
 use super::PpmlIterationWorkspace;
 
@@ -230,6 +229,10 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     fitted_without_offset: Vec<f64>,
     team: InstalledThreadTeam,
     config: FusedFwlCmgConfig,
+    /// Ratio learned from the preceding independent projection certificate.
+    /// This only targets the CMG recurrence; certification always uses the
+    /// caller's requested tolerance.
+    projection_tolerance_scale: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -463,6 +466,7 @@ impl ReusableCategoricalFwlCmg {
             fitted_without_offset: fallible_filled(rows, 0.0, "fused PPML CMG fitted predictor")?,
             team,
             config,
+            projection_tolerance_scale: 1.0,
         })
     }
 
@@ -525,8 +529,9 @@ impl ReusableCategoricalFwlCmg {
             }
         }
         self.fill_full_projection_input(working_response);
+        let first_tolerance = (tolerance * self.projection_tolerance_scale).max(1e-14);
         let mut map = self.config.map;
-        map.tolerance = tolerance;
+        map.tolerance = first_tolerance;
         let cmg_config = self.cmg_config(map);
         let borrowed = prepared.fit_borrowed_cmg_design()?;
         let mut absorber = CmgAbsorber::build_unpolished_prepared(
@@ -535,7 +540,7 @@ impl ReusableCategoricalFwlCmg {
             cmg_config,
             &mut self.prepared_topology,
         )?;
-        let first = absorber.project_unpolished(&mut self.projected, tolerance)?;
+        let first = absorber.project_unpolished(&mut self.projected, first_tolerance)?;
         diagnostics.observe_projection(first);
         let certification_started = Instant::now();
         let projection_certificate =
@@ -564,16 +569,21 @@ impl ReusableCategoricalFwlCmg {
         TOTAL_RETRIED_RIGHT_HAND_SIDES
             .set(TOTAL_RETRIED_RIGHT_HAND_SIDES.get().saturating_add(failed));
         let mut retry_report = None;
-        let effective_tolerance = (tolerance * 0.01).max(1e-14);
+        let retry_tolerance = (first_tolerance * 0.01).max(1e-14);
         if failed > 0 {
+            // The independent per-RHS certificate has demonstrated that the
+            // recurrence's stopping scale was insufficient on this changing-
+            // weight topology. Reuse that information on the next frame so
+            // the routine does not systematically solve every RHS twice.
+            self.projection_tolerance_scale = (self.projection_tolerance_scale * 0.01).max(1e-8);
             diagnostics.retries = diagnostics.retries.saturating_add(failed);
             self.fill_retry_projection_input(working_response)?;
             let report = if fe_design.effects().len() == 2 {
-                absorber.project_unpolished(&mut self.retry, effective_tolerance)?
+                absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             } else {
                 drop(absorber);
                 let mut retry_map = self.config.map;
-                retry_map.tolerance = effective_tolerance;
+                retry_map.tolerance = retry_tolerance;
                 let retry_borrowed = prepared.fit_borrowed_cmg_design()?;
                 let retry_config = self.cmg_config(retry_map);
                 let mut retry_absorber = CmgAbsorber::build_unpolished_prepared(
@@ -582,7 +592,7 @@ impl ReusableCategoricalFwlCmg {
                     retry_config,
                     &mut self.prepared_topology,
                 )?;
-                retry_absorber.project_unpolished(&mut self.retry, effective_tolerance)?
+                retry_absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             };
             diagnostics.observe_projection(report);
             let certification_started = Instant::now();
@@ -684,9 +694,9 @@ impl ReusableCategoricalFwlCmg {
         Ok(FusedFwlCmgReport {
             iterations,
             effective_tolerance: if failed == 0 {
-                tolerance
+                first_tolerance
             } else {
-                effective_tolerance
+                retry_tolerance
             },
             setup_seconds,
             solve_seconds,
@@ -1316,6 +1326,100 @@ impl ScaledSquareSum {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn pivoted_cholesky_solve(
+    gram: &mut [f64],
+    rhs: &mut [f64],
+    factor: &mut [f64],
+    forward: &mut [f64],
+    solution: &mut [f64],
+    permutation: &mut [usize],
+    pivot_guard: f64,
+) -> Result<()> {
+    let dimension = rhs.len();
+    if gram.len() != dimension.saturating_mul(dimension)
+        || factor.len() != gram.len()
+        || forward.len() != dimension
+        || solution.len() != dimension
+        || permutation.len() != dimension
+    {
+        return Err(invalid_argument(
+            "fused PPML CMG finite workspace dimensions are inconsistent",
+        ));
+    }
+    factor.fill(0.0);
+    for (position, value) in permutation.iter_mut().enumerate() {
+        *value = position;
+    }
+    for step in 0..dimension {
+        let mut pivot = step;
+        for candidate in (step + 1)..dimension {
+            if gram[candidate * dimension + candidate] > gram[pivot * dimension + pivot] {
+                pivot = candidate;
+            }
+        }
+        if pivot != step {
+            for column in 0..dimension {
+                gram.swap(step * dimension + column, pivot * dimension + column);
+            }
+            for row in 0..dimension {
+                gram.swap(row * dimension + step, row * dimension + pivot);
+            }
+            rhs.swap(step, pivot);
+            permutation.swap(step, pivot);
+            for column in 0..step {
+                factor.swap(step * dimension + column, pivot * dimension + column);
+            }
+        }
+        let pivot_value = gram[step * dimension + step];
+        if !pivot_value.is_finite() || pivot_value <= pivot_guard {
+            return Err(nonconvergence(
+                "fused PPML CMG active finite basis lost rank",
+            ));
+        }
+        let diagonal = pivot_value.sqrt();
+        factor[step * dimension + step] = diagonal;
+        for row in (step + 1)..dimension {
+            factor[row * dimension + step] = gram[row * dimension + step] / diagonal;
+        }
+        for row in (step + 1)..dimension {
+            for column in row..dimension {
+                let value = gram[column * dimension + row]
+                    - factor[row * dimension + step] * factor[column * dimension + step];
+                if !value.is_finite() {
+                    return Err(nonconvergence(
+                        "fused PPML CMG Cholesky update is nonfinite",
+                    ));
+                }
+                gram[column * dimension + row] = value;
+                gram[row * dimension + column] = value;
+            }
+        }
+    }
+    for row in 0..dimension {
+        let mut value = rhs[row];
+        for column in 0..row {
+            value -= factor[row * dimension + column] * forward[column];
+        }
+        forward[row] = value / factor[row * dimension + row];
+    }
+    for row in (0..dimension).rev() {
+        let mut value = forward[row];
+        for column in (row + 1)..dimension {
+            value -= factor[column * dimension + row] * solution[column];
+        }
+        solution[row] = value / factor[row * dimension + row];
+    }
+    if forward
+        .iter()
+        .chain(solution.iter())
+        .any(|value| !value.is_finite())
+    {
+        return Err(nonconvergence("fused PPML CMG Cholesky solve is nonfinite"));
+    }
+    Ok(())
+}
+
 fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
@@ -1357,6 +1461,32 @@ fn nonconvergence(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn pivoted_cholesky_recovers_a_permuted_spd_system() {
+        let mut gram = vec![1.0, 0.5, 0.5, 4.0];
+        let mut rhs = vec![2.0, 9.0];
+        let mut factor = vec![0.0; 4];
+        let mut forward = vec![0.0; 2];
+        let mut solution = vec![0.0; 2];
+        let mut permutation = vec![0; 2];
+        pivoted_cholesky_solve(
+            &mut gram,
+            &mut rhs,
+            &mut factor,
+            &mut forward,
+            &mut solution,
+            &mut permutation,
+            1e-14,
+        )
+        .expect("solve");
+        let mut canonical = [0.0; 2];
+        for position in 0..2 {
+            canonical[permutation[position]] = solution[position];
+        }
+        assert!((canonical[0] - 14.0 / 15.0).abs() <= 1e-12);
+        assert!((canonical[1] - 32.0 / 15.0).abs() <= 1e-12);
+    }
 
     fn certificate_design(first: &[u32], second: &[u32]) -> FeDesign {
         FeDesign::new(

@@ -120,6 +120,7 @@ pub fn absorb_lsmr(
             normal_equation_residual: 0.0,
             setup_seconds: 0.0,
             solve_seconds: 0.0,
+            certification_seconds: 0.0,
             fallback_used: false,
             requested_preconditioner: Some(config.preconditioner),
             used_preconditioner: Some(resolve_preconditioner_kind(design, config.preconditioner)),
@@ -262,6 +263,7 @@ pub fn absorb_lsmr(
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
         setup_seconds: solved.time_setup,
         solve_seconds: solved.time_solve.iter().copied().sum(),
+        certification_seconds: 0.0,
         fallback_used: preconditioner_fallback,
         requested_preconditioner: Some(config.preconditioner),
         used_preconditioner: Some(if preconditioner_fallback {

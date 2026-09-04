@@ -713,9 +713,14 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `solver_shadow'[1,5] == 3 local solver_engine_effective "lsmr_joint"
     if `solver_shadow'[1,5] == 4 local solver_engine_effective "cmg_prepared"
     local solver_checkpoint "map"
+    if `solver_shadow'[1,6] == 3 local solver_checkpoint "lsmr"
     local solver_fallback_reason "none"
     if `solver_shadow'[4,12] == 1 ///
         local solver_fallback_reason "cmg_numerical_nonconvergence"
+    if `solver_shadow'[1,12] == 2 ///
+        local solver_fallback_reason "checkpoint_lsmr_numerical_nonconvergence"
+    if `solver_shadow'[1,12] == 3 | `solver_shadow'[4,12] == 3 ///
+        local solver_fallback_reason "cmg_and_checkpoint_numerical_nonconvergence"
 
     // The native result tables carry enough identity to prove that the
     // rebased FE/cluster topology is still the parser-owned declaration.  Do
@@ -960,7 +965,9 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     ereturn scalar feppml_linear_route = `runtime_shadow'[7,1]
     ereturn scalar feppml_fallback_mask = `runtime_shadow'[8,1]
     ereturn scalar feppml_fallback_count = `runtime_shadow'[9,1]
-    ereturn scalar feppml_solver_fallback_count = `solver_shadow'[4,11]
+    ereturn scalar feppml_solver_fallback_count = ///
+        `solver_shadow'[1,11] + `solver_shadow'[2,11] + ///
+        `solver_shadow'[3,11] + `solver_shadow'[4,11]
     ereturn scalar feppml_requested_threads = `runtime_shadow'[10,1]
     ereturn scalar feppml_threads = `runtime_shadow'[11,1]
     ereturn scalar feppml_memory_fast_bytes = `runtime_shadow'[12,1]
@@ -1448,7 +1455,7 @@ program define _fereg_eppml_validate, rclass
        !inlist(`effective_family', 2, 3, 7) | ///
        !inlist(`selected_engine', 1, 2, 3, 4) | ///
        !inlist(`effective_engine', 1, 2, 3, 4) | ///
-       `checkpoint_family' != 2 {
+       !inlist(`checkpoint_family', 2, 3) {
         di as error "PPML solver report has an invalid route identity"
         exit 3499
     }
@@ -1457,6 +1464,7 @@ program define _fereg_eppml_validate, rclass
        (`selected_family' == 2 & `selected_engine' != 1) | ///
        (`selected_family' == 3 & !inlist(`selected_engine', 2, 3)) | ///
        (`selected_family' == 7 & `selected_engine' != 4) | ///
+       (`checkpoint_family' == 3 & !inlist(`selected_family', 3, 7)) | ///
        (`effective_family' == 2 & `effective_engine' != 1) | ///
        (`effective_family' == 3 & ///
             (!inlist(`effective_engine', 2, 3) | `effective_engine' != `selected_engine')) | ///
@@ -1486,7 +1494,7 @@ program define _fereg_eppml_validate, rclass
                 exit 3499
             }
         }
-        if !inlist(`solver'[`row',12], 0, 1) | ///
+        if !inlist(`solver'[`row',12], 0, 1, 2, 3) | ///
            (`solver'[`row',11] == 0) != (`solver'[`row',12] == 0) | ///
            `solver'[`row',14] >= . | `solver'[`row',14] < 0 | ///
            `solver'[`row',15] >= . | `solver'[`row',15] < 0 | ///
@@ -1501,7 +1509,8 @@ program define _fereg_eppml_validate, rclass
             }
         }
         local frame_count = `solver'[`row',8] + `solver'[`row',9]
-        local engine_observed = (`row' == 1 | `row' == `selected_engine')
+        local engine_observed = (`row' == 1 | `row' == `selected_engine' | ///
+            (`row' == 2 & `checkpoint_family' == 3))
         if !`engine_observed' {
             forvalues column = 8/16 {
                 if `solver'[`row',`column'] != 0 {
@@ -1518,21 +1527,28 @@ program define _fereg_eppml_validate, rclass
                 }
             }
         }
-        local failed_cmg_attempt = (`row' == 4 & `solver'[`row',11] == 1 & ///
-            `solver'[`row',12] == 1)
-        if `frame_count' > 0 & !`failed_cmg_attempt' & ///
+        local failed_attempt = (`solver'[`row',11] > 0)
+        if `frame_count' > 0 & !`failed_attempt' & ///
            (`solver'[`row',17] >= . | `solver'[`row',18] >= . | ///
             `solver'[`row',19] >= .) {
             di as error "PPML observed solver engine lacks certificate maxima"
             exit 3499
         }
     }
-    if `solver'[1,11] != 0 | `solver'[1,12] != 0 | ///
+    if (`solver'[1,12] == 1) | `solver'[4,12] == 2 | ///
        `solver'[2,11] != 0 | `solver'[2,12] != 0 | ///
        `solver'[3,11] != 0 | `solver'[3,12] != 0 | ///
        `solver'[4,11] > 1 | ///
        (`solver'[4,12] == 1 & ///
-            (`selected_family' != 7 | `effective_family' != 2 | `effective_engine' != 1)) {
+            (`selected_family' != 7 | `effective_family' != 2 | `effective_engine' != 1)) | ///
+       (`solver'[1,12] == 2 & ///
+            (`checkpoint_family' != 3 | `effective_family' != `selected_family' | ///
+             `effective_engine' != `selected_engine')) | ///
+       (`solver'[1,12] == 3 & ///
+            (`checkpoint_family' != 3 | `selected_family' != 7 | ///
+             `effective_family' != 2 | `effective_engine' != 1)) | ///
+       (`solver'[1,12] == 3 & `solver'[4,12] != 3) | ///
+       (`solver'[4,12] == 3 & `solver'[1,12] != 3) {
         di as error "PPML solver fallback evidence is inconsistent"
         exit 3499
     }
@@ -2104,7 +2120,8 @@ program define _fereg_eppml_validate, rclass
        `runtime'[2,1] != `fit'[14,1] | `runtime'[3,1] != `fit'[15,1] | ///
        `runtime'[4,1] != `fit'[16,1] | ///
        `runtime'[5,1] != `memorycode' | !inlist(`runtime'[6,1], 1, 2) | ///
-       `runtime'[7,1] != `checkpoint_family' | ///
+       (`checkpoint_family' == 2 & `runtime'[7,1] != 2) | ///
+       (`checkpoint_family' == 3 & !inlist(`runtime'[7,1], 2, 3)) | ///
        `runtime'[8,1] != int(`runtime'[8,1]) | `runtime'[8,1] < 0 | ///
        `runtime'[9,1] != int(`runtime'[9,1]) | `runtime'[9,1] < 0 | ///
        `runtime'[10,1] != `requestedthreads' | ///

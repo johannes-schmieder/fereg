@@ -371,6 +371,8 @@ pub(crate) struct StrictLinearCandidateTransaction<
     session: &'session mut CertifiedLinearSession<'prepared, P>,
     rollback: Option<StrictLinearRollbackState>,
     basis_unchanged: bool,
+    #[cfg(test)]
+    fused_projection: bool,
 }
 
 impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_, '_, P> {
@@ -380,6 +382,11 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_,
 
     pub(crate) const fn basis_unchanged(&self) -> bool {
         self.basis_unchanged
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn used_fused_projection_for_test(&self) -> bool {
+        self.fused_projection
     }
 
     pub(crate) fn commit(mut self) {
@@ -1174,6 +1181,12 @@ impl ReusableLinearMapProjector<'_> {
         matches!(self, Self::PpmlCategorical { .. })
     }
 
+    fn enable_checkpoint_lsmr(&mut self) {
+        if let Self::PpmlCategorical { projector, .. } = self {
+            projector.enable_checkpoint_lsmr();
+        }
+    }
+
     fn absorb(
         &mut self,
         raw_weights: BorrowedMapWeights<'_>,
@@ -1630,6 +1643,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.solve(LinearSessionSolveKind::Fresh)
     }
 
+    pub(crate) fn enable_checkpoint_lsmr(&mut self) {
+        if let Some(projector) = self.fe_projector.as_mut() {
+            projector.enable_checkpoint_lsmr();
+        }
+    }
+
     /// Solve after a response or weight refresh, reusing or re-projecting the
     /// retained within design when its generation tags permit it.
     #[cfg(test)]
@@ -1761,6 +1780,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let stage = installed_team.install(|| {
             self.prepare_retained_solve(LinearSessionSolveKind::Strict, Some(&active_positions))
         })?;
+        #[cfg(test)]
+        let fused_projection = stage.response_fused_with_design;
         let prior_certificate = stage.candidate.prior_basis_certificate.ok_or_else(|| {
             invalid_data("strict weighted-linear prior basis could not be recertified")
         })?;
@@ -1805,6 +1826,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             session: self,
             rollback: Some(rollback),
             basis_unchanged,
+            #[cfg(test)]
+            fused_projection,
         };
         // Every fallible operation from this point is protected by the guard:
         // dropping `transaction` restores the concrete current-weight prior
@@ -2002,6 +2025,72 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
+    /// Refresh one response/weight frame while advancing an already-aligned
+    /// retained design to the new generation when every weight-scale field and
+    /// raw weight bit is unchanged. This exact identity is the only condition
+    /// under which a later strict solve may reuse weighted design products.
+    pub(crate) fn refresh_frame(
+        &mut self,
+        response: &[f64],
+        weights: BorrowedMapWeights<'_>,
+        bread_weight_scale: super::PreparedOlsBreadWeightScale,
+        generation: u64,
+    ) -> Result<bool> {
+        let identical_weights = self.weights_exactly_match(weights, bread_weight_scale);
+        if identical_weights {
+            require_newer(self.generations.weights, generation, "weight")?;
+        }
+        let prior_weight_generation = self.generations.weights;
+        self.refresh_response(response, generation)?;
+        if identical_weights {
+            self.generations.weights = generation;
+            if let Some(within) = self.within.as_mut() {
+                if within.generations.sample == self.generations.sample
+                    && within.generations.topology == self.generations.topology
+                    && within.generations.weights == prior_weight_generation
+                {
+                    within.generations.weights = generation;
+                }
+            }
+            self.pending_weight_buffer_reused = true;
+        } else {
+            self.refresh_weights(weights, bread_weight_scale, generation)?;
+        }
+        Ok(identical_weights)
+    }
+
+    fn weights_exactly_match(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        bread_weight_scale: super::PreparedOlsBreadWeightScale,
+    ) -> bool {
+        let scale_matches = self.bread_weight_scale.weight_kind == bread_weight_scale.weight_kind
+            && self.bread_weight_scale.solver_weight_divisor.to_bits()
+                == bread_weight_scale.solver_weight_divisor.to_bits()
+            && self
+                .bread_weight_scale
+                .reference_weight_multiplier
+                .to_bits()
+                == bread_weight_scale.reference_weight_multiplier.to_bits()
+            && self.bread_weight_scale.reference_weight_sum.to_bits()
+                == bread_weight_scale.reference_weight_sum.to_bits();
+        scale_matches
+            && match (&self.weights, weights) {
+                (OwnedLinearWeights::Unit, BorrowedMapWeights::Unit) => true,
+                (
+                    OwnedLinearWeights::Provided(current),
+                    BorrowedMapWeights::Provided(candidate),
+                ) => {
+                    current.len() == candidate.len()
+                        && current
+                            .iter()
+                            .zip(candidate)
+                            .all(|(left, right)| left.to_bits() == right.to_bits())
+                }
+                _ => false,
+            }
+    }
+
     /// Authorize a new canonical rank decision and invalidate all products
     /// whose dimensions or coordinate identities depend on that decision.
     #[cfg(test)]
@@ -2100,7 +2189,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             phase_probe.map(|_| &mut phase_allocation),
             LinearSessionAllocationPhase::Projection,
         );
-
+        #[cfg(test)]
+        let mut response_fused_with_design = false;
         let (within_response, absorption_report) = if self.within.is_none() {
             let (within, response, absorption_report) = self.build_full_retained_design()?;
             self.within = Some(within);
@@ -2126,7 +2216,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     ));
                 }
                 report.warm_projection_attempted = true;
-                if self.config.absorb.solver == FeSolverKind::Map {
+                let mut fused_response_report = None;
+                if self.config.absorb.solver == FeSolverKind::Map
+                    && self
+                        .fe_projector
+                        .as_ref()
+                        .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+                {
+                    report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
+                    let (reused, fused_report) =
+                        self.reproject_retained_with_response_in_place()?;
+                    report.fe_projection_workspace_reused &= reused;
+                    fused_response_report = Some(fused_report);
+                    #[cfg(test)]
+                    {
+                        response_fused_with_design = true;
+                    }
+                } else if self.config.absorb.solver == FeSolverKind::Map {
                     report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
                     report.fe_projection_workspace_reused &=
                         self.reproject_retained_within_in_place()?;
@@ -2135,12 +2241,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
                 self.refresh_retained_norms()?;
                 report.warm_projection_certified = true;
+                report.within_design_reused = true;
+                if let Some(fused_report) = fused_response_report {
+                    (
+                        std::mem::take(&mut self.frozen_workspace.response),
+                        fused_report,
+                    )
+                } else {
+                    self.absorb_current_response()?
+                }
             } else {
                 report.fe_projection_workspace_reused =
                     self.config.absorb.solver == FeSolverKind::Map;
+                report.within_design_reused = true;
+                self.absorb_current_response()?
             }
-            report.within_design_reused = true;
-            self.absorb_current_response()?
         };
         drop(projection_phase);
         let projection_seconds = projection_started.elapsed().as_secs_f64();
@@ -2188,6 +2303,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             candidate,
             candidate_basis,
             report,
+            #[cfg(test)]
+            response_fused_with_design,
         })
     }
 
@@ -2199,6 +2316,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             candidate,
             candidate_basis,
             mut report,
+            ..
         } = stage;
         if let Some(basis) = &self.frozen_basis {
             if !basis.matches(&candidate.fit) {
@@ -4692,6 +4810,8 @@ struct RetainedSolveStage {
     candidate: RetainedRankSolveDraft,
     candidate_basis: Option<FrozenLinearBasis>,
     report: LinearSessionReuseReport,
+    #[cfg(test)]
+    response_fused_with_design: bool,
 }
 
 #[allow(clippy::too_many_arguments)]

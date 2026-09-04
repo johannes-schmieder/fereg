@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "manifest_id": "feppml_solver_development_v2",
+  "schema_version": 3,
+  "manifest_id": "feppml_solver_development_v3",
   "status": "development_only",
   "qualification_eligible": false,
   "auto_calibration": false,
@@ -10,7 +10,7 @@
     "request_wire": "1.5",
     "result_wire": "1.2",
     "action_protocol": "1.5",
-    "development_result_table": "2.5"
+    "development_result_table": "2.6"
   },
   "solvers": [
     {"id": "map", "option": "map", "route_code": 2},
@@ -43,7 +43,7 @@
       "preserve_default_mismatch": true
     },
     "public_state_kkt": {
-      "id": "independent_public_state_kkt_v2",
+      "id": "independent_public_state_kkt_v3",
       "timed": false,
       "invoke_only_after_default_and_strict_coefficient_mismatch": true,
       "candidate_solver": "map",
@@ -53,7 +53,9 @@
       "candidate_objective_replay_atol": 1e-10,
       "reference_public_state_objective_replay_rtol": 1e-8,
       "reference_public_state_objective_replay_atol": 1e-10,
-      "reference_objective_source": "best_certified_feasible_state",
+      "authoritative_reference_objective_source": "reported_fit",
+      "additional_objective_witness": "raw_prediction_if_modelspace_feasible_and_stationary",
+      "projected_state_role": "diagnostic_only",
       "objective_invariant_rtol": 1e-12,
       "objective_invariant_atol": 1e-8,
       "objective_dominance_rtol": 1e-8,
@@ -81,7 +83,7 @@
           "projected_objective": 7
         }
       },
-      "both_reference_states_must_fail_score_tolerance": true,
+      "indeterminate_or_nonstationary_reference_state_role": "diagnostic_only",
       "preserve_default_and_strict_mismatches": true
     }
   },

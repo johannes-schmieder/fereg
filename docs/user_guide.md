@@ -51,11 +51,15 @@ Concrete LSMR preconditioner and reuse choices remain internal and are not
 additional command options.
 LSMR initially supports at least two categorical intercept effects and CMG
 exactly two or three. Both retain the full PPML output surface, including
-saved fixed effects recovered from the final MAP-owned Hessian, and require
-fast-memory execution; a recognized request outside that envelope returns
-`r(498)`. Numerical CMG nonconvergence falls back
-permanently and visibly to MAP. Other CMG errors and every LSMR error remain
-fatal. `e(feppml_solver)` and the accompanying macros distinguish requested,
+saved fixed effects recovered from the accepted canonical final-Hessian state,
+and require fast-memory execution; a recognized request outside that envelope
+returns `r(498)`. Numerical CMG nonconvergence falls back permanently and
+visibly to MAP for ordinary frames. On these explicit families, strict and
+final-Hessian projection uses current-weight LSMR at the native large-projection
+threshold and only after independent canonical recertification; smaller fits
+retain MAP checkpoints. Numerical failure visibly retries the untouched
+checkpoint through MAP, while other errors remain fatal.
+`e(feppml_solver)` and the accompanying macros distinguish requested,
 selected, concrete, effective, checkpoint, and fallback identities.
 
 ### OLS model and inference options

@@ -277,11 +277,12 @@ forvalues row = 1/4 {
     assert e(feppml_solver)[`row',2] == 7
     assert e(feppml_solver)[`row',3] == 4
     assert inlist(e(feppml_solver)[`row',4], 2, 7)
-    assert e(feppml_solver)[`row',6] == 2
+    assert e(feppml_solver)[`row',6] == 3
     assert e(feppml_solver)[`row',7] == `row'
 }
-assert e(feppml_solver)[4,11] == e(feppml_solver_fallback_count)
-assert e(feppml_linear_route) == 2
+assert e(feppml_solver)[1,11] + e(feppml_solver)[4,11] == ///
+    e(feppml_solver_fallback_count)
+assert inlist(e(feppml_linear_route), 2, 3)
 
 `feppml_test_command' y c.x, solver(map)
 assert `"`e(solver)'"' == "map"

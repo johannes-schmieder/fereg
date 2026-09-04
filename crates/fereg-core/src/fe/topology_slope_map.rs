@@ -2979,6 +2979,7 @@ fn finish(
             certificate,
             setup_seconds,
             solve_seconds,
+            certification_seconds: 0.0,
             fallback_used: false,
             requested_preconditioner: None,
             used_preconditioner: None,

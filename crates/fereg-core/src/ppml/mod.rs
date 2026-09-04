@@ -5,7 +5,6 @@
 //! success additionally requires independently recomputed finite and FE scores.
 
 mod categorical_fwl_cmg;
-mod categorical_fwl_lsmr;
 mod categorical_lsmr;
 mod certificate;
 mod family;

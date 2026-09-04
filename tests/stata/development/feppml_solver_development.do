@@ -252,7 +252,8 @@ file write output "arm" _tab "repetition" _tab "rc" _tab "timed" _tab "seconds" 
     "selected_engine_code" _tab "effective_engine_code" _tab ///
     "fallback_count" _tab "effective_threads" _tab "b_names" _tab "b_values" _tab ///
     "v_names" _tab "v_values" _tab "certificate_values" _tab "runtime_values" _tab ///
-    "reference_acceleration" _tab "reference_transform" _n
+    "solver_matrix_values" _tab "reference_acceleration" _tab ///
+    "reference_transform" _n
 forvalues repetition = 1/`repetitions' {
     local timed = (`"`arm'"' != "ppmlhdfe_strict")
     local seconds .
@@ -288,6 +289,7 @@ forvalues repetition = 1/`repetitions' {
     local v_values
     local certificate_values
     local runtime_values
+    local solver_matrix_values
     local reference_acceleration
     local reference_transform
     if !`rc' {
@@ -315,6 +317,10 @@ forvalues repetition = 1/`repetitions' {
         if !_rc mata: st_local("certificate_values", invtokens(strofreal(vec(st_matrix("__certificate"))', "%21.17e")))
         capture matrix __runtime = e(feppml_runtime)
         if !_rc mata: st_local("runtime_values", invtokens(strofreal(vec(st_matrix("__runtime"))', "%21.17e")))
+        if inlist(`"`arm'"', "map", "lsmr", "cmg") {
+            capture matrix __solver = e(feppml_solver)
+            if !_rc mata: st_local("solver_matrix_values", invtokens(strofreal(vec(st_matrix("__solver")')', "%21.17e")))
+        }
         if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_strict") {
             local reference_acceleration "conjugate_gradient"
             local reference_transform "symmetric_kaczmarz"
@@ -329,7 +335,8 @@ forvalues repetition = 1/`repetitions' {
         %21.17e (`effective_engine_code') _tab %21.17e (`fallback_count') _tab ///
         %21.17e (`effective_threads') _tab `"`b_names'"' _tab `"`b_values'"' _tab ///
         `"`v_names'"' _tab `"`v_values'"' _tab `"`certificate_values'"' _tab ///
-        `"`runtime_values'"' _tab `"`reference_acceleration'"' _tab ///
+        `"`runtime_values'"' _tab `"`solver_matrix_values'"' _tab ///
+        `"`reference_acceleration'"' _tab ///
         `"`reference_transform'"' _n
     if `rc' {
         file close output

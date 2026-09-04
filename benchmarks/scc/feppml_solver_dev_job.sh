@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #$ -P welfgr
-#$ -N feppml_solver_v2
+#$ -N feppml_solver_v3
 #$ -pe omp 28
 #$ -l h_rt=03:00:00
 #$ -l mem_per_core=4G

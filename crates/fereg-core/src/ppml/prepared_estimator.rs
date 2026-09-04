@@ -210,7 +210,8 @@ pub fn fit_prepared_ppml_interruptible(
             "PPML FE-recovery allocation injection requires a requested saved fixed effect",
         ));
     }
-    // Saved effects are recovered once from the final MAP-owned Hessian.
+    // Saved effects are recovered once from the accepted canonical Hessian;
+    // the projector that computed it is not itself scientific authority.
     // Retaining FE coefficients throughout IRLS would disable the borrowed
     // categorical MAP fast lane for every preceding frame.
     request.ppml.absorb.retain_coefficients = false;
@@ -1552,6 +1553,40 @@ mod tests {
     }
 
     #[test]
+    fn zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity() {
+        for effects in [2, 3] {
+            let (baseline_request, mut baseline_loaded) =
+                fixture(effects, false, false, false, false, false);
+            make_finite_control_collinear_with_first_effect(&mut baseline_loaded);
+            let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
+                .expect("rank-zero production MAP PPML oracle");
+
+            let (mut request, mut loaded) = fixture(effects, false, false, false, false, false);
+            make_finite_control_collinear_with_first_effect(&mut loaded);
+            request.solver = PpmlSolverFamily::Lsmr;
+            request.memory.requested = MemoryMode::Fast;
+            reset_canonical_frame_refresh_count();
+            let candidate = fit_prepared_ppml(request, loaded)
+                .expect("rank-zero public LSMR PPML through reusable joint state");
+            let canonical_refreshes = take_canonical_frame_refresh_count();
+
+            assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
+            assert_eq!(candidate.solver().selected, PpmlSolverFamily::Lsmr);
+            assert_eq!(
+                candidate.solver().selected_engine,
+                super::super::PpmlSolverEngine::LsmrFused,
+            );
+            assert_specialized_route_skips_ordinary_canonical_refresh(
+                &candidate,
+                canonical_refreshes,
+                super::super::PpmlSolverEngine::LsmrFused,
+            );
+            assert_eq!(candidate.solver().engines()[2].ordinary_frames, 0);
+            assert_ppml_results_close(&candidate, &baseline);
+        }
+    }
+
+    #[test]
     fn three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh() {
         let (mut request, loaded) = fixture(3, false, false, false, false, false);
         request.solver = PpmlSolverFamily::Lsmr;
@@ -1562,6 +1597,25 @@ mod tests {
         assert!(candidate.convergence().converged);
         assert!(candidate.convergence().strict_profile_rejections >= 1);
         assert!(candidate.solver().engines()[2].ordinary_frames > 0);
+    }
+
+    #[test]
+    fn zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh() {
+        let (mut request, mut loaded) = fixture(3, false, false, false, false, false);
+        make_finite_control_collinear_with_first_effect(&mut loaded);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        super::super::prepared_irls::inject_strict_basis_change(true, false);
+        let candidate = fit_prepared_ppml(request, loaded)
+            .expect("zero-active-control LSMR must survive a strict basis refresh");
+        assert!(candidate.convergence().converged);
+        assert!(candidate.convergence().strict_profile_rejections >= 1);
+        assert_eq!(
+            candidate.solver().selected_engine,
+            super::super::PpmlSolverEngine::LsmrFused,
+        );
+        assert!(candidate.solver().engines()[1].ordinary_frames > 0);
+        assert_eq!(candidate.solver().engines()[2].ordinary_frames, 0);
     }
 
     #[test]
@@ -1639,7 +1693,10 @@ mod tests {
             candidate.memory().fallback_mask & (1_u32 << PpmlFallbackKind::Route as u8),
             0,
         );
-        assert_eq!(candidate.memory().linear_route, Some(FeSolverKind::Map));
+        assert!(matches!(
+            candidate.memory().linear_route,
+            Some(FeSolverKind::Map | FeSolverKind::Lsmr)
+        ));
         assert_eq!(candidate.solver().requested, PpmlSolverFamily::Cmg);
         assert_eq!(candidate.solver().effective, PpmlSolverFamily::Map);
         assert_eq!(candidate.solver().fallback_count, 1);
@@ -1688,7 +1745,10 @@ mod tests {
             take_cmg_early_memory_peaks().expect("CMG early memory peaks");
         let base = admitted.memory().plan.selected_inventory().peak_bytes;
         let solver = admitted.memory().plan.solver_workspace_bytes;
-        assert_eq!(solver, complete);
+        assert_eq!(
+            solver, complete,
+            "the small fixture remains below the independent checkpoint-work threshold"
+        );
         assert!(complete > topology_only);
         let usable = base
             .checked_add(topology_only)
@@ -1770,8 +1830,10 @@ mod tests {
         assert_eq!(
             canonical_refreshes.saturating_add(1),
             map.checkpoint_frames,
-            "only post-initial MAP checkpoints may refresh the canonical frame",
+            "every canonical checkpoint is attributed to its computing engine",
         );
+        assert!(map.checkpoint_frames >= 1, "the initial frame remains MAP");
+        assert_eq!(solver.checkpoint, PpmlSolverFamily::Map);
     }
 
     fn assert_ppml_results_close(candidate: &CertifiedPpmlResult, baseline: &CertifiedPpmlResult) {
@@ -2825,6 +2887,11 @@ mod tests {
             },
         };
         (request, loaded)
+    }
+
+    fn make_finite_control_collinear_with_first_effect(loaded: &mut LoadedPpmlInput) {
+        loaded.ols.numeric_sources[0].1 =
+            column(&[1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 5.0, 6.0, 6.0]);
     }
 
     fn saved_slope_fixture() -> (PreparedPpmlRequestV1, LoadedPpmlInput) {

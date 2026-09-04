@@ -1,8 +1,8 @@
 //! Public PPML solver-family identity and bounded execution diagnostics.
 //!
-//! PPML keeps MAP as its canonical checkpoint authority.  The public LSMR
-//! and CMG families may accelerate ordinary IRLS frames, so their identity
-//! must be reported separately from the final MAP-owned Hessian state.
+//! PPML keeps one canonical independently certified checkpoint session. The
+//! initial frame is MAP; explicit specialized families may use current-weight
+//! LSMR to compute later checkpoint projections before canonical recertification.
 
 use crate::error::{ErrorCode, FeregError, Result};
 
@@ -83,6 +83,8 @@ impl PpmlSolverEngine {
 pub enum PpmlSolverFallbackReason {
     None = 0,
     CmgNumericalNonconvergence = 1,
+    CheckpointLsmrNumericalNonconvergence = 2,
+    CmgAndCheckpointNumericalNonconvergence = 3,
 }
 
 impl PpmlSolverFallbackReason {
@@ -96,6 +98,12 @@ impl PpmlSolverFallbackReason {
         match self {
             Self::None => "none",
             Self::CmgNumericalNonconvergence => "cmg_numerical_nonconvergence",
+            Self::CheckpointLsmrNumericalNonconvergence => {
+                "checkpoint_lsmr_numerical_nonconvergence"
+            }
+            Self::CmgAndCheckpointNumericalNonconvergence => {
+                "cmg_and_checkpoint_numerical_nonconvergence"
+            }
         }
     }
 }
@@ -207,6 +215,10 @@ impl PpmlSolverReport {
         &self.engines
     }
 
+    pub(crate) fn enable_lsmr_checkpoint(&mut self) {
+        self.checkpoint = PpmlSolverFamily::Lsmr;
+    }
+
     pub(crate) fn observe(&mut self, observation: PpmlSolverObservation) -> Result<()> {
         observation.validate()?;
         let row = &mut self.engines[observation.engine.index()];
@@ -258,9 +270,46 @@ impl PpmlSolverReport {
             &mut self.engines[PpmlSolverEngine::CmgPrepared.index()].fallback_count,
             1,
         )?;
-        self.fallback_reason = PpmlSolverFallbackReason::CmgNumericalNonconvergence;
+        self.fallback_reason = match self.fallback_reason {
+            PpmlSolverFallbackReason::None => PpmlSolverFallbackReason::CmgNumericalNonconvergence,
+            PpmlSolverFallbackReason::CheckpointLsmrNumericalNonconvergence => {
+                PpmlSolverFallbackReason::CmgAndCheckpointNumericalNonconvergence
+            }
+            reason => reason,
+        };
         self.effective = PpmlSolverFamily::Map;
         self.effective_engine = PpmlSolverEngine::Map;
+        Ok(())
+    }
+
+    pub(crate) fn record_checkpoint_lsmr_fallback(
+        &mut self,
+        fallback: PpmlSolverObservation,
+    ) -> Result<()> {
+        if self.checkpoint != PpmlSolverFamily::Lsmr
+            || fallback.engine != PpmlSolverEngine::Map
+            || fallback.frame != PpmlSolverFrameKind::Checkpoint
+        {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "PPML checkpoint fallback lacks its certified MAP observation",
+            ));
+        }
+        self.observe(fallback)?;
+        increment(&mut self.fallback_count, 1)?;
+        increment(
+            &mut self.engines[PpmlSolverEngine::Map.index()].fallback_count,
+            1,
+        )?;
+        self.fallback_reason = match self.fallback_reason {
+            PpmlSolverFallbackReason::None => {
+                PpmlSolverFallbackReason::CheckpointLsmrNumericalNonconvergence
+            }
+            PpmlSolverFallbackReason::CmgNumericalNonconvergence => {
+                PpmlSolverFallbackReason::CmgAndCheckpointNumericalNonconvergence
+            }
+            reason => reason,
+        };
         Ok(())
     }
 
@@ -274,7 +323,15 @@ impl PpmlSolverReport {
             || self.selected_engine.family() != self.selected
             || self.effective == PpmlSolverFamily::Auto
             || self.effective_engine.family() != self.effective
-            || self.checkpoint != PpmlSolverFamily::Map
+            || !matches!(
+                self.checkpoint,
+                PpmlSolverFamily::Map | PpmlSolverFamily::Lsmr
+            )
+            || (self.checkpoint == PpmlSolverFamily::Lsmr
+                && !matches!(
+                    self.selected,
+                    PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
+                ))
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -358,6 +415,40 @@ impl PpmlSolverReport {
                     return Err(FeregError::new(
                         ErrorCode::Internal,
                         "PPML CMG fallback identity is inconsistent",
+                    ));
+                }
+            }
+            PpmlSolverFallbackReason::CheckpointLsmrNumericalNonconvergence => {
+                if self.checkpoint != PpmlSolverFamily::Lsmr
+                    || self.effective != self.selected
+                    || self.effective_engine != self.selected_engine
+                    || self.fallback_count == 0
+                    || self.engines[PpmlSolverEngine::Map.index()].fallback_count
+                        != self.fallback_count
+                {
+                    return Err(FeregError::new(
+                        ErrorCode::Internal,
+                        "PPML checkpoint LSMR fallback identity is inconsistent",
+                    ));
+                }
+            }
+            PpmlSolverFallbackReason::CmgAndCheckpointNumericalNonconvergence => {
+                let cmg_fallbacks =
+                    self.engines[PpmlSolverEngine::CmgPrepared.index()].fallback_count;
+                let checkpoint_fallbacks =
+                    self.engines[PpmlSolverEngine::Map.index()].fallback_count;
+                if self.selected != PpmlSolverFamily::Cmg
+                    || self.selected_engine != PpmlSolverEngine::CmgPrepared
+                    || self.checkpoint != PpmlSolverFamily::Lsmr
+                    || self.effective != PpmlSolverFamily::Map
+                    || self.effective_engine != PpmlSolverEngine::Map
+                    || cmg_fallbacks == 0
+                    || checkpoint_fallbacks == 0
+                    || cmg_fallbacks.saturating_add(checkpoint_fallbacks) != self.fallback_count
+                {
+                    return Err(FeregError::new(
+                        ErrorCode::Internal,
+                        "PPML combined CMG/checkpoint fallback identity is inconsistent",
                     ));
                 }
             }
@@ -454,6 +545,66 @@ mod tests {
         let plan = PpmlSolverPlan::new(PpmlSolverFamily::Lsmr);
         assert_eq!(plan.selected_engine(0), PpmlSolverEngine::LsmrFused);
         assert_eq!(plan.selected_engine(1), PpmlSolverEngine::LsmrJoint);
+    }
+
+    #[test]
+    fn certified_lsmr_checkpoint_has_independent_engine_identity() {
+        let plan = PpmlSolverPlan::new(PpmlSolverFamily::Cmg);
+        let mut report = PpmlSolverReport::new(plan, PpmlSolverEngine::CmgPrepared);
+        report.enable_lsmr_checkpoint();
+        report
+            .observe(PpmlSolverObservation {
+                engine: PpmlSolverEngine::LsmrFused,
+                frame: PpmlSolverFrameKind::Checkpoint,
+                retries: 0,
+                iterations: 41,
+                setup_seconds: 0.02,
+                solve_seconds: 0.03,
+                certification_seconds: 0.01,
+                absolute_infinity_norm: Some(1e-13),
+                relative_infinity_norm: Some(2e-13),
+                relative_two_norm: Some(3e-13),
+                normal_equation: Some(4e-13),
+                projection_absolute_infinity_norm: None,
+                backward_error: None,
+            })
+            .expect("checkpoint observation");
+        report.validate().expect("certified checkpoint identity");
+        assert_eq!(report.checkpoint, PpmlSolverFamily::Lsmr);
+        assert_eq!(report.effective, PpmlSolverFamily::Cmg);
+        assert_eq!(report.engines()[1].checkpoint_frames, 1);
+    }
+
+    #[test]
+    fn checkpoint_lsmr_numerical_fallback_is_row_local_and_nonpermanent() {
+        let plan = PpmlSolverPlan::new(PpmlSolverFamily::Lsmr);
+        let mut report = PpmlSolverReport::new(plan, PpmlSolverEngine::LsmrJoint);
+        report.enable_lsmr_checkpoint();
+        report
+            .record_checkpoint_lsmr_fallback(PpmlSolverObservation {
+                engine: PpmlSolverEngine::Map,
+                frame: PpmlSolverFrameKind::Checkpoint,
+                retries: 1,
+                iterations: 117,
+                setup_seconds: 0.02,
+                solve_seconds: 0.05,
+                certification_seconds: 0.01,
+                absolute_infinity_norm: Some(1e-13),
+                relative_infinity_norm: Some(2e-13),
+                relative_two_norm: Some(3e-13),
+                normal_equation: Some(4e-13),
+                projection_absolute_infinity_norm: None,
+                backward_error: None,
+            })
+            .expect("checkpoint fallback");
+        report.validate().expect("fallback checkpoint identity");
+        assert_eq!(report.effective, PpmlSolverFamily::Lsmr);
+        assert_eq!(report.fallback_count, 1);
+        assert_eq!(report.engines()[0].fallback_count, 1);
+        assert_eq!(
+            report.fallback_reason,
+            PpmlSolverFallbackReason::CheckpointLsmrNumericalNonconvergence
+        );
     }
 
     #[test]

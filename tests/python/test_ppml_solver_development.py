@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/ppml_solver_development.py"
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v2.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v3.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 
 SPEC = importlib.util.spec_from_file_location("ppml_solver_development", SCRIPT)
@@ -51,6 +51,9 @@ def result_row(scope: dict[str, object], arm: str, repetition: int) -> dict[str,
         "v_values": [0.01],
         "certificate_values": [1.0] * 16 if solver else [],
         "runtime_values": [0.0] * 108 if solver else [],
+        "solver_matrix_values": (
+            [float(value) for value in range(1, 89)] if solver else []
+        ),
         "reference_acceleration": "conjugate_gradient" if not solver else "",
         "reference_transform": "symmetric_kaczmarz" if not solver else "",
     }
@@ -62,7 +65,7 @@ def adjudicator_row(scope: dict[str, object], source: dict[str, object]) -> dict
         "implementation": "adjudicator", "arm_type": "adjudicator",
         "arm": DEVELOPMENT.ADJUDICATOR, "repetition": 1, "timed": False,
         "seconds": None, "reference_acceleration": "conjugate_gradient",
-        "reference_transform": "symmetric_kaczmarz",
+        "reference_transform": "symmetric_kaczmarz", "solver_matrix_values": [],
     }
 
 
@@ -251,7 +254,7 @@ def run_document() -> dict[str, object]:
         metadata, str(scope["topology"]), DEVELOPMENT.load_manifest(),
     )
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "kind": "feppml_solver_development_run",
         "manifest": {
             "path": str(MANIFEST),
@@ -334,12 +337,22 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertEqual(adjudication["strict_reference"]["itolerance"], 1e-12)
         self.assertEqual(
             adjudication["public_state_kkt"]["id"],
-            "independent_public_state_kkt_v2",
+            "independent_public_state_kkt_v3",
         )
         self.assertEqual(adjudication["public_state_kkt"]["score_tolerance"], 1e-8)
         self.assertEqual(
-            adjudication["public_state_kkt"]["reference_objective_source"],
-            "best_certified_feasible_state",
+            adjudication["public_state_kkt"][
+                "authoritative_reference_objective_source"
+            ],
+            "reported_fit",
+        )
+        self.assertEqual(
+            adjudication["public_state_kkt"]["additional_objective_witness"],
+            "raw_prediction_if_modelspace_feasible_and_stationary",
+        )
+        self.assertEqual(
+            adjudication["public_state_kkt"]["projected_state_role"],
+            "diagnostic_only",
         )
         projection = adjudication["public_state_kkt"]["model_space_projection"]
         self.assertEqual(projection["algorithm"], "scaled_cgls_v1")
@@ -349,12 +362,17 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertNotIn("candidate_routes", serialized)
         self.assertNotIn("trace_schema", serialized)
         self.assertNotIn("timed_trace", serialized)
-        self.assertEqual(manifest["protocols"]["development_result_table"], "2.5")
+        self.assertEqual(manifest["protocols"]["development_result_table"], "2.6")
 
         stale_binding = run_document()
         stale_binding["manifest"]["sha256"] = "0" * 64
         with self.assertRaises(DEVELOPMENT.DevelopmentError):
             DEVELOPMENT.analyze_document(stale_binding)
+
+        stale_schema = run_document()
+        stale_schema["schema_version"] = 2
+        with self.assertRaises(DEVELOPMENT.DevelopmentError):
+            DEVELOPMENT.analyze_document(stale_schema)
 
     def test_solver_eligibility_uses_the_prepared_cmg_core_order_and_cap(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -483,6 +501,32 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         failed = DEVELOPMENT.analyze_document(sample)
         self.assertFalse(failed["science_pass"])
         self.assertTrue(any("sample_differs_from_metadata" in item for item in failed["science_failures"]))
+
+        truncated_solver_matrix = run_document()
+        solver_row = next(
+            row for row in truncated_solver_matrix["records"]
+            if row["arm"] == "lsmr"
+        )
+        solver_row["solver_matrix_values"].pop()
+        failed = DEVELOPMENT.analyze_document(truncated_solver_matrix)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "candidate:lsmr:1:solver_matrix" in item
+            for item in failed["science_failures"]
+        ))
+
+        comparator_solver_matrix = run_document()
+        comparator_row = next(
+            row for row in comparator_solver_matrix["records"]
+            if row["arm"] == "ppmlhdfe"
+        )
+        comparator_row["solver_matrix_values"] = [0.0] * 88
+        failed = DEVELOPMENT.analyze_document(comparator_solver_matrix)
+        self.assertFalse(failed["science_pass"])
+        self.assertTrue(any(
+            "reference:ppmlhdfe:1:unexpected_solver_matrix" in item
+            for item in failed["science_failures"]
+        ))
 
     def test_local_profiles_are_bounded_and_campaign_is_16_bundled_tasks(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
@@ -662,6 +706,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         strict_metrics["recomputed_ll"] = -9.999
         strict_metrics["recomputed_deviance"] = 1.998
         strict_metrics.update({
+            "score_relinf": 1e-9,
+            "score_rel2": 1e-9,
             "modelspace_status_code": 3.0,
             "modelspace_resid_maxabs": 2e-5,
             "modelspace_resid_rms": 1e-5,
@@ -669,11 +715,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         })
         rebind_public_state_audit(off_space_reference)
         off_space_analysis = DEVELOPMENT.analyze_document(off_space_reference)
-        self.assertFalse(off_space_analysis["science_pass"])
-        self.assertTrue(any(
-            "ppmlhdfe_strict_modelspace_indeterminate" in issue
-            for issue in off_space_analysis["science_failures"]
-        ))
+        self.assertTrue(off_space_analysis["science_pass"])
         objective = next(
             row for row in off_space_analysis["public_state_objective_diagnostics"]
             if row["arm"] == DEVELOPMENT.ADJUDICATOR
@@ -690,6 +732,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         ][DEVELOPMENT.ADJUDICATOR]
         feasible_metrics["recomputed_ll"] = -9.999
         feasible_metrics["recomputed_deviance"] = 1.998
+        feasible_metrics["score_relinf"] = 1e-9
+        feasible_metrics["score_rel2"] = 1e-9
         rebind_public_state_audit(feasible_better_reference)
         feasible_better_analysis = DEVELOPMENT.analyze_document(feasible_better_reference)
         self.assertFalse(feasible_better_analysis["science_pass"])
@@ -697,19 +741,27 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             "candidate_ll_worse" in issue or "candidate_deviance_worse" in issue
             for issue in feasible_better_analysis["science_failures"]
         ))
+        witness = next(
+            row for row in feasible_better_analysis[
+                "public_state_objective_diagnostics"
+            ]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        self.assertEqual(witness["comparison_source"], "raw_public_state")
+        self.assertEqual(witness["comparison_ll"], -9.999)
 
-        indeterminate_reference = copy.deepcopy(document)
-        indeterminate_metrics = indeterminate_reference["public_state_adjudications"][0][
+        failed_projection = copy.deepcopy(document)
+        indeterminate_metrics = failed_projection["public_state_adjudications"][0][
             "metrics"
         ][DEVELOPMENT.ADJUDICATOR]
         indeterminate_metrics["modelspace_status_code"] = 3.0
         indeterminate_metrics["modelspace_breakdown_code"] = 5.0
-        rebind_public_state_audit(indeterminate_reference)
-        indeterminate_analysis = DEVELOPMENT.analyze_document(indeterminate_reference)
-        self.assertFalse(indeterminate_analysis["science_pass"])
+        rebind_public_state_audit(failed_projection)
+        projection_analysis = DEVELOPMENT.analyze_document(failed_projection)
+        self.assertFalse(projection_analysis["science_pass"])
         self.assertTrue(any(
             "ppmlhdfe_strict_invalid_metric" in issue
-            for issue in indeterminate_analysis["science_failures"]
+            for issue in projection_analysis["science_failures"]
         ))
 
         candidate_failure = copy.deepcopy(document)
@@ -723,12 +775,32 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
 
         reference_pass = copy.deepcopy(document)
         reference_pass["public_state_adjudications"][0]["metrics"]["ppmlhdfe_strict"]["score_relinf"] = 1e-9
-        failed = DEVELOPMENT.analyze_document(reference_pass)
-        self.assertFalse(failed["science_pass"])
-        self.assertTrue(any(
-            "score_certificate_passed" in issue
-            for issue in failed["science_failures"]
-        ))
+        rebind_public_state_audit(reference_pass)
+        stationary = DEVELOPMENT.analyze_document(reference_pass)
+        self.assertTrue(stationary["science_pass"])
+        strict_objective = next(
+            row for row in stationary["public_state_objective_diagnostics"]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        self.assertTrue(strict_objective["stationary"])
+        self.assertTrue(strict_objective["raw_public_state_eligible"])
+        self.assertIn("raw_public_state", strict_objective["eligible_sources"])
+
+        projected_better = copy.deepcopy(document)
+        projected_metrics = projected_better["public_state_adjudications"][0][
+            "metrics"
+        ][DEVELOPMENT.ADJUDICATOR]
+        projected_metrics["projected_ll"] = -9.999
+        projected_metrics["projected_deviance"] = 1.998
+        rebind_public_state_audit(projected_better)
+        projected_analysis = DEVELOPMENT.analyze_document(projected_better)
+        self.assertTrue(projected_analysis["science_pass"])
+        projected_objective = next(
+            row for row in projected_analysis["public_state_objective_diagnostics"]
+            if row["arm"] == DEVELOPMENT.ADJUDICATOR
+        )
+        self.assertFalse(projected_objective["projected_state_is_witness"])
+        self.assertNotIn("projected_public_state", projected_objective["eligible_sources"])
 
         noncoefficient = copy.deepcopy(document)
         strict_row = next(
@@ -793,6 +865,24 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             issues(missing_reported),
         )
 
+        negative_reported_deviance = copy.deepcopy(evidence)
+        negative_reported_deviance["fits"][DEVELOPMENT.ADJUDICATOR][
+            "deviance"
+        ] = -1.0
+        self.assertIn(
+            "ppmlhdfe_strict_reported_objective_invalid",
+            issues(negative_reported_deviance),
+        )
+
+        inconsistent_reported = copy.deepcopy(evidence)
+        inconsistent_reported["fits"][DEVELOPMENT.ADJUDICATOR][
+            "deviance"
+        ] = 2.1
+        self.assertIn(
+            "ppmlhdfe_strict_reported_objective_invariant",
+            issues(inconsistent_reported),
+        )
+
         inconsistent = copy.deepcopy(evidence)
         inconsistent["metrics"][DEVELOPMENT.ADJUDICATOR]["projected_deviance"] = 2.1
         self.assertIn(
@@ -808,7 +898,20 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
 
         indeterminate = copy.deepcopy(evidence)
         indeterminate["metrics"]["ppmlhdfe"]["modelspace_status_code"] = 3.0
-        self.assertIn("ppmlhdfe_invalid_metric", issues(indeterminate))
+        self.assertIn(
+            "ppmlhdfe_modelspace_classification", issues(indeterminate),
+        )
+
+        candidate_indeterminate = copy.deepcopy(evidence)
+        candidate_indeterminate["metrics"]["map"].update({
+            "modelspace_status_code": 3.0,
+            "modelspace_resid_maxabs": 2e-5,
+            "modelspace_resid_rms": 1e-5,
+            "modelspace_resid_relrms": 1e-5,
+        })
+        self.assertIn(
+            "candidate_modelspace_certificate", issues(candidate_indeterminate),
+        )
 
         self.assertIsNone(DEVELOPMENT._objective_pair(True, 2.0))
         self.assertIsNone(DEVELOPMENT._objective_pair(-10.0, -1.0))
@@ -982,8 +1085,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             "inner_iterations", "route_code", "selected_engine_code",
             "effective_engine_code", "fallback_count", "effective_threads",
             "b_names", "b_values", "v_names", "v_values",
-            "certificate_values", "runtime_values", "reference_acceleration",
-            "reference_transform",
+            "certificate_values", "runtime_values", "solver_matrix_values",
+            "reference_acceleration", "reference_transform",
         ]
         row = {field: "" for field in fields}
         row.update({
@@ -1015,6 +1118,32 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
                 writer.writerow(row)
             with self.assertRaises(DEVELOPMENT.DevelopmentError):
                 DEVELOPMENT.parse_table(path, scope, "adjudicator")
+
+            row.update({
+                "arm": "lsmr", "timed": "1", "seconds": "0.25",
+                "reference_acceleration": "", "reference_transform": "",
+                "solver_matrix_values": " ".join(str(value) for value in range(1, 89)),
+            })
+            with path.open("w", encoding="utf-8", newline="") as target:
+                writer = csv.DictWriter(target, fieldnames=fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(row)
+            parsed = DEVELOPMENT.parse_table(path, scope, "candidate")
+            self.assertEqual(len(parsed[0]["solver_matrix_values"]), 88)
+            self.assertEqual(parsed[0]["solver_matrix_values"][:23], [
+                float(value) for value in range(1, 24)
+            ])
+            self.assertEqual(parsed[0]["solver_matrix_values"][-1], 88.0)
+
+            row["solver_matrix_values"] = " ".join(
+                str(value) for value in range(1, 88)
+            )
+            with path.open("w", encoding="utf-8", newline="") as target:
+                writer = csv.DictWriter(target, fieldnames=fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(row)
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT.parse_table(path, scope, "candidate")
 
     def test_exclusive_json_refuses_to_overwrite_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1070,6 +1199,8 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         self.assertIn("local route_command `\"`command' verbose(2)\"'", source)
         self.assertIn("FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS", source)
         self.assertIn("e(feppml_certificate)", source)
+        self.assertIn("matrix __solver = e(feppml_solver)", source)
+        self.assertIn('vec(st_matrix("__solver")\')\'', source)
         self.assertIn("e(feppml_solver)[1,4]", source)
         self.assertIn("e(feppml_solver)[1,3]", source)
         self.assertIn("e(feppml_solver)[1,5]", source)

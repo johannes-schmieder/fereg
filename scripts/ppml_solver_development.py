@@ -21,16 +21,19 @@ from typing import Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v2.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v3.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 KKT_DRIVER = ROOT / "tests/stata/development/feppml_public_state_kkt.do"
 SOLVERS = ("map", "lsmr", "cmg")
 COMPARATORS = ("ppmlhdfe",)
 ADJUDICATOR = "ppmlhdfe_strict"
-KKT_ADJUDICATOR = "independent_public_state_kkt_v2"
+KKT_ADJUDICATOR = "independent_public_state_kkt_v3"
 REFERENCE_ACCELERATION = "conjugate_gradient"
 REFERENCE_TRANSFORM = "symmetric_kaczmarz"
 ROUTE_CODES = {"map": 2, "lsmr": 3, "cmg": 7}
+SOLVER_REPORT_ROWS = 4
+SOLVER_REPORT_COLUMNS = 22
+SOLVER_REPORT_CELLS = SOLVER_REPORT_ROWS * SOLVER_REPORT_COLUMNS
 PUBLIC_STATE_METRICS = (
     "finite_score_absinf", "fe_score_absinf", "score_relinf", "score_rel2",
     "score_scale", "recomputed_ll", "recomputed_deviance", "min_mu", "max_mu",
@@ -46,7 +49,7 @@ SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
 RUN_ROOT = re.compile(r"^/projectnb/welfgr/fereg/dev/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 IMPLEMENTATION_FILES = (
-    "benchmarks/manifests/feppml_solver_development_v2.json",
+    "benchmarks/manifests/feppml_solver_development_v3.json",
     "benchmarks/scc/feppml_solver_dev_job.sh",
     "benchmarks/scc/feppml_solver_dev_setup_job.sh",
     "benchmarks/scc/feppml_solver_dev_collector_job.sh",
@@ -174,17 +177,17 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         "manifest",
     )
     if (
-        manifest["schema_version"] != 2
-        or manifest["manifest_id"] != "feppml_solver_development_v2"
+        manifest["schema_version"] != 3
+        or manifest["manifest_id"] != "feppml_solver_development_v3"
         or manifest["status"] != "development_only"
         or manifest["qualification_eligible"] is not False
         or manifest["auto_calibration"] is not False
         or manifest["public_command"] != "feppml"
     ):
-        raise DevelopmentError("invalid v2 development identity")
+        raise DevelopmentError("invalid v3 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
-        "development_result_table": "2.5",
+        "development_result_table": "2.6",
     }:
         raise DevelopmentError("stale protocol identity")
     solvers = manifest["solvers"]
@@ -231,7 +234,11 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
             "candidate_objective_replay_atol": 1e-10,
             "reference_public_state_objective_replay_rtol": 1e-8,
             "reference_public_state_objective_replay_atol": 1e-10,
-            "reference_objective_source": "best_certified_feasible_state",
+            "authoritative_reference_objective_source": "reported_fit",
+            "additional_objective_witness": (
+                "raw_prediction_if_modelspace_feasible_and_stationary"
+            ),
+            "projected_state_role": "diagnostic_only",
             "objective_invariant_rtol": 1e-12,
             "objective_invariant_atol": 1e-8,
             "objective_dominance_rtol": 1e-8,
@@ -255,7 +262,9 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
                     "final_certificate": 6, "projected_objective": 7,
                 },
             },
-            "both_reference_states_must_fail_score_tolerance": True,
+            "indeterminate_or_nonstationary_reference_state_role": (
+                "diagnostic_only"
+            ),
             "preserve_default_and_strict_mismatches": True,
         },
     }:
@@ -611,13 +620,29 @@ def _optional_vector(value: str) -> list[float | None]:
     return [optional_float(item) for item in value.split()] if value.strip() else []
 
 
+def _valid_solver_matrix(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == SOLVER_REPORT_CELLS
+        and all(
+            item is None
+            or (
+                not isinstance(item, bool)
+                and isinstance(item, (int, float))
+                and math.isfinite(float(item))
+            )
+            for item in value
+        )
+    )
+
+
 def parse_table(path: Path, scope: Mapping[str, object], implementation: str) -> list[dict[str, object]]:
     required = {
         "arm", "repetition", "rc", "timed", "seconds", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
         "inner_iterations", "route_code", "selected_engine_code", "effective_engine_code",
         "fallback_count", "effective_threads", "b_names", "b_values", "v_names",
-        "v_values", "certificate_values", "runtime_values", "reference_acceleration",
-        "reference_transform",
+        "v_values", "certificate_values", "runtime_values", "solver_matrix_values",
+        "reference_acceleration", "reference_transform",
     }
     with path.open(encoding="utf-8", newline="") as source:
         reader = csv.DictReader(source, delimiter="\t")
@@ -648,6 +673,14 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             row["reference_acceleration"] or row["reference_transform"]
         ):
             raise DevelopmentError(f"unexpected reference route for {arm}")
+        solver_matrix_values = _optional_vector(row["solver_matrix_values"])
+        if arm in SOLVERS and int(row["rc"]) == 0:
+            if len(solver_matrix_values) != SOLVER_REPORT_CELLS:
+                raise DevelopmentError(
+                    f"successful {arm} result lacks its 4x22 solver matrix"
+                )
+        elif solver_matrix_values:
+            raise DevelopmentError(f"unexpected solver matrix for {arm}")
         output.append({
             **scope, "scope_id": str(scope["id"]), "implementation": implementation,
             "arm_type": (
@@ -666,6 +699,7 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             "effective_threads": optional_float(row["effective_threads"]), "b_names": row["b_names"].split(),
             "b_values": _float_vector(row["b_values"]), "v_names": row["v_names"].split(), "v_values": _float_vector(row["v_values"]),
             "certificate_values": _optional_vector(row["certificate_values"]), "runtime_values": _optional_vector(row["runtime_values"]),
+            "solver_matrix_values": solver_matrix_values,
             "reference_acceleration": row["reference_acceleration"],
             "reference_transform": row["reference_transform"],
         })
@@ -1105,7 +1139,7 @@ def execute_scopes(
     if references_before != references_after:
         raise DevelopmentError("pinned reference closure changed during execution")
     return {
-        "schema_version": 2, "kind": "feppml_solver_development_run", "qualification_eligible": False,
+        "schema_version": 3, "kind": "feppml_solver_development_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": {"path": str(MANIFEST), "sha256": sha256_file(MANIFEST)},
         "implementation": implementation_identity(), "repetitions": repetitions, "include_comparators": include_comparators,
         "include_oracle": include_oracle, "sources": sources, "artifacts": artifacts, "references": references_after,
@@ -1335,7 +1369,12 @@ def _reference_objective_diagnostic(
     fit: Mapping[str, object], metrics: Mapping[str, object],
     policy: Mapping[str, object],
 ) -> dict[str, object]:
-    if policy.get("reference_objective_source") != "best_certified_feasible_state":
+    if (
+        policy.get("authoritative_reference_objective_source") != "reported_fit"
+        or policy.get("additional_objective_witness")
+        != "raw_prediction_if_modelspace_feasible_and_stationary"
+        or policy.get("projected_state_role") != "diagnostic_only"
+    ):
         raise DevelopmentError("reference objective source contract changed")
     reported = _objective_pair(fit.get("ll"), fit.get("deviance"))
     public = _objective_pair(
@@ -1358,13 +1397,42 @@ def _reference_objective_diagnostic(
     status = _finite_float(metrics.get("modelspace_status_code"))
     breakdown = _finite_float(metrics.get("modelspace_breakdown_code"))
     feasible_code = float(policy["model_space_projection"]["status_codes"]["feasible"])
-    projection_certified = status == feasible_code and breakdown == 0.0
+    projection_policy = policy["model_space_projection"]
+    residual_relrms = _finite_float(metrics.get("modelspace_resid_relrms"))
+    normal_rel2 = _finite_float(metrics.get("modelspace_normal_rel2"))
+    normal_relinf = _finite_float(metrics.get("modelspace_normal_relinf"))
+    tail_relrms = _finite_float(metrics.get("modelspace_tail_relrms"))
+    recurrence_relrms = _finite_float(metrics.get("modelspace_recurrence_relrms"))
+    modelspace_feasible = (
+        status == feasible_code
+        and breakdown == 0.0
+        and residual_relrms is not None
+        and residual_relrms <= float(projection_policy["feasible_relrms_max"])
+        and normal_rel2 is not None
+        and normal_rel2 <= float(projection_policy["normal_rel2_final"])
+        and normal_relinf is not None
+        and normal_relinf <= float(projection_policy["normal_relinf_final"])
+        and tail_relrms is not None
+        and tail_relrms <= float(projection_policy["tail_relrms_max"])
+        and recurrence_relrms is not None
+        and recurrence_relrms <= float(projection_policy["recurrence_relrms_max"])
+    )
+    score_relinf = _finite_float(metrics.get("score_relinf"))
+    score_rel2 = _finite_float(metrics.get("score_rel2"))
+    score_tolerance = float(policy["score_tolerance"])
+    stationary = (
+        score_relinf is not None
+        and score_relinf >= 0.0
+        and score_relinf <= score_tolerance
+        and score_rel2 is not None
+        and score_rel2 >= 0.0
+        and score_rel2 <= score_tolerance
+    )
+    raw_public_state_eligible = modelspace_feasible and stationary and public is not None
     eligible: list[tuple[str, tuple[float, float]]] = []
     if reported is not None:
         eligible.append(("reported_fit", reported))
-    if projection_certified and projected is not None:
-        eligible.append(("projected_public_state", projected))
-    if status == feasible_code and breakdown == 0.0 and public is not None:
+    if raw_public_state_eligible and public is not None:
         eligible.append(("raw_public_state", public))
     selected = max(eligible, key=lambda item: item[1][0]) if eligible else None
     return {
@@ -1372,7 +1440,12 @@ def _reference_objective_diagnostic(
         "ll_replays_fit": ll_replays,
         "deviance_replays_fit": deviance_replays,
         "modelspace_status_code": status,
-        "raw_public_state_eligible": status == feasible_code and breakdown == 0.0,
+        "modelspace_feasible": modelspace_feasible,
+        "stationary": stationary,
+        "raw_public_state_eligible": raw_public_state_eligible,
+        "projected_state_is_witness": False,
+        "projected_ll": projected[0] if projected else None,
+        "projected_deviance": projected[1] if projected else None,
         "eligible_sources": [item[0] for item in eligible],
         "comparison_source": selected[0] if selected else None,
         "comparison_ll": selected[1][0] if selected else None,
@@ -1458,6 +1531,9 @@ def _public_state_kkt_issues(
             continue
         values = {field: float(value) for field, value in numeric.items() if value is not None}
         status = values["modelspace_status_code"]
+        allowed_status_codes = {
+            float(code) for code in projection_policy["status_codes"].values()
+        }
         if (
             values["finite_score_absinf"] < 0.0
             or values["fe_score_absinf"] < 0.0
@@ -1469,7 +1545,7 @@ def _public_state_kkt_issues(
             or values["max_mu"] < values["min_mu"]
             or values["modelspace_algorithm_code"] != expected_algorithm
             or values["modelspace_breakdown_code"] != 0.0
-            or status != feasible_code
+            or status not in allowed_status_codes
             or values["modelspace_iterations"] < 0.0
             or values["modelspace_iterations"] != int(values["modelspace_iterations"])
             or values["modelspace_iterations"] > float(projection_policy["max_iterations"])
@@ -1511,8 +1587,14 @@ def _public_state_kkt_issues(
             > float(projection_policy["feasible_relrms_max"])
         ):
             issues.append(f"{arm}_modelspace_classification")
-        if status != feasible_code:
-            issues.append(f"{arm}_modelspace_indeterminate")
+        if (
+            status != feasible_code
+            and values["modelspace_resid_relrms"]
+            <= float(projection_policy["feasible_relrms_max"])
+        ):
+            issues.append(f"{arm}_modelspace_classification")
+        if arm == "map" and status != feasible_code:
+            issues.append("candidate_modelspace_certificate")
     tolerance = float(policy["score_tolerance"])
     candidate_metrics = metrics["map"]
     if (
@@ -1520,13 +1602,6 @@ def _public_state_kkt_issues(
         or candidate_metrics["score_rel2"] > tolerance
     ):
         issues.append("candidate_score_certificate")
-    for arm in ("ppmlhdfe", ADJUDICATOR):
-        reference_metrics = metrics[arm]
-        if (
-            reference_metrics["score_relinf"] <= tolerance
-            and reference_metrics["score_rel2"] <= tolerance
-        ):
-            issues.append(f"{arm}_score_certificate_passed")
     replay_rtol = float(policy["candidate_objective_replay_rtol"])
     replay_atol = float(policy["candidate_objective_replay_atol"])
     for metric, fit_field in (
@@ -1598,8 +1673,8 @@ def _public_state_kkt_issues(
 
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
-    if document.get("schema_version") != 2 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
-        raise DevelopmentError("not a v2 solver-development run")
+    if document.get("schema_version") != 3 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
+        raise DevelopmentError("not a v3 solver-development run")
     if document.get("qualification_eligible") is not False or document.get("auto_calibration") is not False:
         raise DevelopmentError("development evidence cannot qualify or calibrate auto")
     manifest_receipt = document.get("manifest")
@@ -1706,6 +1781,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 or row.get("seconds") is not None
                 or row.get("reference_acceleration") != REFERENCE_ACCELERATION
                 or row.get("reference_transform") != REFERENCE_TRANSFORM
+                or row.get("solver_matrix_values") != []
                 or scope_id in adjudicators
             ):
                 failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:unexpected")
@@ -1736,6 +1812,14 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             continue
         if int(row["rc"]) == 0 and row.get("sample_n") != float(metadata_n_by_scope[key[0]]):
             failures.append(":".join(map(str, key)) + ":sample_differs_from_metadata")
+        solver_matrix = row.get("solver_matrix_values")
+        if solver_pair:
+            if int(row["rc"]) == 0 and not _valid_solver_matrix(solver_matrix):
+                failures.append(":".join(map(str, key)) + ":solver_matrix")
+            elif int(row["rc"]) != 0 and solver_matrix != []:
+                failures.append(":".join(map(str, key)) + ":failed_solver_matrix")
+        elif solver_matrix != []:
+            failures.append(":".join(map(str, key)) + ":unexpected_solver_matrix")
         if row.get("timed") is not True:
             failures.append(":".join(map(str, key)) + ":untimed")
         if key[2] in COMPARATORS:
@@ -2217,7 +2301,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:not_required_or_failed"
         )
     return {
-        "schema_version": 2, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
+        "schema_version": 3, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
         "reference_adjudications": reference_adjudications,
@@ -2293,7 +2377,7 @@ def prepare_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     }
     task_plan = {"tasks": campaign_tasks(manifest)}
     config = {
-        "schema_version": 2, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
+        "schema_version": 3, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
         "implementation": implementation, "candidate_root": str(candidate_root),
         "baseline_root": str(Path(args.baseline_root).resolve()) if args.baseline_root else None,
         "reference_root": str(Path(args.reference_root).resolve()), "stata": str(Path(args.stata).resolve()),
@@ -2325,7 +2409,7 @@ def record_setup(args: argparse.Namespace) -> None:
     if _source_fingerprint(sources["candidate"]) != _source_fingerprint(config["candidate_source"]):
         raise DevelopmentError("setup candidate source differs from preparation and local gates")
     receipt = {
-        "schema_version": 2, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
+        "schema_version": 3, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
         "manifest_sha256": config["manifest_sha256"], "implementation": implementation_identity(),
         "sources": sources,
         "artifacts": {name: artifact_identity(path) for name, path in repositories.items()},
@@ -2384,7 +2468,7 @@ def run_task(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError(f"task {identity['task_id']} failed science or route checks")
     receipt = {
-        "schema_version": 2, "kind": "feppml_solver_development_task", "task_identity": identity,
+        "schema_version": 3, "kind": "feppml_solver_development_task", "task_identity": identity,
         "bundle": task["bundle"], "scope_ids": [scope["id"] for scope in task["scopes"]],
         "run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(output / "analysis.json"),
         "source_identity": document["sources"], "artifact_identity": document["artifacts"],
@@ -2427,7 +2511,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if scopes != expected:
         raise DevelopmentError("merged task scope order or content differs")
     merged = {
-        "schema_version": 2, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
+        "schema_version": 3, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": documents[0]["manifest"], "implementation": documents[0]["implementation"],
         "repetitions": int(config["repetitions"]), "include_comparators": True, "include_oracle": False,
         "sources": documents[0]["sources"], "artifacts": documents[0]["artifacts"], "references": documents[0]["references"],
@@ -2447,7 +2531,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError("merged campaign failed science or route checks")
     exclusive_json(run_root / "receipts/merge.json", {
-        "schema_version": 2, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
+        "schema_version": 3, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
         "job_id": collector_job, "host": cpu_identity(),
         "merged_run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
     })
@@ -2458,7 +2542,7 @@ def record_submission(args: argparse.Namespace) -> None:
     values = {"setup": str(args.setup_job), "array": str(args.array_job), "collector": str(args.collector_job)}
     if any(not JOB_ID.fullmatch(value) for value in values.values()):
         raise DevelopmentError("submission job IDs must be positive integers")
-    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 2, "kind": "feppml_solver_development_submission", "jobs": values})
+    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 3, "kind": "feppml_solver_development_submission", "jobs": values})
 
 
 def parse_qacct(path: Path) -> list[dict[str, str]]:
@@ -2542,7 +2626,7 @@ def close_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     ):
         exclusive_text(raw_qacct[name], source.read_text(encoding="utf-8", errors="replace"))
     exclusive_json(run_root / "receipts/close.json", {
-        "schema_version": 2, "kind": "feppml_solver_development_close", "jobs": submission,
+        "schema_version": 3, "kind": "feppml_solver_development_close", "jobs": submission,
         "qacct": accounting, "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
         "merge_receipt_sha256": sha256_file(run_root / "receipts/merge.json"),
         "qacct_files": {

@@ -386,8 +386,10 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "(`solver'[`row',11] == 0) != (`solver'[`row',12] == 0)",
             stata,
         )
-        self.assertIn("local failed_cmg_attempt", stata)
-        self.assertIn("!`failed_cmg_attempt'", stata)
+        self.assertIn("local failed_attempt", stata)
+        self.assertIn("!`failed_attempt'", stata)
+        self.assertIn("(`solver'[1,12] == 1) | `solver'[4,12] == 2", stata)
+        self.assertIn("(`solver'[1,12] == 3 & `solver'[4,12] != 3)", stata)
 
     def test_public_command_is_the_one_call_wrapper(self) -> None:
         public = PUBLIC.read_text(encoding="utf-8")

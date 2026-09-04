@@ -1147,6 +1147,7 @@ impl<'a> CmgAbsorber<'a> {
                 normal_equation_residual,
                 setup_seconds: 0.0,
                 solve_seconds: 0.0,
+                certification_seconds: 0.0,
                 fallback_used: false,
                 requested_preconditioner: None,
                 used_preconditioner: None,

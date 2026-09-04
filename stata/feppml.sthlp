@@ -292,20 +292,25 @@ route calibration is a later step. {cmd:solver(map)} requests MAP explicitly.
 {cmd:solver(lsmr)} selects the native fused-FWL or joint-incremental LSMR engine
 for the fit, and {cmd:solver(cmg)} selects only the prepared fused-FWL CMG
 engine. The requested family, selected family and engine, final effective
-route, and MAP checkpoint route are reported separately.
+route, and checkpoint family are reported separately. Explicit LSMR and CMG
+fits with two or three categorical effects use an independently re-certified
+current-weight LSMR checkpoint projector once the observation count reaches
+the native large-projection threshold; smaller fits retain MAP checkpoints.
+The first frame always remains MAP.
 
 {pstd}
 The initial LSMR rollout supports at least two categorical intercept fixed
 effects; CMG supports exactly two or three. Both retain the full PPML output
-surface, including saved fixed effects recovered from the final MAP-owned
-Hessian, and require the fast memory route.
+surface, including saved fixed effects recovered from the accepted canonical
+final-Hessian state, and require the fast memory route.
 {cmd:memory(auto)} may select that route; explicit {cmd:memory(low)} is not yet
 supported for these two solvers. Recognized requests outside this envelope
 return {cmd:r(498)}. A viable selected route that cannot fit its modeled
 workspace returns {cmd:r(909)}. Numerical CMG nonconvergence triggers a visible,
-permanent MAP fallback; unsupported topology, memory failure, invalid input,
-interruption, and internal errors remain fatal. LSMR does not silently fall
-back.
+permanent ordinary-frame MAP fallback. A numerical checkpoint LSMR failure is
+also visible and retries the untouched authoritative checkpoint inputs with
+MAP. Unsupported topology, memory failure, invalid input, interruption, and
+internal errors remain fatal.
 
 {pstd}
 The outer IRLS tolerance defaults to 1e-8 and must lie strictly between zero
@@ -462,9 +467,10 @@ The macros {cmd:e(solver)}, {cmd:e(feppml_solver_requested)},
 {cmd:e(feppml_solver_effective)}, {cmd:e(feppml_solver_engine_effective)},
 {cmd:e(feppml_solver_checkpoint)}, and
 {cmd:e(feppml_solver_fallback_reason)} provide named identities;
-{cmd:e(feppml_solver_fallback_count)} is the route-specific fallback count.
-{cmd:e(feppml_linear_route)} remains a compatibility alias for the canonical
-final MAP checkpoint, not the ordinary-frame effective route.
+{cmd:e(feppml_solver_fallback_count)} is the total visible solver fallback
+count. {cmd:e(feppml_linear_route)} remains a compatibility alias for the
+engine that produced the accepted final canonical linear frame, not the
+ordinary-frame effective route.
 
 {pstd}
 Standard macros include {cmd:e(cmd)} = {cmd:feppml}, {cmd:e(cmdline)},

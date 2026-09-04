@@ -96,6 +96,13 @@ separation trace and generation-hash sequence. Timing and process-local values
 are excluded from those digests. The receipt does not alias the OLS receipt,
 and its column 33 `COMPLETE` cell is the final native operation.
 
+Checkpoint family code 3 identifies the current-weight LSMR accelerator
+accepted by ADR 0027; individual no-work or fallback checkpoint frames remain
+attributed to the MAP row when MAP produced their returned projection. Solver
+fallback codes are 0 for none, 1 for CMG ordinary-frame numerical
+nonconvergence, 2 for checkpoint LSMR numerical nonconvergence, and 3 when
+both occurred. The fixed result-wire dimensions are unchanged.
+
 The ado transaction validates every private shadow and the completed
 receipt before posting or renaming requested outputs. Syntax/domain error,
 protocol mismatch, nonconvergence, allocation/store failure, panic, or

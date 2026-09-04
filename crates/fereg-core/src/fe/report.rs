@@ -64,6 +64,8 @@ pub struct SolveReport {
     pub setup_seconds: f64,
     /// Iterative solve wall time in seconds.
     pub solve_seconds: f64,
+    /// Independently recomputed certificate wall time in seconds.
+    pub certification_seconds: f64,
     /// Whether `Auto` abandoned its first choice and certified the other path.
     pub fallback_used: bool,
     /// Requested LSMR preconditioner, or `None` for non-LSMR routes.

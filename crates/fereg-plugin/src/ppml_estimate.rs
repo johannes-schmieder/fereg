@@ -1331,8 +1331,8 @@ fn validate_solver_evidence(
     );
     let selected_engine = shadow.solver[2];
     let cmg_start = 3 * SOLVER_COLUMNS;
-    let fallback_reason = shadow.solver[cmg_start + 11];
     let mut fallback_count = 0_usize;
+    let mut fallback_reason = 0.0_f64;
     for row in 0..SOLVER_ROWS {
         let start = row * SOLVER_COLUMNS;
         if shadow.solver[start] != expected_requested
@@ -1340,7 +1340,8 @@ fn validate_solver_evidence(
             || shadow.solver[start + 2] != selected_engine
             || shadow.solver[start + 3] != shadow.solver[3]
             || shadow.solver[start + 4] != shadow.solver[4]
-            || shadow.solver[start + 5] != f64::from(PpmlSolverFamily::Map.code())
+            || (shadow.solver[start + 5] != f64::from(PpmlSolverFamily::Map.code())
+                && shadow.solver[start + 5] != f64::from(PpmlSolverFamily::Lsmr.code()))
             || shadow.solver[start + 6] != (row + 1) as f64
         {
             return Err(internal(
@@ -1353,13 +1354,23 @@ fn validate_solver_evidence(
         let row_fallback_count =
             exact_shadow_count(shadow.solver[start + 10], "PPML solver fallback count")?;
         let row_fallback_reason = shadow.solver[start + 11];
-        if (row_fallback_reason != 0.0 && row_fallback_reason != 1.0)
+        if ![0.0, 1.0, 2.0, 3.0].contains(&row_fallback_reason)
             || (row_fallback_count == 0) != (row_fallback_reason == 0.0)
-            || (row != 3 && (row_fallback_count != 0 || row_fallback_reason != 0.0))
+            || (row_fallback_reason == 1.0 && row != 3)
+            || (row_fallback_reason == 2.0 && row != 0)
+            || (row_fallback_reason == 3.0 && row != 0 && row != 3)
         {
             return Err(internal(
                 "PPML solver fallback reason is inconsistent with its engine row",
             ));
+        }
+        if row_fallback_reason != 0.0 {
+            if fallback_reason != 0.0 && fallback_reason != row_fallback_reason {
+                return Err(internal(
+                    "PPML solver fallback rows disagree on the fallback reason",
+                ));
+            }
+            fallback_reason = row_fallback_reason;
         }
         fallback_count = fallback_count
             .checked_add(row_fallback_count)
@@ -1383,6 +1394,11 @@ fn validate_solver_evidence(
     } else {
         false
     };
+    let checkpoint = shadow.solver[5];
+    let checkpoint_valid = checkpoint == f64::from(PpmlSolverFamily::Map.code())
+        || (checkpoint == f64::from(PpmlSolverFamily::Lsmr.code())
+            && (expected_selected == f64::from(PpmlSolverFamily::Lsmr.code())
+                || expected_selected == f64::from(PpmlSolverFamily::Cmg.code())));
     let no_fallback = fallback_reason == 0.0
         && fallback_count == 0
         && shadow.solver[3] == expected_selected
@@ -1395,7 +1411,25 @@ fn validate_solver_evidence(
         && shadow.solver[4] == 1.0
         && exact_shadow_count(shadow.solver[cmg_start + 10], "PPML CMG fallback count")?
             == fallback_count;
-    if !selected_engine_valid || !(no_fallback || cmg_fallback) {
+    let checkpoint_fallback = fallback_reason == 2.0
+        && fallback_count > 0
+        && checkpoint == f64::from(PpmlSolverFamily::Lsmr.code())
+        && shadow.solver[3] == expected_selected
+        && shadow.solver[4] == selected_engine
+        && exact_shadow_count(shadow.solver[10], "PPML checkpoint fallback count")?
+            == fallback_count;
+    let combined_fallback = fallback_reason == 3.0
+        && fallback_count > 1
+        && expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
+        && checkpoint == f64::from(PpmlSolverFamily::Lsmr.code())
+        && shadow.solver[3] == f64::from(PpmlSolverFamily::Map.code())
+        && shadow.solver[4] == 1.0
+        && exact_shadow_count(shadow.solver[10], "PPML checkpoint fallback count")? > 0
+        && exact_shadow_count(shadow.solver[cmg_start + 10], "PPML CMG fallback count")? > 0;
+    if !selected_engine_valid
+        || !checkpoint_valid
+        || !(no_fallback || cmg_fallback || checkpoint_fallback || combined_fallback)
+    {
         return Err(internal(
             "PPML solver evidence is inconsistent with the request",
         ));

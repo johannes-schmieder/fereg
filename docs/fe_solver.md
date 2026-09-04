@@ -137,38 +137,42 @@ result separately reports the selected family, concrete engine, final effective
 route, and checkpoint family. This policy does not alter `fereg` or its OLS
 solver session.
 
-Two concrete categorical LSMR engines operate between canonical checkpoints:
+One reusable categorical joint-incremental engine operates between canonical
+checkpoints. It applies one augmented operator to the Newton correction over
+active controls plus categorical FE coefficients and carries a fit-lifetime
+correction warm start. A zero-active-control fit uses the same engine while
+retaining the public `lsmr_fused` concrete identity; positive-rank fits report
+`lsmr_joint`. Two-effect problems retain Schwarz state and rebuild it only when
+recurrence or certificate evidence requires that work. Problems with three or
+more effects retain one Schwarz core for the first two contiguous effect
+blocks and apply a fresh current-weight positive diagonal action to every
+additional effect. This covers the full FE axis while avoiding the former
+all-pairs Schwarz policy, whose extra factors made the augmented recurrence
+dramatically slower. Exact finite and per-level normal equations still certify
+the completed recurrence; the preconditioner is never evidence.
 
-- fused FWL residualizes every frozen active control and the current IRLS
-  working response in one LSMR batch, forms the weighted finite Gram/RHS, and
-  solves the standardized system with pivoted Cholesky;
-- joint incremental LSMR applies one augmented operator to the Newton
-  correction over active controls plus categorical FE coefficients, carries a
-  fit-lifetime correction warm start, and uses a topology-class policy rather
-  than a fitted size threshold. Two-effect problems retain Schwarz state and
-  rebuild it only when recurrence or certificate evidence requires that work;
-  problems with three or more effects use the diagonal block because retained
-  pairwise Schwarz factors can make their augmented recurrence dramatically
-  slower.
-
-The public LSMR family selects one of those engines once per fit. Its
-preconditioner and reuse policy are internal implementation choices, not
+The preconditioner and reuse policy are internal implementation choices, not
 additional command options. The initial rollout requires at least two
 categorical intercept-only effects, the fast memory route, and no allocation
-audit. Saved fixed effects are recovered once from the final MAP-owned Hessian
-without disabling the fast ordinary-frame engine. `memory(auto)` may select
-fast; explicit `memory(low)` and
+audit. Saved fixed effects are recovered once from the accepted canonical
+final-Hessian state without disabling the fast ordinary-frame engine.
+`memory(auto)` may select fast; explicit `memory(low)` and
 other recognized but unsupported combinations return `r(498)`.
 
 The first weighted-linear frame remains a production-MAP solve so it freezes
-the canonical active basis. Every strict and final-Hessian frame also uses the
-production MAP session. Only ordinary publication IRLS frames may use fused or
-joint LSMR, and Mu separation remains canonical. Each LSMR result is
-rescanned against the exact control and per-FE-level normal equations before
-an IRLS step can be accepted. At a strict checkpoint, the predictor,
-objective, score, rank, basis, and all estimable coefficients must agree; an
-unidentified normalization coordinate cannot force another IRLS frame, and
-the canonical strict state replaces it before publication.
+the canonical active basis, and Mu separation remains canonical MAP. Under
+ADR 0027, explicit LSMR and CMG fits with two or three categorical effects and
+at least 16,384 observations use a fresh current-weight batch LSMR projection
+for strict and final-Hessian checkpoints. Smaller fits retain MAP checkpoints,
+because the independent topology build is not an amortized large-projection
+operation. The LSMR candidate is independently re-certified by the canonical
+session before the unchanged rank, bread, score, objective, reconstruction,
+and exact `q_i * mu_i` final-Hessian checks run. An uncertified numerical
+candidate falls back to MAP on the untouched authoritative inputs; other
+errors remain fatal. At a strict checkpoint, the predictor, objective, score,
+rank, basis, and all estimable coefficients must agree; an unidentified
+normalization coordinate cannot force another IRLS frame, and the canonical
+strict state replaces it before publication.
 
 The initial public tranche makes no allocation-free, large-scale, or
 thread-scaling claim and no automatic-routing claim. The fused engine still
@@ -218,7 +222,7 @@ all hashed public-state inputs. This development-only audit uses the pinned
 comparator's supported CG/symmetric-Kaczmarz route and never forces a different
 `ppmlhdfe` solver.
 
-The version-2 development manifest derives explicit-solver eligibility from
+The version-3 development manifest derives explicit-solver eligibility from
 the generated dataset metadata before timing. It excludes an unsupported
 solver arm instead of treating its documented `r(498)` as a failed benchmark;
 the public rejection remains covered separately. For CMG, the runner mirrors
@@ -235,17 +239,20 @@ observation-space CG polish. It then uses the same standardized pivoted-
 Cholesky finite solve as fused FWL and requires fresh per-column projection
 certificates plus a complete control-and-FE normal-equation certificate.
 
-Only failed projection columns receive one tighter retry. Two-FE retry reuses
-the current hierarchy; three-FE retry rebuilds because the nuisance Schur
-factor depends on the original solve tolerance. A remaining numerical failure
-runs certified MAP on that frame and disables CMG for the rest of the fit.
+Only failed projection columns receive one tighter retry. If that independent
+certificate demonstrates that the recurrence target was insufficient, the
+next changing-weight frame begins at the learned tighter scale; the public
+certificate tolerance is unchanged. Two-FE retry reuses the current hierarchy;
+three-FE retry rebuilds because the nuisance Schur factor depends on the
+original solve tolerance. A remaining numerical failure runs certified MAP on
+that frame and disables CMG for the rest of the fit.
 Unsupported topology, invalid input, memory failure, interruption, and internal
-errors remain visible failures. First, Mu, strict, and final-Hessian frames are
-always MAP.
+errors remain visible failures. First and Mu frames remain MAP; strict and
+final-Hessian projection follows the certified checkpoint policy above.
 
 CMG has the same initial fast-memory requirement as LSMR but accepts exactly
 two or three FE dimensions. Three-FE nuisance width is capped at 64, saved
-effects use the same final MAP-owned recovery, and allocation audit is
+effects use the same canonical final-Hessian recovery, and allocation audit is
 disallowed. Its
 retained fereg-owned buffers and the
 topology-aware CMG hierarchy are charged before use. It makes no cross-frame
@@ -259,15 +266,17 @@ and prepared CMG. Each row repeats the route identities and records its own
 ordinary/checkpoint frames, retries, fallback evidence, iterations, timings,
 and certificate maxima. Numerical CMG nonconvergence records one visible
 fallback, solves the same frame with certified MAP, and leaves the effective
-route as MAP. LSMR has no silent MAP fallback. A viable route that cannot fit
+ordinary route as MAP. Numerical checkpoint LSMR nonconvergence is separately
+visible and retries the untouched checkpoint with MAP without changing the
+ordinary route. A viable route that cannot fit
 its checked workspace returns `r(909)`; unsupported topology or feature
 combinations return `r(498)`.
 
 ## OLS saved fixed-effect recovery
 
 This section describes `fereg` solver products. PPML saved effects are
-recovered once from the final MAP-owned Hessian as specified for the public
-PPML families above.
+recovered once from the accepted canonical final-Hessian state as specified
+for the public PPML families above.
 
 Saving absorbed effects is treated as an optional solver product, not as a
 second estimation problem. In `memory(fast)`, categorical intercept routes use

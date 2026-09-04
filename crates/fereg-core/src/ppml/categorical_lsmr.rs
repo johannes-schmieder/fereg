@@ -18,22 +18,27 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::PpmlIterationWorkspace;
 
+const ADJOINT_LEVEL_CHUNK: usize = 64;
+const ADJOINT_COLUMN_LANES_PER_THREAD: usize = 2;
+
 /// Numeric preconditioner lifecycle for categorical PPML LSMR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CategoricalLsmrPolicy {
     Diagonal,
+    CorePair,
     Reuse,
 }
 
 /// Select the joint PPML preconditioner without a data-dependent threshold.
 ///
 /// The retained Schwarz factor is effective for two categorical effects. With
-/// three or more effects, its pairwise factors can make the augmented
-/// recurrence dramatically slower than the diagonal block while adding a
-/// large topology-dependent memory peak.
+/// three or more effects, the former all-pairs factor was slower than the
+/// diagonal block. Retain only one two-effect graph core and leave every
+/// additional effect on the diagonal; this does not restore all-pairs
+/// Schwarz.
 pub(crate) const fn joint_lsmr_policy(effect_count: usize) -> CategoricalLsmrPolicy {
     if effect_count >= 3 {
-        CategoricalLsmrPolicy::Diagonal
+        CategoricalLsmrPolicy::CorePair
     } else {
         CategoricalLsmrPolicy::Reuse
     }
@@ -138,6 +143,8 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     warm_start: Vec<f64>,
     finite_inverse: Vec<f64>,
     fe_inverse: Vec<f64>,
+    finite_certificate: Vec<DirectionCertificate>,
+    fe_certificate: Vec<DirectionCertificate>,
     warm_start_valid: bool,
     preconditioner: Option<Preconditioner>,
     policy: CategoricalLsmrPolicy,
@@ -236,6 +243,16 @@ impl ReusableCategoricalJointLsmr {
                 0.0,
                 "joint PPML FE diagonal preconditioner",
             )?,
+            finite_certificate: fallible_filled(
+                active_generated.len(),
+                DirectionCertificate::default(),
+                "joint PPML finite certificate scratch",
+            )?,
+            fe_certificate: fallible_filled(
+                fe_coefficients,
+                DirectionCertificate::default(),
+                "joint PPML FE certificate scratch",
+            )?,
             warm_start_valid: false,
             preconditioner: None,
             policy,
@@ -286,25 +303,17 @@ impl ReusableCategoricalJointLsmr {
     ) -> Result<JointLsmrReport> {
         #[cfg(test)]
         let executing_threads = rayon::current_num_threads();
-        for row in 0..outcome.len() {
-            self.sqrt_weights[row] = hessian_weights[row].sqrt();
-            self.target[row] = if outcome[row] == 0.0 {
-                -1.0
-            } else {
-                outcome[row] / mean[row] - 1.0
-            };
-            self.rhs[row] = self.sqrt_weights[row] * self.target[row];
-            if !self.sqrt_weights[row].is_finite()
-                || !self.target[row].is_finite()
-                || !self.rhs[row].is_finite()
-            {
-                return Err(nonconvergence(
-                    "joint PPML Newton target is not finitely representable",
-                ));
-            }
-        }
-
         let setup_started = Instant::now();
+        prepare_frame_and_finite_diagonal(
+            &self.active_design,
+            outcome,
+            mean,
+            hessian_weights,
+            &mut self.sqrt_weights,
+            &mut self.target,
+            &mut self.rhs,
+            &mut self.finite_inverse,
+        )?;
         let warm_start_attempted = self.warm_start_valid;
         let (mut use_schwarz, mut rebuilt) =
             self.prepare_preconditioner(fe_design, hessian_weights)?;
@@ -321,7 +330,8 @@ impl ReusableCategoricalJointLsmr {
         // Recurrence escalation is meaningful only for a factor carried from a
         // previous Hessian frame. A factor built from the current weights
         // cannot be made fresher by immediately rebuilding it unchanged.
-        let use_escalation = self.policy == CategoricalLsmrPolicy::Reuse && use_schwarz && !rebuilt;
+        let use_escalation =
+            self.policy != CategoricalLsmrPolicy::Diagonal && use_schwarz && !rebuilt;
         #[cfg(test)]
         if use_escalation {
             self.instrumentation.escalation_armed =
@@ -387,7 +397,11 @@ impl ReusableCategoricalJointLsmr {
         let mut certificate =
             self.finish_and_certify(fe_design, hessian_weights, &result.x, tolerance)?;
         certification_seconds += certification_started.elapsed().as_secs_f64();
-        if !certificate.passed {
+        // Recurrence termination and the independent normal-equation
+        // certificate are separate obligations. Continue from the first
+        // iterate when either one is missing; a certificate that happens to
+        // pass cannot turn an exhausted recurrence into convergence.
+        if !result.converged || !certificate.passed {
             if !rebuilt && self.policy != CategoricalLsmrPolicy::Diagonal {
                 let rebuild_started = Instant::now();
                 use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
@@ -569,10 +583,16 @@ impl ReusableCategoricalJointLsmr {
         fe_design: &FeDesign,
         weights: &[f64],
     ) -> Result<(bool, bool)> {
-        self.refresh_finite_diagonal_preconditioner(weights)?;
         if self.policy == CategoricalLsmrPolicy::Diagonal {
             fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)?;
             return Ok((false, false));
+        }
+        if self.policy == CategoricalLsmrPolicy::CorePair {
+            // The graph core covers only the first two effect blocks. Every
+            // additional coordinate retains a current-weight positive
+            // diagonal action, so the combined preconditioner spans the full
+            // augmented FE axis without an uncovered null direction.
+            fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)?;
         }
         // Reuse until the recurrence or the exact certificate demonstrates
         // that the retained factor is inadequate. This avoids an unmeasured
@@ -594,7 +614,10 @@ impl ReusableCategoricalJointLsmr {
             self.instrumentation.schwarz_rebuilds =
                 self.instrumentation.schwarz_rebuilds.saturating_add(1);
         }
-        let effects = within_effects(fe_design)?;
+        let mut effects = within_effects(fe_design)?;
+        if self.policy == CategoricalLsmrPolicy::CorePair {
+            effects.truncate(2);
+        }
         let solver = Solver::new(
             effects,
             Some(fallible_copy(weights, "joint PPML Schwarz weights")?),
@@ -610,34 +633,22 @@ impl ReusableCategoricalJointLsmr {
         Ok(self.preconditioner.is_some())
     }
 
-    fn refresh_finite_diagonal_preconditioner(&mut self, weights: &[f64]) -> Result<()> {
-        self.finite_inverse
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(column, inverse)| {
-                let mut diagonal = 0.0_f64;
-                for (row, &weight) in weights.iter().enumerate() {
-                    let value = self.active_design[(row, column)];
-                    diagonal = (weight * value).mul_add(value, diagonal);
-                }
-                *inverse = if diagonal > 0.0 { 1.0 / diagonal } else { 0.0 };
-            });
-        if self.finite_inverse.iter().any(|value| !value.is_finite()) {
-            return Err(nonconvergence(
-                "joint PPML finite diagonal preconditioner is nonfinite",
-            ));
-        }
-        Ok(())
-    }
-
     fn block_preconditioner(&self, use_schwarz: bool) -> Result<BlockPreconditioner<'_>> {
         let fe = if use_schwarz {
-            FePreconditioner::Schwarz(self.preconditioner.as_ref().ok_or_else(|| {
+            let preconditioner = self.preconditioner.as_ref().ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Internal,
                     "joint PPML Schwarz route has no retained preconditioner",
                 )
-            })?)
+            })?;
+            if self.policy == CategoricalLsmrPolicy::CorePair {
+                FePreconditioner::CorePair {
+                    core: preconditioner,
+                    diagonal: &self.fe_inverse,
+                }
+            } else {
+                FePreconditioner::Schwarz(preconditioner)
+            }
         } else {
             FePreconditioner::Diagonal(&self.fe_inverse)
         };
@@ -664,15 +675,82 @@ impl ReusableCategoricalJointLsmr {
         for row in 0..self.residual.len() {
             self.residual[row] = self.target[row] - self.delta_eta[row];
         }
-        certify_joint(
+        certify_joint_with_scratch(
             fe_design,
             &self.active_design,
             weights,
             &self.target,
             &self.residual,
             tolerance,
+            &mut self.finite_certificate,
+            &mut self.fe_certificate,
         )
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepare_frame_and_finite_diagonal(
+    active: &DenseMatrix,
+    outcome: &[f64],
+    mean: &[f64],
+    weights: &[f64],
+    sqrt_weights: &mut [f64],
+    target: &mut [f64],
+    rhs: &mut [f64],
+    finite_inverse: &mut [f64],
+) -> Result<()> {
+    let rows = active.nrows();
+    let columns = active.ncols();
+    if [
+        outcome.len(),
+        mean.len(),
+        weights.len(),
+        sqrt_weights.len(),
+        target.len(),
+        rhs.len(),
+    ]
+    .iter()
+    .any(|length| *length != rows)
+        || finite_inverse.len() != columns
+    {
+        return Err(invalid_argument(
+            "joint PPML frame preparation dimensions are inconsistent",
+        ));
+    }
+
+    finite_inverse.fill(0.0);
+    let active_values = active.as_slice();
+    for row in 0..rows {
+        let root_weight = weights[row].sqrt();
+        let correction = if outcome[row] == 0.0 {
+            -1.0
+        } else {
+            outcome[row] / mean[row] - 1.0
+        };
+        let weighted_correction = root_weight * correction;
+        if !root_weight.is_finite() || !correction.is_finite() || !weighted_correction.is_finite() {
+            return Err(nonconvergence(
+                "joint PPML Newton target is not finitely representable",
+            ));
+        }
+        sqrt_weights[row] = root_weight;
+        target[row] = correction;
+        rhs[row] = weighted_correction;
+
+        let start = row * columns;
+        for (column, &value) in active_values[start..start + columns].iter().enumerate() {
+            finite_inverse[column] = (weights[row] * value).mul_add(value, finite_inverse[column]);
+        }
+    }
+    for inverse in finite_inverse {
+        *inverse = if *inverse > 0.0 { 1.0 / *inverse } else { 0.0 };
+        if !inverse.is_finite() {
+            return Err(nonconvergence(
+                "joint PPML finite diagonal preconditioner is nonfinite",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn build_active_design<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -800,29 +878,47 @@ impl Operator for AugmentedCategoricalOperator<'_> {
         }
         let finite = self.active_design.ncols();
         let (finite_output, fe_output) = y.split_at_mut(finite);
-        finite_output
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(column, output)| {
-                let mut sum = 0.0_f64;
-                for (row, &input) in x.iter().enumerate() {
-                    sum = (self.sqrt_weights[row] * self.active_design[(row, column)])
-                        .mul_add(input, sum);
+        let parallel_column_limit =
+            rayon::current_num_threads().saturating_mul(ADJOINT_COLUMN_LANES_PER_THREAD);
+        if finite <= parallel_column_limit {
+            finite_output
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(column, output)| {
+                    let mut sum = 0.0_f64;
+                    for (row, &input) in x.iter().enumerate() {
+                        sum = (self.sqrt_weights[row] * self.active_design[(row, column)])
+                            .mul_add(input, sum);
+                    }
+                    *output = sum;
+                });
+        } else {
+            finite_output.fill(0.0);
+            let active_values = self.active_design.as_slice();
+            for (row, &input) in x.iter().enumerate() {
+                let start = row * finite;
+                for (column, &value) in active_values[start..start + finite].iter().enumerate() {
+                    finite_output[column] =
+                        (self.sqrt_weights[row] * value).mul_add(input, finite_output[column]);
                 }
-                *output = sum;
-            });
+            }
+        }
         for (effect_index, effect) in self.fe_design.effects().iter().enumerate() {
             let start = self.effect_offsets[effect_index];
             let end = self.effect_offsets[effect_index + 1];
             fe_output[start..end]
-                .par_iter_mut()
+                .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
                 .enumerate()
-                .for_each(|(level, output)| {
-                    let mut sum = 0.0_f64;
-                    for &row in effect.level_index().members(level) {
-                        sum = self.sqrt_weights[row].mul_add(x[row], sum);
+                .for_each(|(chunk_index, outputs)| {
+                    let first_level = chunk_index * ADJOINT_LEVEL_CHUNK;
+                    for (within_chunk, output) in outputs.iter_mut().enumerate() {
+                        let level = first_level + within_chunk;
+                        let mut sum = 0.0_f64;
+                        for &row in effect.level_index().members(level) {
+                            sum = self.sqrt_weights[row].mul_add(x[row], sum);
+                        }
+                        *output = sum;
                     }
-                    *output = sum;
                 });
         }
         Ok(())
@@ -832,6 +928,10 @@ impl Operator for AugmentedCategoricalOperator<'_> {
 enum FePreconditioner<'a> {
     Diagonal(&'a [f64]),
     Schwarz(&'a Preconditioner),
+    CorePair {
+        core: &'a Preconditioner,
+        diagonal: &'a [f64],
+    },
 }
 
 struct BlockPreconditioner<'a> {
@@ -845,6 +945,7 @@ impl Operator for BlockPreconditioner<'_> {
             + match &self.fe {
                 FePreconditioner::Diagonal(values) => values.len(),
                 FePreconditioner::Schwarz(value) => value.nrows(),
+                FePreconditioner::CorePair { diagonal, .. } => diagonal.len(),
             }
     }
 
@@ -872,6 +973,21 @@ impl Operator for BlockPreconditioner<'_> {
             FePreconditioner::Schwarz(preconditioner) => {
                 Operator::apply(*preconditioner, &x[finite..], &mut y[finite..])
             }
+            FePreconditioner::CorePair { core, diagonal } => {
+                let core_width = core.nrows();
+                if core_width > diagonal.len() {
+                    return Err(solve_shape_error("core-pair preconditioner apply"));
+                }
+                Operator::apply(
+                    *core,
+                    &x[finite..finite + core_width],
+                    &mut y[finite..finite + core_width],
+                )?;
+                for index in core_width..diagonal.len() {
+                    y[finite + index] = diagonal[index] * x[finite + index];
+                }
+                Ok(())
+            }
         }
     }
 
@@ -889,13 +1005,20 @@ fn fill_fe_diagonal_inverse(design: &FeDesign, weights: &[f64], values: &mut [f6
     let mut offset = 0_usize;
     for effect in design.effects() {
         let block = &mut values[offset..offset + effect.n_levels()];
-        block.par_iter_mut().enumerate().for_each(|(level, value)| {
-            let mut diagonal = 0.0_f64;
-            for &row in effect.level_index().members(level) {
-                diagonal += weights[row];
-            }
-            *value = if diagonal > 0.0 { 1.0 / diagonal } else { 0.0 };
-        });
+        block
+            .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
+            .enumerate()
+            .for_each(|(chunk_index, outputs)| {
+                let first_level = chunk_index * ADJOINT_LEVEL_CHUNK;
+                for (within_chunk, value) in outputs.iter_mut().enumerate() {
+                    let level = first_level + within_chunk;
+                    let mut diagonal = 0.0_f64;
+                    for &row in effect.level_index().members(level) {
+                        diagonal += weights[row];
+                    }
+                    *value = if diagonal > 0.0 { 1.0 / diagonal } else { 0.0 };
+                }
+            });
         offset += effect.n_levels();
     }
     if values.iter().any(|value| !value.is_finite()) {
@@ -924,6 +1047,13 @@ fn within_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
     Ok(effects)
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+struct DirectionCertificate {
+    moment: f64,
+    basis_norm: f64,
+}
+
+#[cfg(test)]
 fn certify_joint(
     design: &FeDesign,
     active: &DenseMatrix,
@@ -932,6 +1062,50 @@ fn certify_joint(
     residual: &[f64],
     tolerance: f64,
 ) -> Result<JointLsmrCertificate> {
+    let mut finite_scratch = fallible_filled(
+        active.ncols(),
+        DirectionCertificate::default(),
+        "joint PPML finite certificate test scratch",
+    )?;
+    let mut fe_scratch = fallible_filled(
+        design.total_coefficients(),
+        DirectionCertificate::default(),
+        "joint PPML FE certificate test scratch",
+    )?;
+    certify_joint_with_scratch(
+        design,
+        active,
+        weights,
+        target,
+        residual,
+        tolerance,
+        &mut finite_scratch,
+        &mut fe_scratch,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn certify_joint_with_scratch(
+    design: &FeDesign,
+    active: &DenseMatrix,
+    weights: &[f64],
+    target: &[f64],
+    residual: &[f64],
+    tolerance: f64,
+    finite_scratch: &mut [DirectionCertificate],
+    fe_scratch: &mut [DirectionCertificate],
+) -> Result<JointLsmrCertificate> {
+    if active.nrows() != design.nobs()
+        || [weights.len(), target.len(), residual.len()]
+            .iter()
+            .any(|length| *length != design.nobs())
+        || finite_scratch.len() != active.ncols()
+        || fe_scratch.len() != design.total_coefficients()
+    {
+        return Err(invalid_argument(
+            "joint PPML LSMR certificate dimensions are inconsistent",
+        ));
+    }
     let mut target_square = ScaledSquareSum::default();
     let mut residual_square = ScaledSquareSum::default();
     for row in 0..design.nobs() {
@@ -945,50 +1119,76 @@ fn certify_joint(
     let mut relative_infinity = 0.0_f64;
     let mut relative_square = FiniteCompensatedSum::default();
     let mut count = 0_usize;
-    for column in 0..active.ncols() {
-        let mut moment = FiniteCompensatedSum::default();
-        let mut basis_square = ScaledSquareSum::default();
-        for row in 0..active.nrows() {
-            let basis = active[(row, column)];
-            let root_weight = weights[row].sqrt();
-            let (moment_term, weighted_basis) =
-                finite_weighted_moment(weights[row], residual[row], basis, root_weight)?;
-            moment.add(moment_term)?;
-            basis_square.add(weighted_basis)?;
-        }
-        let moment = moment.total()?;
+    finite_scratch.par_iter_mut().enumerate().try_for_each(
+        |(column, direction)| -> Result<()> {
+            let mut moment = FiniteCompensatedSum::default();
+            let mut basis_square = ScaledSquareSum::default();
+            for row in 0..active.nrows() {
+                let basis = active[(row, column)];
+                let root_weight = weights[row].sqrt();
+                let (moment_term, weighted_basis) =
+                    finite_weighted_moment(weights[row], residual[row], basis, root_weight)?;
+                moment.add(moment_term)?;
+                basis_square.add(weighted_basis)?;
+            }
+            *direction = DirectionCertificate {
+                moment: moment.total()?,
+                basis_norm: basis_square.norm()?,
+            };
+            Ok(())
+        },
+    )?;
+    for direction in finite_scratch {
+        let moment = direction.moment;
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative(
             moment,
-            basis_square.norm()?,
+            direction.basis_norm,
             reference,
             &mut relative_infinity,
             &mut relative_square,
             &mut count,
         )?;
     }
+    let mut offset = 0_usize;
     for effect in design.effects() {
-        for level in 0..effect.n_levels() {
-            let mut moment = FiniteCompensatedSum::default();
-            let mut basis_square = ScaledSquareSum::default();
-            for &row in effect.level_index().members(level) {
-                let root_weight = weights[row].sqrt();
-                let (moment_term, weighted_basis) =
-                    finite_weighted_moment(weights[row], residual[row], 1.0, root_weight)?;
-                moment.add(moment_term)?;
-                basis_square.add(weighted_basis)?;
-            }
-            let moment = moment.total()?;
-            fe_absolute = fe_absolute.max(moment.abs());
-            add_relative(
-                moment,
-                basis_square.norm()?,
-                reference,
-                &mut relative_infinity,
-                &mut relative_square,
-                &mut count,
-            )?;
-        }
+        let block = &mut fe_scratch[offset..offset + effect.n_levels()];
+        block
+            .par_chunks_mut(ADJOINT_LEVEL_CHUNK)
+            .enumerate()
+            .try_for_each(|(chunk_index, directions)| -> Result<()> {
+                let first_level = chunk_index * ADJOINT_LEVEL_CHUNK;
+                for (within_chunk, direction) in directions.iter_mut().enumerate() {
+                    let level = first_level + within_chunk;
+                    let mut moment = FiniteCompensatedSum::default();
+                    let mut basis_square = ScaledSquareSum::default();
+                    for &row in effect.level_index().members(level) {
+                        let root_weight = weights[row].sqrt();
+                        let (moment_term, weighted_basis) =
+                            finite_weighted_moment(weights[row], residual[row], 1.0, root_weight)?;
+                        moment.add(moment_term)?;
+                        basis_square.add(weighted_basis)?;
+                    }
+                    *direction = DirectionCertificate {
+                        moment: moment.total()?,
+                        basis_norm: basis_square.norm()?,
+                    };
+                }
+                Ok(())
+            })?;
+        offset += effect.n_levels();
+    }
+    for direction in fe_scratch {
+        let moment = direction.moment;
+        fe_absolute = fe_absolute.max(moment.abs());
+        add_relative(
+            moment,
+            direction.basis_norm,
+            reference,
+            &mut relative_infinity,
+            &mut relative_square,
+            &mut count,
+        )?;
     }
     let relative_two = if count == 0 {
         0.0
@@ -1197,12 +1397,12 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     threads: usize,
     policy: CategoricalLsmrPolicy,
 ) -> Result<u128> {
-    let shape = CategoricalLsmrMemoryShape::new_with_schwarz(
+    let shape = CategoricalLsmrMemoryShape::new(
         rows,
         active_columns,
         effect_level_counts,
         threads,
-        policy != CategoricalLsmrPolicy::Diagonal,
+        policy,
     )?;
     let n = shape.rows;
     let k = shape.active_columns;
@@ -1224,6 +1424,10 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     let retained_engine = checked_sum_memory(&[
         bytes_for_memory::<f64>(retained_values, "joint PPML retained values")?,
         bytes_for_memory::<usize>(retained_indices, "joint PPML retained indices")?,
+        bytes_for_memory::<DirectionCertificate>(
+            checked_add_memory(k, shape.levels, "joint PPML certificate direction count")?,
+            "joint PPML certificate scratch",
+        )?,
         shape.schwarz.retained_bytes,
     ])?;
 
@@ -1272,6 +1476,71 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     )
 }
 
+/// Conservative transient peak for one canonical current-weight checkpoint.
+///
+/// The checkpoint batch intentionally rebuilds the weighted Schwarz solver so
+/// no ordinary-frame preconditioner or residual can become scientific
+/// evidence. The estimate therefore charges the full upstream solver frame,
+/// all retained batch outputs, and one recurrence workspace per concurrent
+/// RHS in addition to the caller-owned canonical session.
+pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
+    rows: usize,
+    rhs: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+) -> Result<u128> {
+    if rhs == 0 {
+        return Err(invalid_argument(
+            "PPML checkpoint LSMR memory estimate requires a positive RHS width",
+        ));
+    }
+    let shape = CategoricalLsmrMemoryShape::new(
+        rows,
+        0,
+        effect_level_counts,
+        threads,
+        CategoricalLsmrPolicy::Reuse,
+    )?;
+    let concurrent_rhs = (rhs as u128).min(shape.threads);
+    let rhs = rhs as u128;
+
+    // The input matrix, column-major RHS copies, returned demeaned batch, and
+    // returned coefficient batch can coexist until canonical recertification.
+    let retained_batch_values = checked_sum_memory(&[
+        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR input matrix")?,
+        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR RHS copies")?,
+        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR demeaned outputs")?,
+        checked_mul_memory(shape.levels, rhs, "checkpoint LSMR coefficient outputs")?,
+        shape.rows,
+    ])?;
+    let retained_batch_bytes =
+        bytes_for_memory::<f64>(retained_batch_values, "checkpoint LSMR retained batch")?;
+
+    // Modified Golub--Kahan plus the solution recurrence and local history.
+    // This deliberately over-bounds opaque upstream per-RHS allocations.
+    let recurrence_per_rhs = checked_sum_memory(&[
+        checked_mul_memory(shape.rows, 3, "checkpoint LSMR observation recurrence")?,
+        checked_mul_memory(shape.levels, 14, "checkpoint LSMR coefficient recurrence")?,
+    ])?;
+    let recurrence_peak = bytes_for_memory::<f64>(
+        checked_mul_memory(
+            recurrence_per_rhs,
+            concurrent_rhs,
+            "checkpoint LSMR concurrent recurrences",
+        )?,
+        "checkpoint LSMR recurrence bytes",
+    )?;
+    let solve_peak = checked_sum_memory(&[
+        retained_batch_bytes,
+        shape.schwarz.retained_bytes,
+        shape.schwarz.solver_frame_bytes,
+        shape.schwarz.apply_peak_bytes,
+        recurrence_peak,
+    ])?;
+    let build_peak = checked_sum_memory(&[retained_batch_bytes, shape.schwarz.build_peak_bytes])?;
+    Ok(solve_peak.max(build_peak))
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(super) struct CategoricalSchwarzMemoryEstimate {
     pub(super) retained_bytes: u128,
@@ -1292,21 +1561,12 @@ pub(super) struct CategoricalLsmrMemoryShape {
 }
 
 impl CategoricalLsmrMemoryShape {
-    pub(super) fn new(
+    fn new(
         rows: usize,
         active_columns: usize,
         effect_level_counts: &[usize],
         threads: usize,
-    ) -> Result<Self> {
-        Self::new_with_schwarz(rows, active_columns, effect_level_counts, threads, true)
-    }
-
-    fn new_with_schwarz(
-        rows: usize,
-        active_columns: usize,
-        effect_level_counts: &[usize],
-        threads: usize,
-        include_schwarz: bool,
+        policy: CategoricalLsmrPolicy,
     ) -> Result<Self> {
         if rows == 0 || threads == 0 {
             return Err(invalid_argument(
@@ -1327,10 +1587,33 @@ impl CategoricalLsmrMemoryShape {
         let rows = rows as u128;
         let effects = effect_level_counts.len() as u128;
         let threads = threads as u128;
-        let schwarz = if include_schwarz {
-            estimate_categorical_schwarz_memory(rows, effects, levels, maximum_levels, threads)?
-        } else {
-            CategoricalSchwarzMemoryEstimate::default()
+        let schwarz = match policy {
+            CategoricalLsmrPolicy::Diagonal => CategoricalSchwarzMemoryEstimate::default(),
+            CategoricalLsmrPolicy::Reuse => {
+                estimate_categorical_schwarz_memory(rows, effects, levels, maximum_levels, threads)?
+            }
+            CategoricalLsmrPolicy::CorePair => {
+                if effect_level_counts.len() < 2 {
+                    return Err(invalid_argument(
+                        "PPML LSMR core-pair memory estimate requires two effects",
+                    ));
+                }
+                let core_levels =
+                    effect_level_counts[..2]
+                        .iter()
+                        .try_fold(0_u128, |total, &levels| {
+                            checked_add_memory(total, levels as u128, "PPML LSMR core-pair levels")
+                        })?;
+                let core_maximum_levels =
+                    effect_level_counts[..2].iter().copied().max().unwrap_or(0) as u128;
+                estimate_categorical_schwarz_memory(
+                    rows,
+                    2,
+                    core_levels,
+                    core_maximum_levels,
+                    threads,
+                )?
+            }
         };
         Ok(Self {
             rows,
@@ -1559,6 +1842,115 @@ mod tests {
     }
 
     #[test]
+    fn frame_preparation_preserves_column_order_diagonals() {
+        let active = DenseMatrix::from_row_major(
+            5,
+            3,
+            vec![
+                1.0, -2.0, 0.5, 0.25, 3.0, -1.5, -0.75, 1.25, 2.0, 4.0, -0.5, 0.125, 1.5, 2.5, -3.0,
+            ],
+        )
+        .expect("active design");
+        let outcome = [0.0, 2.0, 1.0, 4.0, 0.5];
+        let mean = [1.25, 1.5, 0.75, 2.0, 0.625];
+        let weights = [0.75, 1.25, 2.0, 0.5, 3.0];
+        let mut sqrt_weights = vec![0.0; 5];
+        let mut target = vec![0.0; 5];
+        let mut rhs = vec![0.0; 5];
+        let mut finite_inverse = vec![0.0; 3];
+
+        prepare_frame_and_finite_diagonal(
+            &active,
+            &outcome,
+            &mean,
+            &weights,
+            &mut sqrt_weights,
+            &mut target,
+            &mut rhs,
+            &mut finite_inverse,
+        )
+        .expect("prepared frame");
+
+        let mut expected_diagonal = vec![0.0_f64; active.ncols()];
+        for (column, diagonal) in expected_diagonal.iter_mut().enumerate() {
+            for (row, &weight) in weights.iter().enumerate() {
+                let value = active[(row, column)];
+                *diagonal = (weight * value).mul_add(value, *diagonal);
+            }
+            *diagonal = 1.0 / *diagonal;
+        }
+        let expected_target = outcome
+            .iter()
+            .zip(&mean)
+            .map(|(&value, &mu)| if value == 0.0 { -1.0 } else { value / mu - 1.0 })
+            .collect::<Vec<_>>();
+        assert_eq!(finite_inverse, expected_diagonal);
+        assert_eq!(target, expected_target);
+        for row in 0..weights.len() {
+            assert_eq!(sqrt_weights[row], weights[row].sqrt());
+            assert_eq!(rhs[row], sqrt_weights[row] * target[row]);
+        }
+    }
+
+    #[test]
+    fn exact_certificate_is_thread_count_deterministic() {
+        let rows = 2_048;
+        let level_counts = [131, 137, 149];
+        let effects = level_counts
+            .iter()
+            .enumerate()
+            .map(|(effect, &levels)| {
+                let codes = (0..rows)
+                    .map(|row| ((row * (37 + effect * 12) + 5 * effect) % levels) as u32)
+                    .collect::<Vec<_>>();
+                EffectTerm::new(codes, levels, true, Vec::new()).expect("effect")
+            })
+            .collect::<Vec<_>>();
+        let design = FeDesign::new(rows, effects).expect("design");
+        let active_values = (0..rows)
+            .flat_map(|row| {
+                (0..4).map(move |column| ((row * (column + 3) + column * 11) % 97) as f64 / 53.0)
+            })
+            .collect::<Vec<_>>();
+        let active = DenseMatrix::from_row_major(rows, 4, active_values).expect("active");
+        let weights = (0..rows)
+            .map(|row| 0.5 + (row % 29) as f64 / 17.0)
+            .collect::<Vec<_>>();
+        let target = (0..rows)
+            .map(|row| (row % 41) as f64 / 19.0 - 0.75)
+            .collect::<Vec<_>>();
+        let residual = (0..rows)
+            .map(|row| (row % 31) as f64 / 23.0 - 0.5)
+            .collect::<Vec<_>>();
+
+        let evaluate = |threads| {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool");
+            let mut finite_scratch = vec![DirectionCertificate::default(); active.ncols()];
+            let mut fe_scratch = vec![DirectionCertificate::default(); design.total_coefficients()];
+            let certificate = pool
+                .install(|| {
+                    certify_joint_with_scratch(
+                        &design,
+                        &active,
+                        &weights,
+                        &target,
+                        &residual,
+                        1e-8,
+                        &mut finite_scratch,
+                        &mut fe_scratch,
+                    )
+                })
+                .expect("certificate");
+            (certificate, finite_scratch, fe_scratch)
+        };
+
+        assert_eq!(evaluate(1), evaluate(4));
+    }
+
+    #[test]
     fn exact_certificate_rejects_an_uncorrected_target() {
         let codes = vec![0, 0, 1, 1];
         let design = FeDesign::new(
@@ -1656,6 +2048,8 @@ mod tests {
             warm_start: vec![0.0; 2],
             finite_inverse: Vec::new(),
             fe_inverse: vec![0.0; 2],
+            finite_certificate: Vec::new(),
+            fe_certificate: vec![DirectionCertificate::default(); 2],
             warm_start_valid: false,
             preconditioner: None,
             policy: CategoricalLsmrPolicy::Diagonal,
@@ -1733,6 +2127,8 @@ mod tests {
             // diagonal. NaNs make an accidental read fail the solve, while an
             // accidental refresh is visible below.
             fe_inverse: vec![f64::NAN; 6],
+            finite_certificate: vec![DirectionCertificate::default(); 1],
+            fe_certificate: vec![DirectionCertificate::default(); 6],
             warm_start_valid: false,
             preconditioner: None,
             policy: CategoricalLsmrPolicy::Reuse,
@@ -1834,6 +2230,8 @@ mod tests {
                 warm_start: vec![0.0; 7],
                 finite_inverse: vec![0.0; 1],
                 fe_inverse: vec![0.0; 6],
+                finite_certificate: vec![DirectionCertificate::default(); 1],
+                fe_certificate: vec![DirectionCertificate::default(); 6],
                 warm_start_valid: false,
                 preconditioner: None,
                 policy: CategoricalLsmrPolicy::Diagonal,
@@ -1844,6 +2242,70 @@ mod tests {
                 .expect("joint correction");
             assert_eq!(report.executing_threads, requested);
             assert!(report.certificate.passed);
+        }
+    }
+
+    #[test]
+    fn joint_solver_supports_zero_finite_columns_with_three_effects() {
+        let rows = 60;
+        let first_codes = (0..rows).map(|row| (row % 5) as u32).collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|row| ((row / 2) % 4) as u32)
+            .collect::<Vec<_>>();
+        let third_codes = (0..rows)
+            .map(|row| ((row / 3) % 3) as u32)
+            .collect::<Vec<_>>();
+        let design = FeDesign::new(
+            rows,
+            vec![
+                EffectTerm::new(first_codes.clone(), 5, true, Vec::new()).expect("first"),
+                EffectTerm::new(second_codes.clone(), 4, true, Vec::new()).expect("second"),
+                EffectTerm::new(third_codes.clone(), 3, true, Vec::new()).expect("third"),
+            ],
+        )
+        .expect("design");
+        let first_effect = [-0.04, -0.02, 0.0, 0.02, 0.04];
+        let second_effect = [-0.03, -0.01, 0.01, 0.03];
+        let third_effect = [-0.02, 0.0, 0.02];
+        let target = (0..rows)
+            .map(|row| {
+                first_effect[first_codes[row] as usize]
+                    + second_effect[second_codes[row] as usize]
+                    + third_effect[third_codes[row] as usize]
+            })
+            .collect::<Vec<_>>();
+        let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
+        let mut solver = ReusableCategoricalJointLsmr {
+            team: test_team(4),
+            active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
+                .expect("empty active design"),
+            active_slots: Vec::new(),
+            topology: FeTopologyIdentity::capture(&design).expect("topology"),
+            effect_offsets: vec![0, 5, 9, 12],
+            sqrt_weights: vec![0.0; rows],
+            rhs: vec![0.0; rows],
+            target: vec![0.0; rows],
+            delta_eta: vec![0.0; rows],
+            residual: vec![0.0; rows],
+            warm_start: vec![0.0; 12],
+            finite_inverse: Vec::new(),
+            fe_inverse: vec![0.0; 12],
+            finite_certificate: Vec::new(),
+            fe_certificate: vec![DirectionCertificate::default(); 12],
+            warm_start_valid: false,
+            preconditioner: None,
+            policy: CategoricalLsmrPolicy::Diagonal,
+            instrumentation: JointLsmrInstrumentation::default(),
+        };
+
+        let report = solver
+            .solve(&design, &outcome, &[1.0; 60], &[1.0; 60], 1e-10, 1_000)
+            .expect("FE-only correction");
+        assert!(report.certificate.passed);
+        assert_eq!(solver.active_rank(), 0);
+        assert!(solver.finite_inverse.is_empty());
+        for (actual, expected) in solver.delta_eta.iter().zip(&target) {
+            assert!((actual - expected).abs() <= 1e-9);
         }
     }
 
@@ -1887,15 +2349,31 @@ mod tests {
     }
 
     #[test]
-    fn joint_policy_keeps_two_effect_schwarz_and_diagonalizes_three_or_more() {
-        assert_eq!(joint_lsmr_policy(1), CategoricalLsmrPolicy::Reuse);
-        assert_eq!(joint_lsmr_policy(2), CategoricalLsmrPolicy::Reuse);
-        assert_eq!(joint_lsmr_policy(3), CategoricalLsmrPolicy::Diagonal);
-        assert_eq!(joint_lsmr_policy(4), CategoricalLsmrPolicy::Diagonal);
+    fn checkpoint_memory_charges_batch_outputs_and_concurrent_recurrences() {
+        let one_thread =
+            estimate_checkpoint_lsmr_workspace_bytes(50_000, 11, &[8_000, 7_000, 6_000], 1)
+                .expect("one-thread checkpoint estimate");
+        let seven_threads =
+            estimate_checkpoint_lsmr_workspace_bytes(50_000, 11, &[8_000, 7_000, 6_000], 7)
+                .expect("seven-thread checkpoint estimate");
+        let wider = estimate_checkpoint_lsmr_workspace_bytes(50_000, 17, &[8_000, 7_000, 6_000], 7)
+            .expect("wide checkpoint estimate");
+        assert!(seven_threads > one_thread);
+        assert!(wider > seven_threads);
+        let three_dense_batches = 3_u128 * 50_000 * 11 * std::mem::size_of::<f64>() as u128;
+        assert!(one_thread > three_dense_batches);
     }
 
     #[test]
-    fn diagonal_joint_memory_excludes_schwarz_state_and_apply_scratch() {
+    fn joint_policy_keeps_two_effect_schwarz_and_uses_one_core_pair_for_multiway() {
+        assert_eq!(joint_lsmr_policy(1), CategoricalLsmrPolicy::Reuse);
+        assert_eq!(joint_lsmr_policy(2), CategoricalLsmrPolicy::Reuse);
+        assert_eq!(joint_lsmr_policy(3), CategoricalLsmrPolicy::CorePair);
+        assert_eq!(joint_lsmr_policy(4), CategoricalLsmrPolicy::CorePair);
+    }
+
+    #[test]
+    fn joint_memory_charges_only_the_selected_schwarz_topology() {
         let levels = [2_000, 1_000, 500];
         let diagonal_one = estimate_joint_lsmr_workspace_bytes(
             10_000,
@@ -1921,8 +2399,17 @@ mod tests {
             CategoricalLsmrPolicy::Reuse,
         )
         .expect("Schwarz estimate");
+        let core_pair = estimate_joint_lsmr_workspace_bytes(
+            10_000,
+            8,
+            &levels,
+            8,
+            CategoricalLsmrPolicy::CorePair,
+        )
+        .expect("core-pair estimate");
         assert_eq!(diagonal_one, diagonal_eight);
-        assert!(diagonal_eight < schwarz);
+        assert!(diagonal_eight < core_pair);
+        assert!(core_pair < schwarz);
     }
 
     #[test]
@@ -1947,7 +2434,6 @@ mod tests {
         .expect_err("adversarial dimensions must fail closed");
         assert_eq!(overflow.code, ErrorCode::Allocation);
     }
-
     fn test_team(threads: usize) -> InstalledThreadTeam {
         ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("thread config"))
             .acquire()
