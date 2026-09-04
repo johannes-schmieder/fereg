@@ -84,7 +84,7 @@ const MU_EXPLORATION_RECORD_BYTES: u128 = 128;
 pub const PPML_STEADY_STATE_AUDIT_ITERATIONS: usize = 16;
 /// Registered maximum modeled size for one bounded diagnostic record.  New
 /// report types must prove they fit this slot in a focused test.
-const DIAGNOSTIC_RECORD_BYTES: u128 = 256;
+pub(super) const DIAGNOSTIC_RECORD_BYTES: u128 = 288;
 
 /// User request and bounded-workspace policy for one PPML fit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

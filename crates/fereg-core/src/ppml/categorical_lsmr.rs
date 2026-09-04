@@ -3,6 +3,8 @@
 //! Exact normal-equation moments are recomputed after every recurrence stop;
 //! LSMR diagnostics alone never authorize an IRLS step.
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -21,6 +23,11 @@ use super::PpmlIterationWorkspace;
 
 const ADJOINT_LEVEL_CHUNK: usize = 64;
 const ADJOINT_COLUMN_LANES_PER_THREAD: usize = 2;
+const JOINT_LSMR_NUMERICAL_FLOOR: f64 = 1e-14;
+const JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE: f64 = 0.5;
+const JOINT_LSMR_PREDICTOR_MIN_SCHEDULE_RATIO: f64 = 0.01;
+const JOINT_LSMR_PREDICTOR_CERTIFICATE_TARGET: f64 = 0.5;
+const JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS: usize = 128;
 
 /// Numeric preconditioner lifecycle for categorical PPML LSMR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,8 +132,158 @@ pub(crate) struct JointLsmrReport {
     pub(crate) used_schwarz: bool,
     pub(crate) warm_start_attempted: bool,
     pub(crate) certificate: JointLsmrCertificate,
+    pub(crate) frame: JointLsmrFrameDiagnostic,
     #[cfg(test)]
     pub(crate) executing_threads: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct JointLsmrContinuationCause {
+    pub(crate) recurrence: bool,
+    pub(crate) certificate: bool,
+    pub(crate) staleness: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct JointLsmrFrameDiagnostic {
+    pub(crate) scheduled_tolerance: f64,
+    pub(crate) first_pass_tolerance: f64,
+    pub(crate) effective_tolerance: f64,
+    pub(crate) first_pass_iterations: usize,
+    pub(crate) continuation_iterations: usize,
+    pub(crate) first_pass_recurrence_residual: f64,
+    pub(crate) recurrence_residual: f64,
+    pub(crate) first_certificate_relative_infinity_norm: f64,
+    pub(crate) finite_certificate_max: f64,
+    pub(crate) fixed_effect_certificate_max: f64,
+    pub(crate) max_abs_log_hessian_weight_change: f64,
+    pub(crate) weight_change_valid: bool,
+    pub(crate) predictor_used: bool,
+    pub(crate) predictor_refreshed_preconditioner: bool,
+    pub(crate) continuation: JointLsmrContinuationCause,
+}
+
+fn joint_lsmr_frame_trace_line(frame: JointLsmrFrameDiagnostic) -> String {
+    format!(
+        "FEREG_SOLVER_TRACE|phase=joint_lsmr_frame|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|first_normal={:.17e}|final_normal={:.17e}|first_certificate={:.17e}|finite_max={:.17e}|fe_max={:.17e}|weight_change={:.17e}|weight_change_valid={}|predictor_used={}|predictor_refresh={}|recurrence_continuation={}|certificate_continuation={}|staleness_continuation={}",
+        frame.scheduled_tolerance,
+        frame.first_pass_tolerance,
+        frame.effective_tolerance,
+        frame.first_pass_iterations,
+        frame.continuation_iterations,
+        frame.first_pass_recurrence_residual,
+        frame.recurrence_residual,
+        frame.first_certificate_relative_infinity_norm,
+        frame.finite_certificate_max,
+        frame.fixed_effect_certificate_max,
+        frame.max_abs_log_hessian_weight_change,
+        u8::from(frame.weight_change_valid),
+        u8::from(frame.predictor_used),
+        u8::from(frame.predictor_refreshed_preconditioner),
+        u8::from(frame.continuation.recurrence),
+        u8::from(frame.continuation.certificate),
+        u8::from(frame.continuation.staleness),
+    )
+}
+
+fn emit_joint_lsmr_frame_trace(frame: JointLsmrFrameDiagnostic) {
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_none() {
+        return;
+    }
+    let line = joint_lsmr_frame_trace_line(frame);
+    eprintln!("{line}");
+    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
+        return;
+    };
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct JointLsmrFirstPassPredictor {
+    prior_certified_frame: Option<JointLsmrFrameDiagnostic>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct JointLsmrFirstPassPolicy {
+    tolerance: f64,
+    used_predictor: bool,
+    refresh_preconditioner: bool,
+}
+
+impl JointLsmrFirstPassPredictor {
+    fn policy(
+        &self,
+        scheduled_tolerance: f64,
+        weight_change_valid: bool,
+        max_abs_log_weight_change: f64,
+        preconditioner_policy: CategoricalLsmrPolicy,
+    ) -> JointLsmrFirstPassPolicy {
+        let fallback = JointLsmrFirstPassPolicy {
+            tolerance: scheduled_tolerance,
+            used_predictor: false,
+            refresh_preconditioner: false,
+        };
+        if preconditioner_policy != CategoricalLsmrPolicy::CorePair {
+            return fallback;
+        }
+        let Some(prior) = self.prior_certified_frame else {
+            return fallback;
+        };
+        let schedule_ratio = scheduled_tolerance / prior.scheduled_tolerance;
+        if !weight_change_valid
+            || !max_abs_log_weight_change.is_finite()
+            || max_abs_log_weight_change > JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE
+            || !prior.scheduled_tolerance.is_finite()
+            || prior.scheduled_tolerance <= 0.0
+            || !prior.effective_tolerance.is_finite()
+            || prior.effective_tolerance <= 0.0
+            || prior.effective_tolerance > prior.scheduled_tolerance
+            || !prior.first_certificate_relative_infinity_norm.is_finite()
+            || prior.first_certificate_relative_infinity_norm < 0.0
+            || !schedule_ratio.is_finite()
+            || !(JOINT_LSMR_PREDICTOR_MIN_SCHEDULE_RATIO..=1.0).contains(&schedule_ratio)
+        {
+            return fallback;
+        }
+
+        // Only an independently checked prior miss can tighten the recurrence.
+        // Passing recurrence diagnostics never substitute for that certificate.
+        let mut scale = 1.0_f64;
+        if prior.continuation.recurrence || prior.continuation.certificate {
+            scale = scale.min(prior.effective_tolerance / prior.scheduled_tolerance);
+            if prior.first_certificate_relative_infinity_norm > 0.0 {
+                scale = scale.min(
+                    JOINT_LSMR_PREDICTOR_CERTIFICATE_TARGET * prior.scheduled_tolerance
+                        / prior.first_certificate_relative_infinity_norm,
+                );
+            }
+        }
+        let lower = JOINT_LSMR_NUMERICAL_FLOOR.min(scheduled_tolerance);
+        let tolerance = (scheduled_tolerance * scale).clamp(lower, scheduled_tolerance);
+        let prior_iterations = prior
+            .first_pass_iterations
+            .saturating_add(prior.continuation_iterations);
+        JointLsmrFirstPassPolicy {
+            tolerance,
+            used_predictor: true,
+            // In the measured sparse-three-FE regime, a long certified frame
+            // predicts that the retained two-way core will trip staleness on
+            // the next nearby Hessian. Build the same factor from current
+            // weights before recurrence instead of discarding a short pass.
+            refresh_preconditioner: prior.continuation.staleness
+                || prior_iterations >= JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS,
+        }
+    }
+
+    fn record_certified(&mut self, frame: JointLsmrFrameDiagnostic) {
+        self.prior_certified_frame = Some(frame);
+    }
+
+    fn invalidate(&mut self) {
+        self.prior_certified_frame = None;
+    }
 }
 
 /// Fit-lifetime state for the ordinary (non-strict) IRLS Newton correction.
@@ -147,6 +304,7 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     finite_certificate: Vec<DirectionCertificate>,
     fe_certificate: Vec<DirectionCertificate>,
     warm_start_valid: bool,
+    first_pass_predictor: JointLsmrFirstPassPredictor,
     preconditioner: Option<Preconditioner>,
     core_pair_bridge_scratch: Mutex<CorePairBridgeScratch>,
     policy: CategoricalLsmrPolicy,
@@ -287,6 +445,7 @@ impl ReusableCategoricalJointLsmr {
                 "joint PPML FE certificate scratch",
             )?,
             warm_start_valid: false,
+            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
             core_pair_bridge_scratch: Mutex::new(core_pair_bridge_scratch),
             policy,
@@ -338,7 +497,8 @@ impl ReusableCategoricalJointLsmr {
         #[cfg(test)]
         let executing_threads = rayon::current_num_threads();
         let setup_started = Instant::now();
-        prepare_frame_and_finite_diagonal(
+        let weight_change_valid = self.warm_start_valid;
+        let max_abs_log_hessian_weight_change = prepare_frame_and_finite_diagonal(
             &self.active_design,
             outcome,
             mean,
@@ -347,10 +507,27 @@ impl ReusableCategoricalJointLsmr {
             &mut self.target,
             &mut self.rhs,
             &mut self.finite_inverse,
+            weight_change_valid,
         )?;
         let warm_start_attempted = self.warm_start_valid;
+        let first_pass_policy = self.first_pass_predictor.policy(
+            tolerance,
+            weight_change_valid,
+            max_abs_log_hessian_weight_change,
+            self.policy,
+        );
         let (mut use_schwarz, mut rebuilt) =
             self.prepare_preconditioner(fe_design, hessian_weights)?;
+        if first_pass_policy.refresh_preconditioner
+            && !rebuilt
+            && self.policy != CategoricalLsmrPolicy::Diagonal
+        {
+            use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
+            rebuilt = true;
+            if !use_schwarz {
+                fill_fe_diagonal_inverse(fe_design, hessian_weights, &mut self.fe_inverse)?;
+            }
+        }
         let mut setup_seconds = setup_started.elapsed().as_secs_f64();
         let mut solve_seconds = 0.0_f64;
         let mut certification_seconds = 0.0_f64;
@@ -371,6 +548,7 @@ impl ReusableCategoricalJointLsmr {
             self.instrumentation.escalation_armed =
                 self.instrumentation.escalation_armed.saturating_add(1);
         }
+        let first_tolerance = first_pass_policy.tolerance;
         let solve_started = Instant::now();
         let first = {
             let block_preconditioner =
@@ -378,7 +556,7 @@ impl ReusableCategoricalJointLsmr {
             self.run_once(
                 fe_design,
                 &block_preconditioner,
-                tolerance,
+                first_tolerance,
                 max_iterations,
                 self.warm_start_valid.then_some(self.warm_start.as_slice()),
                 use_escalation.then_some(&staleness as _),
@@ -386,10 +564,15 @@ impl ReusableCategoricalJointLsmr {
             )?
         };
         solve_seconds += solve_started.elapsed().as_secs_f64();
+        let first_pass_iterations = first.iterations;
+        let first_pass_recurrence_residual = first.normal_eq_residual;
         let mut result = first;
         let mut iterations = result.iterations;
-        let mut effective_tolerance = tolerance;
+        let mut continuation_iterations = 0_usize;
+        let mut effective_tolerance = first_tolerance;
+        let mut continuation = JointLsmrContinuationCause::default();
         if result.stop_reason == LsmrStopReason::Escalated {
+            continuation.staleness = true;
             let rebuild_started = Instant::now();
             use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
             rebuilt = true;
@@ -410,7 +593,7 @@ impl ReusableCategoricalJointLsmr {
                 self.run_once(
                     fe_design,
                     &block_preconditioner,
-                    tolerance,
+                    first_tolerance,
                     max_iterations,
                     Some(&result.x),
                     None,
@@ -418,6 +601,14 @@ impl ReusableCategoricalJointLsmr {
                 )?
             };
             solve_seconds += solve_started.elapsed().as_secs_f64();
+            continuation_iterations = continuation_iterations
+                .checked_add(continued.iterations)
+                .ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "joint PPML LSMR continuation iteration count overflowed",
+                    )
+                })?;
             iterations = iterations
                 .checked_add(continued.iterations)
                 .ok_or_else(|| {
@@ -433,11 +624,14 @@ impl ReusableCategoricalJointLsmr {
         let mut certificate =
             self.finish_and_certify(fe_design, hessian_weights, &result.x, tolerance)?;
         certification_seconds += certification_started.elapsed().as_secs_f64();
+        let first_certificate_relative_infinity_norm = certificate.relative_infinity_norm;
         // Recurrence termination and the independent normal-equation
         // certificate are separate obligations. Continue from the first
         // iterate when either one is missing; a certificate that happens to
         // pass cannot turn an exhausted recurrence into convergence.
         if !result.converged || !certificate.passed {
+            continuation.recurrence = !result.converged;
+            continuation.certificate = !certificate.passed;
             if !rebuilt && self.policy != CategoricalLsmrPolicy::Diagonal {
                 let rebuild_started = Instant::now();
                 use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
@@ -447,7 +641,8 @@ impl ReusableCategoricalJointLsmr {
                 }
                 setup_seconds += rebuild_started.elapsed().as_secs_f64();
             }
-            effective_tolerance = (tolerance * 0.01).max(1e-14);
+            let numerical_floor = JOINT_LSMR_NUMERICAL_FLOOR.min(tolerance);
+            effective_tolerance = first_tolerance.min((tolerance * 0.01).max(numerical_floor));
             retries = retries.checked_add(1).ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Internal,
@@ -469,6 +664,14 @@ impl ReusableCategoricalJointLsmr {
                 )?
             };
             solve_seconds += solve_started.elapsed().as_secs_f64();
+            continuation_iterations = continuation_iterations
+                .checked_add(continued.iterations)
+                .ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "joint PPML LSMR continuation iteration count overflowed",
+                    )
+                })?;
             iterations = iterations
                 .checked_add(continued.iterations)
                 .ok_or_else(|| {
@@ -492,6 +695,26 @@ impl ReusableCategoricalJointLsmr {
         self.warm_start.copy_from_slice(&result.x);
         self.warm_start_valid = true;
 
+        let frame = JointLsmrFrameDiagnostic {
+            scheduled_tolerance: tolerance,
+            first_pass_tolerance: first_tolerance,
+            effective_tolerance,
+            first_pass_iterations,
+            continuation_iterations,
+            first_pass_recurrence_residual,
+            recurrence_residual: result.normal_eq_residual,
+            first_certificate_relative_infinity_norm,
+            finite_certificate_max: certificate.finite_absolute_infinity_norm,
+            fixed_effect_certificate_max: certificate.fixed_effect_absolute_infinity_norm,
+            max_abs_log_hessian_weight_change,
+            weight_change_valid,
+            predictor_used: first_pass_policy.used_predictor,
+            predictor_refreshed_preconditioner: first_pass_policy.refresh_preconditioner,
+            continuation,
+        };
+        self.first_pass_predictor.record_certified(frame);
+        emit_joint_lsmr_frame_trace(frame);
+
         Ok(JointLsmrReport {
             iterations,
             effective_tolerance,
@@ -505,6 +728,7 @@ impl ReusableCategoricalJointLsmr {
             used_schwarz: use_schwarz,
             warm_start_attempted,
             certificate,
+            frame,
             #[cfg(test)]
             executing_threads,
         })
@@ -541,6 +765,7 @@ impl ReusableCategoricalJointLsmr {
     pub(crate) fn reset_warm_start(&mut self) {
         self.warm_start.fill(0.0);
         self.warm_start_valid = false;
+        self.first_pass_predictor.invalidate();
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -631,9 +856,9 @@ impl ReusableCategoricalJointLsmr {
             // augmented FE axis without an uncovered null direction.
             fill_fe_diagonal_inverse(fe_design, weights, &mut self.fe_inverse)?;
         }
-        // Reuse until the recurrence or the exact certificate demonstrates
-        // that the retained factor is inadequate. This avoids an unmeasured
-        // FE-size or weight-ratio routing threshold.
+        // Retain the factor by default. The fit-owned first-pass predictor may
+        // refresh a core-pair factor before recurrence, but only after a
+        // certified nearby frame supplies the measured conditioning signal.
         let rebuild = self.preconditioner.is_none();
         if rebuild {
             let use_schwarz = self.rebuild_schwarz(fe_design, weights)?;
@@ -744,7 +969,8 @@ fn prepare_frame_and_finite_diagonal(
     target: &mut [f64],
     rhs: &mut [f64],
     finite_inverse: &mut [f64],
-) -> Result<()> {
+    prior_hessian_available: bool,
+) -> Result<f64> {
     let rows = active.nrows();
     let columns = active.ncols();
     if [
@@ -765,9 +991,26 @@ fn prepare_frame_and_finite_diagonal(
     }
 
     finite_inverse.fill(0.0);
+    let mut max_abs_log_hessian_weight_change = 0.0_f64;
     let active_values = active.as_slice();
     for row in 0..rows {
         let root_weight = weights[row].sqrt();
+        if prior_hessian_available {
+            let prior_root_weight = sqrt_weights[row];
+            if !prior_root_weight.is_finite() || prior_root_weight <= 0.0 {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    "joint PPML prior Hessian weight state is invalid",
+                ));
+            }
+            let log_change = 2.0 * (root_weight / prior_root_weight).ln().abs();
+            if !log_change.is_finite() {
+                return Err(nonconvergence(
+                    "joint PPML Hessian weight transition is nonfinite",
+                ));
+            }
+            max_abs_log_hessian_weight_change = max_abs_log_hessian_weight_change.max(log_change);
+        }
         let correction = if outcome[row] == 0.0 {
             -1.0
         } else {
@@ -796,7 +1039,7 @@ fn prepare_frame_and_finite_diagonal(
             ));
         }
     }
-    Ok(())
+    Ok(max_abs_log_hessian_weight_change)
 }
 
 fn build_active_design<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -2001,6 +2244,178 @@ mod tests {
     use super::*;
     use crate::fe::EffectTerm;
 
+    fn predictor_frame(
+        scheduled_tolerance: f64,
+        effective_tolerance: f64,
+        first_certificate: f64,
+        iterations: usize,
+        continuation: JointLsmrContinuationCause,
+    ) -> JointLsmrFrameDiagnostic {
+        JointLsmrFrameDiagnostic {
+            scheduled_tolerance,
+            first_pass_tolerance: scheduled_tolerance,
+            effective_tolerance,
+            first_pass_iterations: iterations,
+            continuation_iterations: 0,
+            first_pass_recurrence_residual: 1e-6,
+            recurrence_residual: 1e-7,
+            first_certificate_relative_infinity_norm: first_certificate,
+            finite_certificate_max: 1e-8,
+            fixed_effect_certificate_max: 2e-8,
+            max_abs_log_hessian_weight_change: 0.1,
+            weight_change_valid: true,
+            predictor_used: false,
+            predictor_refreshed_preconditioner: false,
+            continuation,
+        }
+    }
+
+    #[test]
+    fn first_pass_predictor_initializes_to_the_scheduled_tolerance() {
+        let predictor = JointLsmrFirstPassPredictor::default();
+        let policy = predictor.policy(1e-8, true, 0.1, CategoricalLsmrPolicy::CorePair);
+        assert_eq!(policy.tolerance.to_bits(), 1e-8_f64.to_bits());
+        assert!(!policy.used_predictor);
+        assert!(!policy.refresh_preconditioner);
+    }
+
+    #[test]
+    fn first_pass_predictor_clamps_prior_certificate_misses() {
+        let mut predictor = JointLsmrFirstPassPredictor::default();
+        predictor.record_certified(predictor_frame(
+            1e-8,
+            1e-10,
+            2e-8,
+            200,
+            JointLsmrContinuationCause {
+                recurrence: false,
+                certificate: true,
+                staleness: false,
+            },
+        ));
+        let predicted = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+        assert!((predicted.tolerance - 1e-11).abs() <= 1e-26);
+        assert!(predicted.used_predictor);
+        assert!(predicted.refresh_preconditioner);
+
+        let mut floor_predictor = JointLsmrFirstPassPredictor::default();
+        floor_predictor.record_certified(predictor_frame(
+            5e-12,
+            5e-14,
+            1e-11,
+            10,
+            JointLsmrContinuationCause {
+                recurrence: true,
+                certificate: false,
+                staleness: false,
+            },
+        ));
+        let floor = floor_predictor.policy(5e-14, true, 0.1, CategoricalLsmrPolicy::CorePair);
+        assert_eq!(
+            floor.tolerance.to_bits(),
+            JOINT_LSMR_NUMERICAL_FLOOR.to_bits()
+        );
+        assert!(floor.tolerance <= 5e-14);
+
+        let mut passing = JointLsmrFirstPassPredictor::default();
+        passing.record_certified(predictor_frame(
+            1e-8,
+            1e-8,
+            5e-9,
+            10,
+            JointLsmrContinuationCause::default(),
+        ));
+        let scheduled = passing.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+        assert_eq!(scheduled.tolerance.to_bits(), 1e-9_f64.to_bits());
+        assert!(!scheduled.refresh_preconditioner);
+
+        let two_effect = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::Reuse);
+        assert_eq!(two_effect.tolerance.to_bits(), 1e-9_f64.to_bits());
+        assert!(!two_effect.used_predictor);
+        assert!(!two_effect.refresh_preconditioner);
+    }
+
+    #[test]
+    fn first_pass_predictor_rejects_weight_and_schedule_jumps() {
+        let mut predictor = JointLsmrFirstPassPredictor::default();
+        predictor.record_certified(predictor_frame(
+            1e-8,
+            1e-10,
+            2e-8,
+            200,
+            JointLsmrContinuationCause::default(),
+        ));
+        for policy in [
+            predictor.policy(1e-9, false, 0.1, CategoricalLsmrPolicy::CorePair),
+            predictor.policy(
+                1e-9,
+                true,
+                JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE + f64::EPSILON,
+                CategoricalLsmrPolicy::CorePair,
+            ),
+            predictor.policy(1e-11, true, 0.1, CategoricalLsmrPolicy::CorePair),
+            predictor.policy(2e-8, true, 0.1, CategoricalLsmrPolicy::CorePair),
+        ] {
+            assert!(!policy.used_predictor);
+            assert!(!policy.refresh_preconditioner);
+        }
+    }
+
+    #[test]
+    fn first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement() {
+        let frame = predictor_frame(1e-8, 1e-8, 5e-9, 200, JointLsmrContinuationCause::default());
+        let mut predictor = JointLsmrFirstPassPredictor::default();
+        predictor.record_certified(frame);
+        let snapshot = predictor;
+        let _speculative = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+        assert_eq!(predictor, snapshot);
+
+        predictor.invalidate();
+        assert_eq!(predictor, JointLsmrFirstPassPredictor::default());
+        let replacement_for_changed_basis = JointLsmrFirstPassPredictor::default();
+        assert_eq!(predictor, replacement_for_changed_basis);
+    }
+
+    #[test]
+    fn joint_lsmr_frame_trace_is_deterministic_and_complete() {
+        let mut frame = predictor_frame(
+            1e-8,
+            1e-9,
+            2e-8,
+            200,
+            JointLsmrContinuationCause {
+                recurrence: true,
+                certificate: true,
+                staleness: true,
+            },
+        );
+        frame.predictor_used = true;
+        frame.predictor_refreshed_preconditioner = true;
+        let first = joint_lsmr_frame_trace_line(frame);
+        let second = joint_lsmr_frame_trace_line(frame);
+        assert_eq!(first, second);
+        for field in [
+            "scheduled=",
+            "first_tolerance=",
+            "effective=",
+            "first_iterations=",
+            "continuation_iterations=",
+            "first_normal=",
+            "final_normal=",
+            "first_certificate=",
+            "finite_max=",
+            "fe_max=",
+            "weight_change=",
+            "predictor_used=1",
+            "predictor_refresh=1",
+            "recurrence_continuation=1",
+            "certificate_continuation=1",
+            "staleness_continuation=1",
+        ] {
+            assert!(first.contains(field), "trace omitted {field}");
+        }
+    }
+
     #[test]
     fn augmented_operator_obeys_adjoint_identity() {
         let left = vec![0, 0, 1, 1];
@@ -2180,7 +2595,7 @@ mod tests {
         let mut rhs = vec![0.0; 5];
         let mut finite_inverse = vec![0.0; 3];
 
-        prepare_frame_and_finite_diagonal(
+        let weight_change = prepare_frame_and_finite_diagonal(
             &active,
             &outcome,
             &mean,
@@ -2189,8 +2604,10 @@ mod tests {
             &mut target,
             &mut rhs,
             &mut finite_inverse,
+            false,
         )
         .expect("prepared frame");
+        assert_eq!(weight_change, 0.0);
 
         let mut expected_diagonal = vec![0.0_f64; active.ncols()];
         for (column, diagonal) in expected_diagonal.iter_mut().enumerate() {
@@ -2372,15 +2789,27 @@ mod tests {
             finite_certificate: Vec::new(),
             fe_certificate: vec![DirectionCertificate::default(); 2],
             warm_start_valid: false,
+            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
             core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Diagonal,
             instrumentation: JointLsmrInstrumentation::default(),
         };
+        solver
+            .first_pass_predictor
+            .record_certified(predictor_frame(
+                1e-8,
+                1e-8,
+                5e-9,
+                10,
+                JointLsmrContinuationCause::default(),
+            ));
+        let predictor_before_failure = solver.first_pass_predictor;
         let error = solver
             .solve(&replacement, &[1.0; 4], &[1.0; 4], &[1.0; 4], 1e-8, 100)
             .expect_err("replacement topology must fail before operator use");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert_eq!(solver.first_pass_predictor, predictor_before_failure);
     }
 
     #[test]
@@ -2452,6 +2881,7 @@ mod tests {
             finite_certificate: vec![DirectionCertificate::default(); 1],
             fe_certificate: vec![DirectionCertificate::default(); 6],
             warm_start_valid: false,
+            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
             core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Reuse,
@@ -2501,6 +2931,8 @@ mod tests {
         assert!(second.certification_seconds > 0.0);
         assert!(second.used_schwarz);
         assert!(!second.rebuilt_preconditioner);
+        assert!(!second.frame.predictor_used);
+        assert!(!second.frame.predictor_refreshed_preconditioner);
         assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
         assert_eq!(solver.instrumentation.escalation_armed, 1);
         let expected_finite_inverse = 1.0
@@ -2512,6 +2944,13 @@ mod tests {
         assert!(solver.fe_inverse.iter().all(|value| value.is_nan()));
         assert!(solver.warm_start_valid);
         assert!(solver.delta_eta.iter().all(|value| value.is_finite()));
+
+        solver.reset_warm_start();
+        assert!(!solver.warm_start_valid);
+        assert_eq!(
+            solver.first_pass_predictor,
+            JointLsmrFirstPassPredictor::default()
+        );
     }
 
     #[test]
@@ -2563,6 +3002,7 @@ mod tests {
                 finite_certificate: vec![DirectionCertificate::default(); 1],
                 fe_certificate: vec![DirectionCertificate::default(); 6],
                 warm_start_valid: false,
+                first_pass_predictor: JointLsmrFirstPassPredictor::default(),
                 preconditioner: None,
                 core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
                 policy: CategoricalLsmrPolicy::Diagonal,
@@ -2624,6 +3064,7 @@ mod tests {
             finite_certificate: Vec::new(),
             fe_certificate: vec![DirectionCertificate::default(); 12],
             warm_start_valid: false,
+            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
             core_pair_bridge_scratch: Mutex::new(
                 CorePairBridgeScratch::new(9).expect("bridge scratch"),

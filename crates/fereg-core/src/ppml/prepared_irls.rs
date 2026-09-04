@@ -32,9 +32,11 @@ use super::categorical_fwl_cmg::{
 };
 use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
-    joint_lsmr_policy, JointLsmrReport, ReusableCategoricalJointLsmr,
+    joint_lsmr_policy, JointLsmrFrameDiagnostic, JointLsmrReport, ReusableCategoricalJointLsmr,
 };
 use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
+#[cfg(test)]
+use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 #[cfg(test)]
 use super::plan_ppml_memory;
@@ -276,6 +278,7 @@ pub(crate) struct PreparedPpmlIterationReport {
     pub(crate) finite_rank: usize,
     pub(crate) score: PpmlCertificate,
     pub(crate) linear_reuse: LinearSessionReuseReport,
+    pub(crate) joint_lsmr: Option<JointLsmrFrameDiagnostic>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -970,6 +973,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             config.phase_allocation_probe,
             PpmlPhase::WeightResponseRefresh,
         );
+        let mut joint_lsmr_frame = None;
         let (finite_rank, reuse, linear_route) = if iteration == 1 {
             let output = session.solve_fresh()?;
             if !output.certified() {
@@ -1096,6 +1100,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 inner_tolerance,
                 config.linear.absorb.lsmr.max_iterations,
             )?;
+            joint_lsmr_frame = Some(report.frame);
             joint.fill_candidate(&mut workspace)?;
             certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
             total_inner_iterations = total_inner_iterations
@@ -1476,6 +1481,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 finite_rank,
                 score: final_score.clone(),
                 linear_reuse: reuse,
+                joint_lsmr: joint_lsmr_frame,
             });
         }
         let audit_can_start = allocation_audit.can_start_after(
@@ -4597,7 +4603,11 @@ mod tests {
 
     #[test]
     fn prepared_iteration_report_fits_registered_memory_slot() {
-        assert!(std::mem::size_of::<PreparedPpmlIterationReport>() <= 256);
+        assert!(
+            std::mem::size_of::<PreparedPpmlIterationReport>() as u128 <= DIAGNOSTIC_RECORD_BYTES,
+            "prepared iteration report uses {} bytes",
+            std::mem::size_of::<PreparedPpmlIterationReport>(),
+        );
     }
 
     #[test]

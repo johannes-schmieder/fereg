@@ -95,6 +95,16 @@ architecture decisions remain under `docs/adr/`.
   coarsens FE work ownership; and parallelizes independent certificate
   directions with canonical reductions. Its topology, buffers, preconditioner,
   predictor state, and warm solution remain fit-owned and reusable.
+- Each certified ordinary joint-LSMR frame now retains its scheduled,
+  first-pass, and effective recurrence tolerances; split iteration counts;
+  recurrence and exact finite/FE certificate maxima; continuation cause; and
+  maximum log Hessian-weight change. On eligible three-FE core-pair fits, only
+  valid nearby certified evidence may tighten the next first pass. The same
+  evidence proactively refreshes a long or stale retained two-way core at
+  current weights, avoiding a recurrence that can only request a rebuild.
+  Checkpoint commits, active-basis replacement, invalid transitions, and warm
+  reset invalidate the predictor. Exact post-recurrence certificates remain
+  authoritative.
 - For three or more effects, joint LSMR retains one two-effect Schwarz core and
   couples it to a fresh current-weight positive diagonal action for the
   remaining FE coordinates through the symmetric block factor
@@ -163,6 +173,14 @@ has been launched.
   comparator with no route failure. The one-repetition local smoke under
   `/private/tmp/fereg-ppml-checkpoint-smoke` passed all science and route checks
   for all nine eligible MAP/LSMR/CMG arms.
+- The current joint-LSMR predictor candidate passes the v3 local science gate
+  under `/private/tmp/fereg-joint-predictor-v3-science-final` and the
+  three-repetition local smoke under
+  `/private/tmp/fereg-joint-predictor-v3-smoke-final`; both report
+  `science_pass=true` and `route_pass=true`. Its universal arm64/x86_64 macOS
+  plugin passes binary audit and the actual-plugin ABI/panic-containment test.
+  Focused joint-LSMR, prepared-IRLS, and constrained-memory tests, Rust
+  formatting, and strict workspace Clippy also pass.
 - The SCC development run rooted at
   `/projectnb/welfgr/fereg/dev/20260903T170000Z-public-ppml-solvers-2ff872b`
   used result table 2.4 and the v1 public-state KKT audit. It completed all
@@ -280,6 +298,31 @@ has been launched.
   unchanged at 148,353,390 bytes, including the same 75,940,704-byte solver
   workspace. Relative to the existing 66.228-second pinned-reference median,
   this local diagnostic is about 55.1x faster.
+- An instrumented reproduction of exact-`0bd1ced` policy on the same
+  N=50,000, K=10 sparse-3FE case showed
+  that its four ordinary-LSMR retries were preconditioner-staleness
+  continuations, not certificate-driven tolerance retries: first passes used
+  200 iterations and the rebuilt continuations used 749, while every effective
+  tolerance remained at its scheduled value. Tightening every first pass by
+  10x or 100x increased total iterations and was removed. With the retained
+  certified-frame predictor, median seven-thread wall/native time over matched
+  local repeats fell from 1.180/1.160 to 1.057/1.036 seconds. Ordinary solve
+  time fell from 0.769 to 0.647 seconds (15.8%); setup changed from 0.0119 to
+  0.0129 seconds and certification from 0.00635 to 0.00630 seconds. The five
+  frames used 944 first-pass and zero continuation iterations, versus 949
+  total iterations and four continuations. Likelihood and deviance were
+  identical at reported precision; maximum coefficient, covariance-cell, and
+  public-certificate differences were `9.1e-17`, `1.8e-19`, and `1.1e-10`,
+  with unchanged rank and no fallback. The 128-record diagnostic allowance
+  raises the modeled peak by 4,096 bytes and does not change memory routing.
+- Guard diagnostics preserve the two-FE path exactly at 61 ordinary iterations
+  and one retry. Balanced 3FE K=10 at one/seven threads and K=50 at seven
+  threads retained identical iterations and scientific results, with wall
+  times changing by at most 0.006 seconds. Sparse-3FE K=0 at seven threads
+  changed from 10.655 to 10.374 seconds and from 1,270 to 1,268 iterations;
+  likelihood/deviance moved by `1.47e-7`/`2.93e-7` (about `6.1e-12` relative),
+  all independent certificates passed, and rank and fallback remained
+  unchanged. These timings are diagnostic, not qualification evidence.
 - The current eight-scope local science profile and three-scope licensed smoke
   both pass their science and route adjudicators with no failures. In the
   one-thread smoke, balanced-2FE MAP/LSMR/CMG took 0.164/0.164/0.158 seconds,
@@ -338,12 +381,11 @@ not inherit release or cross-platform qualification from earlier sources.
 
 ## Current blockers
 
-- Sparse-three-FE ordinary joint LSMR is now the specialized-fit floor. In the
-  matched promoted run it used about 0.79 seconds of solve time, 949
-  iterations, and four tighter retries out of a 1.20-second total. The
-  symmetric core/extra bridge materially improves conditioning without
-  another pair graph, but the first recurrence tolerance still predicts the
-  independent certificate poorly.
+- Sparse-three-FE ordinary joint LSMR remains the specialized-fit floor. The
+  matched promoted run now uses about 0.65 seconds of solve time and 944
+  iterations out of a 1.06-second total, with no continuation. Its scheduled
+  tolerances already predict the independent certificates; the remaining work
+  is conditioning and operator cost rather than retry policy.
 - Explicit MAP, and therefore `solver(auto)`, remains weak on poorly connected
   graphs. The difficult-chain MAP smoke needs 20,842 total inner iterations
   and about 13 seconds even after its per-pass kernels were accelerated.
@@ -353,11 +395,10 @@ not inherit release or cross-platform qualification from earlier sources.
 
 ## Development plan
 
-1. Make three-FE joint LSMR's first recurrence tolerance predict the
-   independent certificate more accurately, carrying forward measured
-   certificate scale so the four tighter retries become continuation rather
-   than repeated oversolving. Preserve the exact post-recurrence normal
-   equations and publication tolerance.
+1. Improve the three-FE core-pair preconditioner or operator locality so the
+   944 certified first-pass iterations fall materially, without restoring the
+   slow retained all-pairs Schwarz policy. The new frame evidence should
+   distinguish conditioning gains from retry-count changes.
 2. Reduce CMG's remaining hard-chain RHS retries through certificate-aware
    continuation or recycled block work, without changing the publication
    tolerance or cadence.
