@@ -3618,7 +3618,11 @@ mod tests {
         .expect("prepared two-FE fixture")
     }
 
-    fn prepared_three_fe(order: [usize; 3], zero_control: bool) -> (PreparedOlsData, Vec<f64>) {
+    fn prepared_three_fe(
+        order: [usize; 3],
+        zero_control: bool,
+        nested_in: Option<usize>,
+    ) -> (PreparedOlsData, Vec<f64>) {
         let rows = 240;
         let x_values = (0..rows)
             .map(|row| {
@@ -3629,7 +3633,7 @@ mod tests {
                 }
             })
             .collect::<Vec<_>>();
-        let categorical = [
+        let mut categorical = [
             (0..rows)
                 .map(|row| (row % 24 + 1) as f64)
                 .collect::<Vec<_>>(),
@@ -3640,6 +3644,12 @@ mod tests {
                 .map(|row| ((row * 7 + row / 11) % 4 + 1) as f64)
                 .collect::<Vec<_>>(),
         ];
+        if let Some(core) = nested_in {
+            categorical[2] = categorical[core]
+                .iter()
+                .map(|value| 1.0 + ((*value - 1.0) / 3.0).floor())
+                .collect();
+        }
         let outcome = (0..rows)
             .map(|row| {
                 1.0 + ((row * 17
@@ -3743,7 +3753,7 @@ mod tests {
             super::super::PpmlSolverFamily::Cmg,
         ] {
             for order in orders {
-                let (prepared, outcome) = prepared_three_fe(order, false);
+                let (prepared, outcome) = prepared_three_fe(order, false, None);
                 let design = prepared.fit_owned_fe_design().expect("three-FE design");
                 let selected = retained_effect_order_by_levels(design.effects().len(), |effect| {
                     design.effects()[effect].n_levels()
@@ -3806,7 +3816,7 @@ mod tests {
     #[test]
     fn cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates() {
         for zero_control in [false, true] {
-            let (prepared, outcome) = prepared_three_fe([2, 0, 1], zero_control);
+            let (prepared, outcome) = prepared_three_fe([2, 0, 1], zero_control, None);
             let prior_weights = (0..outcome.len())
                 .map(|row| 0.5 + (row % 7) as f64 / 3.0)
                 .collect::<Vec<_>>();
@@ -3875,8 +3885,77 @@ mod tests {
     }
 
     #[test]
+    fn cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates() {
+        use super::super::PpmlSolverFamily;
+        for core in [0, 1] {
+            for zero_control in [false, true] {
+                let mut reference: Option<PreparedPpmlIrlsFit> = None;
+                for (order, family, retry) in [
+                    ([0, 1, 2], PpmlSolverFamily::Map, false),
+                    ([0, 1, 2], PpmlSolverFamily::Cmg, false),
+                    ([2, 0, 1], PpmlSolverFamily::Cmg, false),
+                    ([1, 2, 0], PpmlSolverFamily::Cmg, true),
+                ] {
+                    let (prepared, outcome) = prepared_three_fe(order, zero_control, Some(core));
+                    let weights = (0..outcome.len())
+                        .map(|row| 0.5 + (row % 7) as f64 / 3.0)
+                        .collect::<Vec<_>>();
+                    let offset = (0..outcome.len())
+                        .map(|row| 0.1 * (row as f64 / 17.0).sin())
+                        .collect::<Vec<_>>();
+                    let mut config = PreparedPpmlIrlsConfig {
+                        solver_plan: PpmlSolverPlan::new(family),
+                        ..PreparedPpmlIrlsConfig::default()
+                    };
+                    config.linear.execution.threads =
+                        crate::options::ThreadConfig::from_requested(2, true).unwrap();
+                    config.ppml.absorb.lsmr.threads = config.linear.execution.threads;
+                    config.linear.absorb.lsmr.threads = config.linear.execution.threads;
+                    if retry {
+                        super::super::categorical_fwl_cmg::inject_projection_certificate_failure_once(0);
+                    }
+                    let fit = fit_prepared_ppml_irls(
+                        &prepared,
+                        &outcome,
+                        &weights,
+                        &offset,
+                        config,
+                        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                            .unwrap(),
+                        None,
+                    )
+                    .expect("nested CMG fit");
+                    assert!(fit.diagnostics().converged);
+                    assert!(fit.diagnostics().two_consecutive_convergence);
+                    assert!(fit.diagnostics().final_score.passed);
+                    assert_eq!(fit.diagnostics().solver.effective, family);
+                    assert_eq!(fit.diagnostics().solver.fallback_count, 0);
+                    if retry {
+                        assert!(fit.diagnostics().solver.engines()[3].retries >= 1);
+                    }
+                    if let Some(reference) = &reference {
+                        assert!(relative_infinity_difference(fit.eta(), reference.eta()) <= 2e-9);
+                        assert!(relative_infinity_difference(fit.mean(), reference.mean()) <= 2e-9);
+                        assert!(
+                            (fit.objective().deviance - reference.objective().deviance).abs()
+                                <= 1e-8
+                        );
+                        assert!(
+                            (fit.objective().log_likelihood - reference.objective().log_likelihood)
+                                .abs()
+                                <= 1e-8
+                        );
+                    } else {
+                        reference = Some(fit);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
-        let (prepared, outcome) = prepared_three_fe([2, 0, 1], true);
+        let (prepared, outcome) = prepared_three_fe([2, 0, 1], true, None);
         let mut config = PreparedPpmlIrlsConfig {
             solver_plan: PpmlSolverPlan::new(super::super::PpmlSolverFamily::Cmg),
             ..PreparedPpmlIrlsConfig::default()

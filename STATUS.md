@@ -150,6 +150,13 @@ architecture decisions remain under `docs/adr/`.
   engine construction and strict-basis replacement; private frame tracing
   reports that capacity. Fresh numeric construction, recurrence tolerances,
   exact certificates, and the 64-indicator envelope are unchanged.
+- Ordinary PPML CMG omits a third effect from its projection recipe only when
+  exact retained membership proves that it is a function of a selected core
+  effect. The full model still owns admission, the nuisance cap, canonical
+  rank/DoF/checkpoints, every independent FE certificate, and saved effects.
+  This avoids inverting an identically zero Schur block without a numerical
+  rank decision. Private trace records the original redundant-effect position
+  and actual nuisance solve width. Near-nesting does not qualify.
 - Joint and checkpoint LSMR preflight includes the pinned Schwarz builder's
   dense cross-tabulation dispatch, including concurrent pair tables. Sparse
   observation graphs can still take that dense construction path. This fixes
@@ -463,6 +470,76 @@ Five-repeat medians at N=25,000 and seven threads:
   about the dirty candidate. Candidate licensed evidence is the directly
   hashed-artifact fixture run above.
 
+## Local CMG exact nesting: September 5
+
+This round starts from clean `467b4998210f927bc479b11f92b634e1cbcaa00c`,
+independently built in a detached worktree. The [immutable diagnostic summary](benchmarks/reports/development/ppml-cmg-exact-nesting-2026-09-05.json)
+binds the candidate product-source hashes and artifact, exact baseline,
+pinned references, receipts, full timing distributions, split iterations and
+tolerances, scientific differences, and modeled/observed memory. Raw evidence
+is retained in local temporary bundle `fereg-cmg-nuisance.TGGyIE`. This is local
+macOS diagnostic evidence, not qualification.
+
+The width-8 fixture has exactly 800 distinct `(g1,g3)` pairs for 800 `g1`
+levels: its nine-level third effect is a function of the first effect. Its
+weighted nuisance Schur complement is therefore identically zero for every
+positive Hessian weight. The former numeric Schur solve amplified error and
+failed the fresh projection certificate (relative infinity 0.067615 at K=0).
+The retained PPML-only change proves exact membership containment once per
+engine, borrows a two-core projection recipe, and still certifies every original
+FE block. It changes neither shared OLS nor upstream CMG, needs no new ADR,
+and preserves the original full-topology memory admission and 64-column cap.
+
+Five-repeat medians at N=25,000, nuisance width 8:
+
+| K / threads | Baseline CMG s | Candidate CMG s | MAP s | LSMR s | ppmlhdfe s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0 / 7 | 0.258 | 0.163 | 0.109 | 0.097 | 0.166 |
+| 10 / 7 | 0.456 | 0.390 | 0.300 | 0.188 | 0.642 |
+| 50 / 7 | 1.352 | 1.214 | 0.997 | 0.549 | 4.747 |
+| 0 / 1 | 0.500 | 0.167 | — | — | — |
+| 50 / 1 | 4.046 | 3.573 | — | — | — |
+
+- Baseline CMG falls back in all three nested-width cases after respectively
+  1/11/51 retried RHSs. Candidate CMG retains four certified ordinary frames,
+  65/54/47 first-pass iterations, zero continuation, and zero fallback. These
+  are frame maximum-RHS recurrence units, not total graph operator applications;
+  baseline failed frames retain total iterations but no certified-frame split
+  trace. The matched envelope is science-green but remains route-red solely
+  for the baseline failures. All candidate arms are science- and route-green.
+- K=0 ordinary CMG setup/solve/certificate totals are 0.014560/0.065390/0.002829
+  seconds, versus 0.087053/0.064805/0.000521 for the baseline's failed attempt
+  alone. Baseline additionally performs 22 MAP ordinary iterations; candidate
+  has none. Candidate checkpoints retain 45 iterations and
+  0.011357/0.017759/0.002763 seconds setup/solve/certification. Each first pass
+  uses its scheduled tolerance, from `1.38949549437313835e-7` through
+  `8.56637091926202050e-11`; publication tolerances are unchanged.
+- Non-nested width 32/K=0 is at parity (0.663/0.661 seconds), as are
+  width 64/K=0, K=10, and K=50 (1.072/1.073, 1.211/1.212, 2.312/2.308).
+  The reversed-order one-thread width-64/K=50 check is 8.377/8.365 seconds.
+  Two noisy MAP comparisons return to parity in reversed-order repeats.
+  LSMR difficult-chain and sparse-three-FE guards retain identical 38/850
+  ordinary iterations and zero retries, at 0.225/0.226 and 1.036/1.024 seconds.
+- All 188 matched repetitions retain identical recorded likelihood/deviance,
+  sample, rank, DoF, and result names. Maximum coefficient/covariance-cell
+  differences are `1.20e-16`/`2.51e-18`; raw public certificate cells differ
+  by at most `1.60e-8`, with every independent normalized certificate passing.
+  The nested K=0 seven-thread memory model grows by 104 bytes to 155,871,422;
+  observed peak delta falls from 21,488,734 to 21,332,636 bytes. At one thread
+  the observed peak grows from 20,019,696 to 21,011,300 bytes, still below the
+  80,873,686-byte model. No memory allowance changes.
+- Validation: 40 focused CMG tests, 765 Python tests, 728 core and 74 normal
+  plugin tests plus all workspace oracle/constrained-memory suites, and 89 FFI
+  tests pass. Formatting, strict Clippy, universal macOS build/binary/ABI audit,
+  directly hashed-artifact Stata smoke and rollback fixtures, and public
+  command tests pass. New focused coverage includes exact versus one-row-away
+  nesting in either core, all role permutations, borrowed storage identity,
+  weighted/offset K=0 and positive-K fits, and forced certified retry. The
+  licensed fixture checks all six absorb orders, rank/DoF, objectives, means,
+  and saved-effect reconstruction against MAP. The unchanged v3 local science
+  (eight scopes) and smoke (three scopes, all nine arms), run through v4, are
+  science- and route-green. No SCC, auto calibration, push, or release ran.
+
 ## Historical diagnostic performance evidence
 
 - Across the 56 exact-source SCC scopes above, performance-eligible geometric
@@ -687,9 +764,9 @@ not inherit release or cross-platform qualification from earlier sources.
   chain. After nuisance batching, width 64/K=0 numeric setup still costs
   0.881 seconds of a 1.049-second fit, against 0.093 seconds graph solve.
   With K=50, setup and solve cost 0.790/0.905 seconds of a 2.236-second fit.
-  Width 8/K=0 also has a pre-existing certified MAP fallback in both arms.
-  This is not evidence
-  that executor construction is expensive; that earlier 0.01--0.40% result
+  Exact nesting now removes the width-8 ordinary projection failure, but does
+  not reduce the non-nested width-32/64 Schur solves. This is not evidence
+  that executor construction is expensive; the earlier 0.01--0.40% result
   remains the relevant bound for a shared-executor API proposal.
   On the K=0 scope LSMR takes 0.102 seconds and pinned `ppmlhdfe` 0.197, so
   this remains a substantial CMG-specific weakness inside its valid envelope.
@@ -706,8 +783,9 @@ not inherit release or cross-platform qualification from earlier sources.
    work and elapsed time, with the exact independent certificate unchanged.
 2. Reduce CMG's actual changing-weight nuisance/Schur solve work at widths
    32--64; batching has removed the unnecessary K=0 serialization but not
-   those solves. Localize the matched width-8 projection-certificate failure
-   and remaining hard-chain RHS continuation. Keep the 64-indicator envelope
+   those solves. The exactly nested width-8 failure is fixed; general
+   rank-deficient or near-nested Schur blocks and hard-chain RHS continuation
+   remain separate targets. Keep the 64-indicator envelope
    and fresh certificates; do not confuse numeric setup with executor cost.
 3. Improve explicit MAP on poorly connected graphs with a topology-aware
    coarse correction or gauge-reduced preconditioner while preserving its

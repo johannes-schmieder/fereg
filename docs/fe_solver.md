@@ -266,16 +266,28 @@ engine construction and any strict-basis replacement; current-weight setup,
 per-RHS convergence, and every fresh certificate remain mandatory. Private
 frame tracing reports the capacity as well as all setup, solve, and retry work.
 
+If exact retained membership proves that the third effect is a function of
+either selected core effect, ordinary PPML CMG projects through the two-effect
+core alone. This removes an identically zero nuisance Schur block without a
+numerical rank decision. The original three-effect model still governs memory
+admission, the 64-indicator envelope, canonical rank/DoF/checkpoints, saved
+effects, and every fresh per-FE certificate. Private frame tracing records the
+one-based redundant effect position (zero when none) and the actual nuisance
+solve width. Near-nesting is not sufficient. The topology proof is fit-owned
+and is rebuilt with the engine; changing weights never invalidate exact span
+containment. OLS is unchanged.
+
 Only failed projection columns receive one tighter retry. If that independent
 certificate demonstrates that the recurrence target was insufficient, the
 next changing-weight frame begins at the learned tighter scale; the public
-certificate tolerance is unchanged. Two-FE retry reuses the current hierarchy;
-three-FE retry rebuilds because the nuisance Schur factor depends on the
-original solve tolerance. A remaining numerical failure runs certified MAP on
-that frame and disables CMG for the rest of the fit.
+certificate tolerance is unchanged. Retry reuses the current hierarchy when
+the nuisance solve width is zero; a nonempty nuisance block requires a rebuild
+because its Schur factor depends on the original solve tolerance. A remaining
+numerical failure runs certified MAP on that frame and disables CMG for the
+rest of the fit.
 Unsupported topology, invalid input, memory failure, interruption, and internal
-errors remain visible failures. First and Mu frames remain MAP; strict and
-final-Hessian projection follows the certified checkpoint policy above.
+errors remain visible failures. Mu frames remain MAP; initial, strict, and
+final-Hessian projections follow the certified checkpoint policy above.
 
 CMG has the same initial fast-memory requirement as LSMR but accepts exactly
 two or three FE dimensions. Three-FE nuisance width is capped at 64, saved

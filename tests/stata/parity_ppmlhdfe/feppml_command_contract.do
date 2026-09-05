@@ -323,6 +323,58 @@ assert _rc == 498
 assert mreldif(e(b), `nuisance_cap_b') == 0
 assert mreldif(e(V), `nuisance_cap_V') == 0
 restore
+
+* A nuisance FE nested in a core adds no projection direction. It must remain
+* in the canonical model and saved output, under every absorb permutation.
+preserve
+clear
+set obs 480
+generate int __na = mod(_n - 1, 24)
+generate int __nb = mod(5 * (_n - 1) + floor((_n - 1) / 24), 9)
+generate int __nc = floor(__na / 3)
+generate double x = sin(_n / 7) + cos(_n / 13)
+generate double y = 1 + mod(11 * _n + __na + 3 * __nb, 17)
+generate double off = .1 * sin(_n / 17)
+generate int wt = 1 + mod(_n, 3)
+forvalues k = 0/1 {
+    local controls
+    if `k' local controls c.x
+    `feppml_test_command' y `controls' [fw=wt], absorb(__na __nb __nc) ///
+        offset(off) solver(map) separation(none) threads(1) deterministic ///
+        eta(__reference_eta) mu(__reference_mu)
+    tempname nested_b nested_V nested_ll nested_dev nested_rank nested_dfa
+    matrix `nested_b' = e(b)
+    matrix `nested_V' = e(V)
+    scalar `nested_ll' = e(ll)
+    scalar `nested_dev' = e(deviance)
+    scalar `nested_rank' = e(rank)
+    scalar `nested_dfa' = e(df_a)
+    foreach order in "a b c" "a c b" "b a c" "b c a" "c a b" "c b a" {
+        local absorption
+        foreach role of local order {
+            local absorption `absorption' __saved_`role'=__n`role'
+        }
+        `feppml_test_command' y `controls' [fw=wt], absorb(`absorption') ///
+            offset(off) solver(cmg) separation(none) memory(fast) ///
+            threads(2) deterministic eta(__nested_eta) mu(__nested_mu) d(__nested_d)
+        assert e(converged) == 1
+        assert e(feppml_solver_fallback_count) == 0
+        assert `"`e(feppml_solver_engine_effective)'"' == "cmg_prepared"
+        assert e(N_hdfe) == 3
+        assert e(rank) == `nested_rank'
+        assert e(df_a) == `nested_dfa'
+        assert mreldif(e(b), `nested_b') < 1e-8
+        assert mreldif(e(V), `nested_V') < 1e-8
+        assert reldif(e(ll), `nested_ll') < 1e-10
+        assert reldif(e(deviance), `nested_dev') < 1e-10
+        assert reldif(__nested_eta, __reference_eta) < 1e-8
+        assert reldif(__nested_mu, __reference_mu) < 1e-8
+        assert reldif(__saved_a + __saved_b + __saved_c, __nested_d) < 1e-8
+        drop __saved_a __saved_b __saved_c __nested_eta __nested_mu __nested_d
+    }
+    drop __reference_eta __reference_mu
+}
+restore
 `feppml_test_command' y c.x, solver(map)
 assert mreldif(e(b), `accepted_b') == 0
 assert mreldif(e(V), `accepted_V') == 0

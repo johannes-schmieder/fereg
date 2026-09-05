@@ -16,8 +16,9 @@ use rayon::prelude::*;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    BorrowedMapWeights, CmgAbsorber, CmgConfig, CmgTopologyProfile, CmgUnpolishedProjectionReport,
-    FeDesign, FeSolverKind, MapConfig, PreparedCmgTopology, CMG_MAX_NUISANCE_COLUMNS,
+    retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights, CmgAbsorber,
+    CmgConfig, CmgTopologyProfile, CmgUnpolishedProjectionReport, FeDesign, FeSolverKind,
+    MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource, CMG_MAX_NUISANCE_COLUMNS,
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::options::ThreadConfig;
@@ -42,6 +43,52 @@ pub(crate) fn fused_cmg_batch_size(poolsize: usize, rhs: usize, nuisance: usize)
     // Capping their batch at K+1 serializes setup on narrow finite designs.
     // Admission and execution must charge the same pool-bounded capacity.
     poolsize.min(rhs.max(nuisance)).max(1)
+}
+
+fn redundant_nuisance_effect(design: &BorrowedInterceptFeDesign<'_>) -> Result<Option<usize>> {
+    if design.effects().len() != 3 {
+        return Ok(None);
+    }
+    let order = retained_effect_order_by_levels(3, |effect| design.effects()[effect].n_levels())?;
+    let nuisance = order[2];
+    let codes = design.effects()[nuisance].codes();
+    for &core in &order[..2] {
+        let effect = &design.effects()[core];
+        // Exact membership containment proves span equality for every positive
+        // Hessian weight. It needs no numerical rank threshold or scratch map.
+        if (0..effect.n_levels()).all(|level| {
+            let members = effect.level_index().members(level);
+            members
+                .first()
+                .is_some_and(|&first| members.iter().all(|&row| codes[row] == codes[first]))
+        }) {
+            return Ok(Some(nuisance));
+        }
+    }
+    Ok(None)
+}
+
+fn projection_design(
+    design: BorrowedInterceptFeDesign<'_>,
+    redundant: Option<usize>,
+) -> Result<BorrowedInterceptFeDesign<'_>> {
+    let Some(redundant) = redundant else {
+        return Ok(design);
+    };
+    let mut effects = fallible_empty(2, "unable to reserve PPML CMG core views")?;
+    for (index, effect) in design.effects().iter().enumerate() {
+        if index != redundant {
+            effects.push(
+                ValidatedBorrowedInterceptSource::new(
+                    effect.codes(),
+                    effect.n_levels(),
+                    effect.level_index(),
+                )?
+                .effect(),
+            );
+        }
+    }
+    BorrowedInterceptFeDesign::new(design.nobs(), effects)
 }
 
 #[cfg(test)]
@@ -225,6 +272,7 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     active_columns: usize,
     certificate_topology: FusedCmgCertificateTopology,
     prepared_topology: PreparedCmgTopology,
+    redundant_nuisance: Option<usize>,
     active_values: Vec<f64>,
     active_slots: Vec<usize>,
     projected: DenseMatrix,
@@ -342,6 +390,11 @@ impl ReusableCategoricalFwlCmg {
                 profile.nuisance_columns()
             )));
         }
+        // Keep admission on the full declared topology, including its original
+        // nuisance envelope. Only the PPML projection recipe is reduced; the
+        // canonical model and every independent FE certificate stay full width.
+        let redundant_nuisance = redundant_nuisance_effect(&borrowed)?;
+        let borrowed = projection_design(borrowed, redundant_nuisance)?;
         let fused_workspace_bytes = estimate_fused_cmg_workspace_bytes(
             rows,
             active_generated.len(),
@@ -438,6 +491,7 @@ impl ReusableCategoricalFwlCmg {
             active_columns,
             certificate_topology,
             prepared_topology,
+            redundant_nuisance,
             active_values,
             active_slots,
             projected: DenseMatrix::zeros(rows, right_hand_sides)?,
@@ -549,7 +603,8 @@ impl ReusableCategoricalFwlCmg {
         let mut map = self.config.map;
         map.tolerance = first_tolerance;
         let cmg_config = self.cmg_config(map);
-        let borrowed = prepared.fit_borrowed_cmg_design()?;
+        let borrowed =
+            projection_design(prepared.fit_borrowed_cmg_design()?, self.redundant_nuisance)?;
         let mut absorber = CmgAbsorber::build_unpolished_prepared(
             borrowed,
             BorrowedMapWeights::Provided(weights),
@@ -594,13 +649,16 @@ impl ReusableCategoricalFwlCmg {
             self.projection_tolerance_scale = (self.projection_tolerance_scale * 0.01).max(1e-8);
             diagnostics.retries = diagnostics.retries.saturating_add(failed);
             self.fill_retry_projection_input(working_response)?;
-            let report = if fe_design.effects().len() == 2 {
+            let report = if first.nuisance_columns == 0 {
                 absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             } else {
                 drop(absorber);
                 let mut retry_map = self.config.map;
                 retry_map.tolerance = retry_tolerance;
-                let retry_borrowed = prepared.fit_borrowed_cmg_design()?;
+                let retry_borrowed = projection_design(
+                    prepared.fit_borrowed_cmg_design()?,
+                    self.redundant_nuisance,
+                )?;
                 let retry_config = self.cmg_config(retry_map);
                 let mut retry_absorber = CmgAbsorber::build_unpolished_prepared(
                     retry_borrowed,
@@ -724,8 +782,10 @@ impl ReusableCategoricalFwlCmg {
                 .max(0.0);
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
             emit_solver_trace_line(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
-                self.active_columns + 1, first.nuisance_columns, self.config.batch_size, tolerance, first_tolerance,
+                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
+                self.active_columns + 1, first.nuisance_columns,
+                self.redundant_nuisance.map_or(0, |effect| effect + 1),
+                self.config.batch_size, tolerance, first_tolerance,
                 if failed == 0 { first_tolerance } else { retry_tolerance },
                 first.iterations, retry_report.map_or(0, |report| report.iterations), failed,
                 setup_seconds, solve_seconds, diagnostics.certification_seconds, finite_seconds,
@@ -1183,6 +1243,15 @@ pub(crate) fn estimate_fused_cmg_workspace_bytes(
     let small_values = float_workspace
         .checked_add(index_workspace)
         .and_then(|value| value.checked_add(certificate_workspace))
+        // The reduced recipe borrows codes/memberships; only two term views,
+        // role indices, and the fit-owned redundant-effect marker are new.
+        .and_then(|value| {
+            value.checked_add(
+                (2 * std::mem::size_of::<crate::fe::BorrowedInterceptEffect<'_>>()
+                    + 3 * std::mem::size_of::<usize>()
+                    + std::mem::size_of::<Option<usize>>()) as u128,
+            )
+        })
         .ok_or_else(|| allocation("fused PPML CMG small workspace bytes overflow"))?;
     let blocks = rows.div_ceil(moment_block_rows(rows)) as u128;
     let partials = blocks
@@ -1540,6 +1609,73 @@ fn nonconvergence(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn nuisance_reduction_requires_exact_nesting_in_a_selected_core() {
+        for core in [0, 1] {
+            let first = (0..192).map(|row| (row % 12) as u32).collect::<Vec<_>>();
+            let second = (0..192)
+                .map(|row| ((7 * row + row / 12) % 8) as u32)
+                .collect::<Vec<_>>();
+            let nuisance = if core == 0 { &first } else { &second }
+                .iter()
+                .map(|code| code / if core == 0 { 3 } else { 2 })
+                .collect::<Vec<_>>();
+            for near_nested in [false, true] {
+                let mut nuisance = nuisance.clone();
+                if near_nested {
+                    nuisance[191] = (nuisance[191] + 1) % 4;
+                }
+                let codes = [&first, &second, &nuisance];
+                let levels = [12, 8, 4];
+                let indices = std::array::from_fn::<_, 3, _>(|index| {
+                    crate::fe::LevelIndex::from_codes(codes[index], levels[index]).unwrap()
+                });
+                for order in [
+                    [0, 1, 2],
+                    [0, 2, 1],
+                    [1, 0, 2],
+                    [1, 2, 0],
+                    [2, 0, 1],
+                    [2, 1, 0],
+                ] {
+                    let design = BorrowedInterceptFeDesign::new(
+                        192,
+                        order
+                            .iter()
+                            .map(|&index| {
+                                crate::fe::BorrowedInterceptEffect::new(
+                                    codes[index],
+                                    levels[index],
+                                    &indices[index],
+                                )
+                                .unwrap()
+                            })
+                            .collect(),
+                    )
+                    .unwrap();
+                    let redundant = redundant_nuisance_effect(&design).unwrap();
+                    assert_eq!(
+                        redundant.map(|index| order[index]),
+                        (!near_nested).then_some(2)
+                    );
+                    let projected = projection_design(design, redundant).unwrap();
+                    assert_eq!(projected.effects().len(), if near_nested { 3 } else { 2 });
+                    for (effect, &index) in projected
+                        .effects()
+                        .iter()
+                        .zip(order.iter().filter(|&&index| near_nested || index != 2))
+                    {
+                        assert_eq!(effect.codes().as_ptr(), codes[index].as_ptr());
+                        assert!(std::ptr::eq(effect.level_index(), &indices[index]));
+                    }
+                    if !near_nested {
+                        assert_eq!(redundant_nuisance_effect(&projected).unwrap(), None);
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn graph_batch_capacity_covers_nuisance_without_exceeding_the_pool() {
