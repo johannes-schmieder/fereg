@@ -13,6 +13,25 @@ This is the sole mutable progress and resume record. Historical benchmark and
 qualification evidence remains immutable under `benchmarks/reports/`; accepted
 architecture decisions remain under `docs/adr/`.
 
+## Current resume point: CMG nuisance setup
+
+Johannes explicitly approved the locally validated within-frame CMG potential
+reuse below as a development checkpoint, with full F0/SCC acceptance left open.
+The reviewed allocation-source companion v4 differs from v3 only in its version
+and shared `fe/cmg.rs` production tokens/literals. Policy, Cargo/native wiring,
+allocation inventory, all other source records, and exact F0 adapter/one-shot
+boundaries are identical. Historical v3 and the initial pending-review receipt
+remain unchanged. The reconciled repository check and all 31 focused source
+contract tests pass (`approved-repository-check.log` and
+`approved-source-contract-tests.log` under the receipt's local evidence root).
+No full 46-cell F0 screen or governing SCC campaign was run.
+
+Continue locally on CMG's actual changing-weight nuisance construction, now the
+dominant ordinary-frame floor. Cross-frame numeric reuse remains disabled under
+ADR 0024 unless a measured adaptive policy is explicitly documented and passes
+fresh current-operator recurrences and independent certificates. No branch,
+SCC job, auto calibration, push, or release is authorized by this checkpoint.
+
 ## Current product state
 
 - `fereg` remains the public OLS command and retains its existing solver,
@@ -539,6 +558,92 @@ Five-repeat medians at N=25,000, nuisance width 8:
   and saved-effect reconstruction against MAP. The unchanged v3 local science
   (eight scopes) and smoke (three scopes, all nine arms), run through v4, are
   science- and route-green. No SCC, auto calibration, push, or release ran.
+
+## Local CMG current-frame potential reuse: September 5
+
+The exact independently built baseline is
+`d2c7a1b4bc93b4bda31de6fd4f94000a8b5d0b47`. The
+[immutable local diagnostic summary](benchmarks/reports/development/ppml-cmg-current-frame-potentials-2026-09-05.json)
+binds both artifacts, candidate product-source hashes, source snapshots,
+references, receipts, timing distributions, split iterations/tolerances,
+scientific differences, and memory. Raw evidence is in local temporary bundle
+`fereg-cmg-potentials.X6mI1m`. This is development evidence, not qualification
+or completed shared-engine acceptance.
+
+CMG formerly discarded each nuisance direction's graph potential after Schur
+assembly, then solved their linear combinations again for every response and
+control. The candidate retains those potentials for that exact current-weight
+frame and combines them in the existing solution buffer. It retains no
+observation-by-nuisance matrix, stale residual, previous-frame hierarchy, or
+cross-frame warm state. All nuisance recurrences, the Schur factor/rank policy,
+fresh per-RHS full-FE certificates, combined finite/all-FE certificate, and
+canonical checkpoint/final-Hessian requirements remain unchanged. A tighter
+three-FE retry rebuilds potentials with its factor. The OLS owned-result branch
+still executes its original correction solve. No ADR or upstream CMG API changes.
+
+Five-repeat CMG medians at N=25,000:
+
+| Nuisance / K / threads | Baseline s | Candidate s | ppmlhdfe s |
+| --- | ---: | ---: | ---: |
+| 0 / 0 / 7 | 0.157 | 0.157 | 0.167 |
+| 8 / 0 / 7, exactly nested | 0.160 | 0.158 | 0.160 |
+| 8 / 50 / 7, exactly nested | 1.184 | 1.160 | 4.557 |
+| 32 / 0 / 7 | 0.653 | 0.609 | 0.172 |
+| 32 / 50 / 7 | 2.100 | 1.595 | 4.477 |
+| 64 / 0 / 7 | 1.052 | 1.006 | 0.197 |
+| 64 / 10 / 7 | 1.181 | 1.062 | 0.667 |
+| 64 / 50 / 7 | 2.237 | 1.817 | 4.602 |
+| 64 / 0 / 1, reversed order | 4.081 | 4.017 | — |
+| 64 / 50 / 1, reversed order | 7.949 | 6.189 | — |
+
+- Width 64/K=50 ordinary setup/solve/certification changes from
+  0.790596/0.899370/0.043443 to 0.789784/0.488867/0.044017 seconds. Four
+  frames retain 55 first-pass maximum-RHS iterations, zero continuation,
+  zero retries, and zero fallback. New tracing records 460 graph RHSs and
+  204 nuisance RHS corrections completed by reuse; it does not misrepresent
+  unchanged maximum-RHS iteration counts as total operator work. Scheduled,
+  first, and effective tolerances remain identical to baseline. Checkpoints
+  retain 30 iterations and approximately 0.114 seconds solve time.
+- Width 64/K=0 retains 72 first-pass iterations and no continuation/retry/
+  fallback. Setup remains 0.880003/0.882268 seconds; solve falls from
+  0.093512 to 0.044206. Only four duplicate RHSs are eliminated, so actual
+  changing-weight nuisance construction remains the dominant floor. At one
+  thread, width 64/K=50 solve drops from 3.619465 to 1.872568 seconds.
+- The width-64 conservative model grows by 614,424 bytes: the 1,200-vertex
+  by 64-direction potential array plus its vector header. K=0 modelled peak
+  is 157,002,686/157,617,110 bytes; observed peak delta is
+  22,468,287/22,464,959. K=50 observed peak is unchanged at 154,293,630 bytes,
+  below the candidate model of 289,807,126. All measured allocation/model
+  ratios remain within the unchanged 1.25 bound.
+- All 183 matched repetitions retain exact recorded likelihood/deviance,
+  sample, rank, DoF, and result names. Maximum coefficient/covariance-cell
+  differences are 1.31e-16/2.60e-16; raw public certificate differences are
+  at most 6.27e-10, with every independent normalized certificate passing.
+  The envelope, eight-scope science, and three-scope smoke are science- and
+  route-green. The latter two retain the unchanged v3 designs through v4.
+- Reversed-order LSMR guards retain 38 difficult-chain and 850 sparse-three-FE
+  ordinary iterations, no retries, and exact scientific fields. Total times
+  are 0.223/0.223 and 0.993/0.987 seconds. A noisy MAP K=0 comparison reverses
+  from 0.104/0.110 to 0.113/0.106. Wide-K LSMR's smaller 0.534/0.555 change
+  is 0.524/0.535 in reversal; its scientific fields and iterations are exact.
+  CMG's one-thread difficult-chain guard remains 0.911/0.914 seconds with
+  the same 237 iterations and 11 retries. No MAP/LSMR gain is attributed to
+  the CMG change.
+- Validation passes 41 focused CMG tests, 729 core and 74 normal plugin tests,
+  all workspace oracle/constrained-memory/integration suites, 89 FFI tests,
+  32 solver-parser, 27 protocol/transaction, and four memory-parser tests;
+  formatting, strict Clippy, universal macOS build/binary/ABI checks; and
+  directly hashed-artifact public PPML smoke, rollback, command/saved-FE/
+  64-versus-65 boundary, and public OLS auto/explicit-CMG fixtures. New coverage
+  checks all six FE orders, fresh changing-weight potentials, repeated-call
+  deterministic values/counts, elimination of only duplicate RHS work, and
+  rejection of a deliberately corrupted potential by the independent full-FE
+  certificate. Existing early memory admission and failure-atomicity tests pass.
+  The initial receipt records the correctly red shared-source guard. After
+  Johannes's explicit development-checkpoint approval, companion v4 reconciles
+  only that reviewed file; repository checks pass in
+  `approved-repository-check.log` in the same evidence bundle. Full F0/SCC
+  acceptance remains open.
 
 ## Historical diagnostic performance evidence
 

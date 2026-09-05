@@ -266,6 +266,20 @@ engine construction and any strict-basis replacement; current-weight setup,
 per-RHS convergence, and every fresh certificate remain mandatory. Private
 frame tracing reports the capacity as well as all setup, solve, and retry work.
 
+Prepared PPML retains the current frame's nuisance graph potentials while
+forming its Schur factor. The correction for each projected response/control
+column uses their linear combination instead of solving that combination a
+second time. This is within-frame linear algebra, not cross-frame warm state:
+the weights, graph, hierarchy, nuisance solves, and factor are rebuilt together.
+Every completed column still passes the fresh full-FE certificate, followed by
+the combined finite-and-FE certificate. A tighter nuisance retry rebuilds the
+potentials with its factor. Checked admission and exact retained-memory checks
+charge core-vertex count times nuisance width; no observation-by-nuisance
+matrix is retained. Private tracing separates actual graph RHSs/batches from
+nuisance RHSs completed by reuse. Maximum-RHS iteration counts retain their
+existing units. OLS keeps its owned-result correction solve and coefficient
+recovery path.
+
 If exact retained membership proves that the third effect is a function of
 either selected core effect, ordinary PPML CMG projects through the two-effect
 core alone. This removes an identically zero nuisance Schur block without a

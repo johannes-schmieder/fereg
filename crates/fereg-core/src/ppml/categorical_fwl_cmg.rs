@@ -782,12 +782,14 @@ impl ReusableCategoricalFwlCmg {
                 .max(0.0);
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
             emit_solver_trace_line(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
+                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|graph_rhs={}|graph_batches={}|nuisance_reused_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
                 self.active_columns + 1, first.nuisance_columns,
                 self.redundant_nuisance.map_or(0, |effect| effect + 1),
                 self.config.batch_size, tolerance, first_tolerance,
                 if failed == 0 { first_tolerance } else { retry_tolerance },
                 first.iterations, retry_report.map_or(0, |report| report.iterations), failed,
+                projected_rhs, batches, first.nuisance_reused_right_hand_sides
+                    + retry_report.map_or(0, |report| report.nuisance_reused_right_hand_sides),
                 setup_seconds, solve_seconds, diagnostics.certification_seconds, finite_seconds,
                 reconstruction_seconds, joint_certificate_seconds,
             ));
