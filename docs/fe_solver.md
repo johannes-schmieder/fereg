@@ -258,6 +258,14 @@ observation-space CG polish. It then uses the same standardized pivoted-
 Cholesky finite solve as fused FWL and requires fresh per-column projection
 certificates plus a complete control-and-FE normal-equation certificate.
 
+The PPML graph batch capacity covers the larger of the response/control width
+and the nuisance Schur width, capped by the existing pool size. This lets a
+narrow finite design solve independent nuisance directions across the admitted
+thread team. Early memory admission fixes that capacity for initial ordinary
+engine construction and any strict-basis replacement; current-weight setup,
+per-RHS convergence, and every fresh certificate remain mandatory. Private
+frame tracing reports the capacity as well as all setup, solve, and retry work.
+
 Only failed projection columns receive one tighter retry. If that independent
 certificate demonstrates that the recurrence target was insufficient, the
 next changing-weight frame begins at the learned tighter scale; the public

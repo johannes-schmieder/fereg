@@ -28,8 +28,9 @@ use crate::ols::{
 use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::categorical_fwl_cmg::{
-    estimate_fused_cmg_workspace_bytes, FusedFwlCmgConfig, FusedFwlCmgFailureReport,
-    FusedFwlCmgReport, FusedFwlCmgSolveOutcome, ReusableCategoricalFwlCmg,
+    estimate_fused_cmg_workspace_bytes, fused_cmg_batch_size, FusedFwlCmgConfig,
+    FusedFwlCmgFailureReport, FusedFwlCmgReport, FusedFwlCmgSolveOutcome,
+    ReusableCategoricalFwlCmg,
 };
 use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
@@ -1059,7 +1060,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         FusedFwlCmgConfig {
                             map: config.ppml.absorb.map,
                             threads: config.linear.execution.threads,
-                            batch_size: config.memory.poolsize.min(solver_rhs).max(1),
+                            batch_size: solver_admission.cmg_batch_capacity,
                             solver_memory_budget,
                         },
                     )?);
@@ -1660,7 +1661,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             FusedFwlCmgConfig {
                                 map: config.ppml.absorb.map,
                                 threads: config.linear.execution.threads,
-                                batch_size: config.memory.poolsize.min(solver_rhs).max(1),
+                                batch_size: solver_admission.cmg_batch_capacity,
                                 solver_memory_budget,
                             },
                         )?);
@@ -1891,6 +1892,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
 struct PublicSolverMemoryAdmission {
     incremental_bytes: u128,
     owned_fe_design_shortfall_bytes: u128,
+    cmg_batch_capacity: usize,
 }
 
 fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
@@ -1946,6 +1948,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
         conservative_owned_intercept_fe_design_peak_bytes(design.nobs(), &levels)?;
     let owned_fe_design_shortfall_bytes = owned_fe_design_peak
         .saturating_sub(memory_plan.selected_inventory().fe_solver_topology_bytes);
+    let mut cmg_batch_capacity = 0;
     let route_workspace = match solver {
         super::PpmlSolverFamily::Lsmr => {
             let active_columns = rhs.saturating_sub(1);
@@ -1973,10 +1976,12 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                     ),
                 ));
             }
+            cmg_batch_capacity =
+                fused_cmg_batch_size(config.memory.poolsize, rhs, profile.nuisance_columns());
             let cmg_config = CmgConfig {
                 map: config.ppml.absorb.map,
                 threads: config.linear.execution.threads,
-                batch_size: config.memory.poolsize.min(rhs).max(1),
+                batch_size: cmg_batch_capacity,
                 retain_coefficients: false,
                 requested_solver: FeSolverKind::Cmg,
                 solver_memory_budget: None,
@@ -2026,6 +2031,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
             .checked_add(owned_fe_design_shortfall_bytes)
             .ok_or_else(|| allocation("public PPML solver admission memory overflows"))?,
         owned_fe_design_shortfall_bytes,
+        cmg_batch_capacity,
     })
 }
 
@@ -3612,10 +3618,16 @@ mod tests {
         .expect("prepared two-FE fixture")
     }
 
-    fn prepared_three_fe(order: [usize; 3]) -> (PreparedOlsData, Vec<f64>) {
+    fn prepared_three_fe(order: [usize; 3], zero_control: bool) -> (PreparedOlsData, Vec<f64>) {
         let rows = 240;
         let x_values = (0..rows)
-            .map(|row| (row as f64 * 0.173).sin() + (row as f64 * 0.071).cos())
+            .map(|row| {
+                if zero_control {
+                    0.0
+                } else {
+                    (row as f64 * 0.173).sin() + (row as f64 * 0.071).cos()
+                }
+            })
             .collect::<Vec<_>>();
         let categorical = [
             (0..rows)
@@ -3731,7 +3743,7 @@ mod tests {
             super::super::PpmlSolverFamily::Cmg,
         ] {
             for order in orders {
-                let (prepared, outcome) = prepared_three_fe(order);
+                let (prepared, outcome) = prepared_three_fe(order, false);
                 let design = prepared.fit_owned_fe_design().expect("three-FE design");
                 let selected = retained_effect_order_by_levels(design.effects().len(), |effect| {
                     design.effects()[effect].n_levels()
@@ -3789,6 +3801,139 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates() {
+        for zero_control in [false, true] {
+            let (prepared, outcome) = prepared_three_fe([2, 0, 1], zero_control);
+            let prior_weights = (0..outcome.len())
+                .map(|row| 0.5 + (row % 7) as f64 / 3.0)
+                .collect::<Vec<_>>();
+            let offset = (0..outcome.len())
+                .map(|row| (row as f64 * 0.03).sin() * 0.1)
+                .collect::<Vec<_>>();
+            let mut reference: Option<PreparedPpmlIrlsFit> = None;
+            let mut deterministic: Option<PreparedPpmlIrlsFit> = None;
+            for (poolsize, threads) in [(1, 1), (7, 1), (7, 2), (7, 7), (7, 7)] {
+                let mut config = PreparedPpmlIrlsConfig {
+                    solver_plan: PpmlSolverPlan::new(super::super::PpmlSolverFamily::Cmg),
+                    ..PreparedPpmlIrlsConfig::default()
+                };
+                config.memory.poolsize = poolsize;
+                config.linear.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                config.ppml.absorb.lsmr.threads = config.linear.execution.threads;
+                config.linear.absorb.lsmr.threads = config.linear.execution.threads;
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &outcome,
+                    &prior_weights,
+                    &offset,
+                    config,
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                    None,
+                )
+                .expect("weighted CMG fit with a nuisance block wider than K+1");
+                assert!(fit.diagnostics().converged);
+                assert!(fit.diagnostics().two_consecutive_convergence);
+                assert!(fit.diagnostics().final_score.passed);
+                assert_eq!(fit.diagnostics().solver.fallback_count, 0);
+                assert_eq!(
+                    fit.diagnostics().solver.effective,
+                    super::super::PpmlSolverFamily::Cmg
+                );
+                if let Some(reference) = &reference {
+                    assert!(relative_infinity_difference(fit.eta(), reference.eta()) <= 2e-9);
+                    assert!(relative_infinity_difference(fit.mean(), reference.mean()) <= 2e-9);
+                    assert!(
+                        (fit.objective().deviance - reference.objective().deviance).abs() <= 1e-8
+                    );
+                } else {
+                    reference = Some(fit);
+                    continue;
+                }
+                if threads == 7 {
+                    if let Some(previous) = &deterministic {
+                        assert_eq!(fit.eta(), previous.eta());
+                        assert_eq!(fit.mean(), previous.mean());
+                        assert_eq!(fit.objective(), previous.objective());
+                        assert_eq!(
+                            fit.diagnostics().final_score,
+                            previous.diagnostics().final_score
+                        );
+                        let report = &fit.diagnostics().solver.engines()[3];
+                        let previous = &previous.diagnostics().solver.engines()[3];
+                        assert_eq!(report.iterations, previous.iterations);
+                        assert_eq!(report.retries, previous.retries);
+                        assert_eq!(report.ordinary_frames, previous.ordinary_frames);
+                    }
+                    deterministic = Some(fit);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
+        let (prepared, outcome) = prepared_three_fe([2, 0, 1], true);
+        let mut config = PreparedPpmlIrlsConfig {
+            solver_plan: PpmlSolverPlan::new(super::super::PpmlSolverFamily::Cmg),
+            ..PreparedPpmlIrlsConfig::default()
+        };
+        config.linear.execution.threads =
+            crate::options::ThreadConfig::from_requested(7, true).unwrap();
+        config.memory.poolsize = 1;
+        let dimensions = memory_dimensions(&prepared, config);
+        let rhs = dimensions.finite_columns + 1;
+        let small_plan = plan_ppml_memory(dimensions, config.memory).unwrap();
+        let small = public_solver_memory_admission(
+            &prepared,
+            small_plan,
+            &config,
+            rhs,
+            PreparedPpmlIrlsPurpose::Publication,
+        )
+        .unwrap();
+        config.memory.poolsize = 7;
+        let mut plan = plan_ppml_memory(dimensions, config.memory).unwrap();
+        let wide = public_solver_memory_admission(
+            &prepared,
+            plan,
+            &config,
+            rhs,
+            PreparedPpmlIrlsPurpose::Publication,
+        )
+        .unwrap();
+        assert!(wide.incremental_bytes > small.incremental_bytes);
+        assert_eq!(small.cmg_batch_capacity, 1);
+        assert_eq!(wide.cmg_batch_capacity, 3);
+        let exact_peak = plan.selected_inventory().peak_bytes + wide.incremental_bytes;
+        plan.usable_bytes = Some(exact_peak - 1);
+        reset_canonical_frame_refresh_count();
+        super::super::categorical_fwl_cmg::take_route_observation_preparations();
+        let result = fit_prepared_ppml_irls(
+            &prepared,
+            &outcome,
+            &vec![1.0; outcome.len()],
+            &vec![0.0; outcome.len()],
+            config,
+            plan,
+            None,
+        );
+        let error = match result {
+            Ok(_) => panic!("enlarged nuisance pool escaped preflight"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("public PPML FE solver workspace"));
+        assert_eq!(take_canonical_frame_refresh_count(), 0);
+        assert_eq!(
+            super::super::categorical_fwl_cmg::take_route_observation_preparations(),
+            0
+        );
+        plan.usable_bytes = Some(exact_peak);
+        assert!(plan.with_solver_workspace(wide.incremental_bytes).is_ok());
     }
 
     fn memory_dimensions(

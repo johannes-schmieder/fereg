@@ -232,7 +232,7 @@ assert `"`e(feppml_solver_selected)'"' == "lsmr"
 assert `"`e(feppml_solver_engine)'"' == "lsmr_joint"
 assert `"`e(feppml_solver_effective)'"' == "lsmr"
 assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_joint"
-assert `"`e(feppml_solver_checkpoint)'"' == "map"
+assert `"`e(feppml_solver_checkpoint)'"' == "lsmr"
 assert `"`e(feppml_solver_fallback_reason)'"' == "none"
 assert e(feppml_solver_fallback_count) == 0
 forvalues row = 1/4 {
@@ -241,11 +241,12 @@ forvalues row = 1/4 {
     assert e(feppml_solver)[`row',3] == 3
     assert e(feppml_solver)[`row',4] == 3
     assert e(feppml_solver)[`row',5] == e(feppml_solver)[`row',3]
-    assert e(feppml_solver)[`row',6] == 2
+    assert e(feppml_solver)[`row',6] == 3
     assert e(feppml_solver)[`row',7] == `row'
 }
 assert e(feppml_solver)[2,8] == 0
 assert e(feppml_solver)[3,8] > 0
+assert e(feppml_solver)[2,9] > 0
 assert e(feppml_linear_route) == 2
 
 `feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
@@ -381,6 +382,12 @@ assert _rc == 0
 confirm variable __solver_fe
 assert __solver_fe < . if e(sample)
 drop __solver_fe
+* Successful saved-FE fits replace e(); restore the accepted model before
+* testing that the following rejected requests leave it unchanged.
+`feppml_test_command' y c.x, solver(map)
+assert mreldif(e(b), `accepted_b') == 0
+assert mreldif(e(V), `accepted_V') == 0
+assert e(sample) == __accepted_sample
 capture noisily `feppml_test_command' y c.x, threads(-1)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, poolsize(0)

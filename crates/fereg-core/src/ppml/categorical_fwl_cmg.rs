@@ -37,6 +37,13 @@ fn moment_block_rows(rows: usize) -> usize {
     MOMENT_BLOCK_ROWS.max(rows.div_ceil(MOMENT_MAX_BLOCKS))
 }
 
+pub(crate) fn fused_cmg_batch_size(poolsize: usize, rhs: usize, nuisance: usize) -> usize {
+    // Nuisance Schur columns are independent current-weight graph solves too.
+    // Capping their batch at K+1 serializes setup on narrow finite designs.
+    // Admission and execution must charge the same pool-bounded capacity.
+    poolsize.min(rhs.max(nuisance)).max(1)
+}
+
 #[cfg(test)]
 thread_local! {
     static FORCE_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
@@ -717,8 +724,8 @@ impl ReusableCategoricalFwlCmg {
                 .max(0.0);
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
             emit_solver_trace_line(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
-                self.active_columns + 1, first.nuisance_columns, tolerance, first_tolerance,
+                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
+                self.active_columns + 1, first.nuisance_columns, self.config.batch_size, tolerance, first_tolerance,
                 if failed == 0 { first_tolerance } else { retry_tolerance },
                 first.iterations, retry_report.map_or(0, |report| report.iterations), failed,
                 setup_seconds, solve_seconds, diagnostics.certification_seconds, finite_seconds,
@@ -1533,6 +1540,25 @@ fn nonconvergence(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn graph_batch_capacity_covers_nuisance_without_exceeding_the_pool() {
+        for pool in [1, 2, 7, 10, 64] {
+            for rhs in [1, 3, 11, 51] {
+                for nuisance in [0, 1, 8, 32, 63, 64] {
+                    let batch = fused_cmg_batch_size(pool, rhs, nuisance);
+                    assert!(batch > 0 && batch <= pool);
+                    assert_eq!(batch, pool.min(rhs.max(nuisance)));
+                    if nuisance <= rhs {
+                        assert_eq!(batch, pool.min(rhs));
+                    }
+                }
+            }
+        }
+        assert_eq!(fused_cmg_batch_size(10, 1, 64), 10);
+        assert_eq!(fused_cmg_batch_size(10, 1, 8), 8);
+        assert_eq!(fused_cmg_batch_size(10, 1, 0), 1);
+    }
 
     #[test]
     fn pivoted_cholesky_recovers_a_permuted_spd_system() {

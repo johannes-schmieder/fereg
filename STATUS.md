@@ -143,6 +143,13 @@ architecture decisions remain under `docs/adr/`.
   and preserving each direction's compensated row order. The workspace plan
   uses the same partition geometry. Successful-frame diagnostics now include
   previously omitted per-RHS certification and fereg-owned preparation time.
+- PPML CMG graph batches now cover the larger of the admitted response/control
+  width and nuisance Schur width, bounded by the existing pool size. Narrow
+  finite designs can therefore solve nuisance directions across the thread
+  team. The complete early memory plan fixes the capacity used by ordinary
+  engine construction and strict-basis replacement; private frame tracing
+  reports that capacity. Fresh numeric construction, recurrence tolerances,
+  exact certificates, and the 64-indicator envelope are unchanged.
 - Joint and checkpoint LSMR preflight includes the pinned Schwarz builder's
   dense cross-tabulation dispatch, including concurrent pair tables. Sparse
   observation graphs can still take that dense construction path. This fixes
@@ -162,7 +169,8 @@ architecture decisions remain under `docs/adr/`.
 
 The exact four-name PPML interface and explicit MAP, LSMR, and prepared-CMG
 engines are implemented. `solver(auto)` deliberately remains MAP-only. The
-September 5 local breadth round below is implemented and validated. The
+September 5 local breadth and CMG nuisance-batching rounds below are implemented
+and validated. The
 ADR-0026 harness transition and the
 exact-source FE-role-selection SCC development campaign are implemented. The
 campaign is scientifically green but route-red for pre-existing matched
@@ -375,6 +383,85 @@ identified separately; no result is relabelled as testing a later source.
   this report bookkeeping; its policy, route boundaries, and F0 pins are
   unchanged, and historical v2 is preserved. No F0 qualification, SCC job,
   auto calibration, push, tag, or release was run.
+
+## Local CMG nuisance batching: September 5
+
+This focused follow-on starts from clean `87a46415484d05ec14f1e34812dc1090fbe71e0a`,
+independently built in a detached worktree. The [immutable diagnostic summary](benchmarks/reports/development/ppml-cmg-nuisance-batches-2026-09-05.json)
+binds the final product-source hashes, plugin artifacts, manifest, pinned
+references, source snapshots, receipt digests, timing distributions, split
+iterations/tolerances, scientific differences, and allocation measurements.
+Raw evidence is retained in local temporary bundle `fereg-cmg-schur.tH1r1H`.
+These are local macOS diagnostics, not SCC, auto-calibration, or qualification
+evidence.
+
+The measured bottleneck was a width mismatch: K=0 capped CMG batches at one
+RHS, serializing 64 independent nuisance solves per changing-weight frame.
+The retained change sizes the graph pool from both widths and carries the
+admitted capacity into execution and strict-basis replacement. It uses the
+existing upstream batch policy without changing the numerical solver,
+Schur factor, canonical checkpoint, tolerance, or certificate. No upstream
+CMG API or OLS route changed, and no new ADR was needed.
+
+Five-repeat medians at N=25,000 and seven threads:
+
+| Nuisance / K | Baseline CMG s | Candidate CMG s | MAP s | LSMR s | ppmlhdfe s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0 / 0 | 0.157 | 0.156 | 0.126 | 0.095 | 0.166 |
+| 32 / 0 | 1.145 | 0.644 | 0.104 | 0.093 | 0.170 |
+| 64 / 0 | 2.216 | 1.049 | 0.100 | 0.102 | 0.197 |
+| 64 / 10 | 1.183 | 1.184 | 0.265 | 0.172 | 0.655 |
+| 64 / 50 | 2.238 | 2.236 | 0.927 | 0.537 | 4.579 |
+
+- At width 64/K=0, ordinary CMG setup falls from 2.044899 to 0.880626 seconds;
+  graph solve is 0.093527/0.093197 and certification 0.002713/0.002651.
+  Four ordinary frames retain 72 first-pass iterations, zero continuation,
+  zero retries, and zero fallback. Their scheduled/first/effective tolerances
+  agree exactly, from `1.38949549437313835e-7` to
+  `2.59936151136636528e-10`. Checkpoints retain 45 iterations over three
+  frames; candidate setup/solve/certification is 0.012175/0.014276/0.002188
+  seconds. Public iteration units sum frame maximum-RHS recurrence counts,
+  not all column-operator applications; this gain is concurrent execution,
+  not reduced recurrence work.
+- At width 32/K=0, setup falls from 0.983084 to 0.481408 seconds, with 62
+  first-pass iterations and no continuation/retry/fallback. Wide K retains
+  its old batch capacity and is at parity. An earlier few-percent wide-K
+  slowdown did not reproduce on the final five-repeat artifact.
+- A reversed-order, five-repeat one-thread check is also at parity:
+  width 64/K=0 is 4.067/4.063 seconds and K=50 is 7.904/7.909. Balanced 3FE
+  N=50,000/K=2 is 0.154/0.151 with green science/route gates. LSMR guards
+  retain 38 ordinary iterations on the difficult two-FE chain (0.221/0.223
+  seconds total) and 850 on sparse 3FE (0.984/0.979), both without retries.
+- Memory admission deliberately covers the wider concurrent workspace pool.
+  For the primary case the conservative model rises from 93,336,374 to
+  157,002,582 bytes; maximum observed native peak delta rises only from
+  22,355,849 to 22,464,375 bytes. The one-thread model is 80,245,294/82,003,502
+  bytes. No memory allowance was relaxed. The enlarged bound is tested at
+  one byte below admission, before canonical or route-owned observation work.
+- All 139 matched solver repetitions have identical recorded coefficients,
+  covariance cells, likelihood, deviance, and public certificates, plus exact
+  sample, rank, DoF, and result names. Independent local science remains green.
+- The six-scope envelope run is **science-green but route-red**: width 8/K=0
+  makes both exact baseline and candidate retry one CMG RHS and permanently
+  fall back to MAP. Its projection relative-infinity maximum is 0.067615 in
+  both arms. The complete failed receipt is preserved; this scope is excluded
+  from CMG performance promotion. Every other envelope arm is route-green.
+- Validation: 38 focused CMG tests; all 726 core and 74 normal plugin tests,
+  integration/oracle/constrained-memory suites, and 89 FFI plugin tests;
+  formatting, strict Clippy, repository checks, 32 solver-parser tests,
+  protocol/transaction tests, and 31 allocation-source checks passed. The
+  universal macOS build passed binary audit and actual-plugin ABI/panic checks.
+  The unchanged v3 local science/smoke profiles, run through v4, are green
+  for science and routing. Direct candidate-artifact Stata smoke, injected
+  rollback, and public-command/64-versus-65 boundary fixtures all pass.
+- Two stale public-fixture assumptions also reproduced on baseline. The live
+  fixture now requires ADR-0027's LSMR checkpoint family (while preserving its
+  exact legacy linear-route assertion), and restores/verifies its accepted
+  model after successful saved-FE fits before testing rejected requests.
+  No numerical expectation was loosened. The standard exact-commit quick
+  wrapper passed on `87a4641`; that is baseline-only evidence, not a claim
+  about the dirty candidate. Candidate licensed evidence is the directly
+  hashed-artifact fixture run above.
 
 ## Historical diagnostic performance evidence
 
@@ -597,12 +684,14 @@ not inherit release or cross-platform qualification from earlier sources.
   graphs. The difficult-chain MAP smoke needs 20,839 total inner iterations
   and about 13 seconds even after its per-pass kernels were accelerated.
 - Prepared CMG still performs 11 certificate-driven RHS retries on the hard
-  chain. At nuisance width 64 and K=0, numeric setup costs 2.051 seconds of a
-  2.223-second fit, against only 0.094 seconds graph solve. With K=50, setup
-  and solve cost 0.791/0.903 seconds of a 2.233-second fit. This is not evidence
+  chain. After nuisance batching, width 64/K=0 numeric setup still costs
+  0.881 seconds of a 1.049-second fit, against 0.093 seconds graph solve.
+  With K=50, setup and solve cost 0.790/0.905 seconds of a 2.236-second fit.
+  Width 8/K=0 also has a pre-existing certified MAP fallback in both arms.
+  This is not evidence
   that executor construction is expensive; that earlier 0.01--0.40% result
   remains the relevant bound for a shared-executor API proposal.
-  On the K=0 scope LSMR takes 0.103 seconds and pinned `ppmlhdfe` 0.198, so
+  On the K=0 scope LSMR takes 0.102 seconds and pinned `ppmlhdfe` 0.197, so
   this remains a substantial CMG-specific weakness inside its valid envelope.
 - Easy one-FE K=50 receives little benefit from better initialization. Its
   canonical weighted-linear/design passes, not FE iteration or inference,
@@ -615,10 +704,11 @@ not inherit release or cross-platform qualification from earlier sources.
    correction spanning the third effect. Do not restore retained all-pairs
    Schwarz or the unsuccessful aggregate-bin experiment. Judge total operator
    work and elapsed time, with the exact independent certificate unchanged.
-2. Profile CMG's changing-weight nuisance/Schur construction at widths 32--64,
-   and its remaining hard-chain RHS continuation. Keep the 64-indicator
-   envelope and preserve fresh combined certificates; do not confuse numeric
-   setup with executor construction.
+2. Reduce CMG's actual changing-weight nuisance/Schur solve work at widths
+   32--64; batching has removed the unnecessary K=0 serialization but not
+   those solves. Localize the matched width-8 projection-certificate failure
+   and remaining hard-chain RHS continuation. Keep the 64-indicator envelope
+   and fresh certificates; do not confuse numeric setup with executor cost.
 3. Improve explicit MAP on poorly connected graphs with a topology-aware
    coarse correction or gauge-reduced preconditioner while preserving its
    canonical projection certificates and `solver(auto)` behavior.
