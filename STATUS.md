@@ -113,6 +113,16 @@ architecture decisions remain under `docs/adr/`.
   core-width bridge buffers are fallibly preallocated and charged to the memory
   plan. The action is symmetric positive semidefinite; exact post-recurrence
   finite and per-level normal equations remain the authority.
+- The joint-LSMR Schwarz core for three or more categorical effects is now the
+  two largest retained level dimensions, with original absorb position as the
+  deterministic tie-breaker. The bridge gathers and scatters those possibly
+  noncontiguous blocks without changing canonical FE or result order. Prepared
+  CMG applies the same ranking: the largest dimension is the left graph side,
+  the second largest is the right side, and any remaining eligible dimension
+  is nuisance. Reversing graph orientation is algebraically equivalent, but
+  fixing the larger side first makes hierarchy construction independent of
+  absorb syntax order. Memory accounting charges the selected pair, while
+  certificates still cover every FE block.
 - Prepared CMG binds exact topology, preflights before observation-scale
   preparation, reuses fereg-owned thread and numeric buffers, and uses direct
   row-to-nuisance lookup for three-FE Schur work. The generic OLS CMG builder,
@@ -132,9 +142,12 @@ architecture decisions remain under `docs/adr/`.
 
 The exact four-name PPML interface and explicit MAP, LSMR, and prepared-CMG
 engines are implemented. `solver(auto)` deliberately remains MAP-only. The
-ADR-0026 harness transition and the current local optimization round are
-implemented; no SCC rerun, auto-routing calibration, or release qualification
-has been launched.
+ADR-0026 harness transition, current local optimization round, and the
+exact-source FE-role-selection SCC development campaign are implemented. The
+campaign is scientifically green but route-red for pre-existing matched
+candidate/baseline checkpoint fallbacks; it is development evidence, not a
+merged success receipt or qualification. No auto-routing calibration or
+release qualification has been launched.
 
 ## Development harness and validation
 
@@ -181,6 +194,39 @@ has been launched.
   plugin passes binary audit and the actual-plugin ABI/panic-containment test.
   Focused joint-LSMR, prepared-IRLS, and constrained-memory tests, Rust
   formatting, and strict workspace Clippy also pass.
+- Exact commit `5b7a7ca2f8bb960a85d11a1dd7c9a94d9f6c0ad4` implements deterministic
+  largest-dimension FE roles against baseline
+  `a888e9799d35fa775c41c4510a71261b1513bbe2`. Focused tests cover all six
+  three-FE permutations for LSMR and CMG, noncontiguous bridge algebra, CMG
+  bipartition reversal, fitted predictors and means, objective values, score
+  certificates, deterministic ties, and permutation-invariant memory charges.
+  The complete no-default-features workspace suite passed with 715 core tests
+  plus all plugin, testkit, integration, numerical-oracle, and constrained
+  memory tests. Rust formatting and strict workspace Clippy passed. The
+  universal arm64/x86_64 macOS plugin passed binary audit and the actual-plugin
+  ABI/panic-containment self-test. Exact-source v3 local science and smoke runs
+  under `/private/tmp/fereg-role-selection-5b7a7ca-science` and
+  `/private/tmp/fereg-role-selection-5b7a7ca-smoke` both passed science and
+  route checks.
+- The exact-source SCC v3 development run is rooted at
+  `/projectnb/welfgr/fereg/dev/20260904T191500Z-role-select-5b7a7ca` with setup,
+  28-slot array, and collector jobs `7445383`, `7445384`, and `7445385`.
+  Thirteen tasks produced green task receipts. Tasks 10 and 12 completed their
+  measurements and were scientifically green but route-red because both
+  candidate and baseline used the same visible numerical checkpoint fallback
+  on the easy difficult-chain and sparse-three-FE scopes. Task 8 exhausted the
+  original three-hour limit during its untimed public-state KKT audit after all
+  timed arms had completed; the collector correctly refused a merged receipt.
+  The exact-source task-8 retry under
+  `/projectnb/welfgr/fereg/dev/20260904T223000Z-role-select-task8-retry` used jobs
+  `7458532`, `7458533`, and `7458534`. Task `7458533.8` ran on 28 Broadwell
+  slots, exited zero, and produced a digest-matched task receipt with
+  `science_pass=true`, `route_pass=true`, and twelve accepted independent KKT
+  adjudications. Its collector correctly failed closed because the retry root
+  intentionally contains no tasks 1--7 or 9--16. Across the sixteen immutable
+  shard analyses, all 56 scopes are scientifically green; the combined route
+  result remains red only for tasks 10 and 12. No synthetic merged or close
+  receipt was created.
 - The SCC development run rooted at
   `/projectnb/welfgr/fereg/dev/20260903T170000Z-public-ppml-solvers-2ff872b`
   used result table 2.4 and the v1 public-state KKT audit. It completed all
@@ -211,10 +257,50 @@ has been launched.
 
 ## Diagnostic performance evidence
 
-- These figures are recomputed from the per-scope solver summaries in the 15
-  shard `analysis.json` files bound by task receipts under the exact SCC run
-  root above; all three task-8 scopes are excluded because task 8 produced no
-  receipt. Across the remaining 53 scopes, the geometric-mean fereg/reference
+- Across the 56 exact-source SCC scopes above, performance-eligible geometric
+  mean candidate/`ppmlhdfe` runtime ratios are 0.614 for MAP, 0.379 for LSMR,
+  and 0.317 for CMG: reference/candidate speedups of 1.63x, 2.64x, and 3.15x.
+  Candidate/baseline ratios are 1.002, 1.003, and 0.995, respectively. Including
+  the four scientifically successful but route-ineligible LSMR and CMG scopes
+  changes their comparator ratios to 0.372 and 0.316. LSMR is the fastest
+  candidate family in 42 scopes, MAP in eight, and CMG in six. On common green
+  scopes LSMR beats MAP in 45 of 52 and CMG in 33 of 41.
+- The two-FE performance-eligible comparator ratios are 0.475 for MAP, 0.276
+  for LSMR, and 0.296 for CMG. The corresponding three-FE ratios are 0.914,
+  0.632, and 0.408. The SCC generators already present every three-FE design in
+  descending retained-cardinality order, so this tranche is deliberately a
+  performance-regression check rather than a favorable reordered-input timing:
+  the selected graph roles are identical in candidate and baseline. The local
+  permutation tests are the evidence that arbitrary public absorb order reaches
+  those same roles and scientific state.
+- In the recovered breadth sparse-three-FE shard, candidate/baseline/reference
+  medians were 32.469/32.570/6.141 seconds for K=0 MAP and
+  21.863/21.796/6.141 for K=0 LSMR; 147.151/147.057/55.641 for K=10 MAP and
+  52.742/52.723/55.641 for K=10 LSMR; and
+  616.579/617.822/366.329 for K=50 MAP and
+  190.926/190.458/366.329 for K=50 LSMR. Candidate and baseline used identical
+  total iterations in every pair: 17,457/9,186, 16,146/6,773, and
+  17,228/7,130 for MAP/LSMR at K=0/10/50, with no fallback. K=10 and K=50 joint
+  LSMR ordinary work used 1,663/1,958 iterations, four retries, and
+  1.152/3.904 seconds of solve time; their MAP checkpoints remained the floor
+  at 5,110/5,172 iterations and 42.255/178.103 seconds because these 10,000-row
+  scopes are below the current-weight LSMR checkpoint threshold.
+- Across all 471 matched successful candidate/baseline solver repetitions,
+  likelihood, deviance, sample, rank, absorbed DoF, and residual DoF are
+  identical at recorded precision. Maximum coefficient, covariance-cell, and
+  public-certificate differences are `9.97e-18`, `1.03e-22`, and `3.75e-12`.
+  The heterogeneous 56-scope candidate workload sums its per-scope medians to
+  2,027.270 seconds and 348,126 iterations for MAP; 729.196 seconds, 132,142
+  iterations, 81 LSMR-engine retries, and seven visible checkpoint
+  fallbacks for LSMR; and 105.196 seconds, 57,668 iterations, 214 CMG retries,
+  and seven visible checkpoint fallbacks for CMG. These are diagnostic workload
+  totals, not qualification or auto-routing evidence.
+
+- These historical figures are recomputed from the per-scope solver summaries
+  in the 15 shard `analysis.json` files under
+  `/projectnb/welfgr/fereg/dev/20260903T170000Z-public-ppml-solvers-2ff872b`;
+  all three task-8 scopes are excluded because task 8 produced no receipt.
+  Across the remaining 53 scopes, the geometric-mean fereg/reference
   runtime ratios were 0.840 for MAP and 0.551 for LSMR. LSMR was the fastest
   fereg family in 40 scopes and beat MAP in all 53. Prepared CMG's ratio was
   0.480 on its 45 eligible scopes, but LSMR was faster in 32 of those common
