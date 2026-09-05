@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/ppml_solver_development.py"
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v3.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v4.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 
 SPEC = importlib.util.spec_from_file_location("ppml_solver_development", SCRIPT)
@@ -254,7 +254,7 @@ def run_document() -> dict[str, object]:
         metadata, str(scope["topology"]), DEVELOPMENT.load_manifest(),
     )
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "kind": "feppml_solver_development_run",
         "manifest": {
             "path": str(MANIFEST),
@@ -325,6 +325,18 @@ def public_state_conflict_document() -> dict[str, object]:
 
 
 class PpmlSolverDevelopmentTests(unittest.TestCase):
+    def test_engine_summary_preserves_work_by_concrete_row(self) -> None:
+        row = result_row({"id": "diagnostic", "threads": 1}, "lsmr", 1)
+        summary = DEVELOPMENT.solver_engine_summary([row, copy.deepcopy(row)])
+        self.assertEqual(list(summary), ["map", "lsmr_fused", "lsmr_joint", "cmg_prepared"])
+        self.assertEqual(summary["lsmr_joint"]["retries"], 54)
+        self.assertEqual(summary["lsmr_fused"]["checkpoint_frames"], 31)
+        self.assertEqual(summary["cmg_prepared"]["certificate_seconds"], 82)
+        row["solver_matrix_values"][82 - 1] = None
+        self.assertIsNone(DEVELOPMENT.solver_engine_summary([row])["cmg_prepared"]["certificate_seconds"])
+        row["solver_matrix_values"] = []
+        self.assertEqual(DEVELOPMENT.solver_engine_summary([row]), {})
+
     def test_manifest_has_only_public_explicit_arms_and_no_auto_policy(self) -> None:
         manifest = DEVELOPMENT.load_manifest()
         self.assertFalse(manifest["qualification_eligible"])
@@ -532,6 +544,47 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
         manifest = DEVELOPMENT.load_manifest()
         self.assertEqual(len(DEVELOPMENT.profile_scopes(manifest, "local_science")), 8)
         self.assertEqual(len(DEVELOPMENT.profile_scopes(manifest, "local_smoke")), 3)
+
+    def test_one_effect_eligibility_does_not_advertise_specialized_solvers(self) -> None:
+        eligibility = DEVELOPMENT.solver_eligibility(
+            {"N": 400, "levels1": 12, "levels2": 0, "levels3": 0},
+            "balanced_1fe", DEVELOPMENT.load_manifest(),
+        )
+        self.assertEqual(eligibility["eligible_solvers"], ["map"])
+        self.assertEqual(set(eligibility["excluded_solvers"]), {"lsmr", "cmg"})
+        self.assertEqual(eligibility["cmg_nuisance_columns"], 0)
+
+    def test_cmg_nuisance_limit_is_independent_of_finite_controls(self) -> None:
+        manifest = DEVELOPMENT.load_manifest()
+        for nuisance in (63, 64, 65):
+            eligibility = DEVELOPMENT.solver_eligibility(
+                {"N": 25000, "levels1": 800, "levels2": 400, "levels3": nuisance + 1},
+                "balanced_3fe", manifest,
+            )
+            self.assertEqual("cmg" in eligibility["eligible_solvers"], nuisance <= 64)
+        scopes = DEVELOPMENT.profile_scopes(manifest, "local_cmg_envelope")
+        self.assertTrue(any(s["controls"] == 50 and s["third_fe_columns"] == 64 for s in scopes))
+
+    def test_local_scaling_reuses_dataset_and_holdouts_keep_registered_seeds(self) -> None:
+        manifest = DEVELOPMENT.load_manifest()
+        scopes = DEVELOPMENT.profile_scopes(manifest, "local_scaling")
+        for topology in {s["topology"] for s in scopes}:
+            selected = [s for s in scopes if s["topology"] == topology]
+            self.assertEqual(len({DEVELOPMENT.dataset_id(s) for s in selected}), 1)
+            self.assertEqual({s["threads"] for s in selected}, {1, 2, 4, 7, 14})
+        holdouts = DEVELOPMENT.profile_scopes(manifest, "local_holdout")
+        self.assertEqual({s["seed"] for s in holdouts}, {2026090501, 2026090502, 2026090503})
+
+    def test_dataset_identity_binds_mixing_and_nuisance_width(self) -> None:
+        scope = DEVELOPMENT.profile_scopes(DEVELOPMENT.load_manifest(), "local_smoke")[2]
+        variants = [scope, {**scope, "mixing_percent": 1}, {**scope, "third_fe_columns": 8}]
+        self.assertEqual(len({DEVELOPMENT.dataset_id(s) for s in variants}), 3)
+        for field, value in (("mixing_percent", 101), ("third_fe_columns", -1), ("mixing_percent", True)):
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT._validate_scopes([{**scope, field: value}], 1)
+
+    def test_campaign_retains_frozen_scopes_and_resource_class(self) -> None:
+        manifest = DEVELOPMENT.load_manifest()
         tasks = DEVELOPMENT.campaign_tasks(manifest)
         self.assertEqual(len(tasks), 16)
         self.assertEqual(sum(len(task["scopes"]) for task in tasks), 56)
@@ -1171,7 +1224,7 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
                 "transform=symmetric_kaczmarz tol=1.0e-09)\n"
             )
             self.assertEqual(
-                DEVELOPMENT.verified_reference_route(console),
+                DEVELOPMENT.verified_reference_route(console, {"topology": "balanced_2fe"}),
                 {
                     "acceleration": "conjugate_gradient",
                     "transform": "symmetric_kaczmarz",
@@ -1181,7 +1234,21 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
                 "Running solver (acceleration=lsmr, transform=symmetric_kaczmarz tol=1.0e-09)\n"
             )
             with self.assertRaises(DEVELOPMENT.DevelopmentError):
-                DEVELOPMENT.verified_reference_route(console)
+                DEVELOPMENT.verified_reference_route(console, {"topology": "balanced_2fe"})
+
+    def test_one_fe_reference_route_requires_observed_unaccelerated_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            console = Path(temporary) / "reference.log"
+            console.write_text("Running solver (acceleration=none, transform=symmetric_kaczmarz tol=1.0e-04)\n")
+            scope = {"topology": "balanced_1fe"}
+            self.assertEqual(DEVELOPMENT.verified_reference_route(console, scope), {
+                "acceleration": "none", "transform": "symmetric_kaczmarz",
+            })
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT.verified_reference_route(console, {"topology": "balanced_3fe"})
+            console.write_text("Running solver (acceleration=conjugate_gradient, transform=symmetric_kaczmarz tol=1.0e-04)\n")
+            with self.assertRaises(DEVELOPMENT.DevelopmentError):
+                DEVELOPMENT.verified_reference_route(console, scope)
 
     def test_driver_uses_public_solver_surface_and_default_comparator(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")

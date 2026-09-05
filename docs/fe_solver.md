@@ -144,7 +144,7 @@ correction warm start. A zero-active-control fit uses the same engine while
 retaining the public `lsmr_fused` concrete identity; positive-rank fits report
 `lsmr_joint`. Two-effect problems retain Schwarz state and rebuild it only when
 recurrence or certificate evidence requires that work. Problems with three or
-more effects retain one Schwarz core for the first two contiguous effect
+more effects retain one Schwarz core for the two largest retained effect
 blocks and a fresh current-weight positive diagonal action for every additional
 effect. A matrix-free symmetric block-factor bridge applies the current-weight
 cross Gram between that core and the additional effects. Its action is
@@ -166,15 +166,16 @@ other recognized but unsupported combinations return `r(498)`.
 
 The canonical retained session still owns the first weighted-linear frame and
 freezes its active basis; Mu separation remains canonical MAP. Under ADR 0027,
-explicit LSMR and CMG fits with two or three categorical effects, fast memory,
-and at least 16,384 observations use a fresh current-weight batch LSMR
+explicit LSMR and CMG fits with two or three categorical effects and fast memory
+use a fresh current-weight batch LSMR
 projection for the initial response-plus-all-controls frame as well as strict
-and final-Hessian checkpoints. Smaller fits retain MAP checkpoints because the
-independent topology build is not an amortized large-projection operation. The
+and final-Hessian checkpoints at every positive retained sample size. The
 LSMR candidate is independently re-certified by the canonical session before
 the unchanged all-width rank/status decision, bread, score, objective,
 reconstruction, and exact `q_i * mu_i` final-Hessian checks run. An uncertified
-numerical candidate falls back to MAP on the untouched authoritative inputs;
+numerical candidate receives at most one tighter batch on untouched inputs,
+with unchanged canonical tolerance and explicitly counted retry work. A second
+numerical rejection falls back to MAP on the untouched authoritative inputs;
 other errors remain fatal. At a strict checkpoint, the predictor, objective,
 score, rank, basis, and all estimable coefficients must agree; an unidentified
 normalization coordinate cannot force another IRLS frame, and the canonical
@@ -189,13 +190,14 @@ original publication certificate tolerance is unchanged. The result wire
 measures those costs separately from canonical checkpoint work.
 
 The pinned `ppmlhdfe` comparator uses its default conjugate-gradient
-acceleration of symmetric Kaczmarz; it must not be described generically as
+acceleration of symmetric Kaczmarz for multiple effects and unaccelerated
+projection for one effect; it must not be described generically as
 LSMR. The development harness does not force a second comparator route. It
 parses the pinned solver's verbose route line and fails if either default
 technique changes. If a candidate disagrees scientifically with the timed
 default fit, the harness runs one untimed fit from the same pinned closure with
 `tolerance(1e-10) itolerance(1e-12)`. That strict fit keeps the same
-conjugate-gradient/symmetric-Kaczmarz technique. Agreement with the strict fit
+observed default technique (unaccelerated for one effect). Agreement with the strict fit
 adjudicates the stopping discrepancy while retaining the original default-fit
 mismatch in the analysis. If both default and strict comparisons still differ
 only in finite coefficients, the development harness may run a final untimed
@@ -225,15 +227,26 @@ the loose-to-final fitted-vector tail, and the Poisson identity
 certificate, or non-objective failures remain fatal. The analysis retains the
 reported and replayed reference objectives, all prediction diagnostics, and
 all hashed public-state inputs. This development-only audit uses the pinned
-comparator's supported CG/symmetric-Kaczmarz route and never forces a different
+comparator's observed default projection route and never forces a different
 `ppmlhdfe` solver.
 
-The version-3 development manifest derives explicit-solver eligibility from
+The version-4 development manifest derives explicit-solver eligibility from
 the generated dataset metadata before timing. It excludes an unsupported
 solver arm instead of treating its documented `r(498)` as a failed benchmark;
 the public rejection remains covered separately. For CMG, the runner mirrors
 the prepared engine's core choice: the two largest-cardinality effects are the
-core graph, and the remaining non-base width must not exceed 64.
+core graph, and the remaining non-base width must not exceed 64. This envelope
+counts third-effect indicators, not the finite regressors K. Version 4 adds
+local one-FE, intermediate mixing, checkpoint-boundary, nuisance-width,
+finite-width, thread-scaling, large-easy, and held-out-seed profiles. Historical
+version-3 manifests and receipts remain unchanged.
+
+Under [ADR 0028](adr/0028-one-effect-ppml-initialization.md), cold one-effect
+publication fits begin at the analytic group-intercept optimum for zero finite
+slopes when it is representable. This only seeds the existing estimator: rank
+freezing, ordinary IRLS, strict convergence, final-Hessian synchronization,
+and every independent certificate remain mandatory. Unusable seeds restore
+the original global initialization; warm starts and Mu exploration are unchanged.
 
 The public CMG family means only the prepared fused-FWL engine introduced by
 ADR-0023 and updated to the exact prepared-topology pin by ADR-0024. It prepares

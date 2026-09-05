@@ -1146,6 +1146,7 @@ impl<'a> CmgAbsorber<'a> {
         CertifiedBorrowedMap::from_certified_parts(
             values,
             SolveReport {
+                checkpoint_retries: 0,
                 requested_solver: self.config.requested_solver,
                 used_solver: FeSolverKind::Cmg,
                 iterations: 0,

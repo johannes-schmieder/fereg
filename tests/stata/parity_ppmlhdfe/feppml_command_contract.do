@@ -311,6 +311,16 @@ capture noisily `feppml_test_command' y c.x, ///
     separation(none) solver(cmg) memory(fast) threads(1) deterministic
 assert _rc == 0
 assert `"`e(feppml_solver_selected)'"' == "cmg"
+tempname nuisance_cap_b nuisance_cap_V
+matrix `nuisance_cap_b' = e(b)
+matrix `nuisance_cap_V' = e(V)
+replace __solver_nuisance = mod(_n - 1, 66)
+capture noisily `feppml_test_command' y c.x, ///
+    absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
+    separation(none) solver(cmg) memory(fast) threads(1) deterministic
+assert _rc == 498
+assert mreldif(e(b), `nuisance_cap_b') == 0
+assert mreldif(e(V), `nuisance_cap_V') == 0
 restore
 `feppml_test_command' y c.x, solver(map)
 assert mreldif(e(b), `accepted_b') == 0

@@ -2529,6 +2529,9 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
         target.fallback_used = true;
     }
     target.iterations = target.iterations.max(source.iterations);
+    target.checkpoint_retries = target
+        .checkpoint_retries
+        .saturating_add(source.checkpoint_retries);
     target.stop_reason = match (target.stop_reason, source.stop_reason) {
         (SolveStopReason::NoFixedEffects, SolveStopReason::NoFixedEffects) => {
             SolveStopReason::NoFixedEffects
@@ -2555,6 +2558,7 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
         .max(source.normal_equation_residual);
     target.setup_seconds += source.setup_seconds;
     target.solve_seconds += source.solve_seconds;
+    target.certification_seconds += source.certification_seconds;
     target.fallback_used |= source.fallback_used;
     target.pilot_iterations = target.pilot_iterations.max(source.pilot_iterations);
     target.pilot_contraction = target.pilot_contraction.max(source.pilot_contraction);

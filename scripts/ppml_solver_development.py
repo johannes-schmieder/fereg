@@ -21,10 +21,15 @@ from typing import Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v3.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v4.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 KKT_DRIVER = ROOT / "tests/stata/development/feppml_public_state_kkt.do"
 SOLVERS = ("map", "lsmr", "cmg")
+LOCAL_PROFILES = (
+    "local_science", "local_smoke", "local_one_fe_science", "local_breadth",
+    "local_one_fe", "local_difficulty", "local_checkpoint", "local_cmg_envelope",
+    "local_width", "local_scaling", "local_large_easy", "local_holdout",
+)
 COMPARATORS = ("ppmlhdfe",)
 ADJUDICATOR = "ppmlhdfe_strict"
 KKT_ADJUDICATOR = "independent_public_state_kkt_v3"
@@ -49,7 +54,7 @@ SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
 RUN_ROOT = re.compile(r"^/projectnb/welfgr/fereg/dev/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 IMPLEMENTATION_FILES = (
-    "benchmarks/manifests/feppml_solver_development_v3.json",
+    "benchmarks/manifests/feppml_solver_development_v4.json",
     "benchmarks/scc/feppml_solver_dev_job.sh",
     "benchmarks/scc/feppml_solver_dev_setup_job.sh",
     "benchmarks/scc/feppml_solver_dev_collector_job.sh",
@@ -177,14 +182,14 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         "manifest",
     )
     if (
-        manifest["schema_version"] != 3
-        or manifest["manifest_id"] != "feppml_solver_development_v3"
+        manifest["schema_version"] != 4
+        or manifest["manifest_id"] != "feppml_solver_development_v4"
         or manifest["status"] != "development_only"
         or manifest["qualification_eligible"] is not False
         or manifest["auto_calibration"] is not False
         or manifest["public_command"] != "feppml"
     ):
-        raise DevelopmentError("invalid v3 development identity")
+        raise DevelopmentError("invalid v4 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
         "development_result_table": "2.6",
@@ -199,7 +204,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         "source": "generated_dataset_metadata",
         "effect_count": "positive_level_counts",
         "sample_requirement": "every_successful_arm_equals_generated_N",
-        "map_minimum_effects": 2,
+        "map_minimum_effects": 1,
         "lsmr_minimum_effects": 2,
         "cmg_effect_counts": [2, 3],
         "cmg_core_effects": "two_largest_level_counts",
@@ -213,6 +218,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     if comparators != [{
         "id": "ppmlhdfe", "timed": True,
         "acceleration": REFERENCE_ACCELERATION, "transform": REFERENCE_TRANSFORM,
+        "one_effect_acceleration": "none",
     }]:
         raise DevelopmentError("default comparator contract changed")
     if manifest["scientific_adjudication"] != {
@@ -221,6 +227,7 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
             "invoke_only_after_default_reference_mismatch": True,
             "tolerance": 1e-10, "itolerance": 1e-12,
             "acceleration": REFERENCE_ACCELERATION,
+            "one_effect_acceleration": "none",
             "transform": REFERENCE_TRANSFORM,
             "preserve_default_mismatch": True,
         },
@@ -270,12 +277,13 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     }:
         raise DevelopmentError("strict scientific adjudicator contract changed")
     if manifest["topologies"] != [
+        "balanced_1fe", "skewed_1fe",
         "balanced_2fe", "skewed_2fe", "chain_2fe", "hub_2fe", "dense_2fe",
         "many_levels_2fe", "balanced_3fe", "sparse_3fe",
     ]:
         raise DevelopmentError("topology inventory changed")
     profiles = manifest["profiles"]
-    if not isinstance(profiles, dict) or set(profiles) != {"local_science", "local_smoke"}:
+    if not isinstance(profiles, dict) or set(profiles) != set(LOCAL_PROFILES):
         raise DevelopmentError("local profile inventory changed")
     for profile_id in profiles:
         profile_scopes(dict(manifest), profile_id)
@@ -312,7 +320,9 @@ def _validate_scopes(scopes: Sequence[Mapping[str, object]], expected: int) -> N
         raise DevelopmentError(f"scope inventory is {len(scopes)}, expected {expected}")
     ids: set[str] = set()
     for scope in scopes:
-        if set(scope) != {"id", "n", "topology", "controls", "difficulty", "threads", "seed"}:
+        required = {"id", "n", "topology", "controls", "difficulty", "threads", "seed"}
+        optional = {"mixing_percent", "third_fe_columns"}
+        if not required <= set(scope) or set(scope) - required - optional:
             raise DevelopmentError(f"invalid scope fields: {scope}")
         if not SAFE_ID.fullmatch(str(scope["id"])) or str(scope["id"]) in ids:
             raise DevelopmentError(f"invalid or duplicate scope id: {scope['id']}")
@@ -321,6 +331,14 @@ def _validate_scopes(scopes: Sequence[Mapping[str, object]], expected: int) -> N
             raise DevelopmentError(f"invalid scope dimensions: {scope['id']}")
         if scope["difficulty"] not in {"easy", "long"}:
             raise DevelopmentError(f"invalid difficulty: {scope['id']}")
+        for name, maximum in (("mixing_percent", 100), ("third_fe_columns", 65)):
+            if name in scope and (
+                isinstance(scope[name], bool) or not isinstance(scope[name], int)
+                or not 0 <= scope[name] <= maximum
+            ):
+                raise DevelopmentError(f"invalid {name}: {scope['id']}")
+        if "third_fe_columns" in scope and not str(scope["topology"]).endswith("_3fe"):
+            raise DevelopmentError("third-FE width requires a three-effect topology")
 
 
 def profile_scopes(manifest: dict[str, object], profile_id: str) -> list[dict[str, object]]:
@@ -342,7 +360,14 @@ def profile_scopes(manifest: dict[str, object], profile_id: str) -> list[dict[st
                             "n": int(profile["observations"]), "topology": topology,
                             "controls": int(controls), "difficulty": difficulty, "threads": int(threads),
                         })
-    scopes = [{**scope, "seed": seed_base + index} for index, scope in enumerate(raw, 1)]
+    seeds: dict[tuple[object, ...], int] = {}
+    scopes = []
+    for index, scope in enumerate(raw, 1):
+        shape = tuple(scope.get(key) for key in (
+            "n", "topology", "controls", "difficulty", "mixing_percent", "third_fe_columns",
+        ))
+        seed = int(scope.get("seed", seeds.setdefault(shape, seed_base + index)))
+        scopes.append({**scope, "seed": seed})
     _validate_scopes(scopes, int(profile["expected_scopes"]))
     return scopes
 
@@ -399,6 +424,9 @@ def dataset_id(scope: Mapping[str, object]) -> str:
         f"{scope['topology']}-n{scope['n']}-k{scope['controls']}-"
         f"{scope['difficulty']}-s{scope['seed']}"
     )
+    for name, suffix in (("mixing_percent", "mix"), ("third_fe_columns", "nu")):
+        if name in scope:
+            value += f"-{suffix}{scope[name]}"
     if not SAFE_ID.fullmatch(value):
         raise DevelopmentError(f"invalid generated dataset id: {value}")
     return value
@@ -534,18 +562,22 @@ def stata_stage_status(console: Path, returncode: int, success: str) -> tuple[in
     return 0, "success-sentinel"
 
 
-def verified_reference_route(console: Path) -> dict[str, str]:
+def reference_acceleration(scope: Mapping[str, object]) -> str:
+    return "none" if str(scope.get("topology", "")).endswith("_1fe") else REFERENCE_ACCELERATION
+
+
+def verified_reference_route(console: Path, scope: Mapping[str, object]) -> dict[str, str]:
     routes = set(re.findall(
         r"Running solver \(acceleration=([a-z_]+), transform=([a-z_]+)\b",
         process_log_text(console),
     ))
-    expected = {(REFERENCE_ACCELERATION, REFERENCE_TRANSFORM)}
+    expected = {(reference_acceleration(scope), REFERENCE_TRANSFORM)}
     if routes != expected:
         raise DevelopmentError(
             f"reference route differs: observed={sorted(routes)}, expected={sorted(expected)}"
         )
     return {
-        "acceleration": REFERENCE_ACCELERATION,
+        "acceleration": reference_acceleration(scope),
         "transform": REFERENCE_TRANSFORM,
     }
 
@@ -557,6 +589,8 @@ def run_stata(
     clean = {key: value for key, value in os.environ.items() if not key.startswith("FEREG_PPML_SOLVER_")}
     clean.update(environment)
     clean["FEREG_PPML_SOLVER_STATA_LOG"] = str(console.with_suffix(".stata.log"))
+    if clean.get("FEREG_SOLVER_TRACE"):
+        clean["FEREG_SOLVER_TRACE_FILE"] = str(console.with_suffix(".solver.trace"))
     with console.open("wb") as target:
         completed = subprocess.run([stata, "-b", "do", str(driver)], cwd=console.parent, env=clean, stdout=target, stderr=subprocess.STDOUT, check=False)
     return {"command": [stata, "-b", "do", str(driver)], "console": str(console), "process_returncode": completed.returncode}
@@ -569,6 +603,8 @@ def base_environment(repository: Path, reference_root: Path, scope: Mapping[str,
         "FEREG_PPML_SOLVER_N": str(scope["n"]), "FEREG_PPML_SOLVER_K": str(scope["controls"]),
         "FEREG_PPML_SOLVER_TOPOLOGY": str(scope["topology"]), "FEREG_PPML_SOLVER_DIFFICULTY": str(scope["difficulty"]),
         "FEREG_PPML_SOLVER_THREADS": str(scope["threads"]), "FEREG_PPML_SOLVER_SEED": str(scope["seed"]),
+        "FEREG_PPML_SOLVER_MIXING_PERCENT": str(scope.get("mixing_percent", 0)),
+        "FEREG_PPML_SOLVER_THIRD_COLUMNS": str(scope.get("third_fe_columns", "")),
     }
 
 
@@ -636,6 +672,25 @@ def _valid_solver_matrix(value: object) -> bool:
     )
 
 
+def solver_engine_summary(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    fields = {
+        "ordinary_frames": 7, "checkpoint_frames": 8, "retries": 9,
+        "fallbacks": 10, "iterations": 12, "setup_seconds": 13,
+        "solve_seconds": 14, "certificate_seconds": 15,
+    }
+    matrices = [row["solver_matrix_values"] for row in rows if int(row["rc"]) == 0]
+    if not matrices or any(not _valid_solver_matrix(matrix) for matrix in matrices):
+        return {}
+    output = {}
+    for index, engine in enumerate(("map", "lsmr_fused", "lsmr_joint", "cmg_prepared")):
+        summary = {}
+        for field, column in fields.items():
+            values = [matrix[index * SOLVER_REPORT_COLUMNS + column] for matrix in matrices]
+            summary[field] = statistics.median(values) if all(value is not None for value in values) else None
+        output[engine] = summary
+    return output
+
+
 def parse_table(path: Path, scope: Mapping[str, object], implementation: str) -> list[dict[str, object]]:
     required = {
         "arm", "repetition", "rc", "timed", "seconds", "N", "ll", "deviance", "converged", "rank", "df_a", "df_resid",
@@ -665,7 +720,7 @@ def parse_table(path: Path, scope: Mapping[str, object], implementation: str) ->
             raise DevelopmentError(f"invalid elapsed time for {arm}")
         expected_reference_route = arm in (*COMPARATORS, ADJUDICATOR)
         if expected_reference_route and (
-            row["reference_acceleration"] != REFERENCE_ACCELERATION
+            row["reference_acceleration"] != reference_acceleration(scope)
             or row["reference_transform"] != REFERENCE_TRANSFORM
         ):
             raise DevelopmentError(f"unverified reference route for {arm}")
@@ -727,7 +782,7 @@ def parse_public_state_fit(
     if reference != (implementation == "reference"):
         raise DevelopmentError("public-state fit implementation differs from arm")
     if reference and (
-        row["reference_acceleration"] != REFERENCE_ACCELERATION
+        row["reference_acceleration"] != reference_acceleration(scope)
         or row["reference_transform"] != REFERENCE_TRANSFORM
     ):
         raise DevelopmentError("public-state reference route differs")
@@ -794,7 +849,9 @@ def solver_eligibility(
     level_counts = [int(metadata[f"levels{index}"]) for index in range(1, 4)]
     if observations <= 0 or any(level < 0 or level > observations for level in level_counts):
         raise DevelopmentError("dataset metadata level counts must lie between zero and N")
-    if topology.endswith("_2fe"):
+    if topology.endswith("_1fe"):
+        valid_topology = level_counts[0] > 0 and level_counts[1:] == [0, 0]
+    elif topology.endswith("_2fe"):
         valid_topology = level_counts[0] > 0 and level_counts[1] > 0 and level_counts[2] == 0
     elif topology.endswith("_3fe"):
         valid_topology = all(level > 0 for level in level_counts)
@@ -804,18 +861,22 @@ def solver_eligibility(
         raise DevelopmentError("dataset level counts differ from the declared topology")
     effects = sorted((level for level in level_counts if level > 0), reverse=True)
     policy = manifest["solver_eligibility"]
-    minimum_effects = max(
-        int(policy["map_minimum_effects"]), int(policy["lsmr_minimum_effects"]),
-    )
-    if len(effects) < minimum_effects:
+    if len(effects) < int(policy["map_minimum_effects"]):
         raise DevelopmentError("development dataset is outside the explicit-solver envelope")
     cmg_effect_counts = {int(value) for value in policy["cmg_effect_counts"]}
-    if len(effects) not in cmg_effect_counts:
-        raise DevelopmentError("development topology is outside the CMG campaign envelope")
     nuisance_columns = sum(level - 1 for level in effects[2:])
-    cmg_eligible = nuisance_columns <= int(policy["cmg_max_nonbase_nuisance_columns"])
-    eligible_solvers = ["map", "lsmr", *(["cmg"] if cmg_eligible else [])]
-    excluded = {} if cmg_eligible else {"cmg": "three_fe_nuisance_columns_exceed_64"}
+    eligible_solvers = ["map"]
+    excluded = {}
+    if len(effects) >= int(policy["lsmr_minimum_effects"]):
+        eligible_solvers.append("lsmr")
+    else:
+        excluded["lsmr"] = "requires_at_least_two_categorical_effects"
+    if len(effects) not in cmg_effect_counts:
+        excluded["cmg"] = "requires_two_or_three_categorical_effects"
+    elif nuisance_columns > int(policy["cmg_max_nonbase_nuisance_columns"]):
+        excluded["cmg"] = "three_fe_nuisance_columns_exceed_64"
+    else:
+        eligible_solvers.append("cmg")
     return {
         "effect_count": len(effects),
         "level_counts_descending": effects,
@@ -936,7 +997,7 @@ def execute_scopes(
             reference_route = None
             if not status and arm in COMPARATORS:
                 try:
-                    reference_route = verified_reference_route(console)
+                    reference_route = verified_reference_route(console, scope)
                 except DevelopmentError:
                     status, reason = 498, "unverified-reference-route"
             processes.append({**process, "stage": "run", "scope_id": scope["id"], "implementation": implementation, "arm": arm, "accepted_rc": status, "status_reason": reason, "reference_route": reference_route})
@@ -961,7 +1022,7 @@ def execute_scopes(
             reference_route = None
             if not status:
                 try:
-                    reference_route = verified_reference_route(console)
+                    reference_route = verified_reference_route(console, scope)
                 except DevelopmentError:
                     status, reason = 498, "unverified-reference-route"
             processes.append({
@@ -1010,7 +1071,7 @@ def execute_scopes(
                 reference_route = None
                 if not status and implementation == "reference":
                     try:
-                        reference_route = verified_reference_route(console)
+                        reference_route = verified_reference_route(console, scope)
                     except DevelopmentError:
                         status, reason = 498, "unverified-reference-route"
                 state_receipt = file_receipt(state) if state.is_file() else None
@@ -1139,7 +1200,7 @@ def execute_scopes(
     if references_before != references_after:
         raise DevelopmentError("pinned reference closure changed during execution")
     return {
-        "schema_version": 3, "kind": "feppml_solver_development_run", "qualification_eligible": False,
+        "schema_version": 4, "kind": "feppml_solver_development_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": {"path": str(MANIFEST), "sha256": sha256_file(MANIFEST)},
         "implementation": implementation_identity(), "repetitions": repetitions, "include_comparators": include_comparators,
         "include_oracle": include_oracle, "sources": sources, "artifacts": artifacts, "references": references_after,
@@ -1477,7 +1538,7 @@ def _public_state_kkt_issues(
     for arm in ("ppmlhdfe", ADJUDICATOR):
         fit = fits[arm]
         if (
-            fit.get("reference_acceleration") != REFERENCE_ACCELERATION
+            fit.get("reference_acceleration") != reference_acceleration(scope)
             or fit.get("reference_transform") != REFERENCE_TRANSFORM
             or any(
                 fit.get(field) is not None
@@ -1673,8 +1734,8 @@ def _public_state_kkt_issues(
 
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
-    if document.get("schema_version") != 3 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
-        raise DevelopmentError("not a v3 solver-development run")
+    if document.get("schema_version") != 4 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
+        raise DevelopmentError("not a v4 solver-development run")
     if document.get("qualification_eligible") is not False or document.get("auto_calibration") is not False:
         raise DevelopmentError("development evidence cannot qualify or calibrate auto")
     manifest_receipt = document.get("manifest")
@@ -1779,7 +1840,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 or int(row["repetition"]) != 1
                 or row.get("timed") is not False
                 or row.get("seconds") is not None
-                or row.get("reference_acceleration") != REFERENCE_ACCELERATION
+                or row.get("reference_acceleration") != reference_acceleration(scope_by_id.get(scope_id, {}))
                 or row.get("reference_transform") != REFERENCE_TRANSFORM
                 or row.get("solver_matrix_values") != []
                 or scope_id in adjudicators
@@ -1824,7 +1885,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             failures.append(":".join(map(str, key)) + ":untimed")
         if key[2] in COMPARATORS:
             if (
-                row.get("reference_acceleration") != REFERENCE_ACCELERATION
+                row.get("reference_acceleration") != reference_acceleration(scope_by_id[key[0]])
                 or row.get("reference_transform") != REFERENCE_TRANSFORM
             ):
                 failures.append(":".join(map(str, key)) + ":reference_route")
@@ -1917,7 +1978,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 or not (solver_pair or comparator_pair)
                 or process.get("reference_route") != (
                     {
-                        "acceleration": REFERENCE_ACCELERATION,
+                        "acceleration": reference_acceleration(scope_by_id[process_scope]),
                         "transform": REFERENCE_TRANSFORM,
                     }
                     if comparator_pair else None
@@ -1941,7 +2002,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                 or process_implementation != "adjudicator"
                 or process_arm != ADJUDICATOR
                 or process.get("reference_route") != {
-                    "acceleration": REFERENCE_ACCELERATION,
+                    "acceleration": reference_acceleration(scope_by_id[process_scope]),
                     "transform": REFERENCE_TRANSFORM,
                 }
             ):
@@ -1969,7 +2030,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             )
             expected_reference_route = (
                 {
-                    "acceleration": REFERENCE_ACCELERATION,
+                    "acceleration": reference_acceleration(scope_by_id.get(process_scope, {})),
                     "transform": REFERENCE_TRANSFORM,
                 }
                 if process_implementation == "reference" else None
@@ -2235,7 +2296,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                         "default_science_mismatches": default_issues,
                         "adjudicator": ADJUDICATOR, "timed": False,
                         "tolerance": 1e-10, "itolerance": 1e-12,
-                        "acceleration": REFERENCE_ACCELERATION,
+                        "acceleration": reference_acceleration(scope),
                         "transform": REFERENCE_TRANSFORM,
                     })
         if document.get("include_oracle"):
@@ -2293,6 +2354,14 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
                     "candidate_over_ppmlhdfe": statistics.median(values) / reference_median if reference_median and reference_median > 0.0 else None,
                     "baseline_median_seconds": baseline_median,
                     "candidate_over_baseline": statistics.median(values) / baseline_median if baseline_median and baseline_median > 0.0 else None,
+                    "engine_medians": {
+                        implementation: solver_engine_summary([
+                            indexed[(scope_id, implementation, solver, repetition)]
+                            for repetition in range(1, repetitions + 1)
+                            if (scope_id, implementation, solver, repetition) in indexed
+                        ])
+                        for implementation in implementations
+                    },
                 })
     for scope_id in sorted(set(adjudicators) - used_adjudicators):
         failures.append(f"{scope_id}:adjudicator:{ADJUDICATOR}:not_required")
@@ -2301,7 +2370,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:not_required_or_failed"
         )
     return {
-        "schema_version": 3, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
+        "schema_version": 4, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
         "reference_adjudications": reference_adjudications,
@@ -2377,7 +2446,7 @@ def prepare_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     }
     task_plan = {"tasks": campaign_tasks(manifest)}
     config = {
-        "schema_version": 3, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
+        "schema_version": 4, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
         "implementation": implementation, "candidate_root": str(candidate_root),
         "baseline_root": str(Path(args.baseline_root).resolve()) if args.baseline_root else None,
         "reference_root": str(Path(args.reference_root).resolve()), "stata": str(Path(args.stata).resolve()),
@@ -2409,7 +2478,7 @@ def record_setup(args: argparse.Namespace) -> None:
     if _source_fingerprint(sources["candidate"]) != _source_fingerprint(config["candidate_source"]):
         raise DevelopmentError("setup candidate source differs from preparation and local gates")
     receipt = {
-        "schema_version": 3, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
+        "schema_version": 4, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
         "manifest_sha256": config["manifest_sha256"], "implementation": implementation_identity(),
         "sources": sources,
         "artifacts": {name: artifact_identity(path) for name, path in repositories.items()},
@@ -2468,7 +2537,7 @@ def run_task(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError(f"task {identity['task_id']} failed science or route checks")
     receipt = {
-        "schema_version": 3, "kind": "feppml_solver_development_task", "task_identity": identity,
+        "schema_version": 4, "kind": "feppml_solver_development_task", "task_identity": identity,
         "bundle": task["bundle"], "scope_ids": [scope["id"] for scope in task["scopes"]],
         "run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(output / "analysis.json"),
         "source_identity": document["sources"], "artifact_identity": document["artifacts"],
@@ -2511,7 +2580,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if scopes != expected:
         raise DevelopmentError("merged task scope order or content differs")
     merged = {
-        "schema_version": 3, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
+        "schema_version": 4, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": documents[0]["manifest"], "implementation": documents[0]["implementation"],
         "repetitions": int(config["repetitions"]), "include_comparators": True, "include_oracle": False,
         "sources": documents[0]["sources"], "artifacts": documents[0]["artifacts"], "references": documents[0]["references"],
@@ -2531,7 +2600,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError("merged campaign failed science or route checks")
     exclusive_json(run_root / "receipts/merge.json", {
-        "schema_version": 3, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
+        "schema_version": 4, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
         "job_id": collector_job, "host": cpu_identity(),
         "merged_run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
     })
@@ -2542,7 +2611,7 @@ def record_submission(args: argparse.Namespace) -> None:
     values = {"setup": str(args.setup_job), "array": str(args.array_job), "collector": str(args.collector_job)}
     if any(not JOB_ID.fullmatch(value) for value in values.values()):
         raise DevelopmentError("submission job IDs must be positive integers")
-    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 3, "kind": "feppml_solver_development_submission", "jobs": values})
+    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 4, "kind": "feppml_solver_development_submission", "jobs": values})
 
 
 def parse_qacct(path: Path) -> list[dict[str, str]]:
@@ -2626,7 +2695,7 @@ def close_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     ):
         exclusive_text(raw_qacct[name], source.read_text(encoding="utf-8", errors="replace"))
     exclusive_json(run_root / "receipts/close.json", {
-        "schema_version": 3, "kind": "feppml_solver_development_close", "jobs": submission,
+        "schema_version": 4, "kind": "feppml_solver_development_close", "jobs": submission,
         "qacct": accounting, "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
         "merge_receipt_sha256": sha256_file(run_root / "receipts/merge.json"),
         "qacct_files": {
@@ -2639,8 +2708,14 @@ def close_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
 def run_local(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     profile = manifest["profiles"][args.profile]
     repetitions = args.repetitions or int(profile["repetitions"])
+    scopes = profile_scopes(manifest, args.profile)
+    if args.scope:
+        requested = set(args.scope)
+        if requested - {str(scope["id"]) for scope in scopes}:
+            raise DevelopmentError("requested scope is not registered in the selected profile")
+        scopes = [scope for scope in scopes if scope["id"] in requested]
     document = execute_scopes(
-        manifest, profile_scopes(manifest, args.profile), stata=args.stata,
+        manifest, scopes, stata=args.stata,
         candidate_root=args.candidate_root, baseline_root=args.baseline_root,
         reference_root=args.reference_root, output_dir=args.output_dir, repetitions=repetitions,
         include_comparators=bool(profile["comparators"]), include_oracle=bool(profile["independent_oracle"]),
@@ -2660,9 +2735,10 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("validate-manifest")
     cells = commands.add_parser("cells")
-    cells.add_argument("--profile", choices=("local_science", "local_smoke", "scc_screen"), required=True)
+    cells.add_argument("--profile", choices=(*LOCAL_PROFILES, "scc_screen"), required=True)
     local = commands.add_parser("run-local")
-    local.add_argument("--profile", choices=("local_science", "local_smoke"), required=True)
+    local.add_argument("--profile", choices=LOCAL_PROFILES, required=True)
+    local.add_argument("--scope", action="append", help="Run only these registered scope IDs")
     local.add_argument("--stata", required=True)
     local.add_argument("--candidate-root", type=Path, default=ROOT)
     local.add_argument("--baseline-root", type=Path)

@@ -10,6 +10,7 @@ local result : environment FEREG_PPML_SOLVER_RESULT
 local data_csv : environment FEREG_PPML_SOLVER_DATA_CSV
 local data_meta : environment FEREG_PPML_SOLVER_DATA_META
 local topology : environment FEREG_PPML_SOLVER_TOPOLOGY
+local one_fe = inlist(`"`topology'"', "balanced_1fe", "skewed_1fe")
 local difficulty : environment FEREG_PPML_SOLVER_DIFFICULTY
 local arm : environment FEREG_PPML_SOLVER_ARM
 local reference_root : environment FEREG_PPML_SOLVER_REFERENCE_ROOT
@@ -19,6 +20,9 @@ local controls = real(`"`: environment FEREG_PPML_SOLVER_K'"')
 local threads = real(`"`: environment FEREG_PPML_SOLVER_THREADS'"')
 local repetitions = real(`"`: environment FEREG_PPML_SOLVER_REPETITIONS'"')
 local seed = real(`"`: environment FEREG_PPML_SOLVER_SEED'"')
+local mixing = real(`"`: environment FEREG_PPML_SOLVER_MIXING_PERCENT'"')
+if missing(`mixing') local mixing 0
+local third_columns = real(`"`: environment FEREG_PPML_SOLVER_THIRD_COLUMNS'"')
 if strtrim(`"`stata_log'"') != "" log using `"`stata_log'"', text replace
 
 if `"`mode'"' == "generate" {
@@ -35,6 +39,7 @@ if `"`mode'"' == "generate" {
     local levels1 = cond(`long', min(5000, floor(`n'/3)), 80)
     local levels2 = cond(`long', min(4000, floor(`n'/4)), 64)
     local levels3 = cond(`long', min(2500, floor(`n'/5)), 40)
+    if `one_fe' & `long' local levels1 = floor(`n'/4)
     if `n' <= 1000 {
         local levels1 12
         local levels2 10
@@ -48,20 +53,28 @@ if `"`mode'"' == "generate" {
         local levels1 = floor(`n'/3)
         local levels2 = floor(`n'/4)
     }
+    if !missing(`third_columns') {
+        local levels1 800
+        local levels2 400
+        local levels3 = `third_columns' + 1
+    }
 
     generate long g1 = mod(_n - 1, `levels1') + 1
     generate long g2 = mod(floor((_n - 1) / max(1, `levels1')) + 7 * (_n - 1), `levels2') + 1
     if inlist(`"`topology'"', "chain_2fe", "sparse_3fe") {
         replace g2 = mod(g1 - 1 + mod(floor((_n - 1) / max(1, `levels1')), 2), `levels2') + 1
+        if `mixing' > 0 replace g2 = mod(13 * (_n - 1) + floor((_n - 1) / `levels1'), `levels2') + 1 if mod(_n, 100) < `mixing'
     }
     if `"`topology'"' == "hub_2fe" {
         replace g1 = 1 if mod(_n, 3) != 0
         replace g2 = mod(13 * (_n - 1), `levels2') + 1
     }
-    if `"`topology'"' == "skewed_2fe" {
+    if inlist(`"`topology'"', "skewed_1fe", "skewed_2fe") {
         replace g1 = 1 + floor((`levels1' - 1) * (runiform()^3))
         replace g2 = 1 + floor((`levels2' - 1) * (runiform()^2))
     }
+    // Preserve at least two observations per one-FE level in timing fixtures.
+    if `"`topology'"' == "skewed_1fe" replace g1 = mod(_n - 1, `levels1') + 1 if _n <= 2 * `levels1'
     if inlist(`"`topology'"', "balanced_3fe", "sparse_3fe") {
         generate long g3 = mod(11 * (_n - 1) + floor((_n - 1) / max(1, `levels2')), `levels3') + 1
     }
@@ -76,6 +89,7 @@ if `"`mode'"' == "generate" {
         }
     }
     generate double eta_data = .15 * sin(g1 / 7) - .12 * cos(g2 / 5)
+    if `one_fe' replace eta_data = .15 * sin(g1 / 7)
     capture confirm variable g3
     if !_rc replace eta_data = eta_data + .08 * sin(g3 / 3)
     if `controls' > 0 replace eta_data = eta_data + .06 * x1
@@ -91,6 +105,10 @@ if `"`mode'"' == "generate" {
     quietly count if __tag2
     local observed_levels2 = r(N)
     drop __tag2
+    if `one_fe' {
+        drop g2
+        local observed_levels2 0
+    }
     local observed_levels3 0
     capture confirm variable g3
     if !_rc {
@@ -204,9 +222,11 @@ if `controls' > 0 {
         local control_list `control_list' x`index'
     }
 }
-local absorb_list "g1 g2"
+local absorb_list "g1"
+capture confirm variable g2
+if !_rc local absorb_list "`absorb_list' g2"
 capture confirm variable g3
-if !_rc local absorb_list "g1 g2 g3"
+if !_rc local absorb_list "`absorb_list' g3"
 
 local command
 local route_command
@@ -240,6 +260,7 @@ if `"`arm'"' != "ppmlhdfe_strict" {
     }
     if `"`arm'"' == "ppmlhdfe" {
         local reference_acceleration "conjugate_gradient"
+        if `one_fe' local reference_acceleration "none"
         local reference_transform "symmetric_kaczmarz"
         display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`reference_acceleration'|transform=`reference_transform'"
     }
@@ -323,6 +344,7 @@ forvalues repetition = 1/`repetitions' {
         }
         if inlist(`"`arm'"', "ppmlhdfe", "ppmlhdfe_strict") {
             local reference_acceleration "conjugate_gradient"
+            if `one_fe' local reference_acceleration "none"
             local reference_transform "symmetric_kaczmarz"
             display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`reference_acceleration'|transform=`reference_transform'"
         }

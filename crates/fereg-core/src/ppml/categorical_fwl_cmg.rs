@@ -24,10 +24,18 @@ use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::categorical_lsmr::JointLsmrCertificate;
+use super::categorical_lsmr::{emit_solver_trace_line, JointLsmrCertificate};
 use super::PpmlIterationWorkspace;
 
-const MOMENT_BLOCK_ROWS: usize = 32_768;
+// Fixed partitions preserve reduction order across thread counts. The wider
+// ordinary frames need more than two tasks at N=50,000 to use the admitted team.
+// Cap partial K-by-K matrices so very large N cannot multiply retained storage.
+const MOMENT_BLOCK_ROWS: usize = 4_096;
+const MOMENT_MAX_BLOCKS: usize = 64;
+
+fn moment_block_rows(rows: usize) -> usize {
+    MOMENT_BLOCK_ROWS.max(rows.div_ceil(MOMENT_MAX_BLOCKS))
+}
 
 #[cfg(test)]
 thread_local! {
@@ -380,7 +388,7 @@ impl ReusableCategoricalFwlCmg {
         let moment_stride = square
             .checked_add(active_columns)
             .ok_or_else(|| allocation("fused PPML CMG moment dimensions overflow"))?;
-        let moment_blocks = rows.div_ceil(MOMENT_BLOCK_ROWS);
+        let moment_blocks = rows.div_ceil(moment_block_rows(rows));
         let moment_elements = moment_blocks
             .checked_mul(moment_stride)
             .ok_or_else(|| allocation("fused PPML CMG moment workspace overflows"))?;
@@ -508,6 +516,7 @@ impl ReusableCategoricalFwlCmg {
         tolerance: f64,
         diagnostics: &mut FusedFwlCmgAttemptDiagnostics,
     ) -> Result<FusedFwlCmgReport> {
+        let frame_started = Instant::now();
         for certificate in &mut self.projection_certificates {
             *certificate = ProjectionColumnCertificate {
                 absolute_infinity_norm: f64::INFINITY,
@@ -631,6 +640,8 @@ impl ReusableCategoricalFwlCmg {
             diagnostics.certification_seconds += finish_started.elapsed().as_secs_f64();
             return Err(error);
         }
+        let finite_seconds = finish_started.elapsed().as_secs_f64();
+        let reconstruction_started = Instant::now();
         let active_columns = self.active_columns;
         let coefficients = &self.coefficients;
         let projected = &self.projected;
@@ -659,6 +670,8 @@ impl ReusableCategoricalFwlCmg {
                 "fused PPML CMG produced a nonfinite residual or predictor",
             ));
         }
+        let reconstruction_seconds = reconstruction_started.elapsed().as_secs_f64();
+        let joint_certificate_started = Instant::now();
         let certificate = match self.certify_fwl(fe_design, working_response, weights, tolerance) {
             Ok(certificate) => certificate,
             Err(error) => {
@@ -673,7 +686,9 @@ impl ReusableCategoricalFwlCmg {
                 "fused PPML CMG did not pass its exact combined normal-equation certificate",
             ));
         }
-        let finish_seconds = finish_started.elapsed().as_secs_f64();
+        let joint_certificate_seconds = joint_certificate_started.elapsed().as_secs_f64();
+        let finish_seconds =
+            diagnostics.certification_seconds + finish_started.elapsed().as_secs_f64();
         let projection_absolute_infinity_norm = self
             .projection_certificates
             .iter()
@@ -691,6 +706,25 @@ impl ReusableCategoricalFwlCmg {
             .fold(0.0_f64, f64::max);
         let (iterations, setup_seconds, solve_seconds, backward_error, projected_rhs, batches) =
             combine_reports(first, retry_report);
+        // Per-RHS certificates also run on successful frames. Charge them
+        // alongside final certification, and retain fereg-owned preparation
+        // outside the lower-level graph report in setup rather than losing it.
+        let setup_seconds = setup_seconds
+            + (frame_started.elapsed().as_secs_f64()
+                - setup_seconds
+                - solve_seconds
+                - finish_seconds)
+                .max(0.0);
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            emit_solver_trace_line(&format!(
+                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
+                self.active_columns + 1, first.nuisance_columns, tolerance, first_tolerance,
+                if failed == 0 { first_tolerance } else { retry_tolerance },
+                first.iterations, retry_report.map_or(0, |report| report.iterations), failed,
+                setup_seconds, solve_seconds, diagnostics.certification_seconds, finite_seconds,
+                reconstruction_seconds, joint_certificate_seconds,
+            ));
+        }
         Ok(FusedFwlCmgReport {
             iterations,
             effective_tolerance: if failed == 0 {
@@ -882,13 +916,14 @@ impl ReusableCategoricalFwlCmg {
         let stride = square + columns;
         self.moment_partials.fill(0.0);
         let projected = &self.projected;
+        let block_rows = moment_block_rows(weights.len());
         self.team.install(|| {
             self.moment_partials
                 .par_chunks_mut(stride)
                 .enumerate()
                 .for_each(|(block, partial)| {
-                    let start = block * MOMENT_BLOCK_ROWS;
-                    let end = (start + MOMENT_BLOCK_ROWS).min(weights.len());
+                    let start = block * block_rows;
+                    let end = start.saturating_add(block_rows).min(weights.len());
                     for row in start..end {
                         let weight = weights[row];
                         let response = projected[(row, columns)];
@@ -983,7 +1018,7 @@ impl ReusableCategoricalFwlCmg {
     }
 
     fn certify_fwl(
-        &self,
+        &mut self,
         design: &FeDesign,
         target: &[f64],
         weights: &[f64],
@@ -996,19 +1031,24 @@ impl ReusableCategoricalFwlCmg {
         let mut relative_infinity = 0.0_f64;
         let mut relative_square = 0.0_f64;
         let mut count = 0_usize;
+        // The finite solve has finished with these K-wide buffers. Reuse them
+        // for fresh raw-design moments, not the projected Gram used by the
+        // solver. Each direction retains its original compensated row order.
+        self.team.install(|| {
+            fill_finite_certificate_moments(
+                &self.active_values,
+                &self.residual,
+                weights,
+                &mut self.rhs,
+                &mut self.scales,
+            )
+        })?;
         for column in 0..self.active_columns {
-            let mut moment = CompensatedSum::default();
-            let mut basis_square = CompensatedSum::default();
-            for (row, &weight) in weights.iter().enumerate().take(self.rows) {
-                let value = self.active_values[row * self.active_columns + column];
-                moment.add(weight * self.residual[row] * value)?;
-                basis_square.add(weight * value * value)?;
-            }
-            let moment = moment.total();
+            let moment = self.rhs[column];
             finite_absolute = finite_absolute.max(moment.abs());
             add_relative(
                 moment,
-                basis_square.total().max(0.0).sqrt(),
+                self.scales[column].max(0.0).sqrt(),
                 reference,
                 &mut relative_infinity,
                 &mut relative_square,
@@ -1059,6 +1099,38 @@ impl ReusableCategoricalFwlCmg {
     }
 }
 
+fn fill_finite_certificate_moments(
+    values: &[f64],
+    residual: &[f64],
+    weights: &[f64],
+    moments: &mut [f64],
+    basis_squares: &mut [f64],
+) -> Result<()> {
+    let columns = moments.len();
+    if basis_squares.len() != columns
+        || residual.len() != weights.len()
+        || residual.len().checked_mul(columns) != Some(values.len())
+    {
+        return Err(invalid_argument("CMG finite certificate dimensions differ"));
+    }
+    moments
+        .par_iter_mut()
+        .zip(basis_squares.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(column, (moment, basis_square))| -> Result<()> {
+            let mut sum = CompensatedSum::default();
+            let mut square = CompensatedSum::default();
+            for (row, &weight) in weights.iter().enumerate() {
+                let value = values[row * columns + column];
+                sum.add(weight * residual[row] * value)?;
+                square.add(weight * value * value)?;
+            }
+            *moment = sum.total();
+            *basis_square = square.total();
+            Ok(())
+        })
+}
+
 pub(crate) fn estimate_fused_cmg_workspace_bytes(
     rows: usize,
     active_columns: usize,
@@ -1105,7 +1177,7 @@ pub(crate) fn estimate_fused_cmg_workspace_bytes(
         .checked_add(index_workspace)
         .and_then(|value| value.checked_add(certificate_workspace))
         .ok_or_else(|| allocation("fused PPML CMG small workspace bytes overflow"))?;
-    let blocks = rows.div_ceil(MOMENT_BLOCK_ROWS) as u128;
+    let blocks = rows.div_ceil(moment_block_rows(rows)) as u128;
     let partials = blocks
         .checked_mul(
             square
@@ -1506,6 +1578,68 @@ mod tests {
         let long = estimate_fused_cmg_workspace_bytes(1_000, 2, 1).expect("long estimate");
         assert!(wide > narrow);
         assert!(long > narrow);
+        let before = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS - 1, 50, 7).unwrap();
+        let at = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS, 50, 7).unwrap();
+        let after = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS + 1, 50, 7).unwrap();
+        assert_eq!(after - at - (at - before), (50 * 50 + 50) * 8);
+        for rows in [0, 1, 4_096, 50_000, 262_144, 262_145, 1_000_000, usize::MAX] {
+            assert!(rows.div_ceil(moment_block_rows(rows)) <= MOMENT_MAX_BLOCKS);
+        }
+    }
+
+    #[test]
+    fn finite_certificate_preserves_literal_moments_across_thread_counts() {
+        let rows = 4097;
+        let columns = 50;
+        let values = (0..rows * columns)
+            .map(|cell| (cell as f64 / 17.0).sin())
+            .collect::<Vec<_>>();
+        let weights = (0..rows)
+            .map(|row| 2.0_f64.powi((row % 17) as i32 - 8))
+            .collect::<Vec<_>>();
+        let residual = (0..rows)
+            .map(|row| (row as f64 / 23.0).cos())
+            .collect::<Vec<_>>();
+        let mut expected = vec![0.0; columns];
+        let mut expected_square = vec![0.0; columns];
+        for column in 0..columns {
+            let mut moment = CompensatedSum::default();
+            let mut square = CompensatedSum::default();
+            for row in 0..rows {
+                let value = values[row * columns + column];
+                moment.add(weights[row] * residual[row] * value).unwrap();
+                square.add(weights[row] * value * value).unwrap();
+            }
+            expected[column] = moment.total();
+            expected_square[column] = square.total();
+        }
+        for threads in [1, 2, 7] {
+            let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap())
+                .acquire()
+                .unwrap();
+            let mut moments = vec![f64::NAN; columns];
+            let mut squares = vec![f64::NAN; columns];
+            team.install(|| {
+                fill_finite_certificate_moments(
+                    &values,
+                    &residual,
+                    &weights,
+                    &mut moments,
+                    &mut squares,
+                )
+            })
+            .unwrap();
+            assert_eq!(moments, expected);
+            assert_eq!(squares, expected_square);
+            team.install(|| {
+                fill_finite_certificate_moments(&[], &residual, &weights, &mut [], &mut [])
+            })
+            .unwrap();
+        }
+        assert!(
+            fill_finite_certificate_moments(&values, &residual, &weights, &mut [0.0], &mut [])
+                .is_err()
+        );
     }
 
     #[test]

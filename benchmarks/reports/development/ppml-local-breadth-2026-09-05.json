@@ -1,0 +1,6004 @@
+{
+  "auto_calibration": false,
+  "baseline_commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+  "date": "2026-09-05",
+  "engine_columns": [
+    "ordinary_frames",
+    "checkpoint_frames",
+    "retries",
+    "fallbacks",
+    "iterations",
+    "setup_seconds",
+    "solve_seconds",
+    "certificate_seconds"
+  ],
+  "evidence_bundle": "fereg-local-optimization.WLKJ0u",
+  "kind": "immutable_local_ppml_optimization_diagnostics",
+  "notes": [
+    "Each run binds its own dirty source snapshot and artifact. No timing is release qualification.",
+    "Engine iterations retain public units: checkpoints sum frame maximum-RHS recurrence counts, not total RHS operator applications.",
+    "K=0 ordinary and checkpoint work share the lsmr_fused row; private traces separate their iteration counts.",
+    "CMG candidate certification timing includes formerly unreported per-RHS certificates; baseline timing is not directly comparable.",
+    "The round-checkpoint artifact exposed an inadequate dense cross-tab memory bound. memory-fixed-sparse validates the corrected bound with unchanged scientific state.",
+    "All failed and removed experiments remain separate diagnostic evidence, never promotion evidence."
+  ],
+  "qualification_eligible": false,
+  "runs": [
+    {
+      "analysis_sha256": "b1bab070240014b39be7ff5b76eb275a4005b21cd363a837d68d5b2bdac27e51",
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "f522839382508d737af54afea571ebc4d91d8f45e4d5123a1e57a9d4c6dfa576",
+          "size": 12562288
+        }
+      },
+      "evidence_directory": "round-checkpoint",
+      "measurements": [
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.006311626,
+                  0.001703417,
+                  0.002405083
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  9,
+                  0.00040575,
+                  0.009217541,
+                  0
+                ]
+              },
+              "median_seconds": 0.063,
+              "modeled_selected_bytes": 29846134,
+              "native_allocation_model_ratio_max": 0.314333507984652,
+              "native_peak_delta_max": 9381640,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.006806874,
+                  0.001599208,
+                  0.003011001
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  15,
+                  0.004033876,
+                  0.0024925,
+                  0.00293225
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000130084,
+                  0.000378959,
+                  0
+                ]
+              },
+              "median_seconds": 0.063,
+              "modeled_selected_bytes": 34540582,
+              "native_allocation_model_ratio_max": 0.357846575949415,
+              "native_peak_delta_max": 12360229,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 25,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "1.01697905199710242e-10",
+                    "1.01697905199710242e-10",
+                    "1.01697905199710242e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "db4d7467512ffb89dc542f4d892a8fc1034ad38e610b4ec56f6ebd647951a146"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.12,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090201,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  3,
+                  0,
+                  2,
+                  0,
+                  24,
+                  0.001962875,
+                  0.006334375,
+                  0.002133458
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  13,
+                  0.000408625,
+                  0.012718416,
+                  0
+                ]
+              },
+              "median_seconds": 0.064,
+              "modeled_selected_bytes": 15665446,
+              "native_allocation_model_ratio_max": 0.514357586754951,
+              "native_peak_delta_max": 8057641,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "1.01703293542883770e-10",
+                    "1.01703293542883770e-10",
+                    "1.01703293542883770e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 6,
+                "ordinary_first_iterations_per_fit": 18,
+                "sha256": "0c773172462110a4d527e43762468898d2a1725b4b57203b61087ba01d3ba649"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  17,
+                  0.004989832,
+                  0.003301084,
+                  0.004288584
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  2,
+                  0,
+                  24,
+                  0.002046333,
+                  0.007318833,
+                  0.002041373
+                ]
+              },
+              "median_seconds": 0.065,
+              "modeled_selected_bytes": 20358838,
+              "native_allocation_model_ratio_max": 0.540142664330842,
+              "native_peak_delta_max": 10996677,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 29,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "1.01698592213464862e-10",
+                    "1.01698592213464862e-10",
+                    "1.01698592213464862e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 6,
+                "ordinary_first_iterations_per_fit": 18,
+                "sha256": "b2cac6cca14bea5d8ea6d722e1261b7ea19038ff348c464c51e3e66433068b78"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.12,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090201,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.000795877,
+                  0.019762751,
+                  0
+                ]
+              },
+              "median_seconds": 0.0639999999999999,
+              "modeled_selected_bytes": 12424998,
+              "native_allocation_model_ratio_max": 0.519272920607311,
+              "native_peak_delta_max": 6451965,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.00079825,
+                  0.019882249,
+                  0
+                ]
+              },
+              "median_seconds": 0.063,
+              "modeled_selected_bytes": 12424998,
+              "native_allocation_model_ratio_max": 0.519272920607311,
+              "native_peak_delta_max": 6451965,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.12,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090201,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.002725624,
+                  0.002335876,
+                  0.004088958
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  8,
+                  0.000825874,
+                  0.016942083,
+                  0
+                ]
+              },
+              "median_seconds": 0.088,
+              "modeled_selected_bytes": 48506692,
+              "native_allocation_model_ratio_max": 0.380402398910237,
+              "native_peak_delta_max": 18452062,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.003402166,
+                  0.002252624,
+                  0.00374275
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  11,
+                  0.003663583,
+                  0.004610416,
+                  0.005987793
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000264667,
+                  0.000771542,
+                  0
+                ]
+              },
+              "median_seconds": 0.086,
+              "modeled_selected_bytes": 57931264,
+              "native_allocation_model_ratio_max": 0.432566411808311,
+              "native_peak_delta_max": 25059119,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 19,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.22627801979997534e-12",
+                    "9.22627801979997534e-12",
+                    "9.22627801979997534e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "3218245eb2fd360aacb071b2ca6ff63bad6a3bd692de049242945c323f3b2222"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16383",
+            "n": 16383,
+            "seed": 2026090202,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  16,
+                  0.001293583,
+                  0.005552167,
+                  0.001926957
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  12,
+                  0.000825626,
+                  0.024331916,
+                  0
+                ]
+              },
+              "median_seconds": 0.094,
+              "modeled_selected_bytes": 31945232,
+              "native_allocation_model_ratio_max": 0.484284446580322,
+              "native_peak_delta_max": 15470579,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "3.74018441520473715e-10",
+                    "3.74018441520473715e-10",
+                    "3.74018441520473715e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 16,
+                "sha256": "24faa9f034cc44081e52ca6a2be6487272dde77dff2ecde34c947b4fa7c786da"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  13,
+                  0.004736461,
+                  0.00588375,
+                  0.00873854
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  16,
+                  0.001254042,
+                  0.005220166,
+                  0.00180629
+                ]
+              },
+              "median_seconds": 0.088,
+              "modeled_selected_bytes": 41366636,
+              "native_allocation_model_ratio_max": 0.53269458507576,
+              "native_peak_delta_max": 22035783,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 22,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "3.73965558673222277e-10",
+                    "3.73965558673222277e-10",
+                    "3.73965558673222277e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 16,
+                "sha256": "56e1869e7616108ba1102e9c7c549fac4bbaf01ea7d851609efc0714e8df9bbc"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16383",
+            "n": 16383,
+            "seed": 2026090202,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.001606207,
+                  0.040400416,
+                  0
+                ]
+              },
+              "median_seconds": 0.109,
+              "modeled_selected_bytes": 25385116,
+              "native_allocation_model_ratio_max": 0.516368213562625,
+              "native_peak_delta_max": 13108067,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.001613874,
+                  0.040882499,
+                  0
+                ]
+              },
+              "median_seconds": 0.109,
+              "modeled_selected_bytes": 25385116,
+              "native_allocation_model_ratio_max": 0.516368213562625,
+              "native_peak_delta_max": 13108067,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16383",
+            "n": 16383,
+            "seed": 2026090202,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.002577125,
+                  0.002176001,
+                  0.004206417
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  11,
+                  0.003603126,
+                  0.004556625,
+                  0.002601083
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.00026475,
+                  0.000268917,
+                  0
+                ]
+              },
+              "median_seconds": 0.081,
+              "modeled_selected_bytes": 59637894,
+              "native_allocation_model_ratio_max": 0.418337458395161,
+              "native_peak_delta_max": 24948765,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.00344021,
+                  0.002363,
+                  0.003849374
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  11,
+                  0.003406624,
+                  0.004500875,
+                  0.002710417
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.00026125,
+                  0.000248583,
+                  0
+                ]
+              },
+              "median_seconds": 0.081,
+              "modeled_selected_bytes": 59641062,
+              "native_allocation_model_ratio_max": 0.420328212800771,
+              "native_peak_delta_max": 25068821,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 19,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "5.72209722032734521e-12",
+                    "5.72209722032734521e-12",
+                    "5.72209722032734521e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "faefe5e039c1270bfd7dceaf27a85802620037b7da0edf64dc9654dc93c9ed51"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16384",
+            "n": 16384,
+            "seed": 2026090203,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  13,
+                  0.004901665,
+                  0.005844416,
+                  0.003964793
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  19,
+                  0.001291624,
+                  0.006042834,
+                  0.001993875
+                ]
+              },
+              "median_seconds": 0.083,
+              "modeled_selected_bytes": 43076150,
+              "native_allocation_model_ratio_max": 0.509148310608074,
+              "native_peak_delta_max": 21932149,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.08544580996840441e-10",
+                    "2.08544580996840441e-10",
+                    "2.08544580996840441e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 19,
+                "sha256": "c116497df279810279d48cd33a04a9ecdf4f876d3b8b25a4afe2a86fb91d57e2"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  13,
+                  0.0054085,
+                  0.005801001,
+                  0.003853167
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  19,
+                  0.00128975,
+                  0.005838542,
+                  0.001925125
+                ]
+              },
+              "median_seconds": 0.083,
+              "modeled_selected_bytes": 43076150,
+              "native_allocation_model_ratio_max": 0.517986240645926,
+              "native_peak_delta_max": 22312853,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 21,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.08544580996840441e-10",
+                    "2.08544580996840441e-10",
+                    "2.08544580996840441e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 19,
+                "sha256": "795e287510dc813f19ab9e8d50d7b374405dc926aac7f36991d17242a42d7f2b"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16384",
+            "n": 16384,
+            "seed": 2026090203,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.00160971,
+                  0.011172086,
+                  0
+                ]
+              },
+              "median_seconds": 0.078,
+              "modeled_selected_bytes": 27093670,
+              "native_allocation_model_ratio_max": 0.484255289150565,
+              "native_peak_delta_max": 13120253,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.001628376,
+                  0.011967,
+                  0
+                ]
+              },
+              "median_seconds": 0.081,
+              "modeled_selected_bytes": 27093670,
+              "native_allocation_model_ratio_max": 0.484255289150565,
+              "native_peak_delta_max": 13120253,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.223,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_2fe-n16384",
+            "n": 16384,
+            "seed": 2026090203,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  6,
+                  0,
+                  11,
+                  0,
+                  187,
+                  0.135652583,
+                  0.081457543,
+                  0.004130374
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  4027,
+                  0.000384291,
+                  0.977339875,
+                  0
+                ]
+              },
+              "median_seconds": 1.438,
+              "modeled_selected_bytes": 96880950,
+              "native_allocation_model_ratio_max": 0.158298602563249,
+              "native_peak_delta_max": 15336119,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  6,
+                  0,
+                  11,
+                  0,
+                  185,
+                  0.144483163,
+                  0.083308666,
+                  0.005935333
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  3,
+                  0.005855372,
+                  0.003088375,
+                  0.005690416
+                ]
+              },
+              "median_seconds": 0.29,
+              "modeled_selected_bytes": 107297078,
+              "native_allocation_model_ratio_max": 0.175350283071082,
+              "native_peak_delta_max": 18814573,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 4,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13",
+                    "5.17947467923121585e-13"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152723e-14",
+                    "7.19685673001152723e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 22,
+                "ordinary_first_iterations_per_fit": 163,
+                "sha256": "35870b6ba2582d0a789cfd1320c1c3b50bd82fc736f46a3678dc86b19b80d7ad"
+              }
+            },
+            "reference": {
+              "median_seconds": 5.703,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-chain_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090205,
+            "threads": 7,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  6,
+                  0,
+                  3,
+                  0,
+                  102,
+                  0.003634083,
+                  0.025448044,
+                  0.002669959
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  4024,
+                  0.000396958,
+                  0.967889167,
+                  0
+                ]
+              },
+              "median_seconds": 1.234,
+              "modeled_selected_bytes": 17939894,
+              "native_allocation_model_ratio_max": 0.577186966656548,
+              "native_peak_delta_max": 10354673,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152723e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 15,
+                "ordinary_first_iterations_per_fit": 87,
+                "sha256": "23599883fa5a26e0302f434beeb1046dbb1e861dc5d177d68416d6955bd21947"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  2,
+                  0.004828958,
+                  0.002219083,
+                  0.003966457
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  3,
+                  0,
+                  102,
+                  0.004536793,
+                  0.031193541,
+                  0.003339666
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000130375,
+                  0.000550792,
+                  0
+                ]
+              },
+              "median_seconds": 0.092,
+              "modeled_selected_bytes": 28354966,
+              "native_allocation_model_ratio_max": 0.62960840792403,
+              "native_peak_delta_max": 17852525,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 3,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152723e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 15,
+                "ordinary_first_iterations_per_fit": 87,
+                "sha256": "f39920689f2df6752568cf1a2513788640ff3afaf9dfe16fa531e669f2e2d4d1"
+              }
+            },
+            "reference": {
+              "median_seconds": 5.703,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-chain_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090205,
+            "threads": 7,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  6,
+                  3,
+                  0,
+                  0,
+                  16258,
+                  0.001119917,
+                  3.772745376,
+                  0
+                ]
+              },
+              "median_seconds": 4.018,
+              "modeled_selected_bytes": 12424998,
+              "native_allocation_model_ratio_max": 0.635080102226173,
+              "native_peak_delta_max": 7890869,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  6,
+                  3,
+                  0,
+                  0,
+                  16258,
+                  0.001135165,
+                  3.836709042,
+                  0
+                ]
+              },
+              "median_seconds": 4.091,
+              "modeled_selected_bytes": 12424998,
+              "native_allocation_model_ratio_max": 0.635080102226173,
+              "native_peak_delta_max": 7890869,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 5.703,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-chain_2fe-n8000",
+            "n": 8000,
+            "seed": 2026090205,
+            "threads": 7,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.009131791,
+                  0.005232874,
+                  0.002361084
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  13,
+                  0.000407208,
+                  0.024268959,
+                  0
+                ]
+              },
+              "median_seconds": 0.084,
+              "modeled_selected_bytes": 28915278,
+              "native_allocation_model_ratio_max": 0.429625404258607,
+              "native_peak_delta_max": 12422738,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.010416752,
+                  0.005390042,
+                  0.002964541
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  19,
+                  0.003109374,
+                  0.003386291,
+                  0.004175084
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000129958,
+                  0.000570334,
+                  0
+                ]
+              },
+              "median_seconds": 0.069,
+              "modeled_selected_bytes": 35216206,
+              "native_allocation_model_ratio_max": 0.426997928169775,
+              "native_peak_delta_max": 15037247,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 32,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "5.04297121596724661e-11",
+                    "5.04297121596724661e-11",
+                    "5.04297121596724661e-11"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "f7ae222383f05f3dd56634587e4817047a4e6e9778cbb30a002f2236f15a8ac4"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.141,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090209,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  19,
+                  0.001168166,
+                  0.006764999,
+                  0.0013325
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  17,
+                  0.000405084,
+                  0.029904791,
+                  0
+                ]
+              },
+              "median_seconds": 0.081,
+              "modeled_selected_bytes": 14045766,
+              "native_allocation_model_ratio_max": 0.74321122820927,
+              "native_peak_delta_max": 10438971,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "3.54764942342305478e-10",
+                    "3.54764942342305478e-10",
+                    "3.54764942342305478e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 19,
+                "sha256": "c7e71a46165e7d5bf97cf0ebc65ef2ed3f9a4795ef00d52fd29e055f17e8cb38"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  22,
+                  0.004017626,
+                  0.004174375,
+                  0.006076791
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  19,
+                  0.001440375,
+                  0.006220958,
+                  0.001468042
+                ]
+              },
+              "median_seconds": 0.065,
+              "modeled_selected_bytes": 20345638,
+              "native_allocation_model_ratio_max": 0.669845742856528,
+              "native_peak_delta_max": 13628439,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 38,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "3.54764979164546008e-10",
+                    "3.54764979164546008e-10",
+                    "3.54764979164546008e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 19,
+                "sha256": "562413de8981d1ced7b711018d54b1ab85b8dfe501b0d5514fd6c14744f54256"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.141,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090209,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.000777459,
+                  0.032234332,
+                  0
+                ]
+              },
+              "median_seconds": 0.083,
+              "modeled_selected_bytes": 10801374,
+              "native_allocation_model_ratio_max": 0.837403741412898,
+              "native_peak_delta_max": 9045111,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  20,
+                  0.000779543,
+                  0.032078541,
+                  0
+                ]
+              },
+              "median_seconds": 0.079,
+              "modeled_selected_bytes": 10801374,
+              "native_allocation_model_ratio_max": 0.837403741412898,
+              "native_peak_delta_max": 9045111,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.141,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "checkpoint-balanced_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090209,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  6,
+                  0,
+                  4,
+                  0,
+                  774,
+                  0.007223042,
+                  0.283548541,
+                  0.002593209
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  3972,
+                  0.000393666,
+                  9.585224458,
+                  0
+                ]
+              },
+              "median_seconds": 12.223,
+              "modeled_selected_bytes": 16454966,
+              "native_allocation_model_ratio_max": 0.72115779516044,
+              "native_peak_delta_max": 11866627,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 380,
+                "ordinary_first_iterations_per_fit": 394,
+                "sha256": "40dc35c25ab453c3abcdd4125be45dfc8fa9fd55e76a5c0321e533fbbc1c008a"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  269,
+                  0.026205876,
+                  0.162549083,
+                  0.007895666
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  3,
+                  0,
+                  709,
+                  0.007834125,
+                  0.272776917,
+                  0.002166498
+                ]
+              },
+              "median_seconds": 0.574,
+              "modeled_selected_bytes": 30435854,
+              "native_allocation_model_ratio_max": 2.39043783690118,
+              "native_peak_delta_max": 72755017,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 474,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 315,
+                "ordinary_first_iterations_per_fit": 394,
+                "sha256": "b8ab7161649a35f7664cc6b2bcf243a23898100d0b49493ede77f079c6b96aba"
+              }
+            },
+            "reference": {
+              "median_seconds": 9.753,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-sparse_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090213,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  14,
+                  7,
+                  0,
+                  0,
+                  12638,
+                  0.00256654,
+                  29.405868668,
+                  0
+                ]
+              },
+              "median_seconds": 31.492,
+              "modeled_selected_bytes": 10801374,
+              "native_allocation_model_ratio_max": 0.857674495855805,
+              "native_peak_delta_max": 9264063,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  14,
+                  7,
+                  0,
+                  0,
+                  12638,
+                  0.002616666,
+                  29.504118002,
+                  0
+                ]
+              },
+              "median_seconds": 31.589,
+              "modeled_selected_bytes": 10801374,
+              "native_allocation_model_ratio_max": 0.857674495855805,
+              "native_peak_delta_max": 9264063,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 9.753,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-sparse_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090213,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "02a8878c5d6d0fed9178f5888c31f5b808bd8596a91fb33847a800d3448f8b98",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 51,
+        "maximum_absolute_differences": {
+          "b_values": 6.080001085928544e-12,
+          "certificate_values": 5.431671704388096e-7,
+          "deviance": 7.313064998015761e-8,
+          "ll": 3.6499841371551156e-8,
+          "v_values": 7.401495865852481e-15
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "b7cc6f25010d171bbae1f6ce60335d9d6a002fe3f4bb4e5645d8ed28a125e488"
+        }
+      },
+      "memory_guardrail": {
+        "passed": false,
+        "cause": "Uncharged concurrent dense cross-tab construction on the sparse N=8000 checkpoint",
+        "corrected_by": "memory-fixed-sparse",
+        "scientific_state_after_correction": "Coefficients, covariance, sample, rank, DoF, likelihood, deviance, certificate fields, and iterations exactly identical across all three corrected repetitions."
+      }
+    },
+    {
+      "artifacts": {
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "c370e0c62a51c3310625e40d5af55502ffcca7facf33441342d0ddb44695e7bb",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "memory-fixed-sparse",
+      "measurements": [
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  269,
+                  0.026614832,
+                  0.182070208,
+                  0.007849792
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  3,
+                  0,
+                  709,
+                  0.007895459,
+                  0.272931916,
+                  0.002138249
+                ]
+              },
+              "median_seconds": 0.588,
+              "modeled_selected_bytes": 85507414,
+              "native_allocation_model_ratio_max": 0.850862090157469,
+              "native_peak_delta_max": 72755017,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 474,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 315,
+                "ordinary_first_iterations_per_fit": 394,
+                "sha256": "9d377d542db38ec81ebb07b4dfe7b6866953f953e7a30f3291c191e6f19f2f72"
+              }
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "checkpoint-sparse_3fe-n8000",
+            "n": 8000,
+            "seed": 2026090213,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "ea8d4485ba20145af7e1699c465ea47d15239294049079902a067bb4a72dfae2",
+      "science": "selected-arm canonical certificates and baseline comparison; no MAP/reference gate",
+      "scientific_differences": {
+        "matched_repetitions": 0,
+        "maximum_absolute_differences": null,
+        "sample_rank_dof_names_exact": null
+      },
+      "sources": {
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "4ca0db9014c1c7106b3fd2b60198b60006643792c38e9b77810887b4256a306e"
+        }
+      },
+      "memory_guardrail": {
+        "passed": true,
+        "all_three_measured_native_peaks_within_model": true
+      }
+    },
+    {
+      "analysis_sha256": "10dc2b6d35df6e6e7180a228038bd328bc546cb468ed46d6a47b9b5d32220005",
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "f522839382508d737af54afea571ebc4d91d8f45e4d5123a1e57a9d4c6dfa576",
+          "size": 12562288
+        }
+      },
+      "evidence_directory": "cmg-width-after",
+      "measurements": [
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.003819583,
+                  0.035682583,
+                  0.150644
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  10,
+                  0.032879417,
+                  0.046687333,
+                  0.02375575
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002557583,
+                  0.002040834,
+                  0
+                ]
+              },
+              "median_seconds": 0.857,
+              "modeled_selected_bytes": 415292630,
+              "native_allocation_model_ratio_max": 0.566886862403506,
+              "native_peak_delta_max": 235423936,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.008559126,
+                  0.036642083,
+                  0.073861791
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  10,
+                  0.033783167,
+                  0.046085832,
+                  0.023941249
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002547667,
+                  0.002004125,
+                  0
+                ]
+              },
+              "median_seconds": 0.753,
+              "modeled_selected_bytes": 415526006,
+              "native_allocation_model_ratio_max": 0.567108514502941,
+              "native_peak_delta_max": 235648336,
+              "repetitions": 5,
+              "trace": {
+                "checkpoint_iterations_per_fit": 16,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "16720841bc483aba9a2b150c1f355694bfc395f1ddda331ba4f71ad38c7a3a4b"
+              }
+            },
+            "reference": {
+              "median_seconds": 3.845,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_2fe-k50",
+            "n": 50000,
+            "seed": 2026090210,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  12,
+                  0.048175377,
+                  0.061189874,
+                  0.035179541
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  15,
+                  0.003026291,
+                  0.018503083,
+                  0.016302124
+                ]
+              },
+              "median_seconds": 0.706,
+              "modeled_selected_bytes": 357100966,
+              "native_allocation_model_ratio_max": 0.542897954524155,
+              "native_peak_delta_max": 193869384,
+              "repetitions": 5,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.14850636518581878e-10",
+                    "2.14850636518581878e-10",
+                    "2.14850636518581878e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 15,
+                "sha256": "216e554bcd58f16676ab5834144cba6bf1f3fdbdafc74ab4d6f24a45aa316d3c"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  12,
+                  0.048220418,
+                  0.059238293,
+                  0.034624126
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  15,
+                  0.003041208,
+                  0.018638833,
+                  0.015833625
+                ]
+              },
+              "median_seconds": 0.698,
+              "modeled_selected_bytes": 357100966,
+              "native_allocation_model_ratio_max": 0.542897954524155,
+              "native_peak_delta_max": 193869384,
+              "repetitions": 5,
+              "trace": {
+                "checkpoint_iterations_per_fit": 20,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.14850636518581878e-10",
+                    "2.14850636518581878e-10",
+                    "2.14850636518581878e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 15,
+                "sha256": "89eaf52c4e659dbecc5b00e711336fb7b79e8b77f4e55547a223b6d21b4fec52"
+              }
+            },
+            "reference": {
+              "median_seconds": 3.845,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_2fe-k50",
+            "n": 50000,
+            "seed": 2026090210,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.015691626,
+                  0.115342123,
+                  0
+                ]
+              },
+              "median_seconds": 0.806,
+              "modeled_selected_bytes": 244799126,
+              "native_allocation_model_ratio_max": 0.368241563901662,
+              "native_peak_delta_max": 90145213,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.015785915,
+                  0.116947666,
+                  0
+                ]
+              },
+              "median_seconds": 0.813,
+              "modeled_selected_bytes": 244799126,
+              "native_allocation_model_ratio_max": 0.368241563901662,
+              "native_peak_delta_max": 90145213,
+              "repetitions": 5
+            },
+            "reference": {
+              "median_seconds": 3.845,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_2fe-k50",
+            "n": 50000,
+            "seed": 2026090210,
+            "threads": 7,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.027637583,
+                  0.128623127,
+                  0.154162249
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.034072542,
+                  0.080818501,
+                  0.031264501
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002616875,
+                  0.003072792,
+                  0
+                ]
+              },
+              "median_seconds": 1.042,
+              "modeled_selected_bytes": 371719054,
+              "native_allocation_model_ratio_max": 0.806886401900721,
+              "native_peak_delta_max": 299935050,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.032510292,
+                  0.127151458,
+                  0.080224833
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.033515332,
+                  0.0798535,
+                  0.030433832
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002581083,
+                  0.003277083,
+                  0
+                ]
+              },
+              "median_seconds": 0.923,
+              "modeled_selected_bytes": 371952430,
+              "native_allocation_model_ratio_max": 0.806983436027021,
+              "native_peak_delta_max": 300159450,
+              "repetitions": 5,
+              "trace": {
+                "checkpoint_iterations_per_fit": 30,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "8b4412f2b5b3756b0214411be995baa479ca6586327600d517feeb3e861699c8"
+              }
+            },
+            "reference": {
+              "median_seconds": 4.481,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_3fe-k50",
+            "n": 50000,
+            "seed": 2026090215,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.033417584,
+                  0.080504875,
+                  0.030594292
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  1,
+                  0,
+                  19,
+                  0.004692624,
+                  0.035168666,
+                  0.0238235
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002549458,
+                  0.003435042,
+                  0
+                ]
+              },
+              "median_seconds": 0.757,
+              "modeled_selected_bytes": 309478566,
+              "native_allocation_model_ratio_max": 0.834903913830336,
+              "native_peak_delta_max": 258384866,
+              "repetitions": 5,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.00292184969360993e-12",
+                    "2.00292184969360993e-12",
+                    "2.00292184969360993e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 3,
+                "ordinary_first_iterations_per_fit": 16,
+                "sha256": "fab8856491cee6a4b4ad48a3681af4a09a66060f546e3baa8e5926750a1051d1"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.033545334,
+                  0.079155458,
+                  0.030236916
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  1,
+                  0,
+                  19,
+                  0.004581083,
+                  0.035233958,
+                  0.024065708
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002561292,
+                  0.003213708,
+                  0
+                ]
+              },
+              "median_seconds": 0.742,
+              "modeled_selected_bytes": 309478566,
+              "native_allocation_model_ratio_max": 0.834903913830336,
+              "native_peak_delta_max": 258384866,
+              "repetitions": 5,
+              "trace": {
+                "checkpoint_iterations_per_fit": 44,
+                "checkpoint_retries_per_fit": 1,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.00292184969360993e-12",
+                    "2.00292184969360993e-12",
+                    "2.00292184969360993e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 3,
+                "ordinary_first_iterations_per_fit": 16,
+                "sha256": "295b8ddfc2a36de2399d1f1da28ec11eb4b3e639aecb9878eb99011f6cf8fada"
+              }
+            },
+            "reference": {
+              "median_seconds": 4.481,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_3fe-k50",
+            "n": 50000,
+            "seed": 2026090215,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.015807208,
+                  0.188699874,
+                  0
+                ]
+              },
+              "median_seconds": 0.878,
+              "modeled_selected_bytes": 186649502,
+              "native_allocation_model_ratio_max": 0.827343428968806,
+              "native_peak_delta_max": 154423239,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.016087999,
+                  0.191437416,
+                  0
+                ]
+              },
+              "median_seconds": 0.913,
+              "modeled_selected_bytes": 186649502,
+              "native_allocation_model_ratio_max": 0.827343428968806,
+              "native_peak_delta_max": 154423239,
+              "repetitions": 5
+            },
+            "reference": {
+              "median_seconds": 4.481,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_3fe-k50",
+            "n": 50000,
+            "seed": 2026090215,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "099d325dd3fcc184374bf06317dae98e96500dc16b4d600a99d86dfeca53906a",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 30,
+        "maximum_absolute_differences": {
+          "b_values": 5.0306980803327406e-17,
+          "certificate_values": 2.4796741652470406e-11,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 1.0164395367051604e-20
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "8bf4eff7c376bd7eb460ca98dd11fd471623134bdeef91e15cb993d65210830f"
+        }
+      }
+    },
+    {
+      "analysis_sha256": "d11b2c90bdcd5d5a33132d9addacb203e4202258a27bda216c4cd1db134a2198",
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "dbdfb1bca4237ec175872d613506c4781c2fd59d14b116a9113024c40099797e",
+          "size": 12579392
+        }
+      },
+      "evidence_directory": "round-cmg-envelope",
+      "measurements": [
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  66,
+                  0.012332291,
+                  0.064397959,
+                  0.001483749
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  44,
+                  0.010789126,
+                  0.017080375,
+                  0.003690458
+                ]
+              },
+              "median_seconds": 0.157,
+              "modeled_selected_bytes": 89595606,
+              "native_allocation_model_ratio_max": 0.236660846961624,
+              "native_peak_delta_max": 21203772,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  66,
+                  0.013470043,
+                  0.064372959,
+                  0.002702958
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  44,
+                  0.010620582,
+                  0.017029251,
+                  0.003633709
+                ]
+              },
+              "median_seconds": 0.159,
+              "modeled_selected_bytes": 89595702,
+              "native_allocation_model_ratio_max": 0.236660593384267,
+              "native_peak_delta_max": 21203772,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 44,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "2.28444735846239514e-10",
+                    "2.28444735846239514e-10",
+                    "2.28444735846239514e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 66,
+                "sha256": "c5124948871e1178a3b90358916c98623a052113bd2e102dac00cff9f4ce477d"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.166,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "easy",
+            "id": "cmg-nuisance0-k0",
+            "n": 25000,
+            "seed": 2026090201,
+            "third_fe_columns": 0,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  49,
+                  0.098024625,
+                  0.505487584,
+                  0.116297293
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.035492834,
+                  0.115474624,
+                  0.036410459
+                ]
+              },
+              "median_seconds": 1.257,
+              "modeled_selected_bytes": 283694934,
+              "native_allocation_model_ratio_max": 0.53892114266658,
+              "native_peak_delta_max": 152889198,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  49,
+                  0.101860917,
+                  0.507573917,
+                  0.043495043
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.035208251,
+                  0.108295541,
+                  0.035716458
+                ]
+              },
+              "median_seconds": 1.155,
+              "modeled_selected_bytes": 283822230,
+              "native_allocation_model_ratio_max": 0.53911068910987,
+              "native_peak_delta_max": 153011598,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 52,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "2.71231614722454860e-10",
+                    "2.71231614722454860e-10",
+                    "2.71231614722454860e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 49,
+                "sha256": "8df571beb80e5887b3b0e34414ef261c40373d5bab4f5d5d35177dc2966fbded"
+              }
+            },
+            "reference": {
+              "median_seconds": 4.317,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "cmg-nuisance0-k50",
+            "n": 25000,
+            "seed": 2026090203,
+            "third_fe_columns": 0,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  63,
+                  0.474482333,
+                  0.297988959,
+                  0.008101334
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.017070916,
+                  0.024007917,
+                  0.00675646
+                ]
+              },
+              "median_seconds": 0.926,
+              "modeled_selected_bytes": 180080070,
+              "native_allocation_model_ratio_max": 0.275364458709951,
+              "native_peak_delta_max": 49587651,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  63,
+                  0.475562877,
+                  0.296877875,
+                  0.006678124
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.01624021,
+                  0.02406375,
+                  0.006804084
+                ]
+              },
+              "median_seconds": 0.923,
+              "modeled_selected_bytes": 180086406,
+              "native_allocation_model_ratio_max": 0.277845841401266,
+              "native_peak_delta_max": 50036259,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 53,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "2.01674845076676268e-10",
+                    "2.01674845076676268e-10",
+                    "2.01674845076676268e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 63,
+                "sha256": "9cc7cecbd5e66fb5990b1224951f6eb5aa880b6759d20397a7586e1889003ff6"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.626,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "cmg-nuisance32-k10",
+            "n": 25000,
+            "seed": 2026090208,
+            "third_fe_columns": 32,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  64,
+                  0.793748415,
+                  1.114295916,
+                  0.117181085
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.038291749,
+                  0.117004083,
+                  0.021908917
+                ]
+              },
+              "median_seconds": 2.574,
+              "modeled_selected_bytes": 285876374,
+              "native_allocation_model_ratio_max": 0.539340666186007,
+              "native_peak_delta_max": 154184754,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  64,
+                  0.797050292,
+                  1.104701374,
+                  0.044040918
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.037868333,
+                  0.113491917,
+                  0.021528708
+                ]
+              },
+              "median_seconds": 2.445,
+              "modeled_selected_bytes": 286003670,
+              "native_allocation_model_ratio_max": 0.539528580175212,
+              "native_peak_delta_max": 154307154,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 52,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "1.17763989595241170e-10",
+                    "1.17763989595241170e-10",
+                    "1.17763989595241170e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 64,
+                "sha256": "a9533e31e8a71a0b563dd1b16b193a8e7652301210d2f0f958323f3afd3782d4"
+              }
+            },
+            "reference": {
+              "median_seconds": 4.558,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "cmg-nuisance63-k50",
+            "n": 25000,
+            "seed": 2026090212,
+            "third_fe_columns": 63,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  72,
+                  2.053837667,
+                  0.093816585,
+                  0.001574584
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  45,
+                  0.012692582,
+                  0.014335542,
+                  0.002228416
+                ]
+              },
+              "median_seconds": 2.225,
+              "modeled_selected_bytes": 90152278,
+              "native_allocation_model_ratio_max": 0.249245027396867,
+              "native_peak_delta_max": 22470007,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  72,
+                  2.051433295,
+                  0.094414164,
+                  0.002647293
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  45,
+                  0.012581793,
+                  0.014481791,
+                  0.002252499
+                ]
+              },
+              "median_seconds": 2.223,
+              "modeled_selected_bytes": 90152374,
+              "native_allocation_model_ratio_max": 0.249111565270594,
+              "native_peak_delta_max": 22457999,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 45,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "2.59936151136636528e-10",
+                    "2.59936151136636528e-10",
+                    "2.59936151136636528e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 72,
+                "sha256": "9a982226aa9039c59babeaefa3651080037cab07f8991cf3ef4544fc42cc999c"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.198,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "easy",
+            "id": "cmg-nuisance64-k0",
+            "n": 25000,
+            "seed": 2026090213,
+            "third_fe_columns": 64,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  62,
+                  0.774473459,
+                  0.256064708,
+                  0.008085834
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  30,
+                  0.017476752,
+                  0.027003541,
+                  0.007079418
+                ]
+              },
+              "median_seconds": 1.189,
+              "modeled_selected_bytes": 180195782,
+              "native_allocation_model_ratio_max": 0.277010185510336,
+              "native_peak_delta_max": 49916067,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  62,
+                  0.775830959,
+                  0.255104374,
+                  0.006993208
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  30,
+                  0.017120208,
+                  0.027276875,
+                  0.006872249
+                ]
+              },
+              "median_seconds": 1.184,
+              "modeled_selected_bytes": 180202118,
+              "native_allocation_model_ratio_max": 0.276987837623529,
+              "native_peak_delta_max": 49913795,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 52,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "2.46258690886107296e-10",
+                    "2.46258690886107296e-10",
+                    "2.46258690886107296e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 62,
+                "sha256": "a4d110e9a50502b292897956feb9062555814aef71c4e09c55299e517238296a"
+              }
+            },
+            "reference": {
+              "median_seconds": 0.661,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "cmg-nuisance64-k10",
+            "n": 25000,
+            "seed": 2026090214,
+            "third_fe_columns": 64,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  55,
+                  0.785958791,
+                  0.904843666,
+                  0.116876916
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  30,
+                  0.036624415,
+                  0.116199916,
+                  0.021996166
+                ]
+              },
+              "median_seconds": 2.324,
+              "modeled_selected_bytes": 285881302,
+              "native_allocation_model_ratio_max": 0.539284062726145,
+              "native_peak_delta_max": 154171230,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  4,
+                  0,
+                  0,
+                  0,
+                  55,
+                  0.791386125,
+                  0.902844291,
+                  0.044063418
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  30,
+                  0.037610583,
+                  0.112800375,
+                  0.021845331
+                ]
+              },
+              "median_seconds": 2.233,
+              "modeled_selected_bytes": 286008598,
+              "native_allocation_model_ratio_max": 0.539471998670474,
+              "native_peak_delta_max": 154293630,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 53,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 55,
+                "sha256": "61479f07a62de49fccfef55a9c0d4142a6bc1ee863c1b12995f089f589575f64"
+              }
+            },
+            "reference": {
+              "median_seconds": 4.592,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "cmg-nuisance64-k50",
+            "n": 25000,
+            "seed": 2026090215,
+            "third_fe_columns": 64,
+            "threads": 7,
+            "topology": "balanced_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "397a402d2e477dff183f98add3d5d78c830f9e04fdd42c41c28a0ad8b2161605",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 63,
+        "maximum_absolute_differences": {
+          "b_values": 7.025630077706069e-17,
+          "certificate_values": 3.2689942874987772e-12,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 9.994988777600744e-20
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "f91d4c07cd9cb85e4c95f754657460e9d6765aee19930c0f377315fe9f902e74"
+        }
+      },
+      "scope_note": "Only CMG measurements support this tranche. That intermediate build also contained a subsequently removed LSMR lookup experiment; its LSMR timings are not promoted."
+    },
+    {
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "c370e0c62a51c3310625e40d5af55502ffcca7facf33441342d0ddb44695e7bb",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "final-cmg-one-thread",
+      "measurements": [
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.002549792,
+                  0.000584709,
+                  0.001451625
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  15,
+                  0.00353604,
+                  0.009918126,
+                  0.008112414
+                ]
+              },
+              "median_seconds": 0.098,
+              "modeled_selected_bytes": 78101822,
+              "native_allocation_model_ratio_max": 0.423605802691773,
+              "native_peak_delta_max": 33084385,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.003861584,
+                  0.0005805,
+                  0.002672084
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  15,
+                  0.003065124,
+                  0.009839833,
+                  0.008093625
+                ]
+              },
+              "median_seconds": 0.096,
+              "modeled_selected_bytes": 78142958,
+              "native_allocation_model_ratio_max": 0.423353323788946,
+              "native_peak_delta_max": 33082081,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 15,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "008fb65bbefc506159f934c5199dcbafc328fb4866410012c4173abaad26c505"
+              }
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "easy",
+            "id": "width-balanced_2fe-k0",
+            "n": 50000,
+            "seed": 2026090206,
+            "threads": 1,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.003669251,
+                  0.034367375,
+                  0.197637833
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  10,
+                  0.032446501,
+                  0.265175499,
+                  0.077495667
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002546375,
+                  0.010371042,
+                  0
+                ]
+              },
+              "median_seconds": 1.519,
+              "modeled_selected_bytes": 380986782,
+              "native_allocation_model_ratio_max": 0.617517150503137,
+              "native_peak_delta_max": 235265872,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.00952116700000003,
+                  0.034143209,
+                  0.344680667
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  10,
+                  0.033573,
+                  0.265595916,
+                  0.077614833
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002560292,
+                  0.010431334,
+                  0
+                ]
+              },
+              "median_seconds": 1.51,
+              "modeled_selected_bytes": 381261118,
+              "native_allocation_model_ratio_max": 0.617661389746017,
+              "native_peak_delta_max": 235490272,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 16,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "e13e42aeed2dcb17fccd23f97acb88ccf627ee633c4cbfadd78d475ba38e7c2d"
+              }
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_2fe-k50",
+            "n": 50000,
+            "seed": 2026090210,
+            "threads": 1,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.036950667,
+                  0.002330417,
+                  0.001828584
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.003631916,
+                  0.017757292,
+                  0.011609708
+                ]
+              },
+              "median_seconds": 0.152,
+              "modeled_selected_bytes": 95437806,
+              "native_allocation_model_ratio_max": 0.395353461918435,
+              "native_peak_delta_max": 37731667,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.037654961,
+                  0.002323168,
+                  0.003416877
+                ],
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  29,
+                  0.003469376,
+                  0.017705833,
+                  0.011582041
+                ]
+              },
+              "median_seconds": 0.154,
+              "modeled_selected_bytes": 95525022,
+              "native_allocation_model_ratio_max": 0.394965949340478,
+              "native_peak_delta_max": 37729131,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 29,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "aff35873d60e38464ac779e27d26fbb571b79c341d55acc7190b95bccb2f7d25"
+              }
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "easy",
+            "id": "width-balanced_3fe-k0",
+            "n": 50000,
+            "seed": 2026090211,
+            "threads": 1,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.031490208,
+                  0.123015959,
+                  0.190989042
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.034158209,
+                  0.470909375,
+                  0.112664583
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002549416,
+                  0.015827458,
+                  0
+                ]
+              },
+              "median_seconds": 1.926,
+              "modeled_selected_bytes": 341541262,
+              "native_allocation_model_ratio_max": 0.877718891839194,
+              "native_peak_delta_max": 299777218,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.037769583,
+                  0.122419543,
+                  0.379583876
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.033432043,
+                  0.469763541,
+                  0.112756125
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.002567625,
+                  0.015786708,
+                  0
+                ]
+              },
+              "median_seconds": 1.916,
+              "modeled_selected_bytes": 341861678,
+              "native_allocation_model_ratio_max": 0.877552639872083,
+              "native_peak_delta_max": 300001618,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 30,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13",
+                    "9.99999999999999980e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 3,
+                "sha256": "673ca7ce9ec10c2457132b8535cbd0a97c9525a10a686c1b466c44ad5a319e38"
+              }
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "width-balanced_3fe-k50",
+            "n": 50000,
+            "seed": 2026090215,
+            "threads": 1,
+            "topology": "balanced_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "9c09c316c82f0daed416a19a33c58c2bb08ca4ae2495ce3be58312758b734edb",
+      "science": "selected-arm canonical certificates and baseline comparison; no MAP/reference gate",
+      "scientific_differences": {
+        "matched_repetitions": 12,
+        "maximum_absolute_differences": {
+          "b_values": 2.992397996059992e-17,
+          "certificate_values": 7.733602525868604e-12,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 1.0164395367051604e-20
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "4ca0db9014c1c7106b3fd2b60198b60006643792c38e9b77810887b4256a306e"
+        }
+      }
+    },
+    {
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "c370e0c62a51c3310625e40d5af55502ffcca7facf33441342d0ddb44695e7bb",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "final-sparse-width-t7",
+      "measurements": [
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  6,
+                  0,
+                  2,
+                  0,
+                  1268,
+                  0.00793396,
+                  0.420362457,
+                  0.001628167
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  8241,
+                  0.000107084,
+                  6.588873415,
+                  0
+                ]
+              },
+              "median_seconds": 9.823,
+              "modeled_selected_bytes": 14835774,
+              "native_allocation_model_ratio_max": 0.609428197005428,
+              "native_peak_delta_max": 9041339,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 460,
+                "ordinary_first_iterations_per_fit": 808,
+                "sha256": "0d373403905a6a3f689ef66e29fbf801665ea8a6c7bd882fb9a3cf3f093aaa8b"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  6,
+                  3,
+                  2,
+                  0,
+                  1797,
+                  0.034327248,
+                  0.581021709,
+                  0.004776542
+                ]
+              },
+              "median_seconds": 0.649,
+              "modeled_selected_bytes": 63468974,
+              "native_allocation_model_ratio_max": 0.774080072572152,
+              "native_peak_delta_max": 49130068,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 529,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 460,
+                "ordinary_first_iterations_per_fit": 808,
+                "sha256": "dadcc460e3dcfbad05c7c462cc2839017313d765bd2ea6997716b9b8cf9c3fb1"
+              }
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "long",
+            "id": "width-sparse_3fe-k0",
+            "n": 10000,
+            "seed": 2026090216,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  6,
+                  0,
+                  5,
+                  0,
+                  2503,
+                  0.008479999,
+                  1.20433054,
+                  0.00679304
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  5320,
+                  0.001648457,
+                  64.326376416,
+                  0
+                ]
+              },
+              "median_seconds": 69.295,
+              "modeled_selected_bytes": 43557790,
+              "native_allocation_model_ratio_max": 0.864779939478105,
+              "native_peak_delta_max": 37667903,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13"
+                  ],
+                  [
+                    "4.58295905443068062e-12",
+                    "4.58295905443068082e-14",
+                    "4.58295905443068082e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1230,
+                "ordinary_first_iterations_per_fit": 1273,
+                "sha256": "49fdd6ac8cba7dd4aaf92afc18960345ca538fa12dc94e808ab6ad9115c521f0"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  337,
+                  0.039224752,
+                  1.121909625,
+                  0.037620542
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  5,
+                  0,
+                  2506,
+                  0.008208251,
+                  1.188196,
+                  0.006751708
+                ]
+              },
+              "median_seconds": 2.668,
+              "modeled_selected_bytes": 107324190,
+              "native_allocation_model_ratio_max": 0.799063771177775,
+              "native_peak_delta_max": 85758872,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 630,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13"
+                  ],
+                  [
+                    "4.60555414925505830e-12",
+                    "4.60555414925505840e-14",
+                    "4.60555414925505840e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1231,
+                "ordinary_first_iterations_per_fit": 1275,
+                "sha256": "71b10224508d9fcb56d1e836a681c250d12959a1212de045ae8d519fc549db3b"
+              }
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "long",
+            "id": "width-sparse_3fe-k50",
+            "n": 10000,
+            "seed": 2026090220,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "c40f7a87c28b484cfbd36aa780a2f0541b6da756ad7760c20b9d2521cc124d27",
+      "science": "selected-arm canonical certificates and baseline comparison; no MAP/reference gate",
+      "scientific_differences": {
+        "matched_repetitions": 6,
+        "maximum_absolute_differences": {
+          "b_values": 1.3199899506766144e-11,
+          "certificate_values": 5.486168415506632e-7,
+          "deviance": 1.6246031009359285e-7,
+          "ll": 8.129791240207851e-8,
+          "v_values": 7.754567600341586e-15
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "4ca0db9014c1c7106b3fd2b60198b60006643792c38e9b77810887b4256a306e"
+        }
+      }
+    },
+    {
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "c370e0c62a51c3310625e40d5af55502ffcca7facf33441342d0ddb44695e7bb",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "final-sparse-width-t1",
+      "measurements": [
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  6,
+                  0,
+                  2,
+                  0,
+                  1268,
+                  0.005753248,
+                  0.386774583,
+                  0.002790791
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  8241,
+                  0.000110083,
+                  6.977359833,
+                  0
+                ]
+              },
+              "median_seconds": 10.357,
+              "modeled_selected_bytes": 13915854,
+              "native_allocation_model_ratio_max": 0.649714994135466,
+              "native_peak_delta_max": 9041339,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 460,
+                "ordinary_first_iterations_per_fit": 808,
+                "sha256": "0d373403905a6a3f689ef66e29fbf801665ea8a6c7bd882fb9a3cf3f093aaa8b"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  6,
+                  3,
+                  2,
+                  0,
+                  1797,
+                  0.035945374,
+                  0.583954581,
+                  0.006156917
+                ]
+              },
+              "median_seconds": 0.655,
+              "modeled_selected_bytes": 62041094,
+              "native_allocation_model_ratio_max": 0.791894933380769,
+              "native_peak_delta_max": 49130028,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 529,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11"
+                  ],
+                  [
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12",
+                    "7.19685673001152687e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 460,
+                "ordinary_first_iterations_per_fit": 808,
+                "sha256": "680829bff11a1cbcb7b36cb314925b0910d807106f38e584e1dbcaea9fc978de"
+              }
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "long",
+            "id": "width-sparse_3fe-k0",
+            "n": 10000,
+            "seed": 2026090216,
+            "threads": 1,
+            "topology": "sparse_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_joint": [
+                  6,
+                  0,
+                  5,
+                  0,
+                  2503,
+                  0.006221708,
+                  1.798089917,
+                  0.029943002
+                ],
+                "map": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  5320,
+                  0.001634584,
+                  68.297156709,
+                  0
+                ]
+              },
+              "median_seconds": 73.888,
+              "modeled_selected_bytes": 42637870,
+              "native_allocation_model_ratio_max": 0.883437728010334,
+              "native_peak_delta_max": 37667903,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13"
+                  ],
+                  [
+                    "4.58295905443068062e-12",
+                    "4.58295905443068082e-14",
+                    "4.58295905443068082e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1230,
+                "ordinary_first_iterations_per_fit": 1273,
+                "sha256": "49fdd6ac8cba7dd4aaf92afc18960345ca538fa12dc94e808ab6ad9115c521f0"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  337,
+                  0.046033875,
+                  5.865237125,
+                  0.039433709
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  5,
+                  0,
+                  2506,
+                  0.006234167,
+                  1.810839084,
+                  0.030404457
+                ]
+              },
+              "median_seconds": 8.129,
+              "modeled_selected_bytes": 105896310,
+              "native_allocation_model_ratio_max": 0.809837774328492,
+              "native_peak_delta_max": 85758832,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 630,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13"
+                  ],
+                  [
+                    "4.60555414925505830e-12",
+                    "4.60555414925505840e-14",
+                    "4.60555414925505840e-14"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1231,
+                "ordinary_first_iterations_per_fit": 1275,
+                "sha256": "375b18023cfb3af01f55b048b7e1626244a060d5f8621a63157cb03f09dc675f"
+              }
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "long",
+            "id": "width-sparse_3fe-k50",
+            "n": 10000,
+            "seed": 2026090220,
+            "threads": 1,
+            "topology": "sparse_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "4bf998581c5a4f16e4b756395809d5c6567fb52f9073b74c59e9ef1ae990742d",
+      "science": "selected-arm canonical certificates and baseline comparison; no MAP/reference gate",
+      "scientific_differences": {
+        "matched_repetitions": 6,
+        "maximum_absolute_differences": {
+          "b_values": 1.3199899506766144e-11,
+          "certificate_values": 5.486168415506632e-7,
+          "deviance": 1.6246031009359285e-7,
+          "ll": 8.129791240207851e-8,
+          "v_values": 7.754567600341586e-15
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "4ca0db9014c1c7106b3fd2b60198b60006643792c38e9b77810887b4256a306e"
+        }
+      }
+    },
+    {
+      "analysis_sha256": "aaf950ac80a46ab4431c6f1dbeff76550e73f67ac0c38a0a86302eac792306f7",
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "8beeb8fc7ae7a6ccb3f4bf4ad0988a7ef7b685410e8076394d93f3a036b27b2c",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "constant-seed-million",
+      "measurements": [
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  6,
+                  0.020951459,
+                  0.191022917,
+                  0
+                ]
+              },
+              "median_seconds": 1.223,
+              "modeled_selected_bytes": 603038286,
+              "native_allocation_model_ratio_max": 0.834509202289687,
+              "native_peak_delta_max": 503240999,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  1,
+                  3,
+                  0,
+                  0,
+                  4,
+                  0.013991166,
+                  0.130643791,
+                  0
+                ]
+              },
+              "median_seconds": 1.019,
+              "modeled_selected_bytes": 603038286,
+              "native_allocation_model_ratio_max": 0.834509202289687,
+              "native_peak_delta_max": 503240999,
+              "repetitions": 5
+            },
+            "reference": {
+              "median_seconds": 1.551,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 0,
+            "difficulty": "easy",
+            "id": "large-balanced_1fe-k0-t1",
+            "n": 1000000,
+            "seed": 2026090201,
+            "threads": 1,
+            "topology": "balanced_1fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  2,
+                  3,
+                  0,
+                  0,
+                  5,
+                  0.027996958,
+                  0.408062083,
+                  0
+                ]
+              },
+              "median_seconds": 3.756,
+              "modeled_selected_bytes": 957243726,
+              "native_allocation_model_ratio_max": 0.786899861070492,
+              "native_peak_delta_max": 753254955,
+              "repetitions": 5
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  2,
+                  3,
+                  0,
+                  0,
+                  5,
+                  0.027982416,
+                  0.411762332,
+                  0
+                ]
+              },
+              "median_seconds": 3.744,
+              "modeled_selected_bytes": 957243726,
+              "native_allocation_model_ratio_max": 0.786899861070492,
+              "native_peak_delta_max": 753254955,
+              "repetitions": 5
+            },
+            "reference": {
+              "median_seconds": 8.416,
+              "repetitions": 5
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "large-balanced_1fe-k10-t7",
+            "n": 1000000,
+            "seed": 2026090203,
+            "threads": 7,
+            "topology": "balanced_1fe"
+          }
+        }
+      ],
+      "receipt_sha256": "21498175c72364a21340c739338e663ed370b7eacce5500635f974b3ca1551b0",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 10,
+        "maximum_absolute_differences": {
+          "b_values": 3.393552799879629e-17,
+          "certificate_values": 5.053713110214629e-7,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 6.988021814847978e-21
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "490619776a99015f772de5d84584bea6abbe2252d2a414e45868b69f3ceda8c7"
+        }
+      }
+    },
+    {
+      "analysis_sha256": "e42667b457e5d9b63f5859344115df5e547e45cc420044ec0e757673950f5419",
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "8beeb8fc7ae7a6ccb3f4bf4ad0988a7ef7b685410e8076394d93f3a036b27b2c",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "closing-one-fe-guard",
+      "measurements": [
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  6,
+                  0.000337708,
+                  0.0030635,
+                  0
+                ]
+              },
+              "median_seconds": 0.0580000000000001,
+              "modeled_selected_bytes": 8586142,
+              "native_allocation_model_ratio_max": 0.883627943726065,
+              "native_peak_delta_max": 7586955,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  6,
+                  0.000338166,
+                  0.003073418,
+                  0
+                ]
+              },
+              "median_seconds": 0.058,
+              "modeled_selected_bytes": 8586142,
+              "native_allocation_model_ratio_max": 0.883627943726065,
+              "native_peak_delta_max": 7586955,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.096,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "one-balanced_1fe-easy-n10000-k10",
+            "n": 10000,
+            "seed": 2026090202,
+            "threads": 7,
+            "topology": "balanced_1fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  6,
+                  0.0066105,
+                  0.086730875,
+                  0
+                ]
+              },
+              "median_seconds": 1.687,
+              "modeled_selected_bytes": 228037438,
+              "native_allocation_model_ratio_max": 0.769659212712256,
+              "native_peak_delta_max": 175511115,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  6,
+                  0.006620917,
+                  0.087114167,
+                  0
+                ]
+              },
+              "median_seconds": 1.688,
+              "modeled_selected_bytes": 228037438,
+              "native_allocation_model_ratio_max": 0.769659212712256,
+              "native_peak_delta_max": 175511115,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 4.272,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 50,
+            "difficulty": "easy",
+            "id": "one-balanced_1fe-easy-n100000-k50",
+            "n": 100000,
+            "seed": 2026090206,
+            "threads": 7,
+            "topology": "balanced_1fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "map": [
+                  6,
+                  3,
+                  0,
+                  0,
+                  9,
+                  0.004361418,
+                  0.061416458,
+                  0
+                ]
+              },
+              "median_seconds": 0.585,
+              "modeled_selected_bytes": 95774958,
+              "native_allocation_model_ratio_max": 0.79642825841803,
+              "native_peak_delta_max": 76277883,
+              "repetitions": 3
+            },
+            "candidate": {
+              "engines": {
+                "map": [
+                  2,
+                  3,
+                  0,
+                  0,
+                  5,
+                  0.002955082,
+                  0.039882833,
+                  0
+                ]
+              },
+              "median_seconds": 0.383,
+              "modeled_selected_bytes": 95774958,
+              "native_allocation_model_ratio_max": 0.79642825841803,
+              "native_peak_delta_max": 76277883,
+              "repetitions": 3
+            },
+            "reference": {
+              "median_seconds": 0.873,
+              "repetitions": 3
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "one-skewed_1fe-long-n100000-k10",
+            "n": 100000,
+            "seed": 2026090223,
+            "threads": 7,
+            "topology": "skewed_1fe"
+          }
+        }
+      ],
+      "receipt_sha256": "e9ff3059adaea297bf35b59311ea0312e384f252af66fb015b535329d2ff72f5",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 9,
+        "maximum_absolute_differences": {
+          "b_values": 1.0061396160665481e-16,
+          "certificate_values": 2.896081662767794e-9,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 3.0119962208770886e-19
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "490619776a99015f772de5d84584bea6abbe2252d2a414e45868b69f3ceda8c7"
+        }
+      }
+    },
+    {
+      "artifacts": {
+        "baseline": {
+          "name": "fereg_macos.plugin",
+          "sha256": "62a2bd975115516e124136a2577d88ac7f71bfbe54e21710f9c027f95526d75a",
+          "size": 12543984
+        },
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "8beeb8fc7ae7a6ccb3f4bf4ad0988a7ef7b685410e8076394d93f3a036b27b2c",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "closing-difficulty",
+      "measurements": [
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  2,
+                  0.012611667,
+                  0.008937416,
+                  0.007566332
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  0,
+                  0,
+                  38,
+                  0.004086208,
+                  0.023822626,
+                  0.005817125
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000807875,
+                  0.000696042,
+                  0
+                ]
+              },
+              "median_seconds": 0.222,
+              "modeled_selected_bytes": 146391062,
+              "native_allocation_model_ratio_max": 0.549362152998111,
+              "native_peak_delta_max": 80421709,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "4.09592627794073832e-12",
+                    "4.09592627794073832e-12",
+                    "4.09592627794073832e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 38,
+                "sha256": "db302136977d6b4eec6616762e115ddfdb41cf37329021c88b7a9c61e6b6fe42"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  2,
+                  0.012420416,
+                  0.008617042,
+                  0.007550418
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  0,
+                  0,
+                  38,
+                  0.004274,
+                  0.023872,
+                  0.005794749
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.0008075,
+                  0.000667416,
+                  0
+                ]
+              },
+              "median_seconds": 0.225,
+              "modeled_selected_bytes": 146391062,
+              "native_allocation_model_ratio_max": 0.549690041868813,
+              "native_peak_delta_max": 80469709,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 3,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "4.09592627794073832e-12",
+                    "4.09592627794073832e-12",
+                    "4.09592627794073832e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 38,
+                "sha256": "f1b2ae78767d40e4388319a0b0bd9422947d8b1066a824089946ac7cd8de1205"
+              }
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "mix-chain_2fe-p0",
+            "mixing_percent": 0,
+            "n": 50000,
+            "seed": 2026090201,
+            "threads": 7,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  52,
+                  0.047719624,
+                  0.129251168,
+                  0.013588
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  0,
+                  0,
+                  850,
+                  0.012372708,
+                  0.582823168,
+                  0.006216127
+                ]
+              },
+              "median_seconds": 0.988,
+              "modeled_selected_bytes": 148357486,
+              "native_allocation_model_ratio_max": 0.759038468742993,
+              "native_peak_delta_max": 112609039,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "8.70428094120409164e-12",
+                    "8.70428094120409164e-12",
+                    "8.70428094120409164e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 850,
+                "sha256": "5d2c49971c1a9dfbde56b8d7c182062bc11090795477c579353e400d4e9066ce"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  52,
+                  0.048196419,
+                  0.128403917,
+                  0.013842292
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  0,
+                  0,
+                  850,
+                  0.012710668,
+                  0.580575123,
+                  0.006305333
+                ]
+              },
+              "median_seconds": 0.985,
+              "modeled_selected_bytes": 148357486,
+              "native_allocation_model_ratio_max": 0.703317438258559,
+              "native_peak_delta_max": 104342407,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 90,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10"
+                  ],
+                  [
+                    "8.70428094120409164e-12",
+                    "8.70428094120409164e-12",
+                    "8.70428094120409164e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 0,
+                "ordinary_first_iterations_per_fit": 850,
+                "sha256": "8aabce0faf68611e222824d09f392218a3095b0bfa8c4ab41f02006669e42975"
+              }
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "mix-sparse_3fe-p0",
+            "mixing_percent": 0,
+            "n": 50000,
+            "seed": 2026090205,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  54,
+                  0.054281791,
+                  0.148105875,
+                  0.013546209
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  3,
+                  0,
+                  1495,
+                  0.015097706,
+                  1.025405292,
+                  0.007405793
+                ]
+              },
+              "median_seconds": 1.465,
+              "modeled_selected_bytes": 148357486,
+              "native_allocation_model_ratio_max": 0.690115515977401,
+              "native_peak_delta_max": 102383803,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "1.67051294355341273e-12",
+                    "1.67051294355341273e-12",
+                    "1.67051294355341273e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 689,
+                "ordinary_first_iterations_per_fit": 806,
+                "sha256": "744fd8a9a3a03e7e8f4f508c603d2331a727f484bff1510e6fead25976b4d095"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  54,
+                  0.053274834,
+                  0.149097333,
+                  0.013566582
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  3,
+                  0,
+                  1495,
+                  0.015489376,
+                  1.049399918,
+                  0.007475834
+                ]
+              },
+              "median_seconds": 1.491,
+              "modeled_selected_bytes": 148357486,
+              "native_allocation_model_ratio_max": 0.71373619124282,
+              "native_peak_delta_max": 105888107,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 93,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "1.67051294355341273e-12",
+                    "1.67051294355341273e-12",
+                    "1.67051294355341273e-12"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 689,
+                "ordinary_first_iterations_per_fit": 806,
+                "sha256": "e7335ac87a5728f096410a3d188520a8aa6b31125c1766faf6f60da7b33e0a1a"
+              }
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "mix-sparse_3fe-p1",
+            "mixing_percent": 1,
+            "n": 50000,
+            "seed": 2026090206,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "baseline": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  63,
+                  0.064041083,
+                  0.181433293,
+                  0.013648001
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  4,
+                  0,
+                  2578,
+                  0.021996375,
+                  1.962138124,
+                  0.009924584
+                ]
+              },
+              "median_seconds": 2.476,
+              "modeled_selected_bytes": 148119526,
+              "native_allocation_model_ratio_max": 0.72593653182498,
+              "native_peak_delta_max": 107525375,
+              "repetitions": 3,
+              "trace": {
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13",
+                    "5.17947467923121585e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1420,
+                "ordinary_first_iterations_per_fit": 1158,
+                "sha256": "e2abf46ad80ab08d10691bb1e483f711467f44dcb4169f492dd16b3a69e1297a"
+              }
+            },
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  63,
+                  0.06434529,
+                  0.184368291,
+                  0.013818877
+                ],
+                "lsmr_joint": [
+                  5,
+                  0,
+                  4,
+                  0,
+                  2578,
+                  0.021912125,
+                  1.955340041,
+                  0.010010707
+                ]
+              },
+              "median_seconds": 2.472,
+              "modeled_selected_bytes": 148119526,
+              "native_allocation_model_ratio_max": 0.76025060328643,
+              "native_peak_delta_max": 112607959,
+              "repetitions": 3,
+              "trace": {
+                "checkpoint_iterations_per_fit": 110,
+                "checkpoint_retries_per_fit": 0,
+                "first_fit_tolerances": [
+                  [
+                    "1.38949549437313835e-7",
+                    "1.38949549437313835e-7",
+                    "1.38949549437313844e-9"
+                  ],
+                  [
+                    "1.93069772888325123e-8",
+                    "1.93069772888325123e-8",
+                    "1.93069772888325115e-10"
+                  ],
+                  [
+                    "2.68269579527972750e-9",
+                    "2.68269579527972755e-11",
+                    "2.68269579527972755e-11"
+                  ],
+                  [
+                    "3.72759372031494268e-10",
+                    "3.72759372031494268e-10",
+                    "3.72759372031494272e-12"
+                  ],
+                  [
+                    "5.17947467923121541e-11",
+                    "5.17947467923121585e-13",
+                    "5.17947467923121585e-13"
+                  ]
+                ],
+                "ordinary_continuation_iterations_per_fit": 1420,
+                "ordinary_first_iterations_per_fit": 1158,
+                "sha256": "b92efcfefe0975b354e594e4d4ca04a4ce048495ddef7c39f4354498eb91178c"
+              }
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "mix-sparse_3fe-p10",
+            "mixing_percent": 10,
+            "n": 50000,
+            "seed": 2026090207,
+            "threads": 7,
+            "topology": "sparse_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "00aed105121c1b33338d224d9de3d43929ec06efdd4033b04a334d219af21212",
+      "science": "selected-arm canonical certificates and baseline comparison; no MAP/reference gate",
+      "scientific_differences": {
+        "matched_repetitions": 12,
+        "maximum_absolute_differences": {
+          "b_values": 0,
+          "certificate_values": 0,
+          "deviance": 0,
+          "ll": 0,
+          "v_values": 0
+        },
+        "sample_rank_dof_names_exact": true
+      },
+      "sources": {
+        "baseline": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": false,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "490619776a99015f772de5d84584bea6abbe2252d2a414e45868b69f3ceda8c7"
+        }
+      }
+    },
+    {
+      "analysis_sha256": "3f339e75f64e1643e2ec1a99bffacda857d365b62f7c8970ce93094ca4dbff37",
+      "artifacts": {
+        "candidate": {
+          "name": "fereg_macos.plugin",
+          "sha256": "8beeb8fc7ae7a6ccb3f4bf4ad0988a7ef7b685410e8076394d93f3a036b27b2c",
+          "size": 12579376
+        }
+      },
+      "evidence_directory": "closing-v3-smoke",
+      "measurements": [
+        {
+          "arm": "cmg",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.003303874,
+                  0.003893167,
+                  0.012681792
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  10,
+                  0.004002499,
+                  0.031335583,
+                  0.00931925
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000403542,
+                  0.001197375,
+                  0
+                ]
+              },
+              "median_seconds": 0.155,
+              "modeled_selected_bytes": 70951742,
+              "native_allocation_model_ratio_max": 0.514362001147202,
+              "native_peak_delta_max": 36494880,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.451,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_balanced",
+            "n": 25000,
+            "seed": 2026090201,
+            "threads": 1,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  12,
+                  0.005602999,
+                  0.041580167,
+                  0.013721541
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  15,
+                  0.001371584,
+                  0.007544625,
+                  0.005727917
+                ]
+              },
+              "median_seconds": 0.164,
+              "modeled_selected_bytes": 60880334,
+              "native_allocation_model_ratio_max": 0.523933525069031,
+              "native_peak_delta_max": 31897248,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.451,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_balanced",
+            "n": 25000,
+            "seed": 2026090201,
+            "threads": 1,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.002480334,
+                  0.052368626,
+                  0
+                ]
+              },
+              "median_seconds": 0.16,
+              "modeled_selected_bytes": 38706998,
+              "native_allocation_model_ratio_max": 0.51540977163871,
+              "native_peak_delta_max": 19949965,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.451,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_balanced",
+            "n": 25000,
+            "seed": 2026090201,
+            "threads": 1,
+            "topology": "balanced_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  6,
+                  0,
+                  11,
+                  0,
+                  237,
+                  0.036595999,
+                  0.709082833,
+                  0.02585175
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  2,
+                  0.006077791,
+                  0.026443917,
+                  0.01076825
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.000375708,
+                  0.0014225,
+                  0
+                ]
+              },
+              "median_seconds": 0.91,
+              "modeled_selected_bytes": 125631326,
+              "native_allocation_model_ratio_max": 0.334049423310234,
+              "native_peak_delta_max": 41967072,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 72.543,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "local_chain",
+            "n": 25000,
+            "seed": 2026090202,
+            "threads": 1,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  2,
+                  0.00592425,
+                  0.026427208,
+                  0.011137335
+                ],
+                "lsmr_joint": [
+                  6,
+                  0,
+                  1,
+                  0,
+                  61,
+                  0.004061833,
+                  0.033792542,
+                  0.014551459
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.00040325,
+                  0.0015005,
+                  0
+                ]
+              },
+              "median_seconds": 0.194,
+              "modeled_selected_bytes": 66379662,
+              "native_allocation_model_ratio_max": 0.57775720521144,
+              "native_peak_delta_max": 38351328,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 72.543,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "local_chain",
+            "n": 25000,
+            "seed": 2026090202,
+            "threads": 1,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "map": [
+                  8,
+                  4,
+                  0,
+                  0,
+                  20839,
+                  0.004627208,
+                  11.786068622,
+                  0
+                ]
+              },
+              "median_seconds": 12.996,
+              "modeled_selected_bytes": 38706998,
+              "native_allocation_model_ratio_max": 0.588929500551812,
+              "native_peak_delta_max": 22795693,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 72.543,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "long",
+            "id": "local_chain",
+            "n": 25000,
+            "seed": 2026090202,
+            "threads": 1,
+            "topology": "chain_2fe"
+          }
+        },
+        {
+          "arm": "cmg",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "cmg_prepared": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  3,
+                  0.021315043,
+                  0.013387333,
+                  0.015065499
+                ],
+                "lsmr_fused": [
+                  0,
+                  2,
+                  0,
+                  0,
+                  17,
+                  0.003951707,
+                  0.055164208,
+                  0.013810459
+                ],
+                "map": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0.0004045,
+                  0.001828541,
+                  0
+                ]
+              },
+              "median_seconds": 0.218,
+              "modeled_selected_bytes": 75314502,
+              "native_allocation_model_ratio_max": 0.594686452285112,
+              "native_peak_delta_max": 44788514,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.537,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_three_fe",
+            "n": 25000,
+            "seed": 2026090203,
+            "threads": 1,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "lsmr",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "lsmr_fused": [
+                  0,
+                  3,
+                  0,
+                  0,
+                  19,
+                  0.005539999,
+                  0.065955084,
+                  0.019639249
+                ],
+                "lsmr_joint": [
+                  3,
+                  0,
+                  0,
+                  0,
+                  16,
+                  0.001575667,
+                  0.012942292,
+                  0.006406124
+                ]
+              },
+              "median_seconds": 0.204,
+              "modeled_selected_bytes": 63194270,
+              "native_allocation_model_ratio_max": 0.636075169473435,
+              "native_peak_delta_max": 40196306,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.537,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_three_fe",
+            "n": 25000,
+            "seed": 2026090203,
+            "threads": 1,
+            "topology": "balanced_3fe"
+          }
+        },
+        {
+          "arm": "map",
+          "implementations": {
+            "candidate": {
+              "engines": {
+                "map": [
+                  3,
+                  3,
+                  0,
+                  0,
+                  16,
+                  0.00247725,
+                  0.084664793,
+                  0
+                ]
+              },
+              "median_seconds": 0.2,
+              "modeled_selected_bytes": 33632374,
+              "native_allocation_model_ratio_max": 0.836578202894628,
+              "native_peak_delta_max": 28136111,
+              "repetitions": 1
+            },
+            "reference": {
+              "median_seconds": 0.537,
+              "repetitions": 1
+            }
+          },
+          "scope": {
+            "controls": 10,
+            "difficulty": "easy",
+            "id": "local_three_fe",
+            "n": 25000,
+            "seed": 2026090203,
+            "threads": 1,
+            "topology": "balanced_3fe"
+          }
+        }
+      ],
+      "receipt_sha256": "4730a265ed221104a16e6010c37ef78225cdc060725fd7ef9a8f20fbd859d117",
+      "route_pass": true,
+      "science_pass": true,
+      "scientific_differences": {
+        "matched_repetitions": 0,
+        "maximum_absolute_differences": null,
+        "sample_rank_dof_names_exact": null
+      },
+      "sources": {
+        "candidate": {
+          "commit": "a355b5d6d714f6a43f69c08d798994dcadba3c22",
+          "dirty": true,
+          "tree": "dbc25423c2b8883c621c8238d0a183bcb672034e",
+          "working_diff_sha256": "490619776a99015f772de5d84584bea6abbe2252d2a414e45868b69f3ceda8c7"
+        }
+      }
+    }
+  ],
+  "scc_executed": false,
+  "schema_version": 1,
+  "tolerance_columns": [
+    "scheduled",
+    "first_pass",
+    "effective"
+  ],
+  "validation": {
+    "memory-fixed-tests.log": {
+      "sha256": "2d2d6b42f149147346c87c0a608d7d27382931c9040a5bbdef51dca37554dba1"
+    },
+    "constant-seed-build.log": {
+      "sha256": "8e2c7ed92d0cdae9b84efe89253ebea2bbbf97c76548c2746f6677cdfb334dbd"
+    },
+    "closing-clippy.log": {
+      "sha256": "64df578f846f6eed0e61235c7d5f2add98faf2e1c0649c6a3656b3fb47bb364f"
+    },
+    "closing-rust.log": {
+      "sha256": "4868aab5272f8c6fa1e48acd71c1837a4657e50944e7a32a9a7bf5b3f0d3828e"
+    },
+    "closing-ffi.log": {
+      "sha256": "09af8cb51417c2c3e70faa3dbf7aad5f5ebaf3a1f57867c55897b54217236e0c"
+    },
+    "closing-stata-quick.log": {
+      "sha256": "bb47cdb867c9b08e54aeac3c088c8186d94eb0f931c9fe1c63adee140b65e618"
+    },
+    "closing-v3-science": {
+      "analysis_sha256": "5a3263bb0d0a9ae973872bdb9ab23586551c11f55077193759812cc5f3bb0a76",
+      "science_pass": true,
+      "route_pass": true,
+      "scopes": 8,
+      "repetitions": 1
+    },
+    "closing-v3-smoke": {
+      "analysis_sha256": "3f339e75f64e1643e2ec1a99bffacda857d365b62f7c8970ce93094ca4dbff37",
+      "science_pass": true,
+      "route_pass": true,
+      "scopes": 3,
+      "repetitions": 1
+    },
+    "closing-one-fe-science": {
+      "analysis_sha256": "7ff1de247b4710a5413c3e2e5934c50afec048c67ad35004e46028a6baf1bbdb",
+      "science_pass": true,
+      "route_pass": true,
+      "scopes": 4,
+      "repetitions": 1
+    }
+  },
+  "validation_counts": {
+    "python_repository_tests": 765,
+    "final_core_unit_tests": 723,
+    "normal_plugin_unit_tests": 74,
+    "ffi_plugin_unit_tests": 89,
+    "workspace_integration_oracle_and_constrained_memory": "passed",
+    "formatting": "passed including fuzz",
+    "clippy": "passed, warnings denied",
+    "licensed_stata_quick": "passed, receipt and Stata return code verified",
+    "build": "universal arm64/x86_64 macOS, binary audit and actual-plugin ABI/panic-containment test passed"
+  },
+  "removed_experiments": [
+    {
+      "name": "four-sweep checkpoint MAP pilot",
+      "reason": "did not resolve the focused fallback boundary"
+    },
+    {
+      "name": "direct three-FE bridge lookup",
+      "reason": "only approximately 2% ordinary solve-time change with identical iteration counts"
+    },
+    {
+      "name": "48-direction aggregate coarse correction",
+      "reason": "only 850 to 834 and 2578 to 2462 ordinary iterations; insufficient for its added work/state",
+      "timing_eligible": false,
+      "evidence_directory": "coarse-operator-screen-not-timing"
+    }
+  ]
+}

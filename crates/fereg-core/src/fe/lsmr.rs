@@ -112,6 +112,7 @@ pub fn absorb_lsmr(
             config.tolerance,
         )?;
         return Ok(SolveReport {
+            checkpoint_retries: 0,
             requested_solver: FeSolverKind::Lsmr,
             used_solver: FeSolverKind::Lsmr,
             iterations: 0,
@@ -255,6 +256,7 @@ pub fn absorb_lsmr(
     }
 
     Ok(SolveReport {
+        checkpoint_retries: 0,
         requested_solver: FeSolverKind::Lsmr,
         used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),

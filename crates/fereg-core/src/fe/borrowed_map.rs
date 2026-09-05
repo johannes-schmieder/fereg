@@ -1067,6 +1067,8 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_lsmr_certificate_failure: bool,
     #[cfg(test)]
     checkpoint_lsmr_fatal_failure: u8,
+    #[cfg(test)]
+    checkpoint_lsmr_retry_error: Option<ErrorCode>,
 }
 
 /// Reusable level-space PCG state for two-way categorical graphs.
@@ -1256,6 +1258,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             checkpoint_lsmr_certificate_failure: false,
             #[cfg(test)]
             checkpoint_lsmr_fatal_failure: 0,
+            #[cfg(test)]
+            checkpoint_lsmr_retry_error: None,
         })
     }
 
@@ -1408,44 +1412,84 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
                 return Err(error);
             }
-            let lsmr = LsmrConfig {
-                tolerance: config.tolerance,
-                max_iterations: config.max_iterations,
-                ..LsmrConfig::default()
-            };
-            let (candidate, mut report, owned_setup_seconds, _) = run_borrowed_lsmr(
-                &self.design,
-                weights,
-                &values,
-                config.tolerance,
-                config.max_iterations,
-                lsmr,
-                Some(&self.workspace.reference_norms),
-                false,
-            )?;
-            report.setup_seconds += setup_seconds + owned_setup_seconds;
-            let certification_started = Instant::now();
-            #[allow(unused_mut)]
-            let mut canonical_certificate = certify(
-                &self.design,
-                weights,
-                &candidate,
-                config.tolerance,
-                &mut self.workspace,
-            )?;
+            #[cfg(not(test))]
+            let force_rejection = false;
             #[cfg(test)]
-            if std::mem::take(&mut self.checkpoint_lsmr_certificate_failure) {
-                canonical_certificate.passed = false;
-            }
-            report.certification_seconds +=
-                initial_certification_seconds + certification_started.elapsed().as_secs_f64();
-            let canonical_passed = canonical_certificate.passed;
-            report.certificate = canonical_certificate;
-            if canonical_passed {
-                report.stop_reason = SolveStopReason::Certified;
-                return CertifiedBorrowedMap::from_certified_parts(candidate, report);
-            }
-            report.stop_reason = SolveStopReason::Uncertified;
+            let force_rejection = std::mem::take(&mut self.checkpoint_lsmr_certificate_failure);
+            let mut accumulated: Option<SolveReport> = None;
+            let mut recurrence_tolerance = config.tolerance;
+            let report = loop {
+                #[cfg(test)]
+                if accumulated.is_some() {
+                    if let Some(code) = self.checkpoint_lsmr_retry_error.take() {
+                        return Err(FeregError::new(code, "injected checkpoint retry failure"));
+                    }
+                }
+                let lsmr = LsmrConfig {
+                    tolerance: recurrence_tolerance,
+                    max_iterations: config.max_iterations,
+                    ..LsmrConfig::default()
+                };
+                let (candidate, mut report, owned_setup_seconds, _) = run_borrowed_lsmr(
+                    &self.design,
+                    weights,
+                    &values,
+                    recurrence_tolerance,
+                    config.max_iterations,
+                    lsmr,
+                    Some(&self.workspace.reference_norms),
+                    false,
+                )?;
+                report.setup_seconds += owned_setup_seconds;
+                let certification_started = Instant::now();
+                let mut canonical_certificate = certify(
+                    &self.design,
+                    weights,
+                    &candidate,
+                    config.tolerance,
+                    &mut self.workspace,
+                )?;
+                canonical_certificate.passed &= !force_rejection;
+                report.certification_seconds += certification_started.elapsed().as_secs_f64();
+                if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                    emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}",
+                        u8::from(accumulated.is_some()), recurrence_tolerance, config.tolerance,
+                        report.iterations, report.setup_seconds, report.solve_seconds,
+                        report.certification_seconds, canonical_certificate.relative_infinity_norm,
+                        u8::from(canonical_certificate.passed),
+                    ));
+                }
+                if let Some(prior) = accumulated.take() {
+                    report.checkpoint_retries = 1;
+                    report.iterations = report.iterations.saturating_add(prior.iterations);
+                    report.setup_seconds += prior.setup_seconds;
+                    report.solve_seconds += prior.solve_seconds;
+                    report.certification_seconds += prior.certification_seconds;
+                    report.warnings.extend(prior.warnings);
+                } else {
+                    report.setup_seconds += setup_seconds;
+                    report.certification_seconds += initial_certification_seconds;
+                }
+                let canonical_passed = canonical_certificate.passed;
+                report.certificate = canonical_certificate;
+                if canonical_passed {
+                    report.stop_reason = SolveStopReason::Certified;
+                    return CertifiedBorrowedMap::from_certified_parts(candidate, report);
+                }
+                report.stop_reason = SolveStopReason::Uncertified;
+                drop(candidate);
+                let tighter = (config.tolerance * 0.01).max(1e-14);
+                if report.checkpoint_retries != 0 || tighter >= recurrence_tolerance {
+                    break report;
+                }
+                // Only a failed fresh canonical certificate authorizes this
+                // retry. Both independent batches use untouched inputs, and
+                // their transient peaks are serial; publication tolerance,
+                // fallback inputs, rank policy, and downstream checks do not change.
+                recurrence_tolerance = tighter;
+                accumulated = Some(report);
+            };
 
             // The LSMR candidate never aliases `values`. A numerical failure
             // therefore leaves the authoritative checkpoint inputs untouched
@@ -1463,6 +1507,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             fallback_report.setup_seconds += report.setup_seconds;
             fallback_report.solve_seconds += report.solve_seconds;
             fallback_report.certification_seconds += report.certification_seconds;
+            fallback_report.checkpoint_retries = report.checkpoint_retries;
             fallback_report.fallback_used = true;
             fallback_report.requested_preconditioner = report.requested_preconditioner;
             fallback_report.used_preconditioner = report.used_preconditioner;
@@ -4265,6 +4310,7 @@ fn run_borrowed_lsmr(
     let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
     let postprocess_seconds = (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
     let report = SolveReport {
+        checkpoint_retries: 0,
         requested_solver: FeSolverKind::Lsmr,
         used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
@@ -6986,6 +7032,7 @@ fn certified_solver_result(
     solve_seconds: f64,
 ) -> Result<CertifiedBorrowedMap> {
     let report = SolveReport {
+        checkpoint_retries: 0,
         requested_solver: solver,
         used_solver: solver,
         iterations,
@@ -7225,6 +7272,7 @@ mod tests {
         assert_eq!(fallback.report().requested_solver, FeSolverKind::Lsmr);
         assert_eq!(fallback.report().used_solver, FeSolverKind::Map);
         assert!(fallback.report().fallback_used);
+        assert_eq!(fallback.report().checkpoint_retries, 1);
         assert!(fallback.report().certified());
 
         let accelerated = reusable
@@ -7237,6 +7285,7 @@ mod tests {
         assert_eq!(accelerated.report().requested_solver, FeSolverKind::Lsmr);
         assert_eq!(accelerated.report().used_solver, FeSolverKind::Lsmr);
         assert!(!accelerated.report().fallback_used);
+        assert_eq!(accelerated.report().checkpoint_retries, 0);
         assert!(accelerated.report().certification_seconds >= 0.0);
         for (&left, &right) in accelerated
             .residualized()
@@ -7245,6 +7294,28 @@ mod tests {
             .zip(fallback.residualized().as_slice())
         {
             assert!((left - right).abs() <= 5e-10, "{left} != {right}");
+        }
+
+        for code in [ErrorCode::Allocation, ErrorCode::Interrupted] {
+            reusable.inject_checkpoint_lsmr_certificate_failure();
+            reusable.checkpoint_lsmr_retry_error = Some(code);
+            let error = reusable
+                .absorb(
+                    BorrowedMapWeights::Provided(&weights),
+                    DenseMatrix::from_columns(&columns).expect("failure inputs"),
+                    config(),
+                )
+                .expect_err("retry failures remain fatal");
+            assert_eq!(error.code, code);
+            let recovered = reusable
+                .absorb(
+                    BorrowedMapWeights::Provided(&weights),
+                    DenseMatrix::from_columns(&columns).expect("recovery inputs"),
+                    config(),
+                )
+                .expect("failed retry leaves reusable canonical state usable");
+            assert_eq!(recovered.residualized(), accelerated.residualized());
+            assert_eq!(recovered.report().checkpoint_retries, 0);
         }
     }
 

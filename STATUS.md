@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-05
 
 **Branch:** `main`
 
@@ -32,7 +32,7 @@ architecture decisions remain under `docs/adr/`.
 
 - The canonical retained linear session, rank policy, and independent
   certificates are scientific authority. It still owns the first full-width
-  weighted-linear frame and active-basis freeze; on eligible large explicit
+  weighted-linear frame and active-basis freeze; on eligible explicit
   LSMR/CMG fits, current-weight LSMR may compute that initial projection plus
   strict and final-Hessian projections before the canonical session
   independently certifies them. MAP owns Mu separation work and remains the
@@ -80,16 +80,25 @@ architecture decisions remain under `docs/adr/`.
   and full numerical certification.
 - [ADR 0027](docs/adr/0027-canonical-ppml-checkpoint-projection.md) supersedes
   ADR-0025's MAP-computation requirement. Explicit LSMR/CMG fits with two or
-  three categorical effects and at least 16,384 observations use an ephemeral
+  three categorical effects at every positive retained sample size use an ephemeral
   full-Schwarz current-weight batch LSMR checkpoint projection for the initial
   response-plus-all-controls frame and later strict/final frames. Initial
   inputs come from the untouched prepared frame; later inputs are recomputed
   from the accepted PPML state. A candidate is accepted only after canonical
   FE projection and normal equations, all-width rank/status, bread, score,
   objective, reconstruction, and exact final `q_i * mu_i` certificates pass.
-  Numerical rejection visibly falls back to MAP on untouched inputs; other
-  errors remain fatal. The serial checkpoints share one exactly admitted
+  A failed fresh canonical certificate permits one tighter independent batch
+  on untouched inputs, with unchanged canonical tolerance. A second numerical
+  rejection visibly falls back to MAP; other errors remain fatal. All attempt
+  work and retry counts are reported. The serial checkpoints share one admitted
   full-width transient peak while the ordinary engine remains live.
+- [ADR 0028](docs/adr/0028-one-effect-ppml-initialization.md) seeds cold one-FE
+  publication fits at the group-intercept Poisson optimum for zero finite
+  slopes. Group-constant offsets use compensated weighted means when raw
+  moments are representable; otherwise stable log-sum-exp handles the sums.
+  An unusable seed restores the complete global initialization. Warm starts,
+  Mu, slopes, and multi-FE fits are unchanged; rank freezing, both convergence
+  checks, and every strict/final certificate remain mandatory, including K=0.
 - The joint LSMR engine fuses target, square-root-weight, right-hand-side, and
   finite-diagonal preparation; uses a measured narrow/wide adjoint policy;
   coarsens FE work ownership; and parallelizes independent certificate
@@ -128,6 +137,17 @@ architecture decisions remain under `docs/adr/`.
   row-to-nuisance lookup for three-FE Schur work. The generic OLS CMG builder,
   owned-result path, CG polish/fallback, inference reuse, and auto routing are
   unchanged.
+- CMG finite moments use deterministic 4,096-row partitions, capped at 64
+  partial matrices as N grows. Fresh raw finite normal-equation certificates
+  run across the admitted team, reusing finished K-wide finite-solve buffers
+  and preserving each direction's compensated row order. The workspace plan
+  uses the same partition geometry. Successful-frame diagnostics now include
+  previously omitted per-RHS certification and fereg-owned preparation time.
+- Joint and checkpoint LSMR preflight includes the pinned Schwarz builder's
+  dense cross-tabulation dispatch, including concurrent pair tables. Sparse
+  observation graphs can still take that dense construction path. This fixes
+  a measured underestimate exposed by small three-FE checkpoints; it changes
+  admission, not the solver or scientific tolerances.
 - Prepared CMG carries forward an independently observed insufficient
   recurrence scale to the next changing-weight frame. Only the failed columns
   are retried on the current frame, and the publication certificate tolerance
@@ -142,7 +162,8 @@ architecture decisions remain under `docs/adr/`.
 
 The exact four-name PPML interface and explicit MAP, LSMR, and prepared-CMG
 engines are implemented. `solver(auto)` deliberately remains MAP-only. The
-ADR-0026 harness transition, current local optimization round, and the
+September 5 local breadth round below is implemented and validated. The
+ADR-0026 harness transition and the
 exact-source FE-role-selection SCC development campaign are implemented. The
 campaign is scientifically green but route-red for pre-existing matched
 candidate/baseline checkpoint fallbacks; it is development evidence, not a
@@ -151,10 +172,11 @@ release qualification has been launched.
 
 ## Development harness and validation
 
-- The live PPML solver development harness is manifest v3, result table 2.6.
+- The live PPML solver development harness is manifest v4, result table 2.6.
   It uses only public MAP, LSMR, and CMG arms plus the pinned default
   `ppmlhdfe` comparator. The reference remains on its observed
-  CG/symmetric-Kaczmarz route; the harness does not force `ppmlhdfe` LSMR.
+  CG/symmetric-Kaczmarz route for multiple effects and observed unaccelerated
+  one-FE projection; the harness does not force `ppmlhdfe` LSMR.
   Historical reports are preserved; superseded live manifests and obsolete
   generated manual fereg/feppml benchmark analyses are removed.
 - The v3 harness has local science and smoke gates, then a bounded SCC lane of
@@ -255,7 +277,106 @@ release qualification has been launched.
   all other scientific mismatches fail closed. The failed table-2.4 run above
   remains failed evidence under its original harness and is not reclassified.
 
-## Diagnostic performance evidence
+## Local breadth optimization: September 5
+
+The baseline is clean `a355b5d6d714f6a43f69c08d798994dcadba3c22`, independently
+built in a detached worktree. The [immutable local diagnostic summary](benchmarks/reports/development/ppml-local-breadth-2026-09-05.json)
+binds each stage's dirty source snapshot, artifact, receipt digest, scope,
+repetitions, scientific differences, engine timings, split recurrence counts,
+effective tolerances, and measured/modelled allocation. These are local macOS
+diagnostics, not qualification or SCC evidence. Earlier-stage artifacts are
+identified separately; no result is relabelled as testing a later source.
+
+| Scope | Arm / threads | Baseline s | Candidate s | ppmlhdfe s |
+| --- | --- | ---: | ---: | ---: |
+| Skewed 1FE, N=100,000, K=10 | MAP / 7 | 0.585 | 0.383 | 0.873 |
+| Balanced 1FE, N=1m, K=0 | MAP / 1 | 1.223 | 1.019 | 1.551 |
+| Balanced 1FE, N=1m, K=10 | MAP / 7 | 3.756 | 3.744 | 8.416 |
+| Difficult 2FE chain, N=8,000, K=10 | LSMR / 7 | 1.234 | 0.092 | 5.703 |
+| Difficult 2FE chain, N=8,000, K=10 | CMG / 7 | 1.438 | 0.290 | 5.703 |
+| Sparse 3FE, N=8,000, K=10 | LSMR / 7 | 12.223 | 0.588 | 9.753 |
+| Sparse 3FE, N=10,000, K=0 | LSMR / 7 | 9.823 | 0.649 | — |
+| Sparse 3FE, N=10,000, K=50 | LSMR / 7 | 69.295 | 2.668 | — |
+| Balanced 2FE, N=50,000, K=50 | CMG / 7 | 0.857 | 0.753 | 3.845 |
+| Balanced 3FE, N=50,000, K=50 | CMG / 7 | 1.042 | 0.923 | 4.481 |
+
+- The N=8,000 sparse candidate is the corrected-memory rerun; all scientific
+  fields and iterations exactly reproduce the earlier 0.574-second candidate.
+  Checkpoint work falls from 3,972 MAP sweeps and 9.585 seconds of solve time
+  to 269 batch-LSMR iterations and 0.182 seconds. Ordinary LSMR uses 394 first
+  plus 315 continuation iterations, 0.273 seconds solve, and 0.002 seconds
+  certification. Its setup is 0.008 seconds; checkpoint setup/certification
+  are 0.027/0.008 seconds. Neither route falls back.
+- At sparse N=10,000, K=50, checkpoint solve time falls from 64.326 to 1.122
+  seconds and iterations from 5,320 to 337. Ordinary work is essentially
+  unchanged: 1,273+1,230 baseline versus 1,275+1,231 candidate first/continuation
+  iterations, five retries each, 1.204 versus 1.188 seconds solve. Candidate
+  ordinary setup/certification are 0.008/0.007 seconds; checkpoint
+  setup/certification are 0.039/0.038 seconds. At one thread total runtime
+  falls from 73.888 to 8.129 seconds, with the same iteration counts and no
+  fallback. K=0 ordinary work stays exactly 808+460 iterations; its checkpoint
+  count falls from 8,241 to 529. Public checkpoint counts sum each frame's
+  maximum RHS recurrence count, not total column-operator applications.
+- The final one-FE guard has parity at small balanced K=10 (0.058 seconds)
+  and balanced N=100,000, K=50 (1.687 versus 1.688). The skewed K=10 fit drops
+  from six ordinary frames to two, retaining three canonical checkpoints.
+  A first million-row K=10 screen exposed initialization overhead; the
+  representable constant-offset weighted-mean calculation removes it. The
+  final five-repeat million-row comparison is in the table.
+- Wide CMG finite work drops from about 32 to 9 ms per ordinary frame, and
+  its exact combined certificate from about 17 to 5 ms, with unchanged
+  iterations/retries. One-thread balanced K=0/K=50 checks remain at parity.
+  The 64-column envelope means non-base third-FE indicators, independently
+  of finite K; K=0/10/50 and nuisance widths 0/32/63/64 passed locally. The
+  licensed boundary fixture accepts 64 and rejects 65 while preserving prior
+  public coefficients and covariance. Successful-frame certificate telemetry
+  now charges previously omitted work, so old/new certificate timer totals
+  alone are not comparable.
+- Memory is a real tradeoff: the small sparse checkpoint's native peak delta
+  is 72,755,017 bytes. Its former 30,435,854-byte model was unacceptable.
+  Charging the pinned dense/sparse cross-tab rule raises the model to
+  85,507,414 bytes; all three corrected repetitions have allocation/model
+  ratio 0.851. New tests cover both dispatch boundaries, pair concurrency,
+  FE-order invariance, overflow, and preflight rejection. No tolerance or
+  memory allowance was relaxed.
+- Sample, rank, DoF, and result names match the baseline exactly. Across the
+  difficult sparse-width checks, maximum absolute coefficient/covariance
+  differences are 1.32e-11/7.76e-15; likelihood/deviance differences are
+  8.13e-8/1.63e-7. Raw certificate cells can differ by 5.49e-7, while every
+  independent normalized certificate passes its unchanged tolerance.
+- The N=50,000, K=10, seven-thread primary remains at parity: 0.988 versus
+  0.985 seconds, with exactly identical scientific fields and 850 ordinary
+  iterations, zero continuation. Ordinary setup/solve/certification are
+  0.013/0.581/0.006 seconds; checkpoints use 52 iterations and
+  0.048/0.128/0.014 seconds. The 1% and 10% mixing cases retain respectively
+  806+689 and 1,158+1,420 ordinary iterations, three/four retries, and totals
+  1.491/2.472 seconds. No new ordinary-LSMR policy is promoted.
+- Removed experiments: a four-sweep checkpoint MAP pilot did not fix the
+  focused fallback; a direct bridge lookup changed ordinary time by only
+  about 2%; a 48-direction aggregate coarse correction reduced 850 to 834
+  and 2,578 to 2,462 iterations, insufficient for its added work/state. The
+  coarse screen overlapped other checks and is explicitly not timing evidence.
+  None of these implementation paths or tests remains dormant in production.
+- Validation: the full repository run passed 765 Python tests and all static,
+  portable, oracle, constrained-memory, and plugin checks. After the final
+  one-FE refinement, workspace tests passed 723 core and 74 normal plugin
+  tests plus integration/oracle/memory suites; 89 FFI plugin tests, Rust/fuzz
+  formatting, strict Clippy, universal macOS build and binary/ABI audit, and
+  licensed Stata quick all passed. Closing v3 science (eight scopes), v3
+  smoke (three scopes, all nine arms), and independent one-FE science (four
+  scopes) have `science_pass=true` and `route_pass=true`. The closing smoke
+  is a one-repeat gate, additional to the earlier three-repeat matched smoke;
+  timing comparisons above use three or five repetitions.
+- Harness v4 adds directly runnable local breadth, difficulty, checkpoint,
+  nuisance/control-width, one-FE, scaling, large-easy, and held-out profiles
+  plus explicit scope selection. Only the named subsets above were run.
+  Frozen v3 and SCC evidence remain unchanged. The new allocation source
+  companion v3 reconciles reviewed earlier PPML/shared-source changes and
+  this report bookkeeping; its policy, route boundaries, and F0 pins are
+  unchanged, and historical v2 is preserved. No F0 qualification, SCC job,
+  auto calibration, push, tag, or release was run.
+
+## Historical diagnostic performance evidence
 
 - Across the 56 exact-source SCC scopes above, performance-eligible geometric
   mean candidate/`ppmlhdfe` runtime ratios are 0.614 for MAP, 0.379 for LSMR,
@@ -468,34 +589,47 @@ not inherit release or cross-platform qualification from earlier sources.
 ## Current blockers
 
 - Sparse-three-FE ordinary joint LSMR remains the specialized-fit floor. The
-  matched promoted run now uses about 0.65 seconds of solve time and 944
-  iterations out of a 1.06-second total, with no continuation. Its scheduled
-  tolerances already predict the independent certificates; the remaining work
-  is conditioning and operator cost rather than retry policy.
+  current N=50,000 primary uses 0.581 seconds of ordinary solve time and 850
+  iterations out of 0.985 seconds, with no continuation. The mixed 3FE graph
+  needs 2,578 ordinary iterations and 1.955 seconds of solve time. Simple
+  aggregate bins did not produce a sufficiently useful coarse correction.
 - Explicit MAP, and therefore `solver(auto)`, remains weak on poorly connected
-  graphs. The difficult-chain MAP smoke needs 20,842 total inner iterations
+  graphs. The difficult-chain MAP smoke needs 20,839 total inner iterations
   and about 13 seconds even after its per-pass kernels were accelerated.
 - Prepared CMG still performs 11 certificate-driven RHS retries on the hard
-  chain. Executor construction remains below the threshold for upstream API
-  work.
+  chain. At nuisance width 64 and K=0, numeric setup costs 2.051 seconds of a
+  2.223-second fit, against only 0.094 seconds graph solve. With K=50, setup
+  and solve cost 0.791/0.903 seconds of a 2.233-second fit. This is not evidence
+  that executor construction is expensive; that earlier 0.01--0.40% result
+  remains the relevant bound for a shared-executor API proposal.
+  On the K=0 scope LSMR takes 0.103 seconds and pinned `ppmlhdfe` 0.198, so
+  this remains a substantial CMG-specific weakness inside its valid envelope.
+- Easy one-FE K=50 receives little benefit from better initialization. Its
+  canonical weighted-linear/design passes, not FE iteration or inference,
+  are the remaining target. Wide sparse checkpoints also remain material at
+  one thread: 5.865 seconds of solve time in the 8.129-second K=50 fit.
 
 ## Development plan
 
-1. Improve the three-FE core-pair preconditioner or operator locality so the
-   944 certified first-pass iterations fall materially, without restoring the
-   slow retained all-pairs Schwarz policy. The new frame evidence should
-   distinguish conditioning gains from retry-count changes.
-2. Reduce CMG's remaining hard-chain RHS retries through certificate-aware
-   continuation or recycled block work, without changing the publication
-   tolerance or cadence.
+1. Investigate a topology/harmonic-extension or Schur-aware three-FE coarse
+   correction spanning the third effect. Do not restore retained all-pairs
+   Schwarz or the unsuccessful aggregate-bin experiment. Judge total operator
+   work and elapsed time, with the exact independent certificate unchanged.
+2. Profile CMG's changing-weight nuisance/Schur construction at widths 32--64,
+   and its remaining hard-chain RHS continuation. Keep the 64-indicator
+   envelope and preserve fresh combined certificates; do not confuse numeric
+   setup with executor construction.
 3. Improve explicit MAP on poorly connected graphs with a topology-aware
    coarse correction or gauge-reduced preconditioner while preserving its
    canonical projection certificates and `solver(auto)` behavior.
-4. Reconsider an upstream CMG shared-executor API only if a future profile puts
+4. Profile canonical weighted-linear/design passes for easy one-FE/wide-K and
+   wide single-thread checkpoints before changing their implementation. Rank,
+   bread, strict convergence, and exact final-Hessian facts remain mandatory.
+5. Reconsider an upstream CMG shared-executor API only if a future profile puts
    executor construction above the five-percent promotion threshold. A minimal
    candidate would accept an `Arc<ParallelExecutor>` while still rebuilding
    changing-weight numeric graphs and hierarchies.
-5. Keep `solver(auto)` MAP-only. Never rewrite or promote the failed table-2.4
+6. Keep `solver(auto)` MAP-only. Never rewrite or promote the failed table-2.4
    campaign. Any future SCC run
    requires separate authorization and a new exact-source receipt root.
 

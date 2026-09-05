@@ -203,6 +203,10 @@ fn emit_joint_lsmr_frame_trace(frame: JointLsmrFrameDiagnostic) {
         return;
     }
     let line = joint_lsmr_frame_trace_line(frame);
+    emit_solver_trace_line(&line);
+}
+
+pub(super) fn emit_solver_trace_line(line: &str) {
     eprintln!("{line}");
     let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
         return;
@@ -2123,9 +2127,14 @@ impl CategoricalLsmrMemoryShape {
         let threads = threads as u128;
         let schwarz = match policy {
             CategoricalLsmrPolicy::Diagonal => CategoricalSchwarzMemoryEstimate::default(),
-            CategoricalLsmrPolicy::Reuse => {
-                estimate_categorical_schwarz_memory(rows, effects, levels, maximum_levels, threads)?
-            }
+            CategoricalLsmrPolicy::Reuse => estimate_categorical_schwarz_memory(
+                rows,
+                effects,
+                levels,
+                maximum_levels,
+                threads,
+                categorical_dense_cross_tab_bytes(rows, effect_level_counts)?,
+            )?,
             CategoricalLsmrPolicy::CorePair => {
                 if effect_level_counts.len() < 2 {
                     return Err(invalid_argument(
@@ -2152,6 +2161,10 @@ impl CategoricalLsmrMemoryShape {
                     core_levels,
                     core_maximum_levels,
                     threads,
+                    categorical_dense_cross_tab_bytes(
+                        rows,
+                        &[effect_level_counts[order[0]], effect_level_counts[order[1]]],
+                    )?,
                 )?
             }
         };
@@ -2167,6 +2180,26 @@ impl CategoricalLsmrMemoryShape {
     }
 }
 
+fn categorical_dense_cross_tab_bytes(rows: u128, level_counts: &[usize]) -> Result<u128> {
+    // Pinned within b7779cb cross_tab/accumulate.rs chooses dense whenever
+    // L_i * L_j <= 5,000,000 OR its 8-byte table costs no more than 12N.
+    // Pair construction is parallel; charge all simultaneously live tables.
+    // The existing edge bound separately covers CSR output and sparse scratch.
+    let sparse_bytes = checked_mul_memory(rows, 12, "PPML LSMR sparse cross-tab scratch")?;
+    let mut dense_bytes = 0;
+    for (index, &left) in level_counts.iter().enumerate() {
+        for &right in &level_counts[index + 1..] {
+            let cells =
+                checked_mul_memory(left as u128, right as u128, "PPML LSMR cross-tab cells")?;
+            let bytes = bytes_for_memory::<f64>(cells, "PPML LSMR dense cross-tab scratch")?;
+            if cells <= 5_000_000 || bytes <= sparse_bytes {
+                dense_bytes = checked_add_memory(dense_bytes, bytes, "PPML LSMR dense pair peak")?;
+            }
+        }
+    }
+    Ok(dense_bytes)
+}
+
 /// Upper-bound the owned `within::Solver` categorical/Schwarz state used by
 /// both PPML LSMR routes. Every factor-pair can contain N distinct edges; the
 /// accounting charges both CSR orientations, construction copies, per-level
@@ -2177,6 +2210,7 @@ fn estimate_categorical_schwarz_memory(
     levels: u128,
     maximum_levels: u128,
     threads: u128,
+    dense_cross_tab_bytes: u128,
 ) -> Result<CategoricalSchwarzMemoryEstimate> {
     let pairs = checked_mul_memory(
         effects,
@@ -2276,6 +2310,7 @@ fn estimate_categorical_schwarz_memory(
         sort_scratch_bytes,
         build_edge_bytes,
         build_level_bytes,
+        dense_cross_tab_bytes,
         retained_bytes,
     ])?;
     Ok(CategoricalSchwarzMemoryEstimate {
@@ -3240,7 +3275,7 @@ mod tests {
         let more_levels = estimate_joint_lsmr_workspace_bytes(
             10_000,
             8,
-            &[4_000, 2_000],
+            &[2_001, 1_001],
             8,
             CategoricalLsmrPolicy::Reuse,
         )
@@ -3264,6 +3299,56 @@ mod tests {
         assert!(wider > seven_threads);
         let three_dense_batches = 3_u128 * 50_000 * 11 * std::mem::size_of::<f64>() as u128;
         assert!(one_thread > three_dense_batches);
+    }
+
+    #[test]
+    fn schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries() {
+        assert_eq!(
+            categorical_dense_cross_tab_bytes(8_000, &[2_500, 2_000]).unwrap(),
+            40_000_000
+        );
+        assert_eq!(
+            categorical_dense_cross_tab_bytes(8_000, &[2_501, 2_000]).unwrap(),
+            0
+        );
+        // Above the cap, dense is still used when no larger than sparse scratch.
+        assert_eq!(
+            categorical_dense_cross_tab_bytes(4_000_000, &[3_000, 2_000]).unwrap(),
+            48_000_000
+        );
+        assert_eq!(
+            categorical_dense_cross_tab_bytes(3_999_999, &[3_000, 2_000]).unwrap(),
+            0
+        );
+        assert!(categorical_dense_cross_tab_bytes(u128::MAX, &[2, 3]).is_err());
+    }
+
+    #[test]
+    fn sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs() {
+        let levels = [2_666, 2_000, 1_600];
+        let dense = (2_666_u128 * 1_600 + 2_000 * 1_600) * 8;
+        assert_eq!(
+            categorical_dense_cross_tab_bytes(8_000, &levels).unwrap(),
+            dense
+        );
+        let checkpoint =
+            CategoricalLsmrMemoryShape::new(8_000, 0, &levels, 7, CategoricalLsmrPolicy::Reuse)
+                .unwrap();
+        let ordinary =
+            CategoricalLsmrMemoryShape::new(8_000, 10, &levels, 7, CategoricalLsmrPolicy::CorePair)
+                .unwrap();
+        assert!(checkpoint.schwarz.build_peak_bytes > dense);
+        assert!(ordinary.schwarz.build_peak_bytes < dense);
+        assert!(estimate_checkpoint_lsmr_workspace_bytes(8_000, 11, &levels, 7).unwrap() > dense);
+        let permuted = CategoricalLsmrMemoryShape::new(
+            8_000,
+            0,
+            &[1_600, 2_666, 2_000],
+            7,
+            CategoricalLsmrPolicy::Reuse,
+        )
+        .unwrap();
+        assert_eq!(checkpoint.schwarz, permuted.schwarz);
     }
 
     #[test]

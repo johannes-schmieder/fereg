@@ -493,6 +493,7 @@ fn cg_report(
     solve_seconds: f64,
 ) -> SolveReport {
     SolveReport {
+        checkpoint_retries: 0,
         requested_solver: FeSolverKind::Cg,
         used_solver: FeSolverKind::Cg,
         iterations,
@@ -613,6 +614,7 @@ fn report(
     accepted: usize,
 ) -> SolveReport {
     SolveReport {
+        checkpoint_retries: 0,
         requested_solver: solver,
         used_solver: solver,
         iterations,

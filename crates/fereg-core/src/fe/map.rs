@@ -51,6 +51,7 @@ pub fn absorb_map(
             config.tolerance,
         )?;
         return Ok(SolveReport {
+            checkpoint_retries: 0,
             requested_solver: FeSolverKind::Map,
             used_solver: FeSolverKind::Map,
             iterations: 0,
@@ -96,6 +97,7 @@ pub fn absorb_map(
             )?;
             if final_certificate.passed {
                 return Ok(SolveReport {
+                    checkpoint_retries: 0,
                     requested_solver: FeSolverKind::Map,
                     used_solver: FeSolverKind::Map,
                     iterations: iteration,
@@ -117,6 +119,7 @@ pub fn absorb_map(
     }
 
     Ok(SolveReport {
+        checkpoint_retries: 0,
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
         iterations: config.max_iterations,
@@ -670,6 +673,7 @@ fn reusable_map_report(
     solve_seconds: f64,
 ) -> SolveReport {
     SolveReport {
+        checkpoint_retries: 0,
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
         iterations,

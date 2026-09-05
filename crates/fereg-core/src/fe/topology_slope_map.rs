@@ -2971,6 +2971,7 @@ fn finish(
     CertifiedBorrowedMap::from_certified_parts(
         values,
         SolveReport {
+            checkpoint_retries: 0,
             requested_solver: FeSolverKind::Map,
             used_solver: FeSolverKind::Map,
             iterations,

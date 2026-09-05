@@ -107,9 +107,11 @@ if `"`mode'"' == "fit" {
     use `"`dataset'"', clear
     assert observation == _n
     assert y > 0 & y < .
-    local absorb_list "g1 g2"
+    local absorb_list "g1"
+    capture confirm variable g2
+    if !_rc local absorb_list "`absorb_list' g2"
     capture confirm variable g3
-    if !_rc local absorb_list "g1 g2 g3"
+    if !_rc local absorb_list "`absorb_list' g3"
     tempvar fitted_mu reference_d
 
     if `"`arm'"' == "map" {
@@ -164,6 +166,7 @@ if `"`mode'"' == "fit" {
     }
     else {
         local reference_acceleration "conjugate_gradient"
+        if `"`absorb_list'"' == "g1" local reference_acceleration "none"
         local reference_transform "symmetric_kaczmarz"
         display as text "FEREG_PPML_SOLVER_REFERENCE_ROUTE_PASS|arm=`arm'|acceleration=`reference_acceleration'|transform=`reference_transform'"
     }
@@ -210,9 +213,11 @@ foreach state_arm in candidate default strict {
     rename mu mu_`state_arm'
     assert mu_`state_arm' > 0 & mu_`state_arm' < .
 }
-local absorb_list "g1 g2"
+local absorb_list "g1"
+capture confirm variable g2
+if !_rc local absorb_list "`absorb_list' g2"
 capture confirm variable g3
-if !_rc local absorb_list "g1 g2 g3"
+if !_rc local absorb_list "`absorb_list' g3"
 
 mata:
 struct fereg_kkt_model_space {
@@ -279,7 +284,7 @@ struct fereg_kkt_model_space scalar fereg_kkt__prepare(
     out.inverse_sqrt_count1 = out.inverse_sqrt_count2 =
         out.inverse_sqrt_count3 = J(0, 1, .)
     if (out.n == 0 | rows(x) != out.n |
-        (out.effects != 2 & out.effects != 3) |
+        (out.effects < 1 | out.effects > 3) |
         hasmissing(x) | hasmissing(groups)) {
         return(out)
     }
@@ -298,12 +303,14 @@ struct fereg_kkt_model_space scalar fereg_kkt__prepare(
     if (any(counts :<= 0)) return(out)
     out.inverse_sqrt_count1 = 1 :/ sqrt(counts)
 
-    out.order2 = order(out.groups[,2], 1)
-    out.panel2 = panelsetup(out.groups[out.order2,2], 1)
-    counts = panelsum(J(out.n, 1, 1), out.panel2)
-    out.levels2 = rows(counts)
-    if (any(counts :<= 0)) return(out)
-    out.inverse_sqrt_count2 = 1 :/ sqrt(counts)
+    if (out.effects >= 2) {
+        out.order2 = order(out.groups[,2], 1)
+        out.panel2 = panelsetup(out.groups[out.order2,2], 1)
+        counts = panelsum(J(out.n, 1, 1), out.panel2)
+        out.levels2 = rows(counts)
+        if (any(counts :<= 0)) return(out)
+        out.inverse_sqrt_count2 = 1 :/ sqrt(counts)
+    }
 
     if (out.effects == 3) {
         out.order3 = order(out.groups[,3], 1)
@@ -337,10 +344,12 @@ real colvector fereg_kkt__forward(
     one_effect = coefficient[|first \ last|] :* design.inverse_sqrt_count1
     fitted = fitted + one_effect[design.groups[,1]]
     first = last + 1
-    last = first + design.levels2 - 1
-    one_effect = coefficient[|first \ last|] :* design.inverse_sqrt_count2
-    fitted = fitted + one_effect[design.groups[,2]]
-    first = last + 1
+    if (design.effects >= 2) {
+        last = first + design.levels2 - 1
+        one_effect = coefficient[|first \ last|] :* design.inverse_sqrt_count2
+        fitted = fitted + one_effect[design.groups[,2]]
+        first = last + 1
+    }
     if (design.effects == 3) {
         last = first + design.levels3 - 1
         one_effect = coefficient[|first \ last|] :* design.inverse_sqrt_count3
@@ -358,9 +367,12 @@ real colvector fereg_kkt__transpose(
     out = design.controls ? design.x' * value : J(0, 1, .)
     out = out \
         (panelsum(value[design.order1], design.panel1) :*
-            design.inverse_sqrt_count1) \
-        (panelsum(value[design.order2], design.panel2) :*
-            design.inverse_sqrt_count2)
+            design.inverse_sqrt_count1)
+    if (design.effects >= 2) {
+        out = out \
+            (panelsum(value[design.order2], design.panel2) :*
+                design.inverse_sqrt_count2)
+    }
     if (design.effects == 3) {
         out = out \
             (panelsum(value[design.order3], design.panel3) :*

@@ -5,6 +5,8 @@
 //! linear subproblem on an immutable prepared model.
 
 #[cfg(test)]
+use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
+#[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
 
@@ -13,7 +15,6 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     absorb_fixed_effects, BorrowedMapWeights, CmgConfig, CmgTopologyProfile, FeDesign,
     FeSolverKind, PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
-    PARALLEL_PROJECTION_MIN_ROWS,
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::ols::{
@@ -54,7 +55,7 @@ use super::{
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
 
 fn use_checkpoint_lsmr_accelerator(observations: usize, effects: usize) -> bool {
-    matches!(effects, 2 | 3) && observations >= PARALLEL_PROJECTION_MIN_ROWS
+    matches!(effects, 2 | 3) && observations > 0
 }
 
 fn use_initial_checkpoint_lsmr_accelerator(
@@ -863,6 +864,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         &fe_design,
         config,
         start,
+        purpose,
     )?;
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
@@ -1027,7 +1029,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             );
             match selected_engine {
                 PpmlSolverEngine::Map => {}
-                PpmlSolverEngine::LsmrJoint => {
+                PpmlSolverEngine::LsmrJoint | PpmlSolverEngine::LsmrFused => {
                     let active_columns = specialized_columns.as_ref().ok_or_else(|| {
                         FeregError::new(
                             ErrorCode::Internal,
@@ -1041,23 +1043,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         config.linear.execution.threads,
                         joint_lsmr_policy(session.fe_design().effects().len()),
                     )?);
-                    joint_lsmr_engine = Some(PpmlSolverEngine::LsmrJoint);
-                }
-                PpmlSolverEngine::LsmrFused => {
-                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
-                        FeregError::new(
-                            ErrorCode::Internal,
-                            "zero-control PPML LSMR requires the frozen active basis",
-                        )
-                    })?;
-                    joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
-                        prepared,
-                        active_columns,
-                        session.fe_design(),
-                        config.linear.execution.threads,
-                        joint_lsmr_policy(session.fe_design().effects().len()),
-                    )?);
-                    joint_lsmr_engine = Some(PpmlSolverEngine::LsmrFused);
+                    joint_lsmr_engine = Some(selected_engine);
                 }
                 PpmlSolverEngine::CmgPrepared => {
                     let active_columns = specialized_columns.as_ref().ok_or_else(|| {
@@ -2114,7 +2100,7 @@ fn checkpoint_solver_observation(report: &SolveReport) -> Result<PpmlSolverObser
     Ok(PpmlSolverObservation {
         engine,
         frame: PpmlSolverFrameKind::Checkpoint,
-        retries: usize::from(report.fallback_used),
+        retries: report.checkpoint_retries + usize::from(report.fallback_used),
         iterations: report.iterations,
         setup_seconds: report.setup_seconds,
         solve_seconds: report.solve_seconds,
@@ -2504,6 +2490,7 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
     fe_design: &FeDesign,
     config: PreparedPpmlIrlsConfig,
     start: Option<&PreparedPpmlStart>,
+    purpose: PreparedPpmlIrlsPurpose,
 ) -> Result<(Vec<f64>, Vec<f64>)> {
     if let Some(start) = start {
         validate_start(prepared, start, prior_weights, offset, fe_design, config)?;
@@ -2523,8 +2510,12 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         0.0,
         "unable to reserve prepared PPML initial coefficients",
     )?;
-    let shift = log_weighted_outcome_sum(outcome, prior_weights)?
-        - log_weighted_offset_sum(offset, prior_weights)?;
+    let shift = if prepared.fit_report_intercept() {
+        log_weighted_outcome_sum(outcome, prior_weights)?
+            - log_weighted_offset_sum(offset, prior_weights)?
+    } else {
+        0.0
+    };
     if prepared.fit_report_intercept() {
         let mut found = false;
         for (position, coefficient) in prepared.fit_model().coefficients.iter().enumerate() {
@@ -2560,6 +2551,26 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         0.0,
         "unable to reserve prepared PPML initial predictor",
     )?;
+    if purpose == PreparedPpmlIrlsPurpose::Publication
+        && seed_one_effect_predictor(
+            outcome,
+            prior_weights,
+            offset,
+            fe_design,
+            config.ppml,
+            &mut eta,
+        )
+    {
+        return Ok((coefficient_values, eta));
+    }
+    // An absorbed constant needs the global sum only when the group-optimal
+    // seed was unavailable. Its final normalization is owned by certification.
+    let shift = if prepared.fit_report_intercept() {
+        shift
+    } else {
+        log_weighted_outcome_sum(outcome, prior_weights)?
+            - log_weighted_offset_sum(offset, prior_weights)?
+    };
     for row in 0..outcome.len() {
         eta[row] = offset[row] + shift;
         if !eta[row].is_finite() {
@@ -2569,6 +2580,110 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         }
     }
     Ok((coefficient_values, eta))
+}
+
+fn seed_one_effect_predictor(
+    outcome: &[f64],
+    weights: &[f64],
+    offset: &[f64],
+    design: &FeDesign,
+    config: PpmlConfig,
+    eta: &mut [f64],
+) -> bool {
+    let [effect] = design.effects() else {
+        return false;
+    };
+    if !effect.has_intercept() || !effect.slopes().is_empty() {
+        return false;
+    }
+    // At beta=0 each one-way intercept has an analytic Poisson optimum.
+    // Evaluate both sums in log space; this is an initialization only, before
+    // canonical rank freezing or any accepted IRLS state exists. A failed
+    // numerical seed is overwritten by the original global initialization.
+    for level in 0..effect.n_levels() {
+        let members = effect.level_index().members(level);
+        if let Some(value) = constant_offset_group_log_mean(members, outcome, weights, offset) {
+            if !usable_seed_value(value, config) {
+                return false;
+            }
+            for &row in members {
+                eta[row] = value;
+            }
+            continue;
+        }
+        let mut maximum_y = f64::NEG_INFINITY;
+        let mut maximum_offset = f64::NEG_INFINITY;
+        for &row in members {
+            if outcome[row] > 0.0 {
+                maximum_y = maximum_y.max(outcome[row].ln() + weights[row].ln());
+            }
+            maximum_offset = maximum_offset.max(offset[row] + weights[row].ln());
+        }
+        if !maximum_y.is_finite() || !maximum_offset.is_finite() {
+            return false;
+        }
+        let mut sum_y = CompensatedSum::default();
+        let mut sum_offset = CompensatedSum::default();
+        for &row in members {
+            if outcome[row] > 0.0 {
+                sum_y.add((outcome[row].ln() + weights[row].ln() - maximum_y).exp());
+            }
+            sum_offset.add((offset[row] + weights[row].ln() - maximum_offset).exp());
+        }
+        let shift = maximum_y + sum_y.total().ln() - sum_offset.total().ln();
+        for &row in members {
+            let value = (offset[row] - maximum_offset) + shift;
+            if !usable_seed_value(value, config) {
+                return false;
+            }
+            eta[row] = value;
+        }
+    }
+    true
+}
+
+fn constant_offset_group_log_mean(
+    members: &[usize],
+    outcome: &[f64],
+    weights: &[f64],
+    offset: &[f64],
+) -> Option<f64> {
+    // A group-constant offset cancels analytically. Avoid per-row logarithms
+    // and exponentials in this common case; nonrepresentable raw moments
+    // return to the compensated log-sum-exp path before any predictor write.
+    let &first = members.first()?;
+    let mut numerator = CompensatedSum::default();
+    let mut denominator = CompensatedSum::default();
+    for &row in members {
+        if offset[row] != offset[first] {
+            return None;
+        }
+        let value = weights[row] * outcome[row];
+        if !value.is_finite() || (value == 0.0 && outcome[row] > 0.0) {
+            return None;
+        }
+        numerator.add(value);
+        denominator.add(weights[row]);
+    }
+    let numerator = numerator.total();
+    let denominator = denominator.total();
+    if !numerator.is_finite() || numerator <= 0.0 || !denominator.is_finite() || denominator <= 0.0
+    {
+        return None;
+    }
+    let mean = numerator / denominator;
+    (mean.is_finite() && mean > 0.0).then(|| mean.ln())
+}
+
+fn usable_seed_value(value: f64, config: PpmlConfig) -> bool {
+    let mean = value.exp();
+    value.is_finite()
+        && value >= config.bounds.eta_min
+        && value <= config.bounds.eta_max
+        && mean.is_finite()
+        && mean > 0.0
+        && mean >= config.bounds.mu_min
+        && mean <= config.bounds.mu_max
 }
 
 fn validate_start<P: PreparedOlsFitView + ?Sized>(
@@ -3767,10 +3882,24 @@ mod tests {
                 PARALLEL_PROJECTION_MIN_ROWS,
                 3,
             ));
-            assert!(!use_initial_checkpoint_lsmr_accelerator(
+            assert!(use_initial_checkpoint_lsmr_accelerator(
                 &config,
                 PreparedPpmlIrlsPurpose::Publication,
                 PARALLEL_PROJECTION_MIN_ROWS - 1,
+                3,
+            ));
+            for observations in [1, 400, 8_000, 10_000] {
+                assert!(use_initial_checkpoint_lsmr_accelerator(
+                    &config,
+                    PreparedPpmlIrlsPurpose::Publication,
+                    observations,
+                    3,
+                ));
+            }
+            assert!(!use_initial_checkpoint_lsmr_accelerator(
+                &config,
+                PreparedPpmlIrlsPurpose::Publication,
+                0,
                 3,
             ));
             assert!(!use_initial_checkpoint_lsmr_accelerator(
@@ -3927,6 +4056,168 @@ mod tests {
         means_from_eta(&eta, super::super::PoissonBounds::default(), &mut means)
             .expect("representable initialized means");
         assert!(means.iter().all(|mean| mean.is_finite() && *mean > 0.0));
+    }
+
+    #[test]
+    fn one_effect_seed_is_group_optimal_weighted_stable_and_deterministic() {
+        let design = FeDesign::new(
+            6,
+            vec![
+                crate::fe::EffectTerm::new(vec![0, 0, 0, 1, 1, 1], 2, true, Vec::new())
+                    .expect("effect"),
+            ],
+        )
+        .expect("design");
+        let outcome = [0.0, 2.0, 5.0, 3.0, 0.5, 9.0];
+        let weights = [0.25, 4.0, 2.0, 3.0, 1.0, 0.5];
+        let offset = [1000.0, 1000.25, 999.8, -1000.0, -1000.1, -999.6];
+        let mut eta = [0.0; 6];
+        assert!(seed_one_effect_predictor(
+            &outcome,
+            &weights,
+            &offset,
+            &design,
+            PpmlConfig::default(),
+            &mut eta
+        ));
+        for group in [0..3, 3..6] {
+            let score: f64 = group
+                .clone()
+                .map(|row| weights[row] * (outcome[row] - eta[row].exp()))
+                .sum();
+            assert!(score.abs() < 1e-11, "group score {score}");
+            let alpha = eta[group.start] - offset[group.start];
+            for row in group {
+                assert!((eta[row] - offset[row] - alpha).abs() < 3e-13);
+            }
+        }
+        let mut repeated = [0.0; 6];
+        assert!(seed_one_effect_predictor(
+            &outcome,
+            &weights,
+            &offset,
+            &design,
+            PpmlConfig::default(),
+            &mut repeated
+        ));
+        assert_eq!(eta, repeated);
+        let scaled = weights.map(|value| 7.5 * value);
+        assert!(seed_one_effect_predictor(
+            &outcome,
+            &scaled,
+            &offset,
+            &design,
+            PpmlConfig::default(),
+            &mut repeated
+        ));
+        assert!(relative_infinity_difference(&eta, &repeated) < 1e-12);
+    }
+
+    #[test]
+    fn unusable_one_effect_seed_restores_global_start_and_mu_keeps_global_start() {
+        let design = FeDesign::new(
+            4,
+            vec![
+                crate::fe::EffectTerm::new(vec![0, 0, 1, 1], 2, true, Vec::new()).expect("effect"),
+            ],
+        )
+        .expect("design");
+        let offset = [0.0; 4];
+        let weights = [1.0; 4];
+        for outcome in [[2.0, 4.0, 0.0, 0.0], [2.0, 4.0, 1.0, 9.0]] {
+            let prepared = prepared(&outcome, &[]);
+            let config = PreparedPpmlIrlsConfig::default();
+            let (_, global) = initialize(
+                &prepared,
+                &outcome,
+                &weights,
+                &offset,
+                &design,
+                config,
+                None,
+                PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 },
+            )
+            .expect("Mu start");
+            let expected = (outcome.iter().sum::<f64>() / 4.0).ln();
+            assert!(global.iter().all(|value| (*value - expected).abs() < 1e-14));
+            let (_, publication) = initialize(
+                &prepared,
+                &outcome,
+                &weights,
+                &offset,
+                &design,
+                config,
+                None,
+                PreparedPpmlIrlsPurpose::Publication,
+            )
+            .expect("publication start");
+            if outcome[2] == 0.0 {
+                assert_eq!(
+                    publication, global,
+                    "zero-outcome group cannot produce a finite seed"
+                );
+            } else {
+                assert_ne!(publication, global);
+            }
+        }
+    }
+
+    #[test]
+    fn constant_offset_seed_uses_weighted_means_and_falls_back_on_raw_overflow() {
+        let members = [0, 1];
+        assert_eq!(
+            constant_offset_group_log_mean(&members, &[2.0, 4.0], &[3.0, 1.0], &[1000.0; 2]),
+            Some(2.5_f64.ln()),
+        );
+        for (outcome, weights, offset) in [
+            ([2.0, 4.0], [1e308; 2], [1000.0; 2]),
+            ([1e-100; 2], [1e-300; 2], [0.0; 2]),
+            ([2.0, 4.0], [1.0; 2], [0.0, 1.0]),
+            ([0.0; 2], [1.0; 2], [0.0; 2]),
+        ] {
+            assert!(
+                constant_offset_group_log_mean(&members, &outcome, &weights, &offset).is_none()
+            );
+        }
+        let design = FeDesign::new(
+            2,
+            vec![crate::fe::EffectTerm::new(vec![0, 0], 1, true, Vec::new()).unwrap()],
+        )
+        .unwrap();
+        let mut eta = [0.0; 2];
+        assert!(seed_one_effect_predictor(
+            &[2.0, 4.0],
+            &[1e308; 2],
+            &[1000.0; 2],
+            &design,
+            PpmlConfig::default(),
+            &mut eta,
+        ));
+        assert!(eta
+            .iter()
+            .all(|value| (*value - 3.0_f64.ln()).abs() < 1e-12));
+    }
+
+    #[test]
+    fn one_effect_seed_does_not_admit_slopes_or_multiple_effects() {
+        let codes = vec![0, 0, 1, 1];
+        let intercept =
+            crate::fe::EffectTerm::new(codes.clone(), 2, true, Vec::new()).expect("effect");
+        let slope = crate::fe::EffectTerm::new(codes, 2, true, vec![vec![0.0, 1.0, 2.0, 3.0]])
+            .expect("slope");
+        for effects in [Vec::new(), vec![slope], vec![intercept.clone(), intercept]] {
+            let design = FeDesign::new(4, effects).expect("design");
+            let mut eta = [9.0; 4];
+            assert!(!seed_one_effect_predictor(
+                &[1.0; 4],
+                &[1.0; 4],
+                &[0.0; 4],
+                &design,
+                PpmlConfig::default(),
+                &mut eta
+            ));
+            assert_eq!(eta, [9.0; 4]);
+        }
     }
 
     #[test]
@@ -4611,7 +4902,14 @@ mod tests {
         let config = PreparedPpmlIrlsConfig::default();
         let design = prepared.fit_owned_fe_design().expect("fixture FE design");
         let (coefficients, eta) = initialize(
-            &prepared, &outcome, &[1.0; 4], &[0.0; 4], &design, config, None,
+            &prepared,
+            &outcome,
+            &[1.0; 4],
+            &[0.0; 4],
+            &design,
+            config,
+            None,
+            PreparedPpmlIrlsPurpose::Publication,
         )
         .expect("initial state");
         let intercept = prepared

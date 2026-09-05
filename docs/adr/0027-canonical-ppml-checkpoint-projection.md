@@ -63,12 +63,25 @@ check on the result.
    checkpoints are serial and have the same maximum response-plus-all-controls
    width, so one full-width transient peak admits all three without double
    counting mutually exclusive work.
-   It is enabled only at the existing 16,384-row large-projection threshold;
-   below that boundary MAP remains the configured checkpoint route, avoiding
-   an unamortized speculative topology build.
+   It is enabled at every positive retained sample size on this explicit
+   route. The September 5 local expansion removes the former 16,384-row
+   admission cutoff: sparse smaller graphs can have much more expensive MAP
+   checkpoints than larger well-connected graphs. Memory admission uses the
+   same eligibility predicate as initial, strict, and final execution.
+   A failed fresh canonical certificate permits one tighter independent batch
+   at `max(0.01 * requested_tolerance, 1e-14)` if this is strictly tighter.
+   Both batches use the untouched authoritative inputs and execute serially;
+   no rejected candidate is retained during retry construction. The canonical
+   certificate tolerance is unchanged. A second numerical rejection still
+   falls back to MAP. Failed work and retry counts remain observable, and
+   allocation, input, internal, and interruption errors remain fatal.
 7. Result wire 1.2 remains 4x22. Computed initial, strict, and final-Hessian
    checkpoint projections appear on the `lsmr_fused` row. No-work MAP
-   certificates and MAP fallback work appear on the MAP row.
+   certificates and MAP fallback work appear on the MAP row. Checkpoint
+   retries are included in the existing retry column, with all attempt
+   iterations and setup, solve, and certification time retained. Optional
+   private tracing separates first and tighter batches and their actual
+   recurrence and canonical tolerances.
    `checkpoint_family` is LSMR when the accelerator is enabled. A numerical
    LSMR-to-MAP checkpoint fallback is separately counted and named. Requested,
    selected, concrete ordinary, effective ordinary, checkpoint, retry, and

@@ -73,6 +73,14 @@ memory model reports the code/membership copy avoided relative to the former
 owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping
 peaks, and setup-only buffers may be dropped before the OLS/VCE stages.
 
+PPML joint and checkpoint LSMR preflight also charges the pinned Schwarz
+builder's dense cross-tabulation scratch. Its dispatch depends on both the
+product of retained FE level counts and the sparse observation-count cost;
+a sparse graph can therefore use a dense transient table. All eligible pair
+tables are charged concurrently for checkpoint construction, while ordinary
+three-or-more-FE joint LSMR charges only its selected core pair. These are
+construction peaks, not fit-lifetime retained matrices.
+
 ## PPML result and saved-FE ownership
 
 PPML publication retains observation-scale products strictly from the request

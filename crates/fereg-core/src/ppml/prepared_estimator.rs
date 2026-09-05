@@ -1733,6 +1733,27 @@ mod tests {
     }
 
     #[test]
+    fn public_lsmr_checkpoint_workspace_is_required_before_canonical_work() {
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        let admitted = fit_prepared_ppml(request, loaded).expect("unbounded LSMR fixture");
+        let plan = admitted.memory().plan;
+        let usable = plan.selected_inventory().peak_bytes + plan.solver_workspace_bytes - 1;
+        let headroom = 512_u128 * 1024 * 1024;
+        assert!((usable + headroom) / 5 <= headroom);
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = Some(usable + headroom);
+        reset_canonical_frame_refresh_count();
+        let error = fit_prepared_ppml(request, loaded).expect_err("full solver peak must fit");
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("public PPML FE solver workspace"));
+        assert_eq!(take_canonical_frame_refresh_count(), 0);
+    }
+
+    #[test]
     fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation() {
         let (mut admitted_request, admitted_loaded) = fixture(2, false, false, false, false, false);
         admitted_request.solver = PpmlSolverFamily::Cmg;
@@ -1745,9 +1766,9 @@ mod tests {
             take_cmg_early_memory_peaks().expect("CMG early memory peaks");
         let base = admitted.memory().plan.selected_inventory().peak_bytes;
         let solver = admitted.memory().plan.solver_workspace_bytes;
-        assert_eq!(
-            solver, complete,
-            "the small fixture remains below the independent checkpoint-work threshold"
+        assert!(
+            solver > complete,
+            "small specialized fits also admit the independent checkpoint workspace"
         );
         assert!(complete > topology_only);
         let usable = base
@@ -1829,11 +1850,10 @@ mod tests {
         assert_eq!(map.ordinary_frames, 0);
         assert_eq!(
             canonical_refreshes.saturating_add(1),
-            map.checkpoint_frames,
+            map.checkpoint_frames + solver.engines()[1].checkpoint_frames,
             "every canonical checkpoint is attributed to its computing engine",
         );
-        assert!(map.checkpoint_frames >= 1, "the initial frame remains MAP");
-        assert_eq!(solver.checkpoint, PpmlSolverFamily::Map);
+        assert_eq!(solver.checkpoint, PpmlSolverFamily::Lsmr);
     }
 
     fn assert_ppml_results_close(candidate: &CertifiedPpmlResult, baseline: &CertifiedPpmlResult) {

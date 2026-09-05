@@ -289,27 +289,32 @@ isolated native thread team for the call. {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default and currently selects certified MAP; automatic
 route calibration is a later step. {cmd:solver(map)} requests MAP explicitly.
-{cmd:solver(lsmr)} selects the native fused-FWL or joint-incremental LSMR engine
-for the fit, and {cmd:solver(cmg)} selects only the prepared fused-FWL CMG
-engine. The requested family, selected family and engine, final effective
-route, and checkpoint family are reported separately. Explicit LSMR and CMG
-fits with two or three categorical effects use an independently re-certified
-current-weight LSMR checkpoint projector once the observation count reaches
-the native large-projection threshold; smaller fits retain MAP checkpoints.
-The first frame always remains MAP.
+{cmd:solver(lsmr)} selects one native joint-incremental LSMR engine. Its
+concrete identity is {cmd:lsmr_fused} with no active finite controls and
+{cmd:lsmr_joint} otherwise. {cmd:solver(cmg)} selects only prepared fused-FWL
+CMG. The requested family, selected engine, final effective route, checkpoint,
+retry, and fallback work are reported separately. Explicit LSMR and CMG fits
+with two or three categorical effects use independently re-certified
+current-weight LSMR checkpoint projection at every retained sample size.
+The canonical session owns the first full-width rank decision, strict
+convergence checkpoint, and exact final-Hessian synchronization.
 
 {pstd}
 The initial LSMR rollout supports at least two categorical intercept fixed
-effects; CMG supports exactly two or three. Both retain the full PPML output
+effects; CMG supports exactly two or three. For three effects, its two largest
+retained dimensions form the graph core; the remaining dimension may have at
+most 64 non-base indicators. This limit does not count finite regressors.
+Both retain the full PPML output
 surface, including saved fixed effects recovered from the accepted canonical
 final-Hessian state, and require the fast memory route.
 {cmd:memory(auto)} may select that route; explicit {cmd:memory(low)} is not yet
 supported for these two solvers. Recognized requests outside this envelope
 return {cmd:r(498)}. A viable selected route that cannot fit its modeled
 workspace returns {cmd:r(909)}. Numerical CMG nonconvergence triggers a visible,
-permanent ordinary-frame MAP fallback. A numerical checkpoint LSMR failure is
-also visible and retries the untouched authoritative checkpoint inputs with
-MAP. Unsupported topology, memory failure, invalid input, interruption, and
+permanent ordinary-frame MAP fallback. A failed independent checkpoint
+certificate permits one tighter LSMR batch on untouched authoritative inputs;
+a second numerical rejection falls back visibly to MAP. Certification
+tolerances do not change. Unsupported topology, memory failure, invalid input, interruption, and
 internal errors remain fatal.
 
 {pstd}
