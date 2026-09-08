@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "purpose": "Prospective failure diagnosis; not campaign admission",
+  "campaign_admission": false,
+  "job_id": 7490361,
+  "source_snapshot_sha256": "da29adb7f6061a933dccbedbae923d96957361f3aa495f75780be8a05755362e",
+  "plugin_sha256": "12f17d5873a0092e2ac6baee6b3ced2732504550c2983e5ada4a2d1a07f3450a",
+  "scheduler": {
+    "failed": 0,
+    "exit_status": 0,
+    "slots": 28,
+    "hostname": "scc-zj4.scc.bu.edu",
+    "queue": "econ",
+    "wallclock_seconds": 109,
+    "maxvmem": "1.213G"
+  },
+  "application_sentinel": "AUTO_DIAGNOSIS_CAPTURE_COMPLETE",
+  "k0_tighter_fit": {
+    "accepted": false,
+    "timed_out": true,
+    "elapsed_seconds": 60.019428031053394,
+    "budget_seconds": 60,
+    "interpretation": "Reproduced Linux one-thread cycle; ordinary solves complete in two iterations but checkpoint-state resets repeat. Requires numerical diagnosis, not a timeout waiver."
+  },
+  "direct_projection_reaudits": [
+    {"task": 4, "passed": true, "seconds": 3.0777896869694814, "sha256": "75f6ea914e9ddec8f4d389b909a6029fd26f63fa3d513d37ae39ed0bf1083c07"},
+    {"task": 7, "passed": true, "seconds": 21.98363781289663, "sha256": "1460200e0595b00f7d045bac576b0bf15c0792074127e8b02caac6053a6c834a"},
+    {"task": 8, "passed": true, "seconds": 21.73012456705328, "sha256": "b417be7a4de129304b9d5c0d6bbebb97eb35e5b6120ea69d2999c8fec066f92d"}
+  ],
+  "reaudit_policy": "Existing immutable default/tighter captures, existing direct-ring projection with validated multiplier6251, unchanged binding/score/covariance/stability thresholds. Historical failures remain unchanged.",
+  "evidence_directory": "ppml-auto-diagnosis-scc-2026-09-08/work",
+  "followup": {
+    "job_id": 7490499,
+    "purpose": "Trace-only exact checkpoint/ordinary convergence localization; no numerical policy change",
+    "base_snapshot_sha256": "da29adb7f6061a933dccbedbae923d96957361f3aa495f75780be8a05755362e",
+    "changed_file": "crates/fereg-core/src/ppml/prepared_irls.rs",
+    "changed_file_sha256": "372d7242d2ac8d55133f8120c2fa339b25e2f3e9bde2466d36cff7e78df3b475",
+    "slots": 28,
+    "job_budget_seconds": 1800,
+    "fit_budget_seconds": 15
+  }
+}

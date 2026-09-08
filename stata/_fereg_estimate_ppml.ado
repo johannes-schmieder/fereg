@@ -1459,7 +1459,7 @@ program define _fereg_eppml_validate, rclass
         di as error "PPML solver report has an invalid route identity"
         exit 3499
     }
-    if (`requestedsolvercode' == 1 & `selected_family' != 2) | ///
+    if (`requestedsolvercode' == 1 & !inlist(`selected_family', 2, 3)) | ///
        (`requestedsolvercode' != 1 & `selected_family' != `requestedsolvercode') | ///
        (`selected_family' == 2 & `selected_engine' != 1) | ///
        (`selected_family' == 3 & !inlist(`selected_engine', 2, 3)) | ///

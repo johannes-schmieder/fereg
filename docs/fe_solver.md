@@ -130,9 +130,13 @@ registered number of restarted iterations.
 
 ## Public PPML solver families
 
-`feppml` accepts exactly `solver(auto|map|lsmr|cmg)`. Auto currently selects
-MAP; later calibration may change that selection without changing the four
-public families. The PPML request records the requested family, while the
+`feppml` accepts exactly `solver(auto|map|lsmr|cmg)`. Auto selects LSMR for
+exactly two or three categorical intercept effects when fast execution and the
+complete ordinary/checkpoint workspace fit the generation-zero memory plan.
+Other designs, low-memory execution and allocation audits select MAP. A modeled
+workspace veto selects MAP before construction and is not a numerical fallback;
+actual allocation errors remain fatal. Auto never selects CMG. This development
+policy is admitted under ADR 0029. The PPML request records the requested family, while the
 result separately reports the selected family, concrete engine, final effective
 route, and checkpoint family. This policy does not alter `fereg` or its OLS
 solver session.
@@ -180,6 +184,16 @@ other errors remain fatal. At a strict checkpoint, the predictor, objective,
 score, rank, basis, and all estimable coefficients must agree; an unidentified
 normalization coordinate cannot force another IRLS frame, and the canonical
 strict state replaces it before publication.
+
+The reusable categorical MAP CG accelerator forms its symmetric `I-S` action
+by summing weighted FE group contributions. It does not obtain that action
+by subtracting nearly equal observation vectors: cancellation in that
+subtraction can create an off-model-space component that a weak-graph CG
+recurrence amplifies without failing a normal-equation check. Group means use
+the existing scaled compensated reductions, and the action reuses admitted
+buffers. Fresh FE certificates, strict and final-Hessian synchronization, and
+publication tolerances are unchanged; no extra saved-FE recovery is imposed
+on fit-only calls. The ordinary OLS projection retains its existing arithmetic.
 
 The initial public tranche makes no allocation-free, large-scale, or
 thread-scaling claim and no automatic-routing claim. The fused engine still
@@ -266,6 +280,16 @@ engine construction and any strict-basis replacement; current-weight setup,
 per-RHS convergence, and every fresh certificate remain mandatory. Private
 frame tracing reports the capacity as well as all setup, solve, and retry work.
 
+Prepared PPML submits graph RHSs in batches aligned to the actual admitted
+workspace-pool width. The effective width is the largest pool multiple within
+the allocated capacity; only the final batch may be partial. This avoids an
+underfilled execution wave at every capacity boundary without enlarging the
+memory plan or changing any recurrence, reduction order within an RHS, or
+certificate. The rule applies to nuisance setup and response/control solves,
+including selective retries. Private tracing reports `pcg_batch_width`
+separately from `batch_capacity` and retains actual RHS/batch counts. Serial
+pools and the OLS owned-result route keep their original batch boundaries.
+
 Prepared PPML retains the current frame's nuisance graph potentials while
 forming its Schur factor. The correction for each projected response/control
 column uses their linear combination instead of solving that combination a
@@ -279,6 +303,53 @@ matrix is retained. Private tracing separates actual graph RHSs/batches from
 nuisance RHSs completed by reuse. Maximum-RHS iteration counts retain their
 existing units. OLS keeps its owned-result correction solve and coefficient
 recovery path.
+
+Ordinary PPML CMG can seed fresh nuisance-basis solves from the immediately
+preceding fully certified frame (ADR-0024's warm-start amendment). The fit-owned
+cache contains potentials only. Admission requires finite guesses, normalized
+Hessian weights within a factor of two in both directions, no prior tighter
+retry or extra restart, and useful freshly measured initial-residual reduction
+on any prior seeded solve. Current graph, hierarchy, RHSs, recurrence residuals,
+Schur factor, and all full-model certificates are still recomputed. Invalid
+eligibility starts cold; failures, retries, committed checkpoints, and basis
+replacement invalidate the cache. Promotion consumes the completed absorber
+and swaps preflighted buffers only after full certification. Memory charges one
+additional core-vertices-by-nuisance array, never an observation-by-nuisance
+matrix. `phase=cmg_nuisance` tracing records warm RHS, summed nuisance iterations,
+restarts, weight change, initial residual quality, and setup subphase times;
+the existing public iteration counts remain maximum-RHS counts. OLS and CMG
+designs without an actual nuisance block do not use nuisance guesses.
+
+Frozen active controls have a separate fit-owned warm cache, using the same
+finite-guess, factor-two current-weight transition, full-frame certification,
+and own-recurrence quality rules. It stores raw core potentials before nuisance
+correction, never residuals, in the frozen finite-column order. Each fresh solve
+consumes eligibility before overwriting the admitted buffer; only a completely
+certified frame without a tighter retry can promote it again. Failure,
+checkpoint commit and basis replacement reset both seed families. Early and
+retained-frame memory admission charge exactly core vertices times active
+controls, with checked retained capacity; K=0 has no control-potential buffer.
+The working response remains cold: its warm-start experiment triggered an
+expensive three-FE certificate retry. A seeded control batch therefore stops
+before the response column, which uses the original cold recurrence. Cold
+frames keep the original batching. Every original-FE and combined certificate
+is unchanged. `phase=cmg_projection` reports warm RHSs, warm/total summed
+iterations, residual recomputations, fresh initial residual quality and
+RHS/PCG timings, separately for first and retry attempts. OLS uses neither cache.
+
+Prepared CMG frames with an actual nuisance block may retain the split heavy-edge
+forest without low-effective-degree pruning. Eligibility requires every current
+canonical edge's weight divided by its weighted degree at either endpoint to
+be strictly below CMG's existing 1/8 threshold. An allocation-free current-graph
+scan recomputes eligibility each frame; mixed/strong-edge graphs retain default
+grouping. This changes only the fresh
+preconditioner: it prevents nearly unreduced coarse levels from multiplying
+every nuisance RHS's work. The current graph, PCG tolerances/residual checks,
+and independent full-FE certificates are unchanged. The existing direct-factor,
+depth and fill caps also remain unchanged; both groupings have identical
+conservative memory bounds. Two-FE, exactly redundant-nuisance, and OLS routes
+keep the default grouping. Setup traces report the effective grouping threshold;
+hierarchy dimensions and elapsed time must accompany iteration comparisons.
 
 If exact retained membership proves that the third effect is a function of
 either selected core effect, ordinary PPML CMG projects through the two-effect
@@ -308,9 +379,9 @@ two or three FE dimensions. Three-FE nuisance width is capped at 64, saved
 effects use the same canonical final-Hessian recovery, and allocation audit is
 disallowed. Its
 retained fereg-owned buffers and the
-topology-aware CMG hierarchy are charged before use. It makes no cross-frame
-hierarchy-reuse claim: prior-frame preconditioning and warm starts remain off
-until a measured adaptive consumer policy is accepted. Caller buffers remove
+topology-aware CMG hierarchy are charged before use. Prior-frame preconditioning
+remains disabled; only the certified nuisance/control-potential guesses described above
+cross ordinary frames. Caller buffers remove
 owned per-batch result construction but do not imply an allocation-free IRLS
 frame. The OLS CMG construction, polish, and fallback path is unchanged.
 

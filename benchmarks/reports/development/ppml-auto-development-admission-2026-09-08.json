@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "kind": "ppml_auto_development_admission",
+  "development_admission_accepted": true,
+  "qualification_eligible": false,
+  "formal_qualification_accepted": false,
+  "historical_campaigns_reclassified": false,
+  "policy_refit": false,
+  "decision": "ADR 0029",
+  "policy": {
+    "lsmr": "Exactly two or three categorical intercept FE dimensions, fast-memory execution, and complete ordinary/checkpoint workspace admitted before construction.",
+    "map": "All other cases, low memory, allocation audit, or modeled specialized-workspace veto.",
+    "cmg": "Never automatically selected.",
+    "actual_allocation_error": "Fatal; not an admission veto or numerical fallback."
+  },
+  "tested_production_source": {
+    "base_commit": "7c1fc09207864b41f851c0cb58c2dcbe80b1e8be",
+    "base_dirty_snapshot_sha256": "da29adb7f6061a933dccbedbae923d96957361f3aa495f75780be8a05755362e",
+    "overlay": {"crates/fereg-core/src/ppml/prepared_irls.rs": "977522f1b878c2f96b5147f85fd927e739cb65b5111a9062f25d5f3ff50d3c93"},
+    "baseline_linux_plugin_sha256": "12f17d5873a0092e2ac6baee6b3ced2732504550c2983e5ada4a2d1a07f3450a",
+    "repaired_linux_plugin_sha256": "01af450c8fa6d841584661608fa45db41b0f9afb14cd7750eeaa9a3f51bc5124",
+    "repaired_universal_mac_plugin_sha256": "47e578679f81ba9f0ffbb087c94864019427fa15c1f1ecac7ecc3bac5791caee"
+  },
+  "science": {
+    "hard_scopes": 21,
+    "distinct_original_datasets": 9,
+    "independent_candidate_audit_pass_scopes": 21,
+    "complete_reference_record_numerical_parity_scopes": 18,
+    "proven_optimum_reference_accuracy_exception_scopes": [17],
+    "reference_unavailable_independently_proven_candidate_scopes": [7, 8],
+    "unresolved_completed_numerical_disagreements": 0,
+    "coefficient_envelope": {"rtol": 1e-7, "atol": 1e-10},
+    "covariance_envelope": {"rtol": 1e-6, "atol": 1e-10},
+    "objective": "Finite, valid, independently Poisson-identity-consistent reported reference pair; candidate no worse under ADR 0026.",
+    "runtime_or_publication_tolerances_weakened": false,
+    "original_input_hashes_reverified": true,
+    "reference_closure_matches_original_setup": true
+  },
+  "repair_validation": {
+    "repaired_source_linux_scopes": [1, 3, 11, 17],
+    "job_ids": [7490653, 7490705],
+    "all_candidate_and_independent_audit_sentinels_pass": true,
+    "all_scheduler_failed_and_exit_status_zero": true,
+    "scope": "Complete baseline coverage plus targeted common-repair validation, not an all-scope repaired-source rerun."
+  },
+  "local_guards": {
+    "repaired_core_tests": 745,
+    "constrained_memory_tests": 2,
+    "strict_checkpoint_focused_tests": 18,
+    "auto_python_tests": 71,
+    "accuracy_python_tests": 10,
+    "universal_binary_and_actual_plugin_abi": "pass",
+    "auto_explicit_stata_pairs": 12,
+    "additional_three_fe_saved_effect_and_prediction_pair": "pass",
+    "low_memory_and_failure_atomicity": "pass",
+    "format_and_core_clippy": "pass"
+  },
+  "evidence": [
+    "ppml-auto-calibration-v3-terminal-2026-09-07.json",
+    "ppml-bounded-validation-local-2026-09-07.json",
+    "ppml-bounded-validation-scc-2026-09-07.json",
+    "ppml-auto-routing-local-2026-09-08.json",
+    "ppml-actual-auto-linux-smoke-2026-09-08.json",
+    "ppml-actual-auto-acceptance-scc-2026-09-08.json",
+    "ppml-auto-diagnosis-scc-2026-09-08.json",
+    "ppml-checkpoint-refinement-scc-2026-09-08.json",
+    "ppml-checkpoint-guardrails-scc-2026-09-08.json",
+    "ppml-auto-reference-record-adjudication-2026-09-08.json",
+    "ppml-auto-adjudication-completion-2026-09-08.json",
+    "ppml-auto-adjudication-completion-2026-09-08/work/aggregate-bindings.json"
+  ],
+  "limitations": [
+    "Development admission only: no formal cross-platform, Windows, release or performance qualification is asserted.",
+    "Complete reference records recovered from failed campaigns are prospective scientific witnesses under preserved input/reference context, not sealed per-fit provenance or accepted timings.",
+    "Four strict reference attempts timed out; none is reclassified as a successful fit or numerical reference error.",
+    "Reference predicted-state diagnostics unavailable from incomplete runs remain unavailable; no predicted or projected state is used as an additional objective witness.",
+    "No source revision inherits a historical campaign's pass; each baseline, repair and local artifact retains its own identity."
+  ]
+}

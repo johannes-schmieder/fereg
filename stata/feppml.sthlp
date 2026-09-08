@@ -287,8 +287,11 @@ before publishing output. {cmd:poolsize()} sets the low-memory block width.
 {cmd:threads(0)} uses the native default; a positive integer requests an
 isolated native thread team for the call. {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
-{cmd:solver(auto)} is the default and currently selects certified MAP; automatic
-route calibration is a later step. {cmd:solver(map)} requests MAP explicitly.
+{cmd:solver(auto)} is the default. It selects LSMR for exactly two or three
+categorical intercept effects when fast-memory execution and the complete
+specialized workspace fit the native memory plan; otherwise it selects MAP.
+Absorbed slopes and low-memory execution select MAP. Auto does not select CMG.
+{cmd:solver(map)} requests MAP explicitly.
 {cmd:solver(lsmr)} selects one native joint-incremental LSMR engine. Its
 concrete identity is {cmd:lsmr_fused} with no active finite controls and
 {cmd:lsmr_joint} otherwise. {cmd:solver(cmg)} selects only prepared fused-FWL

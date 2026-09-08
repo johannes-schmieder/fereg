@@ -289,6 +289,7 @@ pub fn estimate_fe_solver_memory(
         checked_mul(n, effects, "Schwarz observation-effect topology")?,
         checked_mul(levels, 48, "Schwarz level topology")?,
         checked_mul(n, 24, "Schwarz cross-tab edge workspace")?,
+        schwarz_weighted_correction_bytes(n, effect_level_counts)?,
     ])?;
     let lsmr_off_bytes = lsmr_common;
     let lsmr_diagonal_bytes = checked_sum(&[lsmr_common, diagonal_bytes])?;
@@ -375,6 +376,35 @@ pub fn plan_ols_memory(
     })
 }
 
+/// Transient compensated sums for all concurrently constructed intercept pairs.
+/// Weights are not yet known here, so structural-unit and slope routes are
+/// conservatively charged too. Sparse construction reuses column corrections.
+pub(crate) fn schwarz_weighted_correction_bytes(
+    observations: u128,
+    level_counts: &[usize],
+) -> Result<u128> {
+    let sparse_cost = checked_mul(observations, 12, "Schwarz sparse scratch")?;
+    let mut total = 0;
+    for (i, &left) in level_counts.iter().enumerate() {
+        for &right in &level_counts[i + 1..] {
+            let cells = checked_mul(left as u128, right as u128, "Schwarz cross-tab cells")?;
+            let dense_cost = checked_mul(cells, 8, "Schwarz cell corrections")?;
+            let levels = checked_sum(&[left as u128, right as u128])?;
+            let diagonals = checked_mul(levels, 8, "Schwarz diagonal corrections")?;
+            total = checked_sum(&[
+                total,
+                diagonals,
+                if cells <= 5_000_000 || dense_cost <= sparse_cost {
+                    dense_cost
+                } else {
+                    0
+                },
+            ])?;
+        }
+    }
+    Ok(total)
+}
+
 fn checked_mul(left: u128, right: u128, label: &str) -> Result<u128> {
     left.checked_mul(right).ok_or_else(|| {
         FeregError::new(
@@ -396,6 +426,38 @@ fn checked_sum(values: &[u128]) -> Result<u128> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn schwarz_corrections_charge_dense_sparse_and_concurrent_pairs() {
+        assert_eq!(
+            schwarz_weighted_correction_bytes(8_000, &[2_500, 2_000]).unwrap(),
+            40_036_000
+        );
+        assert_eq!(
+            schwarz_weighted_correction_bytes(8_000, &[2_501, 2_000]).unwrap(),
+            36_008
+        );
+        assert_eq!(
+            schwarz_weighted_correction_bytes(4_000_000, &[3_000, 2_000]).unwrap(),
+            48_040_000
+        );
+        assert_eq!(
+            schwarz_weighted_correction_bytes(3_999_999, &[3_000, 2_000]).unwrap(),
+            40_000
+        );
+        let levels = [2_666, 2_000, 1_600];
+        let expected = (2_666_u128 * 1_600 + 2_000 * 1_600 + 2 * (2_666 + 2_000 + 1_600)) * 8;
+        assert_eq!(
+            schwarz_weighted_correction_bytes(8_000, &levels).unwrap(),
+            expected
+        );
+        assert_eq!(
+            schwarz_weighted_correction_bytes(8_000, &[1_600, 2_666, 2_000]).unwrap(),
+            expected
+        );
+        assert_eq!(schwarz_weighted_correction_bytes(8_000, &[20]).unwrap(), 0);
+        assert!(schwarz_weighted_correction_bytes(u128::MAX, &[2, 3]).is_err());
+    }
 
     #[test]
     fn low_mode_is_smaller_for_wide_models() {

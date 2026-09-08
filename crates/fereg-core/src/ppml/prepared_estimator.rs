@@ -190,7 +190,7 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<CertifiedPpmlResult> {
     validate_request(&request, &loaded)?;
-    let solver_plan = PpmlSolverPlan::new(request.solver);
+    let mut solver_plan = PpmlSolverPlan::new(request.solver);
     request.memory.require_fast_route = matches!(
         solver_plan.selected,
         PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
@@ -250,6 +250,12 @@ pub fn fit_prepared_ppml_interruptible(
         request.memory,
         request.memory_preflight_probe,
     )?;
+    if request.solver == PpmlSolverFamily::Auto
+        && auto_lsmr_eligible(&request)
+        && preliminary_plan.selected == PpmlMemoryRoute::Fast
+    {
+        solver_plan.selected = PpmlSolverFamily::Lsmr;
+    }
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
     let numeric = prepare_ppml_numeric_data(&numeric_input.as_input())?;
@@ -583,6 +589,17 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
         }
     }
     Ok(())
+}
+
+fn auto_lsmr_eligible(request: &PreparedPpmlRequestV1) -> bool {
+    // The frozen calibration admitted two-/three-way categorical designs,
+    // not every topology accepted by the explicit LSMR family.
+    (2..=3).contains(&request.ols.absorbed_terms.len())
+        && request.memory.requested != MemoryMode::Low
+        && request.allocation_snapshot_probe.is_none()
+        && request.ols.absorbed_terms.iter().all(|term| {
+            term.intercept && term.slope_sources.is_empty() && !term.categorical_sources.is_empty()
+        })
 }
 
 fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
@@ -1525,6 +1542,132 @@ mod tests {
     }
 
     #[test]
+    fn automatic_family_matches_explicit_solver_and_preserves_requested_identity() {
+        for effects in 0..=3 {
+            for zero_active in [false, true] {
+                if zero_active && effects == 0 {
+                    continue;
+                }
+                let (mut request, mut loaded) = fixture(effects, true, false, true, true, false);
+                if zero_active {
+                    make_finite_control_collinear_with_first_effect(&mut loaded);
+                }
+                request.solver = PpmlSolverFamily::Auto;
+                let selected = if effects >= 2 {
+                    PpmlSolverFamily::Lsmr
+                } else {
+                    PpmlSolverFamily::Map
+                };
+                let mut explicit = request.clone();
+                explicit.solver = selected;
+                let expected = fit_prepared_ppml(explicit, loaded.clone()).expect("explicit fit");
+                let automatic = fit_prepared_ppml(request, loaded).expect("automatic fit");
+                assert_eq!(automatic.solver().requested, PpmlSolverFamily::Auto);
+                assert_eq!(automatic.solver().selected, selected);
+                assert_eq!(automatic.solver().effective, selected);
+                assert_eq!(
+                    automatic.solver().selected_engine,
+                    expected.solver().selected_engine
+                );
+                assert_eq!(automatic.solver().checkpoint, expected.solver().checkpoint);
+                assert_eq!(automatic.solver().fallback_count, 0);
+                assert_ppml_results_close(&automatic, &expected);
+                assert_eq!(automatic.coefficients(), expected.coefficients());
+                assert_eq!(automatic.sample(), expected.sample());
+                assert_eq!(automatic.likelihood(), expected.likelihood());
+                assert_eq!(automatic.inference().dof, expected.inference().dof);
+                assert_eq!(automatic.inference().wald, expected.inference().wald);
+                assert_eq!(
+                    automatic.inference().vce.covariance,
+                    expected.inference().vce.covariance
+                );
+                assert_eq!(
+                    automatic.inference().vce.certificate,
+                    expected.inference().vce.certificate
+                );
+                for (left, right) in automatic
+                    .inference()
+                    .vce
+                    .standard_errors
+                    .iter()
+                    .chain(&automatic.inference().vce.z_statistics)
+                    .zip(
+                        expected
+                            .inference()
+                            .vce
+                            .standard_errors
+                            .iter()
+                            .chain(&expected.inference().vce.z_statistics),
+                    )
+                {
+                    // Omitted coordinates carry the same intentional NaN.
+                    assert_eq!(left.to_bits(), right.to_bits());
+                }
+                assert_eq!(automatic.output(), expected.output());
+                assert_eq!(automatic.fixed_effects(), expected.fixed_effects());
+                assert_eq!(automatic.clusters(), expected.clusters());
+            }
+        }
+    }
+
+    #[test]
+    fn automatic_lsmr_admission_preserves_map_only_surfaces() {
+        let (mut request, _) = fixture(2, false, false, false, false, false);
+        assert!(auto_lsmr_eligible(&request));
+        request.memory.requested = MemoryMode::Low;
+        assert!(!auto_lsmr_eligible(&request));
+        request.memory.requested = MemoryMode::Auto;
+        request.allocation_snapshot_probe = Some(stable_allocation_probe);
+        assert!(!auto_lsmr_eligible(&request));
+        request.allocation_snapshot_probe = None;
+        request.ols.absorbed_terms[0]
+            .slope_sources
+            .push(SourceId::new(1).expect("source"));
+        assert!(!auto_lsmr_eligible(&request));
+        request.ols.absorbed_terms[0].slope_sources.clear();
+        request.ols.absorbed_terms[0].intercept = false;
+        assert!(!auto_lsmr_eligible(&request));
+        let (request, _) = fixture(4, false, false, false, false, false);
+        assert!(!auto_lsmr_eligible(&request));
+    }
+
+    #[test]
+    fn automatic_low_memory_retains_certified_map() {
+        let (mut request, loaded) = fixture(2, true, false, false, false, false);
+        request.solver = PpmlSolverFamily::Auto;
+        request.memory.requested = MemoryMode::Low;
+        let automatic = fit_prepared_ppml(request, loaded).expect("automatic low-memory fit");
+        assert_eq!(automatic.solver().requested, PpmlSolverFamily::Auto);
+        assert_eq!(automatic.solver().selected, PpmlSolverFamily::Map);
+        assert_eq!(automatic.solver().fallback_count, 0);
+    }
+
+    #[test]
+    fn automatic_specialized_fit_is_interruption_atomic() {
+        for stop in [
+            PpmlInterruptPoint::IrlsIteration,
+            PpmlInterruptPoint::StrictFinalSolve,
+            PpmlInterruptPoint::Inference,
+            PpmlInterruptPoint::FeRecovery,
+        ] {
+            let (mut request, loaded) = fixture(2, true, false, false, false, false);
+            request.solver = PpmlSolverFamily::Auto;
+            let error = fit_prepared_ppml_interruptible(request, loaded, &mut |point| {
+                if point == stop {
+                    Err(FeregError::new(
+                        ErrorCode::Interrupted,
+                        "automatic fit interrupted",
+                    ))
+                } else {
+                    Ok(())
+                }
+            })
+            .expect_err("interrupted auto must not return a result");
+            assert_eq!(error.code, ErrorCode::Interrupted);
+        }
+    }
+
+    #[test]
     fn explicit_lsmr_matches_map_and_reports_its_concrete_engine() {
         for effects in [2, 3] {
             let (baseline_request, baseline_loaded) =
@@ -1754,6 +1897,33 @@ mod tests {
     }
 
     #[test]
+    fn automatic_workspace_budget_veto_selects_map_without_solver_retry() {
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        let explicit = fit_prepared_ppml(request, loaded).expect("unbounded LSMR");
+        let plan = explicit.memory().plan;
+        let usable = plan.selected_inventory().peak_bytes + plan.solver_workspace_bytes - 1;
+        let headroom = 512_u128 * 1024 * 1024;
+        assert!((usable + headroom) / 5 <= headroom);
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Auto;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = Some(usable + headroom);
+        let automatic = fit_prepared_ppml(request, loaded).expect("budget-admitted MAP");
+        assert_eq!(automatic.solver().requested, PpmlSolverFamily::Auto);
+        assert_eq!(automatic.solver().selected, PpmlSolverFamily::Map);
+        assert_eq!(automatic.solver().fallback_count, 0);
+        assert_eq!(automatic.memory().plan.solver_workspace_bytes, 0);
+        for engine in &automatic.solver().engines()[1..] {
+            assert_eq!(engine.iterations, 0);
+            assert_eq!(engine.retries, 0);
+            assert_eq!(engine.setup_seconds, 0.0);
+        }
+        assert_ppml_results_close(&automatic, &explicit);
+    }
+
+    #[test]
     fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation() {
         let (mut admitted_request, admitted_loaded) = fixture(2, false, false, false, false, false);
         admitted_request.solver = PpmlSolverFamily::Cmg;
@@ -1872,11 +2042,12 @@ mod tests {
     }
 
     #[test]
-    fn explicit_public_map_matches_auto_bitwise() {
-        let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
+    fn explicit_public_map_matches_one_effect_auto_bitwise() {
+        let (mut baseline_request, baseline_loaded) = fixture(1, false, false, false, false, false);
+        baseline_request.solver = PpmlSolverFamily::Auto;
         let baseline = fit_prepared_ppml(baseline_request, baseline_loaded)
             .expect("production MAP PPML oracle");
-        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        let (mut request, loaded) = fixture(1, false, false, false, false, false);
         request.solver = PpmlSolverFamily::Map;
         request.memory.requested = MemoryMode::Fast;
         let candidate = fit_prepared_ppml(request, loaded).expect("explicit public MAP PPML");
@@ -2875,7 +3046,7 @@ mod tests {
                 requested_observation_columns: 4 + usize::from(save_first && effects > 0),
                 publication_matrix_cells: 512,
             },
-            solver: PpmlSolverFamily::Auto,
+            solver: PpmlSolverFamily::Map,
             inject_fe_recovery_allocation_failure: false,
         };
         let outcome = if separated {

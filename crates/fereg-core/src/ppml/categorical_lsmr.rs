@@ -2133,7 +2133,11 @@ impl CategoricalLsmrMemoryShape {
                 levels,
                 maximum_levels,
                 threads,
-                categorical_dense_cross_tab_bytes(rows, effect_level_counts)?,
+                checked_add_memory(
+                    categorical_dense_cross_tab_bytes(rows, effect_level_counts)?,
+                    crate::memory::schwarz_weighted_correction_bytes(rows, effect_level_counts)?,
+                    "PPML LSMR cross-tab and compensation scratch",
+                )?,
             )?,
             CategoricalLsmrPolicy::CorePair => {
                 if effect_level_counts.len() < 2 {
@@ -2161,10 +2165,14 @@ impl CategoricalLsmrMemoryShape {
                     core_levels,
                     core_maximum_levels,
                     threads,
-                    categorical_dense_cross_tab_bytes(
-                        rows,
-                        &[effect_level_counts[order[0]], effect_level_counts[order[1]]],
-                    )?,
+                    {
+                        let core = [effect_level_counts[order[0]], effect_level_counts[order[1]]];
+                        checked_add_memory(
+                            categorical_dense_cross_tab_bytes(rows, &core)?,
+                            crate::memory::schwarz_weighted_correction_bytes(rows, &core)?,
+                            "PPML LSMR core cross-tab and compensation scratch",
+                        )?
+                    },
                 )?
             }
         };
@@ -2181,7 +2189,7 @@ impl CategoricalLsmrMemoryShape {
 }
 
 fn categorical_dense_cross_tab_bytes(rows: u128, level_counts: &[usize]) -> Result<u128> {
-    // Pinned within b7779cb cross_tab/accumulate.rs chooses dense whenever
+    // The pinned within cross_tab/accumulate.rs chooses dense whenever
     // L_i * L_j <= 5,000,000 OR its 8-byte table costs no more than 12N.
     // Pair construction is parallel; charge all simultaneously live tables.
     // The existing edge bound separately covers CSR output and sparse scratch.

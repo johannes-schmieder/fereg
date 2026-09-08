@@ -1,0 +1,148 @@
+{
+  "campaign_admission": false,
+  "numerical_reference_accuracy_exception_supported": true,
+  "audit_sha256": "e6523806024612d22a19bfad6d6429d6158efbd7ef22828046ecdb6784e7e25f",
+  "coefficient_proof_sha256": "0d30308702b6bf9b711c8ec2e1ecaac7d03aaf1e9a9b098bb971c10b1667cad5",
+  "covariance_proof_sha256": "7aea07008f236db17276be68498a55b29d4a7028736b5ad203641dc0af465c2c",
+  "reference_table_sha256": "75388934fbbb021619e2cbf5f6897d5864664adaff7ff24bcda3a787b2d1966b",
+  "local_adjudication_script_sha256": "a7a553a01ab540e0a7a73ff730d6f8fdc1693e62c618bf318b33789f6737ed14",
+  "comparisons": [
+    {
+      "repetition": 1,
+      "pre_exception_issues": [
+        "ppmlhdfe_coefficients",
+        "ppmlhdfe_vce"
+      ],
+      "coefficient_exception_supported": true,
+      "covariance_exception_supported": true,
+      "coefficient_reference_outside_count": 17,
+      "covariance_reference_outside_count": 50,
+      "all_other_compared_science_pass": true,
+      "dof_notes": [
+        "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+        "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+      ]
+    },
+    {
+      "repetition": 2,
+      "pre_exception_issues": [
+        "ppmlhdfe_coefficients",
+        "ppmlhdfe_vce"
+      ],
+      "coefficient_exception_supported": true,
+      "covariance_exception_supported": true,
+      "coefficient_reference_outside_count": 17,
+      "covariance_reference_outside_count": 50,
+      "all_other_compared_science_pass": true,
+      "dof_notes": [
+        "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+        "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+      ]
+    },
+    {
+      "repetition": 3,
+      "pre_exception_issues": [
+        "ppmlhdfe_coefficients",
+        "ppmlhdfe_vce"
+      ],
+      "coefficient_exception_supported": true,
+      "covariance_exception_supported": true,
+      "coefficient_reference_outside_count": 17,
+      "covariance_reference_outside_count": 50,
+      "all_other_compared_science_pass": true,
+      "dof_notes": [
+        "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+        "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+      ]
+    },
+    {
+      "repetition": 4,
+      "pre_exception_issues": [
+        "ppmlhdfe_coefficients",
+        "ppmlhdfe_vce"
+      ],
+      "coefficient_exception_supported": true,
+      "covariance_exception_supported": true,
+      "coefficient_reference_outside_count": 17,
+      "covariance_reference_outside_count": 50,
+      "all_other_compared_science_pass": true,
+      "dof_notes": [
+        "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+        "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+      ]
+    },
+    {
+      "repetition": 5,
+      "pre_exception_issues": [
+        "ppmlhdfe_coefficients",
+        "ppmlhdfe_vce"
+      ],
+      "coefficient_exception_supported": true,
+      "covariance_exception_supported": true,
+      "coefficient_reference_outside_count": 17,
+      "covariance_reference_outside_count": 50,
+      "all_other_compared_science_pass": true,
+      "dof_notes": [
+        "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+        "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "kind": "ppml_optimum_accuracy_development_adjudication",
+  "qualification_eligible": false,
+  "historical_campaign_status_unchanged": true,
+  "source_bound_local_numerical_adjudication": true,
+  "coefficient_error_upper": "3.89626314788087233014602195848057985374015998737134643436376E-12",
+  "predictor_log_error_upper": "2.49488079579364897665565857703412297892299863223977559209944E-9",
+  "covariance_error_upper": "1.42416216157331450157203860909501599297340370335194317112332E-12",
+  "default_tighter_differences": {
+    "b": 0.0,
+    "V": 0.0,
+    "ll": 0.0,
+    "deviance": 0.0,
+    "mu": 0.0
+  },
+  "manifest": "feppml_auto_science_admission_v2.json",
+  "independent_math_review": {
+    "model": "gpt-6-astra",
+    "reasoning": "xhigh",
+    "conclusion": "No blocking mathematical or arithmetic defects in optimum extension or implementation."
+  },
+  "tests": {
+    "independent_science": 25,
+    "coefficient_accuracy": 4,
+    "covariance_accuracy": 6,
+    "optimum_adjudication": 8
+  },
+  "candidate_plugin_sha256": "3bf6bc146f47efe1cdc4a1c4266f3a08a9bc6531fd9995a3a4993ada113ad7ff",
+  "original_input_dta_sha256": "2bcac1e42c6ca8e51da460ce77ab714390c0dbf22abc030a7d6bb5285d3b40e1",
+  "reference_diagnostics": {
+    "reported_objective_pair_valid": true,
+    "candidate_objective_no_worse": true,
+    "historical_strict_fit_completed": false,
+    "historical_predicted_state_diagnostics_available_for_this_adjudication": false
+  },
+  "limitations": [
+    "Numerical exception evidence only; not full campaign admission or formal qualification.",
+    "Original reference route/pins and input belong to preserved historical campaign; no historical receipt is reclassified.",
+    "Exact-source actual-auto Linux and remaining hard-case acceptance are still pending."
+  ],
+  "local_work_files_sha256": {
+    "capture.log": "01caa326ceea88a8cc5dac8fea009aad0cc31661d072cdb2c293bd00a442563d",
+    "ppml_covariance_accuracy.py": "366cd49cd16d1137c6541a813632a4adbecc00fa01146f7bf5fe1275ad78913e",
+    "numerical-adjudication.json": "aa313d494ae96ab992ef983b1cc9dbf03292153edb5df33725e1a0a9600ee549",
+    "audit.json": "e6523806024612d22a19bfad6d6429d6158efbd7ef22828046ecdb6784e7e25f",
+    "tighter.tsv": "f322ae1d8c292b093093069b1d777a19c860fccdee2e2faaa7f8a454ac4cdc6b",
+    "adjudicate.py": "a7a553a01ab540e0a7a73ff730d6f8fdc1693e62c618bf318b33789f6737ed14",
+    "covariance-optimum-reference-comparison.json": "54427c1ca4ffde3924d4d81b9e442f83774a4d9705bad4bfef177ae320fb6108",
+    "covariance-optimum.json": "7aea07008f236db17276be68498a55b29d4a7028736b5ad203641dc0af465c2c",
+    "ppml_auto_science.py": "ad352f8c0f6db149b67b7aea0467913f51d3044e450308bcef80f6d2c3cd0398",
+    "capture.do": "26ab54e7053c171aad322fe5792b0a8c2a317d753d82c1b157b48189d0300aff",
+    "coefficient-optimum.json": "0d30308702b6bf9b711c8ec2e1ecaac7d03aaf1e9a9b098bb971c10b1667cad5",
+    "default.tsv": "caa60aea89c3e144d94931940137c6874971dffd04e73c8d275154c1dbdd0ec9",
+    "ppml_coefficient_accuracy.py": "fc65f7d9f09bd3b79cdbdf1f6b152d9569934f5643e2666df835365970ad9c6c",
+    "audit-source/ppml_auto_science.py": "5eef872565cd0d87e35c969b6bc6e1ed7b930579972ede10230e005d2ab2e397",
+    "audit-source/ppml_coefficient_accuracy.py": "fc65f7d9f09bd3b79cdbdf1f6b152d9569934f5643e2666df835365970ad9c6c"
+  }
+}

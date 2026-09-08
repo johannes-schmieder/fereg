@@ -21,9 +21,9 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v4.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v4"
-SCHEMA_VERSION = 4
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v11.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v11"
+SCHEMA_VERSION = 11
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
 # closed against a new helper file.  The retained changing-weight session is a

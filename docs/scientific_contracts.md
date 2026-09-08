@@ -112,6 +112,14 @@ For well-conditioned cases, use the registered tolerances:
 - standard errors/VCE: `rtol=1e-6`, `atol=1e-10`;
 - residuals and fitted values: `rtol=1e-7`, `atol=1e-9`.
 
+For prospective PPML automatic-route development admission, Johannes has
+authorized the independently proven reference-accuracy exception specified in
+[ADR 0029](adr/0029-ppml-calibrated-auto-development-admission.md). It retains
+these tolerances: an optimum enclosure must prove candidate accuracy and
+reference error for each excepted discrepancy. A fixed-returned-mean covariance
+check alone is insufficient. This does not admit the candidate, alter runtime
+certificates, or reinterpret historical campaign receipts.
+
 For bounded LSMR fixtures, the authoritative target is the sealed 100-digit
 explicit-design oracle, with one grounded FE coordinate per connected
 component. It seals residuals, fitted values, weighted objectives, and

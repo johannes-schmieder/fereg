@@ -44,7 +44,11 @@ the documented `r(101)` rejection. After estimation, `predict` supports
 required retained state is available. See `help feppml` for the exact syntax,
 drop codes, stored results, failure atomicity, and runnable examples.
 
-`solver(auto)` currently selects MAP while automatic routing is calibrated.
+`solver(auto)` selects LSMR for exactly two or three categorical intercept
+effects when fast-memory execution and the complete specialized workspace fit
+the native memory plan. Otherwise it selects MAP, including low-memory and
+absorbed-slope designs. It does not select CMG. This is the development-admitted
+policy in ADR 0029, not a formal qualification claim.
 Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
 for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
 Concrete LSMR preconditioner and reuse choices remain internal and are not
@@ -54,11 +58,12 @@ exactly two or three. Both retain the full PPML output surface, including
 saved fixed effects recovered from the accepted canonical final-Hessian state,
 and require fast-memory execution; a recognized request outside that envelope
 returns `r(498)`. Numerical CMG nonconvergence falls back permanently and
-visibly to MAP for ordinary frames. On these explicit families, the initial
+visibly to MAP for ordinary frames. On admitted two- or three-effect LSMR/CMG
+fits, including automatic LSMR, the initial
 full-width basis-freezing projection and the strict and final-Hessian
-projections use current-weight LSMR at the native large-projection threshold
-and only after independent canonical recertification; smaller fits retain MAP
-checkpoints. Canonical rank/status authority remains unchanged. Numerical
+projections use current-weight LSMR at every retained sample size,
+only after independent canonical recertification. Canonical rank/status
+authority remains unchanged. Numerical
 failure visibly retries the untouched checkpoint through MAP, while other
 errors remain fatal.
 `e(feppml_solver)` and the accompanying macros distinguish requested,

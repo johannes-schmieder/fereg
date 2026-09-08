@@ -1,0 +1,1267 @@
+{
+  "schema_version": 1,
+  "campaign_admission": false,
+  "qualification_eligible": false,
+  "historical_campaigns_unchanged": true,
+  "scope": "Numerical record adjudication only. Original input/reference execution provenance and aggregate admission remain separate gates.",
+  "parser_sha256": "7d281f39a3d87c252a212bd0e1e6944bfa208f8532fccc880e8748d33e384691",
+  "generator_sha256": "fb5cbe7ba51b0c4cb1c1b5bb78a1d8a4b078844faacd624e6546610e17601733",
+  "scopes": [
+    {
+      "task": 1,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091021,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-001/default.tsv",
+      "candidate_capture_sha256": "80a8d19270cbe838bde10e4aefb3ed13b12aac412290f48dcd0ce243092d134d",
+      "audit": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-001/audit.json",
+      "audit_sha256": "58f7cb489ec30ce084d9e4077a55f7649b486f936e5773b58bf12b4bf327eca8",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-008/capture/scopes/local_holdout-chain_2fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "5b4d05d3f603ca668a950b6821ae6141b573bb1c2510260fad16d2ca35d1e1eb",
+      "complete_reference_rows": 3,
+      "rejected_reference_records": [
+        {
+          "row": 4,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 2,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091021,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-002/default.tsv",
+      "candidate_capture_sha256": "fab2479e78980f8a9135309a9155b134e7823aa3d386ebbc0df0a4b5a938ba21",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-002/audit.json",
+      "audit_sha256": "ae4bfd90d9d5c9d8e73481919ddc59a33cff45c6dd96748dfbd3da224d3cf2b0",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-008/capture/scopes/local_holdout-chain_2fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "5b4d05d3f603ca668a950b6821ae6141b573bb1c2510260fad16d2ca35d1e1eb",
+      "complete_reference_rows": 3,
+      "rejected_reference_records": [
+        {
+          "row": 4,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 3,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 0,
+        "seed": 2026091301,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-checkpoint-refinement-scc-2026-09-08/work/default.tsv",
+      "candidate_capture_sha256": "ec19d8777540c066cc50b0923af030b483489ff3115495e2364bca33bd71ee76",
+      "audit": "benchmarks/reports/development/ppml-checkpoint-refinement-scc-2026-09-08/work/audit.json",
+      "audit_sha256": "99cd81b782f4edd7b1a4286626a09e41bc426ee3740cb134619ff1ffe5c42fc7",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-011/capture/scopes/local_holdout-many_levels_2fe-n75000-k0-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "657a29e271106e5d968668225a615794511c3c184ce9d02d1f88f4c562b401a8",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 4,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 0,
+        "seed": 2026091301,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-004/default.tsv",
+      "candidate_capture_sha256": "fcaf9d3686086211d67ca0dd3b532ef3260bda7aa14c18862a97b471afa6a5f4",
+      "audit": "benchmarks/reports/development/ppml-auto-diagnosis-scc-2026-09-08/work/direct-audit-4.json",
+      "audit_sha256": "75f6ea914e9ddec8f4d389b909a6029fd26f63fa3d513d37ae39ed0bf1083c07",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-011/capture/scopes/local_holdout-many_levels_2fe-n75000-k0-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "657a29e271106e5d968668225a615794511c3c184ce9d02d1f88f4c562b401a8",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 5,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 10,
+        "seed": 2026091311,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-005/default.tsv",
+      "candidate_capture_sha256": "09d485a04c5dba9b9c621c58f588c787aa418ad46bf7462b550ffa567ddbdfb1",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-005/audit.json",
+      "audit_sha256": "ef9ad573a1a8ce1dfc226c496780f61c5df783e7631c5fc3f6a56061b61dd06f",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-012/capture/scopes/local_holdout-many_levels_2fe-n75000-k10-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "2021a8e63e460d88045bea9fdf3fdf2adb95134fa5407b0cf268340d22ee7581",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 6,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 10,
+        "seed": 2026091311,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-006/default.tsv",
+      "candidate_capture_sha256": "f884efaf5348638ca4f03dd596e2592d99b1b03b2a41065cae072516f8981c10",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-006/audit.json",
+      "audit_sha256": "870ebbb67cba05be6ce9d1a830211a16052ec414d9201bbda215e3cbd9cc647f",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-012/capture/scopes/local_holdout-many_levels_2fe-n75000-k10-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "2021a8e63e460d88045bea9fdf3fdf2adb95134fa5407b0cf268340d22ee7581",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 7,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091321,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-007/default.tsv",
+      "candidate_capture_sha256": "9d786894690b6d64d70d48171eb5f43aaa35da747eebb8f2cfccd0bd6dd5133a",
+      "audit": "benchmarks/reports/development/ppml-auto-diagnosis-scc-2026-09-08/work/direct-audit-7.json",
+      "audit_sha256": "1460200e0595b00f7d045bac576b0bf15c0792074127e8b02caac6053a6c834a",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-013/capture/scopes/local_holdout-many_levels_2fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "3a5d8e2e461894bbdc2566d754651d977a312ca04faf48916361606d8a168956",
+      "complete_reference_rows": 0,
+      "rejected_reference_records": [
+        {
+          "row": 1,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": []
+    },
+    {
+      "task": 8,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091321,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-008/default.tsv",
+      "candidate_capture_sha256": "7ee306010fb6e47458dd276a59947c373d3d3aaa283e2a34101463b591007a20",
+      "audit": "benchmarks/reports/development/ppml-auto-diagnosis-scc-2026-09-08/work/direct-audit-8.json",
+      "audit_sha256": "b417be7a4de129304b9d5c0d6bbebb97eb35e5b6120ea69d2999c8fec066f92d",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-013/capture/scopes/local_holdout-many_levels_2fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "3a5d8e2e461894bbdc2566d754651d977a312ca04faf48916361606d8a168956",
+      "complete_reference_rows": 0,
+      "rejected_reference_records": [
+        {
+          "row": 1,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": []
+    },
+    {
+      "task": 9,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 75000,
+        "controls": 10,
+        "seed": 2026091511,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-009/default.tsv",
+      "candidate_capture_sha256": "14953fa44e7f0d76fb0372fbeb79129d57e41be325dcb8bd593362c3ec9f437f",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-009/audit.json",
+      "audit_sha256": "2a19dc02c70cc3f3cafc44d0dc36d23cec8f40a962fb377d0b57fd7b4c9d9ee0",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-017/capture/scopes/local_holdout-sparse_3fe-n75000-k10-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "750428fc31ff7d57928196ee4a91d1d7b834e0759a05c14afeb8c0a5b8dcdc89",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 10,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 75000,
+        "controls": 10,
+        "seed": 2026091511,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-010/default.tsv",
+      "candidate_capture_sha256": "a6c4ee33da7021b8a57ab41ca5c8f9f68b524c055ab75b5ce668e91478787db8",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-010/audit.json",
+      "audit_sha256": "6812676562b1baa83bb866d2b2a44ae5add00752dcf22956658a48a6dc449254",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-017/capture/scopes/local_holdout-sparse_3fe-n75000-k10-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "750428fc31ff7d57928196ee4a91d1d7b834e0759a05c14afeb8c0a5b8dcdc89",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 11,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091521,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-011/default.tsv",
+      "candidate_capture_sha256": "f0a19ff58a0a374eec406d032ce3220b8f328a07eca40cec2f4c917a42f42a37",
+      "audit": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-011/audit.json",
+      "audit_sha256": "896e405050a336d9bd4d2975c04f11a8d124914e4a125319174535bd5a010f1f",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-017/capture/scopes/local_holdout-sparse_3fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "10d9fee2aad607914ddc864d1582089b1c02367c5efe07f33ef340590cde54cf",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 12,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 75000,
+        "controls": 50,
+        "seed": 2026091521,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-012/default.tsv",
+      "candidate_capture_sha256": "d4abed326eb9a49d8fb1c3b8ff6555a92d1cafe2304f33909cbbf07707731f20",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-012/audit.json",
+      "audit_sha256": "9b23dff396f8a764c912c90cb92f122bdf89c67107d41aefff7596f8f8718df3",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-017/capture/scopes/local_holdout-sparse_3fe-n75000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "10d9fee2aad607914ddc864d1582089b1c02367c5efe07f33ef340590cde54cf",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 13,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091121,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-013/default.tsv",
+      "candidate_capture_sha256": "97bca200397ecef128b65d78e0af83ffbf0e773136e87bbf169ac9143cc8eb5b",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-013/audit.json",
+      "audit_sha256": "91e592a8003c8e5936cf86847c0c59d8187bbb2ddd97a8bdaaa50af50767e88e",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-044/capture/scopes/scc-chain_2fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "f32a927f5ba27136aafdc036e9920ed3e1bfb2c9e05b3a6f3f2ef03361a5d4a4",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 14,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091121,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-014/default.tsv",
+      "candidate_capture_sha256": "98d3e4f5aee039473d624194d7839fd5ebcd2bb78d039bc1438e050a2aa9a888",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-014/audit.json",
+      "audit_sha256": "fe52d6d3b8d1e88d70e2a5764bdd572932bac3ada66edc55f62bb09ae84dbe42",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-044/capture/scopes/scc-chain_2fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "f32a927f5ba27136aafdc036e9920ed3e1bfb2c9e05b3a6f3f2ef03361a5d4a4",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 15,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091121,
+        "difficulty": "long",
+        "threads": 14
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-015/default.tsv",
+      "candidate_capture_sha256": "daf939bf4f6aadf9c0a27f42f7b0639d014bcdcc8b6aa1d02e3865ae5c868318",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-015/audit.json",
+      "audit_sha256": "26f5fb9abc7fad1b6a09ec8baa15fe01c1759aac215aea6d171ae7cee215896b",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-044/capture/scopes/scc-chain_2fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "f32a927f5ba27136aafdc036e9920ed3e1bfb2c9e05b3a6f3f2ef03361a5d4a4",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 16,
+      "scope": {
+        "topology": "chain_2fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091121,
+        "difficulty": "long",
+        "threads": 28
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-016/default.tsv",
+      "candidate_capture_sha256": "5c6ccd4f5a5281f44cb2eec966fb01f1cdde4b720d48328ddcda96e17100f214",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-016/audit.json",
+      "audit_sha256": "2ceb8b9b6cd06016f531cb7931d125fa7a0194245a20f2afbeae9ffe89dbb537",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-044/capture/scopes/scc-chain_2fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "f32a927f5ba27136aafdc036e9920ed3e1bfb2c9e05b3a6f3f2ef03361a5d4a4",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 17,
+      "scope": {
+        "topology": "many_levels_2fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091421,
+        "difficulty": "long",
+        "threads": 1,
+        "known_original_coefficient_discrepancy": true
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-017/default.tsv",
+      "candidate_capture_sha256": "6f1852be2a1db8e5f4551f4287e289f69f026f821174fdc6eda9d093485bb7f0",
+      "audit": "benchmarks/reports/development/ppml-checkpoint-guardrails-scc-2026-09-08/work/refinement-guard-017/audit.json",
+      "audit_sha256": "8b826559d42d3442e505f7e5001b6e54090adcfac721439ea6f6ddba0a6a5593",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-059/capture/scopes/scc-many_levels_2fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "75388934fbbb021619e2cbf5f6897d5864664adaff7ff24bcda3a787b2d1966b",
+      "complete_reference_rows": 5,
+      "rejected_reference_records": [],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": false,
+          "issues": [
+            "ppmlhdfe_coefficients",
+            "ppmlhdfe_vce"
+          ],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": false,
+          "issues": [
+            "ppmlhdfe_coefficients",
+            "ppmlhdfe_vce"
+          ],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 3,
+          "campaign_admission": false,
+          "comparison_pass": false,
+          "issues": [
+            "ppmlhdfe_coefficients",
+            "ppmlhdfe_vce"
+          ],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 4,
+          "campaign_admission": false,
+          "comparison_pass": false,
+          "issues": [
+            "ppmlhdfe_coefficients",
+            "ppmlhdfe_vce"
+          ],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 5,
+          "campaign_admission": false,
+          "comparison_pass": false,
+          "issues": [
+            "ppmlhdfe_coefficients",
+            "ppmlhdfe_vce"
+          ],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 18,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091621,
+        "difficulty": "long",
+        "threads": 1
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-018/default.tsv",
+      "candidate_capture_sha256": "f683476f024886e12cdac9d9b49ca7d9938461198692967071e7150458925331",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-018/audit.json",
+      "audit_sha256": "a1b87ce59c354adfa2d19b0a423e720127f6c39a3d89962af2194c95ff41dbaf",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-071/capture/scopes/scc-sparse_3fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "b3af77267853c402ddbfb4297d166a1860bb61229632448e4bd85aa534bf61fa",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 19,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091621,
+        "difficulty": "long",
+        "threads": 7
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-019/default.tsv",
+      "candidate_capture_sha256": "f1997c9ce61ba9127b060b1af721c946d4e23c09410d81c7697821fa1d083430",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-019/audit.json",
+      "audit_sha256": "4b288a029b7b01e5c448dd73d67cd236f8d077d6f5a2dad06825b0ae3de9a8e4",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-071/capture/scopes/scc-sparse_3fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "b3af77267853c402ddbfb4297d166a1860bb61229632448e4bd85aa534bf61fa",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 20,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091621,
+        "difficulty": "long",
+        "threads": 14
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-020/default.tsv",
+      "candidate_capture_sha256": "f4f7d2fd3b24b18d26b08bf8b99a1a7bc7ba97ccc98a3ffd483d4cce8e093615",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-020/audit.json",
+      "audit_sha256": "0167068f1258616c39cf6e13d1eb6123ee6474b72008fa099cec3f57b6bad05a",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-071/capture/scopes/scc-sparse_3fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "b3af77267853c402ddbfb4297d166a1860bb61229632448e4bd85aa534bf61fa",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    },
+    {
+      "task": 21,
+      "scope": {
+        "topology": "sparse_3fe",
+        "n": 50000,
+        "controls": 50,
+        "seed": 2026091621,
+        "difficulty": "long",
+        "threads": 28
+      },
+      "candidate_capture": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-021/default.tsv",
+      "candidate_capture_sha256": "d7bfb60f25d3b8c7e985669799c33b0b8f8e46435d9335077802a5f53303d52c",
+      "audit": "benchmarks/reports/development/ppml-actual-auto-acceptance-scc-2026-09-08/work/task-021/audit.json",
+      "audit_sha256": "881d7cc5af6b0705ec259854f74837a3de351bb25b4cfb8708c4f5de46995383",
+      "independent_candidate_pass": true,
+      "reference_table": "benchmarks/reports/development/ppml-auto-calibration-v3-terminal-2026-09-07/work/recovery/shards/scc_holdout/task-071/capture/scopes/scc-sparse_3fe-n50000-k50-t1/reference-ppmlhdfe.tsv",
+      "reference_table_sha256": "b3af77267853c402ddbfb4297d166a1860bb61229632448e4bd85aa534bf61fa",
+      "complete_reference_rows": 2,
+      "rejected_reference_records": [
+        {
+          "row": 3,
+          "reason": "incomplete record"
+        }
+      ],
+      "comparisons": [
+        {
+          "row": 1,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        },
+        {
+          "row": 2,
+          "campaign_admission": false,
+          "comparison_pass": true,
+          "issues": [],
+          "dof_notes": [
+            "fereg and ppmlhdfe partition rank versus absorbed DoF differently; the gate compares their equal total model DoF",
+            "ppmlhdfe does not publish residual DoF for robust VCE; the gate derives it from N minus total model DoF"
+          ]
+        }
+      ]
+    }
+  ]
+}

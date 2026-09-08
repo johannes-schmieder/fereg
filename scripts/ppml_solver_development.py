@@ -17,11 +17,11 @@ import statistics
 import subprocess
 import sys
 import tomllib
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v4.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v5.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 KKT_DRIVER = ROOT / "tests/stata/development/feppml_public_state_kkt.do"
 SOLVERS = ("map", "lsmr", "cmg")
@@ -54,7 +54,7 @@ SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 JOB_ID = re.compile(r"^[1-9][0-9]*$")
 RUN_ROOT = re.compile(r"^/projectnb/welfgr/fereg/dev/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")
 IMPLEMENTATION_FILES = (
-    "benchmarks/manifests/feppml_solver_development_v4.json",
+    "benchmarks/manifests/feppml_solver_development_v5.json",
     "benchmarks/scc/feppml_solver_dev_job.sh",
     "benchmarks/scc/feppml_solver_dev_setup_job.sh",
     "benchmarks/scc/feppml_solver_dev_collector_job.sh",
@@ -182,14 +182,14 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
         "manifest",
     )
     if (
-        manifest["schema_version"] != 4
-        or manifest["manifest_id"] != "feppml_solver_development_v4"
+        manifest["schema_version"] != 5
+        or manifest["manifest_id"] != "feppml_solver_development_v5"
         or manifest["status"] != "development_only"
         or manifest["qualification_eligible"] is not False
         or manifest["auto_calibration"] is not False
         or manifest["public_command"] != "feppml"
     ):
-        raise DevelopmentError("invalid v4 development identity")
+        raise DevelopmentError("invalid v5 development identity")
     if manifest["protocols"] != {
         "request_wire": "1.5", "result_wire": "1.2", "action_protocol": "1.5",
         "development_result_table": "2.6",
@@ -288,6 +288,13 @@ def validate_manifest(manifest: Mapping[str, object]) -> None:
     for profile_id in profiles:
         profile_scopes(dict(manifest), profile_id)
     tasks = campaign_tasks(dict(manifest))
+    if (
+        manifest["generator"].get("mixed_graph_memberships")
+        != "degree_preserving_selected_g2_permutation_fixed_mt64_seed_104729"
+        or manifest["generator"].get("sample_preflight")
+        != "minimum_two_observations_per_retained_fe_level"
+    ):
+        raise DevelopmentError("generator sample-preservation contract changed")
     if manifest["generator"].get("same_data_for_thread_scaling_within_bundle") is not True:
         raise DevelopmentError("thread-scaling dataset-reuse contract changed")
     if any(
@@ -908,10 +915,12 @@ def execute_scopes(
     output_dir: Path, repetitions: int, include_comparators: bool = True,
     include_oracle: bool = False, task_identity: Mapping[str, object] | None = None,
     prepare_comparators: bool = False,
+    process_runner: Callable[..., dict[str, object]] | None = None,
 ) -> dict[str, object]:
     if output_dir.exists():
         raise DevelopmentError(f"output already exists: {output_dir}")
     output_dir.mkdir(parents=True)
+    run_process = process_runner or run_stata
     repositories = {"candidate": candidate_root.resolve()}
     if baseline_root is not None:
         repositories["baseline"] = baseline_root.resolve()
@@ -925,7 +934,7 @@ def execute_scopes(
     dataset_cache: dict[str, tuple[Path, Path, Path, str, dict[str, object]]] = {}
     if prepare_comparators:
         console = output_dir / "reference-setup.log"
-        process = run_stata(
+        process = run_process(
             stata,
             {
                 "FEREG_PPML_SOLVER_MODE": "prepare-reference",
@@ -953,7 +962,7 @@ def execute_scopes(
             meta = data_dir / "data-meta.tsv"
             env = base_environment(candidate_root, reference_root, scope, dataset, scope_dir / "unused.tsv")
             env.update({"FEREG_PPML_SOLVER_MODE": "generate", "FEREG_PPML_SOLVER_DATA_CSV": str(data_csv), "FEREG_PPML_SOLVER_DATA_META": str(meta)})
-            process = run_stata(stata, env, scope_dir / "generate.log")
+            process = run_process(stata, env, scope_dir / "generate.log")
             status, reason = stata_stage_status(scope_dir / "generate.log", int(process["process_returncode"]), "FEREG_PPML_SOLVER_DATA_PASS")
             processes.append({**process, "stage": "generate", "scope_id": scope["id"], "dataset_id": generated_id, "accepted_rc": status, "status_reason": reason})
             if status:
@@ -992,7 +1001,7 @@ def execute_scopes(
             console = scope_dir / f"{implementation}-{arm}.log"
             run_env = base_environment(repository, reference_root, scope, dataset, result)
             run_env.update({"FEREG_PPML_SOLVER_MODE": "run", "FEREG_PPML_SOLVER_ARM": arm, "FEREG_PPML_SOLVER_REPETITIONS": str(repetitions)})
-            process = run_stata(stata, run_env, console)
+            process = run_process(stata, run_env, console)
             status, reason = stata_stage_status(console, int(process["process_returncode"]), "FEREG_PPML_SOLVER_RUN_PASS")
             reference_route = None
             if not status and arm in COMPARATORS:
@@ -1001,7 +1010,9 @@ def execute_scopes(
                 except DevelopmentError:
                     status, reason = 498, "unverified-reference-route"
             processes.append({**process, "stage": "run", "scope_id": scope["id"], "implementation": implementation, "arm": arm, "accepted_rc": status, "status_reason": reason, "reference_route": reference_route})
-            if result.is_file():
+            # A killed process may leave a truncated table or a valid-looking
+            # prefix. Neither is a completed scientific result.
+            if result.is_file() and not process.get("budget_exhausted", False):
                 records.extend(parse_table(result, scope, implementation))
         if include_comparators and _needs_strict_adjudication(
             records, scope, list(repositories), repetitions, manifest["science"],
@@ -1014,7 +1025,7 @@ def execute_scopes(
                 "FEREG_PPML_SOLVER_MODE": "run", "FEREG_PPML_SOLVER_ARM": ADJUDICATOR,
                 "FEREG_PPML_SOLVER_REPETITIONS": "1",
             })
-            process = run_stata(stata, run_env, console)
+            process = run_process(stata, run_env, console)
             status, reason = stata_stage_status(
                 console, int(process["process_returncode"]),
                 "FEREG_PPML_SOLVER_RUN_PASS",
@@ -1031,7 +1042,7 @@ def execute_scopes(
                 "accepted_rc": status, "status_reason": reason,
                 "reference_route": reference_route,
             })
-            if result.is_file():
+            if result.is_file() and not process.get("budget_exhausted", False):
                 records.extend(parse_table(result, scope, "adjudicator"))
         kkt_implementations = _public_state_kkt_implementations(
             records, scope, list(repositories), repetitions, manifest["science"],
@@ -1063,7 +1074,7 @@ def execute_scopes(
                         if implementation != "reference" else ""
                     ),
                 })
-                process = run_stata(stata, run_env, console, KKT_DRIVER)
+                process = run_process(stata, run_env, console, KKT_DRIVER)
                 status, reason = stata_stage_status(
                     console, int(process["process_returncode"]),
                     "FEREG_PPML_SOLVER_KKT_FIT_PASS",
@@ -1155,7 +1166,7 @@ def execute_scopes(
                         projection_policy["feasible_relrms_max"]
                     ),
                 })
-                process = run_stata(stata, run_env, console, KKT_DRIVER)
+                process = run_process(stata, run_env, console, KKT_DRIVER)
                 status, reason = stata_stage_status(
                     console, int(process["process_returncode"]),
                     "FEREG_PPML_SOLVER_KKT_AUDIT_PASS",
@@ -1200,7 +1211,7 @@ def execute_scopes(
     if references_before != references_after:
         raise DevelopmentError("pinned reference closure changed during execution")
     return {
-        "schema_version": 4, "kind": "feppml_solver_development_run", "qualification_eligible": False,
+        "schema_version": 5, "kind": "feppml_solver_development_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": {"path": str(MANIFEST), "sha256": sha256_file(MANIFEST)},
         "implementation": implementation_identity(), "repetitions": repetitions, "include_comparators": include_comparators,
         "include_oracle": include_oracle, "sources": sources, "artifacts": artifacts, "references": references_after,
@@ -1734,8 +1745,8 @@ def _public_state_kkt_issues(
 
 def analyze_document(document: Mapping[str, object], manifest: dict[str, object] | None = None) -> dict[str, object]:
     manifest = manifest or load_manifest()
-    if document.get("schema_version") != 4 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
-        raise DevelopmentError("not a v4 solver-development run")
+    if document.get("schema_version") != 5 or document.get("kind") not in {"feppml_solver_development_run", "feppml_solver_development_merged_run"}:
+        raise DevelopmentError("not a v5 solver-development run")
     if document.get("qualification_eligible") is not False or document.get("auto_calibration") is not False:
         raise DevelopmentError("development evidence cannot qualify or calibrate auto")
     manifest_receipt = document.get("manifest")
@@ -2370,7 +2381,7 @@ def analyze_document(document: Mapping[str, object], manifest: dict[str, object]
             f"{scope_id}:{implementation}:{KKT_ADJUDICATOR}:not_required_or_failed"
         )
     return {
-        "schema_version": 4, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
+        "schema_version": 5, "kind": "feppml_solver_development_analysis", "qualification_eligible": False,
         "auto_calibration": False, "science_pass": not failures, "route_pass": not route_failures,
         "science_failures": sorted(set(failures)), "route_failures": sorted(set(route_failures)),
         "reference_adjudications": reference_adjudications,
@@ -2446,7 +2457,7 @@ def prepare_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     }
     task_plan = {"tasks": campaign_tasks(manifest)}
     config = {
-        "schema_version": 4, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
+        "schema_version": 5, "kind": "feppml_solver_development_config", "manifest_sha256": manifest_sha,
         "implementation": implementation, "candidate_root": str(candidate_root),
         "baseline_root": str(Path(args.baseline_root).resolve()) if args.baseline_root else None,
         "reference_root": str(Path(args.reference_root).resolve()), "stata": str(Path(args.stata).resolve()),
@@ -2478,7 +2489,7 @@ def record_setup(args: argparse.Namespace) -> None:
     if _source_fingerprint(sources["candidate"]) != _source_fingerprint(config["candidate_source"]):
         raise DevelopmentError("setup candidate source differs from preparation and local gates")
     receipt = {
-        "schema_version": 4, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
+        "schema_version": 5, "kind": "feppml_solver_development_setup", "job_id": str(args.job_id),
         "manifest_sha256": config["manifest_sha256"], "implementation": implementation_identity(),
         "sources": sources,
         "artifacts": {name: artifact_identity(path) for name, path in repositories.items()},
@@ -2537,7 +2548,7 @@ def run_task(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError(f"task {identity['task_id']} failed science or route checks")
     receipt = {
-        "schema_version": 4, "kind": "feppml_solver_development_task", "task_identity": identity,
+        "schema_version": 5, "kind": "feppml_solver_development_task", "task_identity": identity,
         "bundle": task["bundle"], "scope_ids": [scope["id"] for scope in task["scopes"]],
         "run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(output / "analysis.json"),
         "source_identity": document["sources"], "artifact_identity": document["artifacts"],
@@ -2580,7 +2591,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if scopes != expected:
         raise DevelopmentError("merged task scope order or content differs")
     merged = {
-        "schema_version": 4, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
+        "schema_version": 5, "kind": "feppml_solver_development_merged_run", "qualification_eligible": False,
         "auto_calibration": False, "manifest": documents[0]["manifest"], "implementation": documents[0]["implementation"],
         "repetitions": int(config["repetitions"]), "include_comparators": True, "include_oracle": False,
         "sources": documents[0]["sources"], "artifacts": documents[0]["artifacts"], "references": documents[0]["references"],
@@ -2600,7 +2611,7 @@ def merge_tasks(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     if not analysis["science_pass"] or not analysis["route_pass"]:
         raise DevelopmentError("merged campaign failed science or route checks")
     exclusive_json(run_root / "receipts/merge.json", {
-        "schema_version": 4, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
+        "schema_version": 5, "kind": "feppml_solver_development_merge", "task_count": 16, "scope_count": 56,
         "job_id": collector_job, "host": cpu_identity(),
         "merged_run_sha256": sha256_file(run_path), "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
     })
@@ -2611,7 +2622,7 @@ def record_submission(args: argparse.Namespace) -> None:
     values = {"setup": str(args.setup_job), "array": str(args.array_job), "collector": str(args.collector_job)}
     if any(not JOB_ID.fullmatch(value) for value in values.values()):
         raise DevelopmentError("submission job IDs must be positive integers")
-    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 4, "kind": "feppml_solver_development_submission", "jobs": values})
+    exclusive_json(run_root / "receipts/submission.json", {"schema_version": 5, "kind": "feppml_solver_development_submission", "jobs": values})
 
 
 def parse_qacct(path: Path) -> list[dict[str, str]]:
@@ -2695,7 +2706,7 @@ def close_run(args: argparse.Namespace, manifest: dict[str, object]) -> None:
     ):
         exclusive_text(raw_qacct[name], source.read_text(encoding="utf-8", errors="replace"))
     exclusive_json(run_root / "receipts/close.json", {
-        "schema_version": 4, "kind": "feppml_solver_development_close", "jobs": submission,
+        "schema_version": 5, "kind": "feppml_solver_development_close", "jobs": submission,
         "qacct": accounting, "analysis_sha256": sha256_file(run_root / "output/analysis.json"),
         "merge_receipt_sha256": sha256_file(run_root / "receipts/merge.json"),
         "qacct_files": {

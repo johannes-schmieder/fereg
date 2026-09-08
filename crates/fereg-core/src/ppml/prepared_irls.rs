@@ -55,6 +55,13 @@ use super::{
 
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
 
+fn refined_checkpoint_tolerance(current: f64) -> f64 {
+    // A certified warm residual may retain an old profile whose movement is
+    // too large for publication. Refine computation, never the acceptance
+    // envelope; preserve any user target already below the recurrence floor.
+    (current * 0.01).max(1e-14).min(current)
+}
+
 fn use_checkpoint_lsmr_accelerator(observations: usize, effects: usize) -> bool {
     matches!(effects, 2 | 3) && observations > 0
 }
@@ -831,8 +838,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .finite_columns
         .checked_add(1)
         .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-    let solver_admission =
+    let mut solver_admission =
         public_solver_memory_admission(prepared, memory_plan, &config, solver_rhs, purpose)?;
+    // A modeled budget veto precedes any specialized solver construction.
+    // It is selection, not recovery from allocation or numerical failure.
+    if config.solver_plan.requested == super::PpmlSolverFamily::Auto
+        && config.solver_plan.selected == super::PpmlSolverFamily::Lsmr
+        && memory_plan.usable_bytes.is_some_and(|usable| {
+            solver_admission.incremental_bytes
+                > usable.saturating_sub(memory_plan.selected_inventory().peak_bytes)
+        })
+    {
+        config.solver_plan.selected = super::PpmlSolverFamily::Map;
+        solver_admission = PublicSolverMemoryAdmission::default();
+    }
     memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
     let solver_execution_bytes = memory_plan
         .selected_inventory()
@@ -914,6 +933,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map_err(|_| allocation("unable to reserve prepared PPML diagnostics"))?;
     let mut total_step_halvings = 0_usize;
     let mut strict_profile_rejections = 0_usize;
+    let mut checkpoint_tolerance = strict_inner_tolerance(config.ppml);
+    let mut checkpoint_refinement_pending = false;
     let mut consecutive_converged = 0_usize;
     let mut final_score = prepared_score_certificate(
         prepared,
@@ -1003,6 +1024,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 record_checkpoint_solver_observation(
                     &mut initial_solver_report,
                     output.fit().absorption_report(),
+                    false,
                 )?;
             } else {
                 initial_solver_report.observe(map_solver_observation(
@@ -1451,6 +1473,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
         }
         let iteration_converged = relative_change <= config.ppml.tolerance && final_score.passed;
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            super::categorical_lsmr::emit_solver_trace_line(&format!(
+                "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration={iteration}|deviance_change={relative_change:.17e}|score={:.17e}|passed={}|step={:.17e}",
+                final_score.relative_infinity_norm, u8::from(iteration_converged), accepted.step,
+            ));
+        }
         consecutive_converged = if iteration_converged {
             consecutive_converged.saturating_add(1)
         } else {
@@ -1487,7 +1515,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
             frame_generation = next_frame_generation(frame_generation)?;
             refresh_linear_frame(&mut session, &workspace, frame_generation)?;
-            let strict_tolerance = strict_inner_tolerance(config.ppml);
+            let strict_tolerance = checkpoint_tolerance;
             previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
             session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
             let specialized_engine = if joint_lsmr.is_some() {
@@ -1523,6 +1551,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         .as_mut()
                         .ok_or_else(|| internal("PPML strict solve lacks solver diagnostics"))?,
                     strict.fit().absorption_report(),
+                    checkpoint_refinement_pending,
                 )?;
                 fill_candidate_eta_from_linear_output(
                     &strict,
@@ -1573,7 +1602,22 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 active_coefficient_slots,
             ) == FinalHessianSynchronization::Certified;
 
+            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                super::categorical_lsmr::emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=strict_decision|iteration={iteration}|certified={}|basis_unchanged={}|rank={strict_rank}|eta_change={:.17e}|beta_change={:.17e}|consistent={}",
+                    u8::from(strict_certified), u8::from(strict_basis_unchanged),
+                    relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
+                    relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients()),
+                    u8::from(strict_consistent),
+                ));
+            }
+
             let mut accepted_strict_basis_change = false;
+            let mut profile_rejected = strict_certified
+                && strict_basis_unchanged
+                && strict_rank == finite_rank
+                && !strict_consistent;
+            checkpoint_refinement_pending = false;
             let mut strict_committed = false;
             if strict_consistent {
                 // Publish the strict state itself. A unit trial copies the
@@ -1633,6 +1677,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 if let Some(joint) = joint_lsmr.as_mut() {
                     joint.reset_warm_start();
                 }
+                if let Some(cmg) = fused_cmg.as_mut() {
+                    cmg.reset_warm_start();
+                }
             }
             if accepted_strict_basis_change {
                 let active_columns = strict_active_columns.as_deref().ok_or_else(|| {
@@ -1691,6 +1738,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     prior_weights,
                     offset,
                     config,
+                    checkpoint_tolerance,
                     &mut frame_generation,
                     &mut total_inner_iterations,
                     finite_rank,
@@ -1700,6 +1748,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     two_consecutive_convergence = consecutive_converged >= 2;
                     converged = true;
                 } else if synchronized == FinalHessianSynchronization::ResumeWithCandidate {
+                    profile_rejected = true;
                     let mut poll_line_search =
                         || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
                     match workspace.accept_candidate_interruptible(
@@ -1734,6 +1783,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     )?;
                 }
             }
+            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                super::categorical_lsmr::emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=strict_result|iteration={iteration}|committed={}|score={:.17e}|score_passed={}|converged={}",
+                    u8::from(strict_committed), final_score.relative_infinity_norm,
+                    u8::from(final_score.passed), u8::from(converged),
+                ));
+            }
             memory.record_phase(PpmlPhase::StrictFinalSolve, strict_clock.elapsed());
             record_phase_allocation(
                 &mut memory,
@@ -1743,6 +1799,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if converged {
                 exploration_terminal = PreparedPpmlMuTerminal::Converged;
                 break;
+            }
+            if profile_rejected {
+                let refined = refined_checkpoint_tolerance(checkpoint_tolerance);
+                checkpoint_refinement_pending = refined < checkpoint_tolerance;
+                if checkpoint_refinement_pending && std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+                {
+                    super::categorical_lsmr::emit_solver_trace_line(&format!(
+                        "FEREG_SOLVER_TRACE|phase=checkpoint_profile_refinement|previous={checkpoint_tolerance:.17e}|next={refined:.17e}",
+                    ));
+                }
+                checkpoint_tolerance = refined;
             }
             strict_profile_rejections =
                 strict_profile_rejections.checked_add(1).ok_or_else(|| {
@@ -1841,6 +1908,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             .as_mut()
             .ok_or_else(|| internal("PPML final Hessian lacks solver diagnostics"))?,
         final_output.fit().absorption_report(),
+        false,
     )?;
     let coefficients = final_coefficients(final_output.fit(), workspace.coefficients())?;
     let retained_memory = final_output.retained_within_memory();
@@ -1967,6 +2035,12 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 config.linear.execution.threads.resolved(),
             )?;
             let profile = CmgTopologyProfile::analyze(&design)?;
+            let fused_workspace = fused_workspace
+                .checked_add(crate::fe::CmgControlSeed::estimated_bytes(
+                    profile.vertices(),
+                    rhs.saturating_sub(1),
+                )?)
+                .ok_or_else(|| allocation("prepared PPML CMG seed workspace overflows"))?;
             if profile.nuisance_columns() > CMG_MAX_NUISANCE_COLUMNS {
                 return Err(FeregError::new(
                     ErrorCode::Unsupported,
@@ -2123,8 +2197,13 @@ fn checkpoint_solver_observation(report: &SolveReport) -> Result<PpmlSolverObser
 fn record_checkpoint_solver_observation(
     solver: &mut PpmlSolverReport,
     report: &SolveReport,
+    profile_refinement: bool,
 ) -> Result<()> {
-    let observation = checkpoint_solver_observation(report)?;
+    let mut observation = checkpoint_solver_observation(report)?;
+    observation.retries = observation
+        .retries
+        .checked_add(usize::from(profile_refinement))
+        .ok_or_else(|| internal("PPML checkpoint refinement count overflowed"))?;
     if report.requested_solver == FeSolverKind::Lsmr
         && report.used_solver == FeSolverKind::Map
         && report.fallback_used
@@ -2358,6 +2437,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     prior_weights: &[f64],
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
+    checkpoint_tolerance: f64,
     frame_generation: &mut u64,
     total_inner_iterations: &mut usize,
     expected_rank: usize,
@@ -2372,7 +2452,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     // independently absorbed, solved, reconstructed, and certified below.
     let _reused_identical_weights =
         refresh_final_linear_frame(session, workspace, *frame_generation)?;
-    let strict_tolerance = strict_inner_tolerance(config.ppml);
+    let strict_tolerance = checkpoint_tolerance;
     session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
     let synchronized_transaction = session.strict_candidate()?;
     let synchronized_basis_unchanged = synchronized_transaction.basis_unchanged();
@@ -2442,6 +2522,11 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         decision
     };
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        super::categorical_lsmr::emit_solver_trace_line(&format!(
+            "FEREG_SOLVER_TRACE|phase=final_hessian_decision|eta_change={predictor_difference:.17e}|beta_change={coefficient_difference:.17e}|decision={decision:?}",
+        ));
+    }
     if decision == FinalHessianSynchronization::Certified {
         synchronized_transaction.commit();
     } else {
@@ -3814,6 +3899,92 @@ mod tests {
     }
 
     #[test]
+    fn cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame() {
+        use super::super::categorical_fwl_cmg as cmg;
+        let (prepared, response) = prepared_three_fe([2, 0, 1], false, None);
+        let design = prepared.fit_owned_fe_design().unwrap();
+        let config = FusedFwlCmgConfig {
+            map: crate::fe::MapConfig::default(),
+            threads: crate::options::ThreadConfig::from_requested(2, true).unwrap(),
+            batch_size: 2,
+            solver_memory_budget: FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: u128::MAX,
+            },
+        };
+        let mut engine = ReusableCategoricalFwlCmg::new(&prepared, &[0], &design, config).unwrap();
+        let weights = vec![1.0; response.len()];
+        for failure in 0..7 {
+            assert_eq!(engine.warm_seed_ready(), (false, false));
+            assert!(matches!(
+                engine
+                    .solve(&prepared, &design, &response, &weights, 1e-8)
+                    .unwrap(),
+                FusedFwlCmgSolveOutcome::Certified(_)
+            ));
+            assert_eq!(engine.warm_seed_ready(), (true, true));
+            match failure {
+                0 => {
+                    cmg::inject_projection_certificate_failure_once(0);
+                    let FusedFwlCmgSolveOutcome::Certified(report) = engine
+                        .solve(&prepared, &design, &response, &weights, 1e-8)
+                        .unwrap()
+                    else {
+                        panic!("retry must certify")
+                    };
+                    assert_eq!(report.retried_right_hand_sides, 1);
+                }
+                1 => {
+                    cmg::inject_post_projection_numerical_failure_once();
+                    assert!(matches!(
+                        engine
+                            .solve(&prepared, &design, &response, &weights, 1e-8)
+                            .unwrap(),
+                        FusedFwlCmgSolveOutcome::NumericalFailure(_)
+                    ));
+                }
+                2..=4 => {
+                    let code = [
+                        ErrorCode::Allocation,
+                        ErrorCode::Interrupted,
+                        ErrorCode::Internal,
+                    ][failure - 2];
+                    cmg::inject_fatal_failure_once(code);
+                    assert_eq!(
+                        engine
+                            .solve(&prepared, &design, &response, &weights, 1e-8)
+                            .unwrap_err()
+                            .code,
+                        code
+                    );
+                }
+                5 => {
+                    let changed = prepared.fit_owned_fe_design().unwrap();
+                    assert_eq!(
+                        engine
+                            .solve(&prepared, &changed, &response, &weights, 1e-8)
+                            .unwrap_err()
+                            .code,
+                        ErrorCode::InvalidArgument
+                    );
+                }
+                _ => engine.reset_warm_start(),
+            }
+            assert_eq!(
+                engine.warm_seed_ready(),
+                (false, false),
+                "failed/retried/checkpoint frame cannot promote a seed"
+            );
+        }
+        let replacement = ReusableCategoricalFwlCmg::new(&prepared, &[], &design, config).unwrap();
+        assert_eq!(
+            replacement.warm_seed_ready(),
+            (false, false),
+            "a replacement active basis starts cold"
+        );
+    }
+
+    #[test]
     fn cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates() {
         for zero_control in [false, true] {
             let (prepared, outcome) = prepared_three_fe([2, 0, 1], zero_control, None);
@@ -4852,6 +5023,17 @@ mod tests {
     }
 
     #[test]
+    fn strict_projection_refinement_is_bounded_and_never_loosens_a_target() {
+        for current in [1e-8, 1e-12, 1e-14, 1e-16] {
+            let refined = refined_checkpoint_tolerance(current);
+            assert!(refined > 0.0 && refined <= current);
+        }
+        assert_eq!(refined_checkpoint_tolerance(1e-12), 1e-14);
+        assert_eq!(refined_checkpoint_tolerance(1e-14), 1e-14);
+        assert_eq!(refined_checkpoint_tolerance(1e-16), 1e-16);
+    }
+
+    #[test]
     fn strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints() {
         for (first_strict, final_hessian) in [(true, false), (false, true)] {
             let x = vec![-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
@@ -4884,6 +5066,14 @@ mod tests {
                 "strict resume injection was not exercised: first={first_strict} final={final_hessian}"
             );
             assert!(fitted.diagnostics().iterations < config.ppml.max_iterations);
+            assert!(fitted
+                .diagnostics()
+                .solver
+                .engines()
+                .iter()
+                .any(|row| row.retries > 0));
+            assert!(fitted.diagnostics().two_consecutive_convergence);
+            assert!(fitted.diagnostics().final_score.passed);
         }
     }
 

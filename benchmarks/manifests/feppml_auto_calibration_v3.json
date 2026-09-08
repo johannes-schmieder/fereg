@@ -1,0 +1,126 @@
+{
+  "schema_version": 3,
+  "manifest_id": "feppml_auto_calibration_v3",
+  "qualification_eligible": false,
+  "purpose": "Prospective SCC-owned whole-fit PPML calibration after bounded local validation. Preserve every v2 training and holdout scope and repetition, with independently partitioned <=12-hour jobs.",
+  "development_manifest_sha256": "3e6caac7624d3c6abc43f0910a76322a56fef38ac823809f7a6f3c30a0198d79",
+  "training_repetitions": 5,
+  "holdout_repetitions": 5,
+  "maximum_native_allocation_over_model": 1.25,
+  "holdout_seed": 2026090601,
+  "holdout_topologies": [
+    "balanced_1fe",
+    "skewed_1fe",
+    "balanced_2fe",
+    "skewed_2fe",
+    "chain_2fe",
+    "hub_2fe",
+    "dense_2fe",
+    "many_levels_2fe",
+    "balanced_3fe",
+    "sparse_3fe"
+  ],
+  "holdout_controls": [
+    0,
+    10,
+    50
+  ],
+  "local_holdout_threads": [
+    1,
+    7
+  ],
+  "local_holdout_n": 75000,
+  "scc_threads": [
+    1,
+    7,
+    14,
+    28
+  ],
+  "scc_n": [
+    100000,
+    1000000
+  ],
+  "scc_hard_n": 50000,
+  "scc_seed": 2026090701,
+  "scheduler": {
+    "project": "welfgr",
+    "slots": 28,
+    "mem_per_core": "4G",
+    "h_rt": "12:00:00"
+  },
+  "policy": {
+    "default_multi_fe": "lsmr",
+    "one_fe": "map",
+    "unsupported_or_unadmitted": "map",
+    "candidate_region_solvers": [
+      "map",
+      "cmg"
+    ],
+    "minimum_training_datasets": 6,
+    "minimum_geomean_gain": 0.1,
+    "maximum_cell_ratio": 1.1,
+    "minimum_win_fraction": 0.8,
+    "holdout_maximum_geomean_ratio": 1.02,
+    "holdout_maximum_cell_ratio": 1.1,
+    "features": {
+      "controls": [
+        0,
+        2,
+        10,
+        20
+      ],
+      "observations_per_largest_level": [
+        4,
+        8,
+        16,
+        32,
+        64,
+        128
+      ],
+      "core_level_ratio": [
+        2,
+        10
+      ],
+      "nonbase_nuisance_columns": [
+        0,
+        8,
+        32
+      ],
+      "threads": [
+        1,
+        7
+      ]
+    },
+    "maximum_region_predicates": 2,
+    "maximum_regions": 1,
+    "score": "equal_weight_dataset_mean_log_whole_fit_time",
+    "fallback_or_failed_arm": "ineligible; preserve all work and fail selected-policy validation",
+    "holdout_use": "validation only; never refit after observing holdout"
+  },
+  "training_profiles": [
+    "local_breadth",
+    "local_one_fe",
+    "local_difficulty",
+    "local_checkpoint",
+    "local_cmg_envelope",
+    "local_width",
+    "local_scaling",
+    "local_large_easy"
+  ],
+  "local_validation": {
+    "maximum_seconds": 14400,
+    "profiles": [
+      "local_science",
+      "local_one_fe_science",
+      "local_smoke"
+    ],
+    "required_regression_scope": "checkpoint-sparse_3fe-n16384",
+    "timing_role": "diagnostic_only_not_training"
+  },
+  "partition": {
+    "maximum_scopes_per_task": 4,
+    "isolated_topology": "many_levels_2fe",
+    "isolated_minimum_controls": 50
+  },
+  "holdout_aggregation": "Validate original 60-scope and 204-scope populations separately; operational partitions do not alter the policy gates."
+}

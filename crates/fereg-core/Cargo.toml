@@ -13,8 +13,8 @@ path = "src/lib.rs"
 [dependencies]
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "90e1fe0b0c14065155532711246ede6678bb4935", features = ["parallel"] }
 rayon = { version = "=1.12.0" }
-schwarz-precond = { git = "https://github.com/py-econometrics/within", rev = "b7779cbab7a3116be56aae4389fde1f6e6a99a9f", package = "schwarz-precond" }
-within = { git = "https://github.com/py-econometrics/within", rev = "b7779cbab7a3116be56aae4389fde1f6e6a99a9f", package = "within" }
+schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "93699e6ab8ecc82bc69f91be295ea3a9c10f2521", package = "schwarz-precond" }
+within = { git = "https://github.com/johannes-schmieder/within", rev = "93699e6ab8ecc82bc69f91be295ea3a9c10f2521", package = "within" }
 
 [lints]
 workspace = true

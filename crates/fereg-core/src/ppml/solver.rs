@@ -315,11 +315,16 @@ impl PpmlSolverReport {
     }
 
     pub(crate) fn validate(&self) -> Result<()> {
-        let expected_selected = match self.requested {
-            PpmlSolverFamily::Auto => PpmlSolverFamily::Map,
-            requested => requested,
+        let selection_valid = match self.requested {
+            PpmlSolverFamily::Auto => {
+                matches!(
+                    self.selected,
+                    PpmlSolverFamily::Map | PpmlSolverFamily::Lsmr
+                )
+            }
+            requested => self.selected == requested,
         };
-        if self.selected != expected_selected
+        if !selection_valid
             || self.selected == PpmlSolverFamily::Auto
             || self.selected_engine.family() != self.selected
             || self.effective == PpmlSolverFamily::Auto
@@ -539,6 +544,26 @@ mod tests {
         assert_eq!(report.selected, PpmlSolverFamily::Map);
         assert_eq!(report.selected_engine, PpmlSolverEngine::Map);
         assert_eq!(report.checkpoint, PpmlSolverFamily::Map);
+    }
+
+    #[test]
+    fn automatic_report_accepts_admitted_lsmr_but_not_untrained_cmg() {
+        for engine in [PpmlSolverEngine::LsmrFused, PpmlSolverEngine::LsmrJoint] {
+            let plan = PpmlSolverPlan {
+                requested: PpmlSolverFamily::Auto,
+                selected: PpmlSolverFamily::Lsmr,
+            };
+            let mut report = PpmlSolverReport::new(plan, engine);
+            report.enable_lsmr_checkpoint();
+            report.validate().expect("resolved automatic LSMR identity");
+        }
+        let plan = PpmlSolverPlan {
+            requested: PpmlSolverFamily::Auto,
+            selected: PpmlSolverFamily::Cmg,
+        };
+        PpmlSolverReport::new(plan, PpmlSolverEngine::CmgPrepared)
+            .validate()
+            .expect_err("no CMG region was admitted");
     }
 
     #[test]

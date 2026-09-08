@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "campaign_admission": false,
+  "checkpoint_cycle_repair_scope_pass": true,
+  "job_id": 7490653,
+  "base_snapshot_sha256": "da29adb7f6061a933dccbedbae923d96957361f3aa495f75780be8a05755362e",
+  "source_overlay": {"crates/fereg-core/src/ppml/prepared_irls.rs": "977522f1b878c2f96b5147f85fd927e739cb65b5111a9062f25d5f3ff50d3c93"},
+  "linux_plugin_sha256": "01af450c8fa6d841584661608fa45db41b0f9afb14cd7750eeaa9a3f51bc5124",
+  "scheduler": {"failed": 0, "exit_status": 0, "slots": 28, "hostname": "scc-zj4.scc.bu.edu", "wallclock_seconds": 89, "maxvmem": "9.868G"},
+  "application_sentinels": ["actual-plugin ABI/self-test harness: PASS", "ACTUAL_AUTO_INDEPENDENT_SCOPE_PASS", "K0_REFINEMENT_SCOPE_PASS"],
+  "fit": {"manifest_task": 3, "n": 75000, "controls": 0, "effects": 2, "threads": 1, "topology": "many_levels_2fe"},
+  "before": {"tighter_fit_timed_out": true, "tighter_fit_budget_seconds": 300, "strict_profile_eta_change": 1.599143040209583e-10, "outer_tolerance": 1e-10},
+  "after": {"default_process_seconds": 1.8731576419668272, "tighter_process_seconds": 1.8725088759092614, "strict_profile_eta_change": 8.419542840698568e-12, "final_hessian_eta_change": 7.28583859910259e-16, "tighter_outer_iterations": 9, "profile_refinements": 1, "internal_refined_target": 1e-14, "final_independent_runtime_score": 3.277410759272813e-15},
+  "old_vs_new_default": {"b_max_abs_difference": 0.0, "V_max_abs_difference": 0.0, "public_certificate_max_abs_difference": 0.0, "ll_difference": 0.0, "deviance_difference": 0.0, "sample_size_rank_dof_equal": true, "fallback_count": 0},
+  "default_vs_tighter": {"b": 0.0, "V": 0.0, "ll": 0.0, "deviance": 0.0, "mu_max_abs_difference": 8.677183416239131e-10},
+  "independent_audit_pass": true,
+  "audit_sha256": "99cd81b782f4edd7b1a4286626a09e41bc426ee3740cb134619ff1ffe5c42fc7",
+  "evidence_directory": "ppml-checkpoint-refinement-scc-2026-09-08/work",
+  "local_validation": {"core_unit_tests": 745, "constrained_memory_tests": 2, "focused_strict_tests": 18, "formatting": "pass", "core_all_target_clippy_warnings_denied": "pass"},
+  "guardrail_submission": {"job_id": 7490705, "array_tasks": [1, 2, 3], "manifest_tasks": [1, 11, 17], "slots_per_task": 28, "seconds_per_task": 7200},
+  "remaining": "Repaired-source guardrails, comparator/optimum integration, and actual-auto activation acceptance. Historical snapshots and failed receipts remain unchanged."
+}

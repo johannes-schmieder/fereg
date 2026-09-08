@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "campaign_admission": false,
+  "arrays": {
+    "7490294": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "7490295": [
+      18,
+      19,
+      20,
+      21
+    ]
+  },
+  "accounting_terminal": true,
+  "scheduler_failed_nonzero_tasks": [],
+  "application_exit_nonzero_tasks": [
+    3,
+    4,
+    7,
+    8
+  ],
+  "independent_pass_tasks": [
+    1,
+    2,
+    5,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    18,
+    19,
+    20,
+    21
+  ],
+  "input_source_and_plugin_consistency_pass": true,
+  "source_snapshot_sha256": "da29adb7f6061a933dccbedbae923d96957361f3aa495f75780be8a05755362e",
+  "linux_plugin_sha256": "12f17d5873a0092e2ac6baee6b3ced2732504550c2983e5ada4a2d1a07f3450a",
+  "failure_kinds": {
+    "3": "tighter fit timed out at300seconds",
+    "4": "combined predictor/score audit failure",
+    "7": "combined predictor/score audit failure",
+    "8": "combined predictor/score audit failure"
+  },
+  "diagnostic_followup_job": 7490361,
+  "historical_results_unchanged": true
+}

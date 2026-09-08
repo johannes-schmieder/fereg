@@ -1718,13 +1718,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         direction.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
         projection.resize_zeroed_within_capacity(values.nrows(), rhs_count)?;
 
-        borrowed_symmetric_projection_into_recording(
+        borrowed_symmetric_projection_from_group_means(
             &self.design,
             weights,
             &values,
             residual,
             &mut self.workspace,
-            None,
         )?;
         direction
             .as_mut_slice()
@@ -1743,13 +1742,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let cg_tolerance = config.tolerance;
         let mut iterations = completed_pilot_iterations;
         while iterations < config.max_iterations {
-            borrowed_symmetric_projection_into_recording(
+            borrowed_symmetric_projection_from_group_means(
                 &self.design,
                 weights,
                 direction,
                 projection,
                 &mut self.workspace,
-                None,
             )?;
             weighted_dot_columns_into(
                 direction,
@@ -5766,6 +5764,19 @@ fn fused_group_means_for_level(
     values: &DenseMatrix,
     means: &mut [f64],
 ) -> Result<f64> {
+    fused_group_means_by_value(effect, level, weights, values.nrows(), means, |row, rhs| {
+        values[(row, rhs)]
+    })
+}
+
+fn fused_group_means_by_value(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    nrows: usize,
+    means: &mut [f64],
+    value: impl Fn(usize, usize) -> f64,
+) -> Result<f64> {
     let members = effect.level_index().checked_members(level)?;
     if members.is_empty() || means.len() > PARALLEL_GROUP_MAX_RHS {
         return Err(invalid_argument(
@@ -5778,7 +5789,7 @@ fn fused_group_means_for_level(
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
     for &observation in members {
-        if observation >= values.nrows() {
+        if observation >= nrows {
             return Err(invalid_argument(
                 "borrowed MAP membership exceeds the observation axis",
             ));
@@ -5790,8 +5801,8 @@ fn fused_group_means_for_level(
                 &mut weight_correction,
             )?;
         }
-        for rhs in 0..means.len() {
-            scales[rhs] = scales[rhs].max(values[(observation, rhs)].abs());
+        for (rhs, scale) in scales.iter_mut().enumerate().take(means.len()) {
+            *scale = scale.max(value(observation, rhs).abs());
         }
     }
     let total_weight = if weights.values.is_some() {
@@ -5810,7 +5821,7 @@ fn fused_group_means_for_level(
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     compensated_add(
-                        weight * (values[(observation, rhs)] / scales[rhs]),
+                        weight * (value(observation, rhs) / scales[rhs]),
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     )?;
@@ -5822,7 +5833,7 @@ fn fused_group_means_for_level(
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     compensated_add(
-                        values[(observation, rhs)] / scales[rhs],
+                        value(observation, rhs) / scales[rhs],
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     )?;
@@ -6225,6 +6236,98 @@ fn certify_effects_parallel(
         relative_two_norm,
         passed: relative_infinity_norm <= tolerance,
     })
+}
+
+/// Form I-S from its FE contributions, not by subtracting two observation
+/// vectors. The latter introduces off-model-space cancellation error that CG
+/// can amplify along weak graph directions despite passing FE normal equations.
+/// This PPML action reuses the admitted mean buffers and retains no coefficient
+/// history; ordinary OLS projection arithmetic remains unchanged.
+fn borrowed_symmetric_projection_from_group_means(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    input: &DenseMatrix,
+    projection: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<()> {
+    let columns = input.ncols();
+    if projection.nrows() != input.nrows()
+        || projection.ncols() != columns
+        || input.nrows() != design.nobs()
+        || columns == 0
+        || columns > PARALLEL_GROUP_MAX_RHS
+    {
+        return Err(invalid_argument(
+            "categorical projection action dimensions differ",
+        ));
+    }
+    projection.as_mut_slice().fill(0.0);
+    let effects = design.effects().len();
+    for effect_index in (0..effects).chain((0..effects.saturating_sub(1)).rev()) {
+        let effect = &design.effects()[effect_index];
+        let cells = effect
+            .n_levels()
+            .checked_mul(columns)
+            .ok_or_else(|| allocation("categorical projection group dimensions overflow"))?;
+        if rayon::current_num_threads() > 1
+            && workspace.parallel_group_means.len() >= cells
+            && (columns > 1 || input.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
+        {
+            let chunk = parallel_level_chunk_size(effect.n_levels()) * columns;
+            workspace.parallel_group_means[..cells]
+                .par_chunks_mut(chunk)
+                .enumerate()
+                .try_for_each(|(part, means)| -> Result<()> {
+                    for (local, means) in means.chunks_mut(columns).enumerate() {
+                        fused_group_means_by_value(
+                            effect,
+                            part * (chunk / columns) + local,
+                            weights,
+                            input.nrows(),
+                            means,
+                            |row, rhs| input[(row, rhs)] - projection[(row, rhs)],
+                        )?;
+                    }
+                    Ok(())
+                })?;
+            let means = &workspace.parallel_group_means[..cells];
+            projection
+                .as_mut_slice()
+                .par_chunks_mut(columns)
+                .enumerate()
+                .try_for_each(|(row, values)| -> Result<()> {
+                    let start = effect.codes()[row] as usize * columns;
+                    for (value, mean) in values.iter_mut().zip(&means[start..start + columns]) {
+                        *value += mean;
+                        if !value.is_finite() {
+                            return Err(invalid_data("categorical projection action is nonfinite"));
+                        }
+                    }
+                    Ok(())
+                })?;
+        } else {
+            let mut means = [0.0; PARALLEL_GROUP_MAX_RHS];
+            for level in 0..effect.n_levels() {
+                fused_group_means_by_value(
+                    effect,
+                    level,
+                    weights,
+                    input.nrows(),
+                    &mut means[..columns],
+                    |row, rhs| input[(row, rhs)] - projection[(row, rhs)],
+                )?;
+                for &row in effect.level_index().checked_members(level)? {
+                    for rhs in 0..columns {
+                        projection[(row, rhs)] += means[rhs];
+                        if !projection[(row, rhs)].is_finite() {
+                            return Err(invalid_data("categorical projection action is nonfinite"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn borrowed_symmetric_projection_into_recording(
@@ -7804,6 +7907,130 @@ mod tests {
                 serial.report().fallback_used,
                 parallel.report().fallback_used
             );
+        }
+    }
+
+    #[test]
+    fn ppml_cg_action_preserves_fe_space_under_cancellation() {
+        let observations = 16;
+        let codes = (0..3)
+            .map(|axis| {
+                (0..observations)
+                    .map(|row| (((row / 2) >> axis) & 1) as u32)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let indices = codes
+            .iter()
+            .map(|c| LevelIndex::from_codes(c, 2).unwrap())
+            .collect::<Vec<_>>();
+        let sources = codes
+            .iter()
+            .zip(&indices)
+            .map(|(c, i)| ValidatedBorrowedInterceptSource::new(c, 2, i).unwrap())
+            .collect::<Vec<_>>();
+        let design = BorrowedInterceptFeDesign::new(
+            observations,
+            sources
+                .iter()
+                .map(ValidatedBorrowedInterceptSource::effect)
+                .collect(),
+        )
+        .unwrap();
+        let input = DenseMatrix::from_columns(&[
+            (0..observations)
+                .map(|row| {
+                    if row % 2 == 0 {
+                        1e10 * (row + 1) as f64
+                    } else {
+                        0.001 * row as f64
+                    }
+                })
+                .collect(),
+            (0..observations)
+                .map(|row| (row as f64 * 0.71).sin())
+                .collect(),
+        ])
+        .unwrap();
+        let weights = (0..observations)
+            .map(|row| 1.0 + (row % 5) as f64)
+            .collect::<Vec<_>>();
+        for raw_weights in [
+            BorrowedMapWeights::Unit,
+            BorrowedMapWeights::Provided(&weights),
+        ] {
+            let run = |threads| {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| {
+                        let mut workspace = BorrowedMapWorkspace::new_with_parallelism(
+                            &design,
+                            observations,
+                            2,
+                            threads,
+                            &mut SystemWorkspaceReservation,
+                        )
+                        .unwrap();
+                        let mut action = DenseMatrix::zeros(observations, 2).unwrap();
+                        borrowed_symmetric_projection_from_group_means(
+                            &design,
+                            validate_weights(raw_weights, observations).unwrap(),
+                            &input,
+                            &mut action,
+                            &mut workspace,
+                        )
+                        .unwrap();
+                        // Identical FE tuples must receive identical contributions,
+                        // independently of the magnitude of the input's off-space part.
+                        for row in (0..observations).step_by(2) {
+                            for rhs in 0..2 {
+                                assert_eq!(action[(row, rhs)], action[(row + 1, rhs)]);
+                            }
+                        }
+                        for rhs in 0..2 {
+                            let scale = (0..observations)
+                                .map(|row| action[(row, rhs)].abs())
+                                .fold(1.0_f64, f64::max);
+                            for tuple in 0..8 {
+                                let additive = action[(0, rhs)]
+                                    + (0..3)
+                                        .filter(|axis| tuple & (1 << axis) != 0)
+                                        .map(|axis| {
+                                            action[((1 << axis) * 2, rhs)] - action[(0, rhs)]
+                                        })
+                                        .sum::<f64>();
+                                assert!(
+                                    (action[(tuple * 2, rhs)] - additive).abs() < 1e-14 * scale
+                                );
+                            }
+                        }
+                        let mut subtractive = DenseMatrix::zeros(observations, 2).unwrap();
+                        borrowed_symmetric_projection_into_recording(
+                            &design,
+                            validate_weights(raw_weights, observations).unwrap(),
+                            &input,
+                            &mut subtractive,
+                            &mut workspace,
+                            None,
+                        )
+                        .unwrap();
+                        for rhs in 0..2 {
+                            let scale = (0..observations)
+                                .map(|row| input[(row, rhs)].abs())
+                                .fold(1.0_f64, f64::max);
+                            for row in 0..observations {
+                                assert!(
+                                    (action[(row, rhs)] - subtractive[(row, rhs)]).abs()
+                                        < 1e-14 * scale
+                                );
+                            }
+                        }
+                        action
+                    })
+            };
+            assert_eq!(run(1), run(3));
         }
     }
 

@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/ppml_solver_development.py"
-MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v4.json"
+MANIFEST = ROOT / "benchmarks/manifests/feppml_solver_development_v5.json"
 DRIVER = ROOT / "tests/stata/development/feppml_solver_development.do"
 
 SPEC = importlib.util.spec_from_file_location("ppml_solver_development", SCRIPT)
@@ -254,7 +254,7 @@ def run_document() -> dict[str, object]:
         metadata, str(scope["topology"]), DEVELOPMENT.load_manifest(),
     )
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "kind": "feppml_solver_development_run",
         "manifest": {
             "path": str(MANIFEST),
@@ -431,6 +431,15 @@ class PpmlSolverDevelopmentTests(unittest.TestCase):
             with self.subTest(metadata=metadata, topology=topology):
                 with self.assertRaises(DEVELOPMENT.DevelopmentError):
                     DEVELOPMENT.solver_eligibility(metadata, topology, manifest)
+
+    def test_matching_pruned_samples_still_fail_the_full_sample_contract(self) -> None:
+        document = run_document()
+        for row in document["records"]:
+            row["sample_n"] = 99.0
+        analysis = DEVELOPMENT.analyze_document(document)
+        self.assertFalse(analysis["science_pass"])
+        self.assertEqual(sum("sample_differs_from_metadata" in f for f in analysis["science_failures"]),
+                         len(document["records"]))
 
     def test_analysis_excludes_ineligible_cmg_without_masking_unexpected_rows(self) -> None:
         document = run_document()

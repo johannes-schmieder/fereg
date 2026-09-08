@@ -165,6 +165,10 @@ impl CmgTopologyProfile {
     pub(crate) const fn nuisance_columns(&self) -> usize {
         self.nuisance_columns
     }
+
+    pub(crate) const fn vertices(&self) -> usize {
+        self.vertices
+    }
 }
 
 /// Diagnostics from the CMG graph projection before any observation-space CG
@@ -180,6 +184,9 @@ pub(crate) struct CmgUnpolishedProjectionReport {
     pub(crate) batches: usize,
     pub(crate) nuisance_columns: usize,
     pub(crate) nuisance_reused_right_hand_sides: usize,
+    pub(crate) pcg_batch_width: usize,
+    pub(crate) nuisance_setup: CmgNuisanceSetup,
+    pub(crate) projection_work: CmgProjectionWork,
     #[cfg(test)]
     pub(crate) executor_threads: usize,
 }
@@ -193,6 +200,94 @@ pub(crate) struct PreparedCmgTopology {
     topology: PreparedLaplacianTopology,
     assembly_workspace: PreparedLaplacianWorkspace,
     numeric_weights: Vec<f64>,
+    nuisance_seed: Vec<f64>,
+    seed_valid: bool,
+    seed_for_frame: bool,
+    weight_ratio: f64,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub(crate) struct CmgNuisanceSetup {
+    pub(crate) warm_right_hand_sides: usize,
+    pub(crate) iterations: usize,
+    pub(crate) restarts: usize,
+    pub(crate) extra_restarts: usize,
+    pub(crate) initial_relative_residual: f64,
+    pub(crate) weight_ratio: f64,
+    pub(crate) pcg_seconds: f64,
+    pub(crate) rhs_seconds: f64,
+    pub(crate) schur_seconds: f64,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub(crate) struct CmgProjectionWork {
+    pub(crate) warm_right_hand_sides: usize,
+    pub(crate) warm_iterations: usize,
+    pub(crate) iterations: usize,
+    pub(crate) restarts: usize,
+    pub(crate) extra_restarts: usize,
+    pub(crate) initial_relative_residual: f64,
+    pub(crate) pcg_seconds: f64,
+    pub(crate) rhs_seconds: f64,
+}
+
+/// Owned by the frozen PPML finite basis, never by the reusable OLS absorber.
+/// Each control stores the raw core solve, before the nuisance correction.
+/// The changing working response remains cold: seeding it caused a measured
+/// per-RHS certificate retry and expensive three-FE nuisance-factor rebuild.
+pub(crate) struct CmgControlSeed {
+    potentials: Vec<f64>,
+    valid: bool,
+}
+
+impl CmgControlSeed {
+    pub(crate) fn estimated_bytes(vertices: usize, columns: usize) -> Result<u128> {
+        (vertices as u128)
+            .checked_mul(columns as u128)
+            .and_then(|value| value.checked_mul(8))
+            .and_then(|value| value.checked_add(std::mem::size_of::<Self>() as u128))
+            .ok_or_else(|| allocation("CMG control seed estimate overflows"))
+    }
+
+    pub(crate) fn new(vertices: usize, columns: usize) -> Result<Self> {
+        let elements = vertices
+            .checked_mul(columns)
+            .ok_or_else(|| allocation("CMG control seed dimensions overflow"))?;
+        let potentials = zero_vec(elements, "unable to reserve CMG control seed")?;
+        // The fit's joint budget includes this exact retained capacity before
+        // any ordinary graph is built; a larger reservation cannot escape it.
+        if potentials.capacity() != elements {
+            return Err(allocation("CMG control seed exceeds its admitted capacity"));
+        }
+        Ok(Self {
+            potentials,
+            valid: false,
+        })
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.valid = false;
+    }
+
+    fn consume(&mut self, weight_ratio: f64) -> bool {
+        std::mem::replace(&mut self.valid, false)
+            && (1.0..=2.0).contains(&weight_ratio)
+            && self.potentials.iter().all(|value| value.is_finite())
+    }
+
+    /// Only the owner of all per-RHS and combined PPML certificates may call
+    /// this. Promotion only marks the buffer written while invalid: it cannot
+    /// copy or allocate. No stale residual is retained or promoted.
+    pub(crate) fn retain_certified(&mut self, work: CmgProjectionWork) {
+        self.valid = work.extra_restarts == 0
+            && (work.warm_right_hand_sides == 0 || work.initial_relative_residual < 0.5)
+            && self.potentials.iter().all(|value| value.is_finite());
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ready(&self) -> bool {
+        self.valid
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -263,6 +358,8 @@ struct GraphCmg {
     setup_backward_error: f64,
     setup_right_hand_sides: usize,
     setup_batches: usize,
+    nuisance_setup: CmgNuisanceSetup,
+    projection_work: CmgProjectionWork,
 }
 
 enum GraphCmgWorkspace {
@@ -325,6 +422,7 @@ impl CallerPcgBuffers {
         solver: &ParallelPcgSolver,
         rhs_count: usize,
         options: PcgOptions,
+        initial_guesses: Option<&[f64]>,
     ) -> Result<()> {
         let vertices = solver.graph().vertex_count();
         let elements = vertices
@@ -352,13 +450,17 @@ impl CallerPcgBuffers {
         let solutions =
             PcgBatchMut::contiguous(&mut self.solutions[..elements], rhs_count, vertices)
                 .map_err(cmg_error)?;
+        let guesses = initial_guesses
+            .map(|values| PcgBatchRef::contiguous(values, rhs_count, vertices))
+            .transpose()
+            .map_err(cmg_error)?;
         let diagnostics = &mut self.diagnostics[..rhs_count];
         match report.execution() {
             ParallelPcgExecution::Serial => solve_pcg_batch_into_with_workspace(
                 solver.graph(),
                 solver.preconditioner(),
                 rhs,
-                None,
+                guesses,
                 solutions,
                 diagnostics,
                 options,
@@ -371,7 +473,7 @@ impl CallerPcgBuffers {
                     solver.preconditioner(),
                     solver.try_plan().map_err(cmg_error)?,
                     rhs,
-                    None,
+                    guesses,
                     solutions,
                     diagnostics,
                     options,
@@ -383,7 +485,7 @@ impl CallerPcgBuffers {
                 solver.graph(),
                 solver.preconditioner(),
                 rhs,
-                None,
+                guesses,
                 solutions,
                 diagnostics,
                 options,
@@ -578,6 +680,7 @@ impl PreparedCmgTopology {
             .and_then(|value| value.checked_add(normalized_weights))
             .and_then(|value| value.checked_add(build_records))
             .and_then(|value| value.checked_add(effect_metadata))
+            .and_then(|value| value.checked_add(nuisance_seed_bytes(&profile).ok()?))
             .ok_or_else(|| allocation("prepared CMG topology peak estimate overflows"))
     }
 
@@ -625,12 +728,23 @@ impl PreparedCmgTopology {
             design.nobs(),
             "unable to reserve prepared CMG numeric weights",
         )?;
+        let nuisance_seed = zero_vec(
+            profile
+                .vertices
+                .checked_mul(profile.nuisance_columns)
+                .ok_or_else(|| allocation("prepared CMG seed dimensions overflow"))?,
+            "unable to reserve prepared CMG nuisance seed",
+        )?;
         Ok(Self {
             profile,
             design_identity,
             topology,
             assembly_workspace,
             numeric_weights,
+            nuisance_seed,
+            seed_valid: false,
+            seed_for_frame: false,
+            weight_ratio: f64::INFINITY,
         })
     }
 
@@ -642,9 +756,25 @@ impl PreparedCmgTopology {
         weight_scale: f64,
     ) -> Result<Laplacian> {
         self.ensure_matches(design, profile)?;
+        let was_valid = std::mem::replace(&mut self.seed_valid, false);
+        self.weight_ratio = 1.0;
         for (row, numeric_weight) in self.numeric_weights.iter_mut().enumerate() {
-            *numeric_weight = normalized_weight(weights, weight_scale, row);
+            let current = normalized_weight(weights, weight_scale, row);
+            self.weight_ratio = if current > 0.0 && *numeric_weight > 0.0 {
+                self.weight_ratio
+                    .max(current / *numeric_weight)
+                    .max(*numeric_weight / current)
+            } else {
+                f64::INFINITY
+            };
+            *numeric_weight = current;
         }
+        // This bounds the normalized graph's quadratic-form change in either
+        // direction by two. It is only a seed-admission rule: the upstream
+        // solve recomputes b - L_current*x and uses its unchanged certificate.
+        self.seed_for_frame = was_valid
+            && self.weight_ratio <= 2.0
+            && self.nuisance_seed.iter().all(|value| value.is_finite());
         self.topology
             .assemble_with_workspace(&self.numeric_weights, &mut self.assembly_workspace)
             .map_err(cmg_error)
@@ -675,6 +805,8 @@ impl PreparedCmgTopology {
                     .capacity()
                     .saturating_mul(std::mem::size_of::<f64>()),
             )
+            .saturating_add(self.nuisance_seed.capacity().saturating_mul(8))
+            .saturating_add(std::mem::size_of::<Vec<f64>>() + 16)
             .saturating_add(
                 self.profile
                     .effect_order
@@ -687,6 +819,41 @@ impl PreparedCmgTopology {
                     .capacity()
                     .saturating_mul(std::mem::size_of::<PreparedCmgEffectIdentity>()),
             )
+    }
+
+    pub(crate) fn reset_warm_start(&mut self) {
+        self.seed_valid = false;
+        self.seed_for_frame = false;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn warm_seed_ready(&self) -> bool {
+        self.seed_valid
+    }
+
+    /// Called only after the full PPML per-RHS and combined certificates.
+    /// Swapping preflighted buffers cannot allocate or change accepted state.
+    pub(crate) fn retain_certified_seed(&mut self, mut absorber: CmgAbsorber<'_>) {
+        self.reset_warm_start();
+        let CmgRoute::Graph(graph) = &mut absorber.route else {
+            return;
+        };
+        let GraphCmgWorkspace::CallerBuffers(caller) = &mut graph.workspace else {
+            return;
+        };
+        if !caller.nuisance_potentials.is_empty()
+            && caller.nuisance_potentials.len() == self.nuisance_seed.len()
+            && caller
+                .nuisance_potentials
+                .iter()
+                .all(|value| value.is_finite())
+            && graph.nuisance_setup.extra_restarts == 0
+            && (graph.nuisance_setup.warm_right_hand_sides == 0
+                || graph.nuisance_setup.initial_relative_residual < 0.5)
+        {
+            std::mem::swap(&mut self.nuisance_seed, &mut caller.nuisance_potentials);
+            self.seed_valid = true;
+        }
     }
 }
 
@@ -931,6 +1098,23 @@ impl<'a> CmgAbsorber<'a> {
         values: &mut DenseMatrix,
         relative_tolerance: f64,
     ) -> Result<CmgUnpolishedProjectionReport> {
+        self.project_unpolished_with_seed(values, relative_tolerance, None)
+    }
+
+    /// Only the frozen-control PPML layout may use a seed: controls first,
+    /// followed by one working response. Selective retries use the cold API.
+    pub(crate) fn project_unpolished_with_seed(
+        &mut self,
+        values: &mut DenseMatrix,
+        relative_tolerance: f64,
+        mut seed: Option<&mut CmgControlSeed>,
+    ) -> Result<CmgUnpolishedProjectionReport> {
+        let use_seed = seed.as_mut().is_some_and(|seed| {
+            seed.consume(match &self.route {
+                CmgRoute::Graph(graph) => graph.nuisance_setup.weight_ratio,
+                _ => f64::INFINITY,
+            })
+        });
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG unpolished design and matrix dimensions are inconsistent",
@@ -946,8 +1130,11 @@ impl<'a> CmgAbsorber<'a> {
         }
         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
         let mut metrics = std::mem::take(&mut self.pending_setup_metrics);
-        let nuisance_columns = match &self.route {
-            CmgRoute::Graph(graph) => graph.nuisance.len(),
+        let (nuisance_columns, pcg_batch_width) = match &self.route {
+            CmgRoute::Graph(graph) => (
+                graph.nuisance.len(),
+                graph.pcg_batch_width(self.config.batch_size),
+            ),
             CmgRoute::Direct => {
                 return Err(FeregError::new(
                     ErrorCode::Unsupported,
@@ -972,6 +1159,7 @@ impl<'a> CmgAbsorber<'a> {
                 values,
                 self.config,
                 self.config.pcg_options_at(relative_tolerance),
+                seed.map(|seed| (seed, use_seed)),
             ),
             CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
         }?;
@@ -985,6 +1173,15 @@ impl<'a> CmgAbsorber<'a> {
             batches: metrics.batches,
             nuisance_columns,
             nuisance_reused_right_hand_sides: metrics.nuisance_reused_right_hand_sides,
+            pcg_batch_width,
+            nuisance_setup: match &self.route {
+                CmgRoute::Graph(graph) => graph.nuisance_setup,
+                _ => unreachable!("CMG route checked above"),
+            },
+            projection_work: match &self.route {
+                CmgRoute::Graph(graph) => graph.projection_work,
+                _ => unreachable!("CMG route checked above"),
+            },
             #[cfg(test)]
             executor_threads,
         })
@@ -1182,6 +1379,18 @@ impl<'a> CmgAbsorber<'a> {
 }
 
 impl GraphCmg {
+    fn pcg_batch_width(&self, capacity: usize) -> usize {
+        let concurrency = match &self.workspace {
+            GraphCmgWorkspace::CallerBuffers(caller) => caller.workspaces.len(),
+            GraphCmgWorkspace::OwnedResults(_) => 1,
+        };
+        // Upstream executes each caller batch in workspace-sized waves. Avoid
+        // a partial wave at every capacity boundary (e.g. 7+3 for capacity 10)
+        // without enlarging the admitted RHS or workspace pool. OLS's owned
+        // route and a serial pool retain their original batch boundaries.
+        (capacity / concurrency) * concurrency
+    }
+
     fn project_matrix(
         &mut self,
         design: &BorrowedInterceptFeDesign<'_>,
@@ -1197,9 +1406,11 @@ impl GraphCmg {
             values,
             config,
             config.pcg_options(),
+            None,
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn project_matrix_with_options(
         &mut self,
         design: &BorrowedInterceptFeDesign<'_>,
@@ -1208,8 +1419,10 @@ impl GraphCmg {
         values: &mut DenseMatrix,
         config: CmgConfig,
         pcg_options: PcgOptions,
+        seed: Option<(&mut CmgControlSeed, bool)>,
     ) -> Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)> {
         let mut metrics = CmgSolveMetrics::default();
+        self.projection_work = CmgProjectionWork::default();
         let mut coefficients = config
             .retain_coefficients
             .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
@@ -1225,6 +1438,7 @@ impl GraphCmg {
                 destination_rhs_start: 0,
                 coefficient_scale: 1.0,
                 pcg_options,
+                seed,
             },
         )?;
         metrics.include_from(core_metrics);
@@ -1344,6 +1558,7 @@ impl GraphCmg {
                         destination_rhs_start: start,
                         coefficient_scale: -1.0,
                         pcg_options,
+                        seed: None,
                     },
                 )?;
                 metrics.include_from(correction_metrics);
@@ -1377,10 +1592,34 @@ impl GraphCmg {
             destination_rhs_start,
             coefficient_scale,
             pcg_options,
+            mut seed,
         } = request;
+        if let Some((seed, _)) = &seed {
+            if !matches!(self.workspace, GraphCmgWorkspace::CallerBuffers(_))
+                || Some(seed.potentials.len())
+                    != self
+                        .solver
+                        .graph()
+                        .vertex_count()
+                        .checked_mul(values.ncols() - 1)
+            {
+                return Err(invalid_argument(
+                    "CMG control seed and frozen RHS dimensions differ",
+                ));
+            }
+        }
         let mut metrics = CmgSolveMetrics::default();
-        for start in (0..values.ncols()).step_by(config.batch_size) {
-            let end = start.saturating_add(config.batch_size).min(values.ncols());
+        let batch_width = self.pcg_batch_width(config.batch_size);
+        let mut start = 0;
+        while start < values.ncols() {
+            let seed_end = if seed.as_ref().is_some_and(|(_, enabled)| *enabled)
+                && start < values.ncols() - 1
+            {
+                values.ncols() - 1
+            } else {
+                values.ncols()
+            };
+            let end = start.saturating_add(batch_width).min(seed_end);
             match &mut self.workspace {
                 GraphCmgWorkspace::OwnedResults(workspace) => {
                     let right_hand_sides = build_value_rhs_batch(
@@ -1421,6 +1660,7 @@ impl GraphCmg {
                 GraphCmgWorkspace::CallerBuffers(caller) => {
                     let width = end - start;
                     let vertices = self.solver.graph().vertex_count();
+                    let rhs_started = Instant::now();
                     fill_value_rhs_batch_into(
                         &mut caller.right_hand_sides,
                         vertices,
@@ -1432,10 +1672,48 @@ impl GraphCmg {
                         start,
                         end,
                     )?;
-                    caller.solve(&self.solver, width, pcg_options)?;
+                    self.projection_work.rhs_seconds += rhs_started.elapsed().as_secs_f64();
+                    let mut batch_seed = seed.as_mut().filter(|_| start < values.ncols() - 1);
+                    let guesses = batch_seed
+                        .as_ref()
+                        .filter(|(_, use_seed)| *use_seed)
+                        .map(|(seed, _)| &seed.potentials[start * vertices..end * vertices]);
+                    let solve_started = Instant::now();
+                    caller.solve(&self.solver, width, pcg_options, guesses)?;
+                    self.projection_work.pcg_seconds += solve_started.elapsed().as_secs_f64();
+                    let was_seeded = guesses.is_some();
+                    if let Some((seed, _)) = &mut batch_seed {
+                        let retained_end = end.min(values.ncols() - 1);
+                        seed.potentials[start * vertices..retained_end * vertices].copy_from_slice(
+                            &caller.solutions[..(retained_end - start) * vertices],
+                        );
+                    }
                     metrics.include_batch(width);
                     for local in 0..width {
                         let diagnostic = caller.diagnostics[local];
+                        self.projection_work.iterations += diagnostic.iterations();
+                        self.projection_work.restarts += diagnostic.restarts();
+                        self.projection_work.extra_restarts += diagnostic
+                            .restarts()
+                            .saturating_sub(usize::from(diagnostic.iterations() > 0));
+                        if was_seeded {
+                            self.projection_work.warm_right_hand_sides += 1;
+                            self.projection_work.warm_iterations += diagnostic.iterations();
+                            let rhs_norm = caller.right_hand_sides
+                                [local * vertices..(local + 1) * vertices]
+                                .iter()
+                                .map(|value| value * value)
+                                .sum::<f64>()
+                                .sqrt();
+                            let relative = diagnostic.initial_residual_norm()
+                                / rhs_norm.max(f64::MIN_POSITIVE);
+                            self.projection_work.initial_relative_residual = if relative.is_finite()
+                            {
+                                self.projection_work.initial_relative_residual.max(relative)
+                            } else {
+                                f64::INFINITY
+                            };
+                        }
                         metrics.include(diagnostic.iterations(), diagnostic.backward_error());
                         let solution = caller.solution(local, vertices)?;
                         if let Some(batch) = coefficients.as_deref_mut() {
@@ -1458,6 +1736,7 @@ impl GraphCmg {
                     }
                 }
             }
+            start = end;
         }
         Ok(metrics)
     }
@@ -1469,6 +1748,7 @@ struct CoreProjectionRequest<'a> {
     destination_rhs_start: usize,
     coefficient_scale: f64,
     pcg_options: PcgOptions,
+    seed: Option<(&'a mut CmgControlSeed, bool)>,
 }
 
 fn record_core_solution(
@@ -1610,8 +1890,11 @@ fn build_graph_route_from_numeric(
         .core_effects
         .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
     let hierarchy_started = trace_enabled.then(Instant::now);
+    let hierarchy_options = prepared.map_or_else(CmgOptions::default, |_| {
+        prepared_cmg_options(profile, &graph)
+    });
     let preconditioner =
-        CmgPreconditioner::build_with_executor(&graph, CmgOptions::default(), &executor)
+        CmgPreconditioner::build_with_executor(&graph, hierarchy_options, &executor)
             .map_err(cmg_error)?;
     let hierarchy_seconds =
         hierarchy_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
@@ -1706,10 +1989,23 @@ fn build_graph_route_from_numeric(
         setup_backward_error: 0.0,
         setup_right_hand_sides: 0,
         setup_batches: 0,
+        nuisance_setup: CmgNuisanceSetup {
+            weight_ratio: prepared.map_or(0.0, |state| state.weight_ratio),
+            ..CmgNuisanceSetup::default()
+        },
+        projection_work: CmgProjectionWork::default(),
     };
     let nuisance_started = trace_enabled.then(Instant::now);
-    let (factor, metrics) =
-        build_nuisance_factor(design, weights, weight_scale, &mut route, config)?;
+    let (factor, metrics) = build_nuisance_factor(
+        design,
+        weights,
+        weight_scale,
+        &mut route,
+        config,
+        prepared
+            .filter(|state| state.seed_for_frame)
+            .map(|state| state.nuisance_seed.as_slice()),
+    )?;
     let nuisance_seconds = nuisance_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     route.nuisance_factor = factor;
     ensure_cmg_exact_retained_memory_fits(&route, config, prepared)?;
@@ -1719,9 +2015,10 @@ fn build_graph_route_from_numeric(
     route.setup_batches = metrics.batches;
     if trace_enabled {
         eprintln!(
-            "FEREG_CMG_SETUP|graph={graph_seconds:.9}|hierarchy={hierarchy_seconds:.9}|solver_workspace={solver_seconds:.9}|nuisance={nuisance_seconds:.9}|nuisance_columns={}|nuisance_iterations={}",
+            "FEREG_CMG_SETUP|graph={graph_seconds:.9}|hierarchy={hierarchy_seconds:.9}|solver_workspace={solver_seconds:.9}|nuisance={nuisance_seconds:.9}|nuisance_columns={}|nuisance_iterations={}|low_effective_degree_threshold={:.17e}",
             route.nuisance.len(),
             metrics.iterations,
+            hierarchy_options.low_effective_degree_threshold,
         );
     }
     Ok(GraphBuildOutcome::Ready(route))
@@ -2066,7 +2363,36 @@ fn conservative_prepared_topology_retained_bytes(
         .and_then(|value| value.checked_add(components))
         .and_then(|value| value.checked_add(assembly_and_weights))
         .and_then(|value| value.checked_add(effect_metadata))
+        .and_then(|value| value.checked_add(nuisance_seed_bytes(profile).ok()?))
         .ok_or_else(|| allocation("prepared CMG retained topology estimate overflows"))
+}
+
+fn nuisance_seed_bytes(profile: &CmgTopologyProfile) -> Result<u128> {
+    (profile.vertices as u128)
+        .checked_mul(profile.nuisance_columns as u128)
+        .and_then(|value| value.checked_mul(8))
+        .and_then(|value| value.checked_add((std::mem::size_of::<Vec<f64>>() + 16) as u128))
+        .ok_or_else(|| allocation("prepared CMG nuisance seed estimate overflows"))
+}
+
+fn prepared_cmg_options(profile: &CmgTopologyProfile, graph: &Laplacian) -> CmgOptions {
+    let mut options = CmgOptions::default();
+    if profile.nuisance_columns > 0
+        && !graph.edges().is_empty()
+        && graph.edges().iter().all(|edge| {
+            edge.weight() / graph.diagonal()[edge.u()] < options.low_effective_degree_threshold
+                && edge.weight() / graph.diagonal()[edge.v()]
+                    < options.low_effective_degree_threshold
+        })
+    {
+        // Low-effective-degree pruning can leave almost full-sized coarse
+        // graphs when every edge is weak under CMG's existing criterion.
+        // Mixed/strong-edge graphs keep pruning: unpruned grouping regressed
+        // the measured mixed sparse case. This allocation-free current-weight
+        // test changes only the preconditioner, never residual/certificate rules.
+        options.low_effective_degree_threshold = 0.0;
+    }
+    options
 }
 
 fn conservative_prepared_cmg_frame_bytes(
@@ -2081,6 +2407,7 @@ fn conservative_prepared_cmg_frame_bytes(
     };
     let estimate = RepeatedPcgMemoryEstimate::conservative(
         problem,
+        // Grouping does not alter the default factor, fill or depth bounds.
         CmgOptions::default(),
         parallel,
         config.threads.resolved() > 1,
@@ -2263,6 +2590,7 @@ fn build_nuisance_factor(
     weight_scale: f64,
     graph: &mut GraphCmg,
     config: CmgConfig,
+    initial_guesses: Option<&[f64]>,
 ) -> Result<(PivotedPsdFactor, CmgSolveMetrics)> {
     let dimension = graph.nuisance.len();
     if dimension == 0 {
@@ -2275,8 +2603,9 @@ fn build_nuisance_factor(
     let mut corrections = zero_vec(square, "unable to reserve CMG nuisance Schur corrections")?;
     let mut metrics = CmgSolveMetrics::default();
 
-    for start in (0..dimension).step_by(config.batch_size) {
-        let end = start.saturating_add(config.batch_size).min(dimension);
+    let batch_size = graph.pcg_batch_width(config.batch_size);
+    for start in (0..dimension).step_by(batch_size) {
+        let end = start.saturating_add(batch_size).min(dimension);
         match &mut graph.workspace {
             GraphCmgWorkspace::OwnedResults(workspace) => {
                 let right_hand_sides = build_nuisance_rhs_batch(
@@ -2311,6 +2640,7 @@ fn build_nuisance_factor(
                 }
             }
             GraphCmgWorkspace::CallerBuffers(caller) => {
+                let rhs_started = Instant::now();
                 let width = end - start;
                 let vertices = graph.solver.graph().vertex_count();
                 fill_nuisance_rhs_batch_into(
@@ -2324,12 +2654,45 @@ fn build_nuisance_factor(
                     start,
                     end,
                 )?;
-                caller.solve(&graph.solver, width, config.pcg_options())?;
+                graph.nuisance_setup.rhs_seconds += rhs_started.elapsed().as_secs_f64();
+                let solve_started = Instant::now();
+                let guesses =
+                    initial_guesses.map(|values| &values[start * vertices..end * vertices]);
+                caller.solve(&graph.solver, width, config.pcg_options(), guesses)?;
+                graph.nuisance_setup.pcg_seconds += solve_started.elapsed().as_secs_f64();
+                graph.nuisance_setup.warm_right_hand_sides +=
+                    if guesses.is_some() { width } else { 0 };
+                let schur_started = Instant::now();
                 metrics.include_batch(width);
                 caller.nuisance_potentials[start * vertices..end * vertices]
                     .copy_from_slice(&caller.solutions[..width * vertices]);
                 for local in 0..width {
                     let diagnostic = caller.diagnostics[local];
+                    graph.nuisance_setup.iterations += diagnostic.iterations();
+                    graph.nuisance_setup.restarts += diagnostic.restarts();
+                    // CMG counts the mandatory fresh terminal residual as a
+                    // restart, even when it immediately accepts the solution.
+                    graph.nuisance_setup.extra_restarts += diagnostic
+                        .restarts()
+                        .saturating_sub(usize::from(diagnostic.iterations() > 0));
+                    if guesses.is_some() {
+                        let rhs_norm = caller.right_hand_sides
+                            [local * vertices..(local + 1) * vertices]
+                            .iter()
+                            .map(|value| value * value)
+                            .sum::<f64>()
+                            .sqrt();
+                        let relative =
+                            diagnostic.initial_residual_norm() / rhs_norm.max(f64::MIN_POSITIVE);
+                        graph.nuisance_setup.initial_relative_residual = graph
+                            .nuisance_setup
+                            .initial_relative_residual
+                            .max(if relative.is_finite() {
+                                relative
+                            } else {
+                                f64::INFINITY
+                            });
+                    }
                     metrics.include(diagnostic.iterations(), diagnostic.backward_error());
                     let column = start + local;
                     accumulate_schur_column(
@@ -2345,6 +2708,7 @@ fn build_nuisance_factor(
                         &mut corrections,
                     )?;
                 }
+                graph.nuisance_setup.schur_seconds += schur_started.elapsed().as_secs_f64();
             }
         }
     }
@@ -3040,6 +3404,254 @@ mod tests {
     }
 
     #[test]
+    fn prepared_nuisance_grouping_preserves_memory_caps_and_zero_nuisance_policy() {
+        let mut profile = CmgTopologyProfile {
+            effect_order: vec![0, 1, 2],
+            core_effects: Some([0, 1]),
+            vertices: 1_200,
+            nuisance_columns: 0,
+            observations: 25_000,
+            highest_cardinality_levels: 1_000,
+            second_cardinality_levels: 200,
+        };
+        let edges = (0..9)
+            .flat_map(|left| (9..18).map(move |right| (left, right, 1.0)))
+            .collect::<Vec<_>>();
+        let graph = Laplacian::from_edges(18, edges).unwrap();
+        assert_eq!(
+            prepared_cmg_options(&profile, &graph),
+            CmgOptions::default()
+        );
+        for width in [1, 32, 64] {
+            profile.nuisance_columns = width;
+            let options = prepared_cmg_options(&profile, &graph);
+            assert_eq!(options.low_effective_degree_threshold, 0.0);
+            assert_eq!(
+                CmgOptions {
+                    low_effective_degree_threshold: CmgOptions::default()
+                        .low_effective_degree_threshold,
+                    ..options
+                },
+                CmgOptions::default(),
+                "direct factor, fill and depth bounds cannot grow"
+            );
+            let problem = CmgProblemSize {
+                vertices: profile.vertices,
+                input_edges: profile.observations,
+                canonical_edges: profile.observations,
+                right_hand_sides: 10,
+            };
+            for threads in [1, 7] {
+                let parallel = ParallelOptions {
+                    threads,
+                    ..ParallelOptions::default()
+                };
+                assert_eq!(
+                    RepeatedPcgMemoryEstimate::conservative(
+                        problem,
+                        options,
+                        parallel,
+                        threads > 1,
+                        false
+                    )
+                    .unwrap(),
+                    RepeatedPcgMemoryEstimate::conservative(
+                        problem,
+                        CmgOptions::default(),
+                        parallel,
+                        threads > 1,
+                        false
+                    )
+                    .unwrap()
+                );
+            }
+        }
+        let boundary = Laplacian::from_edges(
+            16,
+            (0..8).flat_map(|left| (8..16).map(move |right| (left, right, 1.0))),
+        )
+        .unwrap();
+        assert_eq!(
+            prepared_cmg_options(&profile, &boundary),
+            CmgOptions::default(),
+            "equality is not weak"
+        );
+        let mixed = Laplacian::from_edges(
+            18,
+            (0..9).flat_map(|left| {
+                (9..18).map(move |right| {
+                    (
+                        left,
+                        right,
+                        if left == 0 && right == 9 { 100.0 } else { 1.0 },
+                    )
+                })
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            prepared_cmg_options(&profile, &mixed),
+            CmgOptions::default(),
+            "one strong edge is sufficient; do not use an average"
+        );
+        assert_eq!(
+            prepared_cmg_options(&profile, &graph).low_effective_degree_threshold,
+            0.0,
+            "recompute eligibility from the current graph, without retained policy state"
+        );
+    }
+
+    #[test]
+    fn prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs() {
+        let rows = 24_000;
+        let levels = [800, 160, 5];
+        let codes = [
+            (0..rows)
+                .map(|row| (row % levels[0]) as u32)
+                .collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row * 17 + (row / levels[0]) * 7) % levels[1]) as u32)
+                .collect(),
+            (0..rows)
+                .map(|row| ((row / 37) % levels[2]) as u32)
+                .collect(),
+        ];
+        let indexes = codes
+            .iter()
+            .zip(levels)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).unwrap())
+            .collect::<Vec<_>>();
+        let input = DenseMatrix::from_columns(&[
+            (0..rows).map(|row| (row as f64 * 0.31).sin()).collect(),
+            (0..rows)
+                .map(|row| (row as f64 * 0.17).cos() + codes[2][row] as f64)
+                .collect(),
+        ])
+        .unwrap();
+        let mut references: [Option<DenseMatrix>; 3] = Default::default();
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let design = || {
+                BorrowedInterceptFeDesign::new(
+                    rows,
+                    order
+                        .iter()
+                        .map(|&i| effect(&codes[i], levels[i], &indexes[i]))
+                        .collect(),
+                )
+                .unwrap()
+            };
+            let mut topology = PreparedCmgTopology::prepare(&design()).unwrap();
+            let mut control_seed = CmgControlSeed::new(960, 1).unwrap();
+            for (frame, reference) in references.iter_mut().enumerate() {
+                let weights = (0..rows)
+                    .map(|row| {
+                        let value = 0.7 + (row % 11) as f64 * 0.13;
+                        if frame == 0 {
+                            value
+                        } else if frame == 1 {
+                            value * (1.0 + (row % 7) as f64 * 0.01)
+                        } else if row % 3 == 0 {
+                            value * 8.0
+                        } else {
+                            value
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                let mut options = config(4);
+                options.map.tolerance = 1e-10;
+                options.threads =
+                    ThreadConfig::from_requested(if frame == 1 { 7 } else { 1 }, true).unwrap();
+                let mut absorber = CmgAbsorber::build_unpolished_prepared(
+                    design(),
+                    BorrowedMapWeights::Provided(&weights),
+                    options,
+                    &mut topology,
+                )
+                .unwrap();
+                let CmgRoute::Graph(graph) = &absorber.route else {
+                    panic!("graph")
+                };
+                let hierarchy = graph.solver.preconditioner().hierarchy();
+                assert_eq!(hierarchy.report().vertex_counts()[0], 960);
+                assert!(
+                    hierarchy.report().vertex_counts().len() >= 2,
+                    "exercise coarsening, not direct-only setup"
+                );
+                if order == [0, 1, 2] && frame == 0 {
+                    let owned = CmgAbsorber::build(
+                        design(),
+                        BorrowedMapWeights::Provided(&weights),
+                        options,
+                        false,
+                    )
+                    .unwrap();
+                    let CmgRoute::Graph(owned) = &owned.route else {
+                        panic!("owned graph")
+                    };
+                    assert!(
+                        owned
+                            .solver
+                            .preconditioner()
+                            .hierarchy()
+                            .report()
+                            .vertex_counts()[1]
+                            > hierarchy.report().vertex_counts()[1],
+                        "the OLS owned route must retain default pruning"
+                    );
+                }
+                let mut candidate = input.clone();
+                let report = absorber
+                    .project_unpolished_with_seed(&mut candidate, 1e-12, Some(&mut control_seed))
+                    .unwrap();
+                assert!(!control_seed.ready());
+                assert_eq!(
+                    report.projection_work.warm_right_hand_sides,
+                    usize::from(frame == 1)
+                );
+                assert_eq!(
+                    report.nuisance_setup.warm_right_hand_sides,
+                    if frame == 1 { 4 } else { 0 }
+                );
+                let oracle = absorb_borrowed_intercept_cg_certified(
+                    &design(),
+                    BorrowedMapWeights::Provided(&weights),
+                    input.clone(),
+                    options.map,
+                )
+                .unwrap();
+                assert_matrix_close(&candidate, oracle.residualized(), 1e-8);
+                assert!(
+                    certify_borrowed_intercept_candidate(
+                        &design(),
+                        BorrowedMapWeights::Provided(&weights),
+                        &candidate,
+                        options.map
+                    )
+                    .unwrap()
+                    .passed
+                );
+                if let Some(reference) = reference {
+                    assert_eq!(
+                        &candidate, reference,
+                        "warm projections must preserve permutation determinism"
+                    );
+                } else {
+                    *reference = Some(candidate);
+                }
+                control_seed.retain_certified(report.projection_work);
+                topology.retain_certified_seed(absorber);
+            }
+        }
+    }
+
+    #[test]
     fn component_quantiles_use_stable_nearest_lower_order_statistic() {
         let sizes = [1, 2, 3, 4, 100];
         assert_eq!(component_quantile(&sizes, 50), 3);
@@ -3367,6 +3979,248 @@ mod tests {
     }
 
     #[test]
+    fn prepared_cmg_seed_weight_boundary_and_memory_are_explicit() {
+        let codes = [
+            [0, 0, 1, 1, 2, 2, 3, 3],
+            [0, 1, 2, 0, 1, 2, 0, 1],
+            [0, 1, 1, 0, 0, 1, 1, 0],
+        ];
+        let levels = [4, 3, 2];
+        let indexes = codes
+            .iter()
+            .zip(levels)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).unwrap())
+            .collect::<Vec<_>>();
+        let design = BorrowedInterceptFeDesign::new(
+            8,
+            (0..3)
+                .map(|i| effect(&codes[i], levels[i], &indexes[i]))
+                .collect(),
+        )
+        .unwrap();
+        let mut topology = PreparedCmgTopology::prepare(&design).unwrap();
+        let profile = CmgTopologyProfile::analyze(&design).unwrap();
+        assert_eq!(topology.nuisance_seed.len(), 7);
+        assert_eq!(nuisance_seed_bytes(&profile).unwrap(), 7 * 8 + 40);
+        let early = PreparedCmgTopology::conservative_retained_frame_peak_bytes(&design, config(2))
+            .unwrap();
+        let frame = conservative_prepared_cmg_frame_bytes(
+            &design,
+            &profile,
+            config(2),
+            conservative_prepared_problem(&profile, 2),
+        )
+        .unwrap();
+        assert!(early >= topology.retained_bytes() as u128 + frame);
+        for (ratio, eligible) in [
+            (2.0, true),
+            (0.5, true),
+            (2.0 + 1e-12, false),
+            (0.5 - 1e-12, false),
+        ] {
+            topology.numeric_weights.fill(1.0);
+            topology.seed_valid = true;
+            let mut weights = [1.0; 8];
+            weights[0] = ratio;
+            topology
+                .assemble(
+                    &design,
+                    &profile,
+                    BorrowedMapWeights::Provided(&weights),
+                    1.0,
+                )
+                .unwrap();
+            assert_eq!(topology.seed_for_frame, eligible);
+            assert!(!topology.seed_valid);
+        }
+    }
+
+    #[test]
+    fn control_seed_admission_consumes_only_finite_certified_evidence() {
+        let mut seed = CmgControlSeed::new(6, 3).unwrap();
+        assert!(!seed.ready());
+        assert!(!seed.consume(1.0));
+        let capacity = seed.potentials.capacity();
+        assert_eq!(
+            CmgControlSeed::estimated_bytes(6, 3).unwrap(),
+            (18 * 8 + std::mem::size_of::<CmgControlSeed>()) as u128
+        );
+        assert!(CmgControlSeed::estimated_bytes(usize::MAX, usize::MAX).is_err());
+        for (ratio, admitted) in [
+            (0.5, false),
+            (1.0, true),
+            (2.0, true),
+            (2.0000001, false),
+            (f64::INFINITY, false),
+            (f64::NAN, false),
+        ] {
+            seed.retain_certified(CmgProjectionWork::default());
+            assert_eq!(seed.consume(ratio), admitted);
+            assert!(!seed.ready());
+            assert!(
+                !seed.consume(1.0),
+                "a partial/failed solve cannot reuse the buffer"
+            );
+        }
+        for (residual, extra_restarts, retained) in [
+            (0.499, 0, true),
+            (0.5, 0, false),
+            (0.01, 1, false),
+            (f64::NAN, 0, false),
+        ] {
+            seed.retain_certified(CmgProjectionWork {
+                warm_right_hand_sides: 3,
+                initial_relative_residual: residual,
+                extra_restarts,
+                ..CmgProjectionWork::default()
+            });
+            assert_eq!(seed.ready(), retained);
+        }
+        seed.retain_certified(CmgProjectionWork::default());
+        seed.potentials[2] = f64::NAN;
+        assert!(!seed.consume(1.0));
+        seed.retain_certified(CmgProjectionWork::default());
+        assert!(!seed.ready());
+        seed.potentials.fill(0.0);
+        seed.retain_certified(CmgProjectionWork::default());
+        seed.reset();
+        assert!(!seed.ready());
+        assert_eq!(
+            capacity,
+            seed.potentials.capacity(),
+            "all state transitions must be allocation-free"
+        );
+    }
+
+    #[test]
+    fn prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated() {
+        let rows = 1_200;
+        let codes = [
+            (0..rows).map(|row| (row % 40) as u32).collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row / 40 + 7 * row) % 20) as u32)
+                .collect(),
+            (0..rows)
+                .map(|row| ((row / 200 + row / 7) % 5) as u32)
+                .collect(),
+        ];
+        let levels = [40, 20, 5];
+        let indexes = codes
+            .iter()
+            .zip(levels)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).unwrap())
+            .collect::<Vec<_>>();
+        let design = || {
+            BorrowedInterceptFeDesign::new(
+                rows,
+                (0..3)
+                    .map(|i| effect(&codes[i], levels[i], &indexes[i]))
+                    .collect(),
+            )
+            .unwrap()
+        };
+        let input = DenseMatrix::from_columns(&[
+            (0..rows).map(|row| (row as f64 * 0.31).sin()).collect(),
+            (0..rows).map(|row| (row as f64 * 0.17).cos()).collect(),
+        ])
+        .unwrap();
+        let mut topology = PreparedCmgTopology::prepare(&design()).unwrap();
+        let mut control_seed = CmgControlSeed::new(60, 1).unwrap();
+        assert!(!topology.seed_valid);
+        let retained = topology.retained_bytes();
+        let mut options = config(2);
+        options.map.tolerance = 1e-10;
+        for frame in 0..6 {
+            let weights = (0..rows)
+                .map(|row| {
+                    let base = 0.7 + (row % 11) as f64 * 0.13;
+                    if frame >= 2 && row % 3 == 0 {
+                        base * 5.0
+                    } else {
+                        base
+                    }
+                })
+                .collect::<Vec<_>>();
+            if frame == 3 {
+                topology.reset_warm_start();
+                control_seed.reset();
+            }
+            if frame == 4 {
+                topology.nuisance_seed[0] = f64::NAN;
+                control_seed.potentials[0] = f64::NAN;
+            }
+            let mut absorber = CmgAbsorber::build_unpolished_prepared(
+                design(),
+                BorrowedMapWeights::Provided(&weights),
+                options,
+                &mut topology,
+            )
+            .unwrap();
+            assert!(
+                !topology.seed_valid,
+                "a failed frame cannot leave a usable seed"
+            );
+            let mut candidate = input.clone();
+            let report = absorber
+                .project_unpolished_with_seed(&mut candidate, 1e-11, Some(&mut control_seed))
+                .unwrap();
+            assert!(!control_seed.ready());
+            assert_eq!(
+                report.projection_work.warm_right_hand_sides,
+                usize::from(frame == 1 || frame == 5)
+            );
+            if frame == 1 || frame == 5 {
+                assert_eq!(report.projection_work.warm_iterations, 0);
+                assert!(
+                    report.projection_work.iterations > 0,
+                    "response must stay cold"
+                );
+            }
+            assert_eq!(
+                report.nuisance_setup.warm_right_hand_sides,
+                if frame == 1 || frame == 5 { 4 } else { 0 }
+            );
+            if frame == 1 || frame == 5 {
+                assert_eq!(
+                    report.nuisance_setup.iterations, 0,
+                    "same-operator guess must freshly certify"
+                );
+            }
+            let oracle = absorb_borrowed_intercept_cg_certified(
+                &design(),
+                BorrowedMapWeights::Provided(&weights),
+                input.clone(),
+                options.map,
+            )
+            .unwrap();
+            assert_matrix_close(&candidate, oracle.residualized(), 1e-8);
+            assert!(
+                certify_borrowed_intercept_candidate(
+                    &design(),
+                    BorrowedMapWeights::Provided(&weights),
+                    &candidate,
+                    options.map
+                )
+                .unwrap()
+                .passed
+            );
+            control_seed.retain_certified(report.projection_work);
+            assert!(control_seed.ready());
+            topology.retain_certified_seed(absorber);
+            assert!(
+                topology.seed_valid,
+                "frame {frame}: {:?}",
+                report.nuisance_setup
+            );
+            assert_eq!(
+                retained,
+                topology.retained_bytes(),
+                "seed commit cannot allocate"
+            );
+        }
+    }
+
+    #[test]
     fn prepared_nuisance_potentials_are_current_weight_and_remove_only_duplicate_solves() {
         let rows = 1_200;
         let codes = [
@@ -3506,6 +4360,122 @@ mod tests {
                     .passed
                 );
             }
+        }
+    }
+
+    #[test]
+    fn prepared_batches_align_with_the_admitted_pool_without_changing_solutions() {
+        let rows = 4_200;
+        let levels = [80, 70, 65];
+        let codes = [
+            (0..rows).map(|row| (row % 80) as u32).collect::<Vec<_>>(),
+            (0..rows)
+                .map(|row| ((row / 80 + 7 * row) % 70) as u32)
+                .collect(),
+            (0..rows)
+                .map(|row| ((row / 200 + row / 7) % 65) as u32)
+                .collect(),
+        ];
+        let indexes = codes
+            .iter()
+            .zip(levels)
+            .map(|(codes, levels)| LevelIndex::from_codes(codes, levels).expect("index"))
+            .collect::<Vec<_>>();
+        let design = || {
+            BorrowedInterceptFeDesign::new(
+                rows,
+                (0..3)
+                    .map(|index| effect(&codes[index], levels[index], &indexes[index]))
+                    .collect(),
+            )
+            .expect("design")
+        };
+        let weights = (0..rows)
+            .map(|row| 0.7 + (row % 11) as f64 * 0.13)
+            .collect::<Vec<_>>();
+        let input = DenseMatrix::from_columns(
+            &(0..11)
+                .map(|column| {
+                    (0..rows)
+                        .map(|row| ((row + column * 19) as f64 * 0.31).sin())
+                        .collect()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("input");
+        let reference = absorb_borrowed_intercept_cg_certified(
+            &design(),
+            BorrowedMapWeights::Provided(&weights),
+            input.clone(),
+            config(10).map,
+        )
+        .expect("independent CG oracle");
+        let mut previous = None;
+        for (threads, capacity, width) in [
+            (1, 10, 10),
+            (7, 1, 1),
+            (7, 6, 6),
+            (7, 7, 7),
+            (7, 10, 7),
+            (7, 14, 14),
+            (14, 10, 10),
+        ] {
+            let mut options = config(capacity);
+            options.threads = ThreadConfig::from_requested(threads, true).expect("threads");
+            let mut topology = PreparedCmgTopology::prepare(&design()).expect("topology");
+            let mut absorber = CmgAbsorber::build_unpolished_prepared(
+                design(),
+                BorrowedMapWeights::Provided(&weights),
+                options,
+                &mut topology,
+            )
+            .expect("prepared setup");
+            let CmgRoute::Graph(graph) = &absorber.route else {
+                panic!("graph")
+            };
+            assert_eq!(graph.pcg_batch_width(capacity), width);
+            assert_eq!(graph.setup_batches, 64_usize.div_ceil(width));
+            let GraphCmgWorkspace::CallerBuffers(caller) = &graph.workspace else {
+                panic!("caller")
+            };
+            assert_eq!(caller.right_hand_sides.len(), 150 * capacity);
+            assert_eq!(caller.workspaces.len(), threads.min(capacity));
+            let mut projected = input.clone();
+            let report = absorber
+                .project_unpolished(&mut projected, 1e-11)
+                .expect("projection");
+            assert_eq!(report.pcg_batch_width, width);
+            assert_eq!(
+                report.batches,
+                64_usize.div_ceil(width) + 11_usize.div_ceil(width)
+            );
+            assert_eq!(report.right_hand_sides, 64 + 11);
+            assert_matrix_close(&projected, reference.residualized(), 5e-9);
+            assert!(
+                certify_borrowed_intercept_candidate(
+                    &design(),
+                    BorrowedMapWeights::Provided(&weights),
+                    &projected,
+                    options.map,
+                )
+                .expect("fresh full-FE certificate")
+                .passed
+            );
+            if let Some(previous) = previous.replace(projected.clone()) {
+                assert_eq!(previous.as_slice(), projected.as_slice());
+            }
+            let owned = CmgAbsorber::build(
+                design(),
+                BorrowedMapWeights::Provided(&weights),
+                options,
+                false,
+            )
+            .expect("OLS setup");
+            let CmgRoute::Graph(graph) = &owned.route else {
+                panic!("OLS graph")
+            };
+            assert_eq!(graph.pcg_batch_width(capacity), capacity);
+            assert_eq!(graph.setup_batches, 64_usize.div_ceil(capacity));
         }
     }
 

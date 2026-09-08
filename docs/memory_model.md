@@ -81,6 +81,13 @@ tables are charged concurrently for checkpoint construction, while ordinary
 three-or-more-FE joint LSMR charges only its selected core pair. These are
 construction peaks, not fit-lifetime retained matrices.
 
+Weighted categorical Schwarz assembly additionally uses compensated diagonal
+and edge sums. OLS and PPML preflight charge `8*(R*C+R+C)` transient bytes for
+each dense intercept pair and `8*(R+C)` for each sparse pair, with all
+concurrent pairs included. Sparse construction reuses column correction
+storage for its edges. These corrections are released during construction;
+they do not increase fit-lifetime retained state or weaken graph validation.
+
 ## PPML result and saved-FE ownership
 
 PPML publication retains observation-scale products strictly from the request

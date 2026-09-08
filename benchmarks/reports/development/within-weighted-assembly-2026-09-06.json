@@ -1,0 +1,1085 @@
+{
+  "artifact_sha256": "127a82e81f960793cb4a57c2a6416c13dd396855d0c521e539e8635971fa1d1f",
+  "clippy": [
+    "within and schwarz-precond all targets",
+    "fereg workspace all targets, no default features, patched dependency"
+  ],
+  "formatting": "Both isolated workspaces pass cargo fmt --all -- --check",
+  "guardrail_comparisons": [
+    {
+      "arm": "cmg",
+      "baseline": {
+        "iterations": [
+          21.0
+        ],
+        "seconds": 1.0335
+      },
+      "candidate": {
+        "iterations": [
+          21.0
+        ],
+        "seconds": 0.9185000000000001
+      },
+      "ratio": 0.8887276245766812,
+      "science_issues": [],
+      "scope_id": "breadth-balanced_3fe-k50"
+    },
+    {
+      "arm": "lsmr",
+      "baseline": {
+        "iterations": [
+          39.0
+        ],
+        "seconds": 0.761
+      },
+      "candidate": {
+        "iterations": [
+          39.0
+        ],
+        "seconds": 0.7244999999999999
+      },
+      "ratio": 0.9520367936925097,
+      "science_issues": [],
+      "scope_id": "breadth-balanced_3fe-k50"
+    },
+    {
+      "arm": "lsmr",
+      "baseline": {
+        "iterations": [
+          2062.0
+        ],
+        "seconds": 1.2240000000000002
+      },
+      "candidate": {
+        "iterations": [
+          2066.0
+        ],
+        "seconds": 1.233
+      },
+      "ratio": 1.0073529411764706,
+      "science_issues": [],
+      "scope_id": "breadth-sparse_3fe-k10"
+    }
+  ],
+  "kind": "focused_local_dependency_repair",
+  "licensed_fixtures": {
+    "failed": 1,
+    "failure": "estimate_ols_hidden_parity: unchanged frozen ADR-0012 hexadecimal covariance assertion also fails on untouched c60b9fa baseline. Not waived or edited.",
+    "passed": 9,
+    "supplemental_check": "264 bitwise-identical coefficient, VCE, status, DoF and certificate entries on candidate and baseline for the affected unweighted multi-cluster cases."
+  },
+  "limitations": [
+    "Local diagnostics, not new calibration or release qualification.",
+    "No patched SCC job, upstream push, dependency repin, auto activation, or ADR change.",
+    "Standalone within parallel solve scatter has existing nondeterministic floating reductions; new tests require deterministic assembly and preconditioner application, plus independent converged solve certificates, not whole-solve bitwise equality.",
+    "The complete governing direct-F0 matrix was not run or relaxed."
+  ],
+  "memory": "Transient dense 8*(R*C+R+C), sparse 8*(R+C) additional bytes per concurrently built intercept pair; sparse reuses column correction storage. OLS and PPML companion preflight included.",
+  "platform": "macOS universal; licensed tests on Apple Silicon, Stata MP 19",
+  "production_dependency_changed": false,
+  "profiles": {
+    "exact-repros": {
+      "candidate_records": 36,
+      "maximum_allocation_over_model": 0.66669923987506,
+      "route_pass": true,
+      "science_pass": true,
+      "scopes": 4,
+      "timing_summary": [
+        {
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              9.0
+            ],
+            "median_seconds": 1.764
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              11.0
+            ],
+            "median_seconds": 1.835
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 2.338
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 3.16
+          },
+          "scope_id": "repair-dense_2fe-t1"
+        },
+        {
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              9.0
+            ],
+            "median_seconds": 1.396
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              11.0
+            ],
+            "median_seconds": 1.422
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 1.336
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 2.356
+          },
+          "scope_id": "repair-dense_2fe-t7"
+        },
+        {
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              38.0
+            ],
+            "median_seconds": 1.911
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              124.0
+            ],
+            "median_seconds": 2.669
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              37.0
+            ],
+            "median_seconds": 2.876
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 3.79
+          },
+          "scope_id": "repair-hub_2fe-t1"
+        },
+        {
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              38.0
+            ],
+            "median_seconds": 1.591
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              124.0
+            ],
+            "median_seconds": 2.049
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              37.0
+            ],
+            "median_seconds": 1.958
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 2.809
+          },
+          "scope_id": "repair-hub_2fe-t7"
+        }
+      ]
+    },
+    "guardrails": {
+      "candidate_records": 18,
+      "maximum_allocation_over_model": 0.857301646137749,
+      "route_pass": true,
+      "science_pass": true,
+      "scopes": 2,
+      "timing_summary": [
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 1.0335
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.761
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 0.9185000000000001
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.7244999999999999
+          },
+          "scope_id": "breadth-balanced_3fe-k50"
+        },
+        {
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              2062.0
+            ],
+            "median_seconds": 1.2240000000000002
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              2066.0
+            ],
+            "median_seconds": 1.233
+          },
+          "scope_id": "breadth-sparse_3fe-k10"
+        }
+      ]
+    },
+    "local-science": {
+      "candidate_records": 24,
+      "maximum_allocation_over_model": 0.796118183842586,
+      "route_pass": true,
+      "science_pass": true,
+      "scopes": 8,
+      "timing_summary": [
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              15.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              27.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              15.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              27.0
+            ],
+            "median_seconds": 0.015
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 0.013
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.014
+          },
+          "scope_id": "local_science-balanced_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              51.0
+            ],
+            "median_seconds": 0.015
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              73.0
+            ],
+            "median_seconds": 0.015
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              51.0
+            ],
+            "median_seconds": 0.015
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              73.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.014
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.018
+          },
+          "scope_id": "local_science-balanced_3fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              45.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              60.0
+            ],
+            "median_seconds": 0.013
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              78.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              45.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              60.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              78.0
+            ],
+            "median_seconds": 0.014
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.018
+          },
+          "scope_id": "local_science-chain_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              22.0
+            ],
+            "median_seconds": 0.013
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.014
+          },
+          "scope_id": "local_science-dense_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.013
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              29.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              34.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              29.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              34.0
+            ],
+            "median_seconds": 0.014
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.016
+          },
+          "scope_id": "local_science-hub_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              274.0
+            ],
+            "median_seconds": 0.028
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              358.0
+            ],
+            "median_seconds": 0.018
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              209.0
+            ],
+            "median_seconds": 0.015
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              274.0
+            ],
+            "median_seconds": 0.027
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              358.0
+            ],
+            "median_seconds": 0.018
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              209.0
+            ],
+            "median_seconds": 0.015
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.03
+          },
+          "scope_id": "local_science-many_levels_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              24.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.013
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              31.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              24.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              39.0
+            ],
+            "median_seconds": 0.013
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              31.0
+            ],
+            "median_seconds": 0.013
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.016
+          },
+          "scope_id": "local_science-skewed_2fe-k2-easy-t1"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              75.0
+            ],
+            "median_seconds": 0.016
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              94.0
+            ],
+            "median_seconds": 0.014
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              66.0
+            ],
+            "median_seconds": 0.016
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              75.0
+            ],
+            "median_seconds": 0.015
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              94.0
+            ],
+            "median_seconds": 0.014
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              66.0
+            ],
+            "median_seconds": 0.017
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.024
+          },
+          "scope_id": "local_science-sparse_3fe-k2-easy-t1"
+        }
+      ]
+    },
+    "local-smoke": {
+      "candidate_records": 9,
+      "maximum_allocation_over_model": 0.836578202894628,
+      "route_pass": true,
+      "science_pass": true,
+      "scopes": 3,
+      "timing_summary": [
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              14.0
+            ],
+            "median_seconds": 0.161
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              27.0
+            ],
+            "median_seconds": 0.166
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.165
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              14.0
+            ],
+            "median_seconds": 0.157
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              27.0
+            ],
+            "median_seconds": 0.165
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.163
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.48
+          },
+          "scope_id": "local_balanced"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              240.0
+            ],
+            "median_seconds": 0.956
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              64.0
+            ],
+            "median_seconds": 0.199
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              20842.0
+            ],
+            "median_seconds": 13.797
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              240.0
+            ],
+            "median_seconds": 0.84
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              64.0
+            ],
+            "median_seconds": 0.197
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              20842.0
+            ],
+            "median_seconds": 13.421
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 77.066
+          },
+          "scope_id": "local_chain"
+        },
+        {
+          "baseline:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 0.22
+          },
+          "baseline:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              35.0
+            ],
+            "median_seconds": 0.206
+          },
+          "baseline:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.203
+          },
+          "candidate:cmg": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              21.0
+            ],
+            "median_seconds": 0.214
+          },
+          "candidate:lsmr": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              35.0
+            ],
+            "median_seconds": 0.204
+          },
+          "candidate:map": {
+            "fallback_counts": [
+              0.0
+            ],
+            "iterations": [
+              18.0
+            ],
+            "median_seconds": 0.202
+          },
+          "reference:ppmlhdfe": {
+            "fallback_counts": [
+              null
+            ],
+            "iterations": [
+              null
+            ],
+            "median_seconds": 0.557
+          },
+          "scope_id": "local_three_fe"
+        }
+      ]
+    }
+  },
+  "qualification_eligible": false,
+  "repair": "Compensated independent weighted categorical diagonals, cross-tab cells, and adjacency sums. Existing graph-consistency threshold and downstream certificates unchanged. No signed/slope policy changes.",
+  "rust_tests": {
+    "fereg-core-tests": {
+      "ignored": 0,
+      "passed": 738
+    },
+    "fereg-oracles": {
+      "ignored": 0,
+      "passed": 90
+    },
+    "upstream-tests": {
+      "ignored": 1,
+      "passed": 271
+    }
+  },
+  "schema_version": 1,
+  "source": {
+    "build_override_sha256": "266c49bfd67e284a0aa0b1bed54c21a5da99210077646c35a998731fe1520a52",
+    "fereg_base": "c60b9fad7e9a6fb69400ec7e1e3095acbb0304c3",
+    "fereg_memory_patch_sha256": "1ac027b2254f9396c3e51fa00c2378e99cf8e621c33bd63dd2549ddda84ca19d",
+    "resolved_lock_sha256": "3fc08fa7b9655fc407b0447c0050f0f48626b4581bbb161dc55a6f70936b5293",
+    "within_base": "b7779cbab7a3116be56aae4389fde1f6e6a99a9f",
+    "within_patch_sha256": "a81ead22b4e73d6c11091208a1976013c0b5e38980aa3121a28f436532f6142b"
+  }
+}

@@ -33,13 +33,13 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 
 [[reference]]
 name = "within"
-repository = "https://github.com/py-econometrics/within"
-commit = "b7779cbab7a3116be56aae4389fde1f6e6a99a9f"
+repository = "https://github.com/johannes-schmieder/within"
+commit = "93699e6ab8ecc82bc69f91be295ea3a9c10f2521"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
-use = "Evaluated solver reference; not linked, copied, or used at runtime in 0.5.0."
+use = "Exact runtime dependency for certified LSMR and Schwarz preconditioning; isolated weighted categorical assembly repair on the prior pinned base."
 
 [[reference]]
 name = "cmg"

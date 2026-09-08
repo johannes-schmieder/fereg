@@ -1322,13 +1322,27 @@ fn validate_solver_evidence(
     shadow: &PpmlShadowResult<'_>,
 ) -> Result<()> {
     let expected_requested = f64::from(action.solver.code());
-    let expected_selected = f64::from(
-        match action.solver {
-            PpmlSolverFamily::Auto => PpmlSolverFamily::Map,
-            solver => solver,
+    let expected_selected = if action.solver == PpmlSolverFamily::Auto {
+        let selected = shadow.solver[1];
+        let lsmr_eligible = (2..=3).contains(&action.request.absorbed_terms.len())
+            && action.memory.requested != MemoryMode::Low
+            && !action.allocation_audit
+            && action.request.absorbed_terms.iter().all(|term| {
+                term.intercept
+                    && term.slope_sources.is_empty()
+                    && !term.categorical_sources.is_empty()
+            });
+        if selected != f64::from(PpmlSolverFamily::Map.code())
+            && !(selected == f64::from(PpmlSolverFamily::Lsmr.code()) && lsmr_eligible)
+        {
+            return Err(internal(
+                "PPML automatic solver selection is outside its admitted envelope",
+            ));
         }
-        .code(),
-    );
+        selected
+    } else {
+        f64::from(action.solver.code())
+    };
     let selected_engine = shadow.solver[2];
     let cmg_start = 3 * SOLVER_COLUMNS;
     let mut fallback_count = 0_usize;

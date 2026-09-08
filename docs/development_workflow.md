@@ -70,8 +70,8 @@ but they are not standing requirements or substitutes for the public surface.
 
 Use the public `solver(auto|map|lsmr|cmg)` surface and its versioned solver
 report. Start with the smallest local science, parser, protocol, or transaction
-fixture that exercises the change. Auto remains MAP until the later dedicated
-calibration campaign; explicit-family measurements must not silently alter it.
+fixture that exercises the change. Auto follows the development-admitted policy
+in ADR 0029; explicit-family measurements must not silently alter that policy.
 
 Cross-estimator objective adjudication follows
 [ADR 0026](adr/0026-ppml-comparator-objective-adjudication.md). The pinned

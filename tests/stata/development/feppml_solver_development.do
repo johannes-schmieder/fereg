@@ -63,7 +63,21 @@ if `"`mode'"' == "generate" {
     generate long g2 = mod(floor((_n - 1) / max(1, `levels1')) + 7 * (_n - 1), `levels2') + 1
     if inlist(`"`topology'"', "chain_2fe", "sparse_3fe") {
         replace g2 = mod(g1 - 1 + mod(floor((_n - 1) / max(1, `levels1')), 2), `levels2') + 1
-        if `mixing' > 0 replace g2 = mod(13 * (_n - 1) + floor((_n - 1) / `levels1'), `levels2') + 1 if mod(_n, 100) < `mixing'
+        if `mixing' > 0 {
+            // Permute existing memberships: mixing must preserve FE degrees.
+            // A separate fixed stream leaves the control/outcome RNG unchanged.
+            set seed 104729
+            generate byte __mix_selected = -(mod(observation, 100) < `mixing')
+            generate double __mix_key = runiform()
+            generate long __mix_source = g2
+            sort __mix_selected __mix_key observation
+            quietly count if __mix_selected == -1
+            local mixed_rows = r(N)
+            if `mixed_rows' > 0 replace g2 = __mix_source[`mixed_rows' + 1 - _n] in 1/`mixed_rows'
+            sort observation
+            drop __mix_selected __mix_key __mix_source
+            set seed `seed'
+        }
     }
     if `"`topology'"' == "hub_2fe" {
         replace g1 = 1 if mod(_n, 3) != 0
@@ -117,6 +131,13 @@ if `"`mode'"' == "generate" {
         local observed_levels3 = r(N)
         drop __tag3
     }
+    // Timing fixtures promise the entire generated sample survives pruning.
+    foreach effect of varlist g* {
+        bysort `effect' (observation): assert _N >= 2
+    }
+    sort observation
+    assert observation == _n
+    display as text "FEREG_PPML_SOLVER_SAMPLE_PASS|N=" _N
     file open metadata using `"`data_meta'"', write text replace
     file write metadata "N" _tab "levels1" _tab "levels2" _tab "levels3" _n
     file write metadata %18.0f (_N) _tab %18.0f (`observed_levels1') _tab ///

@@ -363,7 +363,7 @@ dependencies = [
 [[package]]
 name = "schwarz-precond"
 version = "0.4.0"
-source = "git+https://github.com/py-econometrics/within?rev=b7779cbab7a3116be56aae4389fde1f6e6a99a9f#b7779cbab7a3116be56aae4389fde1f6e6a99a9f"
+source = "git+https://github.com/johannes-schmieder/within?rev=93699e6ab8ecc82bc69f91be295ea3a9c10f2521#93699e6ab8ecc82bc69f91be295ea3a9c10f2521"
 dependencies = [
  "rayon",
  "serde",
@@ -492,7 +492,7 @@ dependencies = [
 [[package]]
 name = "within"
 version = "0.4.0"
-source = "git+https://github.com/py-econometrics/within?rev=b7779cbab7a3116be56aae4389fde1f6e6a99a9f#b7779cbab7a3116be56aae4389fde1f6e6a99a9f"
+source = "git+https://github.com/johannes-schmieder/within?rev=93699e6ab8ecc82bc69f91be295ea3a9c10f2521#93699e6ab8ecc82bc69f91be295ea3a9c10f2521"
 dependencies = [
  "approx-chol",
  "ndarray",

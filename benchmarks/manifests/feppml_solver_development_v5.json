@@ -1,0 +1,1819 @@
+{
+  "schema_version": 5,
+  "manifest_id": "feppml_solver_development_v5",
+  "status": "development_only",
+  "qualification_eligible": false,
+  "auto_calibration": false,
+  "purpose": "Local scientific and performance development across one-, two-, and three-effect PPML designs.",
+  "public_command": "feppml",
+  "protocols": {
+    "request_wire": "1.5",
+    "result_wire": "1.2",
+    "action_protocol": "1.5",
+    "development_result_table": "2.6"
+  },
+  "solvers": [
+    {
+      "id": "map",
+      "option": "map",
+      "route_code": 2
+    },
+    {
+      "id": "lsmr",
+      "option": "lsmr",
+      "route_code": 3
+    },
+    {
+      "id": "cmg",
+      "option": "cmg",
+      "route_code": 7
+    }
+  ],
+  "solver_eligibility": {
+    "source": "generated_dataset_metadata",
+    "effect_count": "positive_level_counts",
+    "sample_requirement": "every_successful_arm_equals_generated_N",
+    "map_minimum_effects": 1,
+    "lsmr_minimum_effects": 2,
+    "cmg_effect_counts": [
+      2,
+      3
+    ],
+    "cmg_core_effects": "two_largest_level_counts",
+    "cmg_max_nonbase_nuisance_columns": 64,
+    "ineligible_solver_action": "exclude_timed_arm_and_test_public_r498_separately"
+  },
+  "comparators": [
+    {
+      "id": "ppmlhdfe",
+      "timed": true,
+      "one_effect_acceleration": "none",
+      "acceleration": "conjugate_gradient",
+      "transform": "symmetric_kaczmarz"
+    }
+  ],
+  "scientific_adjudication": {
+    "strict_reference": {
+      "id": "ppmlhdfe_strict",
+      "one_effect_acceleration": "none",
+      "timed": false,
+      "invoke_only_after_default_reference_mismatch": true,
+      "tolerance": 1e-10,
+      "itolerance": 1e-12,
+      "acceleration": "conjugate_gradient",
+      "transform": "symmetric_kaczmarz",
+      "preserve_default_mismatch": true
+    },
+    "public_state_kkt": {
+      "id": "independent_public_state_kkt_v3",
+      "timed": false,
+      "invoke_only_after_default_and_strict_coefficient_mismatch": true,
+      "candidate_solver": "map",
+      "reference_arms": [
+        "ppmlhdfe",
+        "ppmlhdfe_strict"
+      ],
+      "score_tolerance": 1e-8,
+      "candidate_objective_replay_rtol": 1e-8,
+      "candidate_objective_replay_atol": 1e-10,
+      "reference_public_state_objective_replay_rtol": 1e-8,
+      "reference_public_state_objective_replay_atol": 1e-10,
+      "authoritative_reference_objective_source": "reported_fit",
+      "additional_objective_witness": "raw_prediction_if_modelspace_feasible_and_stationary",
+      "projected_state_role": "diagnostic_only",
+      "objective_invariant_rtol": 1e-12,
+      "objective_invariant_atol": 1e-8,
+      "objective_dominance_rtol": 1e-8,
+      "objective_dominance_atol": 1e-10,
+      "model_space_projection": {
+        "algorithm": "scaled_cgls_v1",
+        "algorithm_code": 1,
+        "max_iterations": 20000,
+        "refresh_interval": 32,
+        "normal_rel2_loose": 5e-13,
+        "normal_rel2_final": 5e-14,
+        "normal_relinf_final": 5e-14,
+        "recurrence_relrms_max": 1e-10,
+        "tail_relrms_max": 1e-10,
+        "feasible_relrms_max": 1e-10,
+        "status_codes": {
+          "feasible": 1,
+          "indeterminate": 3
+        },
+        "breakdown_codes": {
+          "none": 0,
+          "invalid_design": 1,
+          "nonpositive_curvature": 2,
+          "nonfinite_recurrence": 3,
+          "recurrence_drift": 4,
+          "iteration_limit": 5,
+          "final_certificate": 6,
+          "projected_objective": 7
+        }
+      },
+      "indeterminate_or_nonstationary_reference_state_role": "diagnostic_only",
+      "preserve_default_and_strict_mismatches": true
+    }
+  },
+  "fixed_policy": {
+    "memory": "fast",
+    "separation": "none_after_all_positive_outcome_oracle",
+    "absorbed_effects": "one_two_or_three_categorical_intercept_only",
+    "saved_fixed_effects": false,
+    "allocation_audit": false,
+    "warmups": 1,
+    "screen_repetitions": 3,
+    "confirmation_repetitions": 5,
+    "ordinary_frame_route_must_match_requested_solver": true,
+    "fallback_cells_are_not_performance_eligible": true
+  },
+  "science": {
+    "coefficient_rtol": 1e-7,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 0.000001,
+    "vce_atol": 1e-9,
+    "likelihood_rtol": 1e-8,
+    "likelihood_atol": 1e-10,
+    "sample_must_match": true,
+    "rank_and_dof_must_match": true,
+    "certificate_must_pass": true,
+    "every_repetition_must_match": true,
+    "independent_oracle": "tests/python/ppml_explicit_dummy_oracle.py"
+  },
+  "generator": {
+    "driver": "tests/stata/development/feppml_solver_development.do",
+    "seed_namespace": 2026090200,
+    "data_generated_outside_timing": true,
+    "same_data_for_every_solver_and_comparator": true,
+    "same_data_for_thread_scaling_within_bundle": true,
+    "outcome": "strictly_positive_integer_counts",
+    "mixed_graph_memberships": "degree_preserving_selected_g2_permutation_fixed_mt64_seed_104729",
+    "sample_preflight": "minimum_two_observations_per_retained_fe_level"
+  },
+  "topologies": [
+    "balanced_1fe",
+    "skewed_1fe",
+    "balanced_2fe",
+    "skewed_2fe",
+    "chain_2fe",
+    "hub_2fe",
+    "dense_2fe",
+    "many_levels_2fe",
+    "balanced_3fe",
+    "sparse_3fe"
+  ],
+  "profiles": {
+    "local_science": {
+      "observations": 400,
+      "topologies": [
+        "balanced_2fe",
+        "skewed_2fe",
+        "chain_2fe",
+        "hub_2fe",
+        "dense_2fe",
+        "many_levels_2fe",
+        "balanced_3fe",
+        "sparse_3fe"
+      ],
+      "controls": [
+        2
+      ],
+      "difficulties": [
+        "easy"
+      ],
+      "threads": [
+        1
+      ],
+      "repetitions": 1,
+      "independent_oracle": true,
+      "comparators": true,
+      "expected_scopes": 8
+    },
+    "local_smoke": {
+      "scopes": [
+        {
+          "id": "local_balanced",
+          "n": 25000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "local_chain",
+          "n": 25000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 1
+        },
+        {
+          "id": "local_three_fe",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 3
+    },
+    "local_one_fe_science": {
+      "scopes": [
+        {
+          "id": "one-science-balanced_1fe-k0",
+          "n": 400,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "one-science-balanced_1fe-k2",
+          "n": 400,
+          "topology": "balanced_1fe",
+          "controls": 2,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "one-science-skewed_1fe-k0",
+          "n": 400,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "one-science-skewed_1fe-k2",
+          "n": 400,
+          "topology": "skewed_1fe",
+          "controls": 2,
+          "difficulty": "easy",
+          "threads": 1
+        }
+      ],
+      "repetitions": 1,
+      "independent_oracle": true,
+      "comparators": true,
+      "expected_scopes": 4
+    },
+    "local_breadth": {
+      "scopes": [
+        {
+          "id": "breadth-balanced_1fe-k0",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_1fe-k10",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_1fe-k50",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_1fe-k0",
+          "n": 50000,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_1fe-k10",
+          "n": 50000,
+          "topology": "skewed_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_1fe-k50",
+          "n": 50000,
+          "topology": "skewed_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_2fe-k0",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_2fe-k10",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_2fe-k50",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_2fe-k0",
+          "n": 50000,
+          "topology": "skewed_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_2fe-k10",
+          "n": 50000,
+          "topology": "skewed_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-skewed_2fe-k50",
+          "n": 50000,
+          "topology": "skewed_2fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-chain_2fe-k0",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-chain_2fe-k10",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-chain_2fe-k50",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-hub_2fe-k0",
+          "n": 50000,
+          "topology": "hub_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-hub_2fe-k10",
+          "n": 50000,
+          "topology": "hub_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-hub_2fe-k50",
+          "n": 50000,
+          "topology": "hub_2fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-dense_2fe-k0",
+          "n": 50000,
+          "topology": "dense_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-dense_2fe-k10",
+          "n": 50000,
+          "topology": "dense_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-dense_2fe-k50",
+          "n": 50000,
+          "topology": "dense_2fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-many_levels_2fe-k0",
+          "n": 50000,
+          "topology": "many_levels_2fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-many_levels_2fe-k10",
+          "n": 50000,
+          "topology": "many_levels_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-many_levels_2fe-k50",
+          "n": 50000,
+          "topology": "many_levels_2fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_3fe-k0",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_3fe-k10",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-balanced_3fe-k50",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "breadth-sparse_3fe-k0",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-sparse_3fe-k10",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "breadth-sparse_3fe-k50",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 30
+    },
+    "local_one_fe": {
+      "scopes": [
+        {
+          "id": "one-balanced_1fe-easy-n10000-k0",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-easy-n10000-k10",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-easy-n10000-k50",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-easy-n100000-k0",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-easy-n100000-k10",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-easy-n100000-k50",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n10000-k0",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n10000-k10",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n10000-k50",
+          "n": 10000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n100000-k0",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n100000-k10",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-balanced_1fe-long-n100000-k50",
+          "n": 100000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n10000-k0",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n10000-k10",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n10000-k50",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n100000-k0",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n100000-k10",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-easy-n100000-k50",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n10000-k0",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n10000-k10",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n10000-k50",
+          "n": 10000,
+          "topology": "skewed_1fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n100000-k0",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n100000-k10",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "one-skewed_1fe-long-n100000-k50",
+          "n": 100000,
+          "topology": "skewed_1fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 24
+    },
+    "local_difficulty": {
+      "scopes": [
+        {
+          "id": "mix-chain_2fe-p0",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 0
+        },
+        {
+          "id": "mix-chain_2fe-p1",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 1
+        },
+        {
+          "id": "mix-chain_2fe-p10",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 10
+        },
+        {
+          "id": "mix-chain_2fe-p100",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 100
+        },
+        {
+          "id": "mix-sparse_3fe-p0",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 0
+        },
+        {
+          "id": "mix-sparse_3fe-p1",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 1
+        },
+        {
+          "id": "mix-sparse_3fe-p10",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 10
+        },
+        {
+          "id": "mix-sparse_3fe-p100",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "mixing_percent": 100
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 8
+    },
+    "local_checkpoint": {
+      "scopes": [
+        {
+          "id": "checkpoint-balanced_2fe-n8000",
+          "n": 8000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_2fe-n16383",
+          "n": 16383,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_2fe-n16384",
+          "n": 16384,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_2fe-n25000",
+          "n": 25000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-chain_2fe-n8000",
+          "n": 8000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-chain_2fe-n16383",
+          "n": 16383,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-chain_2fe-n16384",
+          "n": 16384,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-chain_2fe-n25000",
+          "n": 25000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_3fe-n8000",
+          "n": 8000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_3fe-n16383",
+          "n": 16383,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_3fe-n16384",
+          "n": 16384,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-balanced_3fe-n25000",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-sparse_3fe-n8000",
+          "n": 8000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-sparse_3fe-n16383",
+          "n": 16383,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-sparse_3fe-n16384",
+          "n": 16384,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "checkpoint-sparse_3fe-n25000",
+          "n": 25000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 16
+    },
+    "local_cmg_envelope": {
+      "scopes": [
+        {
+          "id": "cmg-nuisance0-k0",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 0
+        },
+        {
+          "id": "cmg-nuisance0-k10",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 0
+        },
+        {
+          "id": "cmg-nuisance0-k50",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 0
+        },
+        {
+          "id": "cmg-nuisance8-k0",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 8
+        },
+        {
+          "id": "cmg-nuisance8-k10",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 8
+        },
+        {
+          "id": "cmg-nuisance8-k50",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 8
+        },
+        {
+          "id": "cmg-nuisance32-k0",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 32
+        },
+        {
+          "id": "cmg-nuisance32-k10",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 32
+        },
+        {
+          "id": "cmg-nuisance32-k50",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 32
+        },
+        {
+          "id": "cmg-nuisance63-k0",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 63
+        },
+        {
+          "id": "cmg-nuisance63-k10",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 63
+        },
+        {
+          "id": "cmg-nuisance63-k50",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 63
+        },
+        {
+          "id": "cmg-nuisance64-k0",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 64
+        },
+        {
+          "id": "cmg-nuisance64-k10",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 64
+        },
+        {
+          "id": "cmg-nuisance64-k50",
+          "n": 25000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7,
+          "third_fe_columns": 64
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 15
+    },
+    "local_width": {
+      "scopes": [
+        {
+          "id": "width-balanced_1fe-k0",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_1fe-k2",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 2,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_1fe-k10",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_1fe-k20",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 20,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_1fe-k50",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_2fe-k0",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_2fe-k2",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 2,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_2fe-k10",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_2fe-k20",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 20,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_2fe-k50",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_3fe-k0",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_3fe-k2",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 2,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_3fe-k10",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_3fe-k20",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 20,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-balanced_3fe-k50",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 50,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "width-sparse_3fe-k0",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 0,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "width-sparse_3fe-k2",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 2,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "width-sparse_3fe-k10",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "width-sparse_3fe-k20",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 20,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "width-sparse_3fe-k50",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 50,
+          "difficulty": "long",
+          "threads": 7
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 20
+    },
+    "local_scaling": {
+      "scopes": [
+        {
+          "id": "scaling-balanced_1fe-t1",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "scaling-balanced_1fe-t2",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 2
+        },
+        {
+          "id": "scaling-balanced_1fe-t4",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 4
+        },
+        {
+          "id": "scaling-balanced_1fe-t7",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "scaling-balanced_1fe-t14",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 14
+        },
+        {
+          "id": "scaling-balanced_2fe-t1",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "scaling-balanced_2fe-t2",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 2
+        },
+        {
+          "id": "scaling-balanced_2fe-t4",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 4
+        },
+        {
+          "id": "scaling-balanced_2fe-t7",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "scaling-balanced_2fe-t14",
+          "n": 50000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 14
+        },
+        {
+          "id": "scaling-balanced_3fe-t1",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "scaling-balanced_3fe-t2",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 2
+        },
+        {
+          "id": "scaling-balanced_3fe-t4",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 4
+        },
+        {
+          "id": "scaling-balanced_3fe-t7",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "scaling-balanced_3fe-t14",
+          "n": 50000,
+          "topology": "balanced_3fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 14
+        },
+        {
+          "id": "scaling-chain_2fe-t1",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 1
+        },
+        {
+          "id": "scaling-chain_2fe-t2",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 2
+        },
+        {
+          "id": "scaling-chain_2fe-t4",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 4
+        },
+        {
+          "id": "scaling-chain_2fe-t7",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "scaling-chain_2fe-t14",
+          "n": 10000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 14
+        },
+        {
+          "id": "scaling-sparse_3fe-t1",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 1
+        },
+        {
+          "id": "scaling-sparse_3fe-t2",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 2
+        },
+        {
+          "id": "scaling-sparse_3fe-t4",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 4
+        },
+        {
+          "id": "scaling-sparse_3fe-t7",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7
+        },
+        {
+          "id": "scaling-sparse_3fe-t14",
+          "n": 10000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 14
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 25
+    },
+    "local_large_easy": {
+      "scopes": [
+        {
+          "id": "large-balanced_1fe-k0-t1",
+          "n": 1000000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "large-balanced_1fe-k0-t7",
+          "n": 1000000,
+          "topology": "balanced_1fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "large-balanced_1fe-k10-t1",
+          "n": 1000000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "large-balanced_1fe-k10-t7",
+          "n": 1000000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "large-balanced_2fe-k0-t1",
+          "n": 1000000,
+          "topology": "balanced_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "large-balanced_2fe-k0-t7",
+          "n": 1000000,
+          "topology": "balanced_2fe",
+          "controls": 0,
+          "difficulty": "easy",
+          "threads": 7
+        },
+        {
+          "id": "large-balanced_2fe-k10-t1",
+          "n": 1000000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 1
+        },
+        {
+          "id": "large-balanced_2fe-k10-t7",
+          "n": 1000000,
+          "topology": "balanced_2fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7
+        }
+      ],
+      "repetitions": 3,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 8
+    },
+    "local_holdout": {
+      "scopes": [
+        {
+          "id": "holdout-balanced_1fe-seed1",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "seed": 2026090501,
+          "mixing_percent": 0
+        },
+        {
+          "id": "holdout-balanced_1fe-seed2",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "seed": 2026090502,
+          "mixing_percent": 0
+        },
+        {
+          "id": "holdout-balanced_1fe-seed3",
+          "n": 50000,
+          "topology": "balanced_1fe",
+          "controls": 10,
+          "difficulty": "easy",
+          "threads": 7,
+          "seed": 2026090503,
+          "mixing_percent": 0
+        },
+        {
+          "id": "holdout-chain_2fe-seed1",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090501,
+          "mixing_percent": 10
+        },
+        {
+          "id": "holdout-chain_2fe-seed2",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090502,
+          "mixing_percent": 10
+        },
+        {
+          "id": "holdout-chain_2fe-seed3",
+          "n": 50000,
+          "topology": "chain_2fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090503,
+          "mixing_percent": 10
+        },
+        {
+          "id": "holdout-sparse_3fe-seed1",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090501,
+          "mixing_percent": 0
+        },
+        {
+          "id": "holdout-sparse_3fe-seed2",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090502,
+          "mixing_percent": 0
+        },
+        {
+          "id": "holdout-sparse_3fe-seed3",
+          "n": 50000,
+          "topology": "sparse_3fe",
+          "controls": 10,
+          "difficulty": "long",
+          "threads": 7,
+          "seed": 2026090503,
+          "mixing_percent": 0
+        }
+      ],
+      "repetitions": 5,
+      "independent_oracle": false,
+      "comparators": true,
+      "expected_scopes": 9
+    }
+  },
+  "scc_campaign": {
+    "task_count": 16,
+    "expected_scopes": 56,
+    "long_observations": 10000,
+    "artifact_roles": [
+      "candidate",
+      "baseline"
+    ],
+    "baseline_optional": true,
+    "scheduler": {
+      "project": "welfgr",
+      "parallel_environment": "omp",
+      "slots": 28,
+      "m_core": 28,
+      "cpu_arch": "broadwell",
+      "cpu_type": "E5-2680v4",
+      "mem_per_core": "4G",
+      "h_rt": "03:00:00"
+    },
+    "bundle_shapes": {
+      "breadth": {
+        "n": 50000,
+        "controls": [
+          0,
+          10,
+          50
+        ],
+        "threads": [
+          14
+        ]
+      },
+      "difficulty": {
+        "n": 50000,
+        "controls": [
+          2,
+          20
+        ],
+        "difficulties": [
+          "easy",
+          "long"
+        ],
+        "threads": [
+          14
+        ]
+      },
+      "scaling": {
+        "n": 100000,
+        "controls": [
+          10
+        ],
+        "threads": [
+          1,
+          7,
+          14,
+          28
+        ]
+      }
+    },
+    "bundles": [
+      {
+        "task": 1,
+        "id": "breadth_balanced_2fe",
+        "shape": "breadth",
+        "topology": "balanced_2fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 2,
+        "id": "breadth_skewed_2fe",
+        "shape": "breadth",
+        "topology": "skewed_2fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 3,
+        "id": "breadth_chain_2fe",
+        "shape": "breadth",
+        "topology": "chain_2fe",
+        "difficulty": "long"
+      },
+      {
+        "task": 4,
+        "id": "breadth_hub_2fe",
+        "shape": "breadth",
+        "topology": "hub_2fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 5,
+        "id": "breadth_dense_2fe",
+        "shape": "breadth",
+        "topology": "dense_2fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 6,
+        "id": "breadth_many_levels_2fe",
+        "shape": "breadth",
+        "topology": "many_levels_2fe",
+        "difficulty": "long"
+      },
+      {
+        "task": 7,
+        "id": "breadth_balanced_3fe",
+        "shape": "breadth",
+        "topology": "balanced_3fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 8,
+        "id": "breadth_sparse_3fe",
+        "shape": "breadth",
+        "topology": "sparse_3fe",
+        "difficulty": "long"
+      },
+      {
+        "task": 9,
+        "id": "difficulty_balanced_2fe",
+        "shape": "difficulty",
+        "topology": "balanced_2fe"
+      },
+      {
+        "task": 10,
+        "id": "difficulty_chain_2fe",
+        "shape": "difficulty",
+        "topology": "chain_2fe"
+      },
+      {
+        "task": 11,
+        "id": "difficulty_balanced_3fe",
+        "shape": "difficulty",
+        "topology": "balanced_3fe"
+      },
+      {
+        "task": 12,
+        "id": "difficulty_sparse_3fe",
+        "shape": "difficulty",
+        "topology": "sparse_3fe"
+      },
+      {
+        "task": 13,
+        "id": "scaling_balanced_2fe",
+        "shape": "scaling",
+        "topology": "balanced_2fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 14,
+        "id": "scaling_chain_2fe",
+        "shape": "scaling",
+        "topology": "chain_2fe",
+        "difficulty": "long"
+      },
+      {
+        "task": 15,
+        "id": "scaling_balanced_3fe",
+        "shape": "scaling",
+        "topology": "balanced_3fe",
+        "difficulty": "easy"
+      },
+      {
+        "task": 16,
+        "id": "scaling_sparse_3fe",
+        "shape": "scaling",
+        "topology": "sparse_3fe",
+        "difficulty": "long"
+      }
+    ]
+  },
+  "receipt_contract": {
+    "immutable_json": true,
+    "setup_receipt": "receipts/setup.json",
+    "task_receipt_pattern": "receipts/task-{task:02d}.json",
+    "merge_receipt": "receipts/merge.json",
+    "close_receipt": "receipts/close.json",
+    "success_marker": "RUN.SUCCESS",
+    "required_task_identity": [
+      "job_id",
+      "task_id",
+      "host",
+      "cpu_model",
+      "logical_cpus",
+      "slots",
+      "m_core",
+      "cpu_arch",
+      "cpu_type"
+    ],
+    "qacct_required": [
+      "jobnumber",
+      "taskid",
+      "owner",
+      "project",
+      "hostname",
+      "slots",
+      "failed",
+      "exit_status",
+      "ru_wallclock",
+      "cpu",
+      "maxvmem"
+    ]
+  }
+}

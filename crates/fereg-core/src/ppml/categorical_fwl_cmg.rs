@@ -17,8 +17,9 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights, CmgAbsorber,
-    CmgConfig, CmgTopologyProfile, CmgUnpolishedProjectionReport, FeDesign, FeSolverKind,
-    MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource, CMG_MAX_NUISANCE_COLUMNS,
+    CmgConfig, CmgControlSeed, CmgTopologyProfile, CmgUnpolishedProjectionReport, FeDesign,
+    FeSolverKind, MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource,
+    CMG_MAX_NUISANCE_COLUMNS,
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::options::ThreadConfig;
@@ -272,6 +273,7 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     active_columns: usize,
     certificate_topology: FusedCmgCertificateTopology,
     prepared_topology: PreparedCmgTopology,
+    control_seed: CmgControlSeed,
     redundant_nuisance: Option<usize>,
     active_values: Vec<f64>,
     active_slots: Vec<usize>,
@@ -399,7 +401,12 @@ impl ReusableCategoricalFwlCmg {
             rows,
             active_generated.len(),
             config.threads.resolved(),
-        )?;
+        )?
+        .checked_add(CmgControlSeed::estimated_bytes(
+            profile.vertices(),
+            active_generated.len(),
+        )?)
+        .ok_or_else(|| allocation("fused PPML CMG seed workspace overflows"))?;
         let topology_prepare_peak =
             PreparedCmgTopology::conservative_prepare_peak_bytes(&borrowed)?;
         let preparation_peak = config
@@ -491,6 +498,7 @@ impl ReusableCategoricalFwlCmg {
             active_columns,
             certificate_topology,
             prepared_topology,
+            control_seed: CmgControlSeed::new(profile.vertices(), active_columns)?,
             redundant_nuisance,
             active_values,
             active_slots,
@@ -547,7 +555,10 @@ impl ReusableCategoricalFwlCmg {
         weights: &[f64],
         tolerance: f64,
     ) -> Result<FusedFwlCmgSolveOutcome> {
-        self.validate_frame(fe_design, working_response, weights, tolerance)?;
+        if let Err(error) = self.validate_frame(fe_design, working_response, weights, tolerance) {
+            self.reset_warm_start();
+            return Err(error);
+        }
         let attempt_started = Instant::now();
         let mut diagnostics = FusedFwlCmgAttemptDiagnostics::default();
         match self.solve_certified(
@@ -560,11 +571,15 @@ impl ReusableCategoricalFwlCmg {
         ) {
             Ok(report) => Ok(FusedFwlCmgSolveOutcome::Certified(report)),
             Err(error) if error.code == ErrorCode::NonConvergence => {
+                self.reset_warm_start();
                 Ok(FusedFwlCmgSolveOutcome::NumericalFailure(
                     diagnostics.into_failure_report(attempt_started.elapsed().as_secs_f64()),
                 ))
             }
-            Err(error) => Err(error),
+            Err(error) => {
+                self.reset_warm_start();
+                Err(error)
+            }
         }
     }
 
@@ -611,7 +626,11 @@ impl ReusableCategoricalFwlCmg {
             cmg_config,
             &mut self.prepared_topology,
         )?;
-        let first = absorber.project_unpolished(&mut self.projected, first_tolerance)?;
+        let first = absorber.project_unpolished_with_seed(
+            &mut self.projected,
+            first_tolerance,
+            (self.active_columns > 0).then_some(&mut self.control_seed),
+        )?;
         diagnostics.observe_projection(first);
         let certification_started = Instant::now();
         let projection_certificate =
@@ -660,13 +679,14 @@ impl ReusableCategoricalFwlCmg {
                     self.redundant_nuisance,
                 )?;
                 let retry_config = self.cmg_config(retry_map);
-                let mut retry_absorber = CmgAbsorber::build_unpolished_prepared(
+                self.reset_warm_start();
+                absorber = CmgAbsorber::build_unpolished_prepared(
                     retry_borrowed,
                     BorrowedMapWeights::Provided(weights),
                     retry_config,
                     &mut self.prepared_topology,
                 )?;
-                retry_absorber.project_unpolished(&mut self.retry, retry_tolerance)?
+                absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             };
             diagnostics.observe_projection(report);
             let certification_started = Instant::now();
@@ -754,6 +774,12 @@ impl ReusableCategoricalFwlCmg {
         let joint_certificate_seconds = joint_certificate_started.elapsed().as_secs_f64();
         let finish_seconds =
             diagnostics.certification_seconds + finish_started.elapsed().as_secs_f64();
+        if failed == 0 {
+            self.control_seed.retain_certified(first.projection_work);
+            self.prepared_topology.retain_certified_seed(absorber);
+        } else {
+            self.reset_warm_start();
+        }
         let projection_absolute_infinity_norm = self
             .projection_certificates
             .iter()
@@ -781,11 +807,30 @@ impl ReusableCategoricalFwlCmg {
                 - finish_seconds)
                 .max(0.0);
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            for (attempt, work) in std::iter::once(("first", first.projection_work))
+                .chain(retry_report.map(|report| ("retry", report.projection_work)))
+            {
+                emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=cmg_projection|attempt={attempt}|warm_rhs={}|warm_iterations_sum={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}",
+                    work.warm_right_hand_sides, work.warm_iterations, work.iterations, work.restarts, work.extra_restarts,
+                    work.initial_relative_residual, work.pcg_seconds, work.rhs_seconds,
+                ));
+            }
+            for (attempt, setup) in std::iter::once(("first", first.nuisance_setup))
+                .chain(retry_report.map(|report| ("retry", report.nuisance_setup)))
+            {
+                emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=cmg_nuisance|attempt={attempt}|warm_rhs={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|weight_ratio={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}|schur_seconds={:.17e}",
+                    setup.warm_right_hand_sides, setup.iterations, setup.restarts, setup.extra_restarts,
+                    setup.initial_relative_residual, setup.weight_ratio,
+                    setup.pcg_seconds, setup.rhs_seconds, setup.schur_seconds,
+                ));
+            }
             emit_solver_trace_line(&format!(
-                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|graph_rhs={}|graph_batches={}|nuisance_reused_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
+                "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|pcg_batch_width={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|graph_rhs={}|graph_batches={}|nuisance_reused_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
                 self.active_columns + 1, first.nuisance_columns,
                 self.redundant_nuisance.map_or(0, |effect| effect + 1),
-                self.config.batch_size, tolerance, first_tolerance,
+                self.config.batch_size, first.pcg_batch_width, tolerance, first_tolerance,
                 if failed == 0 { first_tolerance } else { retry_tolerance },
                 first.iterations, retry_report.map_or(0, |report| report.iterations), failed,
                 projected_rhs, batches, first.nuisance_reused_right_hand_sides
@@ -828,6 +873,19 @@ impl ReusableCategoricalFwlCmg {
             offset,
             &self.active_slots,
             &self.coefficients,
+        )
+    }
+
+    pub(crate) fn reset_warm_start(&mut self) {
+        self.control_seed.reset();
+        self.prepared_topology.reset_warm_start();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn warm_seed_ready(&self) -> (bool, bool) {
+        (
+            self.prepared_topology.warm_seed_ready(),
+            self.control_seed.ready(),
         )
     }
 
