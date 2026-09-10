@@ -47,7 +47,7 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     certify_borrowed_intercept_candidate, recover_borrowed_intercept_sd_lsmr_coefficients,
-    BorrowedInterceptRecoveryMethod, ReusableCategoricalMapAbsorber,
+    BorrowedInterceptRecoveryMethod, BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber,
     CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS,
     PARALLEL_PROJECTION_MIN_ROWS,
 };

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "id": "ols_wide_cholesky_development_v1",
+  "decision": "docs/adr/0030-wide-guarded-ols-finite-solve.md",
+  "observations": 10000,
+  "seed_base": 2026090801,
+  "threads": [
+    1,
+    7
+  ],
+  "core": [
+    [
+      "one_fe",
+      [
+        128
+      ]
+    ]
+  ],
+  "low": [
+    [
+      "one_fe",
+      128
+    ]
+  ],
+  "guards": [],
+  "process_timeout_seconds": 120,
+  "cold": 1,
+  "warm": 3,
+  "confirmation_pairs": 5,
+  "additional_scopes": [
+    {
+      "design": "one_fe",
+      "k": 65,
+      "threads": 7,
+      "memory": "fast",
+      "guard": "aweight"
+    },
+    {
+      "design": "one_fe",
+      "k": 65,
+      "threads": 7,
+      "memory": "fast",
+      "guard": "fweight"
+    },
+    {
+      "design": "one_fe",
+      "k": 65,
+      "threads": 7,
+      "memory": "fast",
+      "guard": "pweight"
+    },
+    {
+      "design": "one_fe",
+      "k": 65,
+      "threads": 7,
+      "memory": "fast",
+      "guard": "rank"
+    },
+    {
+      "design": "one_fe",
+      "k": 65,
+      "threads": 7,
+      "memory": "fast",
+      "guard": "slope"
+    },
+    {
+      "design": "no_fe",
+      "k": 128,
+      "threads": 7,
+      "memory": "fast",
+      "guard": ""
+    }
+  ]
+}

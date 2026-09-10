@@ -1129,7 +1129,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     reservation: &mut R,
 ) -> Result<CertifiedPreparedLinearProjection> {
     let weights = frame.weights();
-    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
+    let mut cmg = build_fit_fe_absorber(prepared, weights.borrowed(), config)?;
     let raw = prepared.fit_build_rhs_with_response(frame.response())?;
     let generated_columns = prepared.fit_model().columns.len();
     let mut reference_norms = reserved_filled(
@@ -1336,23 +1336,25 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
     })?
 }
 
-struct FitCmgAbsorber<'a> {
+struct FitFeAbsorber<'a> {
     session: Option<CmgAbsorber<'a>>,
+    lsmr: Option<crate::fe::BorrowedLsmrAbsorber<'a>>,
     auto_direct_solver: Option<FeSolverKind>,
     auto_discarded_setup_seconds: f64,
     auto_setup_warning: Option<String>,
 }
 
-fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
+fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     prepared: &'a P,
     weights: BorrowedMapWeights<'a>,
     config: PreparedOlsFitConfig,
-) -> Result<FitCmgAbsorber<'a>> {
+) -> Result<FitFeAbsorber<'a>> {
     if config.absorb.solver != FeSolverKind::Cmg
         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
     {
-        return Ok(FitCmgAbsorber {
+        return Ok(FitFeAbsorber {
             session: None,
+            lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: None,
@@ -1361,8 +1363,9 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     let design = prepared.fit_borrowed_cmg_design()?;
     let profile = CmgTopologyProfile::analyze(&design)?;
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
-        return Ok(FitCmgAbsorber {
+        return Ok(FitFeAbsorber {
             session: None,
+            lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: None,
@@ -1404,26 +1407,30 @@ fn build_fit_cmg_absorber<'a, P: PreparedOlsFitView + ?Sized>(
         .map(CmgAutoBuildOutcome::Ready)
     };
     match built {
-        Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitCmgAbsorber {
+        Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitFeAbsorber {
             session: Some(session),
+            lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: None,
         }),
-        Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitCmgAbsorber {
+        Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
             session: None,
+            lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: setup_seconds,
             auto_setup_warning: None,
         }),
-        Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitCmgAbsorber {
+        Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
             session: None,
+            lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Cg),
             auto_discarded_setup_seconds: setup_seconds,
             auto_setup_warning: None,
         }),
-        Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitCmgAbsorber {
+        Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
             session: None,
+            lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: 0.0,
             auto_setup_warning: Some(format!(
@@ -1439,7 +1446,7 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
     weights: BorrowedMapWeights<'_>,
     values: DenseMatrix,
     config: AbsorbConfig,
-    cmg: &mut FitCmgAbsorber<'_>,
+    cmg: &mut FitFeAbsorber<'_>,
     initial: bool,
     final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
@@ -1450,16 +1457,22 @@ fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
             session.absorb(values)
         };
     }
-    let absorbed = match cmg.auto_direct_solver {
-        Some(FeSolverKind::Lsmr) => prepared.fit_absorb_auto_direct_lsmr(weights, values, config),
-        Some(FeSolverKind::Cg) => {
-            let mut direct_config = config;
-            direct_config.solver = FeSolverKind::Cg;
-            prepared.fit_absorb_cg(weights, values, direct_config)
+    let absorbed = if let Some(lsmr) = cmg.lsmr.as_mut() {
+        lsmr.absorb(values)
+    } else {
+        match cmg.auto_direct_solver {
+            Some(FeSolverKind::Lsmr) => {
+                prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
+            }
+            Some(FeSolverKind::Cg) => {
+                let mut direct_config = config;
+                direct_config.solver = FeSolverKind::Cg;
+                prepared.fit_absorb_cg(weights, values, direct_config)
+            }
+            Some(_) => unreachable!("unsupported planned automatic direct solver"),
+            None if initial => prepared.fit_absorb_initial_matrix(weights, values, config),
+            None => prepared.fit_absorb_matrix(weights, values, config),
         }
-        Some(_) => unreachable!("unsupported planned automatic direct solver"),
-        None if initial => prepared.fit_absorb_initial_matrix(weights, values, config),
-        None => prepared.fit_absorb_matrix(weights, values, config),
     }?;
     let discarded_setup_seconds = std::mem::take(&mut cmg.auto_discarded_setup_seconds);
     let warning = cmg.auto_setup_warning.take();
@@ -1622,7 +1635,7 @@ fn fit_with_controls_internal_mode_with_frame<
     let mut trace = PhaseTrace::new();
     frame.validate_for(prepared)?;
     let weights = frame.weights();
-    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
+    let mut cmg = build_fit_fe_absorber(prepared, weights.borrowed(), config)?;
 
     let projection_phase = LinearSessionPhaseAllocationGuard::new(
         phase_probe,
@@ -1747,6 +1760,9 @@ fn fit_with_controls_internal_mode_with_frame<
     )?;
     if rayon::current_num_threads() == 1 {
         fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+    } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
+        // Keep enough independent blocks to occupy the existing worker team.
+        fill_weighted_matrix_norms_blocked::<8>(&within, weights, &mut within_norms)?;
     } else {
         within_norms
             .par_iter_mut()
@@ -2253,7 +2269,19 @@ fn fit_with_controls_low_internal_with_frame<
 ) -> Result<CertifiedPreparedOlsFit> {
     frame.validate_for(prepared)?;
     let weights = frame.weights();
-    let mut cmg = build_fit_cmg_absorber(prepared, weights.borrowed(), config)?;
+    let mut cmg = build_fit_fe_absorber(prepared, weights.borrowed(), config)?;
+    if cmg.auto_direct_solver == Some(FeSolverKind::Lsmr)
+        || (config.absorb.solver == FeSolverKind::Lsmr && prepared.fit_supports_cmg_auto())
+    {
+        let design = prepared.fit_borrowed_cmg_design()?;
+        if !design.effects().is_empty() {
+            cmg.lsmr = Some(crate::fe::BorrowedLsmrAbsorber::new(
+                design,
+                weights.borrowed(),
+                config.absorb,
+            )?);
+        }
+    }
     let rows = prepared.fit_sample().n_active();
     let generated_columns = prepared.fit_model().columns.len();
 
@@ -2360,6 +2388,9 @@ fn fit_with_controls_low_internal_with_frame<
             scratch.write_column(generated, &column_buffer)?;
         }
     }
+    // Retained setup belongs only to projection. Do not overlap it with QR,
+    // covariance, or a later independent residual-certification workspace.
+    drop(cmg.lsmr.take());
     drop(projection_phase);
 
     let finite_phase = LinearSessionPhaseAllocationGuard::new(
@@ -2507,6 +2538,17 @@ fn fit_with_controls_low_internal_with_frame<
 }
 
 pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
+    // Automatic batches may finish with LSMR or its certified CG continuation.
+    // The aggregate records CG if any batch required that continuation.
+    let auto_lsmr_cg_mix = target.requested_solver == FeSolverKind::Auto
+        && source.requested_solver == FeSolverKind::Auto
+        && target.requested_preconditioner.is_some()
+        && target.used_preconditioner.is_some()
+        && match (target.used_solver, source.used_solver) {
+            (FeSolverKind::Lsmr, FeSolverKind::Cg) => source.fallback_used,
+            (FeSolverKind::Cg, FeSolverKind::Lsmr) => target.fallback_used,
+            _ => false,
+        };
     let cmg_fallback_mix = target.requested_solver == FeSolverKind::Cmg
         && source.requested_solver == FeSolverKind::Cmg
         && matches!(target.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg)
@@ -2514,7 +2556,7 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     if !target.certified()
         || !source.certified()
         || target.requested_solver != source.requested_solver
-        || (target.used_solver != source.used_solver && !cmg_fallback_mix)
+        || (target.used_solver != source.used_solver && !cmg_fallback_mix && !auto_lsmr_cg_mix)
         || target.requested_preconditioner != source.requested_preconditioner
         || target.used_preconditioner != source.used_preconditioner
     {
@@ -2522,7 +2564,7 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
             "prepared OLS low-memory solver reports are inconsistent",
         ));
     }
-    if cmg_fallback_mix
+    if (cmg_fallback_mix || auto_lsmr_cg_mix)
         && (target.used_solver == FeSolverKind::Cg || source.used_solver == FeSolverKind::Cg)
     {
         target.used_solver = FeSolverKind::Cg;
@@ -2856,7 +2898,7 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
     build_bread: bool,
 ) -> Result<Option<QrFit>> {
     let candidate_count = canonical_candidates.len();
-    if candidate_count == 0 || candidate_count > FUSED_MOMENT_MAX_COLUMNS {
+    if candidate_count == 0 {
         return Ok(None);
     }
     let square = checked_square(
@@ -5253,6 +5295,15 @@ fn build_raw_moment_cache<R: FitReservation>(
             &mut norms,
             reservation,
         )?;
+    } else if raw.ncols().div_ceil(8) >= rayon::current_num_threads() {
+        fill_raw_moment_cache_blocked::<8>(
+            raw,
+            weights,
+            weight_sum,
+            &mut scales,
+            &mut means,
+            &mut norms,
+        )?;
     } else {
         fill_raw_moment_cache_columnwise(
             raw,
@@ -5401,6 +5452,86 @@ fn fill_raw_moment_cache_fused<R: FitReservation>(
         }
     }
     Ok(())
+}
+
+/// Keep the wide columnwise cache's arithmetic and row order, but share adjacent
+/// loads and weight reads. Stack accumulators avoid both a partial bank and
+/// repeated writes to cache lines shared by neighboring output chunks.
+fn fill_raw_moment_cache_blocked<const BLOCK: usize>(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    weight_sum: f64,
+    scales: &mut [f64],
+    means: &mut [f64],
+    norms: &mut [f64],
+) -> Result<()> {
+    if BLOCK == 0
+        || raw.ncols() == 0
+        || scales.len() != raw.ncols()
+        || means.len() != raw.ncols()
+        || norms.len() != raw.ncols()
+        || !weight_sum.is_finite()
+        || weight_sum <= 0.0
+    {
+        return Err(invalid_argument(
+            "prepared OLS blocked raw-moment dimensions are inconsistent",
+        ));
+    }
+    scales
+        .par_chunks_mut(BLOCK)
+        .zip(means.par_chunks_mut(BLOCK))
+        .zip(norms.par_chunks_mut(BLOCK))
+        .enumerate()
+        .try_for_each(|(block, ((scales, means), norms))| -> Result<()> {
+            let width = scales.len();
+            let start = block * BLOCK;
+            let mut raw_scales = [0.0_f64; BLOCK];
+            raw_scales[..width].copy_from_slice(scales);
+            let mut norm_scales = [0.0_f64; BLOCK];
+            let mut norm_sums = [1.0_f64; BLOCK];
+            for (row, values) in raw.as_slice().chunks_exact(raw.ncols()).enumerate() {
+                let root = weights.root(row)?;
+                for column in 0..width {
+                    let value = values[start + column];
+                    if !value.is_finite() {
+                        return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+                    }
+                    raw_scales[column] = raw_scales[column].max(value.abs());
+                    update_scaled_sum_of_squares(
+                        root * value,
+                        &mut norm_scales[column],
+                        &mut norm_sums[column],
+                    )?;
+                }
+            }
+            let mut sums = [0.0_f64; BLOCK];
+            let mut corrections = [0.0_f64; BLOCK];
+            for (row, values) in raw.as_slice().chunks_exact(raw.ncols()).enumerate() {
+                let weight = weights.value(row)?;
+                for column in 0..width {
+                    if raw_scales[column] != 0.0 {
+                        compensated_add(
+                            weight * (values[start + column] / raw_scales[column]),
+                            &mut sums[column],
+                            &mut corrections[column],
+                        )?;
+                    }
+                }
+            }
+            for column in 0..width {
+                scales[column] = raw_scales[column];
+                means[column] = if raw_scales[column] == 0.0 {
+                    0.0
+                } else {
+                    raw_scales[column] * ((sums[column] + corrections[column]) / weight_sum)
+                };
+                if !means[column].is_finite() {
+                    return Err(invalid_data("prepared OLS raw-moment mean is not finite"));
+                }
+                norms[column] = checked_norm(norm_scales[column], norm_sums[column])?;
+            }
+            Ok(())
+        })
 }
 
 fn fill_raw_moment_cache_columnwise(
@@ -5887,6 +6018,45 @@ fn fill_weighted_matrix_norms_fused<R: FitReservation>(
         *scale = checked_norm(*scale, scaled_square_sum)?;
     }
     Ok(())
+}
+
+/// Each column keeps the scalar norm's row order and arithmetic. Small column
+/// blocks share weight roots and adjacent matrix loads without a row reduction
+/// or an observation-sized transpose; all scratch is fixed-size worker stack.
+fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
+    matrix: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    output: &mut [f64],
+) -> Result<()> {
+    if BLOCK == 0 || output.len() != matrix.ncols() {
+        return Err(invalid_argument(
+            "prepared OLS blocked weighted norm output has the wrong width",
+        ));
+    }
+    output
+        .par_chunks_mut(BLOCK)
+        .enumerate()
+        .try_for_each(|(block, norms)| -> Result<()> {
+            // Output chunks need not be cache-line aligned. Accumulate locally
+            // so adjacent workers do not repeatedly write a shared cache line.
+            let mut scales = [0.0_f64; BLOCK];
+            let mut square_sums = [1.0_f64; BLOCK];
+            let start = block * BLOCK;
+            for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
+                let root = weights.root(row)?;
+                for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
+                    update_scaled_sum_of_squares(
+                        root * values[start + column],
+                        scale,
+                        &mut square_sums[column],
+                    )?;
+                }
+            }
+            for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
+                *norm = checked_norm(scale, square_sum)?;
+            }
+            Ok(())
+        })
 }
 
 fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
@@ -6971,6 +7141,95 @@ mod tests {
     }
 
     #[test]
+    fn blocked_weighted_norms_preserve_scalar_bits_at_all_widths() {
+        for threads in [1, 7] {
+            let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap());
+            team.install(|| {
+                for columns in [1, 2, 3, 4, 5, 7, 8, 9, 13, 51, 65] {
+                    let rows = 1031;
+                    let mut matrix = DenseMatrix::zeros(rows, columns).unwrap();
+                    let weights = (0..rows)
+                        .map(|row| 0.25 + (row % 17) as f64 / 19.0)
+                        .collect::<Vec<_>>();
+                    for row in 0..rows {
+                        for col in 0..columns {
+                            matrix[(row, col)] = match col % 5 {
+                                0 => 0.0,
+                                1 => -0.0,
+                                2 => ((row * 37 % 101) as f64 - 50.0) * 1e150,
+                                3 => ((row * 19 % 97) as f64 - 48.0) * 1e-150,
+                                _ => (row as f64 * 0.173).sin(),
+                            };
+                        }
+                    }
+                    for values in [None, Some(weights.as_slice())] {
+                        let normalized = NormalizedWeights {
+                            values,
+                            raw_scale: 2.0,
+                            kind: values.map(|_| WeightKind::Analytic),
+                        };
+                        let expected = (0..columns)
+                            .map(|col| {
+                                weighted_matrix_column_norm(&matrix, col, normalized)
+                                    .unwrap()
+                                    .to_bits()
+                            })
+                            .collect::<Vec<_>>();
+                        let mut actual = vec![0.0; columns];
+                        for block in [2, 4, 8] {
+                            match block {
+                                2 => fill_weighted_matrix_norms_blocked::<2>(
+                                    &matrix,
+                                    normalized,
+                                    &mut actual,
+                                ),
+                                4 => fill_weighted_matrix_norms_blocked::<4>(
+                                    &matrix,
+                                    normalized,
+                                    &mut actual,
+                                ),
+                                _ => fill_weighted_matrix_norms_blocked::<8>(
+                                    &matrix,
+                                    normalized,
+                                    &mut actual,
+                                ),
+                            }
+                            .unwrap();
+                            assert_eq!(
+                                actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                                expected
+                            );
+                        }
+                    }
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn blocked_weighted_norms_fail_closed() {
+        let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
+        let weights = NormalizedWeights {
+            values: None,
+            raw_scale: 1.0,
+            kind: None,
+        };
+        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0]).is_err());
+        assert!(fill_weighted_matrix_norms_blocked::<0>(&matrix, weights, &mut [0.0; 2]).is_err());
+        matrix[(1, 1)] = f64::INFINITY;
+        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0; 2]).is_err());
+        matrix[(1, 1)] = 1.0;
+        let bad_weights = [1.0, 0.0, 1.0];
+        let weights = NormalizedWeights {
+            values: Some(&bad_weights),
+            raw_scale: 1.0,
+            kind: Some(WeightKind::Analytic),
+        };
+        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0; 2]).is_err());
+    }
+
+    #[test]
     fn fused_standardized_moments_preserve_noncontiguous_candidate_fallback() {
         let rows = 40_019_usize;
         let columns = 6_usize;
@@ -7000,6 +7259,177 @@ mod tests {
         }
         for (actual, expected) in gram.iter().zip(reference_gram) {
             assert_close(*actual, expected, 2e-12);
+        }
+    }
+
+    #[test]
+    fn blocked_raw_moments_preserve_columnwise_bits_and_dispatch() {
+        for threads in [1, 7, 16] {
+            let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap());
+            team.install(|| {
+                for columns in [1, 7, 8, 9, 63, 64, 65, 66, 129] {
+                    let rows = 1031;
+                    let mut matrix = DenseMatrix::zeros(rows, columns).unwrap();
+                    let weights = (0..rows)
+                        .map(|row| 1.0 + (row % 17) as f64)
+                        .collect::<Vec<_>>();
+                    for row in 0..rows {
+                        for column in 0..columns {
+                            matrix[(row, column)] = match column % 7 {
+                                0 => 0.0,
+                                1 => -0.0,
+                                2 => ((row * 37 % 101) as f64 - 50.0) * 1e150,
+                                3 => ((row * 19 % 97) as f64 - 48.0) * 1e-150,
+                                4 => 1.0,
+                                5 => [1e16, 1.0, -1e16][row % 3],
+                                _ => (row as f64 * 0.173).sin(),
+                            };
+                        }
+                    }
+                    for kind in [
+                        None,
+                        Some(WeightKind::Analytic),
+                        Some(WeightKind::Frequency),
+                        Some(WeightKind::Probability),
+                    ] {
+                        let normalized = NormalizedWeights {
+                            values: kind.map(|_| weights.as_slice()),
+                            raw_scale: 17.0,
+                            kind,
+                        };
+                        let mut reservation = SystemFitReservation;
+                        let cache = build_raw_moment_cache(&matrix, normalized, &mut reservation)
+                            .expect("dispatched raw moments");
+                        let mut expected_scales = vec![0.0; columns];
+                        let mut expected_means = vec![0.0; columns];
+                        let mut expected_norms = vec![0.0; columns];
+                        fill_raw_moment_cache_columnwise(
+                            &matrix,
+                            normalized,
+                            cache.weight_sum,
+                            &mut expected_scales,
+                            &mut expected_means,
+                            &mut expected_norms,
+                        )
+                        .unwrap();
+                        let mut scales = vec![0.0; columns];
+                        let mut means = vec![0.0; columns];
+                        let mut norms = vec![0.0; columns];
+                        fill_raw_moment_cache_blocked::<8>(
+                            &matrix,
+                            normalized,
+                            cache.weight_sum,
+                            &mut scales,
+                            &mut means,
+                            &mut norms,
+                        )
+                        .unwrap();
+                        for (actual, expected) in [
+                            (&scales, &expected_scales),
+                            (&means, &expected_means),
+                            (&norms, &expected_norms),
+                        ] {
+                            assert_eq!(
+                                actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                                expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+                            );
+                        }
+                        if columns > FUSED_MOMENT_MAX_COLUMNS {
+                            for (actual, expected) in [
+                                (&cache.scales, &expected_scales),
+                                (&cache.means, &expected_means),
+                                (&cache.norms, &expected_norms),
+                            ] {
+                                assert_eq!(
+                                    actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                                    expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+                                );
+                            }
+                        }
+                    }
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn blocked_raw_moments_fail_closed() {
+        let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
+        let weights = NormalizedWeights {
+            values: None,
+            raw_scale: 1.0,
+            kind: None,
+        };
+        assert!(fill_raw_moment_cache_blocked::<8>(
+            &matrix,
+            weights,
+            3.0,
+            &mut [0.0],
+            &mut [0.0; 2],
+            &mut [0.0; 2],
+        )
+        .is_err());
+        assert!(fill_raw_moment_cache_blocked::<0>(
+            &matrix,
+            weights,
+            3.0,
+            &mut [0.0; 2],
+            &mut [0.0; 2],
+            &mut [0.0; 2],
+        )
+        .is_err());
+        for weight_sum in [0.0, -1.0, f64::INFINITY, f64::NAN] {
+            assert!(fill_raw_moment_cache_blocked::<8>(
+                &matrix,
+                weights,
+                weight_sum,
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+            )
+            .is_err());
+        }
+        for value in [f64::NAN, f64::INFINITY, f64::MAX] {
+            matrix[(0, 1)] = value;
+            matrix[(1, 1)] = value;
+            let blocked = fill_raw_moment_cache_blocked::<8>(
+                &matrix,
+                weights,
+                3.0,
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+            )
+            .unwrap_err();
+            let reference = fill_raw_moment_cache_columnwise(
+                &matrix,
+                weights,
+                3.0,
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+            )
+            .unwrap_err();
+            assert_eq!(blocked.to_string(), reference.to_string());
+        }
+        matrix.as_mut_slice().fill(1.0);
+        for invalid in [0.0, -1.0, f64::INFINITY, f64::NAN] {
+            let values = [1.0, invalid, 1.0];
+            let weights = NormalizedWeights {
+                values: Some(&values),
+                raw_scale: 1.0,
+                kind: Some(WeightKind::Analytic),
+            };
+            assert!(fill_raw_moment_cache_blocked::<8>(
+                &matrix,
+                weights,
+                3.0,
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+                &mut [0.0; 2],
+            )
+            .is_err());
         }
     }
 
@@ -7106,94 +7536,127 @@ mod tests {
 
     #[test]
     fn guarded_cholesky_accepts_well_conditioned_wide_finite_design() {
-        let rows = 32_768_usize;
-        let columns = 12_usize;
-        let mut regressors = vec![vec![0.0_f64; rows]; columns];
-        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
-        for row in 0..rows {
-            for (column, values) in regressors.iter_mut().enumerate() {
-                state = state
-                    .wrapping_mul(6_364_136_223_846_793_005)
-                    .wrapping_add(1_442_695_040_888_963_407);
-                let uniform = ((state >> 11) as f64) / ((1_u64 << 53) as f64) - 0.5;
-                values[row] = uniform + 0.03 * ((row + 3 * column) as f64 * 0.17).sin();
+        for (rows, columns) in [(32_768_usize, 12_usize), (1_024, 65), (1_024, 128)] {
+            let mut regressors = vec![vec![0.0_f64; rows]; columns];
+            let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+            for row in 0..rows {
+                for (column, values) in regressors.iter_mut().enumerate() {
+                    state = state
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1_442_695_040_888_963_407);
+                    let uniform = ((state >> 11) as f64) / ((1_u64 << 53) as f64) - 0.5;
+                    values[row] = uniform + 0.03 * ((row + 3 * column) as f64 * 0.17).sin();
+                }
             }
-        }
-        let outcome = (0..rows)
-            .map(|row| {
-                regressors.iter().enumerate().fold(
-                    0.02 * (row as f64 * 0.13).cos(),
-                    |value, (column, regressor)| {
-                        ((column + 1) as f64 / columns as f64).mul_add(regressor[row], value)
-                    },
-                )
-            })
-            .collect::<Vec<_>>();
-        let prepared = prepared(
-            &outcome,
-            &regressors,
-            &vec![false; columns],
-            None,
-            false,
-            TestWeights::Unit,
-        );
-        let mut within_values = Vec::with_capacity(rows * (columns + 1));
-        for row in 0..rows {
-            within_values.push(outcome[row]);
-            for regressor in &regressors {
-                within_values.push(regressor[row]);
-            }
-        }
-        let mut within = DenseMatrix::from_row_major(rows, columns + 1, within_values)
-            .expect("wide within matrix");
-        let weights = normalized_weights(&prepared).expect("unit weights");
-        let mut reference_norms = Vec::with_capacity(columns);
-        for column in 0..columns {
-            reference_norms.push(
-                weighted_matrix_column_norm(&within, column + 1, weights).expect("reference norm"),
+            let outcome = (0..rows)
+                .map(|row| {
+                    regressors.iter().enumerate().fold(
+                        0.02 * (row as f64 * 0.13).cos(),
+                        |value, (column, regressor)| {
+                            ((column + 1) as f64 / columns as f64).mul_add(regressor[row], value)
+                        },
+                    )
+                })
+                .collect::<Vec<_>>();
+            let prepared = prepared(
+                &outcome,
+                &regressors,
+                &vec![false; columns],
+                None,
+                false,
+                TestWeights::Unit,
             );
-        }
-        let score_norms = reference_norms.clone();
-        for row in 0..rows {
+            let mut within_values = Vec::with_capacity(rows * (columns + 1));
+            for row in 0..rows {
+                within_values.push(outcome[row]);
+                for regressor in &regressors {
+                    within_values.push(regressor[row]);
+                }
+            }
+            let mut within = DenseMatrix::from_row_major(rows, columns + 1, within_values)
+                .expect("wide within matrix");
+            let weights = normalized_weights(&prepared).expect("unit weights");
+            let mut reference_norms = Vec::with_capacity(columns);
             for column in 0..columns {
-                within[(row, column + 1)] /= reference_norms[column];
+                reference_norms.push(
+                    weighted_matrix_column_norm(&within, column + 1, weights)
+                        .expect("reference norm"),
+                );
+            }
+            let score_norms = reference_norms.clone();
+            for row in 0..rows {
+                for column in 0..columns {
+                    within[(row, column + 1)] /= reference_norms[column];
+                }
+            }
+            let candidates = (0..columns).collect::<Vec<_>>();
+            let statuses = vec![PreparedOlsFitStatus::NumericallyRankDeficient; columns];
+            let mut reservation = SystemFitReservation;
+            let (rhs, gram) = build_standardized_moments(&within, &candidates, &mut reservation)
+                .expect("wide standardized moments");
+            let relative_threshold = PreparedOlsFitConfig::default().rank_tolerance_multiplier
+                * f64::EPSILON
+                * rows as f64;
+            let bread_weight_scale =
+                prepared_bread_weight_scale(&prepared, weights).expect("bread weight scale");
+            let fit = try_fit_scaled_pivoted_cholesky(
+                &within,
+                weights,
+                bread_weight_scale,
+                &reference_norms,
+                &score_norms,
+                &candidates,
+                &statuses,
+                &gram,
+                &rhs,
+                relative_threshold,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                false,
+                true,
+            )
+            .expect("guarded Cholesky attempt")
+            .expect("well-conditioned design selects guarded Cholesky");
+            assert_eq!(fit.rank, columns);
+            assert!(fit.certificate.passed);
+            assert_eq!(fit.certificate.maximum_dropped_trailing_norm, 0.0);
+            assert!(fit.finite_score.infinity_scale < 1e-10);
+            let bread = fit.bread.expect("certified Cholesky bread");
+            assert!(bread.left_inverse_relative_infinity_norm < 5e-10);
+            assert!(bread.right_inverse_relative_infinity_norm < 5e-10);
+            // A nearly duplicated final coordinate must fail the stronger pivot
+            // guard even while its Gram matrix is positive definite.
+            if columns > 64 {
+                for gap in [0.0_f64, 1e-10] {
+                    let mut weak_gram = gram.clone();
+                    for j in 0..columns {
+                        weak_gram[(columns - 1) * columns + j] = gram[j];
+                        weak_gram[j * columns + columns - 1] = gram[j * columns];
+                    }
+                    weak_gram[columns * columns - 1] = gram[0] + gap;
+                    assert!(try_fit_scaled_pivoted_cholesky(
+                        &within,
+                        weights,
+                        bread_weight_scale,
+                        &reference_norms,
+                        &score_norms,
+                        &candidates,
+                        &statuses,
+                        &weak_gram,
+                        &rhs,
+                        relative_threshold,
+                        PreparedOlsFitConfig::default(),
+                        &mut reservation,
+                        false,
+                        false,
+                        true,
+                    )
+                    .expect("weak Cholesky attempt")
+                    .is_none());
+                }
             }
         }
-        let candidates = (0..columns).collect::<Vec<_>>();
-        let statuses = vec![PreparedOlsFitStatus::NumericallyRankDeficient; columns];
-        let mut reservation = SystemFitReservation;
-        let (rhs, gram) = build_standardized_moments(&within, &candidates, &mut reservation)
-            .expect("wide standardized moments");
-        let relative_threshold =
-            PreparedOlsFitConfig::default().rank_tolerance_multiplier * f64::EPSILON * rows as f64;
-        let bread_weight_scale =
-            prepared_bread_weight_scale(&prepared, weights).expect("bread weight scale");
-        let fit = try_fit_scaled_pivoted_cholesky(
-            &within,
-            weights,
-            bread_weight_scale,
-            &reference_norms,
-            &score_norms,
-            &candidates,
-            &statuses,
-            &gram,
-            &rhs,
-            relative_threshold,
-            PreparedOlsFitConfig::default(),
-            &mut reservation,
-            false,
-            false,
-            true,
-        )
-        .expect("guarded Cholesky attempt")
-        .expect("well-conditioned design selects guarded Cholesky");
-        assert_eq!(fit.rank, columns);
-        assert!(fit.certificate.passed);
-        assert_eq!(fit.certificate.maximum_dropped_trailing_norm, 0.0);
-        assert!(fit.finite_score.infinity_scale < 1e-10);
-        let bread = fit.bread.expect("certified Cholesky bread");
-        assert!(bread.left_inverse_relative_infinity_norm < 5e-10);
-        assert!(bread.right_inverse_relative_infinity_norm < 5e-10);
     }
 
     #[test]
@@ -7330,6 +7793,176 @@ mod tests {
         assert!(refined.residual_absorption_report().iterations > 0);
         for (ordinary, refined) in ordinary.residuals().iter().zip(refined.residuals()) {
             assert_close(*refined, *ordinary, 1e-10);
+        }
+    }
+
+    fn automatic_lsmr_report_for_merge() -> SolveReport {
+        SolveReport {
+            requested_solver: FeSolverKind::Auto,
+            used_solver: FeSolverKind::Lsmr,
+            iterations: 12,
+            checkpoint_retries: 0,
+            stop_reason: SolveStopReason::Certified,
+            certificate: FeCertificate {
+                absolute_infinity_norm: 2e-8,
+                relative_infinity_norm: 3e-11,
+                relative_two_norm: 4e-12,
+                passed: true,
+            },
+            normal_equation_residual: 5e-11,
+            setup_seconds: 1.0,
+            solve_seconds: 2.0,
+            certification_seconds: 0.25,
+            fallback_used: false,
+            requested_preconditioner: Some(crate::fe::LsmrPreconditioner::Auto),
+            used_preconditioner: Some(crate::fe::LsmrPreconditioner::Schwarz),
+            pilot_iterations: 0,
+            pilot_contraction: 0.0,
+            warnings: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn low_report_merge_preserves_certified_lsmr_cg_continuation_in_any_order() {
+        let lsmr = automatic_lsmr_report_for_merge();
+        let mut cg = lsmr.clone();
+        cg.used_solver = FeSolverKind::Cg;
+        cg.fallback_used = true;
+        cg.iterations = 17;
+        cg.checkpoint_retries = 1;
+        cg.certificate.absolute_infinity_norm = 9e-8;
+        cg.certificate.relative_infinity_norm = 2e-10;
+        cg.normal_equation_residual = 0.0;
+        cg.setup_seconds = 3.0;
+        cg.solve_seconds = 4.0;
+        cg.certification_seconds = 0.5;
+        cg.warnings
+            .push("continued CG from the LSMR candidate".to_owned());
+        let mut last = lsmr.clone();
+        last.pilot_iterations = 2;
+        last.pilot_contraction = 0.1;
+        last.warnings.push("later LSMR batch".to_owned());
+        let reports = [lsmr.clone(), cg.clone(), last];
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let mut merged = reports[order[0]].clone();
+            let expected_warnings = order
+                .iter()
+                .flat_map(|i| reports[*i].warnings.clone())
+                .collect::<Vec<_>>();
+            for i in &order[1..] {
+                merge_solve_report(&mut merged, reports[*i].clone()).unwrap();
+            }
+            assert!(merged.certified());
+            assert_eq!(merged.requested_solver, FeSolverKind::Auto);
+            assert_eq!(merged.used_solver, FeSolverKind::Cg);
+            assert!(merged.fallback_used);
+            assert_eq!(
+                merged.requested_preconditioner,
+                lsmr.requested_preconditioner
+            );
+            assert_eq!(merged.used_preconditioner, lsmr.used_preconditioner);
+            assert_eq!(merged.iterations, 17);
+            assert_eq!(merged.checkpoint_retries, 1);
+            assert_eq!(
+                merged.certificate.absolute_infinity_norm,
+                cg.certificate.absolute_infinity_norm
+            );
+            assert_eq!(
+                merged.certificate.relative_infinity_norm,
+                cg.certificate.relative_infinity_norm
+            );
+            assert_eq!(
+                merged.certificate.relative_two_norm,
+                lsmr.certificate.relative_two_norm
+            );
+            assert_eq!(
+                merged.normal_equation_residual,
+                lsmr.normal_equation_residual
+            );
+            assert_eq!(merged.setup_seconds, 5.0);
+            assert_eq!(merged.solve_seconds, 8.0);
+            assert_eq!(merged.certification_seconds, 1.0);
+            assert_eq!(merged.pilot_iterations, 2);
+            assert_eq!(merged.pilot_contraction, 0.1);
+            assert_eq!(merged.warnings, expected_warnings);
+        }
+    }
+
+    #[test]
+    fn low_report_merge_rejects_uncertified_or_incompatible_continuations() {
+        let lsmr = automatic_lsmr_report_for_merge();
+        let mut cg = lsmr.clone();
+        cg.used_solver = FeSolverKind::Cg;
+        cg.fallback_used = true;
+        for variant in 0..8 {
+            let mut bad = cg.clone();
+            match variant {
+                0 => bad.certificate.passed = false,
+                1 => bad.stop_reason = SolveStopReason::Uncertified,
+                2 => bad.requested_solver = FeSolverKind::Lsmr,
+                3 => bad.fallback_used = false,
+                4 => bad.used_solver = FeSolverKind::Map,
+                5 => bad.requested_preconditioner = Some(crate::fe::LsmrPreconditioner::Schwarz),
+                6 => bad.used_preconditioner = Some(crate::fe::LsmrPreconditioner::Off),
+                7 => bad.requested_preconditioner = None,
+                _ => unreachable!(),
+            }
+            for (target, source) in [(lsmr.clone(), bad.clone()), (bad, lsmr.clone())] {
+                let mut merged = target.clone();
+                let error = merge_solve_report(&mut merged, source).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidData);
+                assert_eq!(merged, target, "invalid input must not partially merge");
+            }
+        }
+        let mut missing = lsmr;
+        missing.requested_preconditioner = None;
+        missing.used_preconditioner = None;
+        cg.requested_preconditioner = None;
+        cg.used_preconditioner = None;
+        assert!(merge_solve_report(&mut missing, cg).is_err());
+    }
+
+    #[test]
+    fn low_lsmr_batches_match_fast_across_pool_sizes() {
+        let rows = 2048;
+        let effects = [97, 89, 9].map(|levels| {
+            (0..rows)
+                .map(|r| ((r * 37 + r / 11) % levels) as f64)
+                .collect::<Vec<_>>()
+        });
+        let x = (0..4)
+            .map(|j| {
+                (0..rows)
+                    .map(|r| (r as f64 * (j + 3) as f64 * 0.137).sin())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let y = (0..rows)
+            .map(|r| {
+                0.7 * x[0][r] - 0.2 * x[1][r] + effects[0][r] * 0.01 + (r as f64 * 0.131).cos()
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared_multiway_categorical(&y, &x, &effects);
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.threads = ThreadConfig::from_requested(1, true).unwrap();
+        let fast = fit_prepared_categorical_ols_coefficients_map(&prepared, config).unwrap();
+        config.execution.mode = PreparedOlsExecutionMode::Low;
+        for poolsize in [1, 2, 4, 5] {
+            config.execution.poolsize = poolsize;
+            let low = fit_prepared_categorical_ols_coefficients_map(&prepared, config).unwrap();
+            assert_eq!(low.finite_rank(), fast.finite_rank());
+            assert_eq!(low.absorption_report().used_solver, FeSolverKind::Lsmr);
+            for (a, b) in low.residuals().iter().zip(fast.residuals()) {
+                assert_close(*a, *b, 1e-10);
+            }
+            assert!(low.rank_certificate().passed);
         }
     }
 
@@ -8968,6 +9601,95 @@ mod tests {
                 let observed = finish_retained_moment_worker_observation();
                 assert_retained_moment_team(observed, requested);
                 candidate.commit();
+            }
+        }
+    }
+
+    #[test]
+    fn wide_fast_and_low_agree_for_weighted_full_weak_and_deficient_designs() {
+        let rows = 512_usize;
+        let weights = (0..rows)
+            .map(|row| 1.0 + (row % 7) as f64)
+            .collect::<Vec<_>>();
+        for columns in [65_usize, 128] {
+            for gap in [1.0_f64, 1e-4, 0.0] {
+                let mut x = (1..=columns)
+                    .map(|mask| {
+                        (0..rows)
+                            .map(|row| {
+                                if (row & mask).count_ones() % 2 == 0 {
+                                    1.0
+                                } else {
+                                    -1.0
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>();
+                if gap != 1.0 {
+                    for row in 0..rows {
+                        x[columns - 1][row] = x[0][row] + gap * x[columns - 1][row];
+                    }
+                }
+                let y = (0..rows)
+                    .map(|row| {
+                        x.iter()
+                            .enumerate()
+                            .map(|(j, values)| values[row] * (j + 1) as f64 / columns as f64)
+                            .sum::<f64>()
+                            + if (row & 256).count_ones() % 2 == 0 {
+                                0.01
+                            } else {
+                                -0.01
+                            }
+                    })
+                    .collect::<Vec<_>>();
+                let data = prepared(
+                    &y,
+                    &x,
+                    &vec![false; columns],
+                    None,
+                    false,
+                    TestWeights::Analytic(&weights),
+                );
+                let fast =
+                    fit_prepared_ols_coefficients_map(&data, PreparedOlsFitConfig::default())
+                        .expect("certified wide fast fit");
+                let low_config = PreparedOlsFitConfig {
+                    execution: PreparedOlsExecutionConfig {
+                        mode: PreparedOlsExecutionMode::Low,
+                        poolsize: 8,
+                        ..PreparedOlsExecutionConfig::default()
+                    },
+                    ..PreparedOlsFitConfig::default()
+                };
+                let low = fit_prepared_ols_coefficients_map(&data, low_config)
+                    .expect("certified wide low fit");
+                assert_eq!(fast.finite_rank(), columns - usize::from(gap == 0.0));
+                assert_eq!(fast.kept_generated_columns(), low.kept_generated_columns());
+                assert_eq!(
+                    fast.dropped_generated_columns(),
+                    low.dropped_generated_columns()
+                );
+                for (a, b) in fast.coefficients().iter().zip(low.coefficients()) {
+                    assert_eq!(a.status, b.status);
+                    assert_eq!(a.coefficient_slot, b.coefficient_slot);
+                    if let (Some(a), Some(b)) = (a.value, b.value) {
+                        assert!((a - b).abs() <= 1e-10 + 1e-7 * a.abs().max(b.abs()));
+                    } else {
+                        assert_eq!(a.value, b.value);
+                    }
+                }
+                for (a, b) in fast.bread().values().iter().zip(low.bread().values()) {
+                    assert!((a - b).abs() <= 1e-10 + 1e-6 * a.abs().max(b.abs()));
+                }
+                for (a, b) in fast.residuals().iter().zip(low.residuals()) {
+                    assert_close(*a, *b, 1e-9);
+                }
+                for fit in [&fast, &low] {
+                    assert!(fit.rank_certificate().passed);
+                    assert!(fit.score_certificate().passed);
+                }
             }
         }
     }

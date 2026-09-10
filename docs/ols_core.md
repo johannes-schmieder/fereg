@@ -32,9 +32,13 @@ codes, rebased factor recipes, and deduplicated FE/cluster topology. It supports
 intercept, slope-only, intercept-plus-slope, multiple slope channels,
 disconnected components, and empty/no-regressor models.
 
-Finite regression uses deterministic scaled column-pivoted Householder QR and
-preserves a canonical status for every coefficient slot. Only the identified
-subspace is solved. The normalized reported `_cons`, when structurally
+Finite regression preserves a canonical status for every coefficient slot.
+Fast execution first attempts guarded diagonal-pivoted Cholesky, including
+widths above 64 under ADR 0030. Every pivot must clear the stronger square-root
+rank guard, and the result must pass the independent score and inverse checks.
+Weak or rank-deficient designs use deterministic scaled column-pivoted
+Householder QR, which owns omission decisions. Low execution retains QR.
+Only the identified subspace is solved. The normalized reported `_cons`, when structurally
 present, is
 
 ```text
@@ -43,6 +47,17 @@ mean_w(y) - mean_w(X) b
 
 It is a normalization coordinate, not an additional rank direction. Pure
 all-slope-only absorbed models therefore do not report a structural constant.
+
+For raw matrices wider than 64 columns, ADR 0031 groups adjacent columns in
+blocks of eight when enough blocks exist for the native worker team. Raw
+maxima, scaled norms and compensated means retain their prior per-column
+arithmetic and observation order. Scratch is fixed-size worker stack; narrower
+raw matrices retain the ADR 0012 row-partial algorithm.
+
+Low-memory categorical projection reuses the fixed LSMR operator and
+preconditioner across response/regressor batches under ADR 0032. Every batch
+still receives its independent FE certificate. Retained LSMR state is
+released before finite QR and output recovery, or before any CG continuation.
 
 ## DoF, inference, and outputs
 

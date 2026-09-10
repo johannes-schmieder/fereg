@@ -3610,6 +3610,32 @@ fn absorb_auto_with_reservation<R: WorkspaceReservation>(
 fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    lsmr_plan: AutoLsmrPlan,
+    empty_design_is_structural_constant: bool,
+    retain_coefficients: bool,
+    reservation: &mut R,
+    direct_lsmr_cap: usize,
+) -> Result<CertifiedBorrowedMap> {
+    absorb_auto_with_prepared_lsmr(
+        design,
+        weights,
+        values,
+        config,
+        lsmr_plan,
+        empty_design_is_structural_constant,
+        retain_coefficients,
+        reservation,
+        direct_lsmr_cap,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
+    design: &BorrowedInterceptFeDesign<'a>,
+    weights: BorrowedMapWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
     lsmr_plan: AutoLsmrPlan,
@@ -3617,6 +3643,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
     retain_coefficients: bool,
     reservation: &mut R,
     direct_lsmr_cap: usize,
+    mut lsmr_prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
 ) -> Result<CertifiedBorrowedMap> {
     let AutoLsmrPlan {
         config: lsmr_config,
@@ -3844,7 +3871,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                 AutoLsmrRoute::Direct => {
                     let lsmr_tolerance = direct_lsmr_tolerance(config.tolerance);
                     let lsmr_started = solver_trace.then(Instant::now);
-                    match run_borrowed_lsmr(
+                    match run_borrowed_lsmr_with_prepared(
                         design,
                         weights,
                         &values,
@@ -3853,6 +3880,7 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                         lsmr_config,
                         Some(&original_reference_norms),
                         retain_coefficients,
+                        lsmr_prepared.as_deref_mut(),
                     ) {
                         Ok((lsmr_values, mut report, owned_setup_seconds, lsmr_coefficients))
                             if report.certified() =>
@@ -3934,6 +3962,14 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
                                 "automatic LSMR path did not certify after {} iterations; continued CG from the LSMR candidate",
                                 report.iterations
                             ));
+                        }
+                        Err(error)
+                            if matches!(
+                                error.code,
+                                ErrorCode::Allocation | ErrorCode::Interrupted
+                            ) =>
+                        {
+                            return Err(error);
                         }
                         Err(error) => {
                             if solver_trace {
@@ -4030,6 +4066,9 @@ fn absorb_auto_with_reservation_at_lsmr_cap<R: WorkspaceReservation>(
             }
         }
     }
+    if let Some(prepared) = lsmr_prepared {
+        prepared.release_before_cg();
+    }
     if !cg_fits {
         return Err(allocation(
             "automatic FE solver memory preflight found neither LSMR nor CG able to fit the joint execution plan",
@@ -4124,6 +4163,226 @@ fn borrowed_weights(weights: ValidatedWeights<'_>) -> BorrowedMapWeights<'_> {
     }
 }
 
+/// Own one fixed operator during low-memory OLS projection. The estimator drops
+/// it before QR/VCE; a CG continuation releases it before allocating CG state.
+pub(crate) struct BorrowedLsmrAbsorber<'a> {
+    design: BorrowedInterceptFeDesign<'a>,
+    weights: BorrowedMapWeights<'a>,
+    config: super::AbsorbConfig,
+    prepared: BorrowedLsmrPrepared<'a>,
+}
+
+impl<'a> BorrowedLsmrAbsorber<'a> {
+    pub(crate) fn new(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: super::AbsorbConfig,
+    ) -> Result<Self> {
+        if design.effects().is_empty()
+            || !matches!(config.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
+        {
+            return Err(invalid_argument(
+                "retained LSMR requires a fixed nonempty LSMR operator",
+            ));
+        }
+        validate_weights(weights, design.nobs())?;
+        Ok(Self {
+            design,
+            weights,
+            config,
+            prepared: BorrowedLsmrPrepared::default(),
+        })
+    }
+
+    pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
+        if self.config.solver == FeSolverKind::Auto {
+            let mut reservation = SystemWorkspaceReservation;
+            return absorb_auto_with_prepared_lsmr(
+                &self.design,
+                self.weights,
+                values,
+                self.config.map,
+                AutoLsmrPlan::direct_lsmr(self.config.lsmr, self.config.solver_memory_budget),
+                false,
+                self.config.retain_coefficients,
+                &mut reservation,
+                usize::MAX,
+                Some(&mut self.prepared),
+            );
+        }
+        let weights = validate_weights(self.weights, values.nrows())?;
+        if let Some(budget) = self.config.solver_memory_budget {
+            let levels = self
+                .design
+                .effects()
+                .iter()
+                .map(|e| e.n_levels())
+                .collect::<Vec<_>>();
+            let estimate = estimate_fe_solver_memory(
+                values.nrows(),
+                values.ncols(),
+                &levels,
+                self.config.lsmr.threads.resolved(),
+                self.config.lsmr.local_size,
+            )?;
+            let preconditioner = resolve_borrowed_lsmr_preconditioner(
+                levels.len(),
+                self.design.total_term_slots(),
+                self.config.lsmr.preconditioner,
+            );
+            if !budget.fits(estimate.lsmr_bytes(preconditioner)) {
+                return Err(allocation(
+                    "retained LSMR workspace exceeds the joint execution plan",
+                ));
+            }
+        }
+        let (residualized, report, _, coefficients) = run_borrowed_lsmr_with_prepared(
+            &self.design,
+            weights,
+            &values,
+            self.config.lsmr.tolerance,
+            self.config.lsmr.max_iterations,
+            self.config.lsmr,
+            None,
+            self.config.retain_coefficients,
+            Some(&mut self.prepared),
+        )?;
+        if let Some(coefficients) = coefficients {
+            CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+                residualized,
+                report,
+                coefficients,
+            )
+        } else {
+            CertifiedBorrowedMap::from_certified_parts(residualized, report)
+        }
+    }
+}
+
+#[derive(Default)]
+struct BorrowedLsmrPrepared<'a> {
+    solver: Option<within::Solver<'a>>,
+    preconditioner_fallback: bool,
+    builds: usize,
+    batches: usize,
+    disabled: bool,
+}
+
+impl<'a> BorrowedLsmrPrepared<'a> {
+    fn release_before_cg(&mut self) {
+        self.solver = None;
+        self.disabled = true;
+    }
+
+    fn solve(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'a>,
+        weights: ValidatedWeights<'_>,
+        rhs: &[&[f64]],
+        options: &LsmrOptions,
+        requested: LsmrPreconditioner,
+        preconditioner: PreconditionerConfig,
+    ) -> Result<(within::BatchSolveResult, bool)> {
+        let started = Instant::now();
+        let mut setup_seconds = 0.0;
+        if self.solver.is_none() {
+            let setup = Instant::now();
+            self.solver = Some(build_retained_borrowed_lsmr(
+                design,
+                weights,
+                preconditioner,
+            )?);
+            self.builds += 1;
+            setup_seconds += setup.elapsed().as_secs_f64();
+        }
+        let initial = self
+            .solver
+            .as_ref()
+            .expect("LSMR preparation exists")
+            .solve_batch(rhs, Some(options));
+        let mut solved = match initial {
+            Ok(solved) => solved,
+            Err(error)
+                if requested == LsmrPreconditioner::Auto
+                    && !self.preconditioner_fallback
+                    && matches!(&error, within::SolveError::InvalidInput { context, message }
+                    if *context == "mlsmr" && message.contains("preconditioner not positive definite")) =>
+            {
+                // Release the rejected preconditioner before constructing its replacement.
+                self.solver = None;
+                let setup = Instant::now();
+                self.solver = Some(build_retained_borrowed_lsmr(
+                    design,
+                    weights,
+                    PreconditionerConfig::Off,
+                )?);
+                self.builds += 1;
+                self.preconditioner_fallback = true;
+                setup_seconds += setup.elapsed().as_secs_f64();
+                self.solver.as_ref().expect("fallback LSMR preparation exists")
+                    .solve_batch(rhs, Some(options)).map_err(|error| FeregError::new(
+                        ErrorCode::Internal,
+                        format!("borrowed modified LSMR failed after unpreconditioned fallback: {error}"),
+                    ))?
+            }
+            Err(error) => {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    format!("borrowed modified LSMR failed: {error}"),
+                ))
+            }
+        };
+        self.batches += 1;
+        solved.time_setup += setup_seconds;
+        solved.time_total = started.elapsed().as_secs_f64();
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=lsmr_session|builds={}|batches={}|rhs={}|setup={setup_seconds:.9}",
+                self.builds, self.batches, rhs.len(),
+            ));
+        }
+        Ok((solved, self.preconditioner_fallback))
+    }
+}
+
+fn borrowed_lsmr_effects<'a>(design: &BorrowedInterceptFeDesign<'a>) -> Result<Vec<Effect<'a>>> {
+    design
+        .effects()
+        .iter()
+        .map(|effect| {
+            Effect::new(effect.codes(), true, std::iter::empty::<&[f64]>()).map_err(|error| {
+                invalid_data(format!(
+                    "unable to construct borrowed LSMR fixed-effect term: {error}"
+                ))
+            })
+        })
+        .collect()
+}
+
+fn build_retained_borrowed_lsmr<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+    weights: ValidatedWeights<'_>,
+    preconditioner: PreconditionerConfig,
+) -> Result<within::Solver<'a>> {
+    let effects = borrowed_lsmr_effects(design)?;
+    let weights = weights
+        .values
+        .map(|values| {
+            let mut copy = Vec::new();
+            copy.try_reserve_exact(values.len())
+                .map_err(|_| allocation("unable to reserve retained LSMR weights"))?;
+            copy.extend_from_slice(values);
+            Ok(copy)
+        })
+        .transpose()?;
+    within::Solver::new(effects, weights, preconditioner).map_err(|error| {
+        FeregError::new(
+            ErrorCode::Internal,
+            format!("borrowed modified LSMR failed: {error}"),
+        )
+    })
+}
+
 fn lsmr_cg_bulk_tolerance(final_tolerance: f64) -> f64 {
     // The scale-free square-root target makes LSMR a reducer rather than a
     // second final solver. CG still receives the caller's exact tolerance and
@@ -4141,6 +4400,31 @@ fn run_borrowed_lsmr(
     lsmr_config: LsmrConfig,
     certificate_reference_norms: Option<&[f64]>,
     retain_coefficients: bool,
+) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
+    run_borrowed_lsmr_with_prepared(
+        design,
+        weights,
+        values,
+        tolerance,
+        max_iterations,
+        lsmr_config,
+        certificate_reference_norms,
+        retain_coefficients,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_borrowed_lsmr_with_prepared<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    tolerance: f64,
+    max_iterations: usize,
+    lsmr_config: LsmrConfig,
+    certificate_reference_norms: Option<&[f64]>,
+    retain_coefficients: bool,
+    prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     let total_started = Instant::now();
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
@@ -4162,17 +4446,6 @@ fn run_borrowed_lsmr(
     let lsmr_setup_started = Instant::now();
     let mut lsmr_values =
         fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
-    let effects = design
-        .effects()
-        .iter()
-        .map(|effect| {
-            Effect::new(effect.codes(), true, std::iter::empty::<&[f64]>()).map_err(|error| {
-                invalid_data(format!(
-                    "unable to construct borrowed LSMR fixed-effect term: {error}"
-                ))
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
     let rhs = (0..lsmr_values.ncols())
         .map(|column| lsmr_values.column(column))
         .collect::<Result<Vec<_>>>()?;
@@ -4190,20 +4463,32 @@ fn run_borrowed_lsmr(
     );
     let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
-    let initial = within::solve_batch(
-        effects.clone(),
-        &rhs_views,
-        weights.values,
-        Some(&options),
-        preconditioner,
-    );
-    let (solved, preconditioner_fallback) = match initial {
-        Ok(solved) => (solved, false),
-        Err(error)
-            if lsmr_config.preconditioner == LsmrPreconditioner::Auto
-                && borrowed_lsmr_preconditioner_breakdown(&error) =>
-        {
-            let solved = within::solve_batch(
+    let (solved, preconditioner_fallback) = if let Some(prepared) = prepared.filter(|p| !p.disabled)
+    {
+        prepared.solve(
+            design,
+            weights,
+            &rhs_views,
+            &options,
+            lsmr_config.preconditioner,
+            preconditioner,
+        )?
+    } else {
+        let effects = borrowed_lsmr_effects(design)?;
+        let initial = within::solve_batch(
+            effects.clone(),
+            &rhs_views,
+            weights.values,
+            Some(&options),
+            preconditioner,
+        );
+        match initial {
+            Ok(solved) => (solved, false),
+            Err(error)
+                if lsmr_config.preconditioner == LsmrPreconditioner::Auto
+                    && borrowed_lsmr_preconditioner_breakdown(&error) =>
+            {
+                let solved = within::solve_batch(
                 effects,
                 &rhs_views,
                 weights.values,
@@ -4218,13 +4503,14 @@ fn run_borrowed_lsmr(
                     ),
                 )
             })?;
-            (solved, true)
-        }
-        Err(error) => {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                format!("borrowed modified LSMR failed: {error}"),
-            ));
+                (solved, true)
+            }
+            Err(error) => {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    format!("borrowed modified LSMR failed: {error}"),
+                ));
+            }
         }
     };
     for column in 0..lsmr_values.ncols() {
@@ -7242,6 +7528,121 @@ mod tests {
             max_iterations: 10_000,
             check_every: 1,
             symmetric: true,
+        }
+    }
+
+    #[test]
+    fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
+        let rows = 2048;
+        let codes = [97_usize, 89, 9].map(|levels| {
+            (0..rows)
+                .map(|r| ((r * 37 + r / 11) % levels) as u32)
+                .collect::<Vec<_>>()
+        });
+        let indexes = codes
+            .iter()
+            .zip([97, 89, 9])
+            .map(|(c, levels)| LevelIndex::from_codes(c, levels).unwrap())
+            .collect::<Vec<_>>();
+        let sources = codes
+            .iter()
+            .zip(&indexes)
+            .zip([97, 89, 9])
+            .map(|((c, index), levels)| {
+                ValidatedBorrowedInterceptSource::new(c, levels, index).unwrap()
+            })
+            .collect::<Vec<_>>();
+        let make_design = || {
+            BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect())
+                .unwrap()
+        };
+        let raw_weights = (0..rows).map(|r| 0.5 + (r % 7) as f64).collect::<Vec<_>>();
+        for threads in [1, 7] {
+            let team = crate::parallel::ThreadTeam::new(
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+            );
+            team.install(|| {
+                for weights in [
+                    BorrowedMapWeights::Unit,
+                    BorrowedMapWeights::Provided(&raw_weights),
+                ] {
+                    for solver in [FeSolverKind::Auto, FeSolverKind::Lsmr] {
+                        let config = super::super::AbsorbConfig {
+                            solver,
+                            map: config(),
+                            lsmr: LsmrConfig {
+                                tolerance: 1e-12,
+                                preconditioner: LsmrPreconditioner::Schwarz,
+                                ..LsmrConfig::default()
+                            },
+                            retain_coefficients: true,
+                            ..super::super::AbsorbConfig::default()
+                        };
+                        let mut session =
+                            BorrowedLsmrAbsorber::new(make_design(), weights, config).unwrap();
+                        for (batch, columns) in [1, 3, 2].into_iter().enumerate() {
+                            let rhs = DenseMatrix::from_columns(
+                                &(0..columns)
+                                    .map(|j| {
+                                        (0..rows)
+                                            .map(|r| {
+                                                (r as f64 * (j + batch + 3) as f64 * 0.137).sin()
+                                                    + codes[0][r] as f64 * 0.01
+                                            })
+                                            .collect::<Vec<_>>()
+                                    })
+                                    .collect::<Vec<_>>(),
+                            )
+                            .unwrap();
+                            let expected = if solver == FeSolverKind::Auto {
+                                absorb_borrowed_intercept_auto_direct_lsmr_certified(
+                                    &make_design(),
+                                    weights,
+                                    rhs.clone(),
+                                    config.map,
+                                    config.lsmr,
+                                    None,
+                                    false,
+                                    true,
+                                )
+                            } else {
+                                absorb_borrowed_intercept_lsmr_certified(
+                                    &make_design(),
+                                    weights,
+                                    rhs.clone(),
+                                    config.lsmr,
+                                    true,
+                                )
+                            }
+                            .unwrap();
+                            let actual = session.absorb(rhs).unwrap();
+                            assert_eq!(actual.residualized(), expected.residualized());
+                            assert_eq!(actual.report().certificate, expected.report().certificate);
+                            assert_eq!(actual.report().iterations, expected.report().iterations);
+                            assert_eq!(actual.into_full_parts().2, expected.into_full_parts().2);
+                            assert_eq!(session.prepared.builds, 1);
+                            assert_eq!(session.prepared.batches, batch + 1);
+                        }
+                        let mut constrained = config;
+                        constrained.solver_memory_budget = Some(FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes: 0,
+                        });
+                        let mut rejected =
+                            BorrowedLsmrAbsorber::new(make_design(), weights, constrained).unwrap();
+                        let rhs = DenseMatrix::from_columns(&[(0..rows)
+                            .map(|r| (r as f64 * 0.137).sin())
+                            .collect::<Vec<_>>()])
+                        .unwrap();
+                        assert_eq!(
+                            rejected.absorb(rhs).unwrap_err().code,
+                            ErrorCode::Allocation
+                        );
+                        assert_eq!(rejected.prepared.builds, 0);
+                    }
+                }
+            })
+            .unwrap();
         }
     }
 

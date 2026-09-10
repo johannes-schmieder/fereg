@@ -120,6 +120,24 @@ categorical route passes the already finalized codes and memberships directly
 to `within`, avoiding the former observation-scale owned-code and membership
 copies. Schwarz construction and LSMR reuse those prepared structures.
 
+Low-memory projection batches may finish with different engines under that
+same automatic policy. Under ADR 0033, certified LSMR and flagged CG
+continuation reports with identical LSMR preconditioner metadata aggregate as
+requested `auto`, used `cg`, and fallback true. Iterations and certificate
+norms retain their existing maximum-over-batches convention; timing is summed
+and warnings retain batch order. This reports the continuation without
+changing its numerical acceptance. Other incompatible report mixtures remain
+errors.
+
+For low-memory categorical OLS, ADR 0032 retains one LSMR operator and
+preconditioner across the response and regressor projection batches when
+direct LSMR is selected. The sample, design, weights and configuration stay
+fixed. Construction is lazy and charged once; RHS work and fresh independent
+certificates remain per batch. Retention ends before QR and output recovery.
+A CG continuation releases the operator and returns subsequent batches to the
+existing one-shot route. Fast fits and generic/slope adapters retain their
+existing lifetimes and report policies.
+
 The direct LSMR configuration followed calibration of requested/tight tolerances,
 off/diagonal/Schwarz preconditioners, forced restarted CG refinements of
 4/8/16 iterations, and the prior coarse-LSMR/ordinary-CG hybrid. Direct tight

@@ -57,6 +57,14 @@ omission status, result wire, and Stata transaction. Registered tests require
 scientific identity. Deterministic routes additionally require
 same-architecture, same-thread-count bitwise reproducibility.
 
+Above 64 finite columns, fast preflight additionally reserves
+`32*K^2 + 128*K` bytes for guarded Cholesky's four live square work/inverse/bread
+arrays and linear metadata, beyond the existing cross-product allowance.
+The wide moment builder writes disjoint Gram rows without a partial bank or
+another observation-sized design. This increment is independent of thread
+count and uses checked arithmetic. It does not change low-mode estimates or
+the at-most-64 execution policy (ADR 0030).
+
 ## Allocation discipline
 
 Observation-scale vectors and matrices use checked arithmetic, fallible
@@ -72,6 +80,15 @@ Direct borrowed LSMR also reuses prepared memberships and Schwarz inputs. Its
 memory model reports the code/membership copy avoided relative to the former
 owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping
 peaks, and setup-only buffers may be dropped before the OLS/VCE stages.
+
+ADR 0032 retains the borrowed LSMR operator only within the low-memory
+categorical OLS projection phase. Its finalized topology and weights are fixed;
+weighted construction reserves one owned weight copy fallibly, while unit
+weights allocate none. Existing joint execution/solver admission applies to
+each batch. The operator is dropped before a CG continuation and before
+finite QR, VCE and saved-output recovery, so those stages do not overlap a
+new retained solver. RHS transport and certification workspaces remain per
+batch; this is setup reuse, not an allocation-free projection path.
 
 PPML joint and checkpoint LSMR preflight also charges the pinned Schwarz
 builder's dense cross-tabulation scratch. Its dispatch depends on both the

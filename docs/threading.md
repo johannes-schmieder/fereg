@@ -34,6 +34,11 @@ same-architecture, same-thread-count bitwise reproducibility for deterministic
 routes. Cross-thread and cross-architecture bitwise identity are not claimed;
 scientific tolerances and exact sample/status/DoF gates still apply.
 
+Under ADR 0034, the pinned LSMR norm and dot kernels use one fixed vector
+chunk per indexed reduction leaf. Worker stealing therefore cannot change
+their addition tree. This is a kernel-level guarantee; other upstream
+atomic and preconditioner reductions do not gain a general bitwise guarantee.
+
 ## Rayon decision
 
 ADR 0002 recorded the earlier dependency-free construction. The 0.5.0 runtime

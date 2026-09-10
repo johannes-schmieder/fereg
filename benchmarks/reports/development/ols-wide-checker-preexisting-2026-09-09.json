@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "kind": "preexisting_repository_checker_findings",
+  "date": "2026-09-09",
+  "related_receipt": "benchmarks/reports/development/ols-wide-cholesky-local-2026-09-09.json",
+  "starting_commit": "c975bc5c6e2aa5ff4be159225447d31f0fe20de6",
+  "checker_sha256": "e95af37108a7eb627e340fcfcd35ca8142112feb1cbb64f1dc63f8f1f5d8eb25",
+  "starting_status_sha256": "d6e724e5e1bcf1ca912ac0b97628adcb556fe9f758d5ce6bed445e443b07a4b6",
+  "required_headings_absent_from_both_starting_and_current_status": [
+    "## 0.5.0 beta exit gate",
+    "## Completed, evidence-backed baseline",
+    "## Active checkpoint",
+    "## Current blockers",
+    "## Development plan"
+  ],
+  "additional_snapshot": "benchmarks/reports/development/within-weighted-assembly-2026-09-06/work/repair/fereg/STATUS.md",
+  "additional_snapshot_ignore_rule": ".gitignore:17:/benchmarks/reports/development/*/work/\tbenchmarks/reports/development/within-weighted-assembly-2026-09-06/work/repair/fereg/STATUS.md",
+  "final_check_log_sha256": "fd444f7b2cba3b9d68f50298325b7a002547a5e22bf28f5feff698c9cadbffba",
+  "assessment": "The five heading failures predate this work. The second STATUS is an ignored captured source snapshot, retained as historical evidence. Neither failure is caused by the wide finite-solve changes; the checker was left unchanged.",
+  "validation_limit": "The focused scientific/build/allocation checks pass; the broad repository checker does not pass."
+}

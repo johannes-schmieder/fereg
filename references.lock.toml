@@ -34,12 +34,12 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "93699e6ab8ecc82bc69f91be295ea3a9c10f2521"
+commit = "1ac3522a251c2622dbeab451415924f9ebe117b9"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
-use = "Exact runtime dependency for certified LSMR and Schwarz preconditioning; isolated weighted categorical assembly repair on the prior pinned base."
+use = "Exact runtime dependency for certified LSMR and Schwarz preconditioning; weighted categorical assembly repair and fixed LSMR parallel norm/dot reduction order on the prior pinned base."
 
 [[reference]]
 name = "cmg"

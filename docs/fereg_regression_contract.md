@@ -11,7 +11,7 @@ The machine-readable authority is
 evaluator are `scripts/fereg_f0_regression.py`.
 
 The zero-overhead structural companion is
-`benchmarks/manifests/fereg_allocation_source_contract_v11.json`, enforced by
+`benchmarks/manifests/fereg_allocation_source_contract_v17.json`, enforced by
 `scripts/fereg_allocation_source_contract.py` from both repository checks and
 normal Python test discovery. It does not replace measured F0 evidence.
 
@@ -93,6 +93,32 @@ Activating `registered_tolerance` requires an explicit accepted ADR recorded
 in the manifest. A code extraction or PPML implementation cannot activate it
 implicitly. DoF, sample, status, output, solver, and digest identities remain
 exact even under that fallback.
+
+ADR 0030 separately admits local development of the wide OLS finite solve.
+Its controller records intentional numerical differences with the registered
+OLS envelopes and independent certificates. That controller does not activate
+this manifest's fallback policy or satisfy F0 qualification. Source inventory
+v13 records the reviewed wide moment kernel, Cholesky dispatch and checked
+memory reserve; the hard one-shot and transaction boundaries remain frozen.
+Inventory v14 adds only the reviewed production tokens and error literal for
+ADR 0031's arithmetic-preserving wide raw-cache blocking. Its allocation-site
+inventory and hard boundaries match v13; local science comparisons remain exact.
+Inventory v15 records ADR 0032's retained low-memory categorical LSMR
+preparation, including its fallible weight copy and bounded descriptor
+collections. The hard one-shot and transaction boundaries remain unchanged;
+local comparisons require exact science.
+Inventory v16 records ADR 0033's certified automatic LSMR/CG report merge.
+Allocation sites and hard boundaries match v15. The bounded regression
+fixture intentionally changes the prior report-only error into a successful
+certified fit; unchanged successful cases still require exact science. This
+does not activate the frozen F0 manifest's numerical fallback policy.
+
+Inventory v17 records only the reviewed dependency-wiring change for
+ADR 0034's fixed LSMR reduction order. The source allocation inventory and
+hard boundaries match v16. The affected local captures retain exact
+self-repetition and complete pinned-reference checks; intentional changes
+in last-bit arithmetic across dependency revisions are recorded separately.
+This does not activate the frozen F0 manifest's numerical fallback policy.
 
 If any scientific comparison fails, the evaluator returns at the scientific
 stage without parsing timing or memory records. Timing from a scientifically

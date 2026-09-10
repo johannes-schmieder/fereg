@@ -113,6 +113,22 @@ pub fn estimate_phase2_memory(
     let g = fe_dimensions as u128;
     let c = cluster_dimensions as u128;
     let pool = poolsize.min(finite_columns) as u128;
+    // Wide fast fits can now enter guarded Cholesky. In addition to the
+    // existing cross-product allowance, its peak owns four square arrays
+    // (Gram copy, factor, inverse work and inverse/bread) and linear metadata.
+    // This reserve is independent of the worker count; low mode still uses QR.
+    let wide_finite_solve = if finite_columns > 64 {
+        checked_sum(&[
+            checked_mul(
+                checked_mul(k, k, "wide finite solve")?,
+                32,
+                "wide finite solve bytes",
+            )?,
+            checked_mul(k, 128, "wide finite solve metadata bytes")?,
+        ])?
+    } else {
+        0
+    };
     let fast_parallel_projection = if fe_dimensions == 0 || finite_columns == 0 {
         0
     } else {
@@ -159,6 +175,7 @@ pub fn estimate_phase2_memory(
             "cross-product bytes",
         )?,
         fast_parallel_projection,
+        wide_finite_solve,
     ])?;
     let low = checked_sum(&[
         base,
@@ -463,6 +480,27 @@ mod tests {
     fn low_mode_is_smaller_for_wide_models() {
         let estimate = estimate_phase2_memory(1_000_000, 5, 100, 2, 2, 8).expect("estimate");
         assert!(estimate.low_bytes < estimate.fast_bytes);
+    }
+
+    #[test]
+    fn wide_cholesky_workspace_is_preflighted_without_changing_low_mode() {
+        for k in [65_usize, 128, 1024] {
+            let estimate = estimate_phase2_memory(100, 0, k, 0, 0, 8).expect("wide estimate");
+            let legacy_fast = 100 * 40 + 16 * 100 * k as u128 + 8 * (k * k) as u128;
+            let incremental = 32 * (k * k) as u128 + 128 * k as u128;
+            assert_eq!(estimate.fast_bytes, legacy_fast + incremental);
+            assert_eq!(
+                estimate.low_bytes,
+                100 * 32 + 16 * 100 * 8 + 8 * (k * k) as u128 + LOW_MODE_TRANSPOSE_BUFFER_BYTES
+            );
+            let available = legacy_fast + MINIMUM_HEADROOM_BYTES;
+            assert_eq!(
+                plan_ols_memory(MemoryMode::Fast, estimate, Some(available))
+                    .expect_err("wide workspace must fit before solving")
+                    .code,
+                ErrorCode::Allocation
+            );
+        }
     }
 
     #[test]

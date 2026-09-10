@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "id": "ols_width_development_v1",
+  "observations": 100000,
+  "seed_base": 2026090801,
+  "threads": [1, 7],
+  "core": [["one_fe", [64, 65]]],
+  "low": [["one_fe", 65]],
+  "guards": [],
+  "process_timeout_seconds": 120,
+  "cold": 1,
+  "warm": 3,
+  "confirmation_pairs": 5
+}

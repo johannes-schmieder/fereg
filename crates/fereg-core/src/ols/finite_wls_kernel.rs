@@ -161,8 +161,8 @@ impl FixedBlockMomentSource<'_> {
 pub(super) enum FiniteWlsMomentMode {
     /// Preserve the accepted one-shot <= 64-column arithmetic exactly.
     PreparedFixedBlocks,
-    /// Preserve the accepted one-shot wide-design columnwise fallback.
-    PreparedColumnwise,
+    /// Wide one-shot moments own disjoint Gram rows without a block bank.
+    PreparedPartitioned,
     /// Bound reusable-session scratch by partitioning disjoint Gram rows.
     RetainedPartitioned,
 }
@@ -204,14 +204,8 @@ pub(super) fn finite_wls_moment_layout(
                 partial_elements,
             })
         }
-        FixedBlockMomentSource::PreparedStandardized { .. } => Ok(FiniteWlsMomentLayout {
-            mode: FiniteWlsMomentMode::PreparedColumnwise,
-            partitions: 1,
-            columns_per_partition: dimension,
-            partial_stride: 0,
-            partial_elements: 0,
-        }),
-        FixedBlockMomentSource::RetainedDense { .. }
+        FixedBlockMomentSource::PreparedStandardized { .. }
+        | FixedBlockMomentSource::RetainedDense { .. }
         | FixedBlockMomentSource::RetainedScratch { .. } => {
             // A block bank of `chunks * K^2` is intentionally forbidden for
             // reusable sessions. Disjoint left-column partitions each scan
@@ -226,7 +220,12 @@ pub(super) fn finite_wls_moment_layout(
                 .checked_mul(partial_stride)
                 .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?;
             Ok(FiniteWlsMomentLayout {
-                mode: FiniteWlsMomentMode::RetainedPartitioned,
+                mode: match source {
+                    FixedBlockMomentSource::PreparedStandardized { .. } => {
+                        FiniteWlsMomentMode::PreparedPartitioned
+                    }
+                    _ => FiniteWlsMomentMode::RetainedPartitioned,
+                },
                 partitions,
                 columns_per_partition,
                 partial_stride,
@@ -236,9 +235,9 @@ pub(super) fn finite_wls_moment_layout(
     }
 }
 
-/// Fill deterministic fixed-block Gram and RHS moments into caller-owned
-/// storage. Partials merge in ascending block order with compensation, exactly
-/// preserving the accepted one-shot reduction order.
+/// Fill deterministic Gram and RHS moments into caller-owned storage.
+/// Narrow prepared designs retain fixed-block compensated merging. Wide and
+/// retained designs partition Gram rows, with a thread-independent row order.
 pub(super) fn fill_finite_wls_moments(
     source: FixedBlockMomentSource<'_>,
     layout: FiniteWlsMomentLayout,
@@ -291,17 +290,17 @@ pub(super) fn fill_finite_wls_moments(
                 })?;
             merge_fixed_block_partials(layout, partials, rhs, gram)
         }
-        FiniteWlsMomentMode::PreparedColumnwise => {
+        FiniteWlsMomentMode::PreparedPartitioned => {
             let FixedBlockMomentSource::PreparedStandardized {
                 within,
                 canonical_candidates,
             } = source
             else {
                 return Err(invalid_argument(
-                    "finite-WLS columnwise mode requires a prepared source",
+                    "finite-WLS partitioned mode requires a prepared source",
                 ));
             };
-            fill_prepared_columnwise(within, canonical_candidates, rhs, gram)
+            fill_prepared_partitioned(within, canonical_candidates, layout, rhs, gram)
         }
         FiniteWlsMomentMode::RetainedPartitioned => {
             fill_retained_partitioned(source, layout, partials, rhs, gram)
@@ -1929,68 +1928,57 @@ fn merge_fixed_block_partials(
     Ok(())
 }
 
-fn fill_prepared_columnwise(
+fn fill_prepared_partitioned(
     within: &DenseMatrix,
     canonical_candidates: &[usize],
+    layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = canonical_candidates.len();
-    rhs.par_iter_mut()
+    let contiguous = canonical_candidates
+        .windows(2)
+        .all(|pair| pair[1] == pair[0] + 1);
+    rhs.par_chunks_mut(layout.columns_per_partition)
+        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
-        .try_for_each(|(position, destination)| -> Result<()> {
-            let matrix_column = canonical_candidates[position]
-                .checked_add(1)
-                .ok_or_else(|| allocation("finite-WLS prepared RHS column overflows"))?;
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for row in 0..within.nrows() {
-                compensated_add(
-                    within[(row, matrix_column)] * within[(row, 0)],
-                    &mut sum,
-                    &mut correction,
-                )?;
-            }
-            *destination = sum + correction;
-            if destination.is_finite() {
-                Ok(())
-            } else {
-                Err(invalid_data("finite-WLS prepared RHS is not finite"))
-            }
-        })?;
-    gram.par_chunks_mut(dimension)
-        .enumerate()
-        .try_for_each(|(left, gram_row)| -> Result<()> {
-            let left_column = canonical_candidates[left]
-                .checked_add(1)
-                .ok_or_else(|| allocation("finite-WLS prepared Gram column overflows"))?;
-            for right in left..dimension {
-                let right_column = canonical_candidates[right]
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("finite-WLS prepared Gram column overflows"))?;
-                let mut sum = 0.0_f64;
-                let mut correction = 0.0_f64;
-                for row in 0..within.nrows() {
-                    compensated_add(
-                        within[(row, left_column)] * within[(row, right_column)],
-                        &mut sum,
-                        &mut correction,
-                    )?;
+        .for_each(|(partition, (rhs_part, gram_part))| {
+            let left_start = partition * layout.columns_per_partition;
+            for values in within.as_slice().chunks_exact(within.ncols()) {
+                for (local_left, destination) in rhs_part.iter_mut().enumerate() {
+                    let left = left_start + local_left;
+                    let left_value = values[canonical_candidates[left] + 1];
+                    *destination += left_value * values[0];
+                    let gram_row =
+                        &mut gram_part[local_left * dimension..(local_left + 1) * dimension];
+                    // Avoid repeated indexing on the ordinary contiguous design.
+                    // Plain multiply/add also avoids software FMA on portable x86.
+                    if contiguous {
+                        let start = canonical_candidates[left] + 1;
+                        for (entry, right_value) in gram_row[left..]
+                            .iter_mut()
+                            .zip(&values[start..start + dimension - left])
+                        {
+                            *entry += left_value * right_value;
+                        }
+                    } else {
+                        for right in left..dimension {
+                            gram_row[right] += left_value * values[canonical_candidates[right] + 1];
+                        }
+                    }
                 }
-                let value = sum + correction;
-                if !value.is_finite() {
-                    return Err(invalid_data("finite-WLS prepared Gram is not finite"));
-                }
-                gram_row[right] = value;
             }
-            Ok(())
-        })?;
+        });
     for left in 0..dimension {
         for right in (left + 1)..dimension {
             gram[right * dimension + left] = gram[left * dimension + right];
         }
     }
-    Ok(())
+    if rhs.iter().chain(gram.iter()).all(|value| value.is_finite()) {
+        Ok(())
+    } else {
+        Err(invalid_data("finite-WLS prepared moments are not finite"))
+    }
 }
 
 fn fill_retained_partitioned(
@@ -2427,6 +2415,86 @@ mod tests {
             (actual - expected).abs() <= tolerance,
             "actual {actual:.17e}, expected {expected:.17e}, tolerance {tolerance:.3e}"
         );
+    }
+
+    #[test]
+    fn wide_prepared_moments_are_bounded_deterministic_and_match_direct_sums() {
+        for columns in [65_usize, 128] {
+            for spaced in [false, true] {
+                let candidates = (0..columns)
+                    .map(|j| if spaced { 2 * j } else { j })
+                    .collect::<Vec<_>>();
+                let stored = candidates[columns - 1] + 2;
+                let rows = 137;
+                let values = (0..rows * stored)
+                    .map(|i| ((i * 17 % 127) as f64 - 63.0) / 64.0)
+                    .collect();
+                let within =
+                    DenseMatrix::from_row_major(rows, stored, values).expect("wide matrix");
+                let source = FixedBlockMomentSource::PreparedStandardized {
+                    within: &within,
+                    canonical_candidates: &candidates,
+                };
+                let mut reference = None;
+                for threads in [1, 7] {
+                    let actual = rayon::ThreadPoolBuilder::new()
+                        .num_threads(threads)
+                        .build()
+                        .expect("test pool")
+                        .install(|| {
+                            let layout = finite_wls_moment_layout(source).expect("wide layout");
+                            assert_eq!(layout.mode, FiniteWlsMomentMode::PreparedPartitioned);
+                            assert_eq!(layout.partial_elements, 0);
+                            let mut rhs = vec![0.0; columns];
+                            let mut gram = vec![0.0; columns * columns];
+                            fill_finite_wls_moments(source, layout, &mut [], &mut rhs, &mut gram)
+                                .expect("wide moments");
+                            for left in 0..columns {
+                                assert_eq!(
+                                    rhs[left],
+                                    (0..rows)
+                                        .map(|r| within[(r, candidates[left] + 1)] * within[(r, 0)])
+                                        .sum::<f64>()
+                                );
+                                for right in 0..columns {
+                                    assert_eq!(
+                                        gram[left * columns + right],
+                                        (0..rows)
+                                            .map(|r| within[(r, candidates[left] + 1)]
+                                                * within[(r, candidates[right] + 1)])
+                                            .sum::<f64>()
+                                    );
+                                }
+                            }
+                            (rhs, gram)
+                        });
+                    if let Some(expected) = &reference {
+                        assert_eq!(&actual, expected);
+                    }
+                    reference = Some(actual);
+                }
+                let mut invalid = within.clone();
+                invalid[(0, 1)] = f64::MAX;
+                let invalid_source = FixedBlockMomentSource::PreparedStandardized {
+                    within: &invalid,
+                    canonical_candidates: &candidates,
+                };
+                let layout = finite_wls_moment_layout(invalid_source)
+                    .expect("invalid values retain valid layout");
+                assert_eq!(
+                    fill_finite_wls_moments(
+                        invalid_source,
+                        layout,
+                        &mut [],
+                        &mut vec![0.0; columns],
+                        &mut vec![0.0; columns * columns]
+                    )
+                    .expect_err("overflow must fail closed")
+                    .code,
+                    ErrorCode::InvalidData
+                );
+            }
+        }
     }
 
     fn retained_qr_report(

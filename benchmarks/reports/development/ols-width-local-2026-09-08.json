@@ -1,0 +1,1449 @@
+{
+  "baseline_commit": "c975bc5c6e2aa5ff4be159225447d31f0fe20de6",
+  "closure_script_sha256": "05d95fd3a1818038ffd50e400283280ac5bcc16f8e9e80b812464ad50a3ba90f",
+  "controller_sha256": "10d1e63721e4476f34528a9119d1479388542531ed28fa711f27c342d8160c32",
+  "datasets": {
+    "one_fe": {
+      "linear_adaptation_sha256": "140e627c0a64f6a0fcc3d272b7c5304c1110de73a002d51389adf73f7927497b",
+      "n": 100000,
+      "seed": 2026090802,
+      "sha256": "49b977ef153502c391b1c3dab5ce6ae481b4749ae0590d58160e7cd3ad976386",
+      "topology_sha256": "f8259d48d88579af49b0e55a39e85d5e52a47d5ea666005943b701b4e1f24a68"
+    }
+  },
+  "date": "2026-09-08",
+  "findings": [
+    "The existing arithmetic-preserving norm optimization retains exact scientific results at K64 and K65 with one/seven threads, including K65 low memory.",
+    "The baseline fast one-FE median rises from 0.403 to 7.297 seconds at one thread and 0.182 to 2.457 seconds at seven threads between K64 and K65. ADR0012 retains columnwise moments and QR above 64 finite candidates.",
+    "The supplemental captures are sequential diagnostic runs, not alternating confirmation pairs; their before/after timings are not additional speedup claims.",
+    "The original paired K50 speedup claim and its source/artifact bindings were independently rechecked; its historical receipt remains unchanged."
+  ],
+  "independent_oracle": {
+    "controller_sha256": "10d1e63721e4476f34528a9119d1479388542531ed28fa711f27c342d8160c32",
+    "method": "explicit group elimination and independent NumPy SVD least squares; analytic IID covariance",
+    "qualification_eligible": false,
+    "records": [
+      {
+        "coefficient_max_abs": 2.4424906541753444e-15,
+        "covariance_max_abs": 1.8295911660692887e-19,
+        "csv_sha256": "215900b5cbc45f2e7e69dae1c0c4d9ae27789c5726f01b21ec4083055b49b488",
+        "dataset_sha256": "49b977ef153502c391b1c3dab5ce6ae481b4749ae0590d58160e7cd3ad976386",
+        "fe_score": 6.106226635438361e-16,
+        "finite_score": 1.9277118178007497e-15,
+        "inverse_error": 9.992007221626409e-16,
+        "numpy_version": "1.26.4",
+        "rank": 64,
+        "reconstruction_max_abs": 8.881784197001252e-16,
+        "residual_df": 74936,
+        "rss": 74775.25514373243,
+        "scope": "one_fe_k64_t7_fast"
+      },
+      {
+        "coefficient_max_abs": 2.4147350785597155e-15,
+        "covariance_max_abs": 3.4897757426877174e-19,
+        "csv_sha256": "215900b5cbc45f2e7e69dae1c0c4d9ae27789c5726f01b21ec4083055b49b488",
+        "dataset_sha256": "49b977ef153502c391b1c3dab5ce6ae481b4749ae0590d58160e7cd3ad976386",
+        "fe_score": 6.106226635438361e-16,
+        "finite_score": 1.8339906959691345e-15,
+        "inverse_error": 1.4432899320127035e-15,
+        "numpy_version": "1.26.4",
+        "rank": 65,
+        "reconstruction_max_abs": 8.881784197001252e-16,
+        "residual_df": 74935,
+        "rss": 74774.99225511274,
+        "scope": "one_fe_k65_t7_fast"
+      },
+      {
+        "coefficient_max_abs": 2.345346139520643e-15,
+        "covariance_max_abs": 3.6083603553033194e-19,
+        "csv_sha256": "215900b5cbc45f2e7e69dae1c0c4d9ae27789c5726f01b21ec4083055b49b488",
+        "dataset_sha256": "49b977ef153502c391b1c3dab5ce6ae481b4749ae0590d58160e7cd3ad976386",
+        "fe_score": 6.106226635438361e-16,
+        "finite_score": 1.8339906959691345e-15,
+        "inverse_error": 1.4432899320127035e-15,
+        "numpy_version": "1.26.4",
+        "rank": 65,
+        "reconstruction_max_abs": 8.881784197001252e-16,
+        "residual_df": 74935,
+        "rss": 74774.99225511274,
+        "scope": "one_fe_k65_t7_low"
+      }
+    ]
+  },
+  "kind": "supplemental_local_ols_width_validation",
+  "limits": [
+    "No production change beyond the existing norm optimization.",
+    "No F0 screen, qualification, SCC, Windows run, solver-policy change or installed-plugin replacement.",
+    "Existing multi-FE exact-repeat failures and incomplete reference records in the original receipt remain open."
+  ],
+  "manifest": {
+    "path": "benchmarks/manifests/ols_width_development_v1.json",
+    "sha256": "c70458787ba5b72c42bba4c64544ab41c4115dd0d0e1541b7b738d5ce43187e2"
+  },
+  "next_step": "Profile the K64/K65 finite-solve boundary and prepare a bounded all-width guarded-solve proposal with memory and rank evidence before requesting any ADR0012 policy change.",
+  "original_paired_receipt_recomputed": true,
+  "original_receipt": {
+    "path": "benchmarks/reports/development/ols-arithmetic-local-2026-09-08.json",
+    "sha256": "f688356b859ffaf045fd9ae0feaa76fdd94026a66b13c323b04a171fb155e884"
+  },
+  "preparation_sha256": "bb67e44ae8c3281a85013c9c47b7c4417e4e5999b05cd9a3bfb14e413e670ca5",
+  "production_source_matches_original_candidate": true,
+  "qualification_eligible": false,
+  "raw_evidence_bundle_name": "fereg-ols-width-20260908",
+  "raw_results_sha256": {
+    "baseline": "7decb0fde8b647f58c7568410c774d6e837322ce6fcb065d62d79fa0d41b8fa7",
+    "candidate": "ef99a846de1d23952656b514bea868c5ed7c56d821aa3f17c94bfd6ab6036744"
+  },
+  "references": {
+    "ftools": {
+      "commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+      "files": {
+        "src/ftools.ado": "c7eba3272b5fcd1dfa157e65c37840a051c6e2bf327d5ee31d42df65cf330b00",
+        "src/ftools.mata": "4af859bca19614684d3dd45566e13e17c6cf44df951ecca538bda5a44ebd1744",
+        "src/ftools.pkg": "2f1f75711b3bf12980bdf9503b0ac9a73d5455863da966ae27a610f6fc07f5ae",
+        "src/ms_parse_vce.ado": "99af53ca13f325a917b7377762feab140914a5a6534c0953ea9ce6d55dcfa678"
+      }
+    },
+    "reghdfe": {
+      "commit": "29b2b203f534413369d675d0c0f674d61291f536",
+      "files": {
+        "src/reghdfe.ado": "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc",
+        "src/reghdfe.mata": "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6"
+      }
+    },
+    "require": {
+      "commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+      "files": {
+        "src/require.ado": "0f5a7bad374ade6c6ba0f05973666bb06b63d4acc36ddb0e277a060249a0e6de",
+        "src/require.pkg": "d9965f30b072949f7012fe3f0e6e83baf20dd6317ff2e21b15e185085a36ed62"
+      }
+    }
+  },
+  "schema_version": 1,
+  "scopes": [
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "f94ce64cab81a0b5bdf4fadb1b5ba7cf979eb6e5767aa46dd1660811fe65ccf0",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "fa5aa98ba7528dd7fe180560c5ad0bfe2ad91d62a4341b819cf8cd8cfe58dbe0",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0dabb6d188be16b67095f494dc781bbdff62f34582e27067dc6d18db58cda71c",
+              "fereg_fe": "14a282769cada72c330b9fda3cfd0d06a87abbe79c5dc34f1a7d7d648e9cd2fa",
+              "fereg_receipt": "6823d1efed75122dfced7a3070ec0df17c45934a3f42a767479c2ac49a12e7fe",
+              "fereg_status": "c8e925ac55e3d610f9b3285730f24658c0123d4b26cc4b8391ebbb12e2acb7da",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "229985f975c80a333137545dd77ca4ab33d49dc3519bbaa80f3f498f28ccf4c9"
+            },
+            "values": {
+              "fe_projection_linf": 8.351381044560167e-18,
+              "normal_equation_linf": 1.6031338131580979e-18,
+              "reconstruction_linf": 3.2677073697717454e-16,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 0.455,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 , absorb(g1)  threads(1) memory(fast) solver(auto)",
+          "driver_sha256": "adb4aadf8c52c7c20b0adea611be0d296f81e789b155c21e496209b6f438fe2b",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 0.403,
+          "numeric_hex_sha256": "f180b5a9b966651dc883b25daed5326a302cc2ef869df0bfaf0c1bfb5e5dec07",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "88d38dcca45ed8ca4fc16bf5ab7efaf887644a994668a79ab94ce193150448fe",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 1.7787691892340307e-19,
+            "b": 1.5543122344752192e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 7.327471962526033e-15,
+            "rss": 7.566995918750763e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.836692619164101e-19,
+              2.836692619164101e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              4.567381063278062e-15,
+              8.351381044560167e-18,
+              1.6031338131580979e-18,
+              1.6031338131580979e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            0.403,
+            0.393,
+            0.42300000000000004
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "b2039241d48eabecb381696b2de86225076ffabed0f510c9ed410f1270670c2e",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "fa5aa98ba7528dd7fe180560c5ad0bfe2ad91d62a4341b819cf8cd8cfe58dbe0",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0dabb6d188be16b67095f494dc781bbdff62f34582e27067dc6d18db58cda71c",
+              "fereg_fe": "14a282769cada72c330b9fda3cfd0d06a87abbe79c5dc34f1a7d7d648e9cd2fa",
+              "fereg_receipt": "6823d1efed75122dfced7a3070ec0df17c45934a3f42a767479c2ac49a12e7fe",
+              "fereg_status": "c8e925ac55e3d610f9b3285730f24658c0123d4b26cc4b8391ebbb12e2acb7da",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "229985f975c80a333137545dd77ca4ab33d49dc3519bbaa80f3f498f28ccf4c9"
+            },
+            "values": {
+              "fe_projection_linf": 8.351381044560167e-18,
+              "normal_equation_linf": 1.6031338131580979e-18,
+              "reconstruction_linf": 3.2677073697717454e-16,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 0.4379999999999999,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 , absorb(g1)  threads(1) memory(fast) solver(auto)",
+          "driver_sha256": "f81cb1b6adc09ba7ae24ce19bb3f16659495e08b2095cc32c92a29d1478c2006",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 0.414,
+          "numeric_hex_sha256": "f180b5a9b966651dc883b25daed5326a302cc2ef869df0bfaf0c1bfb5e5dec07",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "c76325c198191a46793988dc63ad9839d803172f9b4bd1ce055b6ef378837904",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 1.7787691892340307e-19,
+            "b": 1.5543122344752192e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 7.327471962526033e-15,
+            "rss": 7.566995918750763e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.836692619164101e-19,
+              2.836692619164101e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              4.567381063278062e-15,
+              8.351381044560167e-18,
+              1.6031338131580979e-18,
+              1.6031338131580979e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            0.414,
+            0.398,
+            0.423
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k64_t1_fast",
+        "k": 64,
+        "memory": "fast",
+        "threads": 1
+      }
+    },
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "7ebe97dbff5b98c527e5011ed06f3a6d196d4689710a15eba863c339f7c84962",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "fa5aa98ba7528dd7fe180560c5ad0bfe2ad91d62a4341b819cf8cd8cfe58dbe0",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0dabb6d188be16b67095f494dc781bbdff62f34582e27067dc6d18db58cda71c",
+              "fereg_fe": "14a282769cada72c330b9fda3cfd0d06a87abbe79c5dc34f1a7d7d648e9cd2fa",
+              "fereg_receipt": "6823d1efed75122dfced7a3070ec0df17c45934a3f42a767479c2ac49a12e7fe",
+              "fereg_status": "c8e925ac55e3d610f9b3285730f24658c0123d4b26cc4b8391ebbb12e2acb7da",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "229985f975c80a333137545dd77ca4ab33d49dc3519bbaa80f3f498f28ccf4c9"
+            },
+            "values": {
+              "fe_projection_linf": 8.351381044560167e-18,
+              "normal_equation_linf": 1.6031338131580979e-18,
+              "reconstruction_linf": 3.2677073697717454e-16,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 0.238,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 , absorb(g1)  threads(7) memory(fast) solver(auto)",
+          "driver_sha256": "820a36add135f740b479e4d279f326afa5904e18e382e97bc26b77bcbf30e8a5",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 0.182,
+          "numeric_hex_sha256": "f180b5a9b966651dc883b25daed5326a302cc2ef869df0bfaf0c1bfb5e5dec07",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "9d1bde57636e758a43ab9c3b2870dab2f49ded4ba169d13040db42926a57e046",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 1.7787691892340307e-19,
+            "b": 1.4710455076283324e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 2.220446049250313e-16,
+            "rss": 7.712515071034431e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.836692619164101e-19,
+              2.836692619164101e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              4.567381063278062e-15,
+              8.351381044560167e-18,
+              1.6031338131580979e-18,
+              1.6031338131580979e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            0.182,
+            0.177,
+            0.204
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "cf5fe86e88e70810602b19dd1ac5ceb4f131a34faae1ac4958343846de229d4f",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "fa5aa98ba7528dd7fe180560c5ad0bfe2ad91d62a4341b819cf8cd8cfe58dbe0",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0dabb6d188be16b67095f494dc781bbdff62f34582e27067dc6d18db58cda71c",
+              "fereg_fe": "14a282769cada72c330b9fda3cfd0d06a87abbe79c5dc34f1a7d7d648e9cd2fa",
+              "fereg_receipt": "6823d1efed75122dfced7a3070ec0df17c45934a3f42a767479c2ac49a12e7fe",
+              "fereg_status": "c8e925ac55e3d610f9b3285730f24658c0123d4b26cc4b8391ebbb12e2acb7da",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "229985f975c80a333137545dd77ca4ab33d49dc3519bbaa80f3f498f28ccf4c9"
+            },
+            "values": {
+              "fe_projection_linf": 8.351381044560167e-18,
+              "normal_equation_linf": 1.6031338131580979e-18,
+              "reconstruction_linf": 3.2677073697717454e-16,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 0.221,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 , absorb(g1)  threads(7) memory(fast) solver(auto)",
+          "driver_sha256": "44bb809a760e2ea2c842ac2a50552caf01026678f5b0ef68f377d85c87e8a1e6",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 0.169,
+          "numeric_hex_sha256": "f180b5a9b966651dc883b25daed5326a302cc2ef869df0bfaf0c1bfb5e5dec07",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "af5ab7f54a8a1b2ecb953fb6823fdf026d3050fca1909934ea7fe875d5e8a2b0",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 1.7787691892340307e-19,
+            "b": 1.4710455076283324e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 2.220446049250313e-16,
+            "rss": 7.712515071034431e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.836692619164101e-19,
+              2.836692619164101e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              4.567381063278062e-15,
+              8.351381044560167e-18,
+              1.6031338131580979e-18,
+              1.6031338131580979e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            0.169,
+            0.169,
+            0.197
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k64_t7_fast",
+        "k": 64,
+        "memory": "fast",
+        "threads": 7
+      }
+    },
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "e4dd2321d8122e4ebde90a21e059c68bd722b50ac24daed47ab3488ddad8ca1b",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "602897f079c8538d639dc6b639a8045551f97168ae8282396755594eb6a37025",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "baa06e1251d49e75257c18b825db27b87ed2fdc14583641caa850819f304b2aa"
+            },
+            "values": {
+              "fe_projection_linf": 1.0289804665297562e-15,
+              "normal_equation_linf": 7.051573891937641e-18,
+              "reconstruction_linf": 1.0375824715970512e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 7.243,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(1) memory(fast) solver(auto)",
+          "driver_sha256": "bc75e1c23e46502bd1db5d16131a5b528d1a68c1e15a02fced12bf6468cc5c6d",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 7.297,
+          "numeric_hex_sha256": "4421ee20a6e3bc3ae509e466b3a803cec87d1b524f3bcd1f36736ba9e374d55a",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "b2783c56dc4f373f26d813b5ea71a4cfdaeaaee18962cdd09390612d9f004cb0",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3711911300721153e-19,
+            "b": 3.191891195797325e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 4.884981308350689e-15,
+            "rss": 5.966285243630409e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.8367304307723267e-19,
+              2.8367304307723267e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              5.627497548896128e-13,
+              1.0289804665297562e-15,
+              7.051573891937641e-18,
+              7.051573891937641e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            7.297,
+            7.254,
+            7.735
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "f09411528388f5db31a6e4e516a9a21ad9739ffd7d31498857cf0efc61fffa01",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "602897f079c8538d639dc6b639a8045551f97168ae8282396755594eb6a37025",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "baa06e1251d49e75257c18b825db27b87ed2fdc14583641caa850819f304b2aa"
+            },
+            "values": {
+              "fe_projection_linf": 1.0289804665297562e-15,
+              "normal_equation_linf": 7.051573891937641e-18,
+              "reconstruction_linf": 1.0375824715970512e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 7.292,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(1) memory(fast) solver(auto)",
+          "driver_sha256": "4f8ba2232337afffe81ced9683b0b6c4f482515c7836129ba412322b829b484a",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 7.311,
+          "numeric_hex_sha256": "4421ee20a6e3bc3ae509e466b3a803cec87d1b524f3bcd1f36736ba9e374d55a",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "0f886ee9f2d9d8c2328f1b328b3075ff8c65857594201681372aa2ace8299634",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3711911300721153e-19,
+            "b": 3.191891195797325e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 4.884981308350689e-15,
+            "rss": 5.966285243630409e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.8367304307723267e-19,
+              2.8367304307723267e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              5.627497548896128e-13,
+              1.0289804665297562e-15,
+              7.051573891937641e-18,
+              7.051573891937641e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            7.305,
+            7.311,
+            7.346
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k65_t1_fast",
+        "k": 65,
+        "memory": "fast",
+        "threads": 1
+      }
+    },
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "4f2eda225176dd9dc134d800e5e45b1dce9ca2abe8960b06491b948598292478",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "1a5624592728f6c1fa7090479d4a9f947586ea540671681db16b2752f2f20828",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "db7f3def2be4173cb0c793459fa38e22c77d310f97af3cad21bba96b9aba46aa"
+            },
+            "values": {
+              "fe_projection_linf": 1.6433899760204725e-16,
+              "normal_equation_linf": 2.4812474013011458e-18,
+              "reconstruction_linf": 1.0255483750684262e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 2.482,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(7) memory(fast) solver(auto)",
+          "driver_sha256": "2514dc01545e51d3fdc1426862f903249113b60f77cbdbe38979c828cd1d35a9",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 2.457,
+          "numeric_hex_sha256": "b9dc152f72ce602217e5f63e7f46c838b64599028ddfffff3cba2edde1b3c210",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "97ef401f738a258f68aeeeb1f5b75cd9b03f719daf43b1d0c1f29448b1f89782",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.4728350837426314e-19,
+            "b": 1.3877787807814457e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 1.2101430968414206e-14,
+            "rss": 5.820766091346741e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.8367304307723267e-19,
+              2.8367304307723267e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              8.987705172990508e-14,
+              1.6433899760204725e-16,
+              2.4812474013011458e-18,
+              2.4812474013011458e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            2.486,
+            2.426,
+            2.457
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "cfb9560e73ebbd76ce52f654281afa230ab618d8b7a4ae96c7f2cc66c8cfa99b",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "1a5624592728f6c1fa7090479d4a9f947586ea540671681db16b2752f2f20828",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "db7f3def2be4173cb0c793459fa38e22c77d310f97af3cad21bba96b9aba46aa"
+            },
+            "values": {
+              "fe_projection_linf": 1.6433899760204725e-16,
+              "normal_equation_linf": 2.4812474013011458e-18,
+              "reconstruction_linf": 1.0255483750684262e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 2.506,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(7) memory(fast) solver(auto)",
+          "driver_sha256": "3b020dd1aa8ec0887c1dab2c5b4d244f68c055bebddf65ab5d69a41960e922cd",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 2.44,
+          "numeric_hex_sha256": "b9dc152f72ce602217e5f63e7f46c838b64599028ddfffff3cba2edde1b3c210",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "9d47f9c16480f5431c2747c532bcd2e2d5f4c0343de151c5122a8c2d8e974102",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.4728350837426314e-19,
+            "b": 1.3877787807814457e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 1.2101430968414206e-14,
+            "rss": 5.820766091346741e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              2.8367304307723267e-19,
+              2.8367304307723267e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              2.0,
+              8.987705172990508e-14,
+              1.6433899760204725e-16,
+              2.4812474013011458e-18,
+              2.4812474013011458e-18,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            2.683,
+            2.44,
+            2.434
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k65_t7_fast",
+        "k": 65,
+        "memory": "fast",
+        "threads": 7
+      }
+    },
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "c7fc5b7e9d5309b4d2cb65ebd12bc819153e9edef351b0244403bf8612bf9343",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "c0cd6c29dfcc523427f79d857bf99df3fe93beec90d72b2e24d2749db6dd11d4",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "8d7601fab8aa9aff04f6cccf7f2ece9fbf8265e43bcc3458b4f8b3569cd5211b"
+            },
+            "values": {
+              "fe_projection_linf": 2.4558912621395415e-18,
+              "normal_equation_linf": 4.1124541216596063e-19,
+              "reconstruction_linf": 1.0337212466894397e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 3.109,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(1) memory(low) solver(auto)",
+          "driver_sha256": "ee2b5343a5fd7023da23265aaeda838d86cb29ac48bce5e413e74303366ee81a",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 3.06,
+          "numeric_hex_sha256": "543d3f614e82217c0732aa876abe065fc3c4c5fb4b9fa67f36a5c5e76775cd4f",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "20edf00f61acc8aac778cdce51f86e6150f9b2b6bbb28ab08994d5687eb3cfa2",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3542504711270293e-19,
+            "b": 3.191891195797325e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 4.440892098500626e-15,
+            "rss": 5.384208634495735e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              4.1124541216596063e-19,
+              4.1124541216596063e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              1.0536612268201354e-15,
+              1.630755675547284e-18,
+              2.924018206918877e-19,
+              2.924018206918877e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            3.06,
+            3.054,
+            3.076
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "f4b7c5f8c349812801b2991005287760f3579c6df7edfc86fc981673f304b5fc",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "c0cd6c29dfcc523427f79d857bf99df3fe93beec90d72b2e24d2749db6dd11d4",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "8d7601fab8aa9aff04f6cccf7f2ece9fbf8265e43bcc3458b4f8b3569cd5211b"
+            },
+            "values": {
+              "fe_projection_linf": 2.4558912621395415e-18,
+              "normal_equation_linf": 4.1124541216596063e-19,
+              "reconstruction_linf": 1.0337212466894397e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 3.102,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(1) memory(low) solver(auto)",
+          "driver_sha256": "e39e7433115ea97c3e91918976f88efa6cf443213b6f4a2871275b07f3d8beb6",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "1",
+            "stata_flavor": "IC",
+            "stata_processors": "1",
+            "stata_version": "19"
+          },
+          "median_seconds": 3.071,
+          "numeric_hex_sha256": "543d3f614e82217c0732aa876abe065fc3c4c5fb4b9fa67f36a5c5e76775cd4f",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "82a9b49bd17eae4063d728cc9b41d815c0633a67a89f5838d6cb45b626fb5252",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3542504711270293e-19,
+            "b": 3.191891195797325e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 4.440892098500626e-15,
+            "rss": 5.384208634495735e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              4.1124541216596063e-19,
+              4.1124541216596063e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              1.0536612268201354e-15,
+              1.630755675547284e-18,
+              2.924018206918877e-19,
+              2.924018206918877e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            3.071,
+            3.052,
+            3.079
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k65_t1_low",
+        "k": 65,
+        "memory": "low",
+        "threads": 1
+      }
+    },
+    {
+      "arms": {
+        "baseline": {
+          "capture_sha256": "efbe35584fc619e8e59938367563fa2812edecc240049998d46c791369ea08c3",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "56921e63d6281123f4c59da62ed503119aae4bf1d53e7eae400da9dc9be78170",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "b10e75ebf6fc3024adf33a41a82e9e71103ee34ec9e5bb69d5f21a6844a75f4d"
+            },
+            "values": {
+              "fe_projection_linf": 2.4558912621395415e-18,
+              "normal_equation_linf": 4.1124541216596063e-19,
+              "reconstruction_linf": 1.0595723831368029e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 2.988,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(7) memory(low) solver(auto)",
+          "driver_sha256": "9cb4a82d48d5839508ad8f0dbdbda67b20991f42bb3cd5df1d2ea2cbb0c0f89b",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 2.94,
+          "numeric_hex_sha256": "c646ac05b96caf4538c5147d41669f09ea604fe5aefa9c49b8f1ef14bf017528",
+          "plugin_sha256": "d938d37bae3c5c59a4368b3f5d412d03500bafc6e133350f0c806a38f5c61167",
+          "process_sha256": "3b7c89b657ff77c81e22f51e98cea92f4afaadaae5ca19e391db3ba945bb189c",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3034284942917713e-19,
+            "b": 3.1363800445660672e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 1.1657341758564144e-14,
+            "rss": 5.238689482212067e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              4.1124541216596063e-19,
+              4.1124541216596063e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              1.1481361973682135e-15,
+              1.776974963584862e-18,
+              2.9213315585718243e-19,
+              2.9213315585718243e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            2.937,
+            2.94,
+            2.954
+          ]
+        },
+        "candidate": {
+          "capture_sha256": "3b3e0c02cfd0d3b6919961b8f437dace4c698b849133328b92ed1220779e1ddb",
+          "certificates": {
+            "converged": true,
+            "digests": {
+              "dof_table": "04ea505ebf59cacfadd798845a9779bf3bdefcd0cf3e44cb7b2343f59cff6db8",
+              "e_inventory": "934826ddb12e4b1d128f2dab33f469aabe91b70e1feb75614829c8f8e1251ad9",
+              "fereg_certificate": "56921e63d6281123f4c59da62ed503119aae4bf1d53e7eae400da9dc9be78170",
+              "fereg_cluster": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "fereg_dof": "0fea7d42dff14243f655fbde03b116f91dc108e15696627e367f7ca1d7b9f5ce",
+              "fereg_fe": "394df701338d2e08db9bcbc7593d95e613e7e6f29d63be9fd60e73ca3fabb792",
+              "fereg_receipt": "9b672b81fad30efe799c831c090b83a4aabe0273aac610bd0c796c82e32b0cfd",
+              "fereg_status": "24a3599f4c5588cd9ddfbd43b13cc2e3b7171f26a7111e4bba0b1e3a29690c78",
+              "fereg_subset": "1d9769162f3ab8c1e203f57ee4056c13f8ba1b16d657617108cf02f5e9130bbb",
+              "sample": "79024bcb41f3860f3a6f0a7bb4e9c574c9fbf1292caf8ba0883b368575d5b038",
+              "saved_outputs": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+              "solver_contract": "b10e75ebf6fc3024adf33a41a82e9e71103ee34ec9e5bb69d5f21a6844a75f4d"
+            },
+            "values": {
+              "fe_projection_linf": 2.4558912621395415e-18,
+              "normal_equation_linf": 4.1124541216596063e-19,
+              "reconstruction_linf": 1.0595723831368029e-14,
+              "vce_symmetry_linf": 0.0
+            }
+          },
+          "cold_seconds": 3.017,
+          "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 , absorb(g1)  threads(7) memory(low) solver(auto)",
+          "driver_sha256": "16f029d48608c7d7314d8ed3e512b573db9ced94043554cd36f79c7ca6a413e6",
+          "environment": {
+            "machine_type": "Mac (Apple Silicon)",
+            "os": "Unix",
+            "requested_threads": "7",
+            "stata_flavor": "IC",
+            "stata_processors": "7",
+            "stata_version": "19"
+          },
+          "median_seconds": 2.954,
+          "numeric_hex_sha256": "c646ac05b96caf4538c5147d41669f09ea604fe5aefa9c49b8f1ef14bf017528",
+          "plugin_sha256": "ae15897023427ce8353bc0dfa48c524b63f3d722dd8e4f72093b0df860c7f880",
+          "process_sha256": "e68d25584177f26db5eb6909e1f75a05c1d86e2811a42f8386158127a9454eda",
+          "reference_differences": {
+            "N": 0.0,
+            "V": 3.3034284942917713e-19,
+            "b": 3.1363800445660672e-15,
+            "df_a": 0.0,
+            "df_r": 0.0,
+            "r2": 1.1657341758564144e-14,
+            "rss": 5.238689482212067e-10
+          },
+          "solver": {
+            "source_columns": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ],
+            "values": [
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              2.659557779223776e-15,
+              2.4558912621395415e-18,
+              4.1124541216596063e-19,
+              4.1124541216596063e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              1.0,
+              2.0,
+              1.1481361973682135e-15,
+              1.776974963584862e-18,
+              2.9213315585718243e-19,
+              2.9213315585718243e-19,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "warm_seconds": [
+            2.972,
+            2.942,
+            2.954
+          ]
+        }
+      },
+      "scientific_exact": true,
+      "scope": {
+        "design": "one_fe",
+        "guard": "",
+        "id": "one_fe_k65_t7_low",
+        "k": 65,
+        "memory": "low",
+        "threads": 7
+      }
+    }
+  ],
+  "source_overlay": {
+    "crates/fereg-core/src/ols/prepared_fit.rs": "a8a21bbf571c7387cab6c468d2e2f1394367de4f3f41a07a6716b3c0b0e5240b"
+  },
+  "validation": {
+    "application_return_codes_and_terminal_sentinels": "pass",
+    "exact_baseline_candidate_pairs": 6,
+    "harness_unit_tests": 7,
+    "independent_oracle_scopes": 3,
+    "licensed_scope_captures": 12
+  }
+}
