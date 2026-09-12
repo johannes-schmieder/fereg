@@ -61,6 +61,14 @@ are fixed by
 Canonical PPML predictors and their cancellation-aware arithmetic check are
 specified in [working-response reconstruction](ppml_reconstruction.md).
 
+Numeric preparation first classifies borrowed sources without observation-sized
+allocation. After generation-zero admission, the same visitor constructs the
+row ledger and weight reports, and the owner consumes the offset/exposure buffer
+through stable candidate-bounded compaction. It retains raw original-axis model
+sources for separation rebuilds without making a throwaway compact source copy.
+The existing categorical generation constructors, memory envelope and numerical
+sessions remain authoritative; see [ADR 0038](adr/0038-ppml-numeric-selection-ownership.md).
+
 The public call graph is:
 
 ```text

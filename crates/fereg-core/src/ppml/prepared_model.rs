@@ -9,9 +9,11 @@
 
 use std::sync::Arc;
 
+#[cfg(test)]
+use super::prepared::PreparedPpmlNumericData;
 use super::prepared::{
     canonicalize_probability_weights, checked_frequency_effective_observations,
-    PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
+    PpmlNumericSelection, PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
 };
 use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
@@ -268,24 +270,85 @@ pub(crate) struct PreparedPpmlModelOwner {
 }
 
 impl PreparedPpmlModelOwner {
+    pub(crate) fn from_selection(
+        request: OlsRequestV1,
+        clusters: Vec<OlsClusterTermV1>,
+        loaded: LoadedOlsInput,
+        numeric: PpmlNumericSelection,
+        adjustment: Option<LoadedNumericColumn>,
+    ) -> Result<Self> {
+        // The selector borrowed this loaded owner directly. No separately
+        // supplied compact outcome/source copies require pair validation.
+        let base_probability_weights = capture_raw_probability_weights(
+            &loaded,
+            &numeric.original_row_by_active,
+            numeric.weights.kind,
+        )?;
+        let (adjustment, adjustment_report) =
+            numeric.take_adjustment(adjustment.map(|column| column.values))?;
+        Self::from_parts(
+            request,
+            clusters,
+            loaded,
+            numeric.original_row_by_active,
+            numeric.drop_reasons,
+            numeric.classification.n_candidate,
+            adjustment,
+            base_probability_weights,
+            numeric.weights,
+            adjustment_report,
+        )
+    }
+
+    #[cfg(test)]
     pub(crate) fn new(
-        mut request: OlsRequestV1,
+        request: OlsRequestV1,
         clusters: Vec<OlsClusterTermV1>,
         loaded: LoadedOlsInput,
         numeric: PreparedPpmlNumericData,
+    ) -> Result<Self> {
+        let weight_report = numeric.weights();
+        let adjustment_report = numeric.adjustment();
+        let sample = numeric.into_sample();
+        validate_loaded_numeric_pair(&loaded, &sample, weight_report)?;
+        let base_probability_weights = capture_raw_probability_weights(
+            &loaded,
+            &sample.original_row_by_active,
+            weight_report.kind,
+        )?;
+        Self::from_parts(
+            request,
+            clusters,
+            loaded,
+            sample.original_row_by_active,
+            sample.drop_reasons,
+            sample.n_candidate,
+            sample.adjustment,
+            base_probability_weights,
+            weight_report,
+            adjustment_report,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn from_parts(
+        mut request: OlsRequestV1,
+        clusters: Vec<OlsClusterTermV1>,
+        loaded: LoadedOlsInput,
+        original_row_by_active: Vec<usize>,
+        drop_reasons: Vec<DropReason>,
+        requested_candidate_observations: usize,
+        adjustment: PreparedAdjustment,
+        base_probability_weights: Option<Vec<f64>>,
+        weight_report: PreparedPpmlWeightReport,
+        adjustment_report: PreparedPpmlAdjustmentReport,
     ) -> Result<Self> {
         if clusters.len() > MAX_PPML_CLUSTER_DIMENSIONS {
             return Err(invalid_argument(
                 "prepared PPML supports at most five declared cluster dimensions",
             ));
         }
-        let weight_report = numeric.weights();
-        let adjustment_report = numeric.adjustment();
-        let sample = numeric.into_sample();
-        validate_loaded_numeric_pair(&loaded, &sample, weight_report)?;
-        let base_probability_weights = capture_raw_probability_weights(&loaded, &sample)?;
-
-        let base_offset = match sample.adjustment {
+        let base_offset = match adjustment {
             PreparedAdjustment::None => None,
             PreparedAdjustment::Offset(values) => Some(values),
             PreparedAdjustment::Exposure(_) => {
@@ -294,10 +357,9 @@ impl PreparedPpmlModelOwner {
                 ));
             }
         };
-        let original_observations = sample.n_original;
-        let requested_candidate_observations = sample.n_candidate;
-        let candidate_original_rows = Arc::new(sample.original_row_by_active);
-        let initial_drop_reasons = Arc::new(sample.drop_reasons);
+        let original_observations = loaded.candidate.len();
+        let candidate_original_rows = Arc::new(original_row_by_active);
+        let initial_drop_reasons = Arc::new(drop_reasons);
         // Shared categorical preparation must only establish source
         // availability and topology. PPML's coordinator applies the requested
         // singleton policy as part of its certified fixed point.
@@ -588,6 +650,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
     }
 }
 
+#[cfg(test)]
 fn validate_loaded_numeric_pair(
     loaded: &LoadedOlsInput,
     sample: &PreparedNumericSample,
@@ -661,6 +724,7 @@ fn validate_loaded_numeric_pair(
     Ok(())
 }
 
+#[cfg(test)]
 fn validate_loaded_column(column: &LoadedNumericColumn, rows: usize, label: &str) -> Result<()> {
     if column.values.len() != rows || column.missing.len() != rows {
         return Err(invalid_argument(format!(
@@ -672,14 +736,12 @@ fn validate_loaded_column(column: &LoadedNumericColumn, rows: usize, label: &str
 
 fn capture_raw_probability_weights(
     loaded: &LoadedOlsInput,
-    sample: &PreparedNumericSample,
+    original_row_by_active: &[usize],
+    kind: Option<WeightKind>,
 ) -> Result<Option<Vec<f64>>> {
-    match &sample.weights {
-        PreparedWeights::None => Ok(None),
-        PreparedWeights::Provided {
-            kind: WeightKind::Frequency,
-            ..
-        } => {
+    match kind {
+        None => Ok(None),
+        Some(WeightKind::Frequency) => {
             if loaded.frequency_weight.is_none() {
                 return Err(invalid_argument(
                     "prepared PPML frequency-weight column is absent from the loaded owner",
@@ -687,10 +749,7 @@ fn capture_raw_probability_weights(
             }
             Ok(None)
         }
-        PreparedWeights::Provided {
-            kind: WeightKind::Probability,
-            ..
-        } => {
+        Some(WeightKind::Probability) => {
             let raw = loaded.probability_weight.as_ref().ok_or_else(|| {
                 invalid_argument(
                     "prepared PPML probability-weight column is absent from the loaded owner",
@@ -698,9 +757,9 @@ fn capture_raw_probability_weights(
             })?;
             let mut values = Vec::new();
             values
-                .try_reserve_exact(sample.original_row_by_active.len())
+                .try_reserve_exact(original_row_by_active.len())
                 .map_err(|_| allocation("unable to reserve raw prepared PPML pweights"))?;
-            for &original_row in &sample.original_row_by_active {
+            for &original_row in original_row_by_active {
                 let value = raw.values.get(original_row).copied().ok_or_else(|| {
                     invalid_argument(
                         "prepared PPML probability-weight row map exceeds the loaded owner",
@@ -718,10 +777,7 @@ fn capture_raw_probability_weights(
             }
             Ok(Some(values))
         }
-        PreparedWeights::Provided {
-            kind: WeightKind::Analytic | WeightKind::Importance,
-            ..
-        } => Err(FeregError::new(
+        Some(WeightKind::Analytic | WeightKind::Importance) => Err(FeregError::new(
             ErrorCode::UnsupportedWeight,
             "prepared PPML owner supports only frequency and probability weights",
         )),
@@ -865,6 +921,7 @@ fn generation_weight_report(
     }
 }
 
+#[cfg(test)]
 fn sample_weight_kind(weights: &PreparedWeights) -> Option<WeightKind> {
     match weights {
         PreparedWeights::None => None,

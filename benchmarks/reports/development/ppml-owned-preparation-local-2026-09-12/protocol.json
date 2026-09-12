@@ -1,0 +1,11 @@
+{
+  "schema": "local-ppml-preparation-protocol-v1",
+  "baseline": "b19a1cfac038dcc6fbf015cfbfaf9f51022dafb4",
+  "scope": "local development, not frozen qualification",
+  "timing": "Fresh processes; small warmup, import/hash audit and extraction outside timer; complete estimation inside. Rotated paired order; three seeds per target; sequential commands.",
+  "pilot": "Exploratory excluded from primary aggregates. Local fixtures were launched concurrently during setup; no performance claim uses the pilot.",
+  "target": "Adopt with exact science, at least 3% median paired full-command gain on a primary target and at least 20% preparation reduction, no unresolved common-workload or protected regression.",
+  "controls": "Review a slowdown exceeding max(10 ms, 5%). Recheck flagged controls with three additional paired seeds; preserve initial observations.",
+  "memory": "Record action native peak and sampled process-tree RSS on primary runs; separate allocationaudit/trace pairs record preparation modeled and observed peaks. Keep existing admission unchanged.",
+  "excluded_setup": "First source extraction used unsupported Python tarfile filter keyword; no binary or measured command resulted. Correctly isolated snapshots built afterward."
+}

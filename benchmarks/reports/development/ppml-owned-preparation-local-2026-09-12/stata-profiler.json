@@ -1,0 +1,56 @@
+{
+  "ppmlprep-trace-pw_cluster_offset-s67280421-baseline": [
+    "1   12.641  _fereg_estimate_ppml",
+    "1    0.004  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.000  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     12.654 (sec)"
+  ],
+  "ppmlprep-trace-one_fe_complete-s67280421-candidate": [
+    "1   48.646  _fereg_estimate_ppml",
+    "1    0.003  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.000  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     48.658 (sec)"
+  ],
+  "ppmlprep-trace-one_fe_complete-s67280421-baseline": [
+    "1   50.292  _fereg_estimate_ppml",
+    "1    0.004  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.000  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     50.305 (sec)"
+  ],
+  "ppmlprep-trace-pw_cluster_offset-s67280421-candidate": [
+    "1   12.386  _fereg_estimate_ppml",
+    "1    0.004  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.000  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     12.399 (sec)"
+  ],
+  "ppmlprep-trace-fw_exposure_missing-s67280421-baseline": [
+    "1   12.815  _fereg_estimate_ppml",
+    "1    0.003  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.001  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     12.828 (sec)"
+  ],
+  "ppmlprep-trace-fw_exposure_missing-s67280421-candidate": [
+    "1   12.628  _fereg_estimate_ppml",
+    "1    0.003  _fereg_eppml_validate",
+    "1    0.009  fereg_parse",
+    "1    0.000  _fereg_load",
+    "1    0.000  findfile",
+    "Overall total count =      5",
+    "Overall total time  =     12.640 (sec)"
+  ]
+}

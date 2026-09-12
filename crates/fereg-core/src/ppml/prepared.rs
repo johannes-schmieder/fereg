@@ -150,6 +150,13 @@ impl PreparedPpmlNumericData {
 pub(crate) fn classify_ppml_numeric_data(
     input: &PpmlNumericPreparationInput<'_>,
 ) -> Result<PpmlNumericClassification> {
+    classify_ppml_numeric_data_with_visitor(input, |_, _| {})
+}
+
+fn classify_ppml_numeric_data_with_visitor(
+    input: &PpmlNumericPreparationInput<'_>,
+    mut visit: impl FnMut(usize, DropReason),
+) -> Result<PpmlNumericClassification> {
     let (_, adjustment) = ppml_adjustment(input)?;
     validate_ppml_weight_kind(input.weights)?;
     let generic = NumericPreparationInput {
@@ -171,6 +178,7 @@ pub(crate) fn classify_ppml_numeric_data(
         input.source_uses,
         &PpmlNumericDomainPolicy,
         |original_row, reason| {
+            visit(original_row, reason);
             if first_nonfinite_domain.is_none()
                 && is_unmasked_nonfinite_ppml_domain_row(input, original_row, reason)
             {
@@ -212,6 +220,129 @@ pub(crate) fn classify_ppml_numeric_data(
         n_candidate,
         n_active,
     })
+}
+
+/// Post-admission state needed by the generation owner. Outcome and model
+/// sources remain on the original axis in that owner; copying them here would
+/// create an N-by-S sample that no estimator ever uses.
+pub(crate) struct PpmlNumericSelection {
+    pub(crate) classification: PpmlNumericClassification,
+    pub(crate) original_row_by_active: Vec<usize>,
+    pub(crate) drop_reasons: Vec<DropReason>,
+    pub(crate) weights: PreparedPpmlWeightReport,
+    adjustment_kind: PreparedPpmlAdjustmentKind,
+}
+
+pub(crate) fn select_ppml_numeric_data(
+    input: &PpmlNumericPreparationInput<'_>,
+    admitted: PpmlNumericClassification,
+) -> Result<PpmlNumericSelection> {
+    let mut original_row_by_active = Vec::new();
+    original_row_by_active
+        .try_reserve_exact(admitted.n_candidate)
+        .map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve PPML numeric row map",
+            )
+        })?;
+    let mut drop_reasons = Vec::new();
+    drop_reasons
+        .try_reserve_exact(input.candidate.len())
+        .map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve PPML numeric drop ledger",
+            )
+        })?;
+    let classification = classify_ppml_numeric_data_with_visitor(input, |row, reason| {
+        drop_reasons.push(reason);
+        if reason == DropReason::Retained {
+            original_row_by_active.push(row);
+        }
+    })?;
+    if classification != admitted {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "materialized PPML numeric sample disagrees with its allocation-free classification",
+        ));
+    }
+    let mut weights = match input.weights {
+        WeightInput::None => PreparedWeights::None,
+        WeightInput::Provided { kind, column } => {
+            let mut values = Vec::new();
+            values
+                .try_reserve_exact(classification.n_active)
+                .map_err(|_| {
+                    FeregError::new(
+                        ErrorCode::Allocation,
+                        "unable to reserve PPML canonical weights",
+                    )
+                })?;
+            values.extend(original_row_by_active.iter().map(|row| column.values[*row]));
+            PreparedWeights::Provided { kind, values }
+        }
+    };
+    Ok(PpmlNumericSelection {
+        classification,
+        original_row_by_active,
+        drop_reasons,
+        weights: canonicalize_weights(&mut weights, classification.n_active)?,
+        adjustment_kind: ppml_adjustment(input)?.0,
+    })
+}
+
+impl PpmlNumericSelection {
+    /// Consume the already classified adjustment after borrowed views expire.
+    /// Retained capacity obeys the same candidate-axis bound as materialized
+    /// preparation, including restricted if/in samples and oversized inputs.
+    pub(crate) fn take_adjustment(
+        &self,
+        values: Option<Vec<f64>>,
+    ) -> Result<(PreparedAdjustment, PreparedPpmlAdjustmentReport)> {
+        let mut adjustment = match (self.adjustment_kind, values) {
+            (PreparedPpmlAdjustmentKind::None, None) => PreparedAdjustment::None,
+            (
+                kind @ (PreparedPpmlAdjustmentKind::Offset | PreparedPpmlAdjustmentKind::Exposure),
+                Some(mut values),
+            ) if values.len() == self.classification.n_original => {
+                if values.capacity() <= self.classification.n_candidate {
+                    if self.classification.n_active != self.classification.n_original {
+                        for (active, original) in
+                            self.original_row_by_active.iter().copied().enumerate()
+                        {
+                            values[active] = values[original];
+                        }
+                    }
+                    values.truncate(self.classification.n_active);
+                } else {
+                    let mut compact = Vec::new();
+                    compact
+                        .try_reserve_exact(self.classification.n_active)
+                        .map_err(|_| {
+                            FeregError::new(
+                                ErrorCode::Allocation,
+                                "unable to reserve PPML compact adjustment",
+                            )
+                        })?;
+                    compact.extend(self.original_row_by_active.iter().map(|row| values[*row]));
+                    values = compact;
+                }
+                match kind {
+                    PreparedPpmlAdjustmentKind::Offset => PreparedAdjustment::Offset(values),
+                    _ => PreparedAdjustment::Exposure(values),
+                }
+            }
+            _ => {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    "PPML owned adjustment disagrees with numeric classification",
+                ))
+            }
+        };
+        let report = canonicalize_adjustment(&mut adjustment, self.adjustment_kind)?;
+        Ok((adjustment, report))
+    }
 }
 
 fn ppml_adjustment<'a>(
@@ -283,8 +414,9 @@ pub fn prepare_ppml_numeric_data(
         ));
     }
 
-    let weights = canonicalize_weights(&mut sample)?;
-    let adjustment = canonicalize_adjustment(&mut sample, adjustment_kind)?;
+    let physical = sample.n_active();
+    let weights = canonicalize_weights(&mut sample.weights, physical)?;
+    let adjustment = canonicalize_adjustment(&mut sample.adjustment, adjustment_kind)?;
     Ok(PreparedPpmlNumericData {
         sample,
         weights,
@@ -488,10 +620,12 @@ impl NumericDomainPolicy for PpmlNumericDomainPolicy {
     }
 }
 
-fn canonicalize_weights(sample: &mut PreparedNumericSample) -> Result<PreparedPpmlWeightReport> {
-    let physical = sample.n_active();
+fn canonicalize_weights(
+    weights: &mut PreparedWeights,
+    physical: usize,
+) -> Result<PreparedPpmlWeightReport> {
     let physical_f64 = physical as f64;
-    match &mut sample.weights {
+    match weights {
         PreparedWeights::None => Ok(PreparedPpmlWeightReport {
             kind: None,
             physical_observations: physical,
@@ -762,10 +896,10 @@ fn compensated_nonnegative_sum(values: impl IntoIterator<Item = f64>) -> Result<
 }
 
 fn canonicalize_adjustment(
-    sample: &mut PreparedNumericSample,
+    prepared: &mut PreparedAdjustment,
     input_kind: PreparedPpmlAdjustmentKind,
 ) -> Result<PreparedPpmlAdjustmentReport> {
-    let adjustment = std::mem::replace(&mut sample.adjustment, PreparedAdjustment::None);
+    let adjustment = std::mem::replace(prepared, PreparedAdjustment::None);
     let (canonical, prepared_as_offset, exposure_log_transformed) = match (input_kind, adjustment) {
         (PreparedPpmlAdjustmentKind::None, PreparedAdjustment::None) => {
             (PreparedAdjustment::None, false, false)
@@ -792,7 +926,7 @@ fn canonicalize_adjustment(
             ));
         }
     };
-    sample.adjustment = canonical;
+    *prepared = canonical;
     Ok(PreparedPpmlAdjustmentReport {
         input_kind,
         prepared_as_offset,
@@ -817,6 +951,80 @@ mod tests {
             weights: WeightInput::None,
             offset: None,
             exposure: None,
+        }
+    }
+
+    // The materializing seam remains a separate implementation oracle for
+    // selection, deferred errors, canonical scales, and owned adjustments.
+    fn prepare_and_check_selection(
+        input: &PpmlNumericPreparationInput<'_>,
+    ) -> Result<PreparedPpmlNumericData> {
+        let reference = prepare_ppml_numeric_data(input);
+        let selected = classify_ppml_numeric_data(input)
+            .and_then(|admitted| select_ppml_numeric_data(input, admitted))
+            .and_then(|selection| {
+                let values = input
+                    .offset
+                    .or(input.exposure)
+                    .map(|column| column.values.to_vec());
+                let (adjustment, report) = selection.take_adjustment(values)?;
+                Ok((selection, adjustment, report))
+            });
+        match (&reference, selected) {
+            (Ok(reference), Ok((selected, adjustment, report))) => {
+                assert_eq!(
+                    selected.original_row_by_active,
+                    reference.sample().original_row_by_active
+                );
+                assert_eq!(selected.drop_reasons, reference.sample().drop_reasons);
+                assert_eq!(selected.weights, reference.weights());
+                assert_eq!(adjustment, reference.sample().adjustment);
+                assert_eq!(report, reference.adjustment());
+            }
+            (Err(reference), Err(selected)) => {
+                assert_eq!(selected.code, reference.code);
+                assert_eq!(selected.message, reference.message);
+            }
+            _ => panic!("PPML numeric selection disagrees with materializing preparation"),
+        }
+        reference
+    }
+
+    #[test]
+    fn owned_adjustment_reuses_only_candidate_bounded_capacity() {
+        for restricted in [false, true] {
+            for oversized in [false, true] {
+                let candidate = [true, !restricted, true, true];
+                let outcome = [1.0, 2.0, 3.0, 4.0];
+                let missing = [false, false, true, false];
+                let mut values = Vec::with_capacity(if oversized { 32 } else { 4 });
+                values.extend([2.0, 4.0, 8.0, 16.0]);
+                let original_pointer = values.as_ptr();
+                let input = PpmlNumericPreparationInput {
+                    exposure: Some(NumericColumnView::with_missing(&values, &missing)),
+                    ..unweighted_input(&candidate, &outcome)
+                };
+                let selection =
+                    select_ppml_numeric_data(&input, classify_ppml_numeric_data(&input).unwrap())
+                        .unwrap();
+                let (adjustment, report) = selection.take_adjustment(Some(values)).unwrap();
+                let PreparedAdjustment::Offset(values) = adjustment else {
+                    panic!("canonical offset")
+                };
+                assert_eq!(
+                    values,
+                    if restricted {
+                        vec![2.0_f64.ln(), 16.0_f64.ln()]
+                    } else {
+                        vec![2.0_f64.ln(), 4.0_f64.ln(), 16.0_f64.ln()]
+                    }
+                );
+                assert!(values.capacity() <= selection.classification.n_candidate);
+                if !restricted && !oversized {
+                    assert_eq!(values.as_ptr(), original_pointer);
+                }
+                assert!(report.exposure_log_transformed);
+            }
         }
     }
 
@@ -850,7 +1058,7 @@ mod tests {
         };
         let classification =
             classify_ppml_numeric_data(&input).expect("allocation-free classification");
-        let prepared = prepare_ppml_numeric_data(&input).expect("materialized sample");
+        let prepared = prepare_and_check_selection(&input).expect("materialized sample");
         assert_eq!(classification.n_original, prepared.sample().n_original);
         assert_eq!(classification.n_candidate, prepared.sample().n_candidate);
         assert_eq!(classification.n_active, prepared.sample().n_active());
@@ -877,7 +1085,7 @@ mod tests {
         };
         let classified_error = classify_ppml_numeric_data(&invalid)
             .expect_err("classification must reject the nonfinite offset first");
-        let prepared_error = prepare_ppml_numeric_data(&invalid)
+        let prepared_error = prepare_and_check_selection(&invalid)
             .expect_err("materialization must reject the same nonfinite offset first");
         assert_eq!(classified_error.code, prepared_error.code);
         assert_eq!(classified_error.message, prepared_error.message);
@@ -890,7 +1098,7 @@ mod tests {
         let invalid = unweighted_input(&candidate, &outcome);
         let classified_error = classify_ppml_numeric_data(&invalid)
             .expect_err("classification must reject the later negative outcome first");
-        let prepared_error = prepare_ppml_numeric_data(&invalid)
+        let prepared_error = prepare_and_check_selection(&invalid)
             .expect_err("materialization must reject the same negative outcome first");
         assert_eq!(classified_error.code, prepared_error.code);
         assert_eq!(classified_error.message, prepared_error.message);
@@ -901,7 +1109,7 @@ mod tests {
     fn unweighted_fractional_outcomes_are_retained_with_physical_effective_n() {
         let candidate = [true, true, true];
         let outcome = [0.0, 0.25, 2.5];
-        let prepared = prepare_ppml_numeric_data(&unweighted_input(&candidate, &outcome))
+        let prepared = prepare_and_check_selection(&unweighted_input(&candidate, &outcome))
             .expect("fractional PPML sample");
         assert_eq!(prepared.sample().outcome, outcome);
         assert_eq!(prepared.sample().retained_rows(), &[0, 1, 2]);
@@ -933,20 +1141,20 @@ mod tests {
         let candidate = [true, true];
         let negative = [1.0, -0.5];
         assert_eq!(
-            prepare_ppml_numeric_data(&unweighted_input(&candidate, &negative))
+            prepare_and_check_selection(&unweighted_input(&candidate, &negative))
                 .expect_err("negative outcome")
                 .code,
             ErrorCode::InvalidData
         );
 
         let restricted = [false, true];
-        let prepared = prepare_ppml_numeric_data(&unweighted_input(&restricted, &negative))
+        let prepared = prepare_and_check_selection(&unweighted_input(&restricted, &negative))
             .expect_err("remaining outcome is negative");
         assert_eq!(prepared.code, ErrorCode::InvalidData);
 
         let off_candidate_negative = [-1.0, 0.5];
         let prepared =
-            prepare_ppml_numeric_data(&unweighted_input(&restricted, &off_candidate_negative))
+            prepare_and_check_selection(&unweighted_input(&restricted, &off_candidate_negative))
                 .expect("off-candidate negative outcome");
         assert_eq!(prepared.sample().retained_rows(), &[1]);
     }
@@ -956,7 +1164,7 @@ mod tests {
         let candidate = [true, true];
         for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             let outcome = [invalid, 1.0];
-            let error = prepare_ppml_numeric_data(&unweighted_input(&candidate, &outcome))
+            let error = prepare_and_check_selection(&unweighted_input(&candidate, &outcome))
                 .expect_err("unmasked nonfinite outcome");
             assert_eq!(error.code, ErrorCode::InvalidData);
             assert_eq!(error.return_code(), 459);
@@ -964,7 +1172,7 @@ mod tests {
             let missing = [true, false];
             let mut input = unweighted_input(&candidate, &outcome);
             input.outcome = NumericColumnView::with_missing(&outcome, &missing);
-            let prepared = prepare_ppml_numeric_data(&input).expect("masked outcome is missing");
+            let prepared = prepare_and_check_selection(&input).expect("masked outcome is missing");
             assert_eq!(prepared.sample().retained_rows(), &[1]);
             assert_eq!(
                 prepared.sample().drop_reasons,
@@ -972,7 +1180,7 @@ mod tests {
             );
 
             let restricted = [false, true];
-            let prepared = prepare_ppml_numeric_data(&unweighted_input(&restricted, &outcome))
+            let prepared = prepare_and_check_selection(&unweighted_input(&restricted, &outcome))
                 .expect("off-candidate nonfinite outcome is ignored");
             assert_eq!(prepared.sample().retained_rows(), &[1]);
         }
@@ -983,7 +1191,7 @@ mod tests {
         let all_zero = [0.0, 0.0];
         let all_candidate = [true, true];
         assert_eq!(
-            prepare_ppml_numeric_data(&unweighted_input(&all_candidate, &all_zero))
+            prepare_and_check_selection(&unweighted_input(&all_candidate, &all_zero))
                 .expect_err("all-zero outcome")
                 .code,
             ErrorCode::InsufficientObservations
@@ -991,14 +1199,14 @@ mod tests {
         let no_candidate = [false, false];
         let positive = [1.0, 2.0];
         assert_eq!(
-            prepare_ppml_numeric_data(&unweighted_input(&no_candidate, &positive))
+            prepare_and_check_selection(&unweighted_input(&no_candidate, &positive))
                 .expect_err("empty final sample")
                 .code,
             ErrorCode::InsufficientObservations
         );
 
         let tiny_positive = [0.0, f64::from_bits(1)];
-        prepare_ppml_numeric_data(&unweighted_input(&all_candidate, &tiny_positive))
+        prepare_and_check_selection(&unweighted_input(&all_candidate, &tiny_positive))
             .expect("positive subnormal outcome must not underflow the existence check");
 
         for (kind, values) in [
@@ -1011,7 +1219,7 @@ mod tests {
                 column: NumericColumnView::new(&values),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("weighted all-zero outcome")
                     .code,
                 ErrorCode::InsufficientObservations
@@ -1029,7 +1237,7 @@ mod tests {
             kind: WeightKind::Frequency,
             column: NumericColumnView::new(&frequency),
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("frequency weights");
+        let prepared = prepare_and_check_selection(&input).expect("frequency weights");
         assert_eq!(
             prepared.weights(),
             PreparedPpmlWeightReport {
@@ -1062,7 +1270,7 @@ mod tests {
                 column: NumericColumnView::new(&weights),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("invalid fweight")
                     .code,
                 ErrorCode::InvalidFrequencyWeight
@@ -1077,7 +1285,7 @@ mod tests {
                 column: NumericColumnView::new(&weights),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("unmasked nonfinite fweight")
                     .code,
                 ErrorCode::InvalidFrequencyWeight
@@ -1104,7 +1312,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::new(&raw),
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("pweight sample");
+        let prepared = prepare_and_check_selection(&input).expect("pweight sample");
         let report = prepared.weights();
         assert_eq!(report.kind, Some(WeightKind::Probability));
         assert_eq!(report.physical_observations, 3);
@@ -1137,7 +1345,7 @@ mod tests {
                 kind: WeightKind::Probability,
                 column: NumericColumnView::new(weights),
             };
-            prepare_ppml_numeric_data(&input).expect("scaled pweights")
+            prepare_and_check_selection(&input).expect("scaled pweights")
         };
         let first = prepare(&raw);
         let second = prepare(&scaled);
@@ -1186,7 +1394,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::new(&huge),
         };
-        let huge_prepared = prepare_ppml_numeric_data(&huge_input)
+        let huge_prepared = prepare_and_check_selection(&huge_input)
             .expect("finite pweight sum overflow must not narrow the domain");
         let huge_report = huge_prepared.weights();
         assert_eq!(huge_report.raw_weight_sum, None);
@@ -1200,7 +1408,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::new(&tiny),
         };
-        let tiny_prepared = prepare_ppml_numeric_data(&tiny_input)
+        let tiny_prepared = prepare_and_check_selection(&tiny_input)
             .expect("finite pweight multiplier overflow must not narrow the domain");
         let tiny_report = tiny_prepared.weights();
         assert!(tiny_report.raw_weight_sum.is_some());
@@ -1220,7 +1428,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::new(&raw),
         };
-        let error = prepare_ppml_numeric_data(&input)
+        let error = prepare_and_check_selection(&input)
             .expect_err("normalized q outside finite f64 range must fail atomically");
         assert_eq!(error.code, ErrorCode::NonConvergence);
         assert_eq!(error.return_code(), 430);
@@ -1238,7 +1446,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::new(&raw),
         };
-        let prepared = prepare_ppml_numeric_data(&input)
+        let prepared = prepare_and_check_selection(&input)
             .expect("physical N makes the exact tiny normalized q representable");
         let PreparedWeights::Provided { values, .. } = &prepared.sample().weights else {
             panic!("materialized pweights");
@@ -1260,7 +1468,7 @@ mod tests {
                 column: NumericColumnView::new(&values),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("nonpositive pweight")
                     .code,
                 ErrorCode::InvalidData
@@ -1274,7 +1482,7 @@ mod tests {
             kind: WeightKind::Probability,
             column: NumericColumnView::with_missing(&values, &missing),
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("missing pweight drops");
+        let prepared = prepare_and_check_selection(&input).expect("missing pweight drops");
         assert_eq!(prepared.sample().retained_rows(), &[0]);
         assert_eq!(
             prepared.sample().drop_reasons,
@@ -1289,7 +1497,7 @@ mod tests {
                 column: NumericColumnView::new(&values),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("unmasked nonfinite pweight")
                     .code,
                 ErrorCode::InvalidData
@@ -1309,7 +1517,7 @@ mod tests {
                 column: NumericColumnView::new(&weight),
             };
             assert_eq!(
-                prepare_ppml_numeric_data(&input)
+                prepare_and_check_selection(&input)
                     .expect_err("unsupported weight kind")
                     .code,
                 ErrorCode::UnsupportedWeight
@@ -1325,7 +1533,7 @@ mod tests {
         let missing = [false, true, false];
         let mut input = unweighted_input(&candidate, &outcome);
         input.offset = Some(NumericColumnView::with_missing(&offset, &missing));
-        let prepared = prepare_ppml_numeric_data(&input).expect("offset prepare");
+        let prepared = prepare_and_check_selection(&input).expect("offset prepare");
         assert_eq!(prepared.offset(), Some(&[-2.0, 0.5][..]));
         assert_eq!(prepared.sample().retained_rows(), &[0, 2]);
         assert_eq!(
@@ -1353,7 +1561,7 @@ mod tests {
         let exposure = [1.0, std::f64::consts::E, std::f64::consts::E.powi(2)];
         let mut input = unweighted_input(&candidate, &outcome);
         input.exposure = Some(NumericColumnView::new(&exposure));
-        let prepared = prepare_ppml_numeric_data(&input).expect("exposure prepare");
+        let prepared = prepare_and_check_selection(&input).expect("exposure prepare");
         let logged = prepared.offset().expect("canonical logged exposure");
         for (actual, expected) in logged.iter().zip([0.0, 1.0, 2.0]) {
             assert_close(*actual, expected);
@@ -1374,7 +1582,7 @@ mod tests {
         let invalid = [1.0, 0.0, 2.0];
         input.exposure = Some(NumericColumnView::new(&invalid));
         assert_eq!(
-            prepare_ppml_numeric_data(&input)
+            prepare_and_check_selection(&input)
                 .expect_err("nonpositive exposure")
                 .code,
             ErrorCode::InvalidData
@@ -1395,7 +1603,7 @@ mod tests {
                     input.offset = Some(NumericColumnView::new(&adjustment));
                 }
                 let error =
-                    prepare_ppml_numeric_data(&input).expect_err("unmasked nonfinite adjustment");
+                    prepare_and_check_selection(&input).expect_err("unmasked nonfinite adjustment");
                 assert_eq!(error.code, ErrorCode::InvalidData);
                 assert_eq!(error.return_code(), 459);
 
@@ -1406,7 +1614,7 @@ mod tests {
                     input.offset = Some(NumericColumnView::with_missing(&adjustment, &missing));
                 }
                 let prepared =
-                    prepare_ppml_numeric_data(&input).expect("masked adjustment is missing");
+                    prepare_and_check_selection(&input).expect("masked adjustment is missing");
                 assert_eq!(prepared.sample().retained_rows(), &[1]);
                 assert_eq!(
                     prepared.sample().drop_reasons,
@@ -1428,7 +1636,7 @@ mod tests {
             } else {
                 input.offset = Some(NumericColumnView::new(&adjustment));
             }
-            let prepared = prepare_ppml_numeric_data(&input)
+            let prepared = prepare_and_check_selection(&input)
                 .expect("off-candidate nonfinite adjustment is ignored");
             assert_eq!(prepared.sample().retained_rows(), &[1]);
         }
@@ -1443,7 +1651,7 @@ mod tests {
         let mut input = unweighted_input(&candidate, &outcome);
         input.offset = Some(NumericColumnView::new(&offset));
         input.exposure = Some(NumericColumnView::new(&exposure));
-        let error = prepare_ppml_numeric_data(&input).expect_err("mutually exclusive adjustment");
+        let error = prepare_and_check_selection(&input).expect_err("mutually exclusive adjustment");
         assert_eq!(error.code, ErrorCode::Syntax);
         assert_eq!(error.return_code(), 198);
     }
@@ -1501,7 +1709,7 @@ mod tests {
                 &exposure_missing,
             )),
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("precedence fixture");
+        let prepared = prepare_and_check_selection(&input).expect("precedence fixture");
         assert_eq!(prepared.sample().n_original, n);
         assert_eq!(prepared.sample().n_candidate, 7);
         assert_eq!(prepared.sample().retained_rows(), &[7]);
@@ -1551,7 +1759,7 @@ mod tests {
             offset: None,
             exposure: None,
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("regressor precedes weight");
+        let prepared = prepare_and_check_selection(&input).expect("regressor precedes weight");
         assert_eq!(
             prepared.sample().drop_reasons,
             [DropReason::MissingRegressor, DropReason::Retained]
@@ -1575,7 +1783,7 @@ mod tests {
             offset: None,
             exposure: Some(NumericColumnView::new(&exposure)),
         };
-        let prepared = prepare_ppml_numeric_data(&input).expect("cluster precedes exposure");
+        let prepared = prepare_and_check_selection(&input).expect("cluster precedes exposure");
         assert_eq!(
             prepared.sample().drop_reasons,
             [DropReason::MissingCluster, DropReason::Retained]
@@ -1598,7 +1806,7 @@ mod tests {
             exposure: None,
         };
         assert_eq!(
-            prepare_ppml_numeric_data(&input)
+            prepare_and_check_selection(&input)
                 .expect_err("source-use mismatch")
                 .code,
             ErrorCode::InvalidArgument

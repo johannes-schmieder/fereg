@@ -10,6 +10,61 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P1 PPML numeric ownership: adopted local development checkpoint
+
+Against `b19a1cfac038dcc6fbf015cfbfaf9f51022dafb4`, production PPML now constructs
+the admitted numeric row ledger and weight reports without a throwaway compact
+copy of outcome/model sources. It consumes offset/exposure storage through stable
+compaction within the candidate-capacity bound. Raw original-axis sources and raw
+pweights remain available for separation rebuilds. Allocation-free preflight and
+exact shape agreement, original-row errors, canonical weight/exposure semantics,
+solver/session/reconstruction code and existing memory admission remain unchanged.
+[ADR 0038](docs/adr/0038-ppml-numeric-selection-ownership.md) records this boundary.
+
+The [report](benchmarks/reports/development/ppml-owned-preparation-local-2026-09-12/README.md)
+and [identities](benchmarks/reports/development/ppml-owned-preparation-local-2026-09-12/identities.json)
+bind isolated universal plugins and 23 completed pairs / 46 measured calls:
+nine public primary pairs, ten protected pairs, three private audit/profile pairs,
+and one separately reported exploratory pilot. Three-seed command medians fall
+15.395→14.408 seconds for N983040/K50/16-thread complete one-FE robust PPML,
+4.683→4.534 for N245760/K50/four-thread FW with exposure/missing data, and
+4.591→4.452 for N245760/K50/16-thread PW with offset/two-way clustering. Median
+paired gains are 6.4%, 4.5% and 3.3%. Existing preparation-phase medians fall
+1.615→0.880, 0.351→0.227 and 0.358→0.221 seconds; this phase also includes IRLS
+initialization. Inference and all iteration/solver/fallback decisions are exact
+apart from timing. Every b/V/sample/status/DoF/weight/cluster/separation/certificate
+and requested saved-output comparison passes exactly.
+
+The removed complete-case source-copy payload is 408,944,640 bytes, derived from
+source shape rather than hardware traffic. Overall native peak stays about
+2.438 GB for the large complete case; weighted peaks fall about 2.21 MB because
+the loaded adjustment no longer remains live beside its canonical offset. Later
+session initialization dominates the preparation phase peak. Private allocation
+audits pass, with all observed action peaks within unchanged models. Sampled RSS
+and all phase/peak/fallback results are retained; no 409 MB fit-peak reduction is
+claimed. Weak/dense/bottleneck/cycle/disconnected/unbalanced, small/narrow,
+restricted, low-memory and saved-separation controls retain exact science; worst
+slowdown is 1 ms. Low-memory FW improves 0.925→0.843 seconds.
+
+[Validation](benchmarks/reports/development/ppml-owned-preparation-local-2026-09-12/validation.json)
+records 136 focused Rust tests, four licensed Stata fixtures with explicit r(0)
+sentinels, analytic Poisson/FW-expansion/PW-scaling oracles, and universal static
+audits plus arm64 ABI/self-tests. One weighted extraction attempt was excluded
+after a shared benchmark do-file edit corrupted Stata's incremental reading;
+per-run worker copies/hashes now prevent that race, and both arms were rerun.
+The installed/dist plugin, separate Veneto STATUS additions and historical
+evidence are preserved. No SCC, push or qualification occurred.
+
+P1 numeric ownership is adopted. The source audit identifies PPML's triple
+sort-preservation wrappers and input markout/count as removal candidates, but
+does not adopt ado changes. Batched adjustment/restricted-source loading,
+post-admission parallel classification, generation-copy reduction and P0 counters
+remain open. Next P4 work should isolate fresh one-FE RHS/norm/mean construction,
+warm projection and strict/final-Hessian passes while preserving reference scales
+and weight-generation validity. The large candidate's projection/finite/strict
+scopes remain substantial; these scopes overlap and must not be summed. P3 OLS
+inference remains a separate measured opportunity after the earlier Schur gains.
+
 ## P2 weighted OLS Schur: adopted local development checkpoint
 
 Against baseline `39d1a2a876b92dcc7f8032be792ee171cb85cfdd`, the OLS planner now

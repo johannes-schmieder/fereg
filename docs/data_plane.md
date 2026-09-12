@@ -31,8 +31,18 @@ otherwise receive fallibly allocated compact columns. Raw weight values and
 their kind follow the same retained-row map. Conventional, robust and clustered
 OLS, including interacted/slope/saved absorbed terms, consume the loaded source
 buffers through this boundary. Cluster missingness remains part of classification
-before the existing singleton and final coding passes. PPML's allocation-free
-preflight and subsequent borrowed materialization remain separate.
+before the existing singleton and final coding passes.
+
+PPML first classifies borrowed numeric sources without observation-sized
+allocation, then selects its generation-zero memory route. After admission the
+same visitor builds the retained-row map and drop ledger, checking exact agreement
+with preflight counts. It forms canonical weight reports without copying the
+outcome/model sources into an unused temporary sample. The generation owner keeps
+those raw original-axis sources for later categorical rebuilds and consumes the
+offset/exposure allocation using stable compaction within the candidate-capacity
+bound. Exposure is logged exactly once. Preparation remains serial; scientific
+domain precedence, per-generation pweight normalization and categorical/cluster
+construction remain unchanged under [ADR 0038](adr/0038-ppml-numeric-selection-ownership.md).
 
 The OLS transaction preserves row order without a `sortpreserve` wrapper. Its
 parser and time-series materializations do not sort; native original-row maps

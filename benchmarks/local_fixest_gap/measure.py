@@ -80,7 +80,11 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
     elif arm == "pyfixest":
         command = [str(root / "work/python/bin/python"), str(HERE / "python_worker.py"), str(output / "request.json")]
     else:
-        command = [os.environ["STATA_MP_PATH"], "-b", "do", str(HERE / "stata_worker.do"),
+        # Stata reads do-files incrementally. Bind each run to its own copy so
+        # concurrent harness edits cannot change an active command's script.
+        worker = output / "stata_worker.do"
+        shutil.copyfile(HERE / "stata_worker.do", worker)
+        command = [os.environ["STATA_MP_PATH"], "-b", "do", str(worker),
                    str(source or root / "work/candidate"), str(root / "work/refs"), str(data), str(warm), str(output),
                    arm, cell["model"], str(cell["k"]), str(threads), str(len(cell["effects"])), phase, str(import_path)]
         command.extend('"' + str(cell.get(key, "")) + '"' for key in
@@ -183,6 +187,8 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
                "job_id": os.environ.get("JOB_ID"), "task_id": os.environ.get("SGE_TASK_ID"),
                "platform": platform.platform(), "machine": platform.machine(), "input_sha256": sha256(data),
                "command_time_lower_bound": manifest["measurement"]["command_timeout_seconds"] if reason == "command_timeout" else None}
+    if (output / "stata_worker.do").exists():
+        receipt["stata_worker_sha256"] = sha256(output / "stata_worker.do")
     if (output / "sample.csv").exists():
         receipt["sample_sha256"], receipt["sample_rows"] = sample_hash(output / "sample.csv")
         (output / "sample.csv").unlink()

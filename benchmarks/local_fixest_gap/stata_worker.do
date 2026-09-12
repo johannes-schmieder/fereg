@@ -29,10 +29,10 @@ local absorption
 if "`effects'" != "" local absorption absorb(`effects')
 if "`absorb'" != "" local absorption absorb(`absorb')
 local command `"`arm' y `xvars' `restriction' `weight', `absorption'"'
-if inlist("`arm'", "fereg", "feppml") local command `"`command' threads(`threads') solver(`solver') poolsize(`pool')"'
+if inlist("`arm'", "fereg", "feppml", "_fereg_estimate_ppml") local command `"`command' threads(`threads') solver(`solver') poolsize(`pool')"'
 if inlist("`arm'", "greg", "gglm") local command `"`command' mata(BenchG)"'
 if "`arm'" == "gglm" local command `"`command' family(poisson) robust"'
-if inlist("`arm'", "feppml", "ppmlhdfe") local command `"`command' vce(robust)"'
+if inlist("`arm'", "feppml", "ppmlhdfe", "_fereg_estimate_ppml") & "`vce'" == "" local command `"`command' vce(robust)"'
 if "`vce'" != "" local command `"`command' vce(`vce')"'
 if "`fit_options'" != "" local command `"`command' `fit_options'"'
 display as text `"LOCAL_COMMAND|`command'"'
@@ -164,7 +164,7 @@ if !`rc' {
         }
         file close `values'
     }
-    foreach matrix_name in b V fereg_solver fereg_runtime fereg_certificate fereg_fit fereg_status fereg_dof fereg_fe fereg_cluster fereg_subset {
+    foreach matrix_name in b V fereg_solver fereg_runtime fereg_certificate fereg_fit fereg_status fereg_dof fereg_fe fereg_cluster fereg_subset feppml_solver feppml_runtime feppml_certificate feppml_fit feppml_status feppml_dof feppml_fe feppml_cluster feppml_subset feppml_separation feppml_inference feppml_drop_counts feppml_separation_sequence feppml_receipt {
         capture matrix __sb_diag = e(`matrix_name')
         if !_rc {
             file open `values' using `"`output'/`matrix_name'.csv"', write text replace

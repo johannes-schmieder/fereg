@@ -39,7 +39,8 @@ or a change of weight kind. Cluster-only source availability precedes singleton
 deletion; final cluster coding and interaction/slope topology use the existing
 sample-bound constructors. The categorical availability request still disables
 synthetic-source pruning before the true interaction/slope singleton pass.
-PPML retains its borrowed materialization and allocation-free preflight visitor.
+PPML's allocation-free preflight visitor remains separate; its subsequent numeric
+ownership is refined by [ADR 0038](0038-ppml-numeric-selection-ownership.md).
 No SPI session enters the
 worker closure and no global Rayon pool is created.
 

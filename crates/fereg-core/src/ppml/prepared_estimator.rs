@@ -21,7 +21,7 @@ use crate::ppml_separation::{
 
 use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
 use super::prepared::{
-    classify_ppml_numeric_data, prepare_ppml_numeric_data, PpmlNumericClassification,
+    classify_ppml_numeric_data, select_ppml_numeric_data, PpmlNumericClassification,
     PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
 };
 use super::prepared_irls::{
@@ -48,6 +48,8 @@ use super::{
 
 #[cfg(test)]
 use super::plan_ppml_memory;
+#[cfg(test)]
+use super::prepared::prepare_ppml_numeric_data;
 
 /// Publication-sized products requested by the embedding layer.
 ///
@@ -258,10 +260,16 @@ pub fn fit_prepared_ppml_interruptible(
     }
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
-    let numeric = prepare_ppml_numeric_data(&numeric_input.as_input())?;
-    validate_materialized_numeric_classification(&numeric, numeric_classification)?;
-    let prepared_dimensions =
-        conservative_preflight_dimensions(&request, &numeric, requested_saved_channel_count)?;
+    let numeric = select_ppml_numeric_data(&numeric_input.as_input(), numeric_classification)?;
+    let prepared_dimensions = conservative_preflight_dimensions_from_classification(
+        &request,
+        numeric.classification,
+        numeric_input.numeric_sources.len(),
+        numeric_input.offset.is_some() || numeric_input.exposure.is_some(),
+        numeric.weights.kind == Some(WeightKind::Probability),
+        requested_saved_channel_count,
+    )?;
+    drop(numeric_input);
     // The exact materialized shape may only bind within the earlier envelope;
     // it cannot silently reselect a route after canonical allocation.
     let preliminary_plan = preliminary_plan.with_final_dimensions(prepared_dimensions)?;
@@ -288,7 +296,13 @@ pub fn fit_prepared_ppml_interruptible(
         ));
     }
     let omission_statuses = original_omission_statuses(&request.ols)?;
-    let owner = PreparedPpmlModelOwner::new(request.ols, request.clusters, loaded.ols, numeric)?;
+    let owner = PreparedPpmlModelOwner::from_selection(
+        request.ols,
+        request.clusters,
+        loaded.ols,
+        numeric,
+        loaded.adjustment,
+    )?;
     let preparation_elapsed = preparation_clock.elapsed();
     let preparation_peak =
         end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
@@ -880,25 +894,9 @@ fn cluster_code_views(prepared: &PreparedPpmlModelGeneration) -> Result<Vec<&[u3
     Ok(output)
 }
 
-fn validate_materialized_numeric_classification(
-    numeric: &super::prepared::PreparedPpmlNumericData,
-    classification: PpmlNumericClassification,
-) -> Result<()> {
-    let sample = numeric.sample();
-    if sample.n_original != classification.n_original
-        || sample.n_candidate != classification.n_candidate
-        || sample.n_active() != classification.n_active
-    {
-        return Err(FeregError::new(
-            ErrorCode::Internal,
-            "materialized PPML numeric sample disagrees with its allocation-free classification",
-        ));
-    }
-    Ok(())
-}
-
 /// Conservative dimensions re-derived after numeric preparation. This exact
 /// shape is used only to validate and bind the already-selected route.
+#[cfg(test)]
 fn conservative_preflight_dimensions(
     request: &PreparedPpmlRequestV1,
     numeric: &super::prepared::PreparedPpmlNumericData,
