@@ -1,0 +1,11 @@
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1298,7 +1298,7 @@
+     fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+         prepared,
+         config,
+-        MAX_FAST_SCORE_CACHE_BYTES,
++        MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
+     )
+ }
+ 

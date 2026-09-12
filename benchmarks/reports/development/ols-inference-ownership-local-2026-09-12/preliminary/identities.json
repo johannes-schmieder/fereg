@@ -1,0 +1,9 @@
+{
+  "baseline": "f4cebe71bb8afcd29e5acb2e97a1d1875a340ba7",
+  "plugins": {
+    "baseline": "c1c9d8d15fe2586028c82b1c28b3b63a5bd489f68fef6f05d57d5cbba9f00f83",
+    "candidate": "dc327ec0cfe16123e200cfb2a88e18fffa3e25b287c0f78e0375ecb48409d0d9"
+  },
+  "native_patch_sha256": "01d8fac999144f8455f2fb9928a979502f116cffd7f53a2b5d5f54ac9e39d065",
+  "prototype": "only OLS robust/cluster default score-cache cap lowered to 32MiB; not adopted"
+}

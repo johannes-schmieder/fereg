@@ -1,0 +1,10 @@
+{
+  "baseline": "f4cebe71bb8afcd29e5acb2e97a1d1875a340ba7",
+  "experiment": "P3 OLS inference packed cache versus existing retained strided ownership",
+  "prototype": "Only ordinary OLS robust/clustered default packed-cache limit 512 MiB -> 32 MiB; existing caller-specific overrides and PPML weighted-linear policy unchanged",
+  "adoption": "10% median paired command gain or 20% native peak reduction with no greater than 5% total slowdown on targeted wide cases; investigate protected increases above max(10ms,5%)",
+  "pilot": "One N983040/K50/16-thread robust sparse-missing pair; then repeated target pairs and QR fallback, weight/cluster, weak graph, small/narrow and memory controls if promising",
+  "science": "Existing packed/strided equality and independent covariance oracles; unchanged sample/status/DoF/weights/cluster/solver diagnostics, tolerances and independent certificates; retain scaled arithmetic and stable QR fallback",
+  "cost": "Separate existing fit/cache/score/inference phase probes; native/model/RSS peaks; include re-residualization when finite QR cannot retain standardized input",
+  "limits": "32 MiB is an experimental crossover, not an accepted general threshold"
+}

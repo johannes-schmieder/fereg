@@ -1,0 +1,18 @@
+{
+  "strided_tests": {
+    "passed": 4,
+    "log_sha256": "2832a27c1a765cf7472f47d4ba375e34a7978ca3ada2805737188f0fb59ead3c"
+  },
+  "robust_tests": {
+    "passed": 9,
+    "log_sha256": "756bf25b2e546824c25d270103536a2a43cfb6ceeebf8c99de7d53d08a84d0e4"
+  },
+  "distinct_rust_tests": 12,
+  "universal_static_audit_pass": true,
+  "native_arm64_abi_selftest_pass": true,
+  "build_log_sha256": "48682e0c3a0991527ab576689d972cd685a762e39ac051e7a385dc5c06ac6aa0",
+  "initial_pilot_log_sha256": "05000bfbeaab2512bd0c02b7a4fa27edde03e873be5fac7c9b43c410b1c33ad6",
+  "initial_pilot_failure": "Exact assertion included numerical certificate diagnostics, which changed at roundoff scale; comparison corrected to actual solver decisions and unchanged registered numerical acceptance. Both certificates passed.",
+  "source_adopted": false,
+  "scope": "Local prototype; no SCC or qualification"
+}

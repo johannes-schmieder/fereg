@@ -10,6 +10,26 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3 inference ownership: evaluated prototype, adoption pending
+
+The [preliminary evidence](benchmarks/reports/development/ols-inference-ownership-local-2026-09-12/preliminary/README.md)
+compares `f4cebe7` with an isolated one-line prototype lowering ordinary robust/
+clustered OLS's packed-score limit to 32 MiB. It reuses existing strided ownership,
+fused raw moments and residual construction; no production source is changed yet.
+26 pairs / 52 measured calls show primary command gains of 38.8%, 31.4% and
+24.1%, with native peak reductions around 25–26%. Full scientific comparisons
+pass under unchanged tolerances; sample/status/DoF and solver decisions are exact.
+The newly eligible weak control improves; no protected control exceeds the declared
+review envelope. QR profiles retain reconstruction in both arms and improve 4.0%.
+
+The explicit-dummy full covariance oracle passes baseline and candidate across
+unit/AW/FW/PW, robust/clustered, full/deficient rank. Twelve distinct focused Rust
+tests and the universal static/native arm64 ABI audits pass. An initial exact
+comparison of numerical certificate metrics was corrected after localizing only
+roundoff differences; the original failure is disclosed. Next: finalize the OLS
+cache policy and source/documentation review, then adopt or reject with this
+source-bound evidence before moving to the remaining P3 work. No SCC ran.
+
 ## P1 candidate-run and mixed-source loading: adopted local checkpoint
 
 Against `5411b9b4d37aab1a856b12431db84ecfce1c6f22`, shared OLS/PPML input loading
