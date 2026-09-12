@@ -65,6 +65,14 @@ omission status, result wire, and Stata transaction. Registered tests require
 scientific identity. Deterministic routes additionally require
 same-architecture, same-thread-count bitwise reproducibility.
 
+Low-memory OLS cluster subsets may replace their `N*sizeof(usize)` tuple-order
+allocation with compensated group scores and presence flags only when the
+entire table fits within that same byte budget. The two representations do not
+overlap. Larger or unrepresentable Cartesian products retain tuple sorting;
+scratch tiles and independent per-group bread checks remain unchanged. This
+does not increase admission or retain a second observation-by-control design;
+see [ADR 0044](adr/0044-sequential-low-memory-cluster-scores.md).
+
 Above 64 finite columns, fast preflight additionally reserves
 `32*K^2 + 128*K` bytes for guarded Cholesky's four live square work/inverse/bread
 arrays and linear metadata, beyond the existing cross-product allowance.

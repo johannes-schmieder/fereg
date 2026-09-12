@@ -1,0 +1,26 @@
+{
+  "disposition": "not_adopted",
+  "focused_clustered_tests": {
+    "passed": 7,
+    "log_sha256": "78318a568c16a96acab292e773d08d9dcdf0b8b9de9a0bfa7a35b44c4e175295"
+  },
+  "ordering_oracle": {
+    "comparisons": 168,
+    "exact": true,
+    "description": "Actual extracted baseline/candidate functions, independent lexicographic sort with row tie-break, 4 distributions x 3 masks x 7 rotated repeats x 2 arms."
+  },
+  "universal_static_and_native_arm64_abi": "PASS",
+  "build_log_sha256": "40e4a320ba37f2380ef24526585d3ad5a4b5c417fecb1fe83ca6b9c333c4fcac",
+  "setup_failures": [
+    {
+      "kind": "Missing required STATA_MP_PATH before launch",
+      "log_sha256": "baaaf18c6a50c41f0ec160f99af4557ccc237990b7640c57fe5a1f55b4ad17ae"
+    },
+    {
+      "kind": "Abandoned worker directory detected before launch",
+      "log_sha256": "9ea91a09190f84d5ee24916e05c84b0445ff1a85509be43499b4ca0cbbe9a7ef"
+    }
+  ],
+  "all_nine_b_V_fit_certificate_exports_exact": true,
+  "protected_campaign_run": false
+}

@@ -3465,6 +3465,38 @@ mod tests {
     }
 
     #[test]
+    fn low_memory_small_cluster_table_matches_legacy_group_influences() {
+        let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
+        request.ols.include_intercept = true;
+        let original = loaded.clone();
+        loaded.candidate = original.candidate.repeat(512);
+        loaded.outcome.values = original.outcome.values.repeat(512);
+        loaded.outcome.missing = original.outcome.missing.repeat(512);
+        for ((_, target), (_, source)) in loaded
+            .numeric_sources
+            .iter_mut()
+            .zip(&original.numeric_sources)
+        {
+            target.values = source.values.repeat(512);
+            target.missing = source.missing.repeat(512);
+        }
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
+        let mut config = PreparedOlsClusteredConfig::default();
+        config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
+        let low = fit_prepared_ols_clustered_map(&prepared, config).expect("bounded score table");
+        assert!(low.certificate().passed);
+        // Every subset also runs the independent pre-extraction scratch reducer
+        // inside the provider and requires bit-identical meats and group counts.
+        let mut count = CountingReservation::succeeds();
+        fit_with_reservation(&prepared, config, &mut count).expect("count new-route reservations");
+        for fail_at in 0..count.calls {
+            let mut failing = CountingReservation::fails_at(fail_at);
+            assert!(fit_with_reservation(&prepared, config, &mut failing).is_err());
+        }
+    }
+
+    #[test]
     fn dense_subset_plan_is_mixed_radix_and_strictly_scratch_bounded() {
         let first = [0_u32, 1, 0, 1];
         let second = [0_u32, 0, 1, 1];

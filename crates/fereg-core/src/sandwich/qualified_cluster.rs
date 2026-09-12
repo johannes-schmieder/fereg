@@ -1,9 +1,9 @@
 //! Qualified clustered subset routes shared by OLS and PPML.
 //!
-//! OLS is the floating-point and allocation compatibility authority.  The
-//! dense-table, ordered-Rayon, and scratch-serial routes below are mechanical
-//! extractions of its accepted implementation; estimator adapters supply only
-//! a row design, scalar score multiplier, cluster codes, and bread policy.
+//! OLS and PPML retain their distinct certificate and allocation policies.
+//! Dense-table, ordered-Rayon, and scratch-serial routes share compensated
+//! group scores; estimator adapters supply the row design, scalar multiplier,
+//! final-sample cluster codes, and independent bread policy.
 
 use rayon::prelude::*;
 use std::cmp::Ordering;
@@ -223,25 +223,28 @@ fn dense_group(
     Ok(group)
 }
 
-fn aggregate_dense_table<D, M, R>(
-    design: D,
+struct DenseGroupScores {
+    values: Vec<f64>,
+    corrections: Vec<f64>,
+    seen: Vec<u8>,
+}
+
+fn accumulate_dense_groups<S, M, R>(
+    design: &S,
     multipliers: M,
     dimensions: &[&[u32]],
     mask: usize,
     plan: DenseSubsetPlan,
-    policy: QualifiedClusterRoutePolicy,
+    row_values: &mut [f64],
     reservation: &mut R,
-) -> Result<QualifiedClusterSubsetResult>
+) -> Result<DenseGroupScores>
 where
-    D: SandwichDesign + Copy + Sync,
-    M: SandwichScoreMultiplier + Copy + Sync,
+    S: SandwichDesign + ?Sized,
+    M: SandwichScoreMultiplier,
     R: SandwichReservation,
 {
     let nobs = design.nrows();
     let dimension = design.dimension();
-    let square = dimension
-        .checked_mul(dimension)
-        .ok_or_else(|| allocation("qualified clustered dense subset meat overflows"))?;
     let score_slots = plan
         .group_slots
         .checked_mul(dimension)
@@ -264,16 +267,10 @@ where
         0_u8,
         "unable to reserve qualified clustered dense group presence",
     )?;
-    let mut row_values = reserved_filled(
-        reservation,
-        dimension,
-        0.0_f64,
-        "unable to reserve qualified clustered dense score row",
-    )?;
     for row in 0..nobs {
         let group = dense_group(dimensions, mask, plan, row)?;
         seen[group] = 1;
-        design.fill_row(row, &mut row_values)?;
+        design.fill_row(row, row_values)?;
         let scale = multipliers.score_pair(row)?.production;
         let offset = group * dimension;
         for (coordinate, value) in row_values.iter().copied().enumerate() {
@@ -285,10 +282,50 @@ where
             )?;
         }
     }
+    Ok(DenseGroupScores {
+        values: group_scores,
+        corrections: group_corrections,
+        seen,
+    })
+}
+
+fn aggregate_dense_table<D, M, R>(
+    design: D,
+    multipliers: M,
+    dimensions: &[&[u32]],
+    mask: usize,
+    plan: DenseSubsetPlan,
+    policy: QualifiedClusterRoutePolicy,
+    reservation: &mut R,
+) -> Result<QualifiedClusterSubsetResult>
+where
+    D: SandwichDesign + Copy + Sync,
+    M: SandwichScoreMultiplier + Copy + Sync,
+    R: SandwichReservation,
+{
+    let dimension = design.dimension();
+    let square = dimension
+        .checked_mul(dimension)
+        .ok_or_else(|| allocation("qualified clustered dense subset meat overflows"))?;
+    let mut row_values = reserved_filled(
+        reservation,
+        dimension,
+        0.0_f64,
+        "unable to reserve qualified clustered dense score row",
+    )?;
+    let scores = accumulate_dense_groups(
+        &design,
+        multipliers,
+        dimensions,
+        mask,
+        plan,
+        &mut row_values,
+        reservation,
+    )?;
     finish_dense_groups(
-        &group_scores,
-        &group_corrections,
-        &seen,
+        &scores.values,
+        &scores.corrections,
+        &scores.seen,
         plan.group_slots,
         dimension,
         square,
@@ -508,23 +545,43 @@ where
             "qualified clustered serial route has too many dimensions",
         ));
     }
-    // The accepted scratch OLS path reserves exactly one N-element tuple
-    // order; radix scratch is exclusive to dense score storage.
-    let mut order = reserved_empty(
-        reservation,
-        nobs,
-        "unable to reserve qualified clustered subset ordering",
-    )?;
-    for row in 0..nobs {
-        push_reserved(
-            &mut order,
-            row,
-            "qualified clustered subset ordering capacity exhausted",
+    // The group table replaces, rather than overlaps, the existing N-row
+    // ordering budget. An unrepresentable Cartesian product keeps tuple sorting.
+    let ordering_bytes = nobs
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("qualified clustered ordering bytes overflow"))?;
+    let dense_plan = match dense_subset_plan(dimensions, mask, nobs, dimension, maximum_dimensions)
+    {
+        Ok(plan) => plan.filter(|plan| {
+            dimension
+                .checked_mul(16)
+                .and_then(|v| v.checked_add(1))
+                .and_then(|stride| plan.group_slots.checked_mul(stride))
+                .is_some_and(|bytes| bytes <= ordering_bytes)
+        }),
+        Err(error) if error.code == crate::error::ErrorCode::Allocation => None,
+        Err(error) => return Err(error),
+    };
+    let order = if dense_plan.is_some() {
+        Vec::new()
+    } else {
+        let mut order = reserved_empty(
+            reservation,
+            nobs,
+            "unable to reserve qualified clustered subset ordering",
         )?;
-    }
-    order.sort_unstable_by(|left, right| {
-        compare_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
-    });
+        for row in 0..nobs {
+            push_reserved(
+                &mut order,
+                row,
+                "qualified clustered subset ordering capacity exhausted",
+            )?;
+        }
+        order.sort_unstable_by(|left, right| {
+            compare_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
+        });
+        order
+    };
     let mut group = reserved_filled(
         reservation,
         dimension,
@@ -580,11 +637,70 @@ where
         "unable to reserve qualified clustered influence corrections",
     )?;
     let mut groups = 0usize;
-    let mut previous = None;
-    for row in order {
-        if previous
-            .is_some_and(|prior| compare_rows(dimensions, mask, prior, row) != Ordering::Equal)
-        {
+    if let Some(plan) = dense_plan {
+        let scores = accumulate_dense_groups(
+            design,
+            multipliers,
+            dimensions,
+            mask,
+            plan,
+            &mut row_values,
+            reservation,
+        )?;
+        for (group, present) in scores.seen.iter().enumerate() {
+            if *present == 0 {
+                continue;
+            }
+            let start = group * dimension;
+            let end = start + dimension;
+            finish_serial_group(
+                bread,
+                &scores.values[start..end],
+                &scores.corrections[start..end],
+                &mut raw_score,
+                &mut influence_score,
+                &mut raw,
+                &mut raw_corrections,
+                &mut influence,
+                &mut influence_corrections,
+            )?;
+            groups += 1;
+        }
+    } else {
+        let mut previous = None;
+        for row in order {
+            if previous
+                .is_some_and(|prior| compare_rows(dimensions, mask, prior, row) != Ordering::Equal)
+            {
+                finish_serial_group(
+                    bread,
+                    &group,
+                    &group_corrections,
+                    &mut raw_score,
+                    &mut influence_score,
+                    &mut raw,
+                    &mut raw_corrections,
+                    &mut influence,
+                    &mut influence_corrections,
+                )?;
+                group.fill(0.0);
+                group_corrections.fill(0.0);
+                groups = groups
+                    .checked_add(1)
+                    .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
+            }
+            let scale = multipliers.score_pair(row)?.production;
+            design.fill_row(row, &mut row_values)?;
+            for coordinate in 0..dimension {
+                compensated_add(
+                    scale * row_values[coordinate],
+                    &mut group[coordinate],
+                    &mut group_corrections[coordinate],
+                )?;
+            }
+            previous = Some(row);
+        }
+        if previous.is_some() {
             finish_serial_group(
                 bread,
                 &group,
@@ -596,38 +712,10 @@ where
                 &mut influence,
                 &mut influence_corrections,
             )?;
-            group.fill(0.0);
-            group_corrections.fill(0.0);
             groups = groups
                 .checked_add(1)
                 .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
         }
-        let scale = multipliers.score_pair(row)?.production;
-        design.fill_row(row, &mut row_values)?;
-        for coordinate in 0..dimension {
-            compensated_add(
-                scale * row_values[coordinate],
-                &mut group[coordinate],
-                &mut group_corrections[coordinate],
-            )?;
-        }
-        previous = Some(row);
-    }
-    if previous.is_some() {
-        finish_serial_group(
-            bread,
-            &group,
-            &group_corrections,
-            &mut raw_score,
-            &mut influence_score,
-            &mut raw,
-            &mut raw_corrections,
-            &mut influence,
-            &mut influence_corrections,
-        )?;
-        groups = groups
-            .checked_add(1)
-            .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
     }
     finalize(&mut raw, raw_corrections, dimension)?;
     finalize(&mut influence, influence_corrections, dimension)?;
@@ -953,4 +1041,134 @@ fn build_radix_order<R: SandwichReservation>(
         std::mem::swap(&mut order, &mut scratch);
     }
     Ok(order)
+}
+
+#[cfg(test)]
+mod scratch_table_tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    struct Design {
+        nrows: usize,
+        reads: RefCell<Vec<usize>>,
+    }
+    impl SandwichDesign for Design {
+        fn nrows(&self) -> usize {
+            self.nrows
+        }
+        fn dimension(&self) -> usize {
+            2
+        }
+        fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+            self.reads.borrow_mut().push(row);
+            output.copy_from_slice(&[(row % 7) as f64, (row % 3) as f64 * 0.25]);
+            Ok(())
+        }
+    }
+    #[derive(Clone, Copy)]
+    struct Multipliers(usize);
+    impl SandwichScoreMultiplier for Multipliers {
+        fn nrows(&self) -> usize {
+            self.0
+        }
+        fn score_pair(&self, row: usize) -> Result<super::super::SandwichScorePair> {
+            let value = 1.0 + (row % 5) as f64;
+            Ok(super::super::SandwichScorePair {
+                production: value,
+                certificate: value,
+            })
+        }
+    }
+    #[derive(Default)]
+    struct Reservation(Vec<(&'static str, usize)>);
+    impl SandwichReservation for Reservation {
+        fn reserve<T>(
+            &mut self,
+            target: &mut Vec<T>,
+            elements: usize,
+            label: &'static str,
+        ) -> Result<()> {
+            self.0.push((label, elements * std::mem::size_of::<T>()));
+            target
+                .try_reserve_exact(elements)
+                .map_err(|_| allocation(label))
+        }
+    }
+    #[test]
+    fn sequential_scratch_table_respects_ordering_budget_and_sparse_fallback() {
+        // Six group slots require exactly 198 bytes for two compensated scores
+        // and presence flags. The old row order permits 192 or 200 bytes.
+        for (nrows, sparse) in [(24, false), (25, false), (25, true)] {
+            let design = Design {
+                nrows,
+                reads: RefCell::new(Vec::new()),
+            };
+            let first: Vec<u32> = (0..nrows)
+                .map(|row| {
+                    if sparse {
+                        if row % 2 == 0 {
+                            0
+                        } else {
+                            u32::MAX
+                        }
+                    } else {
+                        (row % 3) as u32
+                    }
+                })
+                .collect();
+            let second: Vec<u32> = (0..nrows)
+                .map(|row| {
+                    if sparse {
+                        if row % 3 == 0 {
+                            u32::MAX
+                        } else {
+                            0
+                        }
+                    } else {
+                        (row % 2) as u32
+                    }
+                })
+                .collect();
+            let mut reservation = Reservation::default();
+            let result = aggregate_streaming_serial(
+                &design,
+                Multipliers(nrows),
+                &[&first, &second],
+                3,
+                &[1.0, 0.0, 0.0, 1.0],
+                10,
+                &mut reservation,
+            )
+            .expect("bounded or fallback grouping");
+            assert_eq!(result.groups, if sparse { 4 } else { 6 });
+            let table_bytes: usize = reservation
+                .0
+                .iter()
+                .filter(|(label, _)| {
+                    [
+                        "unable to reserve qualified clustered dense group scores",
+                        "unable to reserve qualified clustered dense group corrections",
+                        "unable to reserve qualified clustered dense group presence",
+                    ]
+                    .contains(label)
+                })
+                .map(|(_, bytes)| *bytes)
+                .sum();
+            let ordered = reservation.0.iter().any(|(label, _)| {
+                *label == "unable to reserve qualified clustered subset ordering"
+            });
+            if nrows == 25 && !sparse {
+                assert_eq!(table_bytes, 198);
+                assert!(table_bytes <= nrows * std::mem::size_of::<usize>());
+                assert!(!ordered);
+                assert_eq!(*design.reads.borrow(), (0..nrows).collect::<Vec<_>>());
+            } else {
+                assert_eq!(table_bytes, 0);
+                assert!(ordered);
+                let mut expected: Vec<_> = (0..nrows).collect();
+                expected.sort_unstable_by_key(|&row| (first[row], second[row], row));
+                assert_eq!(*design.reads.borrow(), expected);
+            }
+        }
+    }
 }

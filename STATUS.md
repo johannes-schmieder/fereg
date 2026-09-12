@@ -10,6 +10,45 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3 low-memory cluster scores: adopted local checkpoint
+
+Low-memory OLS now reads eligible cluster score subsets sequentially, using
+compensated group scores only when their complete table and presence flags fit
+inside the displaced N-row ordering budget. Larger/unrepresentable Cartesian
+products retain tuple sorting. Original within-group row order, lexicographic
+group order, per-group bread and independent covariance arithmetic remain;
+see [ADR 0044](docs/adr/0044-sequential-low-memory-cluster-scores.md).
+
+The [report](benchmarks/reports/development/cluster-grouping-local-2026-09-12/README.md)
+binds thirteen pairs against `2243b4d`: six primary comparisons, six controls and
+one separate pilot. Complete-command paired gains are 16.4% for low FW one-way
+clustering (0.307→0.259 s) and 48.2% for low PW two-way clustering (1.870→0.964 s).
+Primary native/scratch peaks are unchanged; full scientific exports, saved
+outputs and non-time solver diagnostics agree exactly. Every bounded control
+improves, including weak, high-cardinality fallback, small, fast, saved and no-FE
+cases. Single-pair control gains are not repeatability claims.
+
+The weak control retains a substantial pre-existing observed/reported model
+discrepancy: 29933828→29827588 native bytes versus 13460424 modeled. Primary and
+other control bounds hold. PW sampled RSS rises 0.169→0.192 GiB; no general RSS
+saving is claimed. A sample-hash-verified cache replay explains fewer repeated
+tile requests, but is explicitly source-derived rather than measured disk I/O.
+
+Nine distinct focused Rust tests and both arms of the full-dummy Stata b/V oracle
+pass, covering unit/AW/FW/PW, full/deficient rank, precise table bounds, overflow
+fallback and allocation failures. Universal static/native arm64 ABI audits pass;
+the reviewed rebuild is byte-identical to the measured prototype. Installed dist
+and unrelated Veneto work/evidence remain intact; no SCC or qualification ran.
+
+A separate sequential-histogram prototype is not adopted: its ordering kernel
+improves, but nine command pairs show under-2% noisy gains with changes in
+unchanged input work. Both experiments and all attempts are archived. Existing
+simple cluster codes and covariance/certificate order sharing were already in
+place. Next P3 work is combining subset consumers within bounded score storage,
+interaction construction/order reuse, skew and remaining score reconstruction.
+P0 model/counter reconciliation, P2/P4–P7 and R1–R5 remain open. Continue #27
+before the authorized two-agent investigation, CMG review and small SCC campaign.
+
 ## P3 inference ownership: adopted local checkpoint
 
 Ordinary fast robust/clustered OLS now packs score values only up to 32 MiB,
