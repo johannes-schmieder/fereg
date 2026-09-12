@@ -1,0 +1,186 @@
+{
+  "max_abs_differences": {
+    "V": 1.2705494208814505e-20,
+    "b": 5.984795992119984e-17,
+    "feppml_cluster": 0,
+    "feppml_dof": 0,
+    "feppml_drop_counts": 0,
+    "feppml_fe": 0,
+    "feppml_fit": 1.5205614545266144e-12,
+    "feppml_inference": 4.711301437680931e-15,
+    "feppml_receipt": 0,
+    "feppml_separation": 0,
+    "feppml_separation_sequence": 0,
+    "feppml_solver": 0,
+    "feppml_status": 0,
+    "feppml_subset": 0
+  },
+  "all_23_pairs_pass": true,
+  "all_samples_status_dof_weight_cluster_separation_receipts_exact": true,
+  "independent_certificates_pass": true,
+  "unaffected_routes_exact": true,
+  "solver_families_engines_frames_retries_fallbacks_line_searches_equal": true,
+  "outer_inner_runtime_counts_equal": true,
+  "solver_work_count_differences": {
+    "ppmlonefe-saved_separation-s31415927-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-one_fe_complete-s104729-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 5.0,
+          "candidate": 3.0
+        }
+      ]
+    },
+    "ppmlonefe-trace-one_fe_complete-s67280421-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 23.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-fw_exposure_missing-s20260819-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-trace-fw_exposure_missing-s67280421-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 23.0,
+          "candidate": 5.0
+        }
+      ]
+    },
+    "ppmlonefe-pw_cluster_offset-s104729-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-pw_cluster_offset-s20260819-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-restricted-s31415927-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-trace-pw_cluster_offset-s67280421-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 23.0,
+          "candidate": 5.0
+        }
+      ]
+    },
+    "ppmlonefe-small_narrow-s31415927-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-pw_cluster_offset-s8675309-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-fw_exposure_missing-s104729-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-fw_exposure_missing-s8675309-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 6.0,
+          "candidate": 4.0
+        }
+      ]
+    },
+    "ppmlonefe-pilot-one_fe_complete-s104729-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 5.0,
+          "candidate": 3.0
+        }
+      ]
+    },
+    "ppmlonefe-one_fe_complete-s8675309-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 5.0,
+          "candidate": 3.0
+        }
+      ]
+    },
+    "ppmlonefe-one_fe_complete-s20260819-candidate": {
+      "solver_changes": [
+        {
+          "row": 1,
+          "column": 13,
+          "baseline": 5.0,
+          "candidate": 3.0
+        }
+      ]
+    }
+  }
+}

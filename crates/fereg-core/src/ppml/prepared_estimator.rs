@@ -2265,20 +2265,22 @@ mod tests {
     }
 
     #[test]
-    fn two_fe_ppml_map_keeps_fused_projection_capacities_stable() {
-        let (mut request, loaded) = fixture(2, false, false, false, false, false);
-        request.allocation_snapshot_probe = Some(stable_allocation_probe);
-        let result = fit_prepared_ppml(request, loaded).expect("audited two-FE PPML");
-        let certificate = result
-            .memory()
-            .steady_state_allocation_certificate
-            .as_ref()
-            .expect("two-FE steady-state certificate");
-        assert!(certificate.workspace_capacity_stable);
-        assert!(certificate.linear_workspace_capacity_stable);
-        assert!(certificate.linear_session_allocation_free);
-        assert!(certificate.fresh_warm_equivalent);
-        assert!(certificate.passed);
+    fn one_and_two_fe_ppml_map_keep_fused_projection_capacities_stable() {
+        for effects in [1, 2] {
+            let (mut request, loaded) = fixture(effects, false, false, false, false, false);
+            request.allocation_snapshot_probe = Some(stable_allocation_probe);
+            let result = fit_prepared_ppml(request, loaded).expect("audited categorical PPML");
+            let certificate = result
+                .memory()
+                .steady_state_allocation_certificate
+                .as_ref()
+                .expect("categorical steady-state certificate");
+            assert!(certificate.workspace_capacity_stable);
+            assert!(certificate.linear_workspace_capacity_stable);
+            assert!(certificate.linear_session_allocation_free);
+            assert!(certificate.fresh_warm_equivalent);
+            assert!(certificate.passed);
+        }
     }
 
     #[test]

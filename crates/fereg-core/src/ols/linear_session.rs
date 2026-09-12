@@ -1451,7 +1451,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 None
             };
             if let Some(categorical) = categorical.filter(|design| {
-                matches!(design.effects().len(), 2 | 3) && design.nobs() == response.len()
+                matches!(design.effects().len(), 1..=3) && design.nobs() == response.len()
             }) {
                 (
                     None,

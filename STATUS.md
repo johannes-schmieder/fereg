@@ -10,6 +10,63 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 PPML one-FE projection: adopted local development checkpoint
+
+Against `0889721a7c781618dd9f132642a85d065e34afad`, fast PPML with one categorical
+intercept effect now enters the existing reusable categorical projector and
+fused changing-response/retained-design projection. It certifies after the first
+group sweep, preserves zero-iteration certification of useful warm candidates,
+and allocates no accelerator matrices. Current-weight raw reference norms/means,
+rank/QR policy, final-Hessian synchronization, independent certificates and
+strict RAII rollback remain unchanged. No automatic family region, memory
+admission or separate reconstruction behavior changes; see
+[ADR 0039](docs/adr/0039-ppml-one-fe-retained-projection.md).
+
+The [report](benchmarks/reports/development/ppml-one-fe-local-2026-09-12/README.md)
+and [identities](benchmarks/reports/development/ppml-one-fe-local-2026-09-12/identities.json)
+bind 23 paired comparisons / 46 measured calls: nine public primary pairs,
+ten protected pairs, three separate private allocation profiles and one pilot.
+Three-seed command medians fall 14.027→11.724 seconds for complete one-FE robust
+PPML at N983040/K50/16 threads, 4.422→3.708 for N245760/K50/four-thread FW with
+exposure/missing data, and 4.223→3.572 for N245760/K50/16-thread PW with offset and
+two-way clustering. Median paired gains are 16.3%, 16.0% and 15.7%. Projection
+medians fall 3.555→2.001, 1.201→0.730 and 1.203→0.681 seconds; strict/final
+medians fall 5.046→4.281, 1.292→1.102 and 1.243→1.078. Preparation and inference
+are largely unchanged; overlapping timers and independent medians do not sum.
+
+Reported outer/inner counts, step halvings, strict retries and fallback decisions
+are unchanged. Actual MAP iteration totals fall 5→3 and 6→4 because certified
+warm solves can require zero projections; the runtime count charges at least one
+per solve. All samples/statuses/DoF/weight/cluster/separation/receipt identities
+are exact; b/V differ at roundoff scale (max 5.99e-17 / 1.28e-20), and independent
+certificates and saved outputs pass. Unaffected weak/dense/bottleneck/cycle/
+disconnected/unbalanced and low-memory routes retain exact science. Worst
+protected slowdown is cycle 57→64 ms (+12.3%, +7 ms), below the predeclared
+max(10 ms, 5%) review threshold; small/narrow and requested-output controls improve.
+
+Primary native peaks rise 3.4–3.5% (84.16 MB large, 21.04 MB weighted) because
+the existing group/RHS workspace now serves one FE. All observed action and
+profiled phase peaks remain inside unchanged models. Real allocation audits in
+both arms record 16 events in 16 iterations, without live/peak growth: retained
+capacities and fresh/warm equivalence pass, but the whole-iteration
+allocation-free certificate remains false. Event sizes/call sites remain open;
+neither mock-probe tests nor passing science imply that operational certificate.
+
+[Validation](benchmarks/reports/development/ppml-one-fe-local-2026-09-12/validation.json)
+records 140 focused Rust tests, five licensed fixtures with r(0) sentinels and
+five profile-registration checks. New independent weighted group-mean and
+full-dummy Poisson/Hessian/sandwich oracles cover unit/FW/PW and robust/clustered
+inference. Universal static audits and native arm64 ABI tests pass; no complete
+scientific profile, SCC, Windows or qualification run occurred. The installed
+plugin and unrelated Veneto status/evidence remain preserved.
+
+Next: remaining P4 raw RHS, reference norm/mean and warm stride passes, plus the
+per-iteration allocator event; then P3 inference ownership where measured costs
+justify it. Current-frame norm reuse, skipping a known-fresh initial certificate,
+weighted PPML Schur and P5 centered tiles remain hypotheses. The
+[cost audit](benchmarks/reports/development/ppml-one-fe-local-2026-09-12/cost-audit.md)
+separates implemented coverage from these remaining experiments.
+
 ## P1 PPML numeric ownership: adopted local development checkpoint
 
 Against `b19a1cfac038dcc6fbf015cfbfaf9f51022dafb4`, production PPML now constructs

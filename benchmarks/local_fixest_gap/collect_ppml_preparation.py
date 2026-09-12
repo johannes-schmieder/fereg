@@ -9,15 +9,15 @@ from common import read_json, sha256, write_json
 from ppml_preparation_compare import PRIMARY
 
 
-def collect(root, output):
+def collect(root, output, *, prefix='ppmlprep', science_file='exact-science.json', exact=True):
     output.mkdir(parents=True, exist_ok=True)
     pairs, groups, included = [], {}, set()
-    for candidate in sorted((root / 'runs').glob('ppmlprep-*-candidate')):
-        if not (candidate / 'exact-science.json').exists():
+    for candidate in sorted((root / 'runs').glob(f'{prefix}-*-candidate')):
+        if not (candidate / science_file).exists():
             continue
         paths = dict(candidate=candidate, baseline=candidate.with_name(candidate.name.replace('-candidate', '-baseline')))
         runtimes = read_json(candidate / 'paired-runtime.json')
-        record = dict(pair=candidate.name.removesuffix('-candidate'), exact_science=True)
+        record = dict(pair=candidate.name.removesuffix('-candidate'), science_pass=True, exact_science=exact)
         for arm, path in paths.items():
             result = read_json(path / 'result.json')
             assert result['status'] == 'pass' and result['sentinel'] and result['metadata']['rc'] == 0
@@ -30,6 +30,10 @@ def collect(root, output):
                 modeled_preparation_peak=native['modeled_peak_prep'], rss_gib=result['peak_rss_gib'],
                 outer_iterations=native['outer_iterations'], inner_iterations=native['inner_iterations'],
                 step_halvings=native['step_halvings'], fallback_count=native['fallback_count'])
+            for key in ('time_weight_response_refresh', 'time_fe_projection', 'time_finite_solve',
+                        'time_strict_final_solve', 'time_fe_recovery', 'strict_profile_rejections',
+                        'observed_peak_final_solve', 'modeled_peak_final_solve'):
+                record[arm][key] = native[key]
             included.add(path)
         record['case'] = result['cell']['name']
         record['group'] = ('pilot' if '-pilot-' in record['pair'] else 'profile' if '-trace-' in record['pair']
@@ -53,12 +57,12 @@ def collect(root, output):
     with zipfile.ZipFile(output / 'numeric-evidence.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(included):
             for file in sorted(path.iterdir()):
-                if file.suffix == '.csv' or file.name in {'result.json', 'exact-science.json', 'paired-runtime.json', 'import-hashes.json', 'stata_worker.do'}:
+                if file.suffix == '.csv' or file.name in {'result.json', science_file, 'paired-runtime.json', 'import-hashes.json', 'stata_worker.do'}:
                     archive.write(file, f'runs/{path.name}/{file.name}')
         for file in sorted((root / 'ppml-data').glob('*.json')):
             archive.write(file, f'inputs/{file.name}')
     write_json(output / 'archive.json', dict(sha256=sha256(output / 'numeric-evidence.zip'),
-        completed_pairs=len(pairs), measured_calls=len(pairs)*2, all_pairs_exact_science=True,
+        completed_pairs=len(pairs), measured_calls=len(pairs)*2, all_pairs_science_pass=True, all_pairs_exact_science=exact,
         primary_pairs=sum(r['group'] == 'primary' for r in pairs),
         contents='Portable synthetic input hashes/recipes; full b/V and diagnostic tables; sample hashes; action and phase timings, allocations and sampled RSS; saved outputs; per-run worker copies where available. No licensed logs, binaries, request paths or private data.'))
     for row in summary:

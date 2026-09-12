@@ -1,0 +1,29 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -8706,6 +8706,15 @@
+                 let index = LevelIndex::from_codes(&codes, n / 8).unwrap();
+                 let source = ValidatedBorrowedInterceptSource::new(&codes, n / 8, &index).unwrap();
+                 let design = BorrowedInterceptFeDesign::new(n, vec![source.effect()]).unwrap();
++                let narrow_design =
++                    BorrowedInterceptFeDesign::new(n, vec![source.effect()]).unwrap();
++                let narrow =
++                    ReusableCategoricalMapAbsorber::new(narrow_design, 3, threads).unwrap();
++                assert!(narrow.two_fe_pcg.is_none());
++                assert!(narrow.accelerator_x0.is_none());
++                assert!(narrow.accelerator_x1.is_none());
++                assert!(narrow.accelerator_x2.is_none());
++                drop(narrow);
+                 let mut projector =
+                     ReusableCategoricalMapAbsorber::new(design, 17, threads).unwrap();
+                 assert!(projector.two_fe_pcg.is_none());
+--- a/crates/fereg-core/src/ppml/prepared_estimator.rs
++++ b/crates/fereg-core/src/ppml/prepared_estimator.rs
+@@ -2274,7 +2274,7 @@
+                 .memory()
+                 .steady_state_allocation_certificate
+                 .as_ref()
+-                .expect("two-FE steady-state certificate");
++                .expect("categorical steady-state certificate");
+             assert!(certificate.workspace_capacity_stable);
+             assert!(certificate.linear_workspace_capacity_stable);
+             assert!(certificate.linear_session_allocation_free);

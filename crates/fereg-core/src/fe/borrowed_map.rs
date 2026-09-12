@@ -1200,9 +1200,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP dimensions must be positive",
             ));
         }
-        if !matches!(design.effects().len(), 2 | 3) {
+        if !matches!(design.effects().len(), 1..=3) {
             return Err(invalid_argument(
-                "reusable categorical MAP requires exactly two or three effects",
+                "reusable categorical MAP requires one to three effects",
             ));
         }
         let max_level_members = design
@@ -1230,8 +1230,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         } else {
             None
         };
+        // A single categorical projection is exact and needs no observation-sized accelerator.
         let (accelerator_x0, accelerator_x1, accelerator_x2) =
-            if max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS && two_fe_pcg.is_none() {
+            if design.effects().len() > 1
+                && max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS
+                && two_fe_pcg.is_none()
+            {
                 (
                     Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
                     Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
@@ -1561,7 +1565,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 None,
                 config.symmetric,
             )?;
-            if iteration % config.check_every == 0 || iteration == pilot_limit {
+            if self.design.effects().len() == 1
+                || iteration % config.check_every == 0
+                || iteration == pilot_limit
+            {
                 let certificate = certify(
                     &self.design,
                     weights,
@@ -8683,6 +8690,92 @@ mod tests {
                 }
             })
             .unwrap();
+        }
+    }
+
+    #[test]
+    fn reusable_one_fe_matches_weighted_group_means_and_reuses_warm_residual() {
+        for threads in [1, 4, 16] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            pool.install(|| {
+                let n = 16_384;
+                let codes: Vec<u32> = (0..n).map(|row| (row / 8) as u32).collect();
+                let index = LevelIndex::from_codes(&codes, n / 8).unwrap();
+                let source = ValidatedBorrowedInterceptSource::new(&codes, n / 8, &index).unwrap();
+                let design = BorrowedInterceptFeDesign::new(n, vec![source.effect()]).unwrap();
+                let narrow_design =
+                    BorrowedInterceptFeDesign::new(n, vec![source.effect()]).unwrap();
+                let narrow =
+                    ReusableCategoricalMapAbsorber::new(narrow_design, 3, threads).unwrap();
+                assert!(narrow.two_fe_pcg.is_none());
+                assert!(narrow.accelerator_x0.is_none());
+                assert!(narrow.accelerator_x1.is_none());
+                assert!(narrow.accelerator_x2.is_none());
+                drop(narrow);
+                let mut projector =
+                    ReusableCategoricalMapAbsorber::new(design, 17, threads).unwrap();
+                assert!(projector.two_fe_pcg.is_none());
+                assert!(projector.accelerator_x0.is_none());
+                assert!(projector.accelerator_x1.is_none());
+                assert!(projector.accelerator_x2.is_none());
+                let capacities = projector.capacities();
+                for (frame, width) in [(0, 17), (1, 1), (2, 17)] {
+                    let weights: Vec<f64> =
+                        (0..n).map(|r| 1.0 + ((r + frame) % 7) as f64).collect();
+                    let columns: Vec<Vec<f64>> = (0..width)
+                        .map(|j| {
+                            (0..n)
+                                .map(|r| {
+                                    if j == 0 {
+                                        (r / 8) as f64
+                                    } else {
+                                        ((r * (j + 1) + frame) % 19) as f64
+                                    }
+                                })
+                                .collect()
+                        })
+                        .collect();
+                    let raw = DenseMatrix::from_columns(&columns).unwrap();
+                    let actual = projector
+                        .absorb(BorrowedMapWeights::Provided(&weights), raw, config())
+                        .unwrap();
+                    assert!(actual.report().certified());
+                    assert_eq!(actual.report().iterations, 1);
+                    for column in 0..width {
+                        for group in 0..n / 8 {
+                            let rows = group * 8..group * 8 + 8;
+                            let denominator: f64 = rows.clone().map(|r| weights[r]).sum();
+                            let mean = rows
+                                .clone()
+                                .map(|r| weights[r] * columns[column][r])
+                                .sum::<f64>()
+                                / denominator;
+                            for row in rows {
+                                assert!(
+                                    (actual.residualized()[(row, column)]
+                                        - (columns[column][row] - mean))
+                                        .abs()
+                                        < 1e-11
+                                );
+                            }
+                        }
+                    }
+                    let within = actual.residualized().clone();
+                    let warm = projector
+                        .absorb(
+                            BorrowedMapWeights::Provided(&weights),
+                            within.clone(),
+                            config(),
+                        )
+                        .unwrap();
+                    assert_eq!(warm.report().iterations, 0);
+                    assert_eq!(warm.residualized(), &within);
+                    assert_eq!(projector.capacities(), capacities);
+                }
+            });
         }
     }
 

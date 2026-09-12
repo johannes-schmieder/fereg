@@ -61,6 +61,12 @@ are fixed by
 Canonical PPML predictors and their cancellation-aware arithmetic check are
 specified in [working-response reconstruction](ppml_reconstruction.md).
 
+Fast PPML with one categorical intercept effect uses the existing reusable
+categorical projector and fused changing-response/retained-design projection.
+It preserves current-weight reference scales and independent certificates,
+allocates no accelerator matrices, and leaves low-memory and slope routes
+unchanged; see [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md).
+
 Numeric preparation first classifies borrowed sources without observation-sized
 allocation. After generation-zero admission, the same visitor constructs the
 row ledger and weight reports, and the owner consumes the offset/exposure buffer
