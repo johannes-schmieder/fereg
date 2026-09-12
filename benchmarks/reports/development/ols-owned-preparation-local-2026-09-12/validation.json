@@ -1,0 +1,166 @@
+{
+  "candidate_plugin_sha256": "5a478f839cc3b21d2fb66ceb28ecfcc2c8555a711d83c52cc44489d49178e0b6",
+  "constrained_memory": {
+    "available_bytes": 543870912,
+    "fast_bytes": 7323528,
+    "fast_stata_rc": 909,
+    "low_and_auto_stata_rc": 0,
+    "low_bytes": 3492104,
+    "usable_bytes": 7000000
+  },
+  "fixture_source_sha256": {
+    "ci/feppml_smoke.do": "7ae9839ed434d14b5934ece9a8e311aa236ed499b2ec452759c52885064398c4",
+    "tests/stata/development/ols_native_input.do": "7496a8c52687fb150c140783dc9cfaaaef6c1c7b44f1173232695de8ab7cd813",
+    "tests/stata/development/ols_owned_preparation.do": "ba64089dc59b72bf6a7b83cf2732c2a8c253b5c52f2d5a1e05f115ed3a6c8848",
+    "tests/stata/installation/estimate_ols_eclass_transaction.do": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+    "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do": "2062274e9a6265d538482e020f9999e9d56a5451351db4d78cd160e9c5b65cad",
+    "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do": "d4c6c5f59b9b86c57634b893bcad5e25309c3c4226143c5188e823591e9f38b3"
+  },
+  "licensed_fixtures": [
+    {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/ols_owned_preparation.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/ols_native_input.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 4
+    },
+    {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 1
+    },
+    {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "ci/feppml_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 2
+    }
+  ],
+  "production_compile_inputs_match_measured_candidate": true,
+  "production_reference_and_solver_files_unchanged": [
+    "crates/fereg-core/src/ols/prepared_fit.rs",
+    "crates/fereg-core/src/ols/linear_session.rs",
+    "crates/fereg-core/src/ppml/prepared_irls.rs",
+    "Cargo.lock",
+    "references.lock.toml"
+  ],
+  "python_boundary_screen": {
+    "baseline_failed": 1,
+    "baseline_log_sha256": "b147d6540e473c18aa9dc9c8b774e17277ab0aed9550fd374ae3a59dba286520",
+    "baseline_passed": 25,
+    "candidate_failed": 1,
+    "candidate_log_sha256": "057f3f4488001e6967715a8eb05c440823bdf7d12d2cf4ad6a227c54112b2d33",
+    "candidate_passed": 25,
+    "unchanged_failure": "test_ppml_session_uses_a_concrete_prepared_view_in_hot_loops: dyn PreparedOlsFitView appears in unchanged ols/prepared_fit.rs"
+  },
+  "rust_tests": [
+    {
+      "failed": 0,
+      "filter": "ols::prepared",
+      "log_sha256": "7fd820beb369d199aae42655c2b9d8d31a8b6403a9c625d60278328d7d2926a1",
+      "passed": 160
+    },
+    {
+      "failed": 0,
+      "filter": "estimate::tests (also matches ppml_estimate::tests)",
+      "log_sha256": "9e7c27e4a896015ee5a50e6f684fb795263d1258cd84c940be3f0ecd62bbe6bf",
+      "passed": 40
+    },
+    {
+      "failed": 0,
+      "filter": "prepared_robust_oracle + prepared_clustered_oracle + categorical_cluster_preparation",
+      "log_sha256": "c17d9cb767197891e38905ae2285b20bd46662bbcb4769fe9eaa813f37c4cc00",
+      "passed": 29
+    }
+  ],
+  "scope": "local development, not qualification"
+}

@@ -10,6 +10,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{factorize_code_interaction, CategoricalCodeView};
 use crate::prepared_categorical_data::{
     prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
+    prepare_categorical_ols_data_owned_with_cluster_sources,
     PreparedCategoricalOlsData,
 };
 
@@ -118,6 +119,23 @@ pub fn prepare_categorical_ols_clustered_data(
     let cluster_sources = validate_request(request)?;
     let ols =
         prepare_categorical_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    finish_prepare_categorical_ols_clusters(request, ols)
+}
+
+/// Owned OLS cluster preparation; PPML retains its separately admitted path.
+pub fn prepare_categorical_ols_clustered_data_owned(
+    request: &OlsClusteredRequestV1,
+    loaded: LoadedOlsInput,
+) -> Result<PreparedCategoricalOlsClusteredData> {
+    let cluster_sources = validate_request(request)?;
+    let ols = prepare_categorical_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    finish_prepare_categorical_ols_clusters(request, ols)
+}
+
+fn finish_prepare_categorical_ols_clusters(
+    request: &OlsClusteredRequestV1,
+    ols: PreparedCategoricalOlsData,
+) -> Result<PreparedCategoricalOlsClusteredData> {
     let mut reservation = SystemCategoricalClusterReservation;
     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
     let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };

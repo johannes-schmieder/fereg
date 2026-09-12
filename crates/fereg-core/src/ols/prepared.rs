@@ -628,29 +628,31 @@ pub fn prepare_ols_data(
     prepare_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
-/// Prepare unweighted observations in owned plugin buffers. Incomplete samples
-/// use the same classifier as borrowed preparation, then compact each column
-/// independently. Weighted inputs retain the general preparation path.
+/// Prepare observations in owned plugin buffers. The authoritative classifier
+/// determines the shared sample before stable column compaction; supplied
+/// weights retain their kind and unmodified reference values.
 pub fn prepare_ols_data_owned(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
 ) -> Result<PreparedOlsData> {
-    if loaded.analytic_weight.is_some()
-        || loaded.frequency_weight.is_some()
-        || loaded.probability_weight.is_some()
-    {
-        return prepare_ols_data(request, &loaded);
-    }
-    let model = request.validate_and_compile_with_cluster_sources(&[])?;
+    prepare_ols_data_owned_with_cluster_sources(request, loaded, &[])
+}
+
+pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<PreparedOlsData> {
+    let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, &loaded)?;
-    validate_candidate_categorical_domain(request, &loaded, &[])?;
+    validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
     validate_candidate_weight_domain(&loaded)?;
     let sample = if is_full_retained_unweighted_sample(&loaded) {
         take_full_retained_unweighted_sample(loaded)?
     } else {
-        take_incomplete_unweighted_sample(request, loaded)?
+        take_classified_sample(request, loaded, cluster_sources)?
     };
-    finish_prepare_ols_data(request, &[], model, sample)
+    finish_prepare_ols_data(request, cluster_sources, model, sample)
 }
 
 pub(crate) fn prepare_ols_data_with_cluster_sources(
@@ -890,9 +892,10 @@ fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<Prepar
     })
 }
 
-fn take_incomplete_unweighted_sample(
+fn take_classified_sample(
     request: &OlsRequestV1,
     mut loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
 ) -> Result<PreparedNumericSample> {
     let n_original = loaded.candidate.len();
     let n_candidate = loaded
@@ -923,12 +926,17 @@ fn take_incomplete_unweighted_sample(
         candidate: &loaded.candidate,
         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
         regressors: &regressor_views,
-        weights: WeightInput::None,
+        weights: loaded_weight(&loaded).map_or(WeightInput::None, |(kind, column)| {
+            WeightInput::Provided {
+                kind,
+                column: NumericColumnView::with_missing(&column.values, &column.missing),
+            }
+        }),
         adjustment: AdjustmentInput::None,
     };
     classify_numeric_sample_into_mask(
         &input,
-        &source_uses(request, &[])?,
+        &source_uses(request, cluster_sources)?,
         &OlsPreparationPolicy,
         &mut drop_reasons,
     )?;
@@ -944,8 +952,10 @@ fn take_incomplete_unweighted_sample(
         // Reuse storage only up to the general path's candidate-axis bound.
         // Restricted samples must not retain full-data column capacity.
         if column.values.capacity() <= n_candidate {
-            for (active, original) in original_row_by_active.iter().copied().enumerate() {
-                column.values[active] = column.values[original];
+            if original_row_by_active.len() != n_original {
+                for (active, original) in original_row_by_active.iter().copied().enumerate() {
+                    column.values[active] = column.values[original];
+                }
             }
             column.values.truncate(original_row_by_active.len());
         } else {
@@ -974,6 +984,20 @@ fn take_incomplete_unweighted_sample(
             .try_for_each(|(_, column)| compact(column))?;
     }
     compact(&mut loaded.outcome)?;
+    let mut weight = match (
+        loaded.analytic_weight.take(),
+        loaded.frequency_weight.take(),
+        loaded.probability_weight.take(),
+    ) {
+        (None, None, None) => None,
+        (Some(column), None, None) => Some((WeightKind::Analytic, column)),
+        (None, Some(column), None) => Some((WeightKind::Frequency, column)),
+        (None, None, Some(column)) => Some((WeightKind::Probability, column)),
+        _ => return Err(invalid("loaded OLS input cannot contain more than one weight column")),
+    };
+    if let Some((_, column)) = &mut weight {
+        compact(column)?;
+    }
     let mut regressors = Vec::new();
     regressors
         .try_reserve_exact(loaded.numeric_sources.len())
@@ -990,7 +1014,9 @@ fn take_incomplete_unweighted_sample(
         original_row_by_active,
         outcome: loaded.outcome.values,
         regressors,
-        weights: PreparedWeights::None,
+        weights: weight.map_or(PreparedWeights::None, |(kind, column)| {
+            PreparedWeights::Provided { kind, values: column.values }
+        }),
         adjustment: crate::data::PreparedAdjustment::None,
         drop_reasons,
     })
@@ -2376,7 +2402,7 @@ mod tests {
                 probability_weight: None,
             };
             let expected = prepare_ols_data(&request, &loaded).unwrap().sample;
-            let actual = take_incomplete_unweighted_sample(&request, loaded).unwrap();
+            let actual = take_classified_sample(&request, loaded, &[]).unwrap();
             assert_eq!(actual, expected);
             for (a, b) in actual
                 .outcome
@@ -2388,6 +2414,76 @@ mod tests {
             }
             assert!(actual.outcome.capacity() <= actual.n_candidate);
             assert!(actual.regressors[0].capacity() <= actual.n_candidate);
+        }
+    }
+
+    #[test]
+    fn owned_weights_preserve_samples_errors_bits_and_capacity() {
+        let n = 32_771;
+        for (kind, role) in [
+            (WeightKind::Analytic, OlsInputRole::AnalyticWeight),
+            (WeightKind::Frequency, OlsInputRole::FrequencyWeight),
+            (WeightKind::Probability, OlsInputRole::ProbabilityWeight),
+        ] {
+            let mut request = request(16, true);
+            request.bindings.push(OlsInputBinding { stata_var_position: 19, role });
+            for case in 0..5 {
+                let mut loaded = LoadedOlsInput {
+                    candidate: (0..n).map(|row| case != 2 || row % 3 == 0).collect(),
+                    outcome: LoadedNumericColumn { values: vec![-0.0; n], missing: vec![false; n] },
+                    numeric_sources: (1..=16).map(|source| (SourceId::new(source).unwrap(),
+                        LoadedNumericColumn { values: vec![f64::from_bits(1); n], missing: vec![false; n] })).collect(),
+                    analytic_weight: None, frequency_weight: None, probability_weight: None,
+                };
+                let mut weight = LoadedNumericColumn {
+                    values: (0..n).map(|row| if kind == WeightKind::Frequency {
+                        (row % 3 + 1) as f64
+                    } else if row % 2 == 0 { 1e-100 } else { 1e100 }).collect(),
+                    missing: vec![false; n],
+                };
+                if case > 0 {
+                    loaded.outcome.missing[2] = true;
+                    loaded.numeric_sources[15].1.missing[16_385] = true;
+                    weight.missing[4] = true;
+                    if kind == WeightKind::Analytic { weight.values[5] = 0.0; }
+                }
+                if case >= 3 {
+                    // Weight-domain validation precedes availability, including
+                    // missing outcomes, and chooses the first original row.
+                    weight.values[2] = -1.0;
+                    weight.values[16_386] = -2.0;
+                    loaded.candidate[2] = case != 4;
+                }
+                match kind {
+                    WeightKind::Analytic => loaded.analytic_weight = Some(weight),
+                    WeightKind::Frequency => loaded.frequency_weight = Some(weight),
+                    WeightKind::Probability => loaded.probability_weight = Some(weight),
+                    WeightKind::Importance => unreachable!(),
+                }
+                let expected = prepare_ols_data(&request, &loaded);
+                for threads in [1, 4] {
+                    let input = loaded.clone();
+                    let actual = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
+                        .install(|| prepare_ols_data_owned(&request, input)).unwrap();
+                    match (&expected, actual) {
+                        (Ok(expected), Ok(actual)) => {
+                            assert_eq!(*expected, actual);
+                            let PreparedWeights::Provided { kind: actual_kind, values } = &actual.sample.weights else { panic!("weight lost") };
+                            assert_eq!(kind, *actual_kind);
+                            assert!(values.capacity() <= actual.sample.n_candidate);
+                            assert!(actual.sample.outcome.capacity() <= actual.sample.n_candidate);
+                            assert!(actual.sample.regressors.iter().all(|column| column.capacity() <= actual.sample.n_candidate));
+                            assert!(actual.sample.outcome.iter().all(|value| value.to_bits() == (-0.0_f64).to_bits()));
+                            assert!(actual.sample.regressors.iter().flatten().all(|value| value.to_bits() == 1));
+                        }
+                        (Err(expected), Err(actual)) => {
+                            assert_eq!(expected.code, actual.code);
+                            assert_eq!(expected.message, actual.message);
+                        }
+                        other => panic!("owned weight outcome changed: {other:?}"),
+                    }
+                }
+            }
         }
     }
 
@@ -3494,6 +3590,7 @@ mod tests {
             probability_weight: None,
         };
         let weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
+        assert_eq!(weighted, prepare_ols_data_owned(&request, loaded.clone()).unwrap());
         assert_eq!(weighted.sample.retained_rows(), &[0]);
         assert_eq!(
             weighted.sample.drop_reasons,

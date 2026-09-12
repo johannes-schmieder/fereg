@@ -20,7 +20,7 @@ use crate::fe::{
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_map_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
-    BoundCategoricalAbsorbEffect, CategoricalAbsorbedEffectView, CategoricalCodeView,
+    BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView, CategoricalCodeView,
     CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
     RecoveredCategoricalEffects, SingletonMultiplicity,
 };
@@ -34,7 +34,7 @@ use crate::topology_dof::{
 };
 use rayon::prelude::*;
 
-use crate::ols::prepare_ols_data_with_cluster_sources;
+use crate::ols::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
 
 use super::{
     LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficientStatus,
@@ -786,6 +786,27 @@ pub fn prepare_categorical_ols_data(
     prepare_categorical_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
+/// Consume source columns before constructing the unchanged interaction/slope
+/// topology and applying its singleton fixed point.
+pub fn prepare_categorical_ols_data_owned(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+) -> Result<PreparedCategoricalOlsData> {
+    prepare_categorical_ols_data_owned_with_cluster_sources(request, loaded, &[])
+}
+
+pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<PreparedCategoricalOlsData> {
+    let plan = plan_categorical_absorbed_request(request)?;
+    let availability = prepare_ols_data_owned_with_cluster_sources(
+        plan.availability_request(), loaded, cluster_sources,
+    )?;
+    finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
+}
+
 /// PPML preparation boundary that also admits an empty absorbed topology.
 ///
 /// The public categorical OLS constructor continues to require explicit
@@ -875,6 +896,16 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
         loaded,
         cluster_sources,
     )?;
+    finish_prepare_categorical_ols_data(request, cluster_sources, ppml_structural_constant, plan, availability)
+}
+
+fn finish_prepare_categorical_ols_data(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+    ppml_structural_constant: bool,
+    plan: CategoricalAbsorbRequestPlan,
+    availability: PreparedOlsData,
+) -> Result<PreparedCategoricalOlsData> {
     if !availability.singletons.kept_by_request
         || availability.singletons.num_singletons != 0
         || availability.singletons.cascade_events != 0

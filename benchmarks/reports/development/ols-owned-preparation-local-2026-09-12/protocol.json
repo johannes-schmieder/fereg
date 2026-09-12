@@ -1,0 +1,14 @@
+{
+  "schema": "ols-owned-preparation-local-protocol-v1",
+  "baseline_commit": "e93fe437f1d8855e1c3aa47ad03026eb23a9942d",
+  "target": "At least 10 percent full-command improvement on one wide preparation target",
+  "protected_review": "Investigate every paired slowdown exceeding both 5 percent and 0.010 seconds; repeat with fresh paired seeds before deciding",
+  "science": "Exact samples, statuses, b/V, fit/DoF/certificate and solver decisions except timings for arithmetic-preserving ownership changes; independent explicit-dummy and frequency-replication oracles",
+  "primary": "Six OLS preparation branches, three seeds, rotated order, untimed small warm-up; 983040 or 245760 rows, 50 controls, selected 4/16 threads",
+  "controls": "12 stratified controls: complete IID, weak/dense/bottleneck/cycle/disconnected/unbalanced, small/narrow, no FE, low memory, saved outputs, restricted sample",
+  "traces": "Five representative separate traced pairs; trace medians are diagnostic, not paired speed claims",
+  "memory": "Existing modeled/native allocator peaks, process tree RSS sampled at 10ms; native capacity proof must retain candidate-axis bound",
+  "scope": "Local macOS development only; no SCC, Windows or qualification",
+  "baseline_plugin_sha256": "b5e1f1a6471e1b38cc20057499504c03442ef687499ef2fed09167dcb2d72331",
+  "candidate_plugin_sha256": "5a478f839cc3b21d2fb66ceb28ecfcc2c8555a711d83c52cc44489d49178e0b6"
+}

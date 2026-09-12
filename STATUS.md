@@ -10,6 +10,63 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0/P1 OLS preparation: adopted local development checkpoint
+
+Roadmap [#27](https://github.com/johannes-schmieder/fereg/issues/27) supersedes
+#26 and #16--25 for optimization priorities. The baseline for this work is
+`e93fe437f1d8855e1c3aa47ad03026eb23a9942d`, including the committed PPML
+reconstruction repair. Its separate evidence and the Veneto status edits below
+are preserved; no cluster job or installed/dist plugin was changed.
+
+All six OLS preparation branches now consume loaded source buffers through
+one ownership-aware boundary: unweighted/AW/FW/PW; IID/robust/one- and multiway
+cluster inference; simple, interacted, slope and saved absorbed terms. The
+existing row classifier, original-row domain precedence, raw weight kinds and
+values, cluster missingness before singleton deletion, true categorical
+singleton fixed point, final coding and candidate-capacity bounds are retained.
+Wide preparation reuses the requested worker team after SPI loading. PPML
+preflight/materialization and all solver/inference/transaction rules remain
+unchanged. [ADR 0036](docs/adr/0036-native-ols-input-preparation.md) and the
+[coverage/cost report](benchmarks/reports/development/ols-owned-preparation-local-2026-09-12/README.md)
+record this extension.
+
+[Source/artifact identities](benchmarks/reports/development/ols-owned-preparation-local-2026-09-12/identities.json)
+bind isolated universal baseline/candidate plugins. The
+[41 paired comparisons](benchmarks/reports/development/ols-owned-preparation-local-2026-09-12/comparisons.json)
+include 82 successful measured local calls. Three-seed command medians fall
+from 1.870 to 1.294 seconds for unweighted robust sparse-missing N983040/K50,
+1.197 to 0.641 for AW IID missing, 0.652 to 0.527 for FW clustering at N245760,
+0.490 to 0.352 for complete PW robust, and 0.638 to 0.510 for an interacted FE
+with two-way clustering. Separate traces reduce AW preparation from 0.598 to
+0.042 seconds while fit/inference remains about 0.204 seconds.
+
+All pairs have exact full b/V, sample, status, DoF, fit, cluster and certificate
+results and solver decisions apart from timings. Native peaks agree in 35/41
+pairs, including every primary pair; restricted preparation falls from 129.1
+to 118.3 MB. Weak/dense/bottleneck/cycle/disconnected/unbalanced controls retain
+science, with at most 7 ms slowdown. Small/narrow repeats remain 7 versus 9 ms;
+this disclosed regression is within the predeclared 10 ms review envelope.
+The original 1.973-second AW candidate input-loading outlier remains in the
+primary data; three separate rechecks are 0.614--0.623 versus 1.172--1.194.
+
+[Validation](benchmarks/reports/development/ols-owned-preparation-local-2026-09-12/validation.json):
+160 core tests, 40 plugin tests, 29 independent Rust oracle/preparation tests,
+six distinct licensed Stata fixtures plus a constrained-memory rerun, universal
+binary audit and actual arm64 ABI/self-test pass. The 543870912-byte constraint
+rejects fast with r(909) and admits low/auto with matching science. The Python
+boundary screen remains 25/26 on both baseline and candidate: an unchanged
+prepared-view dynamic-dispatch assertion fails in `ols/prepared_fit.rs`.
+No test is weakened or reported as passing when it failed.
+
+P1 OLS ownership/weights/clustering/complex terms/team reuse is adopted for local
+development. P0's source-derived copy costs and representative routes are
+recorded; hardware traffic and full setup/build counts remain unmeasured.
+PPML post-admission ownership, adjustment loading/ado work and restricted/mixed
+SPI batching remain open. Next priorities remain P2 weighted absorption and
+P4 one-FE PPML passes, then measured inference ownership and stable centered
+tiles under #27. No new automatic solver region, SCC, Windows, qualification,
+push or release is implied.
+
 ## PPML reconstruction fix: completed development validation
 
 The requested Veneto repair changes the retained weighted-linear session's

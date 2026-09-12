@@ -41,7 +41,7 @@ pub use linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
     LinearSessionPhaseAllocatorProbe,
 };
-pub(crate) use prepared::prepare_ols_data_with_cluster_sources;
+pub(crate) use prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
 pub use prepared::{
     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
     OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
@@ -51,7 +51,7 @@ pub use prepared::{
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
 pub use prepared_categorical_clusters::{
-    prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
+    prepare_categorical_ols_clustered_data, prepare_categorical_ols_clustered_data_owned, PreparedCategoricalOlsClusteredData,
 };
 pub use prepared_clustered::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_ols_clustered_map,
@@ -61,7 +61,7 @@ pub use prepared_clustered::{
     PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
-    prepare_ols_clustered_data, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
+    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
     PreparedOlsClusterDimension, PreparedOlsClusteredData,
 };
 pub use prepared_dof::{

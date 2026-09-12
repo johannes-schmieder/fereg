@@ -49,6 +49,8 @@ def sample_hash(path):
 
 
 def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None, source=None, trace=False, solver="auto"):
+    # Fail before launching a worker if sandbox policy prevents RSS sampling.
+    psutil.pids()
     output.mkdir(parents=True, exist_ok=False)
     threads = cell["threads"]
     config = {"output": str(output), "cell": cell, "data": str(data), "warm": str(warm), "phase": phase, "trace": trace, "solver": solver, "source": str(source) if source else None, "block_width": os.environ.get("FEREG_LOCAL_BLOCK_WIDTH", "1")}
@@ -81,6 +83,8 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
         command = [os.environ["STATA_MP_PATH"], "-b", "do", str(HERE / "stata_worker.do"),
                    str(source or root / "work/candidate"), str(root / "work/refs"), str(data), str(warm), str(output),
                    arm, cell["model"], str(cell["k"]), str(threads), str(len(cell["effects"])), phase, str(import_path)]
+        command.extend('"' + str(cell.get(key, "")) + '"' for key in
+                       ("weight", "vce", "absorb", "restriction", "fit_options"))
     maximum_rss = 0
     samples = 0
     peaks_threads = 0

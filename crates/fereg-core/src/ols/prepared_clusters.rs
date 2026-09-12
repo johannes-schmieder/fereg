@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::metadata::SourceId;
 
-use super::prepared::prepare_ols_data_with_cluster_sources;
+use super::prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
 use super::{LoadedOlsInput, OlsRequestV1, PreparedOlsData};
 
 /// One declared cluster dimension. Multiple numeric sources describe one
@@ -206,6 +206,24 @@ pub fn prepare_ols_clustered_data(
 ) -> Result<PreparedOlsClusteredData> {
     let cluster_sources = validate_request(request)?;
     let ols = prepare_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    finish_prepare_ols_clusters(request, ols)
+}
+
+/// Consume loaded columns while preserving pre-singleton cluster availability
+/// and final-sample cluster coding.
+pub fn prepare_ols_clustered_data_owned(
+    request: &OlsClusteredRequestV1,
+    loaded: LoadedOlsInput,
+) -> Result<PreparedOlsClusteredData> {
+    let cluster_sources = validate_request(request)?;
+    let ols = prepare_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    finish_prepare_ols_clusters(request, ols)
+}
+
+fn finish_prepare_ols_clusters(
+    request: &OlsClusteredRequestV1,
+    ols: PreparedOlsData,
+) -> Result<PreparedOlsClusteredData> {
     let mut reservation = SystemClusterReservation;
     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
     let prepared = PreparedOlsClusteredData { ols, clusters };
@@ -597,6 +615,40 @@ pub(super) mod tests {
             target
                 .try_reserve_exact(requested)
                 .map_err(|_| allocation("test prepared cluster string reservation failed"))
+        }
+    }
+
+    #[test]
+    fn owned_cluster_weights_preserve_missingness_singletons_and_final_codes() {
+        for role in [None, Some(OlsInputRole::AnalyticWeight), Some(OlsInputRole::FrequencyWeight), Some(OlsInputRole::ProbabilityWeight)] {
+            let (mut request, mut loaded) = fixture();
+            request.ols.keep_singletons = false;
+            request.ols.absorbed_terms = vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                categorical_sources: vec![SourceId::new(2).unwrap()], slope_sources: vec![],
+                label: "a".into(), saved_name: String::new(),
+            }];
+            loaded.numeric_sources[2].1.missing[0] = true;
+            loaded.numeric_sources[2].1.missing[6] = true;
+            loaded.candidate[7] = false;
+            if let Some(role) = role {
+                request.ols.bindings.push(OlsInputBinding { stata_var_position: 6, role });
+                let weight = column(vec![2.0; 8]);
+                match role {
+                    OlsInputRole::AnalyticWeight => loaded.analytic_weight = Some(weight),
+                    OlsInputRole::FrequencyWeight => loaded.frequency_weight = Some(weight),
+                    OlsInputRole::ProbabilityWeight => loaded.probability_weight = Some(weight),
+                    _ => unreachable!(),
+                }
+            }
+            let expected = prepare_ols_clustered_data(&request, &loaded).unwrap();
+            let actual = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
+            assert_eq!(expected, actual);
+            assert_eq!(actual.ols.sample.drop_reason(0), Some(crate::DropReason::MissingCluster));
+            assert_eq!(actual.ols.sample.drop_reason(6), Some(crate::DropReason::MissingCluster));
+            assert_eq!(actual.ols.sample.drop_reason(1), Some(if role == Some(OlsInputRole::FrequencyWeight) {
+                crate::DropReason::Retained
+            } else { crate::DropReason::Singleton }));
         }
     }
 

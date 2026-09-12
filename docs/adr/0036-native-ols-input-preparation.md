@@ -24,18 +24,23 @@ The OLS transaction preserves observation order directly and omits the
 remain in Stata. None of these operations sorts; native row maps govern
 stores. Any future sorting operation must preserve order on all exits.
 
-After all SPI loading finishes, wide IID preparation without categorical
-interaction/slope/saved-effect requirements may run on the same requested
-worker team used by estimation. The guard requires at least 16 numeric
+After all SPI loading finishes, OLS preparation for every covariance and
+absorbed-term representation may run on the same requested worker team used
+by estimation. The guard requires at least 16 numeric
 sources and 16,384 candidate-axis rows. The completeness predicate checks
 independent columns in parallel only inside an installed team. It selects
-an ownership shortcut. Incomplete unweighted IID inputs use the same row
+an ownership shortcut. Incomplete or weighted inputs use the same row
 classifier in independent 16,384-row blocks, with errors selected in original
 row order. Stable column compaction consumes its retained-row map. Input
 buffers are reused within the former candidate-axis capacity bound; restricted
 samples otherwise allocate compact columns fallibly. Narrow inputs classify
-and compact serially. Weighted and other preparation paths, including PPML's
-allocation-free preflight visitor, are unchanged. No SPI session enters the
+and compact serially. Supplied AW/FW/PW values are compacted without arithmetic
+or a change of weight kind. Cluster-only source availability precedes singleton
+deletion; final cluster coding and interaction/slope topology use the existing
+sample-bound constructors. The categorical availability request still disables
+synthetic-source pruning before the true interaction/slope singleton pass.
+PPML retains its borrowed materialization and allocation-free preflight visitor.
+No SPI session enters the
 worker closure and no global Rayon pool is created.
 
 No solver, sample, weight, rank, covariance, tolerance, certificate, or public
@@ -52,3 +57,8 @@ The [compaction report](../../benchmarks/reports/development/fixest-compaction-l
 records the subsequent incomplete-unweighted implementation, source patches,
 repeated missing-input comparisons, retained-pair memory checks, singleton
 negative controls and independent restricted-sample dummy regressions.
+
+The [P0/P1 ownership report](../../benchmarks/reports/development/ols-owned-preparation-local-2026-09-12/README.md)
+records the subsequent OLS extension across weights, covariance types and
+complex absorbed terms, with isolated source/artifact identities, independent
+oracles and paired command measurements. It does not broaden solver admission.

@@ -1,5 +1,5 @@
 use fereg_core::{
-    fit_prepared_ols_robust_map, prepare_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
+    fit_prepared_ols_robust_map, prepare_ols_data_owned, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
     CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig, RawTermKind,
@@ -521,7 +521,7 @@ fn prepare_continuous_case(
         });
     }
     let raw_weight = weight_values(weights);
-    prepare_ols_data(
+    prepare_ols_data_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms: effects
@@ -541,7 +541,7 @@ fn prepare_continuous_case(
             include_intercept,
             keep_singletons: true,
         },
-        &LoadedOlsInput {
+        LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome.to_vec()),
             numeric_sources: regressors
@@ -606,7 +606,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
             }],
         });
     }
-    prepare_ols_data(
+    prepare_ols_data_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -658,7 +658,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
             include_intercept: true,
             keep_singletons: true,
         },
-        &LoadedOlsInput {
+        LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome),
             numeric_sources: vec![
@@ -685,7 +685,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
         label: label.to_owned(),
         saved_name: String::new(),
     };
-    prepare_ols_data(
+    prepare_ols_data_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -722,7 +722,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
             include_intercept: true,
             keep_singletons: true,
         },
-        &LoadedOlsInput {
+        LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome.to_vec()),
             numeric_sources: vec![

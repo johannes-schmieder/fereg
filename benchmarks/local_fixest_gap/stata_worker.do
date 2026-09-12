@@ -3,7 +3,7 @@ clear all
 set more off
 set varabbrev off
 set linesize 255
-args source refs data warm output arm model k threads dimensions phase import_path
+args source refs data warm output arm model k threads dimensions phase import_path weight vce absorb restriction fit_options
 local processors = min(`threads', c(processors_lic), c(processors_mach))
 set processors `processors'
 sysdir set PLUS `"`refs'"'
@@ -18,17 +18,24 @@ local xvars
 forvalues j = 1/`k' {
     local xvars `xvars' x`j'
 }
-local effects g1
+local effects
+if `dimensions' >= 1 local effects g1
 if `dimensions' >= 2 local effects `effects' g2
 if `dimensions' == 3 local effects `effects' g3
 local solver : environment FEREG_LOCAL_SOLVER
 local pool : environment FEREG_LOCAL_POOL
 if "`pool'" == "" local pool 10
-local command `"`arm' y `xvars', absorb(`effects')"'
+local absorption
+if "`effects'" != "" local absorption absorb(`effects')
+if "`absorb'" != "" local absorption absorb(`absorb')
+local command `"`arm' y `xvars' `restriction' `weight', `absorption'"'
 if inlist("`arm'", "fereg", "feppml") local command `"`command' threads(`threads') solver(`solver') poolsize(`pool')"'
 if inlist("`arm'", "greg", "gglm") local command `"`command' mata(BenchG)"'
 if "`arm'" == "gglm" local command `"`command' family(poisson) robust"'
 if inlist("`arm'", "feppml", "ppmlhdfe") local command `"`command' vce(robust)"'
+if "`vce'" != "" local command `"`command' vce(`vce')"'
+if "`fit_options'" != "" local command `"`command' `fit_options'"'
+display as text `"LOCAL_COMMAND|`command'"'
 
 if "`phase'" == "warm" {
     quietly use `"`warm'"', clear
@@ -42,7 +49,8 @@ if "`phase'" == "warm" {
     capture mata: mata drop BenchG
 }
 quietly use `"`data'"', clear
-local inputvars obs_id `effects' `xvars' y
+quietly ds
+local inputvars `r(varlist)'
 mata:
 void __sb_export_input(string scalar path, string rowvector names)
 {
@@ -131,6 +139,11 @@ if !`rc' {
         quietly export delimited using `"`output'/sample.csv"', replace
         restore
     }
+    capture unab savedvars : saved_*
+    if !_rc {
+        format `savedvars' %24.17g
+        quietly export delimited obs_id `savedvars' using `"`output'/saved_outputs.csv"', replace datafmt
+    }
     tempname values
     file open `values' using `"`output'/coefficients.csv"', write text replace
     file write `values' "name,value,se" _n
@@ -151,7 +164,7 @@ if !`rc' {
         }
         file close `values'
     }
-    foreach matrix_name in b V fereg_solver fereg_runtime fereg_certificate fereg_fit fereg_status fereg_dof {
+    foreach matrix_name in b V fereg_solver fereg_runtime fereg_certificate fereg_fit fereg_status fereg_dof fereg_fe fereg_cluster fereg_subset {
         capture matrix __sb_diag = e(`matrix_name')
         if !_rc {
             file open `values' using `"`output'/`matrix_name'.csv"', write text replace

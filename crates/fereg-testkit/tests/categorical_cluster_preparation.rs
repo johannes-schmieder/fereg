@@ -360,7 +360,14 @@ fn prepare_case(
         frequency_weight: None,
         probability_weight: None,
     };
-    prepare_categorical_ols_clustered_data(&request, &loaded)
+    let borrowed = prepare_categorical_ols_clustered_data(&request, &loaded);
+    let owned = fereg_core::ols::prepare_categorical_ols_clustered_data_owned(&request, loaded);
+    match (&borrowed, &owned) {
+        (Ok(a), Ok(b)) => assert_eq!(a, b),
+        (Err(a), Err(b)) => { assert_eq!(a.code, b.code); assert_eq!(a.message, b.message); }
+        other => panic!("categorical ownership changed preparation: {other:?}"),
+    }
+    owned
 }
 
 fn cluster_term(label: &str, sources: &[usize]) -> OlsClusterTermV1 {

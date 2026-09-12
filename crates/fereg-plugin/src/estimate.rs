@@ -22,14 +22,14 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
-    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
+    prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
 };
-use fereg_core::prepare_categorical_ols_data;
+use fereg_core::prepare_categorical_ols_data_owned;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
@@ -207,16 +207,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Iid, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            // The main-thread SPI phase is over. Install wide preparation on
-            // the same bounded team used by the solve so independent source
-            // validation can run in parallel without an extra full-data copy.
-            let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384
-            {
-                ThreadTeam::new(action.fit.execution.threads)
-                    .install(|| prepare_ols_data_owned(&action.request, loaded))??
-            } else {
-                prepare_ols_data_owned(&action.request, loaded)?
-            };
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_ols_data_owned(&action.request, loaded)
+            })?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_unadjusted_map(
@@ -258,8 +251,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Robust, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let prepared = prepare_ols_data(&action.request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_ols_data_owned(&action.request, loaded)
+            })?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_robust_map(
@@ -303,8 +297,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let prepared = prepare_ols_clustered_data(&request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_ols_clustered_data_owned(&request, loaded)
+            })?;
             let inference = fit_prepared_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -332,8 +327,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Iid, true) => {
-            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_categorical_ols_data_owned(&action.request, loaded)
+            })?;
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -360,8 +356,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Robust, true) => {
-            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_categorical_ols_data_owned(&action.request, loaded)
+            })?;
             let inference = fit_prepared_categorical_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
@@ -392,8 +389,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let prepared = prepare_categorical_ols_clustered_data(&request, &loaded)?;
-            drop(loaded);
+            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                prepare_categorical_ols_clustered_data_owned(&request, loaded)
+            })?;
             let inference = fit_prepared_categorical_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -421,6 +419,25 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
     }
+}
+
+// Loading has finished before this boundary; the closure captures no SPI session.
+// Reuse the solve's bounded team for wide native classification and compaction.
+fn prepare_loaded_ols<T: Send>(
+    loaded: LoadedOlsInput,
+    threads: ThreadConfig,
+    prepare: impl FnOnce(LoadedOlsInput) -> Result<T> + Send,
+) -> Result<T> {
+    let started = Instant::now();
+    let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384 {
+        ThreadTeam::new(threads).install(|| prepare(loaded))??
+    } else {
+        prepare(loaded)?
+    };
+    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|ols_prepare|seconds={:.9}", started.elapsed().as_secs_f64());
+    }
+    Ok(prepared)
 }
 
 impl EstimateActionSpec {

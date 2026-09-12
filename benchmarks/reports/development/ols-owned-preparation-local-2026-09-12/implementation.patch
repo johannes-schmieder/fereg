@@ -1,0 +1,683 @@
+diff --git a/crates/fereg-core/src/lib.rs b/crates/fereg-core/src/lib.rs
+index e6a6114..00e36d2 100644
+--- a/crates/fereg-core/src/lib.rs
++++ b/crates/fereg-core/src/lib.rs
+@@ -75,7 +75,7 @@ pub use ols::{
+     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
+     fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
+     fit_prepared_ols_unadjusted_map, prepare_categorical_ols_clustered_data,
+-    prepare_ols_clustered_data, prepare_ols_data, prepare_ols_data_owned, solve_rank_revealing,
++    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, prepare_ols_data, prepare_ols_data_owned, solve_rank_revealing,
+     CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
+     CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
+     CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
+@@ -115,7 +115,7 @@ pub use ppml_separation::{
+     SeparationMethodReport, SeparationMethods, SeparationReport,
+ };
+ pub use prepared_categorical_data::{
+-    prepare_categorical_ols_data, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
++    prepare_categorical_ols_data, prepare_categorical_ols_data_owned, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
+     PreparedCategoricalOlsRhs,
+ };
+ pub use prepared_categorical_effect::{
+diff --git a/crates/fereg-core/src/ols/mod.rs b/crates/fereg-core/src/ols/mod.rs
+index 4e1d319..7465092 100644
+--- a/crates/fereg-core/src/ols/mod.rs
++++ b/crates/fereg-core/src/ols/mod.rs
+@@ -41,7 +41,7 @@ pub use linear_session::{
+     LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
+     LinearSessionPhaseAllocatorProbe,
+ };
+-pub(crate) use prepared::prepare_ols_data_with_cluster_sources;
++pub(crate) use prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
+ pub use prepared::{
+     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
+     OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
+@@ -51,7 +51,7 @@ pub use prepared::{
+ };
+ pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
+ pub use prepared_categorical_clusters::{
+-    prepare_categorical_ols_clustered_data, PreparedCategoricalOlsClusteredData,
++    prepare_categorical_ols_clustered_data, prepare_categorical_ols_clustered_data_owned, PreparedCategoricalOlsClusteredData,
+ };
+ pub use prepared_clustered::{
+     fit_prepared_categorical_ols_clustered_map, fit_prepared_ols_clustered_map,
+@@ -61,7 +61,7 @@ pub use prepared_clustered::{
+     PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
+ };
+ pub use prepared_clusters::{
+-    prepare_ols_clustered_data, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
++    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
+     PreparedOlsClusterDimension, PreparedOlsClusteredData,
+ };
+ pub use prepared_dof::{
+diff --git a/crates/fereg-core/src/ols/prepared.rs b/crates/fereg-core/src/ols/prepared.rs
+index 2deb0e3..7c6234e 100644
+--- a/crates/fereg-core/src/ols/prepared.rs
++++ b/crates/fereg-core/src/ols/prepared.rs
+@@ -628,29 +628,31 @@ pub fn prepare_ols_data(
+     prepare_ols_data_with_cluster_sources(request, loaded, &[])
+ }
+ 
+-/// Prepare unweighted observations in owned plugin buffers. Incomplete samples
+-/// use the same classifier as borrowed preparation, then compact each column
+-/// independently. Weighted inputs retain the general preparation path.
++/// Prepare observations in owned plugin buffers. The authoritative classifier
++/// determines the shared sample before stable column compaction; supplied
++/// weights retain their kind and unmodified reference values.
+ pub fn prepare_ols_data_owned(
+     request: &OlsRequestV1,
+     loaded: LoadedOlsInput,
+ ) -> Result<PreparedOlsData> {
+-    if loaded.analytic_weight.is_some()
+-        || loaded.frequency_weight.is_some()
+-        || loaded.probability_weight.is_some()
+-    {
+-        return prepare_ols_data(request, &loaded);
+-    }
+-    let model = request.validate_and_compile_with_cluster_sources(&[])?;
++    prepare_ols_data_owned_with_cluster_sources(request, loaded, &[])
++}
++
++pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
++    request: &OlsRequestV1,
++    loaded: LoadedOlsInput,
++    cluster_sources: &[SourceId],
++) -> Result<PreparedOlsData> {
++    let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
+     validate_loaded(request, &loaded)?;
+-    validate_candidate_categorical_domain(request, &loaded, &[])?;
++    validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
+     validate_candidate_weight_domain(&loaded)?;
+     let sample = if is_full_retained_unweighted_sample(&loaded) {
+         take_full_retained_unweighted_sample(loaded)?
+     } else {
+-        take_incomplete_unweighted_sample(request, loaded)?
++        take_classified_sample(request, loaded, cluster_sources)?
+     };
+-    finish_prepare_ols_data(request, &[], model, sample)
++    finish_prepare_ols_data(request, cluster_sources, model, sample)
+ }
+ 
+ pub(crate) fn prepare_ols_data_with_cluster_sources(
+@@ -890,9 +892,10 @@ fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<Prepar
+     })
+ }
+ 
+-fn take_incomplete_unweighted_sample(
++fn take_classified_sample(
+     request: &OlsRequestV1,
+     mut loaded: LoadedOlsInput,
++    cluster_sources: &[SourceId],
+ ) -> Result<PreparedNumericSample> {
+     let n_original = loaded.candidate.len();
+     let n_candidate = loaded
+@@ -923,12 +926,17 @@ fn take_incomplete_unweighted_sample(
+         candidate: &loaded.candidate,
+         outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
+         regressors: &regressor_views,
+-        weights: WeightInput::None,
++        weights: loaded_weight(&loaded).map_or(WeightInput::None, |(kind, column)| {
++            WeightInput::Provided {
++                kind,
++                column: NumericColumnView::with_missing(&column.values, &column.missing),
++            }
++        }),
+         adjustment: AdjustmentInput::None,
+     };
+     classify_numeric_sample_into_mask(
+         &input,
+-        &source_uses(request, &[])?,
++        &source_uses(request, cluster_sources)?,
+         &OlsPreparationPolicy,
+         &mut drop_reasons,
+     )?;
+@@ -944,8 +952,10 @@ fn take_incomplete_unweighted_sample(
+         // Reuse storage only up to the general path's candidate-axis bound.
+         // Restricted samples must not retain full-data column capacity.
+         if column.values.capacity() <= n_candidate {
+-            for (active, original) in original_row_by_active.iter().copied().enumerate() {
+-                column.values[active] = column.values[original];
++            if original_row_by_active.len() != n_original {
++                for (active, original) in original_row_by_active.iter().copied().enumerate() {
++                    column.values[active] = column.values[original];
++                }
+             }
+             column.values.truncate(original_row_by_active.len());
+         } else {
+@@ -974,6 +984,20 @@ fn take_incomplete_unweighted_sample(
+             .try_for_each(|(_, column)| compact(column))?;
+     }
+     compact(&mut loaded.outcome)?;
++    let mut weight = match (
++        loaded.analytic_weight.take(),
++        loaded.frequency_weight.take(),
++        loaded.probability_weight.take(),
++    ) {
++        (None, None, None) => None,
++        (Some(column), None, None) => Some((WeightKind::Analytic, column)),
++        (None, Some(column), None) => Some((WeightKind::Frequency, column)),
++        (None, None, Some(column)) => Some((WeightKind::Probability, column)),
++        _ => return Err(invalid("loaded OLS input cannot contain more than one weight column")),
++    };
++    if let Some((_, column)) = &mut weight {
++        compact(column)?;
++    }
+     let mut regressors = Vec::new();
+     regressors
+         .try_reserve_exact(loaded.numeric_sources.len())
+@@ -990,7 +1014,9 @@ fn take_incomplete_unweighted_sample(
+         original_row_by_active,
+         outcome: loaded.outcome.values,
+         regressors,
+-        weights: PreparedWeights::None,
++        weights: weight.map_or(PreparedWeights::None, |(kind, column)| {
++            PreparedWeights::Provided { kind, values: column.values }
++        }),
+         adjustment: crate::data::PreparedAdjustment::None,
+         drop_reasons,
+     })
+@@ -2376,7 +2402,7 @@ mod tests {
+                 probability_weight: None,
+             };
+             let expected = prepare_ols_data(&request, &loaded).unwrap().sample;
+-            let actual = take_incomplete_unweighted_sample(&request, loaded).unwrap();
++            let actual = take_classified_sample(&request, loaded, &[]).unwrap();
+             assert_eq!(actual, expected);
+             for (a, b) in actual
+                 .outcome
+@@ -2391,6 +2417,76 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn owned_weights_preserve_samples_errors_bits_and_capacity() {
++        let n = 32_771;
++        for (kind, role) in [
++            (WeightKind::Analytic, OlsInputRole::AnalyticWeight),
++            (WeightKind::Frequency, OlsInputRole::FrequencyWeight),
++            (WeightKind::Probability, OlsInputRole::ProbabilityWeight),
++        ] {
++            let mut request = request(16, true);
++            request.bindings.push(OlsInputBinding { stata_var_position: 19, role });
++            for case in 0..5 {
++                let mut loaded = LoadedOlsInput {
++                    candidate: (0..n).map(|row| case != 2 || row % 3 == 0).collect(),
++                    outcome: LoadedNumericColumn { values: vec![-0.0; n], missing: vec![false; n] },
++                    numeric_sources: (1..=16).map(|source| (SourceId::new(source).unwrap(),
++                        LoadedNumericColumn { values: vec![f64::from_bits(1); n], missing: vec![false; n] })).collect(),
++                    analytic_weight: None, frequency_weight: None, probability_weight: None,
++                };
++                let mut weight = LoadedNumericColumn {
++                    values: (0..n).map(|row| if kind == WeightKind::Frequency {
++                        (row % 3 + 1) as f64
++                    } else if row % 2 == 0 { 1e-100 } else { 1e100 }).collect(),
++                    missing: vec![false; n],
++                };
++                if case > 0 {
++                    loaded.outcome.missing[2] = true;
++                    loaded.numeric_sources[15].1.missing[16_385] = true;
++                    weight.missing[4] = true;
++                    if kind == WeightKind::Analytic { weight.values[5] = 0.0; }
++                }
++                if case >= 3 {
++                    // Weight-domain validation precedes availability, including
++                    // missing outcomes, and chooses the first original row.
++                    weight.values[2] = -1.0;
++                    weight.values[16_386] = -2.0;
++                    loaded.candidate[2] = case != 4;
++                }
++                match kind {
++                    WeightKind::Analytic => loaded.analytic_weight = Some(weight),
++                    WeightKind::Frequency => loaded.frequency_weight = Some(weight),
++                    WeightKind::Probability => loaded.probability_weight = Some(weight),
++                    WeightKind::Importance => unreachable!(),
++                }
++                let expected = prepare_ols_data(&request, &loaded);
++                for threads in [1, 4] {
++                    let input = loaded.clone();
++                    let actual = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
++                        .install(|| prepare_ols_data_owned(&request, input)).unwrap();
++                    match (&expected, actual) {
++                        (Ok(expected), Ok(actual)) => {
++                            assert_eq!(*expected, actual);
++                            let PreparedWeights::Provided { kind: actual_kind, values } = &actual.sample.weights else { panic!("weight lost") };
++                            assert_eq!(kind, *actual_kind);
++                            assert!(values.capacity() <= actual.sample.n_candidate);
++                            assert!(actual.sample.outcome.capacity() <= actual.sample.n_candidate);
++                            assert!(actual.sample.regressors.iter().all(|column| column.capacity() <= actual.sample.n_candidate));
++                            assert!(actual.sample.outcome.iter().all(|value| value.to_bits() == (-0.0_f64).to_bits()));
++                            assert!(actual.sample.regressors.iter().flatten().all(|value| value.to_bits() == 1));
++                        }
++                        (Err(expected), Err(actual)) => {
++                            assert_eq!(expected.code, actual.code);
++                            assert_eq!(expected.message, actual.message);
++                        }
++                        other => panic!("owned weight outcome changed: {other:?}"),
++                    }
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn owned_incomplete_sample_preserves_singleton_cascades() {
+         for keep in [false, true] {
+@@ -3494,6 +3590,7 @@ mod tests {
+             probability_weight: None,
+         };
+         let weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
++        assert_eq!(weighted, prepare_ols_data_owned(&request, loaded.clone()).unwrap());
+         assert_eq!(weighted.sample.retained_rows(), &[0]);
+         assert_eq!(
+             weighted.sample.drop_reasons,
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+index 52abcbe..8b47dbe 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+@@ -10,6 +10,7 @@ use crate::error::{ErrorCode, FeregError, Result};
+ use crate::fe::{factorize_code_interaction, CategoricalCodeView};
+ use crate::prepared_categorical_data::{
+     prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
++    prepare_categorical_ols_data_owned_with_cluster_sources,
+     PreparedCategoricalOlsData,
+ };
+ 
+@@ -118,6 +119,23 @@ pub fn prepare_categorical_ols_clustered_data(
+     let cluster_sources = validate_request(request)?;
+     let ols =
+         prepare_categorical_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
++    finish_prepare_categorical_ols_clusters(request, ols)
++}
++
++/// Owned OLS cluster preparation; PPML retains its separately admitted path.
++pub fn prepare_categorical_ols_clustered_data_owned(
++    request: &OlsClusteredRequestV1,
++    loaded: LoadedOlsInput,
++) -> Result<PreparedCategoricalOlsClusteredData> {
++    let cluster_sources = validate_request(request)?;
++    let ols = prepare_categorical_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
++    finish_prepare_categorical_ols_clusters(request, ols)
++}
++
++fn finish_prepare_categorical_ols_clusters(
++    request: &OlsClusteredRequestV1,
++    ols: PreparedCategoricalOlsData,
++) -> Result<PreparedCategoricalOlsClusteredData> {
+     let mut reservation = SystemCategoricalClusterReservation;
+     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
+     let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_data.rs b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+index 6c85cd9..315ff2f 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_data.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+@@ -20,7 +20,7 @@ use crate::fe::{
+     recover_finalized_categorical_effects_lsmr_certified,
+     recover_finalized_categorical_effects_map_certified,
+     recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
+-    BoundCategoricalAbsorbEffect, CategoricalAbsorbedEffectView, CategoricalCodeView,
++    BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView, CategoricalCodeView,
+     CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
+     RecoveredCategoricalEffects, SingletonMultiplicity,
+ };
+@@ -34,7 +34,7 @@ use crate::topology_dof::{
+ };
+ use rayon::prelude::*;
+ 
+-use crate::ols::prepare_ols_data_with_cluster_sources;
++use crate::ols::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
+ 
+ use super::{
+     LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficientStatus,
+@@ -786,6 +786,27 @@ pub fn prepare_categorical_ols_data(
+     prepare_categorical_ols_data_with_cluster_sources(request, loaded, &[])
+ }
+ 
++/// Consume source columns before constructing the unchanged interaction/slope
++/// topology and applying its singleton fixed point.
++pub fn prepare_categorical_ols_data_owned(
++    request: &OlsRequestV1,
++    loaded: LoadedOlsInput,
++) -> Result<PreparedCategoricalOlsData> {
++    prepare_categorical_ols_data_owned_with_cluster_sources(request, loaded, &[])
++}
++
++pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
++    request: &OlsRequestV1,
++    loaded: LoadedOlsInput,
++    cluster_sources: &[SourceId],
++) -> Result<PreparedCategoricalOlsData> {
++    let plan = plan_categorical_absorbed_request(request)?;
++    let availability = prepare_ols_data_owned_with_cluster_sources(
++        plan.availability_request(), loaded, cluster_sources,
++    )?;
++    finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
++}
++
+ /// PPML preparation boundary that also admits an empty absorbed topology.
+ ///
+ /// The public categorical OLS constructor continues to require explicit
+@@ -875,6 +896,16 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
+         loaded,
+         cluster_sources,
+     )?;
++    finish_prepare_categorical_ols_data(request, cluster_sources, ppml_structural_constant, plan, availability)
++}
++
++fn finish_prepare_categorical_ols_data(
++    request: &OlsRequestV1,
++    cluster_sources: &[SourceId],
++    ppml_structural_constant: bool,
++    plan: CategoricalAbsorbRequestPlan,
++    availability: PreparedOlsData,
++) -> Result<PreparedCategoricalOlsData> {
+     if !availability.singletons.kept_by_request
+         || availability.singletons.num_singletons != 0
+         || availability.singletons.cascade_events != 0
+diff --git a/crates/fereg-core/src/ols/prepared_clusters.rs b/crates/fereg-core/src/ols/prepared_clusters.rs
+index 0578093..ec87a8b 100644
+--- a/crates/fereg-core/src/ols/prepared_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_clusters.rs
+@@ -3,7 +3,7 @@ use std::cmp::Ordering;
+ use crate::error::{ErrorCode, FeregError, Result};
+ use crate::metadata::SourceId;
+ 
+-use super::prepared::prepare_ols_data_with_cluster_sources;
++use super::prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
+ use super::{LoadedOlsInput, OlsRequestV1, PreparedOlsData};
+ 
+ /// One declared cluster dimension. Multiple numeric sources describe one
+@@ -206,6 +206,24 @@ pub fn prepare_ols_clustered_data(
+ ) -> Result<PreparedOlsClusteredData> {
+     let cluster_sources = validate_request(request)?;
+     let ols = prepare_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
++    finish_prepare_ols_clusters(request, ols)
++}
++
++/// Consume loaded columns while preserving pre-singleton cluster availability
++/// and final-sample cluster coding.
++pub fn prepare_ols_clustered_data_owned(
++    request: &OlsClusteredRequestV1,
++    loaded: LoadedOlsInput,
++) -> Result<PreparedOlsClusteredData> {
++    let cluster_sources = validate_request(request)?;
++    let ols = prepare_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
++    finish_prepare_ols_clusters(request, ols)
++}
++
++fn finish_prepare_ols_clusters(
++    request: &OlsClusteredRequestV1,
++    ols: PreparedOlsData,
++) -> Result<PreparedOlsClusteredData> {
+     let mut reservation = SystemClusterReservation;
+     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
+     let prepared = PreparedOlsClusteredData { ols, clusters };
+@@ -600,6 +618,40 @@ pub(super) mod tests {
+         }
+     }
+ 
++    #[test]
++    fn owned_cluster_weights_preserve_missingness_singletons_and_final_codes() {
++        for role in [None, Some(OlsInputRole::AnalyticWeight), Some(OlsInputRole::FrequencyWeight), Some(OlsInputRole::ProbabilityWeight)] {
++            let (mut request, mut loaded) = fixture();
++            request.ols.keep_singletons = false;
++            request.ols.absorbed_terms = vec![AbsorbedTerm {
++                id: AbsorbTermId::new(1).unwrap(), intercept: true,
++                categorical_sources: vec![SourceId::new(2).unwrap()], slope_sources: vec![],
++                label: "a".into(), saved_name: String::new(),
++            }];
++            loaded.numeric_sources[2].1.missing[0] = true;
++            loaded.numeric_sources[2].1.missing[6] = true;
++            loaded.candidate[7] = false;
++            if let Some(role) = role {
++                request.ols.bindings.push(OlsInputBinding { stata_var_position: 6, role });
++                let weight = column(vec![2.0; 8]);
++                match role {
++                    OlsInputRole::AnalyticWeight => loaded.analytic_weight = Some(weight),
++                    OlsInputRole::FrequencyWeight => loaded.frequency_weight = Some(weight),
++                    OlsInputRole::ProbabilityWeight => loaded.probability_weight = Some(weight),
++                    _ => unreachable!(),
++                }
++            }
++            let expected = prepare_ols_clustered_data(&request, &loaded).unwrap();
++            let actual = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
++            assert_eq!(expected, actual);
++            assert_eq!(actual.ols.sample.drop_reason(0), Some(crate::DropReason::MissingCluster));
++            assert_eq!(actual.ols.sample.drop_reason(6), Some(crate::DropReason::MissingCluster));
++            assert_eq!(actual.ols.sample.drop_reason(1), Some(if role == Some(OlsInputRole::FrequencyWeight) {
++                crate::DropReason::Retained
++            } else { crate::DropReason::Singleton }));
++        }
++    }
++
+     #[test]
+     fn interaction_factorization_is_row_order_invariant_and_collision_free() {
+         let (request, loaded) = fixture();
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 3f9ae53..efcc5f4 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -22,14 +22,14 @@ use fereg_core::ols::{
+     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
+     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
+     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
+-    prepare_categorical_ols_clustered_data, prepare_ols_clustered_data, prepare_ols_data,
++    prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
+     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
+     OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+     PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
+     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
+     PreparedOlsUnadjustedConfig,
+ };
+-use fereg_core::prepare_categorical_ols_data;
++use fereg_core::prepare_categorical_ols_data_owned;
+ use fereg_core::protocol::{
+     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
+ };
+@@ -207,16 +207,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+         (OlsVceKind::Iid, false) => {
+             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+             let trace_started = Instant::now();
+-            // The main-thread SPI phase is over. Install wide preparation on
+-            // the same bounded team used by the solve so independent source
+-            // validation can run in parallel without an extra full-data copy.
+-            let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384
+-            {
+-                ThreadTeam::new(action.fit.execution.threads)
+-                    .install(|| prepare_ols_data_owned(&action.request, loaded))??
+-            } else {
+-                prepare_ols_data_owned(&action.request, loaded)?
+-            };
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_ols_data_owned(&action.request, loaded)
++            })?;
+             let prepare_seconds = trace_started.elapsed().as_secs_f64();
+             let inference_started = Instant::now();
+             let inference = fit_prepared_ols_unadjusted_map(
+@@ -258,8 +251,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+         (OlsVceKind::Robust, false) => {
+             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+             let trace_started = Instant::now();
+-            let prepared = prepare_ols_data(&action.request, &loaded)?;
+-            drop(loaded);
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_ols_data_owned(&action.request, loaded)
++            })?;
+             let prepare_seconds = trace_started.elapsed().as_secs_f64();
+             let inference_started = Instant::now();
+             let inference = fit_prepared_ols_robust_map(
+@@ -303,8 +297,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                 ols: action.request.clone(),
+                 clusters: action.clusters.clone(),
+             };
+-            let prepared = prepare_ols_clustered_data(&request, &loaded)?;
+-            drop(loaded);
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_ols_clustered_data_owned(&request, loaded)
++            })?;
+             let inference = fit_prepared_ols_clustered_map(
+                 &prepared,
+                 PreparedOlsClusteredConfig {
+@@ -332,8 +327,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             precommit_and_store(&action, &shadow, &derived, &observation, spi)
+         }
+         (OlsVceKind::Iid, true) => {
+-            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+-            drop(loaded);
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_categorical_ols_data_owned(&action.request, loaded)
++            })?;
+             let inference = fit_prepared_categorical_ols_unadjusted_map(
+                 &prepared,
+                 PreparedOlsUnadjustedConfig {
+@@ -360,8 +356,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             precommit_and_store(&action, &shadow, &derived, &observation, spi)
+         }
+         (OlsVceKind::Robust, true) => {
+-            let prepared = prepare_categorical_ols_data(&action.request, &loaded)?;
+-            drop(loaded);
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_categorical_ols_data_owned(&action.request, loaded)
++            })?;
+             let inference = fit_prepared_categorical_ols_robust_map(
+                 &prepared,
+                 PreparedOlsRobustConfig {
+@@ -392,8 +389,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                 ols: action.request.clone(),
+                 clusters: action.clusters.clone(),
+             };
+-            let prepared = prepare_categorical_ols_clustered_data(&request, &loaded)?;
+-            drop(loaded);
++            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
++                prepare_categorical_ols_clustered_data_owned(&request, loaded)
++            })?;
+             let inference = fit_prepared_categorical_ols_clustered_map(
+                 &prepared,
+                 PreparedOlsClusteredConfig {
+@@ -423,6 +421,25 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+     }
+ }
+ 
++// Loading has finished before this boundary; the closure captures no SPI session.
++// Reuse the solve's bounded team for wide native classification and compaction.
++fn prepare_loaded_ols<T: Send>(
++    loaded: LoadedOlsInput,
++    threads: ThreadConfig,
++    prepare: impl FnOnce(LoadedOlsInput) -> Result<T> + Send,
++) -> Result<T> {
++    let started = Instant::now();
++    let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384 {
++        ThreadTeam::new(threads).install(|| prepare(loaded))??
++    } else {
++        prepare(loaded)?
++    };
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|ols_prepare|seconds={:.9}", started.elapsed().as_secs_f64());
++    }
++    Ok(prepared)
++}
++
+ impl EstimateActionSpec {
+     fn parse(args: &[String]) -> Result<Self> {
+         let values = parse_estimate_key_values(args)?;
+diff --git a/crates/fereg-testkit/tests/categorical_cluster_preparation.rs b/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
+index 8307007..aef7a76 100644
+--- a/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
++++ b/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
+@@ -360,7 +360,14 @@ fn prepare_case(
+         frequency_weight: None,
+         probability_weight: None,
+     };
+-    prepare_categorical_ols_clustered_data(&request, &loaded)
++    let borrowed = prepare_categorical_ols_clustered_data(&request, &loaded);
++    let owned = fereg_core::ols::prepare_categorical_ols_clustered_data_owned(&request, loaded);
++    match (&borrowed, &owned) {
++        (Ok(a), Ok(b)) => assert_eq!(a, b),
++        (Err(a), Err(b)) => { assert_eq!(a.code, b.code); assert_eq!(a.message, b.message); }
++        other => panic!("categorical ownership changed preparation: {other:?}"),
++    }
++    owned
+ }
+ 
+ fn cluster_term(label: &str, sources: &[usize]) -> OlsClusterTermV1 {
+diff --git a/crates/fereg-testkit/tests/prepared_clustered_oracle.rs b/crates/fereg-testkit/tests/prepared_clustered_oracle.rs
+index 12644a7..43a5bb9 100644
+--- a/crates/fereg-testkit/tests/prepared_clustered_oracle.rs
++++ b/crates/fereg-testkit/tests/prepared_clustered_oracle.rs
+@@ -1032,7 +1032,10 @@ fn prepare_case(
+         include_intercept,
+         weights,
+     );
+-    prepare_ols_clustered_data(&request, &loaded).expect("prepare clustered case")
++    let borrowed = prepare_ols_clustered_data(&request, &loaded).expect("prepare clustered case");
++    let owned = fereg_core::ols::prepare_ols_clustered_data_owned(&request, loaded).expect("owned clustered case");
++    assert_eq!(borrowed, owned);
++    owned
+ }
+ 
+ fn case_inputs(
+diff --git a/crates/fereg-testkit/tests/prepared_robust_oracle.rs b/crates/fereg-testkit/tests/prepared_robust_oracle.rs
+index 63fee5c..90b0a5b 100644
+--- a/crates/fereg-testkit/tests/prepared_robust_oracle.rs
++++ b/crates/fereg-testkit/tests/prepared_robust_oracle.rs
+@@ -1,5 +1,5 @@
+ use fereg_core::{
+-    fit_prepared_ols_robust_map, prepare_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
++    fit_prepared_ols_robust_map, prepare_ols_data_owned, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
+     CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+     PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig, RawTermKind,
+@@ -521,7 +521,7 @@ fn prepare_continuous_case(
+         });
+     }
+     let raw_weight = weight_values(weights);
+-    prepare_ols_data(
++    prepare_ols_data_owned(
+         &OlsRequestV1 {
+             model: CompiledTermGraph { sources, terms },
+             absorbed_terms: effects
+@@ -541,7 +541,7 @@ fn prepare_continuous_case(
+             include_intercept,
+             keep_singletons: true,
+         },
+-        &LoadedOlsInput {
++        LoadedOlsInput {
+             candidate: vec![true; outcome.len()],
+             outcome: loaded_column(outcome.to_vec()),
+             numeric_sources: regressors
+@@ -606,7 +606,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
+             }],
+         });
+     }
+-    prepare_ols_data(
++    prepare_ols_data_owned(
+         &OlsRequestV1 {
+             model: CompiledTermGraph {
+                 sources: vec![
+@@ -658,7 +658,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
+             include_intercept: true,
+             keep_singletons: true,
+         },
+-        &LoadedOlsInput {
++        LoadedOlsInput {
+             candidate: vec![true; outcome.len()],
+             outcome: loaded_column(outcome),
+             numeric_sources: vec![
+@@ -685,7 +685,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
+         label: label.to_owned(),
+         saved_name: String::new(),
+     };
+-    prepare_ols_data(
++    prepare_ols_data_owned(
+         &OlsRequestV1 {
+             model: CompiledTermGraph {
+                 sources: vec![
+@@ -722,7 +722,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
+             include_intercept: true,
+             keep_singletons: true,
+         },
+-        &LoadedOlsInput {
++        LoadedOlsInput {
+             candidate: vec![true; outcome.len()],
+             outcome: loaded_column(outcome.to_vec()),
+             numeric_sources: vec![
