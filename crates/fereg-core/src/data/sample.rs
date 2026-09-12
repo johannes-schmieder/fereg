@@ -1,5 +1,7 @@
 use std::mem::size_of;
 
+use rayon::prelude::*;
+
 use crate::data::weights::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
 
@@ -490,6 +492,71 @@ pub(crate) struct NumericSampleClassification {
     pub(crate) n_active: usize,
 }
 
+/// Fill a preallocated mask using the authoritative row classifier. Callers
+/// must supply a stateless policy: independent chunks may run concurrently.
+/// Errors are selected in observation order, including across chunk boundaries.
+/// Unlike the allocation-free visitor, this boundary may schedule worker jobs;
+/// it is not used by the PPML preflight allocation audit.
+pub(crate) fn classify_numeric_sample_into_mask<P: NumericDomainPolicy + Sync>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: &[NumericSourceUse],
+    policy: &P,
+    reasons: &mut [DropReason],
+) -> Result<NumericSampleClassification> {
+    let n_original = input.candidate.len();
+    validate_input(input, n_original)?;
+    validate_source_uses(input, Some(source_uses))?;
+    let n_candidate = input
+        .candidate
+        .iter()
+        .filter(|candidate| **candidate)
+        .count();
+    check_output_dimensions(input, n_original, n_candidate)?;
+    if reasons.len() != n_original {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "classification mask must cover the original observation axis",
+        ));
+    }
+    const CHUNK_ROWS: usize = 16_384;
+    let classify = |(chunk, reasons): (usize, &mut [DropReason])| -> Result<()> {
+        for (offset, reason) in reasons.iter_mut().enumerate() {
+            *reason = classify_row(
+                input,
+                Some(source_uses),
+                policy,
+                chunk * CHUNK_ROWS + offset,
+            )?;
+        }
+        Ok(())
+    };
+    if input.regressors.len() >= 16
+        && n_original >= CHUNK_ROWS
+        && rayon::current_thread_index().is_some()
+        && rayon::current_num_threads() > 1
+    {
+        reasons
+            .par_chunks_mut(CHUNK_ROWS)
+            .enumerate()
+            .map(classify)
+            .find_first(Result::is_err)
+            .unwrap_or(Ok(()))?;
+    } else {
+        reasons
+            .chunks_mut(CHUNK_ROWS)
+            .enumerate()
+            .try_for_each(classify)?;
+    }
+    Ok(NumericSampleClassification {
+        n_original,
+        n_candidate,
+        n_active: reasons
+            .iter()
+            .filter(|reason| **reason == DropReason::Retained)
+            .count(),
+    })
+}
+
 #[cfg(test)]
 fn prepare_numeric_sample_with_reserve<P: NumericDomainPolicy, R: Reserve>(
     input: &NumericPreparationInput<'_>,
@@ -868,6 +935,90 @@ mod allocation_tests {
 
         fn exposure(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
             Ok(DomainDecision::Retain)
+        }
+    }
+
+    #[test]
+    fn parallel_mask_matches_visitor_and_reports_earliest_row_error() {
+        struct Reject;
+        impl NumericDomainPolicy for Reject {
+            fn outcome(&self, row: usize, value: f64) -> Result<DomainDecision> {
+                if value < 0.0 {
+                    Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        format!("outcome row {row}"),
+                    ))
+                } else {
+                    Ok(DomainDecision::Retain)
+                }
+            }
+            fn weight(&self, row: usize, kind: WeightKind, value: f64) -> Result<DomainDecision> {
+                Retain.weight(row, kind, value)
+            }
+            fn offset(&self, row: usize, value: f64) -> Result<DomainDecision> {
+                Retain.offset(row, value)
+            }
+            fn exposure(&self, row: usize, value: f64) -> Result<DomainDecision> {
+                Retain.exposure(row, value)
+            }
+        }
+        let n = 65_539;
+        let candidate: Vec<_> = (0..n).map(|row| row % 997 != 0).collect();
+        let mut outcome = vec![1.0; n];
+        let mut x = vec![2.0; n];
+        x[16_384] = f64::NAN;
+        x[32_767] = f64::INFINITY;
+        let columns = vec![NumericColumnView::new(&x); 16];
+        let uses = vec![
+            NumericSourceUse {
+                ordinary: true,
+                fixed_effect: true,
+                cluster: false
+            };
+            16
+        ];
+        for errors in [false, true] {
+            if errors {
+                for row in [0, 16_383, 16_384, 32_768, 65_538] {
+                    outcome[row] = -1.0;
+                }
+            }
+            let input = NumericPreparationInput {
+                candidate: &candidate,
+                outcome: NumericColumnView::new(&outcome),
+                regressors: &columns,
+                weights: WeightInput::None,
+                adjustment: AdjustmentInput::None,
+            };
+            let mut serial = vec![DropReason::Retained; n];
+            let expected =
+                classify_numeric_sample_with_source_uses(&input, &uses, &Reject, |row, reason| {
+                    serial[row] = reason;
+                    Ok(())
+                });
+            for threads in [1, 4, 16] {
+                let team = crate::ThreadTeam::new(
+                    crate::ThreadConfig::from_requested(threads, true).unwrap(),
+                );
+                let mut actual_mask = vec![DropReason::Retained; n];
+                let actual = team
+                    .install(|| {
+                        classify_numeric_sample_into_mask(&input, &uses, &Reject, &mut actual_mask)
+                    })
+                    .unwrap();
+                match (&expected, actual) {
+                    (Ok(expected), Ok(actual)) => {
+                        assert_eq!(*expected, actual);
+                        assert_eq!(serial, actual_mask);
+                    }
+                    (Err(expected), Err(actual)) => {
+                        assert_eq!(expected.code, actual.code);
+                        assert_eq!(expected.message, actual.message);
+                        assert_eq!(actual.message, "outcome row 16383");
+                    }
+                    other => panic!("classification changed: {other:?}"),
+                }
+            }
         }
     }
 

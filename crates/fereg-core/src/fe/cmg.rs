@@ -1191,6 +1191,7 @@ impl<'a> CmgAbsorber<'a> {
     /// matrix to the caller; a valid partial CMG projection can still seed the
     /// existing certified CG fallback.
     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
+        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG design and matrix dimensions are inconsistent",
@@ -1200,6 +1201,7 @@ impl<'a> CmgAbsorber<'a> {
             return Err(invalid_data("CMG input values must be finite"));
         }
         let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
+        let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
 
@@ -1280,6 +1282,12 @@ impl<'a> CmgAbsorber<'a> {
                     &reference_norms,
                 )?;
                 let (residualized, mut report) = polished.into_parts();
+                if phase_started.is_some() {
+                    eprintln!(
+                        "FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}",
+                        solve_started.elapsed().as_secs_f64() - bulk_seconds,
+                    );
+                }
                 let polish_iterations = report.iterations;
                 report.requested_solver = self.config.requested_solver;
                 report.used_solver = FeSolverKind::Cmg;
@@ -1622,6 +1630,8 @@ impl GraphCmg {
             let end = start.saturating_add(batch_width).min(seed_end);
             match &mut self.workspace {
                 GraphCmgWorkspace::OwnedResults(workspace) => {
+                    let phase_started =
+                        std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
                     let right_hand_sides = build_value_rhs_batch(
                         design,
                         self.core_effects,
@@ -1631,10 +1641,14 @@ impl GraphCmg {
                         start,
                         end,
                     )?;
+                    let rhs_seconds =
+                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
                     let solved = self
                         .solver
                         .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
                         .map_err(cmg_solve_error)?;
+                    let solved_seconds =
+                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
                     metrics.include_batch(solved.results().len());
                     for (local, solution) in solved.results().iter().enumerate() {
                         metrics.include(solution.iterations(), solution.backward_error());
@@ -1655,6 +1669,15 @@ impl GraphCmg {
                             start + local,
                             solution.solution(),
                         )?;
+                    }
+                    if let Some(started) = phase_started {
+                        eprintln!(
+                            "FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={:.9}|subtract={:.9}|width={}|route={:?}",
+                            solved_seconds - rhs_seconds,
+                            started.elapsed().as_secs_f64() - solved_seconds,
+                            end - start,
+                            solved.report().execution(),
+                        );
                     }
                 }
                 GraphCmgWorkspace::CallerBuffers(caller) => {

@@ -1,5 +1,8 @@
 *! fereg guarded prepared OLS eclass transaction 0.5.0 24aug2026
-program define _fereg_estimate_ols, eclass sortpreserve
+// This path preserves observation order directly: factor parsing and TS
+// evaluation do not sort, and native row maps are used for all output stores.
+// Do not add a sorting operation without restoring order on every exit.
+program define _fereg_estimate_ols, eclass
     version 18.0
     local hidden_cmdline `"_fereg_estimate_ols `0'"'
 
@@ -456,14 +459,9 @@ program define _fereg_estimate_ols, eclass sortpreserve
     if `"`inject'"' == "posthold" exit 3498
 
     local weight_variable `"`aweight'`fweight'`pweight'"'
+    // Rust loads numeric values and detects missingness in the same guarded
+    // call; a separate full-data markout certificate is unnecessary.
     local input_complete 0
-    if `candidate_all' {
-        tempvar complete_input
-        quietly generate byte `complete_input' = `touse'
-        quietly markout `complete_input' `depvar' `source_vars' `weight_variable'
-        quietly count if !`complete_input'
-        local input_complete = (r(N) == 0)
-    }
     local account_cluster_nesting = (`"`vce_wire'"' == "cluster")
     local vce_code = cond(`"`vce_wire'"' == "iid", 1, ///
         cond(`"`vce_wire'"' == "robust", 2, 3))

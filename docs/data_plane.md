@@ -11,6 +11,29 @@ On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.
 Candidate-excluded observations are not read for scientific domain errors.
 
+For an unrestricted all-numeric OLS candidate universe, the Stata thread copies
+bounded observation-order batches directly into Rust-owned columns. Rust
+classifies the ordered numeric missing range using the SDK's runtime
+`SV_missval`, including extended missing codes; no separate ado `markout`
+precheck is needed. Restricted candidates and fixed-width strings retain
+candidate-gated scalar SPI reads. Wide IID preparation uses the requested
+worker team for independent completeness checks after loading has finished.
+These checks only select the ownership shortcut; the ordinary classification
+path remains authoritative for exclusions, missingness, and domain errors.
+
+Unweighted IID inputs with exclusions or missingness use that same row
+classifier to fill a native drop mask. Wide inputs classify independent
+16,384-row blocks on the installed team, selecting any error in original
+observation order. The retained-row map then drives stable, independent
+column compaction. Existing buffers are reused only when their capacity is
+no larger than the general path's candidate-axis bound; restricted inputs
+otherwise receive fallibly allocated compact columns. Weighted, complex
+categorical, robust/clustered, and PPML preparation retain their existing paths.
+
+The OLS transaction preserves row order without a `sortpreserve` wrapper. Its
+parser and time-series materializations do not sort; native original-row maps
+control output stores on every successful estimate.
+
 After initial compaction:
 
 1. numeric and fixed-width string categorical sources are collision-safely

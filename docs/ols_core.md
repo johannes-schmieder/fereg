@@ -54,6 +54,16 @@ maxima, scaled norms and compensated means retain their prior per-column
 arithmetic and observation order. Scratch is fixed-size worker stack; narrower
 raw matrices retain the ADR 0012 row-partial algorithm.
 
+For prepared numeric models with 8–64 generated columns and at least 4,096
+rows, RHS construction and independent raw residual reconstruction bind source
+columns once and process 128-row tiles. The RHS reuses its fallibly reserved
+allocation; initialization and wide finite-value scans use the installed
+worker pool. General validation before pool installation stays serial. Residual
+updates preserve generated-column order and fused multiply-add arithmetic for
+each observation. Source, result and overflow checks remain in force; no extra
+observation-scale matrix or solver-route change is introduced. Other recipes
+and widths retain the general evaluator.
+
 Low-memory categorical projection reuses the fixed LSMR operator and
 preconditioner across response/regressor batches under ADR 0032. Every batch
 still receives its independent FE certificate. Retained LSMR state is

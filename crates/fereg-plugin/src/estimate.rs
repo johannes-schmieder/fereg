@@ -207,7 +207,16 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Iid, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let prepared = prepare_ols_data_owned(&action.request, loaded)?;
+            // The main-thread SPI phase is over. Install wide preparation on
+            // the same bounded team used by the solve so independent source
+            // validation can run in parallel without an extra full-data copy.
+            let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384
+            {
+                ThreadTeam::new(action.fit.execution.threads)
+                    .install(|| prepare_ols_data_owned(&action.request, loaded))??
+            } else {
+                prepare_ols_data_owned(&action.request, loaded)?
+            };
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_unadjusted_map(
@@ -1125,19 +1134,22 @@ pub(crate) fn load_ols_input(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
-    if candidate_all && all_sources_numeric && input_complete {
+    if candidate_all && all_sources_numeric {
         let mut positions = reserved_empty(
             1 + source_positions.len()
                 + usize::from(analytic_position.is_some())
                 + usize::from(frequency_position.is_some())
                 + usize::from(probability_position.is_some()),
-            "complete numeric SPI positions",
+            "numeric SPI positions",
         )?;
         let mut columns: Vec<&mut [f64]> = Vec::new();
         columns
             .try_reserve_exact(positions.capacity())
-            .map_err(|_| allocation("unable to reserve complete numeric SPI column batch"))?;
+            .map_err(|_| allocation("unable to reserve numeric SPI column batch"))?;
+        let mut missing: Vec<&mut [bool]> =
+            reserved_empty(positions.capacity(), "numeric SPI missing columns")?;
         positions.push(outcome_position);
+        missing.push(outcome.missing.as_mut_slice());
         columns.push(outcome.values.as_mut_slice());
         for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
             let OlsSourceLoader::Numeric(destination) = destination else {
@@ -1145,6 +1157,7 @@ pub(crate) fn load_ols_input(
             };
             positions.push(*position);
             columns.push(destination.values.as_mut_slice());
+            missing.push(destination.missing.as_mut_slice());
         }
         for (position, destination) in [
             (analytic_position, analytic_weight.as_mut()),
@@ -1154,44 +1167,14 @@ pub(crate) fn load_ols_input(
             if let (Some(position), Some(destination)) = (position, destination) {
                 positions.push(position);
                 columns.push(destination.values.as_mut_slice());
+                missing.push(destination.missing.as_mut_slice());
             }
         }
-        read_complete_numeric_columns_in_chunks(spi, &positions, &mut columns)?;
-    } else if candidate_all && all_sources_numeric {
-        let chunk_capacity = n.clamp(1, INPUT_BULK_READ_CHUNK_ROWS);
-        let mut missing_buffer = (!input_complete)
-            .then(|| reserved_filled(chunk_capacity, 0_u8, "numeric SPI range missing buffer"))
-            .transpose()?;
-        read_numeric_column_in_chunks(
-            spi,
-            outcome_position,
-            &mut outcome,
-            missing_buffer.as_deref_mut(),
-        )?;
-        for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
-            let OlsSourceLoader::Numeric(destination) = destination else {
-                unreachable!("all source loaders were certified numeric");
-            };
-            read_numeric_column_in_chunks(
-                spi,
-                *position,
-                destination,
-                missing_buffer.as_deref_mut(),
-            )?;
-        }
-        for (position, destination) in [
-            (analytic_position, analytic_weight.as_mut()),
-            (frequency_position, frequency_weight.as_mut()),
-            (probability_position, probability_weight.as_mut()),
-        ] {
-            if let (Some(position), Some(destination)) = (position, destination) {
-                read_numeric_column_in_chunks(
-                    spi,
-                    position,
-                    destination,
-                    missing_buffer.as_deref_mut(),
-                )?;
-            }
+        read_numeric_columns_in_chunks(spi, &positions, &mut columns, &mut missing)?;
+        if input_complete && missing.iter().any(|flags| flags.iter().any(|flag| *flag)) {
+            return Err(invalid_data(
+                "Stata completeness certificate disagrees with numeric input",
+            ));
         }
     } else {
         for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
@@ -1259,20 +1242,20 @@ pub(crate) fn load_ols_input(
     })
 }
 
-fn read_complete_numeric_columns_in_chunks(
+fn read_numeric_columns_in_chunks(
     spi: &mut dyn SpiApi,
     positions: &[u32],
     columns: &mut [&mut [f64]],
+    missing: &mut [&mut [bool]],
 ) -> Result<()> {
     if positions.len() != columns.len()
+        || missing.len() != columns.len()
         || columns.is_empty()
         || columns
             .iter()
             .any(|column| column.len() != columns[0].len())
     {
-        return Err(invalid(
-            "complete numeric SPI column batch has an invalid shape",
-        ));
+        return Err(invalid("numeric SPI column batch has an invalid shape"));
     }
     for start in (0..columns[0].len()).step_by(INPUT_BULK_READ_CHUNK_ROWS) {
         spi.check_interrupted()?;
@@ -1283,9 +1266,16 @@ fn read_complete_numeric_columns_in_chunks(
         let mut chunk = Vec::new();
         chunk
             .try_reserve_exact(columns.len())
-            .map_err(|_| allocation("unable to reserve complete numeric SPI chunk"))?;
+            .map_err(|_| allocation("unable to reserve numeric SPI chunk"))?;
         chunk.extend(columns.iter_mut().map(|column| &mut column[start..end]));
-        spi.read_complete_numeric_columns(positions, start + 1, &mut chunk)?;
+        let mut flags = reserved_empty(missing.len(), "numeric SPI missing chunk")?;
+        for column in missing.iter_mut() {
+            let slice = column
+                .get_mut(start..end)
+                .ok_or_else(|| invalid("numeric SPI missing column has an invalid shape"))?;
+            flags.push(slice);
+        }
+        spi.read_numeric_columns(positions, start + 1, &mut chunk, &mut flags)?;
     }
     Ok(())
 }
@@ -1390,57 +1380,6 @@ fn read_into(
     let (value, missing) = spi.read_numeric(position, observation)?;
     destination.values[zero_based] = value;
     destination.missing[zero_based] = missing;
-    Ok(())
-}
-
-fn read_numeric_column_in_chunks(
-    spi: &mut dyn SpiApi,
-    position: u32,
-    destination: &mut LoadedNumericColumn,
-    mut missing_buffer: Option<&mut [u8]>,
-) -> Result<()> {
-    if destination.values.len() != destination.missing.len()
-        || missing_buffer
-            .as_ref()
-            .is_some_and(|buffer| buffer.is_empty())
-    {
-        return Err(invalid(
-            "numeric SPI range destination has an invalid shape",
-        ));
-    }
-    let chunk_size = missing_buffer
-        .as_ref()
-        .map_or(INPUT_BULK_READ_CHUNK_ROWS, |buffer| buffer.len());
-    for start in (0..destination.values.len()).step_by(chunk_size) {
-        spi.check_interrupted()?;
-        let end = start
-            .checked_add(chunk_size)
-            .unwrap_or(destination.values.len())
-            .min(destination.values.len());
-        let count = end - start;
-        if let Some(buffer) = missing_buffer.as_deref_mut() {
-            let statuses = &mut buffer[..count];
-            statuses.fill(0);
-            spi.read_numeric_range(
-                position,
-                start + 1,
-                &mut destination.values[start..end],
-                statuses,
-            )?;
-            for (slot, status) in destination.missing[start..end]
-                .iter_mut()
-                .zip(statuses.iter().copied())
-            {
-                *slot = status == 1;
-            }
-        } else {
-            spi.read_complete_numeric_range(
-                position,
-                start + 1,
-                &mut destination.values[start..end],
-            )?;
-        }
-    }
     Ok(())
 }
 

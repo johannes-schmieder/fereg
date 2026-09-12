@@ -1,7 +1,9 @@
+use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::data::{
-    prepare_numeric_sample_with_source_uses, AdjustmentInput, DomainDecision, NumericColumnView,
+    classify_numeric_sample_into_mask, prepare_numeric_sample_with_source_uses,
+    AdjustmentInput, DomainDecision, DropReason, NumericColumnView,
     NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedNumericSample,
     PreparedWeights, WeightInput, WeightKind,
 };
@@ -626,23 +628,28 @@ pub fn prepare_ols_data(
     prepare_ols_data_with_cluster_sources(request, loaded, &[])
 }
 
-/// Finish the common complete, unweighted boundary by taking ownership of the
-/// plugin input buffers.  This avoids copying every outcome and regressor
-/// column before the row-major solver batch is built.  Inputs with exclusions,
-/// missing values, or weights retain the fully general borrowed preparation
-/// path and its authoritative classification semantics.
+/// Prepare unweighted observations in owned plugin buffers. Incomplete samples
+/// use the same classifier as borrowed preparation, then compact each column
+/// independently. Weighted inputs retain the general preparation path.
 pub fn prepare_ols_data_owned(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
 ) -> Result<PreparedOlsData> {
-    if !is_full_retained_unweighted_sample(&loaded) {
+    if loaded.analytic_weight.is_some()
+        || loaded.frequency_weight.is_some()
+        || loaded.probability_weight.is_some()
+    {
         return prepare_ols_data(request, &loaded);
     }
     let model = request.validate_and_compile_with_cluster_sources(&[])?;
     validate_loaded(request, &loaded)?;
     validate_candidate_categorical_domain(request, &loaded, &[])?;
     validate_candidate_weight_domain(&loaded)?;
-    let sample = take_full_retained_unweighted_sample(loaded)?;
+    let sample = if is_full_retained_unweighted_sample(&loaded) {
+        take_full_retained_unweighted_sample(loaded)?
+    } else {
+        take_incomplete_unweighted_sample(request, loaded)?
+    };
     finish_prepare_ols_data(request, &[], model, sample)
 }
 
@@ -826,10 +833,24 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
         && loaded.candidate.iter().all(|candidate| *candidate)
         && loaded.outcome.missing.iter().all(|missing| !*missing)
         && loaded.outcome.values.iter().all(|value| value.is_finite())
-        && loaded.numeric_sources.iter().all(|(_, column)| {
-            column.missing.iter().all(|missing| !*missing)
-                && column.values.iter().all(|value| value.is_finite())
-        })
+        && {
+            let complete = |(_, column): &(SourceId, LoadedNumericColumn)| {
+                column.missing.iter().all(|missing| !*missing)
+                    && column.values.iter().all(|value| value.is_finite())
+            };
+            // This predicate chooses an ownership shortcut, not error order.
+            // Failed checks still enter the authoritative classification
+            // path. Never create Rayon's global pool for standalone callers.
+            if loaded.numeric_sources.len() >= 16
+                && loaded.candidate.len() >= 16_384
+                && rayon::current_thread_index().is_some()
+                && rayon::current_num_threads() > 1
+            {
+                loaded.numeric_sources.par_iter().all(complete)
+            } else {
+                loaded.numeric_sources.iter().all(complete)
+            }
+        }
 }
 
 fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<PreparedNumericSample> {
@@ -860,6 +881,112 @@ fn take_full_retained_unweighted_sample(loaded: LoadedOlsInput) -> Result<Prepar
     Ok(PreparedNumericSample {
         n_original: n,
         n_candidate: n,
+        original_row_by_active,
+        outcome: loaded.outcome.values,
+        regressors,
+        weights: PreparedWeights::None,
+        adjustment: crate::data::PreparedAdjustment::None,
+        drop_reasons,
+    })
+}
+
+fn take_incomplete_unweighted_sample(
+    request: &OlsRequestV1,
+    mut loaded: LoadedOlsInput,
+) -> Result<PreparedNumericSample> {
+    let n_original = loaded.candidate.len();
+    let n_candidate = loaded
+        .candidate
+        .iter()
+        .filter(|candidate| **candidate)
+        .count();
+    let mut drop_reasons = Vec::new();
+    drop_reasons
+        .try_reserve_exact(n_original)
+        .map_err(|_| allocation("unable to reserve owned-sample drop-reason mask"))?;
+    drop_reasons.resize(n_original, DropReason::Retained);
+    let mut original_row_by_active = Vec::new();
+    original_row_by_active
+        .try_reserve_exact(n_candidate)
+        .map_err(|_| allocation("unable to reserve owned-sample observation map"))?;
+    let mut regressor_views = Vec::new();
+    regressor_views
+        .try_reserve_exact(loaded.numeric_sources.len())
+        .map_err(|_| allocation("unable to reserve owned-sample source views"))?;
+    regressor_views.extend(
+        loaded
+            .numeric_sources
+            .iter()
+            .map(|(_, column)| NumericColumnView::with_missing(&column.values, &column.missing)),
+    );
+    let input = NumericPreparationInput {
+        candidate: &loaded.candidate,
+        outcome: NumericColumnView::with_missing(&loaded.outcome.values, &loaded.outcome.missing),
+        regressors: &regressor_views,
+        weights: WeightInput::None,
+        adjustment: AdjustmentInput::None,
+    };
+    classify_numeric_sample_into_mask(
+        &input,
+        &source_uses(request, &[])?,
+        &OlsPreparationPolicy,
+        &mut drop_reasons,
+    )?;
+    original_row_by_active.extend(
+        drop_reasons
+            .iter()
+            .enumerate()
+            .filter_map(|(row, reason)| (*reason == DropReason::Retained).then_some(row)),
+    );
+    drop(regressor_views);
+
+    let compact = |column: &mut LoadedNumericColumn| -> Result<()> {
+        // Reuse storage only up to the general path's candidate-axis bound.
+        // Restricted samples must not retain full-data column capacity.
+        if column.values.capacity() <= n_candidate {
+            for (active, original) in original_row_by_active.iter().copied().enumerate() {
+                column.values[active] = column.values[original];
+            }
+            column.values.truncate(original_row_by_active.len());
+        } else {
+            let mut values = Vec::new();
+            values
+                .try_reserve_exact(original_row_by_active.len())
+                .map_err(|_| allocation("unable to reserve compact owned-sample column"))?;
+            values.extend(original_row_by_active.iter().map(|row| column.values[*row]));
+            column.values = values;
+        }
+        Ok(())
+    };
+    if loaded.numeric_sources.len() >= 16
+        && n_original >= 16_384
+        && rayon::current_thread_index().is_some()
+        && rayon::current_num_threads() > 1
+    {
+        loaded
+            .numeric_sources
+            .par_iter_mut()
+            .try_for_each(|(_, column)| compact(column))?;
+    } else {
+        loaded
+            .numeric_sources
+            .iter_mut()
+            .try_for_each(|(_, column)| compact(column))?;
+    }
+    compact(&mut loaded.outcome)?;
+    let mut regressors = Vec::new();
+    regressors
+        .try_reserve_exact(loaded.numeric_sources.len())
+        .map_err(|_| allocation("unable to reserve owned-sample regressor table"))?;
+    regressors.extend(
+        loaded
+            .numeric_sources
+            .into_iter()
+            .map(|(_, column)| column.values),
+    );
+    Ok(PreparedNumericSample {
+        n_original,
+        n_candidate,
         original_row_by_active,
         outcome: loaded.outcome.values,
         regressors,
@@ -2164,6 +2291,123 @@ mod tests {
     }
 
     #[test]
+    fn wide_owned_preparation_preserves_serial_sample_and_error_precedence() {
+        let request = request(16, true);
+        let n = 32_771;
+        let full = LoadedOlsInput {
+            candidate: vec![true; n],
+            outcome: LoadedNumericColumn {
+                values: vec![1.0; n],
+                missing: vec![false; n],
+            },
+            numeric_sources: (1..=16)
+                .map(|source| {
+                    (
+                        SourceId::new(source).expect("source"),
+                        LoadedNumericColumn {
+                            values: (0..n).map(|row| (row % 13) as f64).collect(),
+                            missing: vec![false; n],
+                        },
+                    )
+                })
+                .collect(),
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        for case in 0..7 {
+            let mut loaded = full.clone();
+            if case > 0 {
+                loaded.numeric_sources[15].1.values[71] = f64::NAN;
+                loaded.numeric_sources[15].1.missing[71] = case == 1;
+                loaded.candidate[71] = case != 3;
+            }
+            if case == 4 {
+                loaded.candidate.fill(false);
+            }
+            if case == 5 {
+                loaded.outcome.missing.fill(true);
+            }
+            if case == 6 {
+                for row in 0..n {
+                    loaded.candidate[row] = row % 13 == 0;
+                }
+            }
+            let serial = prepare_ols_data(&request, &loaded);
+            for threads in [1, 4] {
+                let input = loaded.clone();
+                let team = crate::ThreadTeam::new(
+                    crate::ThreadConfig::from_requested(threads, true).expect("threads"),
+                );
+                let parallel = team
+                    .install(|| prepare_ols_data_owned(&request, input))
+                    .expect("worker team");
+                match (&serial, parallel) {
+                    (Ok(expected), Ok(actual)) => assert_eq!(*expected, actual),
+                    (Err(expected), Err(actual)) => {
+                        assert_eq!(expected.code, actual.code);
+                        assert_eq!(expected.message, actual.message);
+                    }
+                    other => panic!("preparation outcome changed: {other:?}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn owned_incomplete_compaction_preserves_value_bits_and_candidate_capacity() {
+        let request = request(1, true);
+        for restricted in [false, true] {
+            let loaded = LoadedOlsInput {
+                candidate: vec![!restricted, true, true, true, !restricted, true],
+                outcome: column(
+                    &[0.0, -0.0, 3.0, f64::from_bits(1), 5.0, f64::MAX],
+                    &[false; 6],
+                ),
+                numeric_sources: vec![(
+                    SourceId::new(1).unwrap(),
+                    column(
+                        &[0.0, -0.0, f64::NAN, f64::from_bits(1), 5.0, f64::MAX],
+                        &[false; 6],
+                    ),
+                )],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            let expected = prepare_ols_data(&request, &loaded).unwrap().sample;
+            let actual = take_incomplete_unweighted_sample(&request, loaded).unwrap();
+            assert_eq!(actual, expected);
+            for (a, b) in actual
+                .outcome
+                .iter()
+                .zip(&expected.outcome)
+                .chain(actual.regressors[0].iter().zip(&expected.regressors[0]))
+            {
+                assert_eq!(a.to_bits(), b.to_bits());
+            }
+            assert!(actual.outcome.capacity() <= actual.n_candidate);
+            assert!(actual.regressors[0].capacity() <= actual.n_candidate);
+        }
+    }
+
+    #[test]
+    fn owned_incomplete_sample_preserves_singleton_cascades() {
+        for keep in [false, true] {
+            let request = two_way_singleton_request(keep);
+            for excluded in [false, true] {
+                let mut loaded = two_way_singleton_input();
+                loaded.candidate[0] = !excluded;
+                loaded.outcome.missing[1] = true;
+                assert_eq!(
+                    prepare_ols_data(&request, &loaded).unwrap(),
+                    prepare_ols_data_owned(&request, loaded).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
     fn numeric_factor_main_effects_preserve_slots_factorize_once_and_allow_dual_use() {
         let request = mixed_numeric_factor_request();
         let loaded = LoadedOlsInput {
@@ -2928,6 +3172,7 @@ mod tests {
             probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("FE preparation");
+        assert_eq!(prepared, prepare_ols_data_owned(&request, loaded).expect("owned FE preparation"));
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![

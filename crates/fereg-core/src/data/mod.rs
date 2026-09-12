@@ -5,7 +5,10 @@ mod sample;
 mod weights;
 
 pub use model_matrix::{ColumnRecipe, DenseMatrix, ModelMatrixBuilder};
-pub(crate) use sample::{classify_numeric_sample_with_source_uses, NumericSampleClassification};
+pub(crate) use sample::{
+    classify_numeric_sample_into_mask, classify_numeric_sample_with_source_uses,
+    NumericSampleClassification,
+};
 pub use sample::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput,
     DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,

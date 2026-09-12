@@ -57,25 +57,13 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_with_missing(
     ST_double *value,
     ST_int *missing
 );
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_range_with_missing(
-    ST_int variable,
-    ST_int first_observation,
-    ST_int count,
-    ST_double *values,
-    unsigned char *missing
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_range_complete(
-    ST_int variable,
-    ST_int first_observation,
-    ST_int count,
-    ST_double *values
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_columns_complete(
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_columns(
     const ST_int *variables,
     ST_int variable_count,
     ST_int first_observation,
     ST_int observation_count,
-    ST_double **columns
+    ST_double **columns,
+    ST_double *missing_value
 );
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore(
     ST_int variable,

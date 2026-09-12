@@ -83,8 +83,10 @@ pub(crate) use prepared_fit::{
     fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
     LinearSolveFrame, PreparedLinearProjectionReconstructionCertificate,
 };
-pub(crate) use prepared_rhs::build_prepared_ols_rhs_with_response;
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
+pub(crate) use prepared_rhs::{
+    build_prepared_ols_rhs_with_response, numeric_sources_are_finite, NumericOlsColumns,
+};
 pub use prepared_robust::{
     fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,
     CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedOlsRobust,

@@ -106,21 +106,24 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
             "prepared OLS RHS reservation returned insufficient capacity",
         ));
     }
-    data.resize(elements, 0.0);
-
-    if rayon::current_num_threads() == 1 {
-        fill_rhs_single_thread(prepared, response, ncols, &mut data)?;
+    if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
+        columns.fill_reserved_rhs(response, &mut data)?;
     } else {
-        data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
-            |(row, destination)| -> Result<()> {
-                destination[0] = response[row];
-                for generated_column in 0..prepared.model.columns.len() {
-                    let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
-                    destination[rhs_column] = prepared.column_value(generated_column, row)?;
-                }
-                Ok(())
-            },
-        )?;
+        data.resize(elements, 0.0);
+        if rayon::current_num_threads() == 1 {
+            fill_rhs_single_thread(prepared, response, ncols, &mut data)?;
+        } else {
+            data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
+                |(row, destination)| -> Result<()> {
+                    destination[0] = response[row];
+                    for generated_column in 0..prepared.model.columns.len() {
+                        let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
+                        destination[rhs_column] = prepared.column_value(generated_column, row)?;
+                    }
+                    Ok(())
+                },
+            )?;
+        }
     }
     if data.par_iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
@@ -217,6 +220,167 @@ fn fill_rhs_single_thread(
     Ok(())
 }
 
+/// Validation has no reduction or ordering-dependent diagnostic. Partition
+/// wide source scans across an already installed pool. Preparation can call
+/// validation before entering the configured team, so never create an ambient
+/// global pool from this shared helper; keep those and small-model scans serial.
+pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSample) -> bool {
+    if sample.n_active() >= 4096
+        && sample.regressors.len() >= 8
+        && rayon::current_thread_index().is_some()
+    {
+        sample
+            .regressors
+            .par_iter()
+            .all(|source| source.iter().all(|v| v.is_finite()))
+    } else {
+        sample.regressors.iter().flatten().all(|v| v.is_finite())
+    }
+}
+
+const NUMERIC_TILE_ROWS: usize = 128;
+const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
+
+/// Stack-only bindings for the common numeric design. Keeping a row tile in
+/// cache avoids per-cell recipe dispatch and repeated full residual scans.
+/// None denotes an explicit intercept; unsupported recipes use the existing
+/// generic evaluator without partially filling or updating the destination.
+pub(crate) struct NumericOlsColumns<'a> {
+    columns: [Option<&'a [f64]>; MAX_BOUND_NUMERIC_COLUMNS],
+    width: usize,
+    rows: usize,
+}
+
+impl<'a> NumericOlsColumns<'a> {
+    pub(crate) fn bind(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample,
+    ) -> Result<Option<Self>> {
+        if sample.n_active() < 4096
+            || !(8..=MAX_BOUND_NUMERIC_COLUMNS).contains(&model.columns.len())
+            || model.columns.iter().any(|c| {
+                !matches!(
+                    c.kind,
+                    PreparedOlsColumnKind::Continuous { .. } | PreparedOlsColumnKind::Intercept
+                )
+            })
+        {
+            return Ok(None);
+        }
+        let mut columns = [None; MAX_BOUND_NUMERIC_COLUMNS];
+        for (destination, column) in columns.iter_mut().zip(&model.columns) {
+            if let PreparedOlsColumnKind::Continuous {
+                prepared_source_index,
+                ..
+            } = column.kind
+            {
+                let source = sample
+                    .regressors
+                    .get(prepared_source_index)
+                    .filter(|v| v.len() == sample.n_active())
+                    .ok_or_else(|| invalid_argument("numeric OLS column is not aligned"))?;
+                *destination = Some(source.as_slice());
+            }
+        }
+        Ok(Some(Self {
+            columns,
+            width: model.columns.len(),
+            rows: sample.n_active(),
+        }))
+    }
+
+    pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
+        let width = self.width + 1;
+        if response.len() != self.rows {
+            return Err(invalid_argument("numeric OLS RHS response is not aligned"));
+        }
+        let elements = self
+            .rows
+            .checked_mul(width)
+            .ok_or_else(|| allocation("numeric OLS RHS dimensions overflow"))?;
+        if data.capacity() < elements {
+            return Err(allocation("numeric OLS RHS reservation is insufficient"));
+        }
+        // The caller already reserved the complete matrix fallibly. Indexed
+        // collection reuses that capacity and initializes disjoint slices in
+        // parallel, without uninitialized memory in the safe core or a second
+        // observation-scale allocation.
+        (0..elements)
+            .into_par_iter()
+            .map(|_| 0.0)
+            .collect_into_vec(data);
+        data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
+            .enumerate()
+            .for_each(|(tile, output)| {
+                let start = tile * NUMERIC_TILE_ROWS;
+                let rows = output.len() / width;
+                for (destination, &value) in output
+                    .chunks_exact_mut(width)
+                    .zip(&response[start..start + rows])
+                {
+                    destination[0] = value;
+                }
+                for (column, source) in self.columns[..self.width].iter().enumerate() {
+                    if let Some(source) = source {
+                        for (destination, &value) in output
+                            .chunks_exact_mut(width)
+                            .zip(&source[start..start + rows])
+                        {
+                            destination[column + 1] = value;
+                        }
+                    } else {
+                        for destination in output.chunks_exact_mut(width) {
+                            destination[column + 1] = 1.0;
+                        }
+                    }
+                }
+            });
+        Ok(())
+    }
+
+    pub(crate) fn subtract_fitted(
+        &self,
+        coefficients: &[Option<f64>],
+        residuals: &mut [f64],
+    ) -> Result<()> {
+        if coefficients.len() != self.width
+            || residuals.len() != self.rows
+            || coefficients.iter().flatten().any(|v| !v.is_finite())
+        {
+            return Err(invalid_argument(
+                "numeric OLS residual update is not aligned and finite",
+            ));
+        }
+        residuals
+            .par_chunks_mut(NUMERIC_TILE_ROWS)
+            .enumerate()
+            .try_for_each(|(tile, output)| -> Result<()> {
+                let start = tile * NUMERIC_TILE_ROWS;
+                let rows = output.len();
+                for (source, coefficient) in self.columns[..self.width].iter().zip(coefficients) {
+                    let Some(coefficient) = coefficient else {
+                        continue;
+                    };
+                    if let Some(source) = source {
+                        for (residual, &value) in
+                            output.iter_mut().zip(&source[start..start + rows])
+                        {
+                            *residual = (-coefficient).mul_add(value, *residual);
+                        }
+                    } else {
+                        for residual in output.iter_mut() {
+                            *residual = (-coefficient).mul_add(1.0, *residual);
+                        }
+                    }
+                }
+                if output.iter().any(|v| !v.is_finite()) {
+                    return Err(invalid_data("numeric OLS raw residual is not finite"));
+                }
+                Ok(())
+            })
+    }
+}
+
 fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {
     let ncols = model_columns
         .checked_add(1)
@@ -241,13 +405,7 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) ->
             "prepared OLS numeric sample is not aligned on one observation axis",
         ));
     }
-    if response.iter().any(|value| !value.is_finite())
-        || sample
-            .regressors
-            .iter()
-            .flatten()
-            .any(|value| !value.is_finite())
-    {
+    if response.iter().any(|value| !value.is_finite()) || !numeric_sources_are_finite(sample) {
         return Err(invalid_data(
             "prepared OLS outcome and numeric sources must be finite",
         ));

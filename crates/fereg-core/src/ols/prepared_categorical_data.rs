@@ -32,6 +32,7 @@ use crate::topology_dof::{
     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
 };
+use rayon::prelude::*;
 
 use crate::ols::prepare_ols_data_with_cluster_sources;
 
@@ -201,14 +202,18 @@ impl PreparedCategoricalOlsData {
                 "categorical OLS RHS reservation returned insufficient capacity",
             ));
         }
-        values.resize(elements, 0.0);
-        for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
-            destination[0] = response[row];
-            for generated_column in 0..self.model.columns.len() {
-                destination[generated_column + 1] = self.column_value(generated_column, row)?;
+        if let Some(columns) = crate::ols::NumericOlsColumns::bind(&self.model, &self.sample)? {
+            columns.fill_reserved_rhs(response, &mut values)?;
+        } else {
+            values.resize(elements, 0.0);
+            for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
+                destination[0] = response[row];
+                for generated_column in 0..self.model.columns.len() {
+                    destination[generated_column + 1] = self.column_value(generated_column, row)?;
+                }
             }
         }
-        if values.iter().any(|value| !value.is_finite()) {
+        if values.par_iter().any(|value| !value.is_finite()) {
             return Err(invalid_data(
                 "categorical OLS RHS construction produced a nonfinite value",
             ));
@@ -1453,11 +1458,7 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
         ));
     }
     if sample.outcome.iter().any(|value| !value.is_finite())
-        || sample
-            .regressors
-            .iter()
-            .flatten()
-            .any(|value| !value.is_finite())
+        || !crate::ols::numeric_sources_are_finite(sample)
     {
         return Err(invalid_data(
             "prepared categorical OLS numeric values must be finite",

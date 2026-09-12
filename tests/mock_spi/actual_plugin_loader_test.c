@@ -987,7 +987,7 @@ static void reset_estimate_outputs(void)
     plugin_data[1][4] = 4.0;
 }
 
-static ST_int call_estimate_ols_test(stata_call_function call)
+static ST_int call_estimate_ols_test(stata_call_function call, ST_int candidate_all)
 {
     char *arguments[] = {
         "estimate-ols",
@@ -1025,7 +1025,7 @@ static ST_int call_estimate_ols_test(stata_call_function call)
         "binding_matrix=B",
         "binding_count=3",
         "include_intercept=1",
-        "candidate_all=0",
+        candidate_all ? "candidate_all=1" : "candidate_all=0",
         "input_complete=0",
         "keep_singletons=0",
         "vce=iid",
@@ -1071,7 +1071,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
     ST_int name_index;
     reset_estimate_outputs();
     clear_output();
-    if (call_estimate_ols_test(call) != 0) return 1;
+    if (call_estimate_ols_test(call, 0) != 0) return 1;
     if (error_buffer[0] != '\0' || result_receipt[0][0] != 5354601.0 ||
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
@@ -1089,11 +1089,42 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();
-        if (call_estimate_ols_test(call) != 3499) return 5;
+        if (call_estimate_ols_test(call, 0) != 3499) return 5;
         if (strstr(error_buffer, "SPI") == NULL || output_store_calls != ordinal) return 6;
         if (result_receipt[0][15] != 0.0 || last_store_was_complete) return 7;
     }
     return 0;
+}
+
+/* Exercise the raw-column C ABI and its SDK missing boundary, then compare
+   the resulting estimate and sample with authoritative scalar SPI reads. */
+static int check_estimate_ols_numeric_columns(stata_call_function call)
+{
+    ST_double expected_b[1][2];
+    ST_double expected_v[2][2];
+    ST_int row;
+    reset_estimate_outputs();
+    /* This mock's scalar callback uses NaN; the production range adapter
+       receives the SDK representation of the same missing cell. */
+    plugin_data[1][0] = NAN;
+    for (row = 0; row < 5; ++row) plugin_data[3][row] = 1.0;
+    if (call_estimate_ols_test(call, 0) != 0) return 1;
+    memcpy(expected_b, result_b, sizeof(result_b));
+    memcpy(expected_v, result_v, sizeof(result_v));
+    reset_estimate_outputs();
+    memset(plugin_read_counts, 0, sizeof(plugin_read_counts));
+    plugin_data[1][0] = 0x1p+1023;
+    for (row = 0; row < 5; ++row) plugin_data[3][row] = 1.0;
+    if (call_estimate_ols_test(call, 1) != 0) return 2;
+    if (memcmp(expected_b, result_b, sizeof(result_b)) != 0 ||
+        memcmp(expected_v, result_v, sizeof(result_v)) != 0) return 3;
+    for (row = 0; row < 5; ++row) {
+        if (plugin_read_counts[0][row] != 0 ||
+            plugin_read_counts[1][row] != 1 ||
+            plugin_read_counts[2][row] != 1) return 4;
+        if (plugin_data[3][row] != (row == 0 ? 0.0 : 1.0)) return 5;
+    }
+    return result_receipt[0][15] == 1.0 && last_store_was_complete ? 0 : 6;
 }
 
 int main(int argc, char *argv[])
@@ -1134,6 +1165,7 @@ int main(int argc, char *argv[])
     plugin.nvar = mock_nvars;
     plugin.isstr = mock_isstr;
     plugin.ismissing = mock_missing;
+    plugin.missval = 0x1p+1023;
     plugin.safevdata = mock_vdata;
     plugin.safestore = mock_vstore;
     plugin.rowsof = mock_rowsof;
@@ -1212,6 +1244,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "prepare OLS pweight path failed (%d): %s / %s\n", result, display_buffer, error_buffer);
         dlclose(library);
         return 90 + result;
+    }
+    result = check_estimate_ols_numeric_columns(call);
+    if (result != 0) {
+        fprintf(stderr, "guarded numeric column input failed (%d): %s / %s\n", result, display_buffer, error_buffer);
+        dlclose(library);
+        return 19;
     }
     result = check_estimate_ols_atomic_store(call);
     if (result != 0) {

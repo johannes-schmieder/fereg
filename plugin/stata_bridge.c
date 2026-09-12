@@ -176,70 +176,26 @@ ST_int fereg_spi_vdata_with_missing(
     return 0;
 }
 
-ST_int fereg_spi_vdata_range_with_missing(
-    ST_int variable,
-    ST_int first_observation,
-    ST_int count,
-    ST_double *values,
-    unsigned char *missing
-)
-{
-    ST_int index;
-    ST_int rc;
-    if (values == NULL || missing == NULL || first_observation <= 0 || count <= 0) {
-        return FEREG_SPI_RC_SYNTAX;
-    }
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    for (index = 0; index < count; ++index) {
-        rc = SF_vdata(variable, first_observation + index, &values[index]);
-        if (rc != 0) return rc;
-        missing[index] = SF_is_missing(values[index]) ? 1 : 0;
-    }
-    return 0;
-}
-
-ST_int fereg_spi_vdata_range_complete(
-    ST_int variable,
-    ST_int first_observation,
-    ST_int count,
-    ST_double *values
-)
-{
-    ST_int index;
-    ST_int rc;
-    if (values == NULL || first_observation <= 0 || count <= 0) {
-        return FEREG_SPI_RC_SYNTAX;
-    }
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    for (index = 0; index < count; ++index) {
-        rc = SF_vdata(variable, first_observation + index, &values[index]);
-        if (rc != 0) return rc;
-    }
-    return 0;
-}
-
-ST_int fereg_spi_vdata_columns_complete(
+ST_int fereg_spi_vdata_columns(
     const ST_int *variables,
     ST_int variable_count,
     ST_int first_observation,
     ST_int observation_count,
-    ST_double **columns
+    ST_double **columns,
+    ST_double *missing_value
 )
 {
     ST_int observation;
     ST_int variable;
     ST_int rc;
-    if (variables == NULL || columns == NULL || variable_count <= 0 ||
+    if (variables == NULL || columns == NULL || missing_value == NULL || variable_count <= 0 ||
         first_observation <= 0 || observation_count <= 0) {
         return FEREG_SPI_RC_SYNTAX;
     }
     if (fereg_bridge_require_main_thread() != 0) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
+    *missing_value = SV_missval;
     for (observation = 0; observation < observation_count; ++observation) {
         for (variable = 0; variable < variable_count; ++variable) {
             if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;

@@ -102,102 +102,45 @@ pub trait SpiApi {
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
     fn variable_is_strl(&mut self, variable: u32) -> Result<bool>;
     fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)>;
-    /// Read a contiguous observation range from one numeric plugin-varlist
-    /// coordinate. The default preserves the scalar SPI contract used by test
-    /// doubles; the production bridge overrides it so Rust crosses the FFI
-    /// boundary once per bounded chunk while C still invokes Stata's
-    /// authoritative `SF_vdata` and `SF_is_missing` for every cell.
-    fn read_numeric_range(
-        &mut self,
-        variable: u32,
-        first_observation: usize,
-        values: &mut [f64],
-        missing: &mut [u8],
-    ) -> Result<()> {
-        if values.len() != missing.len() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "numeric SPI range buffers have different lengths",
-            ));
-        }
-        for (offset, (value, missing_slot)) in values.iter_mut().zip(missing.iter_mut()).enumerate()
-        {
-            let observation = first_observation.checked_add(offset).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Allocation,
-                    "numeric SPI range observation index overflows",
-                )
-            })?;
-            let (loaded, is_missing) = self.read_numeric(variable, observation)?;
-            *value = loaded;
-            *missing_slot = u8::from(is_missing);
-        }
-        Ok(())
-    }
-    /// Read a contiguous range whose retained cells were already certified
-    /// nonmissing by the Stata ado boundary. Test doubles retain a defensive
-    /// scalar implementation; the production bridge avoids repeating
-    /// `SF_is_missing` for every cell.
-    fn read_complete_numeric_range(
-        &mut self,
-        variable: u32,
-        first_observation: usize,
-        values: &mut [f64],
-    ) -> Result<()> {
-        for (offset, value) in values.iter_mut().enumerate() {
-            let observation = first_observation.checked_add(offset).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Allocation,
-                    "complete numeric SPI range observation index overflows",
-                )
-            })?;
-            let (loaded, missing) = self.read_numeric(variable, observation)?;
-            if missing {
-                return Err(FeregError::new(
-                    ErrorCode::InvalidData,
-                    "Stata completeness certificate disagrees with numeric input",
-                ));
-            }
-            *value = loaded;
-        }
-        Ok(())
-    }
-    /// Read several certified-complete numeric coordinates in observation
-    /// order. This order matches Stata's plugin access pattern and lets the
-    /// production bridge populate the final column buffers directly.
-    fn read_complete_numeric_columns(
+    /// Read numeric coordinates in observation order into native value and
+    /// missing-status buffers. The default retains authoritative scalar SPI
+    /// semantics; the production adapter classifies Stata's ordered numeric
+    /// missing range after copying a bounded chunk of raw doubles.
+    fn read_numeric_columns(
         &mut self,
         variables: &[u32],
         first_observation: usize,
         columns: &mut [&mut [f64]],
+        missing: &mut [&mut [bool]],
     ) -> Result<()> {
         if variables.len() != columns.len()
+            || missing.len() != columns.len()
             || columns.is_empty()
-            || columns
-                .iter()
-                .any(|column| column.len() != columns[0].len())
+            || columns.iter().zip(missing.iter()).any(|(column, flags)| {
+                column.len() != columns[0].len() || flags.len() != column.len()
+            })
         {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
-                "complete numeric SPI column batch has an invalid shape",
+                "numeric SPI column batch has an invalid shape",
             ));
         }
         for offset in 0..columns[0].len() {
             let observation = first_observation.checked_add(offset).ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Allocation,
-                    "complete numeric SPI column observation index overflows",
+                    "numeric SPI column observation index overflows",
                 )
             })?;
-            for (variable, column) in variables.iter().copied().zip(columns.iter_mut()) {
-                let (loaded, missing) = self.read_numeric(variable, observation)?;
-                if missing {
-                    return Err(FeregError::new(
-                        ErrorCode::InvalidData,
-                        "Stata completeness certificate disagrees with numeric input",
-                    ));
-                }
+            for ((variable, column), flags) in variables
+                .iter()
+                .copied()
+                .zip(columns.iter_mut())
+                .zip(missing.iter_mut())
+            {
+                let (loaded, is_missing) = self.read_numeric(variable, observation)?;
                 column[offset] = loaded;
+                flags[offset] = is_missing;
             }
         }
         Ok(())

@@ -66,6 +66,7 @@ pub struct CertifiedBorrowedMap {
     residualized: DenseMatrix,
     report: SolveReport,
     coefficients: Option<FeCoefficientBatch>,
+    residual_norms: Vec<f64>,
 }
 
 /// Optional coefficient-space product of one certified absorption.
@@ -730,6 +731,23 @@ fn coefficient_count(effect_channels: &[usize], level_counts: &[usize]) -> Resul
 }
 
 impl CertifiedBorrowedMap {
+    // These norms belong to this exact residualized matrix and normalized weights.
+    // Moving them to OLS avoids a second O(NK) pass after fresh certification.
+    pub(crate) fn take_residual_norms(&mut self) -> Vec<f64> {
+        std::mem::take(&mut self.residual_norms)
+    }
+    pub(crate) fn with_residual_norms(mut self, norms: Vec<f64>) -> Result<Self> {
+        if norms.len() != self.residualized.ncols()
+            || norms.iter().any(|v| !v.is_finite() || *v < 0.0)
+        {
+            return Err(invalid_argument(
+                "certified residual norms are not finite and aligned",
+            ));
+        }
+        self.residual_norms = norms;
+        Ok(self)
+    }
+
     #[must_use]
     pub const fn residualized(&self) -> &DenseMatrix {
         &self.residualized
@@ -762,6 +780,7 @@ impl CertifiedBorrowedMap {
             residualized,
             report,
             coefficients: None,
+            residual_norms: Vec::new(),
         })
     }
 
@@ -782,6 +801,7 @@ impl CertifiedBorrowedMap {
             residualized,
             report,
             coefficients: Some(coefficients),
+            residual_norms: Vec::new(),
         })
     }
 }
@@ -890,6 +910,7 @@ impl WorkspaceReservation for SystemWorkspaceReservation {
 }
 
 struct BorrowedMapWorkspace {
+    ols_norm_reduction: bool,
     reference_norms: Vec<f64>,
     residual_norms: Vec<f64>,
     rhs_scales: Vec<f64>,
@@ -955,6 +976,7 @@ impl BorrowedMapWorkspace {
             0
         };
         Ok(Self {
+            ols_norm_reduction: false,
             reference_norms: reserved_zeros(
                 rhs_count,
                 reservation,
@@ -1671,9 +1693,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
+            None,
         );
         self.two_fe_pcg = Some(graph);
-        result
+        match result? {
+            SchurAttempt::Certified(result) => Ok(result),
+            SchurAttempt::Continue { .. } => {
+                unreachable!("unbounded MAP accelerator continues internally")
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2002,7 +2030,12 @@ fn absorb_two_fe_pcg_reusing(
     next_residual_square: &mut Vec<f64>,
     direction_projection: &mut Vec<f64>,
     ratio: &mut Vec<f64>,
-) -> Result<CertifiedBorrowedMap> {
+    ols_cap: Option<usize>,
+) -> Result<SchurAttempt> {
+    let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_start = Instant::now();
+    let mut operator_seconds = 0.0;
+    let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
@@ -2038,28 +2071,48 @@ fn absorb_two_fe_pcg_reusing(
         scalars.resize(rhs_count, 0.0);
     }
 
-    graph.left_weights.fill(0.0);
-    graph.right_weights.fill(0.0);
-    graph.left_rhs.fill(0.0);
-    graph.left_work.fill(0.0);
-    graph.solution.fill(0.0);
-    graph.residual.fill(0.0);
-    graph.direction.fill(0.0);
-    graph.operator.fill(0.0);
     let left_codes = left.codes();
-    let right_codes = right.codes();
-    for row in 0..values.nrows() {
-        let weight = weights.normalized(row);
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        graph.left_weights[left_level] += weight;
-        graph.right_weights[right_level] += weight;
-        for rhs in 0..rhs_count {
-            let term = weight * values[(row, rhs)];
-            graph.left_rhs[left_level * stride + rhs] += term;
-            graph.residual[right_level * stride + rhs] += term;
-        }
-    }
+    let data = values.as_slice();
+    graph
+        .solution
+        .par_chunks_mut(32768)
+        .for_each(|part| part.fill(0.0));
+    graph
+        .left_rhs
+        .par_chunks_mut(stride)
+        .zip(graph.left_weights.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(level, (sum, total))| -> Result<()> {
+            sum.fill(0.0);
+            *total = 0.0;
+            for &row in left.level_index().checked_members(level)? {
+                let weight = weights.normalized(row);
+                *total += weight;
+                let source = &data[row * rhs_count..(row + 1) * rhs_count];
+                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                    *out += weight * value;
+                }
+            }
+            Ok(())
+        })?;
+    graph
+        .residual
+        .par_chunks_mut(stride)
+        .zip(graph.right_weights.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(level, (sum, total))| -> Result<()> {
+            sum.fill(0.0);
+            *total = 0.0;
+            for &row in right.level_index().checked_members(level)? {
+                let weight = weights.normalized(row);
+                *total += weight;
+                let source = &data[row * rhs_count..(row + 1) * rhs_count];
+                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                    *out += weight * value;
+                }
+            }
+            Ok(())
+        })?;
     if graph
         .left_weights
         .iter()
@@ -2075,21 +2128,31 @@ fn absorb_two_fe_pcg_reusing(
             "two-FE categorical MAP PCG group state is invalid",
         ));
     }
-    for level in 0..left_levels {
-        let denominator = graph.left_weights[level];
-        for rhs in 0..rhs_count {
-            graph.left_rhs[level * stride + rhs] /= denominator;
-        }
-    }
-    for row in 0..values.nrows() {
-        let weight = weights.normalized(row);
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        for rhs in 0..rhs_count {
-            graph.residual[right_level * stride + rhs] -=
-                weight * graph.left_rhs[left_level * stride + rhs];
-        }
-    }
+    graph
+        .left_rhs
+        .par_chunks_mut(stride)
+        .zip(&graph.left_weights)
+        .for_each(|(sum, &denominator)| {
+            for value in &mut sum[..rhs_count] {
+                *value /= denominator;
+            }
+        });
+    let left_rhs = &graph.left_rhs;
+    graph
+        .residual
+        .par_chunks_mut(stride)
+        .enumerate()
+        .try_for_each(|(level, sum)| -> Result<()> {
+            for &row in right.level_index().checked_members(level)? {
+                let weight = weights.normalized(row);
+                let left_level = left_codes[row] as usize;
+                let source = &left_rhs[left_level * stride..left_level * stride + rhs_count];
+                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                    *out -= weight * value;
+                }
+            }
+            Ok(())
+        })?;
     for level in 0..right_levels {
         let denominator = graph.right_weights[level];
         for (rhs, residual_sum) in residual_square.iter_mut().enumerate() {
@@ -2111,11 +2174,19 @@ fn absorb_two_fe_pcg_reusing(
         .max_iterations
         .saturating_sub(completed_pilot_iterations);
     let map_fallback_reserve = remaining_iterations / 4;
-    let pcg_iteration_limit = config.max_iterations.saturating_sub(map_fallback_reserve);
+    let pcg_iteration_limit = ols_cap.map_or_else(
+        || config.max_iterations.saturating_sub(map_fallback_reserve),
+        |cap| cap.min(config.max_iterations),
+    );
     let mut iterations = completed_pilot_iterations;
     let mut active_rhs = 0_usize;
+    // The chain-tuned worker cap belongs to the shared iterative path. Wide
+    // OLS has passed its own contraction probe and benefits from the disjoint
+    // state updates at larger team sizes as well.
     let parallel_recurrence = design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS
-        && (2..=TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS).contains(&rayon::current_num_threads());
+        && rayon::current_num_threads() > 1
+        && (ols_cap.is_some()
+            || rayon::current_num_threads() <= TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS);
     active_rhs_state.fill(0.0);
     for rhs in 0..rhs_count {
         if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance)? {
@@ -2132,8 +2203,12 @@ fn absorb_two_fe_pcg_reusing(
     }
     let mut reconstruct = active_rhs == 0;
     let mut breakdown = false;
+    let initialization_seconds = phase_start.elapsed().as_secs_f64();
     while !reconstruct && iterations < pcg_iteration_limit {
+        let op_start = Instant::now();
         graph.apply_schur(design, weights, rhs_count, stride)?;
+        operator_seconds += op_start.elapsed().as_secs_f64();
+        let rec_start = Instant::now();
         direction_projection.fill(0.0);
         for level in 0..right_levels {
             for (rhs, projection_sum) in direction_projection.iter_mut().enumerate() {
@@ -2246,6 +2321,7 @@ fn absorb_two_fe_pcg_reusing(
         reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
         if reconstruct {
             residual_square.copy_from_slice(next_residual_square);
+            recurrence_seconds += rec_start.elapsed().as_secs_f64();
             break;
         }
         for rhs in 0..rhs_count {
@@ -2308,10 +2384,21 @@ fn absorb_two_fe_pcg_reusing(
             }
         }
         residual_square.copy_from_slice(next_residual_square);
+        recurrence_seconds += rec_start.elapsed().as_secs_f64();
     }
 
+    if ols_cap.is_some() && (active_rhs > 0 || breakdown) {
+        return Ok(SchurAttempt::Continue {
+            values,
+            iterations,
+            candidate: false,
+        });
+    }
     if reconstruct || iterations > completed_pilot_iterations {
+        let reconstruct_start = Instant::now();
         reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values, rhs_count, stride)?;
+        let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
+        let cert_start = Instant::now();
         let certificate = certify(
             design,
             weights,
@@ -2319,6 +2406,9 @@ fn absorb_two_fe_pcg_reusing(
             config.tolerance,
             certificate_workspace,
         )?;
+        if trace {
+            eprintln!("FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",cert_start.elapsed().as_secs_f64(),certificate.passed);
+        }
         if certificate.passed {
             let mut result = certified_result(
                 values,
@@ -2330,10 +2420,17 @@ fn absorb_two_fe_pcg_reusing(
             )?;
             result.report.pilot_iterations = completed_pilot_iterations;
             result.report.pilot_contraction = pilot_contraction;
-            return Ok(result);
+            return Ok(SchurAttempt::Certified(result));
         }
     }
 
+    if ols_cap.is_some() {
+        return Ok(SchurAttempt::Continue {
+            values,
+            iterations,
+            candidate: true,
+        });
+    }
     // PCG is an acceleration only. A finite breakdown or a full-certificate
     // miss continues with ordinary symmetric MAP from the reconstructed
     // observation-space candidate. One quarter of the original iteration
@@ -2366,7 +2463,7 @@ fn absorb_two_fe_pcg_reusing(
                 )?;
                 result.report.pilot_iterations = completed_pilot_iterations;
                 result.report.pilot_contraction = pilot_contraction;
-                return Ok(result);
+                return Ok(SchurAttempt::Certified(result));
             }
         }
     }
@@ -2468,8 +2565,10 @@ impl TwoFePcgWorkspace {
                         }
                         let weight = weights.normalized(row);
                         let right_level = right_codes[row] as usize;
-                        for rhs in 0..rhs_count {
-                            level_work[rhs] += weight * direction[right_level * stride + rhs];
+                        let source =
+                            &direction[right_level * stride..right_level * stride + rhs_count];
+                        for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
+                            *value += weight * term;
                         }
                     }
                     let denominator = left_weights[level];
@@ -2496,9 +2595,9 @@ impl TwoFePcgWorkspace {
                     let level = first_level + local_level;
                     let level_operator =
                         &mut operator[local_level * stride..(local_level + 1) * stride];
-                    for rhs in 0..rhs_count {
-                        level_operator[rhs] =
-                            right_weights[level] * direction[level * stride + rhs];
+                    let source = &direction[level * stride..level * stride + rhs_count];
+                    for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
+                        *value = right_weights[level] * term;
                     }
                     let members = right.level_index().checked_members(level)?;
                     for &row in members {
@@ -2509,8 +2608,10 @@ impl TwoFePcgWorkspace {
                         }
                         let weight = weights.normalized(row);
                         let left_level = left_codes[row] as usize;
-                        for rhs in 0..rhs_count {
-                            level_operator[rhs] -= weight * left_work[left_level * stride + rhs];
+                        let source =
+                            &left_work[left_level * stride..left_level * stride + rhs_count];
+                        for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
+                            *value -= weight * term;
                         }
                     }
                 }
@@ -2544,7 +2645,9 @@ fn two_fe_pcg_rhs_ready(
                 f64::INFINITY
             }
         } else {
-            mean.abs() / reference
+            // Match the weighted group-moment certificate; a mean alone can
+            // stop early for large groups and trigger expensive MAP polishing.
+            (mean.abs() / reference) * denominator.sqrt().max(1.0)
         };
         if !relative.is_finite() || relative > 0.5 * tolerance {
             return Ok(false);
@@ -2561,40 +2664,54 @@ fn reconstruct_two_fe_pcg_candidate(
     rhs_count: usize,
     stride: usize,
 ) -> Result<()> {
-    graph.left_work.fill(0.0);
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
     let left_codes = left.codes();
     let right_codes = right.codes();
-    for row in 0..design.nobs() {
-        let weight = weights.normalized(row);
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        for rhs in 0..rhs_count {
-            graph.left_work[left_level * stride + rhs] +=
-                weight * graph.solution[right_level * stride + rhs];
-        }
-    }
-    for level in 0..left.n_levels() {
-        let denominator = graph.left_weights[level];
-        for rhs in 0..rhs_count {
-            graph.left_work[level * stride + rhs] = graph.left_rhs[level * stride + rhs]
-                - graph.left_work[level * stride + rhs] / denominator;
-        }
-    }
-    for row in 0..values.nrows() {
-        let left_level = left_codes[row] as usize;
-        let right_level = right_codes[row] as usize;
-        for rhs in 0..rhs_count {
-            values[(row, rhs)] -= graph.left_work[left_level * stride + rhs]
-                + graph.solution[right_level * stride + rhs];
-            if !values[(row, rhs)].is_finite() {
-                return Err(invalid_data(
-                    "two-FE categorical MAP PCG reconstruction is nonfinite",
-                ));
+    let solution = &graph.solution;
+    let left_rhs = &graph.left_rhs;
+    let left_weights = &graph.left_weights;
+    graph
+        .left_work
+        .par_chunks_mut(stride)
+        .enumerate()
+        .try_for_each(|(level, sum)| -> Result<()> {
+            sum.fill(0.0);
+            for &row in left.level_index().checked_members(level)? {
+                let weight = weights.normalized(row);
+                let right_level = right_codes[row] as usize;
+                let source = &solution[right_level * stride..right_level * stride + rhs_count];
+                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                    *out += weight * value;
+                }
             }
-        }
-    }
+            let source = &left_rhs[level * stride..level * stride + rhs_count];
+            for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
+                *out = value - *out / left_weights[level];
+            }
+            Ok(())
+        })?;
+    let left_work = &graph.left_work;
+    values
+        .as_mut_slice()
+        .par_chunks_mut(rhs_count)
+        .enumerate()
+        .try_for_each(|(row, output)| -> Result<()> {
+            let left_level = left_codes[row] as usize;
+            let right_level = right_codes[row] as usize;
+            let a = &left_work[left_level * stride..left_level * stride + rhs_count];
+            let b = &solution[right_level * stride..right_level * stride + rhs_count];
+            for ((out, &av), &bv) in output.iter_mut().zip(a).zip(b) {
+                *out -= av + bv;
+                if !out.is_finite() {
+                    return Err(invalid_data(
+                        "two-FE categorical MAP PCG reconstruction is nonfinite",
+                    ));
+                }
+            }
+            Ok(())
+        })?;
+
     Ok(())
 }
 
@@ -4685,43 +4802,38 @@ fn pilot_contraction(initial: f64, current: f64) -> Result<f64> {
 }
 
 fn mark_auto(
-    result: CertifiedBorrowedMap,
+    mut result: CertifiedBorrowedMap,
     pilot_iterations: usize,
     contraction: f64,
     additional_setup_seconds: f64,
     additional_solve_seconds: f64,
 ) -> Result<CertifiedBorrowedMap> {
-    let (residualized, mut report, coefficients) = result.into_full_parts();
-    report.requested_solver = FeSolverKind::Auto;
-    report.pilot_iterations = pilot_iterations;
-    report.pilot_contraction = contraction;
-    report.setup_seconds += additional_setup_seconds;
-    report.solve_seconds += additional_solve_seconds;
-    if let Some(coefficients) = coefficients {
-        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-            residualized,
-            report,
-            coefficients,
-        )
-    } else {
-        CertifiedBorrowedMap::from_certified_parts(residualized, report)
+    result.report.requested_solver = FeSolverKind::Auto;
+    result.report.pilot_iterations = pilot_iterations;
+    result.report.pilot_contraction = contraction;
+    result.report.setup_seconds += additional_setup_seconds;
+    result.report.solve_seconds += additional_solve_seconds;
+    if !result.report.certified() {
+        return Err(invalid_data(
+            "borrowed MAP attempted to construct an uncertified result",
+        ));
     }
+    Ok(result)
 }
 
 fn attach_optional_coefficients(
-    result: CertifiedBorrowedMap,
+    mut result: CertifiedBorrowedMap,
     coefficients: Option<FeCoefficientBatch>,
 ) -> Result<CertifiedBorrowedMap> {
     if let Some(coefficients) = coefficients {
-        let (residualized, report) = result.into_parts();
-        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-            residualized,
-            report,
-            coefficients,
-        )
-    } else {
-        Ok(result)
+        if coefficients.rhs_count() != result.residualized.ncols()
+            || coefficients.coefficients_per_rhs() == 0
+        {
+            return Err(invalid_data("FE coefficient product is not aligned"));
+        }
+        result.coefficients = Some(coefficients);
     }
+    Ok(result)
 }
 
 fn attach_optional_map_coefficients(
@@ -5249,13 +5361,8 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
-    weighted_column_norms(
-        &values,
-        weights,
-        &mut workspace.reference_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    workspace.ols_norm_reduction = skip_initial_one_effect_certificate;
+    update_ols_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
     let mut coefficients = retain_coefficients
@@ -5289,7 +5396,10 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
             )?;
-            return attach_optional_map_coefficients(result, coefficients);
+            return attach_optional_map_coefficients(
+                result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
+                coefficients,
+            );
         }
     }
 
@@ -5310,7 +5420,10 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
-        return attach_optional_map_coefficients(result, coefficients);
+        return attach_optional_map_coefficients(
+            result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
+            coefficients,
+        );
     }
 
     for iteration in 1..=config.max_iterations {
@@ -5339,7 +5452,10 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
-                return attach_optional_map_coefficients(result, coefficients);
+                return attach_optional_map_coefficients(
+                    result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
+                    coefficients,
+                );
             }
         }
     }
@@ -6294,13 +6410,7 @@ fn certify(
     tolerance: f64,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
-    weighted_column_norms(
-        residuals,
-        weights,
-        &mut workspace.residual_norms,
-        &mut workspace.value_scales,
-        &mut workspace.group_sums,
-    )?;
+    update_ols_workspace_norms(residuals, weights, workspace, false)?;
     certify_with_current_norms(design, weights, residuals, tolerance, workspace)
 }
 
@@ -6431,6 +6541,87 @@ fn certify_with_current_norms(
     })
 }
 
+// Fixed group partitions retain canonical row/RHS arithmetic within each
+// partial and a deterministic merge. Only the diagnostic two-norm changes
+// summation order; every moment and the maximum used for acceptance is exact.
+// Norm preparation has released this scratch, so there is no new allocation.
+const OLS_CERTIFICATE_GROUP_CHUNK: usize = 1024;
+
+fn ols_certificate_partials(
+    group_weights: &[f64],
+    means: &[f64],
+    scales: &[f64],
+    scratch: &mut [f64],
+    raw_weight_scale: f64,
+    rhs_maxima: &mut [f64],
+) -> Result<(f64, f64)> {
+    let columns = scales.len();
+    let group_chunk = OLS_CERTIFICATE_GROUP_CHUNK;
+    let partial_width = columns + 2;
+    let partial_count = group_weights.len().div_ceil(group_chunk) * partial_width;
+    let partials = &mut scratch[..partial_count];
+    means
+        .par_chunks(group_chunk * columns)
+        .zip(group_weights.par_chunks(group_chunk))
+        .zip(partials.par_chunks_mut(partial_width))
+        .try_for_each(|((means, weights), partial)| -> Result<()> {
+            partial.fill(0.0);
+            for (row, &group_weight) in means.chunks(columns).zip(weights) {
+                let root = group_weight.sqrt();
+                if !root.is_finite() || root <= 0.0 {
+                    return Err(invalid_data(
+                        "borrowed MAP certificate group weight is invalid",
+                    ));
+                }
+                for rhs in 0..columns {
+                    let mean = row[rhs];
+                    let denominator = scales[rhs];
+                    let relative = if denominator == 0.0 {
+                        if mean == 0.0 {
+                            0.0
+                        } else {
+                            return Err(invalid_data(
+                                "borrowed MAP zero-scale certificate has a nonzero moment",
+                            ));
+                        }
+                    } else {
+                        (mean.abs() / denominator) * root
+                    };
+                    if !relative.is_finite() {
+                        return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
+                    }
+                    let normalized = mean.abs() * group_weight;
+                    let raw = normalized * raw_weight_scale;
+                    partial[0] = partial[0].max(if raw.is_finite() {
+                        raw
+                    } else if normalized == 0.0 {
+                        0.0
+                    } else {
+                        f64::INFINITY
+                    });
+                    partial[2 + rhs] = partial[2 + rhs].max(relative);
+                    partial[1] = relative.mul_add(relative, partial[1]);
+                }
+            }
+            if !partial[1].is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP certificate two-norm accumulation is not finite",
+                ));
+            }
+            Ok(())
+        })?;
+    let mut absolute = 0.0_f64;
+    let mut square_sum = 0.0_f64;
+    for partial in partials.chunks_exact(partial_width) {
+        absolute = absolute.max(partial[0]);
+        square_sum += partial[1];
+        for rhs in 0..columns {
+            rhs_maxima[rhs] = rhs_maxima[rhs].max(partial[2 + rhs]);
+        }
+    }
+    Ok((absolute, square_sum))
+}
+
 fn certify_effects_parallel(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -6455,6 +6646,34 @@ fn certify_effects_parallel(
             &mut workspace.parallel_group_weights[..levels],
             &mut workspace.parallel_group_means[..mean_count],
         )?;
+        if workspace.ols_norm_reduction
+            && (16..=64).contains(&columns)
+            && workspace.parallel_dot_sums.len()
+                >= levels.div_ceil(OLS_CERTIFICATE_GROUP_CHUNK) * (columns + 2)
+        {
+            let (absolute, square) = ols_certificate_partials(
+                &workspace.parallel_group_weights[..levels],
+                &workspace.parallel_group_means[..mean_count],
+                &workspace.rhs_scales,
+                &mut workspace.parallel_dot_sums,
+                weights.raw_scale,
+                &mut workspace.rhs_relative_infinity_norms,
+            )?;
+            absolute_infinity_norm = absolute_infinity_norm.max(absolute);
+            relative_square_sum += square;
+            if !relative_square_sum.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP certificate two-norm accumulation is not finite",
+                ));
+            }
+            relative_count = relative_count
+                .checked_add(mean_count)
+                .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
+            for &relative in &workspace.rhs_relative_infinity_norms {
+                relative_infinity_norm = relative_infinity_norm.max(relative);
+            }
+            continue;
+        }
         let group_weights = &workspace.parallel_group_weights[..levels];
         let means = &workspace.parallel_group_means[..mean_count];
         for level in 0..levels {
@@ -7447,6 +7666,7 @@ fn certified_solver_result(
         residualized,
         report,
         coefficients: None,
+        residual_norms: Vec::new(),
     })
 }
 
@@ -7485,6 +7705,440 @@ fn invalid_argument(message: &'static str) -> FeregError {
 
 fn invalid_data(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, message)
+}
+
+pub(crate) const OLS_SCHUR_PROBE_ITERATIONS: usize = 8;
+pub(crate) const OLS_SCHUR_MAX_ITERATIONS: usize = 64;
+pub(crate) const OLS_SCHUR_MAX_CONTRACTION: f64 = 0.01;
+
+// Values remain authoritative input until reconstruction. A failed final
+// certificate can instead hand off its finite observation-space candidate.
+enum SchurAttempt {
+    Certified(CertifiedBorrowedMap),
+    Continue {
+        values: DenseMatrix,
+        iterations: usize,
+        candidate: bool,
+    },
+}
+
+pub(crate) fn schur_ols_workspace_bytes(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs: usize,
+    threads: usize,
+) -> Result<u128> {
+    if design.effects().len() != 2 || !(1..=64).contains(&rhs) || threads == 0 {
+        return Err(invalid_argument(
+            "OLS Schur workspace dimensions are unsupported",
+        ));
+    }
+    let left = design.effects().iter().map(|e| e.n_levels()).max().unwrap() as u128;
+    let right = design.effects().iter().map(|e| e.n_levels()).min().unwrap() as u128;
+    let width = rhs as u128;
+    let parallel = design.nobs() >= PARALLEL_PROJECTION_MIN_ROWS && threads > 1;
+    let mut elements = left + right + (2 * left + 4 * right) * width + 12 * width;
+    if parallel {
+        elements +=
+            left * width + left + design.nobs().div_ceil(PARALLEL_DOT_CHUNK_ROWS) as u128 * width;
+    }
+    // The three-column probe is released before the full session is constructed.
+    let probe_elements = left + right + (2 * left + 4 * right) * 3;
+    Ok(8 * elements.max(probe_elements))
+}
+
+pub(crate) fn schur_ols_probe(
+    design: &BorrowedInterceptFeDesign<'_>,
+    values: &DenseMatrix,
+) -> Result<f64> {
+    if design.effects().len() != 2 || design.nobs() != values.nrows() || values.ncols() < 3 {
+        return Err(invalid_argument(
+            "OLS Schur probe dimensions are unsupported",
+        ));
+    }
+    let mut reservation = SystemWorkspaceReservation;
+    let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
+    let left = &design.effects()[graph.left_effect];
+    let right = &design.effects()[graph.right_effect];
+    let columns = [0, 1, values.ncols() / 2];
+    graph
+        .left_rhs
+        .par_chunks_mut(3)
+        .zip(graph.left_weights.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(level, (sum, total))| -> Result<()> {
+            *total = 0.0;
+            for &row in left.level_index().checked_members(level)? {
+                *total += 1.0;
+                for (rhs, &column) in columns.iter().enumerate() {
+                    sum[rhs] += values[(row, column)];
+                }
+            }
+            for value in sum {
+                *value /= *total;
+            }
+            Ok(())
+        })?;
+    let left_rhs = &graph.left_rhs;
+    graph
+        .residual
+        .par_chunks_mut(3)
+        .zip(graph.right_weights.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(level, (sum, total))| -> Result<()> {
+            let members = right.level_index().checked_members(level)?;
+            *total = 0.0;
+            for &row in members {
+                *total += 1.0;
+                for (rhs, &column) in columns.iter().enumerate() {
+                    sum[rhs] += values[(row, column)];
+                }
+            }
+            for &row in members {
+                let a = left.codes()[row] as usize;
+                for rhs in 0..3 {
+                    sum[rhs] -= left_rhs[a * 3 + rhs];
+                }
+            }
+            Ok(())
+        })?;
+    let mut square = [0.0; 3];
+    for level in 0..right.n_levels() {
+        for rhs in 0..3 {
+            let i = level * 3 + rhs;
+            graph.direction[i] = graph.residual[i] / graph.right_weights[level];
+            square[rhs] = graph.residual[i].mul_add(graph.direction[i], square[rhs]);
+        }
+    }
+    let initial = square;
+    if initial.iter().any(|v| !v.is_finite() || *v < 0.0) {
+        return Ok(f64::INFINITY);
+    }
+    for _ in 0..OLS_SCHUR_PROBE_ITERATIONS {
+        graph.apply_schur(
+            design,
+            ValidatedWeights {
+                values: None,
+                raw_scale: 1.0,
+            },
+            3,
+            3,
+        )?;
+        let mut projection = [0.0; 3];
+        for level in 0..right.n_levels() {
+            for rhs in 0..3 {
+                let i = level * 3 + rhs;
+                projection[rhs] = graph.direction[i].mul_add(graph.operator[i], projection[rhs]);
+            }
+        }
+        let mut step = [0.0; 3];
+        for rhs in 0..3 {
+            if square[rhs] <= initial[rhs] * 1e-24 || square[rhs] == 0.0 {
+                continue;
+            }
+            if !projection[rhs].is_finite() || projection[rhs] <= 0.0 {
+                return Ok(f64::INFINITY);
+            }
+            step[rhs] = square[rhs] / projection[rhs];
+        }
+        let mut next = [0.0; 3];
+        for level in 0..right.n_levels() {
+            for rhs in 0..3 {
+                let i = level * 3 + rhs;
+                graph.residual[i] = (-step[rhs]).mul_add(graph.operator[i], graph.residual[i]);
+                next[rhs] = graph.residual[i]
+                    .mul_add(graph.residual[i] / graph.right_weights[level], next[rhs]);
+            }
+        }
+        for rhs in 0..3 {
+            if !next[rhs].is_finite() || next[rhs] < 0.0 {
+                return Ok(f64::INFINITY);
+            }
+        }
+        for level in 0..right.n_levels() {
+            for rhs in 0..3 {
+                let i = level * 3 + rhs;
+                graph.direction[i] = if step[rhs] == 0.0 {
+                    0.0
+                } else {
+                    graph.residual[i] / graph.right_weights[level]
+                        + next[rhs] / square[rhs] * graph.direction[i]
+                };
+            }
+        }
+        square = next;
+    }
+    Ok((0..3)
+        .map(|rhs| {
+            if initial[rhs] == 0.0 {
+                0.0
+            } else {
+                (square[rhs] / initial[rhs]).sqrt()
+            }
+        })
+        .fold(0.0, f64::max))
+}
+
+pub(crate) fn absorb_ols_schur_certified(
+    design: BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: crate::fe::AbsorbConfig,
+    probe_seconds: f64,
+    contraction: f64,
+) -> Result<CertifiedBorrowedMap> {
+    absorb_ols_schur_at_cap(
+        design,
+        weights,
+        values,
+        config,
+        probe_seconds,
+        contraction,
+        OLS_SCHUR_MAX_ITERATIONS,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn absorb_ols_schur_at_cap(
+    design: BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: crate::fe::AbsorbConfig,
+    probe_seconds: f64,
+    contraction: f64,
+    cap: usize,
+) -> Result<CertifiedBorrowedMap> {
+    validate_config(config.map)?;
+    if weights != BorrowedMapWeights::Unit
+        || config.retain_coefficients
+        || !probe_seconds.is_finite()
+        || probe_seconds < 0.0
+        || !contraction.is_finite()
+        || contraction < 0.0
+        || config.map.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
+    {
+        return Err(invalid_argument("OLS Schur configuration is unsupported"));
+    }
+    let planned = schur_ols_workspace_bytes(&design, values.ncols(), rayon::current_num_threads())?;
+    if config
+        .solver_memory_budget
+        .is_some_and(|budget| !budget.fits(planned))
+    {
+        return Err(allocation(
+            "OLS Schur workspace exceeds the joint memory budget",
+        ));
+    }
+    let started = Instant::now();
+    let mut absorber =
+        ReusableCategoricalMapAbsorber::new(design, values.ncols(), rayon::current_num_threads())?;
+    validate_config(config.map)?;
+    if values.as_slice().iter().any(|v| !v.is_finite()) {
+        return Err(invalid_data("OLS Schur values must be finite"));
+    }
+    let validated = validate_weights(weights, values.nrows())?;
+    absorber.workspace.set_rhs_count(values.ncols())?;
+    absorber.workspace.ols_norm_reduction = true;
+    update_ols_workspace_norms(&values, validated, &mut absorber.workspace, true)?;
+    let setup_seconds = started.elapsed().as_secs_f64();
+    let solve_started = Instant::now();
+    let mut map = config.map;
+    map.tolerance = crate::fe::auto::direct_lsmr_tolerance(map.tolerance);
+    map.max_iterations -= OLS_SCHUR_PROBE_ITERATIONS;
+    let mut graph = absorber
+        .two_fe_pcg
+        .take()
+        .ok_or_else(|| invalid_argument("OLS Schur workspace unavailable"))?;
+    let outcome = absorb_two_fe_pcg_reusing(
+        &absorber.design,
+        validated,
+        values,
+        map,
+        0,
+        0.0,
+        setup_seconds,
+        solve_started,
+        absorber.max_rhs,
+        &mut graph,
+        &mut absorber.workspace,
+        &mut absorber.cg_residual_square,
+        &mut absorber.cg_initial_residual_square,
+        &mut absorber.cg_next_residual_square,
+        &mut absorber.cg_direction_projection,
+        &mut absorber.cg_ratio,
+        Some(cap),
+    )?;
+    match outcome {
+        SchurAttempt::Certified(mut result) => {
+            result.report.requested_solver = FeSolverKind::Auto;
+            result.report.used_solver = FeSolverKind::Cg;
+            result.report.iterations += OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.setup_seconds += probe_seconds;
+            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.pilot_contraction = contraction;
+            result.with_residual_norms(std::mem::take(&mut absorber.workspace.residual_norms))
+        }
+        SchurAttempt::Continue {
+            values,
+            iterations,
+            candidate,
+        } => {
+            let solve_seconds = solve_started.elapsed().as_secs_f64();
+            let reference_norms = std::mem::take(&mut absorber.workspace.reference_norms);
+            let empty = BorrowedInterceptFeDesign::new(absorber.design.nobs(), Vec::new())?;
+            let design = std::mem::replace(&mut absorber.design, empty);
+            drop(graph);
+            drop(absorber);
+            let mut remaining = config.map;
+            remaining.max_iterations = map
+                .max_iterations
+                .checked_sub(iterations)
+                .filter(|n| *n > 0)
+                .ok_or_else(|| {
+                    invalid_data("OLS Schur continuation exhausted the shared iteration budget")
+                })?;
+            if let Some(budget) = config.solver_memory_budget {
+                let levels = [
+                    design.effects()[0].n_levels(),
+                    design.effects()[1].n_levels(),
+                ];
+                let estimate = estimate_fe_solver_memory(
+                    design.nobs(),
+                    values.ncols(),
+                    &levels,
+                    rayon::current_num_threads(),
+                    Some(4),
+                )?;
+                if !budget.fits(estimate.cg_bytes) {
+                    return Err(allocation(
+                        "OLS Schur continuation exceeds the joint memory budget",
+                    ));
+                }
+            }
+            let mut reservation = SystemWorkspaceReservation;
+            let mut result = absorb_cg_with_reservation(
+                &design,
+                weights,
+                values,
+                remaining,
+                false,
+                CgContinuation {
+                    reference_norms: Some(&reference_norms),
+                    ..CgContinuation::ORDINARY
+                },
+                &mut reservation,
+            )?;
+            result.report.requested_solver = FeSolverKind::Auto;
+            result.report.iterations += iterations + OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.setup_seconds += setup_seconds + probe_seconds;
+            result.report.solve_seconds += solve_seconds;
+            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.pilot_contraction = contraction;
+            result.report.fallback_used = true;
+            result.report.warnings.insert(0, format!("automatic two-FE Schur CG continued with symmetric CG after {iterations} iterations (reconstructed candidate: {candidate})"));
+            Ok(result)
+        }
+    }
+}
+
+// Fixed row partitions and a canonical LASSQ merge make this OLS-only
+// reduction independent of the worker count, including the serial path.
+// Reuse the existing dot workspace; never allocate another N-by-K matrix.
+fn update_ols_workspace_norms(
+    values: &DenseMatrix,
+    weights: ValidatedWeights<'_>,
+    workspace: &mut BorrowedMapWorkspace,
+    reference: bool,
+) -> Result<()> {
+    let output = if reference {
+        &mut workspace.reference_norms
+    } else {
+        &mut workspace.residual_norms
+    };
+    if !workspace.ols_norm_reduction || values.nrows() < 16_384 || values.ncols() > 64 {
+        return weighted_column_norms(
+            values,
+            weights,
+            output,
+            &mut workspace.value_scales,
+            &mut workspace.group_sums,
+        );
+    }
+    let columns = values.ncols();
+    if output.len() != columns {
+        return Err(invalid_argument("OLS norm output is not aligned"));
+    }
+    let chunk_rows = 4096;
+    let chunks = values.nrows().div_ceil(chunk_rows);
+    let partial_width = 2 * columns;
+    let partials = chunks * partial_width;
+    let accumulate = |chunk: usize, partial: &mut [f64]| -> Result<()> {
+        let (scales, squares) = partial.split_at_mut(columns);
+        scales.fill(0.0);
+        squares.fill(1.0);
+        let start = chunk * chunk_rows;
+        let end = (start + chunk_rows).min(values.nrows());
+        for row in start..end {
+            let root = weights.normalized(row).sqrt();
+            if !root.is_finite() || root <= 0.0 {
+                return Err(invalid_data("OLS norm weight root is invalid"));
+            }
+            let source = &values.as_slice()[row * columns..(row + 1) * columns];
+            for ((scale, square), &value) in scales.iter_mut().zip(squares.iter_mut()).zip(source) {
+                let value = root * value;
+                if !value.is_finite() {
+                    return Err(invalid_data("OLS norm weighted value is nonfinite"));
+                }
+                update_scaled_sum_of_squares(value, scale, square);
+            }
+        }
+        Ok(())
+    };
+    let scales = &mut workspace.value_scales;
+    let squares = &mut workspace.group_sums;
+    scales.fill(0.0);
+    squares.fill(1.0);
+    let mut merge = |partial: &[f64]| {
+        for rhs in 0..columns {
+            let scale = partial[rhs];
+            if scale == 0.0 {
+                continue;
+            }
+            if scales[rhs] < scale {
+                let ratio = scales[rhs] / scale;
+                squares[rhs] = partial[columns + rhs] + squares[rhs] * ratio * ratio;
+                scales[rhs] = scale;
+            } else {
+                let ratio = scale / scales[rhs];
+                squares[rhs] += partial[columns + rhs] * ratio * ratio;
+            }
+        }
+    };
+    if rayon::current_num_threads() > 1 && workspace.parallel_dot_sums.len() >= partials {
+        let scratch = &mut workspace.parallel_dot_sums[..partials];
+        scratch
+            .par_chunks_mut(partial_width)
+            .enumerate()
+            .try_for_each(|(chunk, partial)| accumulate(chunk, partial))?;
+        for partial in scratch.chunks_exact(partial_width) {
+            merge(partial);
+        }
+    } else {
+        let mut partial = [0.0; 128];
+        for chunk in 0..chunks {
+            accumulate(chunk, &mut partial[..partial_width])?;
+            merge(&partial[..partial_width]);
+        }
+    }
+    for rhs in 0..columns {
+        output[rhs] = if scales[rhs] == 0.0 {
+            0.0
+        } else {
+            scales[rhs] * squares[rhs].sqrt()
+        };
+        if !output[rhs].is_finite() {
+            return Err(invalid_data("OLS norm is nonfinite"));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -7529,6 +8183,312 @@ mod tests {
             check_every: 1,
             symmetric: true,
         }
+    }
+
+    #[test]
+    fn ols_schur_probe_solve_budget_and_order_match_independent_map() {
+        let rows = 16_384;
+        let first_codes = (0..rows).map(|r| (r % 257) as u32).collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|r| ((r * 17 + r / 257) % 127) as u32)
+            .collect::<Vec<_>>();
+        let first_index = LevelIndex::from_codes(&first_codes, 257).unwrap();
+        let second_index = LevelIndex::from_codes(&second_codes, 127).unwrap();
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, 257, &first_index).unwrap();
+        let second =
+            ValidatedBorrowedInterceptSource::new(&second_codes, 127, &second_index).unwrap();
+        let design = |reverse| {
+            BorrowedInterceptFeDesign::new(
+                rows,
+                if reverse {
+                    vec![second.effect(), first.effect()]
+                } else {
+                    vec![first.effect(), second.effect()]
+                },
+            )
+            .unwrap()
+        };
+        let columns = (0..17)
+            .map(|c| {
+                (0..rows)
+                    .map(|r| {
+                        ((r * (c + 17) % 997) as f64 / 17.0).sin()
+                            + first_codes[r] as f64 * 0.001
+                            + second_codes[r] as f64 * 0.01
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let values = || DenseMatrix::from_columns(&columns).unwrap();
+        let mut config = crate::fe::AbsorbConfig::default();
+        config.map.tolerance = 1e-10;
+        let expected = absorb_borrowed_intercept_map_certified(
+            &design(false),
+            BorrowedMapWeights::Unit,
+            values(),
+            MapConfig {
+                tolerance: 1e-13,
+                max_iterations: 10_000,
+                ..config.map
+            },
+        )
+        .unwrap();
+        let mut serial_probe = None;
+        let mut serial_values = None;
+        for threads in [1, 4, 16] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let contraction = schur_ols_probe(&design(false), &values()).unwrap();
+                    assert!(contraction <= OLS_SCHUR_MAX_CONTRACTION, "{contraction}");
+                    if let Some(expected) = serial_probe {
+                        assert_eq!(contraction, expected);
+                    } else {
+                        serial_probe = Some(contraction);
+                    }
+                    assert_eq!(
+                        contraction,
+                        schur_ols_probe(&design(true), &values()).unwrap()
+                    );
+                    let planned = schur_ols_workspace_bytes(&design(false), 17, threads).unwrap();
+                    let session =
+                        ReusableCategoricalMapAbsorber::new(design(false), 17, threads).unwrap();
+                    let w = &session.workspace;
+                    let actual = session.two_fe_pcg.as_ref().unwrap().capacity_elements()
+                        + session.cg_residual_square.capacity()
+                        + session.cg_initial_residual_square.capacity()
+                        + session.cg_next_residual_square.capacity()
+                        + session.cg_direction_projection.capacity()
+                        + session.cg_ratio.capacity()
+                        + w.reference_norms.capacity()
+                        + w.residual_norms.capacity()
+                        + w.rhs_scales.capacity()
+                        + w.rhs_relative_infinity_norms.capacity()
+                        + w.value_scales.capacity()
+                        + w.group_sums.capacity()
+                        + w.group_corrections.capacity()
+                        + w.parallel_group_means.capacity()
+                        + w.parallel_group_weights.capacity()
+                        + w.parallel_dot_sums.capacity();
+                    assert!(planned >= actual as u128 * 8, "{planned} < {}", actual * 8);
+                    drop(session);
+                    for (cap, fallback) in [(OLS_SCHUR_MAX_ITERATIONS, false), (1, true)] {
+                        let mut result = absorb_ols_schur_at_cap(
+                            design(false),
+                            BorrowedMapWeights::Unit,
+                            values(),
+                            config,
+                            0.125,
+                            contraction,
+                            cap,
+                        )
+                        .unwrap();
+                        assert_eq!(result.report.fallback_used, fallback);
+                        assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
+                        assert!(result.report.iterations <= config.map.max_iterations);
+                        assert!(result.report.setup_seconds >= 0.125);
+                        assert_eq!(result.report.pilot_iterations, OLS_SCHUR_PROBE_ITERATIONS);
+                        assert!(result.report.certified());
+                        for (&a, &b) in result
+                            .residualized
+                            .as_slice()
+                            .iter()
+                            .zip(expected.residualized().as_slice())
+                        {
+                            assert!((a - b).abs() < 2e-9, "{a} != {b}");
+                        }
+                        if !fallback {
+                            if let Some(expected) = &serial_values {
+                                assert_eq!(&result.residualized, expected);
+                            } else {
+                                serial_values = Some(result.residualized.clone());
+                            }
+                            assert_eq!(result.take_residual_norms().len(), 17);
+                        }
+                    }
+                    let mut limited = config;
+                    limited.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: planned - 1,
+                    });
+                    assert_eq!(
+                        absorb_ols_schur_certified(
+                            design(false),
+                            BorrowedMapWeights::Unit,
+                            values(),
+                            limited,
+                            0.0,
+                            contraction
+                        )
+                        .unwrap_err()
+                        .code,
+                        ErrorCode::Allocation
+                    );
+                    limited = config;
+                    limited.map.max_iterations = OLS_SCHUR_PROBE_ITERATIONS + 1;
+                    assert!(absorb_ols_schur_at_cap(
+                        design(false),
+                        BorrowedMapWeights::Unit,
+                        values(),
+                        limited,
+                        0.0,
+                        contraction,
+                        1
+                    )
+                    .is_err());
+                });
+        }
+    }
+
+    #[test]
+    fn ols_parallel_certificate_matches_canonical_moments_and_errors() {
+        let rows = 16_384;
+        let codes = (0..rows).map(|r| (r % 2051) as u32).collect::<Vec<_>>();
+        let index = LevelIndex::from_codes(&codes, 2051).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 2051, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
+        let columns = (0..17)
+            .map(|c| {
+                (0..rows)
+                    .map(|r| {
+                        if c == 0 {
+                            0.0
+                        } else {
+                            ((r * (c + 17) % 997) as f64 / 17.0).sin()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let values = DenseMatrix::from_columns(&columns).unwrap();
+        let raw_weights = (0..rows)
+            .map(|r| 0.01 + (r % 19) as f64 / 7.0)
+            .collect::<Vec<_>>();
+        for threads in [4, 16] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for weights in [
+                        BorrowedMapWeights::Unit,
+                        BorrowedMapWeights::Provided(&raw_weights),
+                    ] {
+                        let weights = validate_weights(weights, rows).unwrap();
+                        let mut reservation = SystemWorkspaceReservation;
+                        let mut work =
+                            BorrowedMapWorkspace::new(&design, rows, 17, &mut reservation).unwrap();
+                        for scale in [1000.0, 0.0, 1e-200] {
+                            work.reference_norms.fill(scale);
+                            work.residual_norms.fill(scale);
+                            work.ols_norm_reduction = false;
+                            let canonical = certify_with_current_norms(
+                                &design, weights, &values, 1e-8, &mut work,
+                            );
+                            let maxima = work.rhs_relative_infinity_norms.clone();
+                            work.ols_norm_reduction = true;
+                            let parallel = certify_with_current_norms(
+                                &design, weights, &values, 1e-8, &mut work,
+                            );
+                            match (canonical, parallel) {
+                                (Ok(a), Ok(b)) => {
+                                    assert_eq!(a.passed, b.passed);
+                                    assert_eq!(a.absolute_infinity_norm, b.absolute_infinity_norm);
+                                    assert_eq!(a.relative_infinity_norm, b.relative_infinity_norm);
+                                    assert!(
+                                        (a.relative_two_norm / b.relative_two_norm - 1.0).abs()
+                                            < 1e-12
+                                    );
+                                    assert_eq!(maxima, work.rhs_relative_infinity_norms);
+                                }
+                                (Err(a), Err(b)) => {
+                                    assert_eq!(a.code, b.code);
+                                    assert_eq!(a.message, b.message);
+                                }
+                                other => panic!("parallel certificate changed outcome: {other:?}"),
+                            }
+                        }
+                    }
+                });
+        }
+    }
+
+    #[test]
+    fn ols_schur_readiness_includes_group_weight_certificate_scale() {
+        let codes = [0_u32; 100];
+        let index = LevelIndex::from_codes(&codes, 1).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
+        let design =
+            BorrowedInterceptFeDesign::new(100, vec![source.effect(), source.effect()]).unwrap();
+        let mut reservation = SystemWorkspaceReservation;
+        let mut graph = TwoFePcgWorkspace::new(&design, 1, &mut reservation).unwrap();
+        let mut workspace = BorrowedMapWorkspace::new(&design, 100, 1, &mut reservation).unwrap();
+        graph.right_weights[0] = 100.0;
+        graph.residual[0] = 2e-7;
+        workspace.reference_norms[0] = 1.0;
+        // The mean-only rule would accept 2e-9 at tolerance 1e-8.
+        assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
+        graph.residual[0] = 2e-8;
+        assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
+    }
+
+    #[test]
+    fn ols_norms_are_scaled_and_bit_stable_across_worker_counts() {
+        let rows = 16_391;
+        let design = BorrowedInterceptFeDesign::new(rows, Vec::new()).unwrap();
+        let columns = [
+            vec![0.0; rows],
+            (0..rows)
+                .map(|r| if r % 2 == 0 { 1e200 } else { -1e-200 })
+                .collect(),
+            (0..rows).map(|r| (r as f64).sin() * 1e-150).collect(),
+        ];
+        let values = DenseMatrix::from_columns(&columns).unwrap();
+        let raw_weights = (0..rows).map(|r| 1.0 + (r % 17) as f64).collect::<Vec<_>>();
+        let weights = validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).unwrap();
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let mut reservation = SystemWorkspaceReservation;
+                    let mut workspace =
+                        BorrowedMapWorkspace::new(&design, rows, 3, &mut reservation).unwrap();
+                    workspace.ols_norm_reduction = true;
+                    update_ols_workspace_norms(&values, weights, &mut workspace, true).unwrap();
+                    workspace.reference_norms
+                })
+        };
+        let serial = run(1);
+        for threads in [4, 16] {
+            assert_eq!(
+                serial.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                run(threads).iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+            );
+        }
+        for c in 0..3 {
+            let scale = columns[c].iter().map(|x| x.abs()).fold(0.0, f64::max);
+            let expected = if scale == 0.0 {
+                0.0
+            } else {
+                scale
+                    * (0..rows)
+                        .map(|r| weights.normalized(r) * (columns[c][r] / scale).powi(2))
+                        .sum::<f64>()
+                        .sqrt()
+            };
+            assert!((serial[c] - expected).abs() <= expected * 1e-12);
+        }
+        let mut reservation = SystemWorkspaceReservation;
+        let mut workspace = BorrowedMapWorkspace::new(&design, rows, 3, &mut reservation).unwrap();
+        workspace.ols_norm_reduction = true;
+        let invalid =
+            DenseMatrix::from_columns(&[vec![f64::MAX; rows], vec![0.0; rows], vec![0.0; rows]])
+                .unwrap();
+        assert!(update_ols_workspace_norms(&invalid, weights, &mut workspace, false).is_err());
     }
 
     #[test]
@@ -7921,7 +8881,7 @@ mod tests {
             .collect::<Vec<_>>();
         let weights =
             validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).expect("weights");
-        let build = |threads| {
+        let build = |threads, rhs, stride| {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .build()
@@ -7929,7 +8889,7 @@ mod tests {
                 .install(|| {
                     let mut reservation = SystemWorkspaceReservation;
                     let mut graph =
-                        TwoFePcgWorkspace::new(&design, 11, &mut reservation).expect("graph");
+                        TwoFePcgWorkspace::new(&design, stride, &mut reservation).expect("graph");
                     let left_codes = design.effects()[graph.left_effect].codes();
                     let right_codes = design.effects()[graph.right_effect].codes();
                     for row in 0..rows {
@@ -7941,16 +8901,25 @@ mod tests {
                         *direction = ((17 * index % 101) as f64 - 50.0) / 37.0;
                     }
                     graph
-                        .apply_schur(&design, weights, 11, 11)
+                        .apply_schur(&design, weights, rhs, stride)
                         .expect("Schur operator");
                     graph
                 })
         };
-        let serial = build(1);
-        for threads in [2, 4, 8, 16] {
-            let parallel = build(threads);
-            assert_eq!(serial.left_work, parallel.left_work);
-            assert_eq!(serial.operator, parallel.operator);
+        for (rhs, stride) in [(1, 1), (11, 11), (52, 52), (51, 64)] {
+            let serial = build(1, rhs, stride);
+            for threads in [2, 4, 8, 16] {
+                let parallel = build(threads, rhs, stride);
+                for (expected, actual) in [
+                    (&serial.left_work, &parallel.left_work),
+                    (&serial.operator, &parallel.operator),
+                ] {
+                    assert_eq!(
+                        expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                        actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                    );
+                }
+            }
         }
     }
 

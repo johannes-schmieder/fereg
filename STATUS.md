@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-10
+**Last updated:** 2026-09-12
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -10,7 +10,362 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Current checkpoint: OLS performance and LSMR correctness
+## Incomplete OLS compaction: current local source and resume point
+
+The user-requested development checkpoint collects the adopted OLS sources,
+fixtures, benchmark tooling and publishable numerical evidence. The
+[checkpoint inventory](benchmarks/reports/development/adopted-ols-checkpoint-2026-09-12.json)
+verifies that production and fixture bytes match the retained local validation.
+It records the path-bearing captures preserved outside Git and the configurable
+SCC directory settings. No estimator benchmark or qualification was rerun for
+this packaging step. Historical source identities and receipts are unchanged.
+
+Unweighted IID preparation now consumes the authoritative row classifier's
+drop mask and compacts owned columns independently. Wide inputs classify
+16,384-row blocks on the installed requested team, preserving original-row
+error order. Buffer reuse stays within the prior candidate-axis capacity
+bound. Complete inputs retain their shortcut; weighted, complex categorical,
+robust/clustered and PPML preparation keep their existing paths. No solver,
+sample, tolerance, inference or transaction rule changes.
+
+The [compaction report](benchmarks/reports/development/fixest-compaction-local-2026-09-12/README.md)
+records 53 completed local invocations: 51 successful estimates and two
+explained all-singleton negative controls. For 983,040 rows, 50 controls and
+about 0.1% missing, three-seed previous/current medians are 1.461/0.926 seconds
+at four threads and 1.230/0.613 at sixteen, improvements of 36.6% and 50.2%.
+The original four-thread input-time outlier remains in the summaries; an
+extra pair does not reproduce it. Complete-data one FE remains essentially
+unchanged at 0.585/0.580 seconds versus fixest's 0.472, leaving a 22.9% gap.
+Weak, dense, bottleneck, cycle, disconnected and unbalanced holdouts differ
+by at most nine milliseconds and preserve all numerical results.
+
+All 20 final candidate/previous pairs have byte-identical full b/V exports,
+exact samples/statuses/DoF/fit/certificate tables and solver diagnostics
+except timings. All seven fixest comparisons pass. Native allocation peaks
+agree in 18 pairs; the two heavily filtered retained-pair holdouts fall from
+220,448,053 to 120,419,044 bytes. Both versions return Stata code 2001 when
+the initial filtering recipe leaves only singletons; those original failure
+receipts remain intact.
+
+[Validation](benchmarks/reports/development/fixest-compaction-local-2026-09-12/validation.json)
+records 37 core preparation tests, five sample tests, 40 plugin action tests,
+eight licensed Stata fixtures, universal binary audit and actual arm64
+ABI/self-test. New coverage includes cross-block error order, retained value
+bits/capacity, singleton cascades, and independent sparse/dense/restricted
+wide dummy regressions at 1/4/16 threads.
+[Replayable source identities](benchmarks/reports/development/fixest-compaction-local-2026-09-12/identities.json)
+bind the retained plugin SHA-256
+`43377269d0bbfd7dc1bc2a964e117d9f282e123350820252289e3f6b76a92fae`.
+
+Remaining complete-data one-FE component medians are 0.303 seconds input,
+0.210 native and 0.069 outer Stata work. Further parity work must address
+loading or native estimation passes. Ownership/column compaction for weighted
+and robust/clustered paths is a separate next experiment; small/narrow gaps
+also remain unresolved. No SCC, remote job, qualification, commit, push or
+release action was taken.
+
+## Native OLS input preparation: preceding implementation
+
+The local follow-up moves full-candidate numeric missing detection from ado
+into Rust, removes the unused OLS sort-preservation wrapper, and installs
+wide IID preparation on the requested worker team for independent source
+completeness checks. The C bridge only transports SPI values and the SDK
+missing boundary. Restricted/string loading, authoritative sample rules,
+solver routes, tolerances, all numerical formulas and transaction guarantees
+remain unchanged. [ADR 0036](docs/adr/0036-native-ols-input-preparation.md)
+records the development extension to ADR 0013's loading procedure.
+
+The [input report](benchmarks/reports/development/fixest-input-local-2026-09-12/README.md)
+records 134 completed local measurements, including 54 rotated primary calls
+at three seeds. At 983,040 rows and 50 controls, previous/current/fixest
+medians are 0.916/0.776/0.806 seconds for one FE at four native threads,
+0.690/0.582/0.454 for one FE at sixteen, 0.878/0.763/0.841 for degree three
+at sixteen, and 0.836/0.712/0.695 for degree six at sixteen. Current fereg
+narrowly beats fixest on four-thread one FE, leads degree three by 9.3% at
+sixteen threads, and trails degree six by 2.4%. One FE at sixteen threads
+still trails by 28.2%. Small/narrow one-FE cases also retain gaps.
+
+All 39 final candidate/previous pairs have byte-identical full b/V exports,
+exact samples/statuses/DoF/fit/certificate tables and solver diagnostics
+except timings. All 25 final fixest comparisons pass. Weak, bottleneck,
+cycle, disconnected, unbalanced and dense holdouts retain their performance
+in these bounded local checks. Modeled memory budgets agree; native peak
+allocation is unchanged except an unexplained 819,240-byte decrease in one
+narrow weak holdout, which is not claimed as a memory improvement.
+
+[Validation](benchmarks/reports/development/fixest-input-local-2026-09-12/validation.json)
+records 35 core preparation tests, 40 plugin action tests, eight licensed
+Stata fixtures, universal binary audit and actual arm64 ABI/self-test. The
+new fixture checks all 27 Stata missing codes in five storage types, weights,
+clusters/strings, exclusions, singleton deletion, row/sort-state preservation
+on direct failure exits, and independent wide IID dummy regressions at
+1/4/16 threads. Existing TS, transaction, saved-output, memory-mode,
+weighted/robust oracle and PPML smoke fixtures also pass.
+[Source identities and replayable patches](benchmarks/reports/development/fixest-input-local-2026-09-12/identities.json)
+bind the retained plugin SHA-256
+`93412e7c7654deac201f5f8c1bdc5af62aece7ebf4347180df0acebe3d227470`.
+
+An 8,192-row loading chunk gave no consistent benefit and is rejected;
+65,536 rows remain. Current sixteen-thread one-FE component medians are
+0.301 seconds input, 0.207 native and 0.073 outer Stata work. Further
+one-FE gains need fewer native data/layout passes or a demonstrably useful
+loading overlap, not just more workers for the now-small completeness check.
+A separate three-seed sparse-missing probe improved from 2.846 to 1.174
+seconds after removing the input traversal cliff, but still exposes costly
+row-wise native classification/copying when a small fraction of rows drops.
+That report identified owned column compaction as the next experiment;
+the implementation and new evidence are recorded above.
+No SCC, Linux/Windows science, qualification, commit, push or release action
+was taken. Historical receipts remain unchanged.
+
+## Wide-OLS scheduling: preceding implementation
+
+The local follow-up retains three OLS scheduling changes: disjoint Schur
+recurrence updates above seven workers, parallel three-column probe setup,
+and fixed group partials for wide one-FE/Schur certificates. The shared
+PPML recurrence crossover, existing weak-graph solver routes, all acceptance
+maxima, tolerances, iteration/fallback rules and memory budgets are unchanged.
+The diagnostic two-norm changes summation order; it does not control
+acceptance on these routes. No new workspace is allocated.
+
+The [scheduling report](benchmarks/reports/development/fixest-scheduling-local-2026-09-12/README.md)
+records 140 completed local measured calls, including 54 rotated primary
+comparisons at three seeds. At 983,040 rows and 50 controls, sixteen-thread
+previous/current/fixest medians are 0.951/0.881/0.838 seconds on degree three
+and 0.875/0.835/0.704 on degree six: 7.4% and 4.6% improvements, leaving gaps
+of 5.1% and 18.6%. At four threads current fereg remains 32% and 24% faster
+than fixest on these designs. One-FE medians are 0.947/0.687 seconds at 4/16
+threads; the small four-thread slowdown did not recur consistently in three
+additional paired checks. All weak/bottleneck/cycle/disconnected/dense
+holdouts pass and retain their performance within the bounded local evidence.
+The separate eight-thread crossover checks improve and beat fixest.
+
+All 35 final candidate/prior pairs have byte-identical full b/V exports,
+samples, statuses, DoF, fit/certificate tables, acceptance maxima, routing,
+iterations and fallback. The largest diagnostic norm relative change is
+7.3e-14. All 24 final fixest comparisons pass. Primary peak allocated bytes
+are exactly unchanged; one unchanged narrow weak holdout has an unexplained
+3.8 MB lower reported peak, which is not claimed as a memory improvement.
+[Validation](benchmarks/reports/development/fixest-scheduling-local-2026-09-12/validation.json)
+records 34 focused Rust FE tests, four licensed Stata fixtures (including the
+weighted/robust explicit-dummy oracle at 1/4/16 threads), universal binary
+audit and actual arm64 ABI/self-test. The retained plugin SHA-256 is
+`20289553c62d5280ece81a07dc39abeecaa573430c34a280cfb3c7cc1b2df763`.
+[Source identities and replayable patches](benchmarks/reports/development/fixest-scheduling-local-2026-09-12/identities.json)
+bind the uncommitted source; this is development evidence, not qualification.
+
+Independent one/four-variable Schur jobs and RHS-parallel scalar reductions
+were slower and are removed. Retain the batched graph operator unless a
+better layout wins a controlled comparison. The remaining roughly 0.45–0.46
+seconds of input/outer Stata work matters especially for one FE; further
+native data/normalization passes and staging/input work are the next local
+targets. No SCC campaign was submitted or resumed, and no commit, push or
+release action was taken. Historical receipts remain unchanged.
+
+## Numeric passes: preceding implementation
+
+The local follow-up retains tiled numeric RHS construction and independent
+raw-residual updates, parallel initialization of already reserved storage,
+and parallel wide-source finite checks within an installed worker pool.
+It changes four OLS source files; the preceding Schur route, C bridge and
+Stata transaction are unchanged. General validation before pool installation
+stays serial. No tolerances, sample/weight rules, rank, DoF or covariance
+formulas change, and no additional observation-scale allocation is introduced.
+
+The [numeric-pass report](benchmarks/reports/development/fixest-passes-local-2026-09-12/README.md)
+records 139 measured calls, including 54 rotated primary comparisons at three
+seeds and 44 final holdout/profile/repeat calls. Relative to the retained
+Schur baseline, complete-command medians fall another 5–10%. At 983,040 rows
+and 50 controls, current/fixest medians are 0.951/0.798, 1.326/1.927 and
+1.222/1.578 seconds for one FE and degree-three/six graphs at four threads.
+At sixteen threads they are 0.704/0.470, 0.960/0.835 and 0.878/0.692.
+The tested wide weak-graph holdouts retain their performance. A 6 ms narrow
+holdout difference did not recur across three additional paired seeds.
+
+All 35 final current/prior pairs have identical exported full b/V files,
+fit/certificate tables and solver diagnostics except timings. All 22 final
+candidate/fixest comparisons pass. The final source passes 7 RHS tests,
+60 prepared-fit tests and four licensed Stata fixtures, including the
+50-control weighted/robust explicit-dummy oracle, saved outputs, memory
+modes and PPML smoke. The universal macOS build passes binary audit and the
+actual arm64 ABI/self-test. This is development evidence, not qualification.
+[Source identities, patches and validation](benchmarks/reports/development/fixest-passes-local-2026-09-12/identities.json)
+bind the retained plugin SHA-256
+`26aca86c83c1cc7426a8de6601b1d8ee632acc43e3e5aacc9f0c3ea3a3ed0a2b`.
+
+The report retains a 1.337-second one-FE outlier, largely located in unchanged
+input loading; it did not recur in two paired checks, but its cause is not
+established. Two external RSS samples miss the native peak and are flagged;
+no new RSS ranking is claimed. Native peak allocated bytes and modeled fast
+budgets are exactly unchanged across the 18 primary pairs.
+
+The main remaining cost is about 0.45 seconds of input/outer Stata work at
+sixteen threads. Callback hoisting and C-side tiled copying did not establish
+a useful improvement and were rejected. Next local investigations are smaller
+wide-model scheduling, remaining native passes, and reuse of private Stata
+staging storage without weakening sampling or transaction guarantees. No
+SCC campaign was submitted or resumed, and no commit, push or release action
+was taken. Historical reports remain unchanged.
+
+## Guarded OLS Schur route: preceding implementation
+
+Johannes approved ambitious local work to approach fixest while preserving
+weak-graph strengths. [ADR 0035](docs/adr/0035-guarded-wide-ols-schur.md) admits a
+guarded Schur route for fast, unit-weight, two-FE OLS at 16–64 actual RHSs and
+at least 16,384 observations. An eight-step three-column probe selects the
+full-width solve; a 64-step cap and ordinary certified CG continuation share
+the iteration budget. Both workspaces must fit the joint memory budget.
+Other route classes retain the previous planner. The one-FE initial projection
+now reaches its exact direct path, and fresh certified norms move into OLS.
+Parallel group preparation/reconstruction and deterministic OLS norm reductions
+remove repeated work without weakening scientific checks.
+
+The [September 12 report](benchmarks/reports/development/fixest-gap-local-2026-09-12/README.md)
+preserves 148 completed measured invocations, including 54 rotated final
+primary calls at three seeds, 25 final holdout/narrow calls and six final
+profiles. At 983,040 rows and 50 controls, four-thread medians are 1.404/1.297
+seconds for degree-three/six versus fixest's 1.916/1.548 and baseline fereg's
+7.630/6.962. Sixteen-thread medians are 1.009/0.936 versus fixest's 0.835/0.686.
+One-FE time falls to 1.034/0.769 at 4/16 threads; fixest remains faster at
+0.795/0.447. The weak and dense holdouts improve; the difficult cycle rejects
+Schur and incurs about 3 ms of probe work. Narrow controls retain exact full
+b/V parity. These are local development measurements, not universal graph
+parity or release evidence.
+
+Independent full dummy-model solves adjudicate native fixest discrepancies
+on bottleneck and disconnected graphs. The final candidate matches the
+independent coefficients/RSS/DoF. A native fixest stopping discrepancy and a
+separate connected-component DoF convention difference remain explicit
+failed native-parity comparisons; neither is turned into an equal-accuracy
+speed claim. The earlier [September 11 report](benchmarks/reports/development/fixest-gap-local-2026-09-11/README.md)
+remains unchanged, including the prototype weakness explained by the corrected
+recurrence/certificate scaling.
+
+[Validation](benchmarks/reports/development/fixest-gap-local-2026-09-12/validation.json)
+records 33 borrowed-FE and 58 prepared-OLS tests, seven licensed Stata fixtures,
+and the normal universal macOS build with binary audit and actual arm64
+ABI/self-test. That report's measured plugin SHA-256 is
+`ffa5537a0da609888de55ad122973140f86f48700a3368fb2f3098a785d072ac`.
+[Source manifests and replayable patches](benchmarks/reports/development/fixest-gap-local-2026-09-12/identities.json)
+bind the uncommitted source snapshot to base `d44e36bfa5ad7`; the base SHA
+alone does not identify these changes. The [local harness](benchmarks/local_fixest_gap/README.md)
+contains the follow-up reproduction entry points. No SCC job was submitted,
+resumed or changed for this investigation; the stopped systematic campaign
+stays stopped. No commit, push or release action was taken.
+
+The numeric-pass follow-up above addresses the next RHS and raw-residual
+work. Coefficient-space Irons–Tuck and batch missing detection were slower
+and were not retained in this preceding investigation.
+
+## Systematic benchmark campaign: stopped and reported
+
+Johannes stopped this campaign on September 11. Array **7522398** was cancelled
+and its monitor deleted. The [final cancellation receipt](benchmarks/reports/development/systematic-production-2026-09-11/cancellation-confirmed.json)
+confirms the array is absent from the scheduler: tasks 1--78 completed, task 79
+was interrupted, and tasks 80--237 never started. No continuation or checkpoint
+resubmission is authorized.
+
+The [discussion report](benchmarks/reports/systematic-stopped-2026-09-11/discussion.pdf)
+and [figure atlas](benchmarks/reports/systematic-stopped-2026-09-11/figure-atlas.pdf)
+analyze the collected partial evidence. The atlas retains individual vector
+panels assembled with LaTeX `subcaption`. The [coverage receipt](benchmarks/reports/systematic-stopped-2026-09-11/stopped-coverage.json)
+records 826 accepted registered comparison groups, plus two off-grid pilot
+groups; 100 OLS configurations have six valid warm repetitions. PPML has five
+accepted pilot groups and no complete repetition grid. Finished calls from
+cancelled task 79 remain in the raw observations but are excluded from strict
+aggregates. The [evidence archive](benchmarks/reports/systematic-stopped-2026-09-11/evidence.zip)
+contains numerical receipts, provenance, accounting and analysis CSVs. Collected
+raw logs are retained separately in the ignored production receipt `work/`
+directory and on SCC. The [delivery receipt](benchmarks/reports/development/systematic-production-2026-09-11/report-delivery.json)
+binds the eight-page discussion, 45-page atlas and checked evidence archive;
+all pages were visually reviewed and all 132 panel PDFs remain vector figures.
+
+Fereg's clearest advantage is difficult sparse FE versus reghdfe. Its main
+weaknesses are the gap to fixest on well-connected designs, limited gains beyond
+8--14 threads in several designs, and high RSS on sparse three-FE and the largest
+degree-three case. In the latter case the automatic CMG-to-LSMR/Schwarz switch
+coincides with setup increasing from 0.21 to 12.01 seconds; this is an observed
+profiling lead, not a causal comparison of forced solvers. Tiny coefficient
+discrepancies on the largest degree-two design remain unresolved and excluded.
+Production consumed 96.3 node-hours (2,695 reserved core-hours); setup, smoke and
+pilot work are additional. The grid is incomplete and ordered by model/design,
+so it supports no balanced overall ranking. Estimator code and frozen scientific
+thresholds are unchanged.
+
+The requested OLS/PPML comparison harness is implemented under
+[`benchmarks/systematic/`](benchmarks/systematic/README.md), with 304 unique
+configurations, six warm repetitions and one cold diagnostic. It compares
+the requested Stata estimators and pinned R/Python fixest versions on eight
+designs, up to 3,932,160 observations. Its figures are individual vector PDF
+panels assembled with LaTeX `subcaption`, including time, RSS and paired ratios.
+The candidate remains clean source revision `d44e36b`; estimator code is unchanged.
+
+The [development checkpoint](benchmarks/reports/development/systematic-2026-09-10/checkpoint.json)
+and adjacent compact application/scientific/accounting receipts record the SCC
+work in run `20260910-systematic-d44e36b`. Setup job 7520628 passed on a 28-core
+node. Probe 7520678 passed its application checks. Smoke job 7520690 completed
+all eight OLS designs with passing independent coefficient/SE checks; PPML
+passed those checks for one FE and dense two FE, then its independent oracle
+failed to converge on other designs. Focused retest 7521074 did not resolve the
+oracle failure. The unrelated R metadata-rounding correction passed its OLS
+retest. Scientific differences in native comparator output remain recorded.
+
+Johannes authorized further investigation on September 11 before production.
+Diagnostic job 7521509 completed successfully and traced three
+failing cases with and without column scaling;
+the [submission receipt](benchmarks/reports/development/systematic-oracle-investigation-2026-09-11-submission.json)
+binds its inputs, controller and 28-core/30-minute resource request.
+the [diagnosis and traces](benchmarks/reports/development/systematic-oracle-2026-09-11/diagnosis.json)
+show an inner LSMR normwise accuracy floor from unequal column norms. Column
+equilibration reaches the unchanged outer score threshold in six/seven iterations
+for all three cases. The independent oracle now applies that correction; estimator
+settings, inputs and acceptance tolerances are unchanged. The diagnostic heartbeat
+was deleted. Array 7522234 (tasks 1--8) validated the final harness on both models,
+all eight designs, two seeds and four/28 requested cores, with four groups packed
+per task and a one-hour limit. All 32 candidate fits passed independent coefficient
+and SE checks and pinned reghdfe/ppmlhdfe comparisons; all eight tasks have accepted
+accounting. The [final smoke acceptance](benchmarks/reports/development/systematic-final-smoke-2026-09-11/acceptance.json)
+preserves native comparator discrepancies and three gglm initialization errors.
+These errors do not establish failure of the larger target fits. Its isolated
+controller is `controller-final` and its output is `validation-final`.
+
+The production controller adds same-node/task and partial-group recovery guards;
+all 32 comparisons replay with unchanged outcomes, and 14 local evidence/figure
+tests pass. Numerical workers, data generation and oracle are unchanged from the
+accepted smoke. The runtime is frozen with fingerprint `04b5e8cf00ae6947…` under
+`controller-production`. [Pilot array 7522274](benchmarks/reports/development/systematic-pilot-2026-09-11/submission.json)
+was accepted with tasks 1--5, two groups per task, 28 E5-2680v4 cores,
+8 GiB/core and a 12-hour limit. All ten groups and 55 arm receipts are complete,
+with accepted scheduler accounting and application completion markers. The
+[pilot acceptance](benchmarks/reports/development/systematic-pilot-2026-09-11/acceptance.json)
+records ten successful candidate fits, nine passing pinned-reference comparisons
+and one ppmlhdfe command timeout. Native pyfixest iteration failures, gglm
+initialization failures/timeouts and accuracy discrepancies remain recorded.
+Peak estimator RSS was 6.87 GiB; scheduler maxvmem was 13.004 GiB. The longest
+task took 5,054 seconds. The pilot heartbeat was deleted after terminal accounting.
+
+[Production array 7522398](benchmarks/reports/development/systematic-production-2026-09-11/submission-1.json)
+was submitted with tasks 1--237, at most 12 concurrent tasks, 28 E5-2680v4 cores,
+3 GiB/core and a 12-hour cap. It packs 2,120 remaining comparison groups; eight
+registered pilot groups are reused under the same frozen runtime identity.
+Measured packing targets eight hours and checkpoints unstarted groups before
+the walltime cap. Native failures remain terminal benchmark outcomes and do not
+trigger estimator-option changes. That continuation plan was superseded by the
+user's stop instruction. Only 28-core SCC nodes were used and task walltime was
+capped at 12 hours. Local checks exercise evidence acceptance and figure
+assembly, never estimator benchmarks.
+
+The [first 78 terminal tasks](benchmarks/reports/development/systematic-production-2026-09-11/first-78-validation.json)
+have accepted scheduler accounting and 818 validated complete comparison groups.
+Task 51 checkpointed after 20,626 seconds: ten groups completed and six never
+started. Its [preserved checkpoint](benchmarks/reports/development/systematic-production-2026-09-11/checkpoint-51.json)
+and [prepared two-task plan](benchmarks/reports/development/systematic-production-2026-09-11/prepared-checkpoint-51-plan.json)
+are preserved as historical evidence; the prepared plan was never submitted and
+will not be resumed. The frozen controller still matches its inventory. Final
+accounting contains 79 started tasks, with nonzero cancellation status on task
+79. Never-started tasks have no accounting record.
+
+## OLS performance and LSMR correctness
 
 This checkpoint collects the within-norm and wide raw-moment scan optimizations,
 guarded wide finite solve, low-memory LSMR preparation reuse, certified mixed

@@ -67,9 +67,36 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
-`solver(auto)` implements the ADR-0021 categorical AKM policy with the ADR-0022
-iterative-terminal and ADR-0023 direct-terminal guards, while retaining the
-ADR-0009 generic/slope policy:
+For fast, unit-weight OLS, [ADR 0035](adr/0035-guarded-wide-ols-schur.md)
+adds a guarded two-FE Schur route at 16–64 RHS columns and at least 16,384 rows.
+An eight-step probe on three RHSs selects full-width coefficient-space CG
+only when its contraction is at most 0.01 and workspace plus continuation
+fit the joint budget. The route retains fresh FE/OLS certificates and can
+continue with ordinary symmetric CG within the shared iteration budget.
+Requested `auto`, used `cg`, eight pilot iterations and an accepted contraction
+identify the route;
+explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Weighted,
+low-memory, saved-FE, narrow, higher-dimensional and slope models retain the
+previous routing envelope. One-FE OLS uses its direct initial projection and
+reuses the residual norms from its fresh certificate.
+
+The Schur probe forms its three RHS group statistics in parallel, preserving
+canonical row order within each group. The admitted OLS solve uses disjoint
+parallel recurrence updates above seven workers as well; the chain-tuned
+seven-worker crossover still governs the shared PPML path. Probe thresholds,
+iteration accounting and continuation eligibility are unchanged.
+
+Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
+existing norm scratch when that storage fits. Each moment, absolute maximum,
+relative maximum and pass/fail comparison retains its arithmetic. The
+reported two-norm merges partial sums in group order; its last bits may differ
+from the previous single accumulation. It does not determine acceptance on
+these routes. PPML, narrow fits and the existing weak-graph routes retain
+their certificate reductions. This scheduling adds no workspace allocation.
+
+Outside this envelope, `solver(auto)` implements the ADR-0021 categorical AKM
+policy with the ADR-0022 iterative-terminal and ADR-0023 direct-terminal guards,
+while retaining the ADR-0009 generic/slope policy:
 
 - categorical intercept-only graphs first select CMG, without a MAP pilot,
   when there are at most nine nuisance Schur columns, at least three
