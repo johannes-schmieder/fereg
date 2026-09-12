@@ -1360,7 +1360,6 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     if config.absorb.solver == FeSolverKind::Auto
         && config.execution.mode == PreparedOlsExecutionMode::Fast
         && !config.absorb.retain_coefficients
-        && weights == BorrowedMapWeights::Unit
         && (16..=64).contains(&width)
         && config.absorb.certified_fallback
         && config.absorb.map.max_iterations
@@ -1536,7 +1535,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
         if let Some(mut fit_config) = cmg.schur_config.take() {
             let started = std::time::Instant::now();
             let design = prepared.fit_borrowed_cmg_design()?;
-            let contraction = crate::fe::schur_ols_probe(&design, &values)?;
+            let contraction = crate::fe::schur_ols_probe(&design, weights, &values)?;
             let probe_seconds = started.elapsed().as_secs_f64();
             if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
                 eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
@@ -7414,9 +7413,12 @@ mod tests {
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config).unwrap();
         assert!(session.schur_config.is_some());
         let values = prepared.fit_build_rhs().unwrap();
-        let contraction =
-            crate::fe::schur_ols_probe(&prepared.fit_borrowed_cmg_design().unwrap(), &values)
-                .unwrap();
+        let contraction = crate::fe::schur_ols_probe(
+            &prepared.fit_borrowed_cmg_design().unwrap(),
+            BorrowedMapWeights::Unit,
+            &values,
+        )
+        .unwrap();
         assert!(
             contraction > crate::fe::OLS_SCHUR_MAX_CONTRACTION,
             "cycle contraction {contraction}"
@@ -7457,6 +7459,40 @@ mod tests {
         let weights = vec![1.0; n];
         assert!(
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), config)
+                .unwrap()
+                .schur_config
+                .is_some()
+        );
+        for (rhs, eligible) in [(15, false), (16, true), (64, true), (65, false)] {
+            let columns = rhs - 2;
+            let controls = (0..columns)
+                .map(|c| x[c % x.len()].clone())
+                .collect::<Vec<_>>();
+            let boundary = prepared_multiway_categorical(&y, &controls, &effects);
+            assert_eq!(boundary.fit_model().columns.len() + 1, rhs);
+            assert_eq!(
+                build_fit_fe_absorber(&boundary, BorrowedMapWeights::Provided(&weights), config)
+                    .unwrap()
+                    .schur_config
+                    .is_some(),
+                eligible
+            );
+        }
+        let mut low = config;
+        low.execution.mode = PreparedOlsExecutionMode::Low;
+        assert!(
+            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), low)
+                .unwrap()
+                .schur_config
+                .is_none()
+        );
+        let mut limited = config;
+        limited.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 0,
+        });
+        assert!(
+            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), limited)
                 .unwrap()
                 .schur_config
                 .is_none()

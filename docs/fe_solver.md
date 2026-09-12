@@ -67,21 +67,26 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
-For fast, unit-weight OLS, [ADR 0035](adr/0035-guarded-wide-ols-schur.md)
-adds a guarded two-FE Schur route at 16–64 RHS columns and at least 16,384 rows.
+For fast OLS, [ADR 0035](adr/0035-guarded-wide-ols-schur.md), extended to supplied
+weights by [ADR 0037](adr/0037-weighted-ols-schur-admission.md), adds a guarded
+two-FE Schur route at 16–64 actual RHS columns and at least 16,384 rows.
 An eight-step probe on three RHSs selects full-width coefficient-space CG
 only when its contraction is at most 0.01 and workspace plus continuation
 fit the joint budget. The route retains fresh FE/OLS certificates and can
 continue with ordinary symmetric CG within the shared iteration budget.
 Requested `auto`, used `cg`, eight pilot iterations and an accepted contraction
 identify the route;
-explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Weighted,
-low-memory, saved-FE, narrow, higher-dimensional and slope models retain the
+explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Low-memory,
+saved-FE, narrow, higher-dimensional and slope models retain the
 previous routing envelope. One-FE OLS uses its direct initial projection and
 reuses the residual norms from its fresh certificate.
 
-The Schur probe forms its three RHS group statistics in parallel, preserving
-canonical row order within each group. The admitted OLS solve uses disjoint
+The Schur probe forms its three RHS group statistics and degrees using the
+actual normalized weights, then applies that same weighted operator. Tiny
+bridge weights cannot be hidden by an unweighted connectivity assessment.
+Group statistics run in parallel, preserving canonical row order within each
+group. Supplied weights retain their original kind and inference semantics.
+The admitted OLS solve uses disjoint
 parallel recurrence updates above seven workers as well; the chain-tuned
 seven-worker crossover still governs the shared PPML path. Probe thresholds,
 iteration accounting and continuation eligibility are unchanged.

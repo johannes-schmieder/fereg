@@ -10,6 +10,61 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P2 weighted OLS Schur: adopted local development checkpoint
+
+Against baseline `39d1a2a876b92dcc7f8032be792ee171cb85cfdd`, the OLS planner now
+admits supplied weights through the existing three-RHS probe and weighted Schur
+engine. The probe uses actual normalized weighted degrees, statistics and
+operator applications. It preserves the 0.01 contraction guard, eight charged
+probe steps, 64-step full attempt, shared continuation budget, raw reference
+scales and independent final certificates. The 16--64 actual RHS / 16,384-row
+fast-mode envelope, saved-FE exclusion and explicit solver semantics remain.
+[ADR 0037](docs/adr/0037-weighted-ols-schur-admission.md) records the development
+admission. PPML session/reconstruction files and separate Veneto work are intact.
+
+The [report](benchmarks/reports/development/weighted-schur-local-2026-09-12/README.md)
+and [source/artifact identities](benchmarks/reports/development/weighted-schur-local-2026-09-12/identities.json)
+bind isolated universal plugins and 39 completed pairs / 78 measured commands.
+Three-seed command medians fall 6.623→1.244 seconds for N983040/K50/four-thread
+AW two FE, 0.780→0.237 for N245760/K50/16-thread FW, and 1.042→0.490 for PW
+two-way clustering. Median paired gains are 80.8%, 69.6% and 53.0%. Separate
+traces reduce initial absorption 5.407→0.466, 0.530→0.056 and 0.598→0.065 seconds,
+including probes of 45.1, 8.0 and 6.8 ms. No natural full-solve fallback occurs.
+
+The large AW target's native peak rises 12.4%, from 1.156 to 1.300 GB within
+its unchanged 1.675 GB model. FW and PW native peaks fall; all per-case native,
+modeled and sampled RSS results are retained. Unchanged low and small/narrow
+controls have observed/model discrepancies of +10.0% and +27.9% in both arms;
+these remain P0 modeling work, not qualified memory evidence.
+
+All numerical comparisons and original certificates pass, with maximum full
+b/V differences 2.67e-15 / 3.55e-14. Unit-weight weak/dense/bottleneck/cycle/
+disconnected/unbalanced controls retain exact science and solver decisions,
+with at most 7 ms slowdown. Tiny weighted cuts reject Schur (0.0583 contraction)
+and keep exact CMG science. Their repeats have median paired cost +3.8%; an
+individual +16 ms / 6.1% case and the traced 2.7 ms rejected probe are disclosed.
+The remaining traced cost lies mostly in unchanged legacy absorption; its
+precise cause is unestablished. Small/narrow repeats are 14→13 ms medians after
+an initial 11→15 ms observation. Saved outputs remain exact; width/low controls
+preserve the existing eligibility boundaries.
+
+[Validation](benchmarks/reports/development/weighted-schur-local-2026-09-12/validation.json)
+records 60 prepared-fit and three additional Schur tests, four distinct licensed
+Stata fixtures with a fifth invocation for added rank checks, binary audits and
+actual arm64 ABI/self-tests. Weighted dummy, frequency-expansion, AW/PW rescaling,
+finite/FE collinearity, 1/4/16-thread, memory-budget, forced-continuation and
+transaction checks pass. Two builds from an incorrect working directory were
+excluded before comparisons; correctly isolated artifacts were used throughout.
+The installed/dist plugin is unchanged. No SCC, push or qualification occurred.
+
+P2 weighted probe/admission, bounded continuation and width comparisons are
+adopted. Simple weighted one-FE already uses direct projection; complex one-FE
+pass reduction and separate constant-weight specialization remain open. Continue
+with #27's P4 one-FE/pass work and remaining P1 PPML materialization, preserving
+the allocation-free preflight and reconstruction repair; P3 inference remains
+a measured bottleneck after the absorption gains. P0 modeling/counter gaps and
+the weighted-cut routing cost remain explicit follow-up work.
+
 ## P0/P1 OLS preparation: adopted local development checkpoint
 
 Roadmap [#27](https://github.com/johannes-schmieder/fereg/issues/27) supersedes

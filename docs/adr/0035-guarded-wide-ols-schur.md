@@ -3,6 +3,7 @@
 **Status:** Accepted for local development
 **Date:** 2026-09-12
 **Decision owner:** Johannes Schmieder
+**Extended by:** ADR 0037 for weighted-operator OLS admission
 
 ## Context
 

@@ -1,0 +1,10 @@
+{
+  "baseline_commit": "39d1a2a876b92dcc7f8032be792ee171cb85cfdd",
+  "baseline_plugin_sha256": "8166dda58b765b61631a6e936c1b2053c53df154f94720d1f03f82b1f74ce570",
+  "baseline_source_manifest_sha256": "5ae815681484c198e772a795e8f5caa65baf3dc3544afbff2dfe6092e10f8d0d",
+  "build": "Rust 1.85.1, locked dependencies, normal universal macOS build plus binary audit and actual arm64 ABI/self-test",
+  "candidate_plugin_sha256": "4351d5d6ec7de30916615015e9eb99eacb6fb4afbfff9530a71e3ea168772e96",
+  "candidate_source_manifest_sha256": "2d5f7c04c4fcef0ad252f71372f1dd9180dae7e8cee0863c5a92ec55fb3a366f",
+  "implementation_patch_sha256": "bac208fddd37634c546c8229e40225b432d540fd1d2c899362e23d7610a364ab",
+  "scope": "Local development, candidate is baseline plus bound source changes; no source qualification or release claim"
+}

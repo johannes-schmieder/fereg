@@ -7748,6 +7748,7 @@ pub(crate) fn schur_ols_workspace_bytes(
 
 pub(crate) fn schur_ols_probe(
     design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
     values: &DenseMatrix,
 ) -> Result<f64> {
     if design.effects().len() != 2 || design.nobs() != values.nrows() || values.ncols() < 3 {
@@ -7755,6 +7756,9 @@ pub(crate) fn schur_ols_probe(
             "OLS Schur probe dimensions are unsupported",
         ));
     }
+    // Admission must see the same normalized operator as the full solve:
+    // weak weighted cuts can be hidden by well-connected unweighted topology.
+    let weights = validate_weights(weights, values.nrows())?;
     let mut reservation = SystemWorkspaceReservation;
     let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
     let left = &design.effects()[graph.left_effect];
@@ -7768,9 +7772,10 @@ pub(crate) fn schur_ols_probe(
         .try_for_each(|(level, (sum, total))| -> Result<()> {
             *total = 0.0;
             for &row in left.level_index().checked_members(level)? {
-                *total += 1.0;
+                let weight = weights.normalized(row);
+                *total += weight;
                 for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += values[(row, column)];
+                    sum[rhs] += weight * values[(row, column)];
                 }
             }
             for value in sum {
@@ -7788,15 +7793,17 @@ pub(crate) fn schur_ols_probe(
             let members = right.level_index().checked_members(level)?;
             *total = 0.0;
             for &row in members {
-                *total += 1.0;
+                let weight = weights.normalized(row);
+                *total += weight;
                 for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += values[(row, column)];
+                    sum[rhs] += weight * values[(row, column)];
                 }
             }
             for &row in members {
+                let weight = weights.normalized(row);
                 let a = left.codes()[row] as usize;
                 for rhs in 0..3 {
-                    sum[rhs] -= left_rhs[a * 3 + rhs];
+                    sum[rhs] -= weight * left_rhs[a * 3 + rhs];
                 }
             }
             Ok(())
@@ -7814,15 +7821,7 @@ pub(crate) fn schur_ols_probe(
         return Ok(f64::INFINITY);
     }
     for _ in 0..OLS_SCHUR_PROBE_ITERATIONS {
-        graph.apply_schur(
-            design,
-            ValidatedWeights {
-                values: None,
-                raw_scale: 1.0,
-            },
-            3,
-            3,
-        )?;
+        graph.apply_schur(design, weights, 3, 3)?;
         let mut projection = [0.0; 3];
         for level in 0..right.n_levels() {
             for rhs in 0..3 {
@@ -7908,8 +7907,7 @@ fn absorb_ols_schur_at_cap(
     cap: usize,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(config.map)?;
-    if weights != BorrowedMapWeights::Unit
-        || config.retain_coefficients
+    if config.retain_coefficients
         || !probe_seconds.is_finite()
         || probe_seconds < 0.0
         || !contraction.is_finite()
@@ -8222,123 +8220,205 @@ mod tests {
         let values = || DenseMatrix::from_columns(&columns).unwrap();
         let mut config = crate::fe::AbsorbConfig::default();
         config.map.tolerance = 1e-10;
-        let expected = absorb_borrowed_intercept_map_certified(
-            &design(false),
+        let supplied = (0..rows).map(|r| 1.0 + (r % 7) as f64).collect::<Vec<_>>();
+        let dispersed = (0..rows)
+            .map(|r| 10_f64.powi((r % 13) as i32 - 6))
+            .collect::<Vec<_>>();
+        let constant = vec![128.0; rows];
+        for weights in [
             BorrowedMapWeights::Unit,
-            values(),
-            MapConfig {
-                tolerance: 1e-13,
-                max_iterations: 10_000,
-                ..config.map
-            },
-        )
-        .unwrap();
-        let mut serial_probe = None;
-        let mut serial_values = None;
-        for threads in [1, 4, 16] {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build()
-                .unwrap()
-                .install(|| {
-                    let contraction = schur_ols_probe(&design(false), &values()).unwrap();
-                    assert!(contraction <= OLS_SCHUR_MAX_CONTRACTION, "{contraction}");
-                    if let Some(expected) = serial_probe {
-                        assert_eq!(contraction, expected);
-                    } else {
-                        serial_probe = Some(contraction);
-                    }
-                    assert_eq!(
-                        contraction,
-                        schur_ols_probe(&design(true), &values()).unwrap()
-                    );
-                    let planned = schur_ols_workspace_bytes(&design(false), 17, threads).unwrap();
-                    let session =
-                        ReusableCategoricalMapAbsorber::new(design(false), 17, threads).unwrap();
-                    let w = &session.workspace;
-                    let actual = session.two_fe_pcg.as_ref().unwrap().capacity_elements()
-                        + session.cg_residual_square.capacity()
-                        + session.cg_initial_residual_square.capacity()
-                        + session.cg_next_residual_square.capacity()
-                        + session.cg_direction_projection.capacity()
-                        + session.cg_ratio.capacity()
-                        + w.reference_norms.capacity()
-                        + w.residual_norms.capacity()
-                        + w.rhs_scales.capacity()
-                        + w.rhs_relative_infinity_norms.capacity()
-                        + w.value_scales.capacity()
-                        + w.group_sums.capacity()
-                        + w.group_corrections.capacity()
-                        + w.parallel_group_means.capacity()
-                        + w.parallel_group_weights.capacity()
-                        + w.parallel_dot_sums.capacity();
-                    assert!(planned >= actual as u128 * 8, "{planned} < {}", actual * 8);
-                    drop(session);
-                    for (cap, fallback) in [(OLS_SCHUR_MAX_ITERATIONS, false), (1, true)] {
-                        let mut result = absorb_ols_schur_at_cap(
-                            design(false),
-                            BorrowedMapWeights::Unit,
-                            values(),
-                            config,
-                            0.125,
+            BorrowedMapWeights::Provided(&constant),
+            BorrowedMapWeights::Provided(&supplied),
+            BorrowedMapWeights::Provided(&dispersed),
+        ] {
+            let expected = absorb_borrowed_intercept_map_certified(
+                &design(false),
+                weights,
+                values(),
+                MapConfig {
+                    tolerance: 1e-13,
+                    max_iterations: 10_000,
+                    ..config.map
+                },
+            )
+            .unwrap();
+            let mut serial_probe = None;
+            let mut serial_values = None;
+            for threads in [1, 4, 16] {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| {
+                        let contraction =
+                            schur_ols_probe(&design(false), weights, &values()).unwrap();
+                        assert!(contraction <= OLS_SCHUR_MAX_CONTRACTION, "{contraction}");
+                        if let Some(expected) = serial_probe {
+                            assert_eq!(contraction, expected);
+                        } else {
+                            serial_probe = Some(contraction);
+                        }
+                        assert_eq!(
                             contraction,
-                            cap,
-                        )
-                        .unwrap();
-                        assert_eq!(result.report.fallback_used, fallback);
-                        assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
-                        assert!(result.report.iterations <= config.map.max_iterations);
-                        assert!(result.report.setup_seconds >= 0.125);
-                        assert_eq!(result.report.pilot_iterations, OLS_SCHUR_PROBE_ITERATIONS);
-                        assert!(result.report.certified());
-                        for (&a, &b) in result
-                            .residualized
-                            .as_slice()
-                            .iter()
-                            .zip(expected.residualized().as_slice())
-                        {
-                            assert!((a - b).abs() < 2e-9, "{a} != {b}");
-                        }
-                        if !fallback {
-                            if let Some(expected) = &serial_values {
-                                assert_eq!(&result.residualized, expected);
-                            } else {
-                                serial_values = Some(result.residualized.clone());
+                            schur_ols_probe(&design(true), weights, &values()).unwrap()
+                        );
+                        let planned =
+                            schur_ols_workspace_bytes(&design(false), 17, threads).unwrap();
+                        let session =
+                            ReusableCategoricalMapAbsorber::new(design(false), 17, threads)
+                                .unwrap();
+                        let w = &session.workspace;
+                        let actual = session.two_fe_pcg.as_ref().unwrap().capacity_elements()
+                            + session.cg_residual_square.capacity()
+                            + session.cg_initial_residual_square.capacity()
+                            + session.cg_next_residual_square.capacity()
+                            + session.cg_direction_projection.capacity()
+                            + session.cg_ratio.capacity()
+                            + w.reference_norms.capacity()
+                            + w.residual_norms.capacity()
+                            + w.rhs_scales.capacity()
+                            + w.rhs_relative_infinity_norms.capacity()
+                            + w.value_scales.capacity()
+                            + w.group_sums.capacity()
+                            + w.group_corrections.capacity()
+                            + w.parallel_group_means.capacity()
+                            + w.parallel_group_weights.capacity()
+                            + w.parallel_dot_sums.capacity();
+                        assert!(planned >= actual as u128 * 8, "{planned} < {}", actual * 8);
+                        drop(session);
+                        for (cap, fallback) in [(OLS_SCHUR_MAX_ITERATIONS, false), (1, true)] {
+                            let mut result = absorb_ols_schur_at_cap(
+                                design(false),
+                                weights,
+                                values(),
+                                config,
+                                0.125,
+                                contraction,
+                                cap,
+                            )
+                            .unwrap();
+                            assert_eq!(result.report.fallback_used, fallback);
+                            assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
+                            assert!(result.report.iterations <= config.map.max_iterations);
+                            assert!(result.report.setup_seconds >= 0.125);
+                            assert_eq!(result.report.pilot_iterations, OLS_SCHUR_PROBE_ITERATIONS);
+                            assert!(result.report.certified());
+                            for (&a, &b) in result
+                                .residualized
+                                .as_slice()
+                                .iter()
+                                .zip(expected.residualized().as_slice())
+                            {
+                                assert!((a - b).abs() < 2e-9, "{a} != {b}");
                             }
-                            assert_eq!(result.take_residual_norms().len(), 17);
+                            if !fallback {
+                                if let Some(expected) = &serial_values {
+                                    assert_eq!(&result.residualized, expected);
+                                } else {
+                                    serial_values = Some(result.residualized.clone());
+                                }
+                                assert_eq!(result.take_residual_norms().len(), 17);
+                            }
                         }
-                    }
-                    let mut limited = config;
-                    limited.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
-                        execution_bytes: 0,
-                        usable_bytes: planned - 1,
-                    });
-                    assert_eq!(
-                        absorb_ols_schur_certified(
+                        let mut limited = config;
+                        limited.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes: planned - 1,
+                        });
+                        assert_eq!(
+                            absorb_ols_schur_certified(
+                                design(false),
+                                weights,
+                                values(),
+                                limited,
+                                0.0,
+                                contraction
+                            )
+                            .unwrap_err()
+                            .code,
+                            ErrorCode::Allocation
+                        );
+                        limited = config;
+                        limited.map.max_iterations = OLS_SCHUR_PROBE_ITERATIONS + 1;
+                        assert!(absorb_ols_schur_at_cap(
                             design(false),
-                            BorrowedMapWeights::Unit,
+                            weights,
                             values(),
                             limited,
                             0.0,
-                            contraction
+                            contraction,
+                            1
                         )
-                        .unwrap_err()
-                        .code,
-                        ErrorCode::Allocation
-                    );
-                    limited = config;
-                    limited.map.max_iterations = OLS_SCHUR_PROBE_ITERATIONS + 1;
-                    assert!(absorb_ols_schur_at_cap(
-                        design(false),
-                        BorrowedMapWeights::Unit,
-                        values(),
-                        limited,
-                        0.0,
-                        contraction,
-                        1
-                    )
-                    .is_err());
-                });
+                        .is_err());
+                    });
+            }
+        }
+    }
+
+    #[test]
+    fn ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale() {
+        let rows = 16_384;
+        let left_codes = (0..rows).map(|r| (r / 4) as u32).collect::<Vec<_>>();
+        let right_codes = (0..rows)
+            .map(|r| {
+                let base = r / 4 % 128;
+                (match r % 4 {
+                    0 => base,
+                    1 => (base + 1) % 128,
+                    _ => (r * 37 + r / 512 * 19) % 128,
+                }) as u32
+            })
+            .collect::<Vec<_>>();
+        let left_index = LevelIndex::from_codes(&left_codes, rows / 4).unwrap();
+        let right_index = LevelIndex::from_codes(&right_codes, 128).unwrap();
+        let left =
+            ValidatedBorrowedInterceptSource::new(&left_codes, rows / 4, &left_index).unwrap();
+        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 128, &right_index).unwrap();
+        let design =
+            BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+        let values = DenseMatrix::from_columns(
+            &(0..3)
+                .map(|c| {
+                    (0..rows)
+                        .map(|r| {
+                            ((r * (c + 17) % 997) as f64 / 17.0).sin()
+                                + (right_codes[r] as f64 * 0.049).sin()
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+        let unit = schur_ols_probe(&design, BorrowedMapWeights::Unit, &values).unwrap();
+        assert!(unit <= OLS_SCHUR_MAX_CONTRACTION, "unit {unit}");
+        let constant = vec![128.0; rows];
+        assert_eq!(
+            unit,
+            schur_ols_probe(&design, BorrowedMapWeights::Provided(&constant), &values).unwrap()
+        );
+        let weights = (0..rows)
+            .map(|r| if r % 4 < 2 { 1.0 } else { 1e-10 })
+            .collect::<Vec<_>>();
+        let scaled = weights.iter().map(|w| w * 1024.0).collect::<Vec<_>>();
+        let weighted =
+            schur_ols_probe(&design, BorrowedMapWeights::Provided(&weights), &values).unwrap();
+        assert!(
+            weighted > OLS_SCHUR_MAX_CONTRACTION,
+            "weighted cut {weighted}"
+        );
+        assert_eq!(
+            weighted,
+            schur_ols_probe(&design, BorrowedMapWeights::Provided(&scaled), &values).unwrap()
+        );
+        for invalid in [0.0, -1.0, f64::INFINITY, f64::NAN] {
+            let mut bad = weights.clone();
+            bad[7] = invalid;
+            assert_eq!(
+                schur_ols_probe(&design, BorrowedMapWeights::Provided(&bad), &values)
+                    .unwrap_err()
+                    .code,
+                ErrorCode::InvalidData
+            );
         }
     }
 
