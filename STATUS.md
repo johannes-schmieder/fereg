@@ -10,7 +10,45 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Incomplete OLS compaction: current local source and resume point
+## PPML reconstruction fix: completed development validation
+
+The requested Veneto repair changes the retained weighted-linear session's
+reconstruction check to an operation-count rounding bound and constructs
+canonical PPML predictors directly from the working response and residual.
+The original response-relative diagnostic and final publication tolerance
+remain unchanged, as do all other scientific checks and the one-shot OLS path.
+[Numerical contract](docs/ppml_reconstruction.md) records the bound and
+independent rational oracle, including corrupted and nonfinite negative cases.
+
+[Local evidence](benchmarks/reports/development/veneto-ppml-reconstruction-2026-09-12/local-tests.json) records
+94 passing Rust tests. The rebuilt universal macOS plugin passes binary audit,
+actual arm64 ABI/self-test, and four licensed fixtures: OLS and PPML smoke,
+PPML scientific contract, and weighted inference. Strict Clippy remains blocked
+by six pre-existing lints in unchanged OLS/FE files, with none reported in the
+changed files.
+
+The [repair report](benchmarks/reports/development/veneto-ppml-reconstruction-2026-09-12/README.md) records
+successful full Veneto fits on all 3,159,720 observations at four/fourteen
+threads: 133.324/101.878 seconds, both with 15 outer and 589 inner iterations.
+Slopes differ from the preserved ppmlhdfe reference by at most 4.59e-12;
+SE and full slope covariance comparisons pass. Both final score/Hessian checks
+pass, with identical samples and slightly better reported objectives. Native
+allocation peaks are 5.958/7.374 GiB; these single runs are diagnostic, not a
+general scaling claim.
+
+SCC job **7536374** completed with scheduler `failed=0`, `exit_status=0` and
+application/job sentinels. It reused the Linux plugin built and smoke-tested
+in job **7536367**, whose later controller path typo stopped before full-panel
+estimation. Both attempts remain documented. The
+[validation](benchmarks/reports/development/veneto-ppml-reconstruction-2026-09-12/scc-validation.json) and
+[source manifest](benchmarks/reports/development/veneto-ppml-reconstruction-2026-09-12/source-manifest.json)
+bind the results to snapshot
+`659924a603a3b750a7478cad608d95022166b5a83956e066d9b9e29698420b96`;
+all 484 source/fixture files match the final working tree. The source and
+portable validation evidence form the requested development checkpoint. No
+qualification or broad benchmark restart occurred.
+
+## Incomplete OLS compaction: preceding implementation
 
 The user-requested development checkpoint collects the adopted OLS sources,
 fixtures, benchmark tooling and publishable numerical evidence. The

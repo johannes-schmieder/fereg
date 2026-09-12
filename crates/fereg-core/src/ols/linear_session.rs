@@ -248,8 +248,55 @@ pub(crate) struct LinearWithinDesignCertificate {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct LinearReconstructionCertificate {
+    // Keep the response-relative diagnostic even when cancellation requires a
+    // larger, componentwise rounding allowance for the acceptance check.
     pub(crate) relative_infinity_norm: f64,
     pub(crate) passed: bool,
+}
+
+impl LinearReconstructionCertificate {
+    fn new() -> Self {
+        Self {
+            relative_infinity_norm: 0.0,
+            passed: true,
+        }
+    }
+
+    fn observe(&mut self, response: f64, finite: f64, absorbed: f64, residual: f64) -> Result<()> {
+        let reconstructed = (finite + absorbed) + residual;
+        let error = (reconstructed - response).abs();
+        if ![response, finite, absorbed, residual, reconstructed, error]
+            .iter()
+            .all(|value| value.is_finite())
+        {
+            return Err(invalid_data(
+                "weighted-linear predictor reconstruction is not finite",
+            ));
+        }
+        self.relative_infinity_norm = self
+            .relative_infinity_norm
+            .max(error / response.abs().max(reconstructed.abs()).max(1.0));
+        // Forming the absorbed predictor takes two subtractions; reconstructing
+        // the response and measuring its discrepancy take three more operations.
+        // gamma(8) covers these roundings and evaluation of the scaled bound.
+        // Scaling each magnitude first prevents overflow in their sum. The unit
+        // floor retains the existing absolute guard for tiny working responses.
+        let unit_roundoff = 0.5 * f64::EPSILON;
+        let gamma = (8.0 * unit_roundoff) / (1.0 - 8.0 * unit_roundoff);
+        let scale = response
+            .abs()
+            .max(finite.abs())
+            .max(absorbed.abs())
+            .max(residual.abs())
+            .max(1.0);
+        let magnitude = (response.abs() / scale
+            + finite.abs() / scale
+            + absorbed.abs() / scale
+            + residual.abs() / scale)
+            .max(1.0 / scale);
+        self.passed &= error / scale <= gamma * magnitude;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -813,6 +860,7 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
 /// final inference stage.  Nothing here is exported from `fereg-core`.
 pub(crate) struct CertifiedLinearSessionOutput<'a> {
     fit: &'a CertifiedPreparedOlsFit,
+    response: &'a [f64],
     finite_predictor: &'a [f64],
     absorbed_predictor: &'a [f64],
     within: &'a RetainedWithinDesign,
@@ -823,6 +871,10 @@ pub(crate) struct CertifiedLinearSessionOutput<'a> {
 impl<'a> CertifiedLinearSessionOutput<'a> {
     pub(crate) const fn fit(&self) -> &'a CertifiedPreparedOlsFit {
         self.fit
+    }
+
+    pub(crate) const fn response(&self) -> &'a [f64] {
+        self.response
     }
 
     pub(crate) const fn finite_predictor(&self) -> &'a [f64] {
@@ -1955,6 +2007,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         Ok(CertifiedLinearSessionOutput {
             fit,
+            response: &self.response,
             finite_predictor: &self.finite_predictor,
             absorbed_predictor: &self.absorbed_predictor,
             within,
@@ -1973,6 +2026,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .fit
                 .as_ref()
                 .expect("strict candidate output was prevalidated"),
+            response: &self.response,
             finite_predictor: &self.finite_predictor,
             absorbed_predictor: &self.absorbed_predictor,
             within: self
@@ -2882,28 +2936,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 );
             }
         }
-        let mut relative_infinity_norm = 0.0_f64;
+        let mut certificate = LinearReconstructionCertificate::new();
         for (row, within_residual) in within_residuals.iter().copied().enumerate() {
             self.absorbed_predictor[row] =
-                self.response[row] - self.finite_predictor[row] - within_residual;
-            let reconstructed =
-                self.finite_predictor[row] + self.absorbed_predictor[row] + within_residual;
-            let scale = self.response[row].abs().max(reconstructed.abs()).max(1.0);
-            relative_infinity_norm =
-                relative_infinity_norm.max((reconstructed - self.response[row]).abs() / scale);
-            if !self.finite_predictor[row].is_finite()
-                || !self.absorbed_predictor[row].is_finite()
-                || !relative_infinity_norm.is_finite()
-            {
-                return Err(invalid_data(
-                    "frozen weighted-linear predictor reconstruction is not finite",
-                ));
-            }
+                (self.response[row] - within_residual) - self.finite_predictor[row];
+            certificate.observe(
+                self.response[row],
+                self.finite_predictor[row],
+                self.absorbed_predictor[row],
+                within_residual,
+            )?;
         }
-        Ok(LinearReconstructionCertificate {
-            relative_infinity_norm,
-            passed: relative_infinity_norm <= 64.0 * f64::EPSILON,
-        })
+        Ok(certificate)
     }
 
     #[cfg(test)]
@@ -4825,28 +4869,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 );
             }
         }
-        let mut relative_infinity_norm = 0.0_f64;
+        let mut certificate = LinearReconstructionCertificate::new();
         for row in 0..rows {
             self.absorbed_predictor[row] =
-                self.response[row] - self.finite_predictor[row] - fit.residuals()[row];
-            let reconstructed =
-                self.finite_predictor[row] + self.absorbed_predictor[row] + fit.residuals()[row];
-            let scale = self.response[row].abs().max(reconstructed.abs()).max(1.0);
-            relative_infinity_norm =
-                relative_infinity_norm.max((reconstructed - self.response[row]).abs() / scale);
-            if !self.finite_predictor[row].is_finite()
-                || !self.absorbed_predictor[row].is_finite()
-                || !relative_infinity_norm.is_finite()
-            {
-                return Err(invalid_data(
-                    "weighted-linear predictor reconstruction is not finite",
-                ));
-            }
+                (self.response[row] - fit.residuals()[row]) - self.finite_predictor[row];
+            certificate.observe(
+                self.response[row],
+                self.finite_predictor[row],
+                self.absorbed_predictor[row],
+                fit.residuals()[row],
+            )?;
         }
-        Ok(LinearReconstructionCertificate {
-            relative_infinity_norm,
-            passed: relative_infinity_norm <= 64.0 * f64::EPSILON,
-        })
+        Ok(certificate)
     }
 
     #[cfg(test)]
@@ -5317,30 +5351,15 @@ fn certify_frozen_combined_predictor(
             "frozen PPML combined predictor dimensions are inconsistent",
         ));
     }
-    let mut relative_infinity_norm = 0.0_f64;
+    let mut certificate = LinearReconstructionCertificate::new();
     for (response, residual) in response
         .iter()
         .copied()
         .zip(within_residuals.iter().copied())
     {
-        let predictor = response - residual;
-        let reconstructed = predictor + residual;
-        let scale = response.abs().max(reconstructed.abs()).max(1.0);
-        relative_infinity_norm =
-            relative_infinity_norm.max((reconstructed - response).abs() / scale);
-        if !predictor.is_finite()
-            || !reconstructed.is_finite()
-            || !relative_infinity_norm.is_finite()
-        {
-            return Err(invalid_data(
-                "frozen PPML combined predictor reconstruction is not finite",
-            ));
-        }
+        certificate.observe(response, 0.0, response - residual, residual)?;
     }
-    Ok(LinearReconstructionCertificate {
-        relative_infinity_norm,
-        passed: relative_infinity_norm <= 64.0 * f64::EPSILON,
-    })
+    Ok(certificate)
 }
 
 fn fill_identified_bread(
@@ -5524,4 +5543,85 @@ fn invalid_argument(message: &'static str) -> FeregError {
 
 fn invalid_data(message: &'static str) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, message)
+}
+
+#[cfg(test)]
+mod reconstruction_tests {
+    use super::{certify_frozen_combined_predictor, LinearReconstructionCertificate};
+
+    #[test]
+    fn reconstruction_matches_exact_rational_oracle_and_rejects_corruption() {
+        let oracle = include_str!("../../../../tests/fixtures/ppml/reconstruction.csv");
+        let mut cancellation_rejections = 0;
+        for line in oracle.lines().skip(1) {
+            let fields: Vec<_> = line.split(',').collect();
+            let values: Vec<_> = fields[1..6]
+                .iter()
+                .map(|hex| f64::from_bits(u64::from_str_radix(hex, 16).unwrap()))
+                .collect();
+            let [z, f, a, r, exact_discrepancy] = values[..] else {
+                panic!("oracle shape")
+            };
+            let expected = fields[6] == "1";
+            let mut certificate = LinearReconstructionCertificate::new();
+            certificate
+                .observe(z, f, a, r)
+                .expect("finite oracle input");
+            assert_eq!(
+                certificate.passed, expected,
+                "{}: {certificate:?}, exact discrepancy={exact_discrepancy}",
+                fields[0]
+            );
+            if expected && certificate.relative_infinity_norm > 64.0 * f64::EPSILON {
+                cancellation_rejections += 1;
+                assert!(exact_discrepancy > 0.0);
+            }
+            if expected {
+                // Both existing subtraction orders must obey the same bound;
+                // neither is used to construct the independent oracle above.
+                for computed in [(z - f) - r, (z - r) - f] {
+                    let mut constructed = LinearReconstructionCertificate::new();
+                    constructed.observe(z, f, computed, r).unwrap();
+                    assert!(constructed.passed, "{}: {constructed:?}", fields[0]);
+                }
+                assert!(
+                    certify_frozen_combined_predictor(&[z], &[r])
+                        .unwrap()
+                        .passed
+                );
+            }
+        }
+        assert!(
+            cancellation_rejections >= 3,
+            "must exercise the former cancellation failure"
+        );
+    }
+
+    #[test]
+    fn reconstruction_rejects_nonfinite_and_overflowed_values() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for position in 0..4 {
+                let mut values = [1.0, 0.25, 0.25, 0.5];
+                values[position] = bad;
+                let mut certificate = LinearReconstructionCertificate::new();
+                assert!(certificate
+                    .observe(values[0], values[1], values[2], values[3])
+                    .is_err());
+            }
+        }
+        let mut certificate = LinearReconstructionCertificate::new();
+        assert!(certificate.observe(1.0, f64::MAX, f64::MAX, 0.0).is_err());
+        assert!(certify_frozen_combined_predictor(&[f64::MAX], &[-f64::MAX]).is_err());
+    }
+
+    #[test]
+    fn reconstruction_failure_cannot_be_erased_by_a_later_row() {
+        let mut certificate = LinearReconstructionCertificate::new();
+        certificate.observe(1.0, 0.0, 1.001, 0.0).unwrap();
+        assert!(!certificate.passed);
+        let maximum = certificate.relative_infinity_norm;
+        certificate.observe(1.0, 0.0, 1.0, 0.0).unwrap();
+        assert!(!certificate.passed);
+        assert_eq!(certificate.relative_infinity_norm, maximum);
+    }
 }

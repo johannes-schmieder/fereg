@@ -2937,7 +2937,9 @@ fn fill_candidate_eta_from_linear_output(
     offset: &[f64],
     eta: &mut [f64],
 ) -> Result<()> {
-    if output.finite_predictor().len() != offset.len()
+    if output.response().len() != offset.len()
+        || output.fit().residuals().len() != offset.len()
+        || output.finite_predictor().len() != offset.len()
         || output.absorbed_predictor().len() != offset.len()
         || eta.len() != offset.len()
     {
@@ -2947,7 +2949,9 @@ fn fill_candidate_eta_from_linear_output(
         ));
     }
     for row in 0..offset.len() {
-        eta[row] = offset[row] + output.finite_predictor()[row] + output.absorbed_predictor()[row];
+        // The canonical response and residual already identify the total
+        // predictor. Splitting and recombining its FE part adds cancellation.
+        eta[row] = offset[row] + (output.response()[row] - output.fit().residuals()[row]);
         if !eta[row].is_finite() {
             return Err(numerical_nonconvergence(
                 "prepared PPML candidate predictor is not finite",
@@ -3095,7 +3099,9 @@ fn fresh_warm_linear_equivalent(
     config: PpmlConfig,
     inner_tolerance: f64,
 ) -> Result<bool> {
-    if fresh.finite_predictor().len() != offset.len()
+    if fresh.response().len() != offset.len()
+        || fresh.fit().residuals().len() != offset.len()
+        || fresh.finite_predictor().len() != offset.len()
         || fresh.absorbed_predictor().len() != offset.len()
         || frozen_eta.len() != offset.len()
         || fresh.fit().coefficients().len() != frozen_coefficients.len()
@@ -3108,7 +3114,7 @@ fn fresh_warm_linear_equivalent(
     let tolerance = fresh_warm_tolerance(config, inner_tolerance);
     let mut predictor_difference = 0.0_f64;
     for row in 0..offset.len() {
-        let value = offset[row] + fresh.finite_predictor()[row] + fresh.absorbed_predictor()[row];
+        let value = offset[row] + (fresh.response()[row] - fresh.fit().residuals()[row]);
         if !value.is_finite() || !frozen_eta[row].is_finite() {
             return Ok(false);
         }

@@ -58,6 +58,8 @@ all-width guarded-Cholesky/retained-QR rank policy, strict RAII basis
 transaction, and worker-team reuse
 are fixed by
 [ADR 0020](adr/0020-retained-ppml-session-execution-boundary.md).
+Canonical PPML predictors and their cancellation-aware arithmetic check are
+specified in [working-response reconstruction](ppml_reconstruction.md).
 
 The public call graph is:
 
