@@ -1,0 +1,2414 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -66,6 +66,7 @@
+     residualized: DenseMatrix,
+     report: SolveReport,
+     coefficients: Option<FeCoefficientBatch>,
++    residual_norms: Vec<f64>,
+ }
+ 
+ /// Optional coefficient-space product of one certified absorption.
+@@ -730,6 +731,23 @@
+ }
+ 
+ impl CertifiedBorrowedMap {
++    // These norms belong to this exact residualized matrix and normalized weights.
++    // Moving them to OLS avoids a second O(NK) pass after fresh certification.
++    pub(crate) fn take_residual_norms(&mut self) -> Vec<f64> {
++        std::mem::take(&mut self.residual_norms)
++    }
++    pub(crate) fn with_residual_norms(mut self, norms: Vec<f64>) -> Result<Self> {
++        if norms.len() != self.residualized.ncols()
++            || norms.iter().any(|v| !v.is_finite() || *v < 0.0)
++        {
++            return Err(invalid_argument(
++                "certified residual norms are not finite and aligned",
++            ));
++        }
++        self.residual_norms = norms;
++        Ok(self)
++    }
++
+     #[must_use]
+     pub const fn residualized(&self) -> &DenseMatrix {
+         &self.residualized
+@@ -762,6 +780,7 @@
+             residualized,
+             report,
+             coefficients: None,
++            residual_norms: Vec::new(),
+         })
+     }
+ 
+@@ -782,6 +801,7 @@
+             residualized,
+             report,
+             coefficients: Some(coefficients),
++            residual_norms: Vec::new(),
+         })
+     }
+ }
+@@ -890,6 +910,7 @@
+ }
+ 
+ struct BorrowedMapWorkspace {
++    ols_norm_reduction: bool,
+     reference_norms: Vec<f64>,
+     residual_norms: Vec<f64>,
+     rhs_scales: Vec<f64>,
+@@ -955,6 +976,7 @@
+             0
+         };
+         Ok(Self {
++            ols_norm_reduction: false,
+             reference_norms: reserved_zeros(
+                 rhs_count,
+                 reservation,
+@@ -1671,9 +1693,15 @@
+             &mut self.cg_next_residual_square,
+             &mut self.cg_direction_projection,
+             &mut self.cg_ratio,
++            None,
+         );
+         self.two_fe_pcg = Some(graph);
+-        result
++        match result? {
++            SchurAttempt::Certified(result) => Ok(result),
++            SchurAttempt::Continue { .. } => {
++                unreachable!("unbounded MAP accelerator continues internally")
++            }
++        }
+     }
+ 
+     #[allow(clippy::too_many_arguments)]
+@@ -2002,7 +2030,12 @@
+     next_residual_square: &mut Vec<f64>,
+     direction_projection: &mut Vec<f64>,
+     ratio: &mut Vec<f64>,
+-) -> Result<CertifiedBorrowedMap> {
++    ols_cap: Option<usize>,
++) -> Result<SchurAttempt> {
++    let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
++    let phase_start = Instant::now();
++    let mut operator_seconds = 0.0;
++    let mut recurrence_seconds = 0.0;
+     let rhs_count = values.ncols();
+     let left = &design.effects()[graph.left_effect];
+     let right = &design.effects()[graph.right_effect];
+@@ -2038,28 +2071,48 @@
+         scalars.resize(rhs_count, 0.0);
+     }
+ 
+-    graph.left_weights.fill(0.0);
+-    graph.right_weights.fill(0.0);
+-    graph.left_rhs.fill(0.0);
+-    graph.left_work.fill(0.0);
+-    graph.solution.fill(0.0);
+-    graph.residual.fill(0.0);
+-    graph.direction.fill(0.0);
+-    graph.operator.fill(0.0);
+     let left_codes = left.codes();
+-    let right_codes = right.codes();
+-    for row in 0..values.nrows() {
+-        let weight = weights.normalized(row);
+-        let left_level = left_codes[row] as usize;
+-        let right_level = right_codes[row] as usize;
+-        graph.left_weights[left_level] += weight;
+-        graph.right_weights[right_level] += weight;
+-        for rhs in 0..rhs_count {
+-            let term = weight * values[(row, rhs)];
+-            graph.left_rhs[left_level * stride + rhs] += term;
+-            graph.residual[right_level * stride + rhs] += term;
+-        }
+-    }
++    let data = values.as_slice();
++    graph
++        .solution
++        .par_chunks_mut(32768)
++        .for_each(|part| part.fill(0.0));
++    graph
++        .left_rhs
++        .par_chunks_mut(stride)
++        .zip(graph.left_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            sum.fill(0.0);
++            *total = 0.0;
++            for &row in left.level_index().checked_members(level)? {
++                let weight = weights.normalized(row);
++                *total += weight;
++                let source = &data[row * rhs_count..(row + 1) * rhs_count];
++                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                    *out += weight * value;
++                }
++            }
++            Ok(())
++        })?;
++    graph
++        .residual
++        .par_chunks_mut(stride)
++        .zip(graph.right_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            sum.fill(0.0);
++            *total = 0.0;
++            for &row in right.level_index().checked_members(level)? {
++                let weight = weights.normalized(row);
++                *total += weight;
++                let source = &data[row * rhs_count..(row + 1) * rhs_count];
++                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                    *out += weight * value;
++                }
++            }
++            Ok(())
++        })?;
+     if graph
+         .left_weights
+         .iter()
+@@ -2075,21 +2128,31 @@
+             "two-FE categorical MAP PCG group state is invalid",
+         ));
+     }
+-    for level in 0..left_levels {
+-        let denominator = graph.left_weights[level];
+-        for rhs in 0..rhs_count {
+-            graph.left_rhs[level * stride + rhs] /= denominator;
+-        }
+-    }
+-    for row in 0..values.nrows() {
+-        let weight = weights.normalized(row);
+-        let left_level = left_codes[row] as usize;
+-        let right_level = right_codes[row] as usize;
+-        for rhs in 0..rhs_count {
+-            graph.residual[right_level * stride + rhs] -=
+-                weight * graph.left_rhs[left_level * stride + rhs];
+-        }
+-    }
++    graph
++        .left_rhs
++        .par_chunks_mut(stride)
++        .zip(&graph.left_weights)
++        .for_each(|(sum, &denominator)| {
++            for value in &mut sum[..rhs_count] {
++                *value /= denominator;
++            }
++        });
++    let left_rhs = &graph.left_rhs;
++    graph
++        .residual
++        .par_chunks_mut(stride)
++        .enumerate()
++        .try_for_each(|(level, sum)| -> Result<()> {
++            for &row in right.level_index().checked_members(level)? {
++                let weight = weights.normalized(row);
++                let left_level = left_codes[row] as usize;
++                let source = &left_rhs[left_level * stride..left_level * stride + rhs_count];
++                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                    *out -= weight * value;
++                }
++            }
++            Ok(())
++        })?;
+     for level in 0..right_levels {
+         let denominator = graph.right_weights[level];
+         for (rhs, residual_sum) in residual_square.iter_mut().enumerate() {
+@@ -2111,11 +2174,15 @@
+         .max_iterations
+         .saturating_sub(completed_pilot_iterations);
+     let map_fallback_reserve = remaining_iterations / 4;
+-    let pcg_iteration_limit = config.max_iterations.saturating_sub(map_fallback_reserve);
++    let pcg_iteration_limit = ols_cap.map_or_else(
++        || config.max_iterations.saturating_sub(map_fallback_reserve),
++        |cap| cap.min(config.max_iterations),
++    );
+     let mut iterations = completed_pilot_iterations;
+     let mut active_rhs = 0_usize;
+     let parallel_recurrence = design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS
+-        && (2..=TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS).contains(&rayon::current_num_threads());
++        && rayon::current_num_threads() > 1
++        && (ols_cap.is_some() || rayon::current_num_threads() <= TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS);
+     active_rhs_state.fill(0.0);
+     for rhs in 0..rhs_count {
+         if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance)? {
+@@ -2132,8 +2199,12 @@
+     }
+     let mut reconstruct = active_rhs == 0;
+     let mut breakdown = false;
++    let initialization_seconds = phase_start.elapsed().as_secs_f64();
+     while !reconstruct && iterations < pcg_iteration_limit {
++        let op_start = Instant::now();
+         graph.apply_schur(design, weights, rhs_count, stride)?;
++        operator_seconds += op_start.elapsed().as_secs_f64();
++        let rec_start = Instant::now();
+         direction_projection.fill(0.0);
+         for level in 0..right_levels {
+             for (rhs, projection_sum) in direction_projection.iter_mut().enumerate() {
+@@ -2246,6 +2317,7 @@
+         reconstruct = active_rhs == 0 || iterations == pcg_iteration_limit;
+         if reconstruct {
+             residual_square.copy_from_slice(next_residual_square);
++            recurrence_seconds += rec_start.elapsed().as_secs_f64();
+             break;
+         }
+         for rhs in 0..rhs_count {
+@@ -2308,10 +2380,21 @@
+             }
+         }
+         residual_square.copy_from_slice(next_residual_square);
+-    }
+-
++        recurrence_seconds += rec_start.elapsed().as_secs_f64();
++    }
++
++    if ols_cap.is_some() && (active_rhs > 0 || breakdown) {
++        return Ok(SchurAttempt::Continue {
++            values,
++            iterations,
++            candidate: false,
++        });
++    }
+     if reconstruct || iterations > completed_pilot_iterations {
++        let reconstruct_start = Instant::now();
+         reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values, rhs_count, stride)?;
++        let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
++        let cert_start = Instant::now();
+         let certificate = certify(
+             design,
+             weights,
+@@ -2319,6 +2402,9 @@
+             config.tolerance,
+             certificate_workspace,
+         )?;
++        if trace {
++            eprintln!("FEREG_PHASE|schur|init={initialization_seconds:.9}|operator={operator_seconds:.9}|recurrence={recurrence_seconds:.9}|reconstruct={reconstruct_seconds:.9}|certificate={:.9}|iterations={iterations}|passed={}",cert_start.elapsed().as_secs_f64(),certificate.passed);
++        }
+         if certificate.passed {
+             let mut result = certified_result(
+                 values,
+@@ -2330,10 +2416,17 @@
+             )?;
+             result.report.pilot_iterations = completed_pilot_iterations;
+             result.report.pilot_contraction = pilot_contraction;
+-            return Ok(result);
+-        }
+-    }
+-
++            return Ok(SchurAttempt::Certified(result));
++        }
++    }
++
++    if ols_cap.is_some() {
++        return Ok(SchurAttempt::Continue {
++            values,
++            iterations,
++            candidate: true,
++        });
++    }
+     // PCG is an acceleration only. A finite breakdown or a full-certificate
+     // miss continues with ordinary symmetric MAP from the reconstructed
+     // observation-space candidate. One quarter of the original iteration
+@@ -2366,7 +2459,7 @@
+                 )?;
+                 result.report.pilot_iterations = completed_pilot_iterations;
+                 result.report.pilot_contraction = pilot_contraction;
+-                return Ok(result);
++                return Ok(SchurAttempt::Certified(result));
+             }
+         }
+     }
+@@ -2468,8 +2561,10 @@
+                         }
+                         let weight = weights.normalized(row);
+                         let right_level = right_codes[row] as usize;
+-                        for rhs in 0..rhs_count {
+-                            level_work[rhs] += weight * direction[right_level * stride + rhs];
++                        let source =
++                            &direction[right_level * stride..right_level * stride + rhs_count];
++                        for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
++                            *value += weight * term;
+                         }
+                     }
+                     let denominator = left_weights[level];
+@@ -2496,9 +2591,9 @@
+                     let level = first_level + local_level;
+                     let level_operator =
+                         &mut operator[local_level * stride..(local_level + 1) * stride];
+-                    for rhs in 0..rhs_count {
+-                        level_operator[rhs] =
+-                            right_weights[level] * direction[level * stride + rhs];
++                    let source = &direction[level * stride..level * stride + rhs_count];
++                    for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
++                        *value = right_weights[level] * term;
+                     }
+                     let members = right.level_index().checked_members(level)?;
+                     for &row in members {
+@@ -2509,8 +2604,10 @@
+                         }
+                         let weight = weights.normalized(row);
+                         let left_level = left_codes[row] as usize;
+-                        for rhs in 0..rhs_count {
+-                            level_operator[rhs] -= weight * left_work[left_level * stride + rhs];
++                        let source =
++                            &left_work[left_level * stride..left_level * stride + rhs_count];
++                        for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
++                            *value -= weight * term;
+                         }
+                     }
+                 }
+@@ -2544,7 +2641,9 @@
+                 f64::INFINITY
+             }
+         } else {
+-            mean.abs() / reference
++            // Match the weighted group-moment certificate; a mean alone can
++            // stop early for large groups and trigger expensive MAP polishing.
++            (mean.abs() / reference) * denominator.sqrt().max(1.0)
+         };
+         if !relative.is_finite() || relative > 0.5 * tolerance {
+             return Ok(false);
+@@ -2561,40 +2660,54 @@
+     rhs_count: usize,
+     stride: usize,
+ ) -> Result<()> {
+-    graph.left_work.fill(0.0);
+     let left = &design.effects()[graph.left_effect];
+     let right = &design.effects()[graph.right_effect];
+     let left_codes = left.codes();
+     let right_codes = right.codes();
+-    for row in 0..design.nobs() {
+-        let weight = weights.normalized(row);
+-        let left_level = left_codes[row] as usize;
+-        let right_level = right_codes[row] as usize;
+-        for rhs in 0..rhs_count {
+-            graph.left_work[left_level * stride + rhs] +=
+-                weight * graph.solution[right_level * stride + rhs];
+-        }
+-    }
+-    for level in 0..left.n_levels() {
+-        let denominator = graph.left_weights[level];
+-        for rhs in 0..rhs_count {
+-            graph.left_work[level * stride + rhs] = graph.left_rhs[level * stride + rhs]
+-                - graph.left_work[level * stride + rhs] / denominator;
+-        }
+-    }
+-    for row in 0..values.nrows() {
+-        let left_level = left_codes[row] as usize;
+-        let right_level = right_codes[row] as usize;
+-        for rhs in 0..rhs_count {
+-            values[(row, rhs)] -= graph.left_work[left_level * stride + rhs]
+-                + graph.solution[right_level * stride + rhs];
+-            if !values[(row, rhs)].is_finite() {
+-                return Err(invalid_data(
+-                    "two-FE categorical MAP PCG reconstruction is nonfinite",
+-                ));
+-            }
+-        }
+-    }
++    let solution = &graph.solution;
++    let left_rhs = &graph.left_rhs;
++    let left_weights = &graph.left_weights;
++    graph
++        .left_work
++        .par_chunks_mut(stride)
++        .enumerate()
++        .try_for_each(|(level, sum)| -> Result<()> {
++            sum.fill(0.0);
++            for &row in left.level_index().checked_members(level)? {
++                let weight = weights.normalized(row);
++                let right_level = right_codes[row] as usize;
++                let source = &solution[right_level * stride..right_level * stride + rhs_count];
++                for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                    *out += weight * value;
++                }
++            }
++            let source = &left_rhs[level * stride..level * stride + rhs_count];
++            for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                *out = value - *out / left_weights[level];
++            }
++            Ok(())
++        })?;
++    let left_work = &graph.left_work;
++    values
++        .as_mut_slice()
++        .par_chunks_mut(rhs_count)
++        .enumerate()
++        .try_for_each(|(row, output)| -> Result<()> {
++            let left_level = left_codes[row] as usize;
++            let right_level = right_codes[row] as usize;
++            let a = &left_work[left_level * stride..left_level * stride + rhs_count];
++            let b = &solution[right_level * stride..right_level * stride + rhs_count];
++            for ((out, &av), &bv) in output.iter_mut().zip(a).zip(b) {
++                *out -= av + bv;
++                if !out.is_finite() {
++                    return Err(invalid_data(
++                        "two-FE categorical MAP PCG reconstruction is nonfinite",
++                    ));
++                }
++            }
++            Ok(())
++        })?;
++
+     Ok(())
+ }
+ 
+@@ -4685,43 +4798,38 @@
+ }
+ 
+ fn mark_auto(
+-    result: CertifiedBorrowedMap,
++    mut result: CertifiedBorrowedMap,
+     pilot_iterations: usize,
+     contraction: f64,
+     additional_setup_seconds: f64,
+     additional_solve_seconds: f64,
+ ) -> Result<CertifiedBorrowedMap> {
+-    let (residualized, mut report, coefficients) = result.into_full_parts();
+-    report.requested_solver = FeSolverKind::Auto;
+-    report.pilot_iterations = pilot_iterations;
+-    report.pilot_contraction = contraction;
+-    report.setup_seconds += additional_setup_seconds;
+-    report.solve_seconds += additional_solve_seconds;
+-    if let Some(coefficients) = coefficients {
+-        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+-            residualized,
+-            report,
+-            coefficients,
+-        )
+-    } else {
+-        CertifiedBorrowedMap::from_certified_parts(residualized, report)
+-    }
++    result.report.requested_solver = FeSolverKind::Auto;
++    result.report.pilot_iterations = pilot_iterations;
++    result.report.pilot_contraction = contraction;
++    result.report.setup_seconds += additional_setup_seconds;
++    result.report.solve_seconds += additional_solve_seconds;
++    if !result.report.certified() {
++        return Err(invalid_data(
++            "borrowed MAP attempted to construct an uncertified result",
++        ));
++    }
++    Ok(result)
+ }
+ 
+ fn attach_optional_coefficients(
+-    result: CertifiedBorrowedMap,
++    mut result: CertifiedBorrowedMap,
+     coefficients: Option<FeCoefficientBatch>,
+ ) -> Result<CertifiedBorrowedMap> {
+     if let Some(coefficients) = coefficients {
+-        let (residualized, report) = result.into_parts();
+-        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+-            residualized,
+-            report,
+-            coefficients,
+-        )
+-    } else {
+-        Ok(result)
+-    }
++        if coefficients.rhs_count() != result.residualized.ncols()
++            || coefficients.coefficients_per_rhs() == 0
++        {
++            return Err(invalid_data("FE coefficient product is not aligned"));
++        }
++        result.coefficients = Some(coefficients);
++    }
++    Ok(result)
+ }
+ 
+ fn attach_optional_map_coefficients(
+@@ -5249,13 +5357,8 @@
+     let setup_started = Instant::now();
+     let mut workspace =
+         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
+-    weighted_column_norms(
+-        &values,
+-        weights,
+-        &mut workspace.reference_norms,
+-        &mut workspace.value_scales,
+-        &mut workspace.group_sums,
+-    )?;
++    workspace.ols_norm_reduction = skip_initial_one_effect_certificate;
++    update_ols_workspace_norms(&values, weights, &mut workspace, true)?;
+     let setup_seconds = setup_started.elapsed().as_secs_f64();
+     let solve_started = Instant::now();
+     let mut coefficients = retain_coefficients
+@@ -5289,7 +5392,10 @@
+                 setup_seconds,
+                 solve_started.elapsed().as_secs_f64(),
+             )?;
+-            return attach_optional_map_coefficients(result, coefficients);
++            return attach_optional_map_coefficients(
++                result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
++                coefficients,
++            );
+         }
+     }
+ 
+@@ -5310,7 +5416,10 @@
+             setup_seconds,
+             solve_started.elapsed().as_secs_f64(),
+         )?;
+-        return attach_optional_map_coefficients(result, coefficients);
++        return attach_optional_map_coefficients(
++            result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
++            coefficients,
++        );
+     }
+ 
+     for iteration in 1..=config.max_iterations {
+@@ -5339,7 +5448,10 @@
+                     setup_seconds,
+                     solve_started.elapsed().as_secs_f64(),
+                 )?;
+-                return attach_optional_map_coefficients(result, coefficients);
++                return attach_optional_map_coefficients(
++                    result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
++                    coefficients,
++                );
+             }
+         }
+     }
+@@ -6294,13 +6406,7 @@
+     tolerance: f64,
+     workspace: &mut BorrowedMapWorkspace,
+ ) -> Result<FeCertificate> {
+-    weighted_column_norms(
+-        residuals,
+-        weights,
+-        &mut workspace.residual_norms,
+-        &mut workspace.value_scales,
+-        &mut workspace.group_sums,
+-    )?;
++    update_ols_workspace_norms(residuals, weights, workspace, false)?;
+     certify_with_current_norms(design, weights, residuals, tolerance, workspace)
+ }
+ 
+@@ -6431,6 +6537,57 @@
+     })
+ }
+ 
++fn ols_certificate_ratios_parallel(
++    group_weights: &[f64],
++    means: &mut [f64],
++    scales: &[f64],
++    scratch: &mut [f64],
++    raw_weight_scale: f64,
++    rhs_maxima: &mut [f64],
++) -> Result<f64> {
++    let columns = scales.len();
++    let group_chunk = 1024;
++    let partial_width = columns + 1;
++    let partial_count = group_weights.len().div_ceil(group_chunk) * partial_width;
++    let partials = &mut scratch[..partial_count];
++    means.par_chunks_mut(group_chunk * columns)
++        .zip(group_weights.par_chunks(group_chunk))
++        .zip(partials.par_chunks_mut(partial_width))
++        .try_for_each(|((means, weights), partial)| -> Result<()> {
++            partial.fill(0.0);
++            for (row, &group_weight) in means.chunks_mut(columns).zip(weights) {
++                let root = group_weight.sqrt();
++                if !root.is_finite() || root <= 0.0 {
++                    return Err(invalid_data("borrowed MAP certificate group weight is invalid"));
++                }
++                for rhs in 0..columns {
++                    let mean = row[rhs];
++                    let denominator = scales[rhs];
++                    let relative = if denominator == 0.0 {
++                        if mean == 0.0 { 0.0 }
++                        else { return Err(invalid_data("borrowed MAP zero-scale certificate has a nonzero moment")); }
++                    } else { (mean.abs() / denominator) * root };
++                    if !relative.is_finite() {
++                        return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
++                    }
++                    let normalized = mean.abs() * group_weight;
++                    let raw = normalized * raw_weight_scale;
++                    partial[0] = partial[0].max(if raw.is_finite() { raw }
++                        else if normalized == 0.0 { 0.0 } else { f64::INFINITY });
++                    partial[1+rhs] = partial[1+rhs].max(relative);
++                    row[rhs] = relative;
++                }
++            }
++            Ok(())
++        })?;
++    let mut absolute = 0.0_f64;
++    for partial in partials.chunks_exact(partial_width) {
++        absolute = absolute.max(partial[0]);
++        for rhs in 0..columns { rhs_maxima[rhs] = rhs_maxima[rhs].max(partial[1+rhs]); }
++    }
++    Ok(absolute)
++}
++
+ fn certify_effects_parallel(
+     design: &BorrowedInterceptFeDesign<'_>,
+     weights: ValidatedWeights<'_>,
+@@ -6455,6 +6612,30 @@
+             &mut workspace.parallel_group_weights[..levels],
+             &mut workspace.parallel_group_means[..mean_count],
+         )?;
++        if workspace.ols_norm_reduction && columns >= 16 && columns <= 64
++            && workspace.parallel_dot_sums.len() >= levels.div_ceil(1024) * (columns + 1)
++        {
++            absolute_infinity_norm = absolute_infinity_norm.max(ols_certificate_ratios_parallel(
++                &workspace.parallel_group_weights[..levels],
++                &mut workspace.parallel_group_means[..mean_count],
++                &workspace.rhs_scales,
++                &mut workspace.parallel_dot_sums,
++                weights.raw_scale,
++                &mut workspace.rhs_relative_infinity_norms,
++            )?);
++            for &relative in &workspace.parallel_group_means[..mean_count] {
++                relative_square_sum = relative.mul_add(relative, relative_square_sum);
++            }
++            if !relative_square_sum.is_finite() {
++                return Err(invalid_data("borrowed MAP certificate two-norm accumulation is not finite"));
++            }
++            relative_count = relative_count.checked_add(mean_count)
++                .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
++            for &relative in &workspace.rhs_relative_infinity_norms {
++                relative_infinity_norm = relative_infinity_norm.max(relative);
++            }
++            continue;
++        }
+         let group_weights = &workspace.parallel_group_weights[..levels];
+         let means = &workspace.parallel_group_means[..mean_count];
+         for level in 0..levels {
+@@ -7447,6 +7628,7 @@
+         residualized,
+         report,
+         coefficients: None,
++        residual_norms: Vec::new(),
+     })
+ }
+ 
+@@ -7485,6 +7667,436 @@
+ 
+ fn invalid_data(message: impl Into<String>) -> FeregError {
+     FeregError::new(ErrorCode::InvalidData, message)
++}
++
++pub(crate) const OLS_SCHUR_PROBE_ITERATIONS: usize = 8;
++pub(crate) const OLS_SCHUR_MAX_ITERATIONS: usize = 64;
++pub(crate) const OLS_SCHUR_MAX_CONTRACTION: f64 = 0.01;
++
++// Values remain authoritative input until reconstruction. A failed final
++// certificate can instead hand off its finite observation-space candidate.
++enum SchurAttempt {
++    Certified(CertifiedBorrowedMap),
++    Continue {
++        values: DenseMatrix,
++        iterations: usize,
++        candidate: bool,
++    },
++}
++
++pub(crate) fn schur_ols_workspace_bytes(
++    design: &BorrowedInterceptFeDesign<'_>,
++    rhs: usize,
++    threads: usize,
++) -> Result<u128> {
++    if design.effects().len() != 2 || !(1..=64).contains(&rhs) || threads == 0 {
++        return Err(invalid_argument(
++            "OLS Schur workspace dimensions are unsupported",
++        ));
++    }
++    let left = design.effects().iter().map(|e| e.n_levels()).max().unwrap() as u128;
++    let right = design.effects().iter().map(|e| e.n_levels()).min().unwrap() as u128;
++    let width = rhs as u128;
++    let parallel = design.nobs() >= PARALLEL_PROJECTION_MIN_ROWS && threads > 1;
++    let mut elements = left + right + (2 * left + 4 * right) * width + 12 * width;
++    if parallel {
++        elements +=
++            left * width + left + design.nobs().div_ceil(PARALLEL_DOT_CHUNK_ROWS) as u128 * width;
++    }
++    // The three-column probe is released before the full session is constructed.
++    let probe_elements = left + right + (2 * left + 4 * right) * 3;
++    Ok(8 * elements.max(probe_elements))
++}
++
++pub(crate) fn schur_ols_probe(
++    design: &BorrowedInterceptFeDesign<'_>,
++    values: &DenseMatrix,
++) -> Result<f64> {
++    if design.effects().len() != 2 || design.nobs() != values.nrows() || values.ncols() < 3 {
++        return Err(invalid_argument(
++            "OLS Schur probe dimensions are unsupported",
++        ));
++    }
++    let mut reservation = SystemWorkspaceReservation;
++    let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
++    let left = &design.effects()[graph.left_effect];
++    let right = &design.effects()[graph.right_effect];
++    let columns = [0, 1, values.ncols() / 2];
++    graph
++        .left_rhs
++        .par_chunks_mut(3)
++        .zip(graph.left_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            *total = 0.0;
++            for &row in left.level_index().checked_members(level)? {
++                *total += 1.0;
++                for (rhs, &column) in columns.iter().enumerate() {
++                    sum[rhs] += values[(row, column)];
++                }
++            }
++            for value in sum { *value /= *total; }
++            Ok(())
++        })?;
++    let left_rhs = &graph.left_rhs;
++    graph
++        .residual
++        .par_chunks_mut(3)
++        .zip(graph.right_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            let members = right.level_index().checked_members(level)?;
++            *total = 0.0;
++            for &row in members {
++                *total += 1.0;
++                for (rhs, &column) in columns.iter().enumerate() {
++                    sum[rhs] += values[(row, column)];
++                }
++            }
++            for &row in members {
++                let a = left.codes()[row] as usize;
++                for rhs in 0..3 { sum[rhs] -= left_rhs[a * 3 + rhs]; }
++            }
++            Ok(())
++        })?;
++    let mut square = [0.0; 3];
++    for level in 0..right.n_levels() {
++        for rhs in 0..3 {
++            let i = level * 3 + rhs;
++            graph.direction[i] = graph.residual[i] / graph.right_weights[level];
++            square[rhs] = graph.residual[i].mul_add(graph.direction[i], square[rhs]);
++        }
++    }
++    let initial = square;
++    if initial.iter().any(|v| !v.is_finite() || *v < 0.0) {
++        return Ok(f64::INFINITY);
++    }
++    for _ in 0..OLS_SCHUR_PROBE_ITERATIONS {
++        graph.apply_schur(
++            design,
++            ValidatedWeights {
++                values: None,
++                raw_scale: 1.0,
++            },
++            3,
++            3,
++        )?;
++        let mut projection = [0.0; 3];
++        for level in 0..right.n_levels() {
++            for rhs in 0..3 {
++                let i = level * 3 + rhs;
++                projection[rhs] = graph.direction[i].mul_add(graph.operator[i], projection[rhs]);
++            }
++        }
++        let mut step = [0.0; 3];
++        for rhs in 0..3 {
++            if square[rhs] <= initial[rhs] * 1e-24 || square[rhs] == 0.0 {
++                continue;
++            }
++            if !projection[rhs].is_finite() || projection[rhs] <= 0.0 {
++                return Ok(f64::INFINITY);
++            }
++            step[rhs] = square[rhs] / projection[rhs];
++        }
++        let mut next = [0.0; 3];
++        for level in 0..right.n_levels() {
++            for rhs in 0..3 {
++                let i = level * 3 + rhs;
++                graph.residual[i] = (-step[rhs]).mul_add(graph.operator[i], graph.residual[i]);
++                next[rhs] = graph.residual[i]
++                    .mul_add(graph.residual[i] / graph.right_weights[level], next[rhs]);
++            }
++        }
++        for rhs in 0..3 {
++            if !next[rhs].is_finite() || next[rhs] < 0.0 {
++                return Ok(f64::INFINITY);
++            }
++        }
++        for level in 0..right.n_levels() {
++            for rhs in 0..3 {
++                let i = level * 3 + rhs;
++                graph.direction[i] = if step[rhs] == 0.0 {
++                    0.0
++                } else {
++                    graph.residual[i] / graph.right_weights[level]
++                        + next[rhs] / square[rhs] * graph.direction[i]
++                };
++            }
++        }
++        square = next;
++    }
++    Ok((0..3)
++        .map(|rhs| {
++            if initial[rhs] == 0.0 {
++                0.0
++            } else {
++                (square[rhs] / initial[rhs]).sqrt()
++            }
++        })
++        .fold(0.0, f64::max))
++}
++
++pub(crate) fn absorb_ols_schur_certified(
++    design: BorrowedInterceptFeDesign<'_>,
++    weights: BorrowedMapWeights<'_>,
++    values: DenseMatrix,
++    config: crate::fe::AbsorbConfig,
++    probe_seconds: f64,
++    contraction: f64,
++) -> Result<CertifiedBorrowedMap> {
++    absorb_ols_schur_at_cap(
++        design,
++        weights,
++        values,
++        config,
++        probe_seconds,
++        contraction,
++        OLS_SCHUR_MAX_ITERATIONS,
++    )
++}
++
++#[allow(clippy::too_many_arguments)]
++fn absorb_ols_schur_at_cap(
++    design: BorrowedInterceptFeDesign<'_>,
++    weights: BorrowedMapWeights<'_>,
++    values: DenseMatrix,
++    config: crate::fe::AbsorbConfig,
++    probe_seconds: f64,
++    contraction: f64,
++    cap: usize,
++) -> Result<CertifiedBorrowedMap> {
++    validate_config(config.map)?;
++    if weights != BorrowedMapWeights::Unit
++        || config.retain_coefficients
++        || !probe_seconds.is_finite()
++        || probe_seconds < 0.0
++        || !contraction.is_finite()
++        || contraction < 0.0
++        || config.map.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
++    {
++        return Err(invalid_argument("OLS Schur configuration is unsupported"));
++    }
++    let planned = schur_ols_workspace_bytes(&design, values.ncols(), rayon::current_num_threads())?;
++    if config
++        .solver_memory_budget
++        .is_some_and(|budget| !budget.fits(planned))
++    {
++        return Err(allocation(
++            "OLS Schur workspace exceeds the joint memory budget",
++        ));
++    }
++    let started = Instant::now();
++    let mut absorber =
++        ReusableCategoricalMapAbsorber::new(design, values.ncols(), rayon::current_num_threads())?;
++    validate_config(config.map)?;
++    if values.as_slice().iter().any(|v| !v.is_finite()) {
++        return Err(invalid_data("OLS Schur values must be finite"));
++    }
++    let validated = validate_weights(weights, values.nrows())?;
++    absorber.workspace.set_rhs_count(values.ncols())?;
++    absorber.workspace.ols_norm_reduction = true;
++    update_ols_workspace_norms(&values, validated, &mut absorber.workspace, true)?;
++    let setup_seconds = started.elapsed().as_secs_f64();
++    let solve_started = Instant::now();
++    let mut map = config.map;
++    map.tolerance = crate::fe::auto::direct_lsmr_tolerance(map.tolerance);
++    map.max_iterations -= OLS_SCHUR_PROBE_ITERATIONS;
++    let mut graph = absorber
++        .two_fe_pcg
++        .take()
++        .ok_or_else(|| invalid_argument("OLS Schur workspace unavailable"))?;
++    let outcome = absorb_two_fe_pcg_reusing(
++        &absorber.design,
++        validated,
++        values,
++        map,
++        0,
++        0.0,
++        setup_seconds,
++        solve_started,
++        absorber.max_rhs,
++        &mut graph,
++        &mut absorber.workspace,
++        &mut absorber.cg_residual_square,
++        &mut absorber.cg_initial_residual_square,
++        &mut absorber.cg_next_residual_square,
++        &mut absorber.cg_direction_projection,
++        &mut absorber.cg_ratio,
++        Some(cap),
++    )?;
++    match outcome {
++        SchurAttempt::Certified(mut result) => {
++            result.report.requested_solver = FeSolverKind::Auto;
++            result.report.used_solver = FeSolverKind::Cg;
++            result.report.iterations += OLS_SCHUR_PROBE_ITERATIONS;
++            result.report.setup_seconds += probe_seconds;
++            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
++            result.report.pilot_contraction = contraction;
++            result.with_residual_norms(std::mem::take(&mut absorber.workspace.residual_norms))
++        }
++        SchurAttempt::Continue {
++            values,
++            iterations,
++            candidate,
++        } => {
++            let solve_seconds = solve_started.elapsed().as_secs_f64();
++            let reference_norms = std::mem::take(&mut absorber.workspace.reference_norms);
++            let empty = BorrowedInterceptFeDesign::new(absorber.design.nobs(), Vec::new())?;
++            let design = std::mem::replace(&mut absorber.design, empty);
++            drop(graph);
++            drop(absorber);
++            let mut remaining = config.map;
++            remaining.max_iterations = map
++                .max_iterations
++                .checked_sub(iterations)
++                .filter(|n| *n > 0)
++                .ok_or_else(|| {
++                    invalid_data("OLS Schur continuation exhausted the shared iteration budget")
++                })?;
++            if let Some(budget) = config.solver_memory_budget {
++                let levels = [
++                    design.effects()[0].n_levels(),
++                    design.effects()[1].n_levels(),
++                ];
++                let estimate = estimate_fe_solver_memory(
++                    design.nobs(),
++                    values.ncols(),
++                    &levels,
++                    rayon::current_num_threads(),
++                    Some(4),
++                )?;
++                if !budget.fits(estimate.cg_bytes) {
++                    return Err(allocation(
++                        "OLS Schur continuation exceeds the joint memory budget",
++                    ));
++                }
++            }
++            let mut reservation = SystemWorkspaceReservation;
++            let mut result = absorb_cg_with_reservation(
++                &design,
++                weights,
++                values,
++                remaining,
++                false,
++                CgContinuation {
++                    reference_norms: Some(&reference_norms),
++                    ..CgContinuation::ORDINARY
++                },
++                &mut reservation,
++            )?;
++            result.report.requested_solver = FeSolverKind::Auto;
++            result.report.iterations += iterations + OLS_SCHUR_PROBE_ITERATIONS;
++            result.report.setup_seconds += setup_seconds + probe_seconds;
++            result.report.solve_seconds += solve_seconds;
++            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
++            result.report.pilot_contraction = contraction;
++            result.report.fallback_used = true;
++            result.report.warnings.insert(0, format!("automatic two-FE Schur CG continued with symmetric CG after {iterations} iterations (reconstructed candidate: {candidate})"));
++            Ok(result)
++        }
++    }
++}
++
++// Fixed row partitions and a canonical LASSQ merge make this OLS-only
++// reduction independent of the worker count, including the serial path.
++// Reuse the existing dot workspace; never allocate another N-by-K matrix.
++fn update_ols_workspace_norms(
++    values: &DenseMatrix,
++    weights: ValidatedWeights<'_>,
++    workspace: &mut BorrowedMapWorkspace,
++    reference: bool,
++) -> Result<()> {
++    let output = if reference {
++        &mut workspace.reference_norms
++    } else {
++        &mut workspace.residual_norms
++    };
++    if !workspace.ols_norm_reduction || values.nrows() < 16_384 || values.ncols() > 64 {
++        return weighted_column_norms(
++            values,
++            weights,
++            output,
++            &mut workspace.value_scales,
++            &mut workspace.group_sums,
++        );
++    }
++    let columns = values.ncols();
++    if output.len() != columns {
++        return Err(invalid_argument("OLS norm output is not aligned"));
++    }
++    let chunk_rows = 4096;
++    let chunks = values.nrows().div_ceil(chunk_rows);
++    let partial_width = 2 * columns;
++    let partials = chunks * partial_width;
++    let accumulate = |chunk: usize, partial: &mut [f64]| -> Result<()> {
++        let (scales, squares) = partial.split_at_mut(columns);
++        scales.fill(0.0);
++        squares.fill(1.0);
++        let start = chunk * chunk_rows;
++        let end = (start + chunk_rows).min(values.nrows());
++        for row in start..end {
++            let root = weights.normalized(row).sqrt();
++            if !root.is_finite() || root <= 0.0 {
++                return Err(invalid_data("OLS norm weight root is invalid"));
++            }
++            let source = &values.as_slice()[row * columns..(row + 1) * columns];
++            for ((scale, square), &value) in scales.iter_mut().zip(squares.iter_mut()).zip(source) {
++                let value = root * value;
++                if !value.is_finite() {
++                    return Err(invalid_data("OLS norm weighted value is nonfinite"));
++                }
++                update_scaled_sum_of_squares(value, scale, square);
++            }
++        }
++        Ok(())
++    };
++    let scales = &mut workspace.value_scales;
++    let squares = &mut workspace.group_sums;
++    scales.fill(0.0);
++    squares.fill(1.0);
++    let mut merge = |partial: &[f64]| {
++        for rhs in 0..columns {
++            let scale = partial[rhs];
++            if scale == 0.0 {
++                continue;
++            }
++            if scales[rhs] < scale {
++                let ratio = scales[rhs] / scale;
++                squares[rhs] = partial[columns + rhs] + squares[rhs] * ratio * ratio;
++                scales[rhs] = scale;
++            } else {
++                let ratio = scale / scales[rhs];
++                squares[rhs] += partial[columns + rhs] * ratio * ratio;
++            }
++        }
++    };
++    if rayon::current_num_threads() > 1 && workspace.parallel_dot_sums.len() >= partials {
++        let scratch = &mut workspace.parallel_dot_sums[..partials];
++        scratch
++            .par_chunks_mut(partial_width)
++            .enumerate()
++            .try_for_each(|(chunk, partial)| accumulate(chunk, partial))?;
++        for partial in scratch.chunks_exact(partial_width) {
++            merge(partial);
++        }
++    } else {
++        let mut partial = [0.0; 128];
++        for chunk in 0..chunks {
++            accumulate(chunk, &mut partial[..partial_width])?;
++            merge(&partial[..partial_width]);
++        }
++    }
++    for rhs in 0..columns {
++        output[rhs] = if scales[rhs] == 0.0 {
++            0.0
++        } else {
++            scales[rhs] * squares[rhs].sqrt()
++        };
++        if !output[rhs].is_finite() {
++            return Err(invalid_data("OLS norm is nonfinite"));
++        }
++    }
++    Ok(())
+ }
+ 
+ #[cfg(test)]
+@@ -7529,6 +8141,227 @@
+             check_every: 1,
+             symmetric: true,
+         }
++    }
++
++    #[test]
++    fn ols_schur_probe_solve_budget_and_order_match_independent_map() {
++        let rows = 16_384;
++        let first_codes = (0..rows).map(|r| (r % 257) as u32).collect::<Vec<_>>();
++        let second_codes = (0..rows)
++            .map(|r| ((r * 17 + r / 257) % 127) as u32)
++            .collect::<Vec<_>>();
++        let first_index = LevelIndex::from_codes(&first_codes, 257).unwrap();
++        let second_index = LevelIndex::from_codes(&second_codes, 127).unwrap();
++        let first = ValidatedBorrowedInterceptSource::new(&first_codes, 257, &first_index).unwrap();
++        let second =
++            ValidatedBorrowedInterceptSource::new(&second_codes, 127, &second_index).unwrap();
++        let design = |reverse| {
++            BorrowedInterceptFeDesign::new(
++                rows,
++                if reverse {
++                    vec![second.effect(), first.effect()]
++                } else {
++                    vec![first.effect(), second.effect()]
++                },
++            )
++            .unwrap()
++        };
++        let columns = (0..17)
++            .map(|c| {
++                (0..rows)
++                    .map(|r| {
++                        ((r * (c + 17) % 997) as f64 / 17.0).sin()
++                            + first_codes[r] as f64 * 0.001
++                            + second_codes[r] as f64 * 0.01
++                    })
++                    .collect::<Vec<_>>()
++            })
++            .collect::<Vec<_>>();
++        let values = || DenseMatrix::from_columns(&columns).unwrap();
++        let mut config = crate::fe::AbsorbConfig::default();
++        config.map.tolerance = 1e-10;
++        let expected = absorb_borrowed_intercept_map_certified(
++            &design(false),
++            BorrowedMapWeights::Unit,
++            values(),
++            MapConfig {
++                tolerance: 1e-13,
++                max_iterations: 10_000,
++                ..config.map
++            },
++        )
++        .unwrap();
++        for threads in [1, 4, 16] {
++            rayon::ThreadPoolBuilder::new()
++                .num_threads(threads)
++                .build()
++                .unwrap()
++                .install(|| {
++                    let contraction = schur_ols_probe(&design(false), &values()).unwrap();
++                    assert!(contraction <= OLS_SCHUR_MAX_CONTRACTION, "{contraction}");
++                    assert_eq!(
++                        contraction,
++                        schur_ols_probe(&design(true), &values()).unwrap()
++                    );
++                    let planned = schur_ols_workspace_bytes(&design(false), 17, threads).unwrap();
++                    let session =
++                        ReusableCategoricalMapAbsorber::new(design(false), 17, threads).unwrap();
++                    let w = &session.workspace;
++                    let actual = session.two_fe_pcg.as_ref().unwrap().capacity_elements()
++                        + session.cg_residual_square.capacity()
++                        + session.cg_initial_residual_square.capacity()
++                        + session.cg_next_residual_square.capacity()
++                        + session.cg_direction_projection.capacity()
++                        + session.cg_ratio.capacity()
++                        + w.reference_norms.capacity()
++                        + w.residual_norms.capacity()
++                        + w.rhs_scales.capacity()
++                        + w.rhs_relative_infinity_norms.capacity()
++                        + w.value_scales.capacity()
++                        + w.group_sums.capacity()
++                        + w.group_corrections.capacity()
++                        + w.parallel_group_means.capacity()
++                        + w.parallel_group_weights.capacity()
++                        + w.parallel_dot_sums.capacity();
++                    assert!(planned >= actual as u128 * 8, "{planned} < {}", actual * 8);
++                    drop(session);
++                    for (cap, fallback) in [(OLS_SCHUR_MAX_ITERATIONS, false), (1, true)] {
++                        let mut result = absorb_ols_schur_at_cap(
++                            design(false),
++                            BorrowedMapWeights::Unit,
++                            values(),
++                            config,
++                            0.125,
++                            contraction,
++                            cap,
++                        )
++                        .unwrap();
++                        assert_eq!(result.report.fallback_used, fallback);
++                        assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
++                        assert!(result.report.iterations <= config.map.max_iterations);
++                        assert!(result.report.setup_seconds >= 0.125);
++                        assert_eq!(result.report.pilot_iterations, OLS_SCHUR_PROBE_ITERATIONS);
++                        assert!(result.report.certified());
++                        for (&a, &b) in result
++                            .residualized
++                            .as_slice()
++                            .iter()
++                            .zip(expected.residualized().as_slice())
++                        {
++                            assert!((a - b).abs() < 2e-9, "{a} != {b}");
++                        }
++                        if !fallback {
++                            assert_eq!(result.take_residual_norms().len(), 17);
++                        }
++                    }
++                    let mut limited = config;
++                    limited.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
++                        execution_bytes: 0,
++                        usable_bytes: planned - 1,
++                    });
++                    assert_eq!(
++                        absorb_ols_schur_certified(
++                            design(false),
++                            BorrowedMapWeights::Unit,
++                            values(),
++                            limited,
++                            0.0,
++                            contraction
++                        )
++                        .unwrap_err()
++                        .code,
++                        ErrorCode::Allocation
++                    );
++                    limited = config;
++                    limited.map.max_iterations = OLS_SCHUR_PROBE_ITERATIONS + 1;
++                    assert!(absorb_ols_schur_at_cap(
++                        design(false),
++                        BorrowedMapWeights::Unit,
++                        values(),
++                        limited,
++                        0.0,
++                        contraction,
++                        1
++                    )
++                    .is_err());
++                });
++        }
++    }
++
++    #[test]
++    fn ols_schur_readiness_includes_group_weight_certificate_scale() {
++        let codes = [0_u32; 100];
++        let index = LevelIndex::from_codes(&codes, 1).unwrap();
++        let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
++        let design =
++            BorrowedInterceptFeDesign::new(100, vec![source.effect(), source.effect()]).unwrap();
++        let mut reservation = SystemWorkspaceReservation;
++        let mut graph = TwoFePcgWorkspace::new(&design, 1, &mut reservation).unwrap();
++        let mut workspace = BorrowedMapWorkspace::new(&design, 100, 1, &mut reservation).unwrap();
++        graph.right_weights[0] = 100.0;
++        graph.residual[0] = 2e-7;
++        workspace.reference_norms[0] = 1.0;
++        // The mean-only rule would accept 2e-9 at tolerance 1e-8.
++        assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
++        graph.residual[0] = 2e-8;
++        assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
++    }
++
++    #[test]
++    fn ols_norms_are_scaled_and_bit_stable_across_worker_counts() {
++        let rows = 16_391;
++        let design = BorrowedInterceptFeDesign::new(rows, Vec::new()).unwrap();
++        let columns = [
++            vec![0.0; rows],
++            (0..rows)
++                .map(|r| if r % 2 == 0 { 1e200 } else { -1e-200 })
++                .collect(),
++            (0..rows).map(|r| (r as f64).sin() * 1e-150).collect(),
++        ];
++        let values = DenseMatrix::from_columns(&columns).unwrap();
++        let raw_weights = (0..rows).map(|r| 1.0 + (r % 17) as f64).collect::<Vec<_>>();
++        let weights = validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).unwrap();
++        let run = |threads| {
++            rayon::ThreadPoolBuilder::new()
++                .num_threads(threads)
++                .build()
++                .unwrap()
++                .install(|| {
++                    let mut reservation = SystemWorkspaceReservation;
++                    let mut workspace =
++                        BorrowedMapWorkspace::new(&design, rows, 3, &mut reservation).unwrap();
++                    workspace.ols_norm_reduction = true;
++                    update_ols_workspace_norms(&values, weights, &mut workspace, true).unwrap();
++                    workspace.reference_norms
++                })
++        };
++        let serial = run(1);
++        for threads in [4, 16] {
++            assert_eq!(
++                serial.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++                run(threads).iter().map(|x| x.to_bits()).collect::<Vec<_>>()
++            );
++        }
++        for c in 0..3 {
++            let scale = columns[c].iter().map(|x| x.abs()).fold(0.0, f64::max);
++            let expected = if scale == 0.0 {
++                0.0
++            } else {
++                scale
++                    * (0..rows)
++                        .map(|r| weights.normalized(r) * (columns[c][r] / scale).powi(2))
++                        .sum::<f64>()
++                        .sqrt()
++            };
++            assert!((serial[c] - expected).abs() <= expected * 1e-12);
++        }
++        let mut reservation = SystemWorkspaceReservation;
++        let mut workspace = BorrowedMapWorkspace::new(&design, rows, 3, &mut reservation).unwrap();
++        workspace.ols_norm_reduction = true;
++        let invalid =
++            DenseMatrix::from_columns(&[vec![f64::MAX; rows], vec![0.0; rows], vec![0.0; rows]])
++                .unwrap();
++        assert!(update_ols_workspace_norms(&invalid, weights, &mut workspace, false).is_err());
+     }
+ 
+     #[test]
+@@ -7921,7 +8754,7 @@
+             .collect::<Vec<_>>();
+         let weights =
+             validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).expect("weights");
+-        let build = |threads| {
++        let build = |threads, rhs, stride| {
+             rayon::ThreadPoolBuilder::new()
+                 .num_threads(threads)
+                 .build()
+@@ -7929,7 +8762,7 @@
+                 .install(|| {
+                     let mut reservation = SystemWorkspaceReservation;
+                     let mut graph =
+-                        TwoFePcgWorkspace::new(&design, 11, &mut reservation).expect("graph");
++                        TwoFePcgWorkspace::new(&design, stride, &mut reservation).expect("graph");
+                     let left_codes = design.effects()[graph.left_effect].codes();
+                     let right_codes = design.effects()[graph.right_effect].codes();
+                     for row in 0..rows {
+@@ -7941,16 +8774,25 @@
+                         *direction = ((17 * index % 101) as f64 - 50.0) / 37.0;
+                     }
+                     graph
+-                        .apply_schur(&design, weights, 11, 11)
++                        .apply_schur(&design, weights, rhs, stride)
+                         .expect("Schur operator");
+                     graph
+                 })
+         };
+-        let serial = build(1);
+-        for threads in [2, 4, 8, 16] {
+-            let parallel = build(threads);
+-            assert_eq!(serial.left_work, parallel.left_work);
+-            assert_eq!(serial.operator, parallel.operator);
++        for (rhs, stride) in [(1, 1), (11, 11), (52, 52), (51, 64)] {
++            let serial = build(1, rhs, stride);
++            for threads in [2, 4, 8, 16] {
++                let parallel = build(threads, rhs, stride);
++                for (expected, actual) in [
++                    (&serial.left_work, &parallel.left_work),
++                    (&serial.operator, &parallel.operator),
++                ] {
++                    assert_eq!(
++                        expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++                        actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++                    );
++                }
++            }
+         }
+     }
+ 
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1191,6 +1191,7 @@
+     /// matrix to the caller; a valid partial CMG projection can still seed the
+     /// existing certified CG fallback.
+     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG design and matrix dimensions are inconsistent",
+@@ -1200,6 +1201,7 @@
+             return Err(invalid_data("CMG input values must be finite"));
+         }
+         let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
++        let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
+ 
+@@ -1280,6 +1282,12 @@
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = polished.into_parts();
++                if phase_started.is_some() {
++                    eprintln!(
++                        "FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}",
++                        solve_started.elapsed().as_secs_f64() - bulk_seconds,
++                    );
++                }
+                 let polish_iterations = report.iterations;
+                 report.requested_solver = self.config.requested_solver;
+                 report.used_solver = FeSolverKind::Cmg;
+@@ -1622,6 +1630,8 @@
+             let end = start.saturating_add(batch_width).min(seed_end);
+             match &mut self.workspace {
+                 GraphCmgWorkspace::OwnedResults(workspace) => {
++                    let phase_started =
++                        std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+                     let right_hand_sides = build_value_rhs_batch(
+                         design,
+                         self.core_effects,
+@@ -1631,10 +1641,14 @@
+                         start,
+                         end,
+                     )?;
++                    let rhs_seconds =
++                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     let solved = self
+                         .solver
+                         .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
+                         .map_err(cmg_solve_error)?;
++                    let solved_seconds =
++                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     metrics.include_batch(solved.results().len());
+                     for (local, solution) in solved.results().iter().enumerate() {
+                         metrics.include(solution.iterations(), solution.backward_error());
+@@ -1655,6 +1669,15 @@
+                             start + local,
+                             solution.solution(),
+                         )?;
++                    }
++                    if let Some(started) = phase_started {
++                        eprintln!(
++                            "FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={:.9}|subtract={:.9}|width={}|route={:?}",
++                            solved_seconds - rhs_seconds,
++                            started.elapsed().as_secs_f64() - solved_seconds,
++                            end - start,
++                            solved.report().execution(),
++                        );
+                     }
+                 }
+                 GraphCmgWorkspace::CallerBuffers(caller) => {
+--- a/crates/fereg-core/src/fe/mod.rs
++++ b/crates/fereg-core/src/fe/mod.rs
+@@ -45,11 +45,12 @@
+     absorb_borrowed_intercept_cg_with_structural_constant_certified,
+     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
+     absorb_borrowed_intercept_map_retaining_certified,
+-    absorb_borrowed_intercept_map_with_structural_constant_certified,
++    absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
+     certify_borrowed_intercept_candidate, recover_borrowed_intercept_sd_lsmr_coefficients,
+-    BorrowedInterceptRecoveryMethod, BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber,
+-    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS,
+-    PARALLEL_PROJECTION_MIN_ROWS,
++    schur_ols_probe, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
++    BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
++    FUSED_PARALLEL_MAX_RHS, OLS_SCHUR_MAX_CONTRACTION, OLS_SCHUR_MAX_ITERATIONS,
++    OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
+ };
+ pub use categorical_request::{
+     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
+--- a/crates/fereg-core/src/fe/report.rs
++++ b/crates/fereg-core/src/fe/report.rs
+@@ -11,7 +11,7 @@
+     Lsmr,
+     /// Combinatorial-multigrid-preconditioned graph PCG for sparse AKM designs.
+     Cmg,
+-    /// Conjugate-gradient acceleration of symmetric MAP.
++    /// Conjugate gradients: explicit symmetric MAP, or guarded automatic two-FE Schur.
+     Cg,
+     /// Irons--Tuck vector extrapolation of symmetric MAP.
+     IronsTuck,
+--- a/crates/fereg-core/src/ols/mod.rs
++++ b/crates/fereg-core/src/ols/mod.rs
+@@ -83,8 +83,10 @@
+     fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
+     LinearSolveFrame, PreparedLinearProjectionReconstructionCertificate,
+ };
+-pub(crate) use prepared_rhs::build_prepared_ols_rhs_with_response;
+ pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
++pub(crate) use prepared_rhs::{
++    build_prepared_ols_rhs_with_response, numeric_sources_are_finite, NumericOlsColumns,
++};
+ pub use prepared_robust::{
+     fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,
+     CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedOlsRobust,
+--- a/crates/fereg-core/src/ols/prepared_categorical_data.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+@@ -32,6 +32,7 @@
+     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
+     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
+ };
++use rayon::prelude::*;
+ 
+ use crate::ols::prepare_ols_data_with_cluster_sources;
+ 
+@@ -201,14 +202,18 @@
+                 "categorical OLS RHS reservation returned insufficient capacity",
+             ));
+         }
+-        values.resize(elements, 0.0);
+-        for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
+-            destination[0] = response[row];
+-            for generated_column in 0..self.model.columns.len() {
+-                destination[generated_column + 1] = self.column_value(generated_column, row)?;
+-            }
+-        }
+-        if values.iter().any(|value| !value.is_finite()) {
++        if let Some(columns) = crate::ols::NumericOlsColumns::bind(&self.model, &self.sample)? {
++            columns.fill_reserved_rhs(response, &mut values)?;
++        } else {
++            values.resize(elements, 0.0);
++            for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {
++                destination[0] = response[row];
++                for generated_column in 0..self.model.columns.len() {
++                    destination[generated_column + 1] = self.column_value(generated_column, row)?;
++                }
++            }
++        }
++        if values.par_iter().any(|value| !value.is_finite()) {
+             return Err(invalid_data(
+                 "categorical OLS RHS construction produced a nonfinite value",
+             ));
+@@ -1453,11 +1458,7 @@
+         ));
+     }
+     if sample.outcome.iter().any(|value| !value.is_finite())
+-        || sample
+-            .regressors
+-            .iter()
+-            .flatten()
+-            .any(|value| !value.is_finite())
++        || !crate::ols::numeric_sources_are_finite(sample)
+     {
+         return Err(invalid_data(
+             "prepared categorical OLS numeric values must be finite",
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1342,9 +1342,68 @@
+     auto_direct_solver: Option<FeSolverKind>,
+     auto_discarded_setup_seconds: f64,
+     auto_setup_warning: Option<String>,
++    schur_config: Option<PreparedOlsFitConfig>,
++    schur_probe: Option<f64>,
+ }
+ 
+ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
++    prepared: &'a P,
++    weights: BorrowedMapWeights<'a>,
++    config: PreparedOlsFitConfig,
++) -> Result<FitFeAbsorber<'a>> {
++    let width = prepared
++        .fit_model()
++        .columns
++        .len()
++        .checked_add(1)
++        .ok_or_else(|| invalid_argument("OLS Schur RHS width overflows"))?;
++    if config.absorb.solver == FeSolverKind::Auto
++        && config.execution.mode == PreparedOlsExecutionMode::Fast
++        && !config.absorb.retain_coefficients
++        && weights == BorrowedMapWeights::Unit
++        && (16..=64).contains(&width)
++        && config.absorb.certified_fallback
++        && config.absorb.map.max_iterations
++            > crate::fe::OLS_SCHUR_MAX_ITERATIONS + crate::fe::OLS_SCHUR_PROBE_ITERATIONS
++        && prepared.fit_supports_cmg_auto()
++    {
++        let design = prepared.fit_borrowed_cmg_design()?;
++        if design.effects().len() == 2 && design.nobs() >= 16_384 {
++            let planned =
++                crate::fe::schur_ols_workspace_bytes(&design, width, rayon::current_num_threads())?;
++            let levels = [
++                design.effects()[0].n_levels(),
++                design.effects()[1].n_levels(),
++            ];
++            let continuation = crate::memory::estimate_fe_solver_memory(
++                design.nobs(),
++                width,
++                &levels,
++                rayon::current_num_threads(),
++                Some(4),
++            )?;
++            let planned = planned.max(continuation.cg_bytes);
++            if config
++                .absorb
++                .solver_memory_budget
++                .map_or(true, |budget| budget.fits(planned))
++            {
++                return Ok(FitFeAbsorber {
++                    session: None,
++                    lsmr: None,
++                    auto_direct_solver: None,
++                    auto_discarded_setup_seconds: 0.0,
++                    auto_setup_warning: None,
++                    schur_probe: None,
++                    schur_config: Some(config),
++                });
++            }
++        }
++    }
++    build_fit_fe_absorber_legacy(prepared, weights, config)
++}
++
++fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
+     prepared: &'a P,
+     weights: BorrowedMapWeights<'a>,
+     config: PreparedOlsFitConfig,
+@@ -1353,6 +1412,8 @@
+         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
+     {
+         return Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: None,
+             lsmr: None,
+             auto_direct_solver: None,
+@@ -1361,9 +1422,22 @@
+         });
+     }
+     let design = prepared.fit_borrowed_cmg_design()?;
++    if config.absorb.solver == FeSolverKind::Auto && design.effects().len() <= 1 {
++        return Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
++            session: None,
++            lsmr: None,
++            auto_direct_solver: None,
++            auto_discarded_setup_seconds: 0.0,
++            auto_setup_warning: None,
++        });
++    }
+     let profile = CmgTopologyProfile::analyze(&design)?;
+     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
+         return Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: None,
+             lsmr: None,
+             auto_direct_solver: Some(FeSolverKind::Lsmr),
+@@ -1408,6 +1482,8 @@
+     };
+     match built {
+         Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: Some(session),
+             lsmr: None,
+             auto_direct_solver: None,
+@@ -1415,6 +1491,8 @@
+             auto_setup_warning: None,
+         }),
+         Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: None,
+             lsmr: None,
+             auto_direct_solver: Some(FeSolverKind::Lsmr),
+@@ -1422,6 +1500,8 @@
+             auto_setup_warning: None,
+         }),
+         Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: None,
+             lsmr: None,
+             auto_direct_solver: Some(FeSolverKind::Cg),
+@@ -1429,6 +1509,8 @@
+             auto_setup_warning: None,
+         }),
+         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
++            schur_config: None,
++            schur_probe: None,
+             session: None,
+             lsmr: None,
+             auto_direct_solver: Some(FeSolverKind::Lsmr),
+@@ -1441,23 +1523,48 @@
+     }
+ }
+ 
+-fn absorb_fit_matrix<P: PreparedOlsFitView + ?Sized>(
+-    prepared: &P,
+-    weights: BorrowedMapWeights<'_>,
++fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
++    prepared: &'a P,
++    weights: BorrowedMapWeights<'a>,
+     values: DenseMatrix,
+-    config: AbsorbConfig,
+-    cmg: &mut FitFeAbsorber<'_>,
++    mut config: AbsorbConfig,
++    cmg: &mut FitFeAbsorber<'a>,
+     initial: bool,
+     final_residual: bool,
+ ) -> Result<CertifiedBorrowedMap> {
+-    if let Some(session) = cmg.session.as_mut() {
+-        return if final_residual {
++    if initial {
++        if let Some(mut fit_config) = cmg.schur_config.take() {
++            let started = std::time::Instant::now();
++            let design = prepared.fit_borrowed_cmg_design()?;
++            let contraction = crate::fe::schur_ols_probe(&design, &values)?;
++            let probe_seconds = started.elapsed().as_secs_f64();
++            if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++                eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
++            }
++            if contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION {
++                return crate::fe::absorb_ols_schur_certified(
++                    design,
++                    weights,
++                    values,
++                    config,
++                    probe_seconds,
++                    contraction,
++                );
++            }
++            config.map.max_iterations -= crate::fe::OLS_SCHUR_PROBE_ITERATIONS;
++            fit_config.absorb.map.max_iterations = config.map.max_iterations;
++            *cmg = build_fit_fe_absorber_legacy(prepared, weights, fit_config)?;
++            cmg.auto_discarded_setup_seconds += probe_seconds;
++            cmg.schur_probe = Some(contraction);
++        }
++    }
++    let mut absorbed = if let Some(session) = cmg.session.as_mut() {
++        if final_residual {
+             session.absorb_final_residual(values)
+         } else {
+             session.absorb(values)
+-        };
+-    }
+-    let absorbed = if let Some(lsmr) = cmg.lsmr.as_mut() {
++        }
++    } else if let Some(lsmr) = cmg.lsmr.as_mut() {
+         lsmr.absorb(values)
+     } else {
+         match cmg.auto_direct_solver {
+@@ -1476,14 +1583,29 @@
+     }?;
+     let discarded_setup_seconds = std::mem::take(&mut cmg.auto_discarded_setup_seconds);
+     let warning = cmg.auto_setup_warning.take();
+-    if cmg.auto_direct_solver.is_none() && discarded_setup_seconds == 0.0 && warning.is_none() {
++    let probe = cmg.schur_probe.take();
++    if cmg.auto_direct_solver.is_none()
++        && discarded_setup_seconds == 0.0
++        && warning.is_none()
++        && probe.is_none()
++    {
+         return Ok(absorbed);
+     }
++    let norms = absorbed.take_residual_norms();
+     let (residualized, mut report, coefficients) = absorbed.into_full_parts();
+     if cmg.auto_direct_solver.is_some() {
+         report.requested_solver = FeSolverKind::Auto;
+     }
+     report.setup_seconds += discarded_setup_seconds;
++    if let Some(contraction) = probe {
++        report.iterations += crate::fe::OLS_SCHUR_PROBE_ITERATIONS;
++        report.pilot_iterations = crate::fe::OLS_SCHUR_PROBE_ITERATIONS;
++        report.pilot_contraction = if contraction.is_finite() {
++            contraction
++        } else {
++            1.0
++        };
++    }
+     if !report.setup_seconds.is_finite() {
+         return Err(invalid_data(
+             "automatic FE-solver setup timing is not finite",
+@@ -1493,7 +1615,7 @@
+         report.fallback_used = true;
+         report.warnings.insert(0, warning);
+     }
+-    if let Some(coefficients) = coefficients {
++    let result = if let Some(coefficients) = coefficients {
+         CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+             residualized,
+             report,
+@@ -1501,6 +1623,11 @@
+         )
+     } else {
+         CertifiedBorrowedMap::from_certified_parts(residualized, report)
++    }?;
++    if norms.is_empty() {
++        Ok(result)
++    } else {
++        result.with_residual_norms(norms)
+     }
+ }
+ 
+@@ -1718,7 +1845,7 @@
+         None
+     };
+     let raw_moments_seconds = trace.lap();
+-    let absorbed = absorb_fit_matrix(
++    let mut absorbed = absorb_fit_matrix(
+         prepared,
+         weights.borrowed(),
+         raw,
+@@ -1732,6 +1859,7 @@
+             "prepared OLS initial absorption returned an uncertified result",
+         ));
+     }
++    let cached_norms = absorbed.take_residual_norms();
+     let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
+     let initial_absorb_seconds = trace.lap();
+     drop(projection_phase);
+@@ -1752,25 +1880,31 @@
+     } else {
+         None
+     };
+-    let mut within_norms = reserved_filled(
+-        reservation,
+-        generated_columns + 1,
+-        0.0_f64,
+-        "unable to reserve prepared OLS fused within norms",
+-    )?;
+-    if rayon::current_num_threads() == 1 {
+-        fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
+-    } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
+-        // Keep enough independent blocks to occupy the existing worker team.
+-        fill_weighted_matrix_norms_blocked::<8>(&within, weights, &mut within_norms)?;
++    let has_cached_norms = !cached_norms.is_empty();
++    let mut within_norms = if has_cached_norms {
++        cached_norms
+     } else {
+-        within_norms
+-            .par_iter_mut()
+-            .enumerate()
+-            .try_for_each(|(column, norm)| -> Result<()> {
+-                *norm = weighted_matrix_column_norm(&within, column, weights)?;
+-                Ok(())
+-            })?;
++        reserved_filled(
++            reservation,
++            generated_columns + 1,
++            0.0_f64,
++            "unable to reserve prepared OLS fused within norms",
++        )?
++    };
++    if !has_cached_norms {
++        if rayon::current_num_threads() == 1 {
++            fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
++        } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
++            // Keep enough independent blocks to occupy the existing worker team.
++            fill_weighted_matrix_norms_blocked::<8>(&within, weights, &mut within_norms)?;
++        } else {
++            within_norms.par_iter_mut().enumerate().try_for_each(
++                |(column, norm)| -> Result<()> {
++                    *norm = weighted_matrix_column_norm(&within, column, weights)?;
++                    Ok(())
++                },
++            )?;
++        }
+     }
+     let within_outcome_norm = within_norms[0];
+     let normalized_initial_within_sum_of_squares =
+@@ -1958,9 +2092,15 @@
+         "unable to reserve prepared OLS independent raw residual",
+     )?;
+     residuals.extend_from_slice(response);
+-    for (column, coefficient) in qr.generated_coefficients.iter().copied().enumerate() {
+-        if let Some(coefficient) = coefficient {
+-            prepared.fit_subtract_raw_column(column, coefficient, &mut residuals)?;
++    if let Some(columns) =
++        super::prepared_rhs::NumericOlsColumns::bind(prepared.fit_model(), prepared.fit_sample())?
++    {
++        columns.subtract_fitted(&qr.generated_coefficients, &mut residuals)?;
++    } else {
++        for (column, coefficient) in qr.generated_coefficients.iter().copied().enumerate() {
++            if let Some(coefficient) = coefficient {
++                prepared.fit_subtract_raw_column(column, coefficient, &mut residuals)?;
++            }
+         }
+     }
+     Ok(residuals)
+@@ -7052,6 +7192,291 @@
+         fit.residual_absorption_report.setup_seconds = 0.0;
+         fit.residual_absorption_report.solve_seconds = 0.0;
+         fit
++    }
++
++    #[test]
++    fn numeric_tiles_preserve_rhs_and_raw_residual_bits_across_threads() {
++        let rows = 4_103;
++        for width in [7, 15, 50, 63, 64] {
++            let columns = (0..width)
++                .map(|c| {
++                    (0..rows)
++                        .map(|r| {
++                            if r % 17 == 0 {
++                                -0.0
++                            } else {
++                                ((r * (c + 3) % 997) as f64).sin()
++                            }
++                        })
++                        .collect::<Vec<_>>()
++                })
++                .collect::<Vec<_>>();
++            let response = (0..rows)
++                .map(|r| ((r * 37 % 991) as f64).cos())
++                .collect::<Vec<_>>();
++            let prepared = prepared(
++                &response,
++                &columns,
++                &vec![false; width],
++                None,
++                true,
++                TestWeights::Unit,
++            );
++            let make_expected = || {
++                let mut values = Vec::new();
++                let mut residuals = response.clone();
++                let coefficients = (0..prepared.model.columns.len())
++                    .map(|c| {
++                        if c % 5 == 0 {
++                            None
++                        } else {
++                            Some((c as f64 - 13.0) / 31.0)
++                        }
++                    })
++                    .collect::<Vec<_>>();
++                for r in 0..rows {
++                    values.push(response[r]);
++                    for c in 0..prepared.model.columns.len() {
++                        let value = prepared.column_value(c, r).unwrap();
++                        values.push(value);
++                        if let Some(coefficient) = coefficients[c] {
++                            residuals[r] = (-coefficient).mul_add(value, residuals[r]);
++                        }
++                    }
++                }
++                (values, residuals, coefficients)
++            };
++            let (expected_values, expected_residuals, coefficients) = make_expected();
++            for threads in [1, 4, 16] {
++                rayon::ThreadPoolBuilder::new()
++                    .num_threads(threads)
++                    .build()
++                    .unwrap()
++                    .install(|| {
++                        let actual = prepared.fit_build_rhs().unwrap();
++                        assert_eq!(
++                            actual
++                                .as_slice()
++                                .iter()
++                                .map(|v| v.to_bits())
++                                .collect::<Vec<_>>(),
++                            expected_values
++                                .iter()
++                                .map(|v| v.to_bits())
++                                .collect::<Vec<_>>()
++                        );
++                        let bound =
++                            crate::ols::NumericOlsColumns::bind(&prepared.model, &prepared.sample)
++                                .unwrap();
++                        if let Some(bound) = bound {
++                            let mut residuals = response.clone();
++                            bound
++                                .subtract_fitted(&coefficients, &mut residuals)
++                                .unwrap();
++                            assert_eq!(
++                                residuals.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
++                                expected_residuals
++                                    .iter()
++                                    .map(|v| v.to_bits())
++                                    .collect::<Vec<_>>()
++                            );
++                            assert!(bound
++                                .subtract_fitted(&coefficients[..1], &mut residuals)
++                                .is_err());
++                            assert!(bound
++                                .fill_reserved_rhs(
++                                    &response[..1],
++                                    &mut vec![0.0; expected_values.len()]
++                                )
++                                .is_err());
++                            let mut invalid = coefficients.clone();
++                            invalid[0] = Some(f64::INFINITY);
++                            assert!(bound.subtract_fitted(&invalid, &mut residuals).is_err());
++                        } else {
++                            assert!(width >= 64);
++                        }
++                    });
++            }
++        }
++    }
++
++    #[test]
++    fn numeric_tiles_support_omissions_working_responses_and_categorical_topology() {
++        let rows = 4_103;
++        let x = (0..12)
++            .map(|c| {
++                (0..rows)
++                    .map(|r| ((r + c * 3) % 11) as f64)
++                    .collect::<Vec<_>>()
++            })
++            .collect::<Vec<_>>();
++        let outcome = vec![1.0; rows];
++        let omitted = (0..12).map(|c| c % 4 == 0).collect::<Vec<_>>();
++        let mut numeric = prepared(&outcome, &x, &omitted, None, false, TestWeights::Unit);
++        let effects = vec![
++            (0..rows).map(|r| (r % 17) as f64).collect(),
++            (0..rows).map(|r| (r % 23) as f64).collect(),
++        ];
++        let categorical = prepared_multiway_categorical(&outcome, &x, &effects);
++        let working = (0..rows).map(|r| (r % 7) as f64 - 2.5).collect::<Vec<_>>();
++        for view in [&numeric as &dyn PreparedOlsFitView, &categorical] {
++            let actual = view.fit_build_rhs_with_response(&working).unwrap();
++            let generated = view.fit_model().columns.len();
++            let coefficients = (0..generated)
++                .map(|c| {
++                    if c % 3 == 0 {
++                        None
++                    } else {
++                        Some(c as f64 / 7.0)
++                    }
++                })
++                .collect::<Vec<_>>();
++            let mut expected_residual = working.clone();
++            for (r, &response) in working.iter().enumerate() {
++                assert_eq!(actual[(r, 0)].to_bits(), response.to_bits());
++                for c in 0..generated {
++                    assert_eq!(
++                        actual[(r, c + 1)].to_bits(),
++                        view.fit_column_value(c, r).unwrap().to_bits()
++                    );
++                }
++            }
++            for (c, coefficient) in coefficients.iter().enumerate() {
++                if let Some(coefficient) = coefficient {
++                    view.fit_subtract_raw_column(c, *coefficient, &mut expected_residual)
++                        .unwrap();
++                }
++            }
++            let bound = crate::ols::NumericOlsColumns::bind(view.fit_model(), view.fit_sample())
++                .unwrap()
++                .unwrap();
++            let mut residual = working.clone();
++            bound.subtract_fitted(&coefficients, &mut residual).unwrap();
++            assert_eq!(residual, expected_residual);
++            let mut matrix = Vec::new();
++            matrix.try_reserve_exact(actual.as_slice().len()).unwrap();
++            let address = matrix.as_ptr();
++            let capacity = matrix.capacity();
++            bound.fill_reserved_rhs(&working, &mut matrix).unwrap();
++            assert_eq!(address, matrix.as_ptr());
++            assert_eq!(capacity, matrix.capacity());
++            assert_eq!(matrix, actual.as_slice());
++            assert_eq!(
++                bound
++                    .fill_reserved_rhs(&working, &mut Vec::new())
++                    .unwrap_err()
++                    .code,
++                ErrorCode::Allocation
++            );
++            // Finite operands can overflow on an intermediate FMA. Later
++            // cancellation must not turn this into a successful residual.
++            let coefficients = vec![Some(f64::MAX); generated];
++            assert_eq!(
++                bound
++                    .subtract_fitted(&coefficients, &mut residual)
++                    .unwrap_err()
++                    .code,
++                ErrorCode::InvalidData
++            );
++        }
++        numeric.sample.regressors[1][200] = f64::NAN;
++        assert_eq!(
++            numeric.fit_build_rhs().unwrap_err().code,
++            ErrorCode::InvalidData
++        );
++        numeric.sample.regressors[1][200] = 0.0;
++        numeric.sample.regressors[1].pop();
++        assert!(crate::ols::NumericOlsColumns::bind(&numeric.model, &numeric.sample).is_err());
++    }
++
++    #[test]
++    fn wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports() {
++        let n = 16_512;
++        let x = (0..15)
++            .map(|c| {
++                (0..n)
++                    .map(|r| ((r * (c + 13) % 1009) as f64).sin())
++                    .collect::<Vec<_>>()
++            })
++            .collect::<Vec<_>>();
++        let y = (0..n)
++            .map(|r| x[0][r] + ((r * 19 % 991) as f64).sin())
++            .collect::<Vec<_>>();
++        let effects = [
++            (0..n).map(|r| (r / 3) as f64).collect::<Vec<_>>(),
++            (0..n)
++                .map(|r| ((r / 3 + usize::from(r % 3 == 1)) % 128) as f64)
++                .collect::<Vec<_>>(),
++        ];
++        let prepared = prepared_multiway_categorical(&y, &x, &effects);
++        let config = PreparedOlsFitConfig::default();
++        let mut session =
++            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config).unwrap();
++        assert!(session.schur_config.is_some());
++        let values = prepared.fit_build_rhs().unwrap();
++        let contraction =
++            crate::fe::schur_ols_probe(&prepared.fit_borrowed_cmg_design().unwrap(), &values)
++                .unwrap();
++        assert!(
++            contraction > crate::fe::OLS_SCHUR_MAX_CONTRACTION,
++            "cycle contraction {contraction}"
++        );
++        let result = absorb_fit_matrix(
++            &prepared,
++            BorrowedMapWeights::Unit,
++            values,
++            config.absorb,
++            &mut session,
++            true,
++            false,
++        )
++        .unwrap();
++        assert!(result.report().certified());
++        assert_eq!(
++            result.report().pilot_iterations,
++            crate::fe::OLS_SCHUR_PROBE_ITERATIONS
++        );
++        assert_eq!(result.report().pilot_contraction, contraction);
++        assert!(result.report().setup_seconds > 0.0);
++        assert!(result.report().iterations <= config.absorb.map.max_iterations);
++        for variant in 0..4 {
++            let mut config = config;
++            match variant {
++                0 => config.absorb.retain_coefficients = true,
++                1 => config.absorb.map.max_iterations = 64,
++                2 => config.absorb.solver = FeSolverKind::Cg,
++                _ => config.absorb.certified_fallback = false,
++            }
++            assert!(
++                build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config)
++                    .unwrap()
++                    .schur_config
++                    .is_none()
++            );
++        }
++        let weights = vec![1.0; n];
++        assert!(
++            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), config)
++                .unwrap()
++                .schur_config
++                .is_none()
++        );
++        let narrow = prepared_multiway_categorical(&y, &x[..2], &effects);
++        assert!(
++            build_fit_fe_absorber(&narrow, BorrowedMapWeights::Unit, config)
++                .unwrap()
++                .schur_config
++                .is_none()
++        );
++        let third = (0..n).map(|r| (r % 3) as f64).collect::<Vec<_>>();
++        let three =
++            prepared_multiway_categorical(&y, &x, &[effects[0].clone(), effects[1].clone(), third]);
++        assert!(
++            build_fit_fe_absorber(&three, BorrowedMapWeights::Unit, config)
++                .unwrap()
++                .schur_config
++                .is_none()
++        );
+     }
+ 
+     #[test]
+--- a/crates/fereg-core/src/ols/prepared_rhs.rs
++++ b/crates/fereg-core/src/ols/prepared_rhs.rs
+@@ -106,21 +106,24 @@
+             "prepared OLS RHS reservation returned insufficient capacity",
+         ));
+     }
+-    data.resize(elements, 0.0);
+-
+-    if rayon::current_num_threads() == 1 {
+-        fill_rhs_single_thread(prepared, response, ncols, &mut data)?;
++    if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
++        columns.fill_reserved_rhs(response, &mut data)?;
+     } else {
+-        data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
+-            |(row, destination)| -> Result<()> {
+-                destination[0] = response[row];
+-                for generated_column in 0..prepared.model.columns.len() {
+-                    let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
+-                    destination[rhs_column] = prepared.column_value(generated_column, row)?;
+-                }
+-                Ok(())
+-            },
+-        )?;
++        data.resize(elements, 0.0);
++        if rayon::current_num_threads() == 1 {
++            fill_rhs_single_thread(prepared, response, ncols, &mut data)?;
++        } else {
++            data.par_chunks_exact_mut(ncols).enumerate().try_for_each(
++                |(row, destination)| -> Result<()> {
++                    destination[0] = response[row];
++                    for generated_column in 0..prepared.model.columns.len() {
++                        let rhs_column = PreparedOlsRhs::model_column(generated_column)?;
++                        destination[rhs_column] = prepared.column_value(generated_column, row)?;
++                    }
++                    Ok(())
++                },
++            )?;
++        }
+     }
+     if data.par_iter().any(|value| !value.is_finite()) {
+         return Err(invalid_data(
+@@ -217,6 +220,167 @@
+     Ok(())
+ }
+ 
++/// Validation has no reduction or ordering-dependent diagnostic. Partition
++/// wide source scans across an already installed pool. Preparation can call
++/// validation before entering the configured team, so never create an ambient
++/// global pool from this shared helper; keep those and small-model scans serial.
++pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSample) -> bool {
++    if sample.n_active() >= 4096
++        && sample.regressors.len() >= 8
++        && rayon::current_thread_index().is_some()
++    {
++        sample
++            .regressors
++            .par_iter()
++            .all(|source| source.iter().all(|v| v.is_finite()))
++    } else {
++        sample.regressors.iter().flatten().all(|v| v.is_finite())
++    }
++}
++
++const NUMERIC_TILE_ROWS: usize = 128;
++const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
++
++/// Stack-only bindings for the common numeric design. Keeping a row tile in
++/// cache avoids per-cell recipe dispatch and repeated full residual scans.
++/// None denotes an explicit intercept; unsupported recipes use the existing
++/// generic evaluator without partially filling or updating the destination.
++pub(crate) struct NumericOlsColumns<'a> {
++    columns: [Option<&'a [f64]>; MAX_BOUND_NUMERIC_COLUMNS],
++    width: usize,
++    rows: usize,
++}
++
++impl<'a> NumericOlsColumns<'a> {
++    pub(crate) fn bind(
++        model: &super::PreparedOlsModel,
++        sample: &'a crate::data::PreparedNumericSample,
++    ) -> Result<Option<Self>> {
++        if sample.n_active() < 4096
++            || !(8..=MAX_BOUND_NUMERIC_COLUMNS).contains(&model.columns.len())
++            || model.columns.iter().any(|c| {
++                !matches!(
++                    c.kind,
++                    PreparedOlsColumnKind::Continuous { .. } | PreparedOlsColumnKind::Intercept
++                )
++            })
++        {
++            return Ok(None);
++        }
++        let mut columns = [None; MAX_BOUND_NUMERIC_COLUMNS];
++        for (destination, column) in columns.iter_mut().zip(&model.columns) {
++            if let PreparedOlsColumnKind::Continuous {
++                prepared_source_index,
++                ..
++            } = column.kind
++            {
++                let source = sample
++                    .regressors
++                    .get(prepared_source_index)
++                    .filter(|v| v.len() == sample.n_active())
++                    .ok_or_else(|| invalid_argument("numeric OLS column is not aligned"))?;
++                *destination = Some(source.as_slice());
++            }
++        }
++        Ok(Some(Self {
++            columns,
++            width: model.columns.len(),
++            rows: sample.n_active(),
++        }))
++    }
++
++    pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
++        let width = self.width + 1;
++        if response.len() != self.rows {
++            return Err(invalid_argument("numeric OLS RHS response is not aligned"));
++        }
++        let elements = self
++            .rows
++            .checked_mul(width)
++            .ok_or_else(|| allocation("numeric OLS RHS dimensions overflow"))?;
++        if data.capacity() < elements {
++            return Err(allocation("numeric OLS RHS reservation is insufficient"));
++        }
++        // The caller already reserved the complete matrix fallibly. Indexed
++        // collection reuses that capacity and initializes disjoint slices in
++        // parallel, without uninitialized memory in the safe core or a second
++        // observation-scale allocation.
++        (0..elements)
++            .into_par_iter()
++            .map(|_| 0.0)
++            .collect_into_vec(data);
++        data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
++            .enumerate()
++            .for_each(|(tile, output)| {
++                let start = tile * NUMERIC_TILE_ROWS;
++                let rows = output.len() / width;
++                for (destination, &value) in output
++                    .chunks_exact_mut(width)
++                    .zip(&response[start..start + rows])
++                {
++                    destination[0] = value;
++                }
++                for (column, source) in self.columns[..self.width].iter().enumerate() {
++                    if let Some(source) = source {
++                        for (destination, &value) in output
++                            .chunks_exact_mut(width)
++                            .zip(&source[start..start + rows])
++                        {
++                            destination[column + 1] = value;
++                        }
++                    } else {
++                        for destination in output.chunks_exact_mut(width) {
++                            destination[column + 1] = 1.0;
++                        }
++                    }
++                }
++            });
++        Ok(())
++    }
++
++    pub(crate) fn subtract_fitted(
++        &self,
++        coefficients: &[Option<f64>],
++        residuals: &mut [f64],
++    ) -> Result<()> {
++        if coefficients.len() != self.width
++            || residuals.len() != self.rows
++            || coefficients.iter().flatten().any(|v| !v.is_finite())
++        {
++            return Err(invalid_argument(
++                "numeric OLS residual update is not aligned and finite",
++            ));
++        }
++        residuals
++            .par_chunks_mut(NUMERIC_TILE_ROWS)
++            .enumerate()
++            .try_for_each(|(tile, output)| -> Result<()> {
++                let start = tile * NUMERIC_TILE_ROWS;
++                let rows = output.len();
++                for (source, coefficient) in self.columns[..self.width].iter().zip(coefficients) {
++                    let Some(coefficient) = coefficient else {
++                        continue;
++                    };
++                    if let Some(source) = source {
++                        for (residual, &value) in
++                            output.iter_mut().zip(&source[start..start + rows])
++                        {
++                            *residual = (-coefficient).mul_add(value, *residual);
++                        }
++                    } else {
++                        for residual in output.iter_mut() {
++                            *residual = (-coefficient).mul_add(1.0, *residual);
++                        }
++                    }
++                }
++                if output.iter().any(|v| !v.is_finite()) {
++                    return Err(invalid_data("numeric OLS raw residual is not finite"));
++                }
++                Ok(())
++            })
++    }
++}
++
+ fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {
+     let ncols = model_columns
+         .checked_add(1)
+@@ -241,13 +405,7 @@
+             "prepared OLS numeric sample is not aligned on one observation axis",
+         ));
+     }
+-    if response.iter().any(|value| !value.is_finite())
+-        || sample
+-            .regressors
+-            .iter()
+-            .flatten()
+-            .any(|value| !value.is_finite())
+-    {
++    if response.iter().any(|value| !value.is_finite()) || !numeric_sources_are_finite(sample) {
+         return Err(invalid_data(
+             "prepared OLS outcome and numeric sources must be finite",
+         ));

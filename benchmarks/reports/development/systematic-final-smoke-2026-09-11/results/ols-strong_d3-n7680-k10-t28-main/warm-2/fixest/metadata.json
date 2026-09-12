@@ -1,0 +1,18 @@
+{
+  "rc": 0,
+  "seconds": 0.0570000000000004,
+  "R_version": "4.5.2",
+  "fixest_version": "0.14.2",
+  "requested_threads": 28,
+  "effective_threads": 28,
+  "error": {},
+  "covariance_normalization": "native IID",
+  "covariance_multiplier": 1,
+  "N": 7680,
+  "loglik": -3920.82489137195,
+  "deviance": 1248.30999127109,
+  "converged": true,
+  "df_k": 2633,
+  "rss": 1248.30999127109,
+  "sample_kind": "observation_ids"
+}

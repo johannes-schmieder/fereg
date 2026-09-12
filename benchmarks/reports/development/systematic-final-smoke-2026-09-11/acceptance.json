@@ -1,0 +1,114 @@
+{
+  "candidate_oracle_passes": 32,
+  "comparison_status": [
+    {
+      "arm": "areg",
+      "count": 4,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "areg",
+      "count": 12,
+      "status": "pass"
+    },
+    {
+      "arm": "fixest",
+      "count": 7,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "fixest",
+      "count": 25,
+      "status": "pass"
+    },
+    {
+      "arm": "gglm",
+      "count": 13,
+      "status": "pass"
+    },
+    {
+      "arm": "gglm",
+      "count": 3,
+      "status": "unavailable"
+    },
+    {
+      "arm": "greg",
+      "count": 4,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "greg",
+      "count": 12,
+      "status": "pass"
+    },
+    {
+      "arm": "ppmlhdfe",
+      "count": 16,
+      "status": "pass"
+    },
+    {
+      "arm": "pyfixest",
+      "count": 11,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "pyfixest",
+      "count": 21,
+      "status": "pass"
+    },
+    {
+      "arm": "reghdfe",
+      "count": 16,
+      "status": "pass"
+    }
+  ],
+  "groups": 32,
+  "job_id": "7522234",
+  "maximum_ppml_oracle_scaled_score": 6.294620380447381e-12,
+  "native_command_failures": [
+    {
+      "arm": "gglm",
+      "group": "ppml-three_fe_sparse-n1920-k10-t28-main/warm-2",
+      "status": "worker_failure"
+    },
+    {
+      "arm": "gglm",
+      "group": "ppml-three_fe_sparse-n1920-k10-t4-main/warm-1",
+      "status": "worker_failure"
+    },
+    {
+      "arm": "gglm",
+      "group": "ppml-two_fe_sparse-n7680-k10-t4-main/warm-1",
+      "status": "worker_failure"
+    }
+  ],
+  "original_controller_receipt": "../systematic-oracle-2026-09-11/final-smoke-submission.json",
+  "pinned_reference_passes": 32,
+  "post_smoke_changes": "Production adds same-node/task comparison and partial-group recovery guards. All original comparisons replay with unchanged outcomes; measurement workers, generator and oracle are unchanged.",
+  "production_controller_sha256": {
+    "README.md": "1b5d2bb38349919fb1f9ed995f36bc3dec78550b9616bab8314d9647a7e2bdf9",
+    "accounting.py": "46f0f082254a25fd09a8b3fb179f7f8f7b81b4a01bb25f4006d7ba0b8619d0e2",
+    "acquire.py": "bd5d56326bb79d77b1f5df51958729b4fb8fc333709ad800864fd8bb7f19645f",
+    "campaign.py": "d63a2a8531dbde651383f086ce3cbff0b49a6d13edae78f92fa063de6d477ad2",
+    "common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+    "diagnose_oracle.py": "c200152fca576a57aa4f06cdb43c7d37e86e03f9be9191927620d9c47184601e",
+    "diagnose_oracle_job.sh": "0403d5a122e8458c4ab801f50d87c4ec80ea599fdedf0afa60f2e7c54b2c20ad",
+    "generate.py": "2c4459582f46a183202ccf4a92a248ce27319c07309d80bab31308d1b42530ab",
+    "job.sh": "f315aa651fe1fe8466e35f97001de33b03482ff2fca65a726d8bcd0a7d826532",
+    "manifest.json": "274be96e0a7ed6e800d923d0285b827108695fbff782fe1b0edd770dc9c386ac",
+    "oracle.py": "14031f83f55cae46b487bc3334a893972bd6c7437dfebe50c6c0f7b66d9b3b4c",
+    "provenance.py": "df31f571cad8d7511567d1fcce3b70a4aac9163e5cbd3a215b5941f1672c07ad",
+    "python_worker.py": "93fd03dbe2b7d899ea946462dd0b8333d381435174a84624480a2b16ce5ea171",
+    "r_worker.R": "22caaa321f5f9b2bb32fbd8b47b5c5933b114ef6d17920b5407965edecc69bf4",
+    "references.json": "4b61a1a5bd1e32ec5a8588bdf6f4d904a33c44a223f411cd8aaa1f430b01c476",
+    "report.py": "7cd9aab96637a770a008ce85b9082c1f752c0c197408b7b4cfdb07d4e22ad2df",
+    "runner.py": "0595cd5d3cc965461ffcb7a2270adc1d1e2ca06a1ab7c37d6879005af54f65a5",
+    "setup.py": "5752927f7d854061113a6c7b4359e12890e693ca2e1110a9154d8a81060b697f",
+    "setup_job.sh": "f545f41a1f7414c815a5e1eeeba1631e30ed706d6c83fb4beb54e656f1f4d5b5",
+    "stata_worker.do": "ad6c34546c8cd8c2cca9bddadef62c8cf6b6992fac54e747a6b77094428b287c",
+    "test_campaign.py": "ff32b6086f40a2f1165bbbd89aea3001a46f7080519e130400daf4bbd9faf69a",
+    "test_evidence.py": "3095f3599a6e4e1e117b23402b52cfcbc116fb338311d2b0b3dfe00b43a7a170"
+  },
+  "same_node_task_replay_groups": 32,
+  "schema": "systematic-smoke-acceptance-v1"
+}

@@ -1,0 +1,120 @@
+{
+  "arm_status": {
+    "feppml": "pass",
+    "fixest": "pass",
+    "gglm": "pass",
+    "ppmlhdfe": "pass",
+    "pyfixest": "pass"
+  },
+  "cell": {
+    "design": "weak_d3",
+    "effects": [
+      "g1",
+      "g2"
+    ],
+    "k": 10,
+    "model": "ppml",
+    "n": 61440,
+    "section": "main",
+    "suite": "paper",
+    "threads": 1
+  },
+  "comparisons": [
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "comparator_converged": true,
+        "covariance": true,
+        "covariance_available": true,
+        "deviance": true,
+        "reported_objective_no_worse": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true,
+        "structural_df": true,
+        "total_rank": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 2.9989032090949053e-16,
+      "max_se_error": 2.2760005685684703e-13,
+      "right": "ppmlhdfe",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "covariance_available": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "standard_errors": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 3.3003114130458755e-15,
+      "max_se_error": 4.581299749284451e-12,
+      "right": "gglm",
+      "sample_limitation": "Only retained row counts are exposed by this comparator",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "comparator_converged": true,
+        "covariance": true,
+        "covariance_available": true,
+        "deviance": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": false
+      },
+      "left": "feppml",
+      "max_coefficient_error": 4.383709541200265e-12,
+      "max_se_error": 2.748082490299647e-09,
+      "right": "fixest",
+      "status": "accuracy_failure"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "comparator_converged": true,
+        "covariance": true,
+        "covariance_available": true,
+        "deviance": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 2.6676989610396884e-13,
+      "max_se_error": 4.715667786814315e-10,
+      "right": "pyfixest",
+      "status": "pass"
+    }
+  ],
+  "host": "scc-wc1",
+  "job_id": "7522274",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "oracle_checks": null,
+  "phase": "warm",
+  "repetition": 1,
+  "seed": 104729
+}

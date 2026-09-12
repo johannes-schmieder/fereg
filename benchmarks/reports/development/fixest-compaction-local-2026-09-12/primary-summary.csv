@@ -1,0 +1,4 @@
+design,threads,variant,runs,median_seconds,min_seconds,max_seconds,median_peak_rss_gib
+one_fe,16,baseline,3,0.585,0.581,0.587,1.3899688720703125
+one_fe,16,candidate,3,0.5800000000000001,0.5780000000000001,0.5820000000000001,1.392913818359375
+one_fe,16,fixest,3,0.472,0.464,0.482,1.8223419189453125

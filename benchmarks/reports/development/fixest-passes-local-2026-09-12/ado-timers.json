@@ -1,0 +1,14 @@
+{
+  "scope": "instrumented isolated ado copy; never retained in estimator source",
+  "stage_definitions": {
+    "71": "syntax, candidate marker and parser",
+    "72": "bindings, shadows and estimates hold",
+    "73": "complete-input marker, markout and count",
+    "74": "plugin binding, argument bundle and native call",
+    "75": "validation, stripes, ereturn and final commit"
+  },
+  "timers_seconds": {
+    "adoprofile2-one_fe-n983040-k50-t16-s104729-fereg": "71\t 0.013000000\n72\t 0.012000000\n73\t 0.041000000\n74\t 0.578000000\n75\t 0.018000000\n",
+    "adoprofile2-strong_d3-n983040-k50-t16-s104729-fereg": "71\t 0.012000000\n72\t 0.012000000\n73\t 0.042000000\n74\t 0.833000000\n75\t 0.018000000\n"
+  }
+}

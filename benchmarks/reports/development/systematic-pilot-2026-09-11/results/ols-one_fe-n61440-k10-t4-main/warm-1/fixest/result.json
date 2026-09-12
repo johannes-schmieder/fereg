@@ -1,0 +1,58 @@
+{
+  "arm": "fixest",
+  "cell": {
+    "design": "one_fe",
+    "effects": [
+      "g1"
+    ],
+    "k": 10,
+    "model": "ols",
+    "n": 61440,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-wf2",
+  "input_sha256": "0abb5b4b9f0e8238236d3925bab0ffdc2ed7fa1b1007ae9aab022b6b9b405db7",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7522274",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "metadata": {
+    "N": 61440,
+    "R_version": "4.5.2",
+    "converged": true,
+    "covariance_multiplier": 1,
+    "covariance_normalization": "native IID",
+    "deviance": 12384.3737253156,
+    "df_k": 12298,
+    "effective_threads": 4,
+    "error": {},
+    "fixest_version": "0.14.2",
+    "loglik": -37977.6452210615,
+    "rc": 0,
+    "requested_threads": 4,
+    "rss": 12384.3737253156,
+    "sample_kind": "observation_ids",
+    "seconds": 0.0369999999999999
+  },
+  "peak_process_tree_threads": 5,
+  "peak_rss_gib": 0.26183319091796875,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 3,
+  "sample_rows": 61440,
+  "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+  "schema": "systematic-arm-v1",
+  "seconds": 0.0369999999999999,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "1"
+}

@@ -1,0 +1,60 @@
+{
+  "arm": "pyfixest",
+  "cell": {
+    "design": "three_fe_sparse",
+    "effects": [
+      "g1",
+      "g2",
+      "g3"
+    ],
+    "k": 10,
+    "model": "ppml",
+    "n": 1920,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-wd2",
+  "input_sha256": "7d22b4670c3089082b35b18c7bff902dcf91a7c67a88c1785b5dcf3ca1ccc575",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7522234",
+  "measurement_fingerprint": null,
+  "metadata": {
+    "N": 1920,
+    "converged": true,
+    "covariance_multiplier": 1.0005211047420532,
+    "covariance_normalization": "HC0 multiplied by N/(N-1)",
+    "deviance": 5405.403271179728,
+    "df_k": 452.0,
+    "df_t": 1468.0,
+    "error": null,
+    "formula": "y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 | g1 + g2 + g3",
+    "loglik": -6475.301354033355,
+    "pyfixest_version": "0.60.0",
+    "python_version": "3.12.4",
+    "rc": 0,
+    "sample_kind": "stored_observation_ids",
+    "seconds": 0.6038225070005865,
+    "vcov": "hetero"
+  },
+  "peak_process_tree_threads": 5,
+  "peak_rss_gib": 0.20480728149414062,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 26,
+  "sample_rows": 1920,
+  "sample_sha256": "d5273a2f5e2518dd89adb28d526fb8aac899167a3dd3f8c6c67c17c8834537b3",
+  "schema": "systematic-arm-v1",
+  "seconds": 0.6038225070005865,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "6"
+}

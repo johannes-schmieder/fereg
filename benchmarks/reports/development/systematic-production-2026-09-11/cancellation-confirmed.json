@@ -1,0 +1,17 @@
+{
+  "accepted_finished_tasks": 78,
+  "accounted_started_tasks": 79,
+  "cancelled_before_start_tasks": [
+    80,
+    237
+  ],
+  "interrupted_exit_status": 137,
+  "interrupted_failed": 100,
+  "interrupted_task": 79,
+  "job_id": "7522398",
+  "monitor_deleted": true,
+  "never_started_tasks_have_no_qacct": true,
+  "qstat_message": "Following jobs do not exist: 7522398",
+  "resubmission_authorized": false,
+  "scheduler_absence_confirmed": true
+}

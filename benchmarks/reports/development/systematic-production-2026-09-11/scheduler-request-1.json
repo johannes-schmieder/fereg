@@ -1,0 +1,15 @@
+{
+  "concurrency_limit_requested_via_accepted_qsub": 12,
+  "job_id": "7522398",
+  "parallel_environment": "omp28",
+  "qstat_xml_limitation": "This scheduler XML does not expose the task-concurrency field.",
+  "resources": {
+    "buyin": "TRUE",
+    "cpu_type": "E5-2680v4",
+    "h_rt": "43200",
+    "mem_per_core": "3G",
+    "no_gpu": "TRUE",
+    "num_proc": "28"
+  },
+  "submitted_utc": "2026-09-11T09:14:09+00:00"
+}

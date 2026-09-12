@@ -1,0 +1,115 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -7323,6 +7323,53 @@
+             "borrowed MAP norm workspace dimensions differ",
+         ));
+     }
++    if values.ncols() >= 16
++        && values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS
++        && rayon::current_num_threads() > 1
++    {
++        // Disjoint column blocks preserve every column's scaled sum-of-squares
++        // recurrence. Stack accumulators avoid false sharing between blocks;
++        // no row reduction, transpose, or additional heap state is introduced.
++        return output
++            .par_chunks_mut(8)
++            .zip(scales.par_chunks_mut(8))
++            .zip(scaled_square_sums.par_chunks_mut(8))
++            .enumerate()
++            .try_for_each(|(block, ((output, scales), sums))| -> Result<()> {
++                let mut local_scales = [0.0; 8];
++                let mut local_sums = [1.0; 8];
++                let start = block * 8;
++                for (row, values) in values.as_slice().chunks_exact(values.ncols()).enumerate() {
++                    let root_weight = weights.normalized(row).sqrt();
++                    if !root_weight.is_finite() || root_weight <= 0.0 {
++                        return Err(invalid_data(
++                            "borrowed MAP normalized weight is not finite and positive",
++                        ));
++                    }
++                    for rhs in 0..output.len() {
++                        let value = root_weight * values[start + rhs];
++                        if !value.is_finite() {
++                            return Err(invalid_data("borrowed MAP weighted value is not finite"));
++                        }
++                        update_scaled_sum_of_squares(
++                            value, &mut local_scales[rhs], &mut local_sums[rhs],
++                        );
++                    }
++                }
++                for rhs in 0..output.len() {
++                    let norm = if local_scales[rhs] == 0.0 { 0.0 } else {
++                        local_scales[rhs] * local_sums[rhs].sqrt()
++                    };
++                    if !norm.is_finite() {
++                        return Err(invalid_data("borrowed MAP weighted column norm is not finite"));
++                    }
++                    output[rhs] = norm;
++                    scales[rhs] = local_scales[rhs];
++                    sums[rhs] = local_sums[rhs];
++                }
++                Ok(())
++            });
++    }
+     scales.fill(0.0);
+     scaled_square_sums.fill(1.0);
+     for row in 0..values.nrows() {
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1191,6 +1191,7 @@
+     /// matrix to the caller; a valid partial CMG projection can still seed the
+     /// existing certified CG fallback.
+     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG design and matrix dimensions are inconsistent",
+@@ -1200,6 +1201,7 @@
+             return Err(invalid_data("CMG input values must be finite"));
+         }
+         let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
++        let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
+ 
+@@ -1280,6 +1282,9 @@
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = polished.into_parts();
++                if phase_started.is_some() {
++                    eprintln!("FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}", solve_started.elapsed().as_secs_f64() - bulk_seconds);
++                }
+                 let polish_iterations = report.iterations;
+                 report.requested_solver = self.config.requested_solver;
+                 report.used_solver = FeSolverKind::Cmg;
+@@ -1622,6 +1627,7 @@
+             let end = start.saturating_add(batch_width).min(seed_end);
+             match &mut self.workspace {
+                 GraphCmgWorkspace::OwnedResults(workspace) => {
++                    let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+                     let right_hand_sides = build_value_rhs_batch(
+                         design,
+                         self.core_effects,
+@@ -1631,10 +1637,12 @@
+                         start,
+                         end,
+                     )?;
++                    let rhs_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     let solved = self
+                         .solver
+                         .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
+                         .map_err(cmg_solve_error)?;
++                    let solved_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     metrics.include_batch(solved.results().len());
+                     for (local, solution) in solved.results().iter().enumerate() {
+                         metrics.include(solution.iterations(), solution.backward_error());
+@@ -1655,6 +1663,9 @@
+                             start + local,
+                             solution.solution(),
+                         )?;
++                    }
++                    if let Some(started) = phase_started {
++                        eprintln!("FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={:.9}|subtract={:.9}|width={}|route={:?}", solved_seconds-rhs_seconds, started.elapsed().as_secs_f64()-solved_seconds, end-start, self.solver.select_batch_execution(end-start).map_err(cmg_error)?.execution());
+                     }
+                 }
+                 GraphCmgWorkspace::CallerBuffers(caller) => {

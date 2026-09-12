@@ -1,0 +1,19 @@
+{
+  "job_id": "7522398",
+  "monitor_deleted": "fereg-systematic-production-7522398",
+  "pre_stop_scheduler_tasks": [
+    {
+      "state": "r",
+      "tasks": "79"
+    },
+    {
+      "state": "qw",
+      "tasks": "80-237:1"
+    }
+  ],
+  "qdel_result": "Registered running task 79 for deletion and deleted the remaining array.",
+  "reason": "User requested cancellation and analysis of all existing results because the campaign was taking too long.",
+  "remaining_work_policy": "Do not resume checkpointed or queued comparisons; deliver an explicitly partial report.",
+  "scheduler_absence_verified": false,
+  "schema": "systematic-user-stop-v1"
+}

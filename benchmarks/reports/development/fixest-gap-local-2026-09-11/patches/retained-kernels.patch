@@ -1,0 +1,168 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 8714df2..5ef786f 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -2468,8 +2468,12 @@ impl TwoFePcgWorkspace {
+                         }
+                         let weight = weights.normalized(row);
+                         let right_level = right_codes[row] as usize;
+-                        for rhs in 0..rhs_count {
+-                            level_work[rhs] += weight * direction[right_level * stride + rhs];
++                        // Check the contiguous RHS range once, outside the
++                        // arithmetic loop. Each column keeps its row order.
++                        let source =
++                            &direction[right_level * stride..right_level * stride + rhs_count];
++                        for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
++                            *value += weight * term;
+                         }
+                     }
+                     let denominator = left_weights[level];
+@@ -2496,9 +2500,9 @@ impl TwoFePcgWorkspace {
+                     let level = first_level + local_level;
+                     let level_operator =
+                         &mut operator[local_level * stride..(local_level + 1) * stride];
+-                    for rhs in 0..rhs_count {
+-                        level_operator[rhs] =
+-                            right_weights[level] * direction[level * stride + rhs];
++                    let source = &direction[level * stride..level * stride + rhs_count];
++                    for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
++                        *value = right_weights[level] * term;
+                     }
+                     let members = right.level_index().checked_members(level)?;
+                     for &row in members {
+@@ -2509,8 +2513,10 @@ impl TwoFePcgWorkspace {
+                         }
+                         let weight = weights.normalized(row);
+                         let left_level = left_codes[row] as usize;
+-                        for rhs in 0..rhs_count {
+-                            level_operator[rhs] -= weight * left_work[left_level * stride + rhs];
++                        let source =
++                            &left_work[left_level * stride..left_level * stride + rhs_count];
++                        for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
++                            *value -= weight * term;
+                         }
+                     }
+                 }
+@@ -7921,7 +7927,7 @@ mod tests {
+             .collect::<Vec<_>>();
+         let weights =
+             validate_weights(BorrowedMapWeights::Provided(&raw_weights), rows).expect("weights");
+-        let build = |threads| {
++        let build = |threads, rhs, stride| {
+             rayon::ThreadPoolBuilder::new()
+                 .num_threads(threads)
+                 .build()
+@@ -7929,7 +7935,7 @@ mod tests {
+                 .install(|| {
+                     let mut reservation = SystemWorkspaceReservation;
+                     let mut graph =
+-                        TwoFePcgWorkspace::new(&design, 11, &mut reservation).expect("graph");
++                        TwoFePcgWorkspace::new(&design, stride, &mut reservation).expect("graph");
+                     let left_codes = design.effects()[graph.left_effect].codes();
+                     let right_codes = design.effects()[graph.right_effect].codes();
+                     for row in 0..rows {
+@@ -7941,16 +7947,25 @@ mod tests {
+                         *direction = ((17 * index % 101) as f64 - 50.0) / 37.0;
+                     }
+                     graph
+-                        .apply_schur(&design, weights, 11, 11)
++                        .apply_schur(&design, weights, rhs, stride)
+                         .expect("Schur operator");
+                     graph
+                 })
+         };
+-        let serial = build(1);
+-        for threads in [2, 4, 8, 16] {
+-            let parallel = build(threads);
+-            assert_eq!(serial.left_work, parallel.left_work);
+-            assert_eq!(serial.operator, parallel.operator);
++        for (rhs, stride) in [(1, 1), (11, 11), (52, 52), (51, 64)] {
++            let serial = build(1, rhs, stride);
++            for threads in [2, 4, 8, 16] {
++                let parallel = build(threads, rhs, stride);
++                for (expected, actual) in [
++                    (&serial.left_work, &parallel.left_work),
++                    (&serial.operator, &parallel.operator),
++                ] {
++                    assert_eq!(
++                        expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++                        actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
++                    );
++                }
++            }
+         }
+     }
+ 
+diff --git a/crates/fereg-core/src/fe/cmg.rs b/crates/fereg-core/src/fe/cmg.rs
+index 652f5cb..e7c5199 100644
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1191,6 +1191,7 @@ impl<'a> CmgAbsorber<'a> {
+     /// matrix to the caller; a valid partial CMG projection can still seed the
+     /// existing certified CG fallback.
+     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG design and matrix dimensions are inconsistent",
+@@ -1200,6 +1201,7 @@ impl<'a> CmgAbsorber<'a> {
+             return Err(invalid_data("CMG input values must be finite"));
+         }
+         let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
++        let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
+ 
+@@ -1280,6 +1282,12 @@ impl<'a> CmgAbsorber<'a> {
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = polished.into_parts();
++                if phase_started.is_some() {
++                    eprintln!(
++                        "FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}",
++                        solve_started.elapsed().as_secs_f64() - bulk_seconds,
++                    );
++                }
+                 let polish_iterations = report.iterations;
+                 report.requested_solver = self.config.requested_solver;
+                 report.used_solver = FeSolverKind::Cmg;
+@@ -1622,6 +1630,8 @@ impl GraphCmg {
+             let end = start.saturating_add(batch_width).min(seed_end);
+             match &mut self.workspace {
+                 GraphCmgWorkspace::OwnedResults(workspace) => {
++                    let phase_started =
++                        std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+                     let right_hand_sides = build_value_rhs_batch(
+                         design,
+                         self.core_effects,
+@@ -1631,10 +1641,14 @@ impl GraphCmg {
+                         start,
+                         end,
+                     )?;
++                    let rhs_seconds =
++                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     let solved = self
+                         .solver
+                         .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
+                         .map_err(cmg_solve_error)?;
++                    let solved_seconds =
++                        phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     metrics.include_batch(solved.results().len());
+                     for (local, solution) in solved.results().iter().enumerate() {
+                         metrics.include(solution.iterations(), solution.backward_error());
+@@ -1656,6 +1670,15 @@ impl GraphCmg {
+                             solution.solution(),
+                         )?;
+                     }
++                    if let Some(started) = phase_started {
++                        eprintln!(
++                            "FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={:.9}|subtract={:.9}|width={}|route={:?}",
++                            solved_seconds - rhs_seconds,
++                            started.elapsed().as_secs_f64() - solved_seconds,
++                            end - start,
++                            solved.report().execution(),
++                        );
++                    }
+                 }
+                 GraphCmgWorkspace::CallerBuffers(caller) => {
+                     let width = end - start;

@@ -1,0 +1,100 @@
+{
+  "arm_status": {
+    "feppml": "pass",
+    "fixest": "pass",
+    "gglm": "pass",
+    "ppmlhdfe": "pass",
+    "pyfixest": "pass"
+  },
+  "cell": {
+    "design": "one_fe",
+    "effects": [
+      "g1"
+    ],
+    "k": 10,
+    "model": "ppml",
+    "n": 1920,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "comparisons": [
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "deviance": true,
+        "df_a": false,
+        "reported_objective_no_worse": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 1.0061396160665481e-16,
+      "max_se_error": 3.7160986093853765e-12,
+      "right": "ppmlhdfe",
+      "status": "accuracy_failure"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "same_input": true,
+        "sample_count": true,
+        "standard_errors": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 1.0061396160665481e-16,
+      "max_se_error": 1.0061396160665481e-16,
+      "right": "gglm",
+      "sample_limitation": "Only retained row counts are exposed by this comparator",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "deviance": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "feppml",
+      "max_coefficient_error": 1.3600232051658168e-15,
+      "max_se_error": 3.11927410116819e-09,
+      "right": "fixest",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": false,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": false
+      },
+      "left": "feppml",
+      "max_coefficient_error": 9.85583142876223e-14,
+      "max_se_error": 2.4381149231478272e-08,
+      "right": "pyfixest",
+      "status": "accuracy_failure"
+    }
+  ],
+  "host": "scc-wc4",
+  "job_id": "7520678",
+  "oracle_checks": {
+    "coefficients": true,
+    "standard_errors": true
+  },
+  "phase": "warm",
+  "repetition": 1,
+  "seed": 104729
+}

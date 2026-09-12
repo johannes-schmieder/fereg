@@ -1,0 +1,1888 @@
+{
+  "completed_invocations": 148,
+  "final_invocations": 85,
+  "native_certificates": {
+    "final-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.990613108714641e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.3397477574768657e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1701038413254875e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.990613108714641e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.3397477574768657e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1701038413254875e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.058277296702449e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.068273769585e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.85127032229406e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.058277296702449e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.068273769585e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.85127032229406e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.9512601167297895e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.9512601167297895e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.400588103950505e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.400588291251698e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652382e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111608e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1271915816891078e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2902598304056332e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.254077364919907e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.34050994341291e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1271915816891078e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2902598304056332e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.254077364919907e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.34050994341291e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-phase-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 9.209904233479756e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.036737962836576e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-two_fe_dense-n245760-k50-t16-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.2672645757638771e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-two_fe_dense-n245760-k50-t4-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.2672645757638771e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.9455629919474503e-09,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-weak_d3-n61440-k50-t16-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.448595363013688e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-baseline-weak_d3-n61440-k50-t4-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.448595268838644e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-cached-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652367e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-cached-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111629e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "holdout-cached-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "onefe-direct-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "onefe-direct-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-one_fe-n983040-k50-t16-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-one_fe-n983040-k50-t4-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-strong_d3-n983040-k50-t16-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.5798789095243863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-strong_d3-n983040-k50-t4-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.5798789095243863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-strong_d6-n983040-k50-t16-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.120299080876551e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "profile-strong_d6-n983040-k50-t4-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.120299080876551e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-aligned-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-aligned-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-aligned-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-aligned-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-two_fe_dense-n245760-k50-t16-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2390084614393174e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-two_fe_dense-n245760-k50-t4-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2390084614393174e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-weak_d3-n61440-k50-t16-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.686891461521136e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-cached-weak_d3-n61440-k50-t4-s31415927-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.686891461521136e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-coefficient-it-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.6743886635586066e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-coefficient-it-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.6743886635586066e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-coefficient-it-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.261888624767848e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-coefficient-it-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.261888624767848e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-combined-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-combined-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-combined-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-combined-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-guarded-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-guarded-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-guarded-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-guarded-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-input-batch-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-norms-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.5798789095243863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.5798789095243863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.120299080876551e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen-parallel-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.120299080876551e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    }
+  },
+  "note": "Reference disagreements remain failures of native parity; see independent adjudications.",
+  "primary_groups": 18,
+  "primary_invocations": 54,
+  "recorded_comparisons": {
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.6209256159527285e-14,
+        "covariance.csv:value": 2.2711070898255928e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.609823385706477e-14,
+        "covariance.csv:value": 2.4246318115154347e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 7.202571872255703e-15,
+        "covariance.csv:value": 3.070494433796839e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.6209256159527285e-14,
+        "covariance.csv:value": 2.2711070898255928e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.609823385706477e-14,
+        "covariance.csv:value": 2.4246318115154347e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 7.202571872255703e-15,
+        "covariance.csv:value": 3.070494433796839e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 9.996344030316351e-17,
+        "coefficients.csv:value": 2.0816681711721685e-16,
+        "covariance.csv:value": 1.1540823906339842e-20,
+        "full_V_maxabs": 1.1540823906339842e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.0816681711721685e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.447070324151923e-13,
+        "covariance.csv:value": 3.8635290306636774e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 2.668153783851046e-20,
+        "full_V_maxabs": 2.668153783851046e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.249000902703301e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.8839951260462016e-13,
+        "covariance.csv:value": 3.338897998958045e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 1.1858461261560205e-20,
+        "full_V_maxabs": 1.1858461261560205e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.6653345369377348e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 4.100452616340178e-16,
+        "coefficients.csv:value": 3.238798118587738e-13,
+        "covariance.csv:value": 4.904850160194433e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 9.996344030316351e-17,
+        "coefficients.csv:value": 2.0816681711721685e-16,
+        "covariance.csv:value": 1.1540823906339842e-20,
+        "full_V_maxabs": 1.1540823906339842e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.0816681711721685e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.447070324151923e-13,
+        "covariance.csv:value": 3.8635290306636774e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 2.668153783851046e-20,
+        "full_V_maxabs": 2.668153783851046e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.249000902703301e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.8839951260462016e-13,
+        "covariance.csv:value": 3.338897998958045e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 1.1858461261560205e-20,
+        "full_V_maxabs": 1.1858461261560205e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.6653345369377348e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 4.100452616340178e-16,
+        "coefficients.csv:value": 3.238798118587738e-13,
+        "covariance.csv:value": 4.904850160194433e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 2.7755575615628914e-16,
+        "covariance.csv:value": 3.5998900258307764e-21,
+        "full_V_maxabs": 3.5998900258307764e-21,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 3.3306690738754696e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 5.009881398621019e-15,
+        "covariance.csv:value": 2.752857078576476e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 2.220446049250313e-16,
+        "covariance.csv:value": 1.78406314515437e-20,
+        "full_V_maxabs": 1.78406314515437e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 4.9404924595819466e-15,
+        "covariance.csv:value": 3.329898273893468e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 7.940933880509066e-22,
+        "full_V_maxabs": 7.940933880509066e-22,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.1102230246251565e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 8.298917109073045e-15,
+        "covariance.csv:value": 3.2504889350883776e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 2.7755575615628914e-16,
+        "covariance.csv:value": 3.5998900258307764e-21,
+        "full_V_maxabs": 3.5998900258307764e-21,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 3.3306690738754696e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 5.009881398621019e-15,
+        "covariance.csv:value": 2.752857078576476e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 2.220446049250313e-16,
+        "covariance.csv:value": 1.78406314515437e-20,
+        "full_V_maxabs": 1.78406314515437e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 4.9404924595819466e-15,
+        "covariance.csv:value": 3.329898273893468e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.1102230246251565e-16,
+        "covariance.csv:value": 7.940933880509066e-22,
+        "full_V_maxabs": 7.940933880509066e-22,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 1.1102230246251565e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 8.298917109073045e-15,
+        "covariance.csv:value": 3.2504889350883776e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 4.85722573273506e-16,
+        "covariance.csv:value": 8.893845946170154e-20,
+        "full_V_maxabs": 8.893845946170154e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 5.273559366969494e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "reference-disagreement.json": {
+        "details": "('coefficients.csv', 'value', {'coefficients.csv:value': 1.6818274805102326e-06})",
+        "independent_oracle": "explicit-bottleneck_ring.json",
+        "status": "disagreement"
+      }
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 2.9976021664879227e-15,
+        "covariance.csv:value": 1.3467823861343375e-19,
+        "full_V_maxabs": 1.3467823861343375e-19,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.9976021664879227e-15,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "reference-disagreement.json": {
+        "details": "('coefficients.csv', 'se', {'coefficients.csv:value': 3.1086244689504383e-15, 'coefficients.csv:se': 9.74427550599899e-07})",
+        "independent_oracle": "explicit-disconnected_blocks.json",
+        "status": "disagreement"
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 5.505714157152952e-21,
+        "full_V_maxabs": 5.505714157152952e-21,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.440892098500626e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 5.505714157152952e-21,
+        "full_V_maxabs": 5.505714157152952e-21,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.440892098500626e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 7.077671781985373e-16,
+        "covariance.csv:value": 8.639736061993863e-20,
+        "full_V_maxabs": 8.639736061993863e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 7.494005416219807e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 9.992007221626409e-16,
+        "covariance.csv:value": 8.893845946170154e-20,
+        "full_V_maxabs": 8.893845946170154e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 9.992007221626409e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 9.43689570931383e-16,
+        "covariance.csv:value": 8.555032767268433e-20,
+        "full_V_maxabs": 8.555032767268433e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 9.43689570931383e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-narrow-candidate-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-phase-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "holdout-cached-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 4.85722573273506e-16,
+        "covariance.csv:value": 8.893845946170154e-20,
+        "full_V_maxabs": 8.893845946170154e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 5.273559366969494e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "reference-disagreement.json": {
+        "details": "('coefficients.csv', 'value', {'coefficients.csv:value': 1.6818274805102326e-06})",
+        "status": "disagreement"
+      }
+    },
+    "holdout-cached-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 2.9976021664879227e-15,
+        "covariance.csv:value": 1.3467823861343375e-19,
+        "full_V_maxabs": 1.3467823861343375e-19,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.9976021664879227e-15,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "reference-disagreement.json": {
+        "details": "('coefficients.csv', 'se', {'coefficients.csv:value': 3.1086244689504383e-15, 'coefficients.csv:se': 9.74427550599899e-07})",
+        "status": "disagreement"
+      }
+    },
+    "holdout-cached-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 7.077671781985373e-16,
+        "covariance.csv:value": 8.639736061993863e-20,
+        "full_V_maxabs": 8.639736061993863e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 7.494005416219807e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 2.369979212879514e-14,
+        "covariance.csv:value": 3.5998900258307764e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "onefe-direct-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "onefe-direct-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-aligned-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-aligned-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-aligned-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-aligned-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-two_fe_dense-n245760-k50-t16-s31415927-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 8.881784197001252e-16,
+        "covariance.csv:value": 1.3129010682441655e-20,
+        "full_V_maxabs": 1.3129010682441655e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 8.326672684688674e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-two_fe_dense-n245760-k50-t4-s31415927-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 8.881784197001252e-16,
+        "covariance.csv:value": 1.3129010682441655e-20,
+        "full_V_maxabs": 1.3129010682441655e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 8.326672684688674e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-weak_d3-n61440-k50-t16-s31415927-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 5.967448757360216e-16,
+        "covariance.csv:value": 1.0503208545953324e-19,
+        "full_V_maxabs": 1.0503208545953324e-19,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 6.800116025829084e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-cached-weak_d3-n61440-k50-t4-s31415927-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.1015494072452725e-16,
+        "coefficients.csv:value": 5.967448757360216e-16,
+        "covariance.csv:value": 1.1096131609031334e-19,
+        "full_V_maxabs": 1.1096131609031334e-19,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 6.38378239159465e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-coefficient-it-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 9.996344030316351e-17,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.832266417381567e-20,
+        "full_V_maxabs": 2.832266417381567e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 5.551115123125783e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-coefficient-it-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 9.996344030316351e-17,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.832266417381567e-20,
+        "full_V_maxabs": 2.832266417381567e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 5.551115123125783e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-coefficient-it-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 3.3306690738754696e-16,
+        "covariance.csv:value": 1.4770137017746862e-20,
+        "full_V_maxabs": 1.4770137017746862e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.7755575615628914e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-coefficient-it-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 3.3306690738754696e-16,
+        "covariance.csv:value": 1.4770137017746862e-20,
+        "full_V_maxabs": 1.4770137017746862e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.7755575615628914e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-combined-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-combined-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-combined-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-combined-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-guarded-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-guarded-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-guarded-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-guarded-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-input-batch-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 1.942890293094024e-16,
+        "covariance.csv:value": 1.376428539288238e-20,
+        "full_V_maxabs": 1.376428539288238e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 2.220446049250313e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-norms-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 1.100465205072787e-16,
+        "coefficients.csv:value": 4.996003610813204e-16,
+        "covariance.csv:value": 2.456395547037471e-20,
+        "full_V_maxabs": 2.456395547037471e-20,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 4.996003610813204e-16,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen-parallel-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    }
+  },
+  "schema": "ols-schur-local-science-v1",
+  "worker_statuses": {
+    "pass": 148
+  }
+}

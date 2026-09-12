@@ -1,0 +1,76 @@
+{
+  "accepted_frozen_groups_including_offgrid_pilot": 828,
+  "accepted_ols_groups": 823,
+  "accepted_ppml_groups": 5,
+  "accepted_production_tasks": 78,
+  "accepted_registered_groups": 826,
+  "cancelled_never_started_tasks": [
+    80,
+    237
+  ],
+  "cancelled_started_task": 79,
+  "planned_registered_groups": 2128,
+  "production_node_hours": 96.26722222222222,
+  "production_reserved_core_hours": 2695.4822222222224,
+  "registered_complete_markers": 835,
+  "registered_group_counts": [
+    {
+      "count": 126,
+      "design": "one_fe",
+      "model": "ols"
+    },
+    {
+      "count": 126,
+      "design": "strong_d2",
+      "model": "ols"
+    },
+    {
+      "count": 126,
+      "design": "strong_d3",
+      "model": "ols"
+    },
+    {
+      "count": 126,
+      "design": "strong_d6",
+      "model": "ols"
+    },
+    {
+      "count": 120,
+      "design": "three_fe_sparse",
+      "model": "ols"
+    },
+    {
+      "count": 126,
+      "design": "two_fe_dense",
+      "model": "ols"
+    },
+    {
+      "count": 81,
+      "design": "two_fe_sparse",
+      "model": "ols"
+    },
+    {
+      "count": 1,
+      "design": "one_fe",
+      "model": "ppml"
+    },
+    {
+      "count": 1,
+      "design": "strong_d6",
+      "model": "ppml"
+    },
+    {
+      "count": 1,
+      "design": "three_fe_sparse",
+      "model": "ppml"
+    },
+    {
+      "count": 1,
+      "design": "two_fe_sparse",
+      "model": "ppml"
+    }
+  ],
+  "six_valid_ols_candidate_cells": 100,
+  "six_valid_ppml_candidate_cells": 0,
+  "status": "stopped by user; partial evidence"
+}

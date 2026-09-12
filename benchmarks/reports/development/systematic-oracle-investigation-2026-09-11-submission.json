@@ -1,0 +1,26 @@
+{
+  "authorization": "User authorized further investigation on 2026-09-11",
+  "cases": [
+    "one_fe seed 8675309",
+    "two_fe_sparse seed 104729",
+    "strong_d2 seed 104729"
+  ],
+  "cpu_type": "E5-2680v4",
+  "estimators_benchmarked": false,
+  "job_id": "7521509",
+  "mem_per_core_gib": 3,
+  "n": 7680,
+  "run_id": "20260910-systematic-d44e36b",
+  "schema": "systematic-diagnostic-submission-v1",
+  "slots": 28,
+  "source_files_sha256": {
+    "common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+    "diagnose_oracle.py": "c200152fca576a57aa4f06cdb43c7d37e86e03f9be9191927620d9c47184601e",
+    "diagnose_oracle_job.sh": "0403d5a122e8458c4ab801f50d87c4ec80ea599fdedf0afa60f2e7c54b2c20ad",
+    "generate.py": "2c4459582f46a183202ccf4a92a248ce27319c07309d80bab31308d1b42530ab",
+    "manifest.json": "274be96e0a7ed6e800d923d0285b827108695fbff782fe1b0edd770dc9c386ac",
+    "oracle.py": "60ae1ab78d07fdd019677b0c46101ece2ad3016622aa11fa444910a7bc6bc614"
+  },
+  "stage": "independent PPML oracle investigation",
+  "wall_seconds": 1800
+}

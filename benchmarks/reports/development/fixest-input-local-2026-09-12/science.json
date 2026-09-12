@@ -1,0 +1,1502 @@
+{
+  "completed_invocations": 134,
+  "final_invocations": 103,
+  "native_certificates": {
+    "ado-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "ado-baseline-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "ado-baseline-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "ado-no-sort-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "ado-no-sort-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "ado-no-sort-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-native-no-sort-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-native-no-sort-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "chunk-native-no-sort-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.208300934532782e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.487131055861275e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.694233478007417e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.40427800593669e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-baseline-one_fe-n7680-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.2580026560996875e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-baseline-one_fe-n983040-k1-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.151513291816038e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-baseline-one_fe-n983040-k10-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.3831941000691036e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-candidate-one_fe-n7680-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.2580026560996875e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-candidate-one_fe-n983040-k1-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.151513291816038e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-extra-candidate-one_fe-n983040-k10-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.3831941000691036e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652382e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111608e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652382e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111608e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1271915816891078e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2902598304056332e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.254077364919907e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-baseline-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.34050994341291e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.1271915816891078e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.2902598304056332e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.254077364919907e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-narrow-candidate-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.34050994341291e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-baseline-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-baseline-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-profile-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 6.406925151034863e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-baseline-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-baseline-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-input-clean-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-input-clean-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-input-clean-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-input-clean-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-input-clean-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "prep-prep-parallel-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.219552526852764e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    }
+  },
+  "note": "Reference disagreements remain failures of native parity; see independent adjudications.",
+  "primary_groups": 18,
+  "primary_invocations": 54,
+  "recorded_comparisons": {
+    "ado-no-sort-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "ado-no-sort-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "ado-no-sort-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "chunk-input-8k-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.6209256159527285e-14,
+        "covariance.csv:value": 2.2711070898255928e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.609823385706477e-14,
+        "covariance.csv:value": 2.4246318115154347e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 7.202571872255703e-15,
+        "covariance.csv:value": 3.070494433796839e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.6209256159527285e-14,
+        "covariance.csv:value": 2.2711070898255928e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.609823385706477e-14,
+        "covariance.csv:value": 2.4246318115154347e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 7.202571872255703e-15,
+        "covariance.csv:value": 3.070494433796839e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.447070324151923e-13,
+        "covariance.csv:value": 3.8635290306636774e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.8839951260462016e-13,
+        "covariance.csv:value": 3.338897998958045e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 4.100452616340178e-16,
+        "coefficients.csv:value": 3.238798118587738e-13,
+        "covariance.csv:value": 4.904850160194433e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.447070324151923e-13,
+        "covariance.csv:value": 3.8635290306636774e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 3.099734011136057e-16,
+        "coefficients.csv:value": 2.8839951260462016e-13,
+        "covariance.csv:value": 3.338897998958045e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d3-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 4.100452616340178e-16,
+        "coefficients.csv:value": 3.238798118587738e-13,
+        "covariance.csv:value": 4.904850160194433e-19,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 5.009881398621019e-15,
+        "covariance.csv:value": 2.752857078576476e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 4.9404924595819466e-15,
+        "covariance.csv:value": 3.329898273893468e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 8.298917109073045e-15,
+        "covariance.csv:value": 3.2504889350883776e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 5.009881398621019e-15,
+        "covariance.csv:value": 2.752857078576476e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 4.9404924595819466e-15,
+        "covariance.csv:value": 3.329898273893468e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-strong_d6-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 8.298917109073045e-15,
+        "covariance.csv:value": 3.2504889350883776e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-extra-candidate-one_fe-n7680-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0061396160665481e-16,
+        "coefficients.csv:value": 6.661338147750939e-16,
+        "covariance.csv:value": 9.900121087508262e-18,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-extra-candidate-one_fe-n983040-k1-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 9.974659986866641e-18,
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "covariance.csv:value": 1.3181950241645049e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-extra-candidate-one_fe-n983040-k10-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.354472090042691e-14,
+        "covariance.csv:value": 1.7893571010747095e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-strong_d3-n61440-k1-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-strong_d3-n61440-k10-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-weak_d3-n61440-k1-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-narrow-candidate-weak_d3-n61440-k10-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-baseline-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-baseline-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-profile-candidate-strong_d6-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-input-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "input-native-no-sort-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "prep-prep-parallel-one_fe-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "prep-prep-parallel-strong_d3-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    }
+  },
+  "schema": "ols-schur-local-science-v1",
+  "worker_statuses": {
+    "pass": 134
+  }
+}

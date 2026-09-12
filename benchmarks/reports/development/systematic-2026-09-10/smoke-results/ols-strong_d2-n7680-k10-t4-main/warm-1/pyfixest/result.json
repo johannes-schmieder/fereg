@@ -1,0 +1,56 @@
+{
+  "arm": "pyfixest",
+  "cell": {
+    "design": "strong_d2",
+    "effects": [
+      "g1",
+      "g2"
+    ],
+    "k": 10,
+    "model": "ols",
+    "n": 7680,
+    "section": "main",
+    "suite": "paper",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-wc4",
+  "input_sha256": "4ad3e71bb70c8fb7e9dca00d633d7d529f1bc823f20459ff4eb77636f307dd4e",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7520690",
+  "metadata": {
+    "N": 7680,
+    "covariance_multiplier": 1.0,
+    "covariance_normalization": "native IID",
+    "df_k": 3945.0,
+    "df_t": 3735.0,
+    "error": null,
+    "formula": "y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 | g1 + g2",
+    "pyfixest_version": "0.60.0",
+    "python_version": "3.12.4",
+    "rc": 0,
+    "rss": 928.3893620548781,
+    "sample_kind": "all_input_rows",
+    "seconds": 0.03357438999955775,
+    "vcov": "iid"
+  },
+  "peak_process_tree_threads": 5,
+  "peak_rss_gib": 0.19815444946289062,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 3,
+  "sample_rows": 7680,
+  "sample_sha256": "bf9648d21f2e0c2e9967f9d0ab0e95bd07f27157133991b4317232cb2d6e5c97",
+  "schema": "systematic-arm-v1",
+  "seconds": 0.03357438999955775,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "2"
+}

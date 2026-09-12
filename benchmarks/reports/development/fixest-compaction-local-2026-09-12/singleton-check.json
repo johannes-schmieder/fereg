@@ -1,0 +1,18 @@
+{
+  "all_available_rows_are_singletons": true,
+  "available_FE_groups": 12288,
+  "available_rows": 12288,
+  "checks": {
+    "final-filtered-baseline-n245760-k50-t4-s59047-fereg": {
+      "expected": "insufficient observations after singleton deletion",
+      "stata_rc": 2001
+    },
+    "negative-singleton-candidate-n245760-k50-t4-s59047-fereg": {
+      "expected": "insufficient observations after singleton deletion",
+      "stata_rc": 2001
+    }
+  },
+  "input_sha256": "c03bd30c85271b70ce9b4a5286f1cd2bf85490abf341a72041639bd30aa0f7fb",
+  "note": "Original worker_failure receipts remain unchanged; these are negative controls, not runtime successes.",
+  "original_rows": 245760
+}

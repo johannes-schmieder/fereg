@@ -1,0 +1,571 @@
+{
+  "completed_invocations": 53,
+  "final_invocations": 48,
+  "native_certificates": {
+    "final-baseline-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-baseline-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.0682360154048832e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.37019605061735e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 2.957048752094578e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-filtered-paired-baseline-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.0311794109871466e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-filtered-paired-baseline-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.0311794109871466e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-filtered-paired-candidate-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.0311794109871466e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-filtered-paired-candidate-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.0311794109871466e-17,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652382e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111608e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-baseline-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 4.218595672652382e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1880669622184484e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 5.962225946111608e-13,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 8.92219784120672e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 1.4876640411358504e-10,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.2860240692923014e-11,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-baseline-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t16-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t4-s20260819-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1945349775735705e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-missing-candidate-n983040-k50-t4-s8675309-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.262573077590491e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-recheck-missing-baseline-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "final-recheck-missing-candidate-n983040-k50-t4-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen1-baseline-missing-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen1-compact-columns-missing-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen2-baseline-missing-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    },
+    "screen2-compact-parallel-missing-n983040-k50-t16-s104729-fereg": {
+      "initial_and_final_FE": true,
+      "max_FE_relative_infinity": 3.1040008901131597e-18,
+      "native_rank_score_bread_covariance_determinant": true
+    }
+  },
+  "note": "Reference disagreements remain failures of native parity; see independent adjudications.",
+  "primary_groups": 3,
+  "primary_invocations": 9,
+  "recorded_comparisons": {
+    "final-candidate-one_fe-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.6209256159527285e-14,
+        "covariance.csv:value": 2.2711070898255928e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 1.609823385706477e-14,
+        "covariance.csv:value": 2.4246318115154347e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-candidate-one_fe-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.0007186052041206e-16,
+        "coefficients.csv:value": 7.202571872255703e-15,
+        "covariance.csv:value": 3.070494433796839e-20,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-filtered-paired-candidate-n245760-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-filtered-paired-candidate-n245760-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-bottleneck_ring-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-cycle-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-disconnected_blocks-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-two_fe_dense-n245760-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 5.210025119661843e-15,
+        "coefficients.csv:value": 1.958890515074696e-12,
+        "covariance.csv:value": 1.1867143349269561e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-unbalanced-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t16-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-holdout-candidate-weak_d3-n61440-k50-t4-s59047-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      },
+      "fixest-comparison.json": {
+        "coefficients.csv:se": 1.170027616459457e-14,
+        "coefficients.csv:value": 9.198995731818371e-13,
+        "covariance.csv:value": 6.161487064917232e-17,
+        "reference_arm": "fixest",
+        "sample_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t16-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t4-s20260819-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-missing-candidate-n983040-k50-t4-s8675309-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "final-recheck-missing-candidate-n983040-k50-t4-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen1-compact-columns-missing-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    },
+    "screen2-compact-parallel-missing-n983040-k50-t16-s104729-fereg": {
+      "baseline-comparison.json": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0,
+        "full_V_maxabs": 0.0,
+        "full_b_V_including_constant": true,
+        "full_b_maxabs": 0.0,
+        "reference_arm": "fereg",
+        "sample_exact": true,
+        "sample_status_rank_DoF_exact": true
+      }
+    }
+  },
+  "schema": "ols-schur-local-science-v1",
+  "worker_statuses": {
+    "pass": 51,
+    "worker_failure": 2
+  }
+}

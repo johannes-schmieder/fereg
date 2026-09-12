@@ -1,0 +1,109 @@
+{
+  "arm_status": {
+    "areg": "pass",
+    "fereg": "pass",
+    "fixest": "pass",
+    "greg": "measurement_failure",
+    "pyfixest": "pass",
+    "reghdfe": "pass"
+  },
+  "cell": {
+    "design": "one_fe",
+    "effects": [
+      "g1"
+    ],
+    "k": 10,
+    "model": "ols",
+    "n": 1920,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "comparisons": [
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "df_a": true,
+        "df_r": true,
+        "rss": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "fereg",
+      "max_coefficient_error": 6.106226635438361e-16,
+      "max_se_error": 0.0,
+      "right": "reghdfe",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "rss": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "fereg",
+      "max_coefficient_error": 4.996003610813204e-16,
+      "max_se_error": 0.0,
+      "right": "areg",
+      "status": "pass"
+    },
+    {
+      "checks": {},
+      "left": "fereg",
+      "right": "greg",
+      "status": "unavailable"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "rss": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "fereg",
+      "max_coefficient_error": 4.996003610813204e-16,
+      "max_se_error": 0.0,
+      "right": "fixest",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "rss": true,
+        "same_input": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "fereg",
+      "max_coefficient_error": 4.996003610813204e-16,
+      "max_se_error": 3.9898639947466563e-17,
+      "right": "pyfixest",
+      "status": "pass"
+    }
+  ],
+  "host": "scc-wc4",
+  "job_id": "7520678",
+  "oracle_checks": {
+    "coefficients": true,
+    "standard_errors": true
+  },
+  "phase": "warm",
+  "repetition": 1,
+  "seed": 104729
+}

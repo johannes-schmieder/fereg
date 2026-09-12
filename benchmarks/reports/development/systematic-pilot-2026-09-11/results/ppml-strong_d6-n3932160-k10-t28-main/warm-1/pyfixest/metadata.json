@@ -1,0 +1,18 @@
+{
+  "N": 3932160,
+  "converged": true,
+  "covariance_multiplier": 1.0000002543132158,
+  "covariance_normalization": "HC0 multiplied by N/(N-1)",
+  "deviance": 11241471.433524342,
+  "df_k": 671753.0,
+  "df_t": 3260407.0,
+  "error": null,
+  "formula": "y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 | g1 + g2",
+  "loglik": -13366866.058211457,
+  "pyfixest_version": "0.60.0",
+  "python_version": "3.12.4",
+  "rc": 0,
+  "sample_kind": "stored_observation_ids",
+  "seconds": 23.513233035999292,
+  "vcov": "hetero"
+}

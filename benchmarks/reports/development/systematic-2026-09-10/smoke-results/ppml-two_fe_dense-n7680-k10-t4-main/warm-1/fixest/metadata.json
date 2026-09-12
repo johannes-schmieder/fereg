@@ -1,0 +1,17 @@
+{
+  "rc": 0,
+  "seconds": 0.056,
+  "R_version": "4.5.2",
+  "fixest_version": "0.14.2",
+  "requested_threads": 4,
+  "effective_threads": 4,
+  "error": {},
+  "covariance_normalization": "HC0 multiplied by N/(N-1)",
+  "covariance_multiplier": 1.0001,
+  "N": 7680,
+  "loglik": -25446.4967,
+  "deviance": 20597.4261,
+  "converged": true,
+  "df_k": 1622,
+  "sample_kind": "observation_ids"
+}

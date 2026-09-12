@@ -1,0 +1,16 @@
+{
+  "N": 61440,
+  "covariance_multiplier": 1.0,
+  "covariance_normalization": "native IID",
+  "df_k": 12298.0,
+  "df_t": 49142.0,
+  "error": null,
+  "formula": "y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 | g1",
+  "pyfixest_version": "0.60.0",
+  "python_version": "3.12.4",
+  "rc": 0,
+  "rss": 12384.373725315612,
+  "sample_kind": "stored_observation_ids",
+  "seconds": 0.046670261999679497,
+  "vcov": "iid"
+}

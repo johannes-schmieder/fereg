@@ -1,0 +1,114 @@
+{
+  "expected_tasks": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "job_id": "7522234",
+  "missing_tasks": [],
+  "records": [
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wg4.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.731G",
+      "ru_wallclock": "52",
+      "slots": 28,
+      "task_id": 1,
+      "taskid": "1",
+      "wall_seconds": 52.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wf2.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.730G",
+      "ru_wallclock": "55",
+      "slots": 28,
+      "task_id": 2,
+      "taskid": "2",
+      "wall_seconds": 55.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wd2.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "4.438G",
+      "ru_wallclock": "73",
+      "slots": 28,
+      "task_id": 3,
+      "taskid": "3",
+      "wall_seconds": 73.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wn3.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.732G",
+      "ru_wallclock": "37",
+      "slots": 28,
+      "task_id": 4,
+      "taskid": "4",
+      "wall_seconds": 37.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wg4.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.735G",
+      "ru_wallclock": "35",
+      "slots": 28,
+      "task_id": 5,
+      "taskid": "5",
+      "wall_seconds": 35.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wf2.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.734G",
+      "ru_wallclock": "36",
+      "slots": 28,
+      "task_id": 7,
+      "taskid": "7",
+      "wall_seconds": 36.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wn3.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.734G",
+      "ru_wallclock": "41",
+      "slots": 28,
+      "task_id": 8,
+      "taskid": "8",
+      "wall_seconds": 41.0
+    },
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wd2.scc.bu.edu",
+      "jobnumber": "7522234",
+      "maxvmem": "2.734G",
+      "ru_wallclock": "934",
+      "slots": 28,
+      "task_id": 6,
+      "taskid": "6",
+      "wall_seconds": 934.0
+    }
+  ],
+  "schema": "systematic-accounting-v1",
+  "status": "pass"
+}

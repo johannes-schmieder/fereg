@@ -1,0 +1,50 @@
+{
+  "arm": "greg",
+  "cell": {
+    "design": "three_fe_sparse",
+    "effects": [
+      "g1",
+      "g2",
+      "g3"
+    ],
+    "k": 10,
+    "model": "ols",
+    "n": 1920,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-wd2",
+  "input_sha256": "78883e46b43c1e542d63689897dc9fafc9174159d69c320483d6f265c2026129",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7520690",
+  "metadata": {
+    "N": 1920.0,
+    "command": "greg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10, absorb(g1 g2 g3) mata(BenchG)",
+    "processors_lic": 4.0,
+    "processors_mach": 4.0,
+    "rc": 0.0,
+    "sample_kind": "count_only",
+    "seconds": 0.049,
+    "stata_processors": 4.0,
+    "stata_version": 19.0
+  },
+  "peak_process_tree_threads": 4,
+  "peak_rss_gib": 0.06676483154296875,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 3,
+  "schema": "systematic-arm-v1",
+  "seconds": 0.049,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "1"
+}

@@ -1,0 +1,18 @@
+{
+  "build_cache_correction": "A first coefficient-IT build reused the shared target artifact. Source timestamps were invalidated, the variant was fully rebuilt, and only the corrected artifact was measured.",
+  "failed_measurement_attempts": [
+    {
+      "reason": "macOS sandbox denied process inventory; worker terminated; no completed result or timing",
+      "retained_locally": true,
+      "stage": "first profile RSS sampler"
+    }
+  ],
+  "reference_disagreements": [
+    "explicit-final-bottleneck_ring.json",
+    "explicit-final-disconnected_blocks.json"
+  ],
+  "rejected_experiments": [
+    "coefficient-space Irons\u2013Tuck: more operator applications than Schur PCG",
+    "SPI batch missing detection: slower in the local screens"
+  ]
+}

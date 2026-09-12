@@ -1,0 +1,44 @@
+{
+  "fixest": {
+    "bytes": 5039447,
+    "sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+    "url": "https://cran.r-project.org/src/contrib/fixest_0.14.2.tar.gz",
+    "version_or_commit": "0.14.2"
+  },
+  "ftools": {
+    "bytes": 311608,
+    "sha256": "f1f3a41d6e92fa4acab6639ae78cbfdd81aeff368c36657fcec725a42148222d",
+    "url": "https://codeload.github.com/sergiocorreia/ftools/tar.gz/d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+    "version_or_commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636"
+  },
+  "gtools": {
+    "bytes": 8069076,
+    "sha256": "6b534dc86cb5e55024b6a71274e5162c6b136ea25c667ec032f1f708027b7389",
+    "url": "https://codeload.github.com/mcaceresb/stata-gtools/tar.gz/9dcbb835e9c8a7b30f037cdf1ec7de7f8c6ad30f",
+    "version_or_commit": "9dcbb835e9c8a7b30f037cdf1ec7de7f8c6ad30f"
+  },
+  "ppmlhdfe": {
+    "bytes": 5079754,
+    "sha256": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+    "url": "https://codeload.github.com/sergiocorreia/ppmlhdfe/tar.gz/b85665d8f674e93c1e07446a9a2b29be7f797910",
+    "version_or_commit": "b85665d8f674e93c1e07446a9a2b29be7f797910"
+  },
+  "pyfixest": {
+    "bytes": 9769167,
+    "sha256": "2b5493d18eb92e56a39d74160fe1eb5399ff321dd9371b661f17a77b1deae724",
+    "url": "https://codeload.github.com/py-econometrics/pyfixest/tar.gz/b6f2d284adf033f4b05a40db45a383784f73afd2",
+    "version_or_commit": "b6f2d284adf033f4b05a40db45a383784f73afd2"
+  },
+  "reghdfe": {
+    "bytes": 1654824,
+    "sha256": "c86cf1cffce8c5cfe069ad324c3258300017ce7fb9a844dada1ba0278d087fac",
+    "url": "https://codeload.github.com/sergiocorreia/reghdfe/tar.gz/29b2b203f534413369d675d0c0f674d61291f536",
+    "version_or_commit": "29b2b203f534413369d675d0c0f674d61291f536"
+  },
+  "require": {
+    "bytes": 1034052,
+    "sha256": "4f804a832989b975a63f3a3bf2e083a00f88e7152e845f6b22251f2159c86bed",
+    "url": "https://codeload.github.com/sergiocorreia/stata-require/tar.gz/f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+    "version_or_commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0"
+  }
+}

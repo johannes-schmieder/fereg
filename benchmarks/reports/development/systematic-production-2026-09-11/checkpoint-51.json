@@ -1,0 +1,285 @@
+{
+  "completed": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 1
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 2
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 8
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 14
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 4,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 4,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    }
+  ],
+  "host": "scc-wd2",
+  "job_id": "7522398",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "pending": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 245760,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 245760,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 1966080,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 4
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 1966080,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "repetition": 4
+    }
+  ],
+  "plan_sha256": "6b7a8a0cd42fe4a986f093db4d7ca26fdf9f47d4c91aa851c074d112fe9b1a84",
+  "status": "checkpointed",
+  "task_id": 51,
+  "wall_seconds": 20625.95455000599
+}

@@ -1,0 +1,9 @@
+{
+  "error": "ValueError: Demeaning failed after 10000 iterations.",
+  "formula": "y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 | g1 + g2 + g3",
+  "pyfixest_version": "0.60.0",
+  "python_version": "3.12.4",
+  "rc": 1,
+  "seconds": 392.5961555440008,
+  "vcov": "iid"
+}

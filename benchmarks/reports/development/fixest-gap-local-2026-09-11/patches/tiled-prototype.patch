@@ -1,0 +1,147 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -24,7 +24,7 @@
+ pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 512;
+ const PARALLEL_GROUP_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+ const PARALLEL_LEVEL_CHUNKS_PER_THREAD: usize = 4;
+-const TWO_FE_PCG_PARALLEL_MIN_ROWS: usize = 16_384;
++const TWO_FE_PCG_PARALLEL_MIN_ROWS: usize = usize::MAX;
+ // The level-disjoint recurrence wins through seven workers on the difficult
+ // chain, then loses to scheduling and memory traffic. Above the measured
+ // crossover retain the canonical serial recurrence inside the threaded solve.
+@@ -1529,6 +1529,10 @@
+             };
+         }
+ 
++        if self.two_fe_pcg.is_some() {
++            return self.absorb_two_fe_pcg_after_pilot(weights, values, config, 0, 0.0,
++                setup_seconds, solve_started);
++        }
+         let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
+         for iteration in 1..=pilot_limit {
+             borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1191,6 +1191,7 @@
+     /// matrix to the caller; a valid partial CMG projection can still seed the
+     /// existing certified CG fallback.
+     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG design and matrix dimensions are inconsistent",
+@@ -1200,6 +1201,7 @@
+             return Err(invalid_data("CMG input values must be finite"));
+         }
+         let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
++        let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
+         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
+ 
+@@ -1280,6 +1282,9 @@
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = polished.into_parts();
++                if phase_started.is_some() {
++                    eprintln!("FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}", solve_started.elapsed().as_secs_f64() - bulk_seconds);
++                }
+                 let polish_iterations = report.iterations;
+                 report.requested_solver = self.config.requested_solver;
+                 report.used_solver = FeSolverKind::Cmg;
+@@ -1622,6 +1627,7 @@
+             let end = start.saturating_add(batch_width).min(seed_end);
+             match &mut self.workspace {
+                 GraphCmgWorkspace::OwnedResults(workspace) => {
++                    let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+                     let right_hand_sides = build_value_rhs_batch(
+                         design,
+                         self.core_effects,
+@@ -1631,10 +1637,12 @@
+                         start,
+                         end,
+                     )?;
++                    let rhs_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     let solved = self
+                         .solver
+                         .solve_batch_with_workspace(&right_hand_sides, pcg_options, workspace)
+                         .map_err(cmg_solve_error)?;
++                    let solved_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
+                     metrics.include_batch(solved.results().len());
+                     for (local, solution) in solved.results().iter().enumerate() {
+                         metrics.include(solution.iterations(), solution.backward_error());
+@@ -1655,6 +1663,9 @@
+                             start + local,
+                             solution.solution(),
+                         )?;
++                    }
++                    if let Some(started) = phase_started {
++                        eprintln!("FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={:.9}|subtract={:.9}|width={}|route={:?}", solved_seconds-rhs_seconds, started.elapsed().as_secs_f64()-solved_seconds, end-start, self.solver.select_batch_execution(end-start).map_err(cmg_error)?.execution());
+                     }
+                 }
+                 GraphCmgWorkspace::CallerBuffers(caller) => {
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1349,6 +1349,13 @@
+     weights: BorrowedMapWeights<'a>,
+     config: PreparedOlsFitConfig,
+ ) -> Result<FitFeAbsorber<'a>> {
++    if config.absorb.solver == FeSolverKind::Auto && !config.absorb.retain_coefficients {
++        let design = prepared.fit_borrowed_cmg_design()?;
++        if design.effects().len() == 2 && prepared.fit_model().columns.len() < 64 {
++            return Ok(FitFeAbsorber { session: None, lsmr: None, auto_direct_solver: None,
++                auto_discarded_setup_seconds: 0.0, auto_setup_warning: None });
++        }
++    }
+     if config.absorb.solver != FeSolverKind::Cmg
+         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
+     {
+@@ -1450,6 +1457,49 @@
+     initial: bool,
+     final_residual: bool,
+ ) -> Result<CertifiedBorrowedMap> {
++    if initial && config.solver == FeSolverKind::Auto && !config.retain_coefficients {
++        let design = prepared.fit_borrowed_cmg_design()?;
++        if design.effects().len() == 2 && values.ncols() <= 64 {
++            let width = std::env::var("FEREG_LOCAL_BLOCK_WIDTH").ok().and_then(|v| v.parse::<usize>().ok()).unwrap_or(1).clamp(1,64);
++            let mut inputs = Vec::new();
++            for start in (0..values.ncols()).step_by(width) {
++                let end = (start+width).min(values.ncols());
++                let mut block = DenseMatrix::zeros(values.nrows(),end-start)?;
++                inputs.push((start, prepared.fit_borrowed_cmg_design()?, block));
++            }
++            for first_row in (0..values.nrows()).step_by(256) {
++                for (start, _, block) in &mut inputs {
++                    for row in first_row..(first_row+256).min(values.nrows()) {
++                        for local in 0..block.ncols() { block[(row,local)] = values[(row,*start+local)]; }
++                    }
++                }
++            }
++            let outputs = inputs.into_par_iter().map(|(start, design, block)| -> Result<_> {
++                let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design, block.ncols(),1)?;
++                let mut map = config.map;
++                map.tolerance = (map.tolerance*0.01).max(1e-14);
++                Ok((start, absorber.absorb(weights,block,map)?))
++            }).collect::<Result<Vec<_>>>()?;
++            let mut values = values;
++            let mut report = None;
++            let mut blocks = Vec::new();
++            for (start, block) in outputs {
++                let (block, mut next) = block.into_parts();
++                next.requested_solver = FeSolverKind::Auto;
++                blocks.push((start,block));
++                if let Some(report) = &mut report { merge_solve_report(report,next)?; } else { report = Some(next); }
++            }
++            for first_row in (0..values.nrows()).step_by(256) {
++                for (start, block) in &blocks {
++                    for row in first_row..(first_row+256).min(values.nrows()) {
++                        for local in 0..block.ncols() { values[(row,*start+local)] = block[(row,local)]; }
++                    }
++                }
++            }
++            return CertifiedBorrowedMap::from_certified_parts(values, report.unwrap());
++
++        }
++    }
+     if let Some(session) = cmg.session.as_mut() {
+         return if final_residual {
+             session.absorb_final_residual(values)

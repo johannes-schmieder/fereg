@@ -1,0 +1,138 @@
+{
+  "candidate_successes": 10,
+  "comparison_status": [
+    {
+      "arm": "areg",
+      "count": 2,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "areg",
+      "count": 3,
+      "status": "pass"
+    },
+    {
+      "arm": "fixest",
+      "count": 4,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "fixest",
+      "count": 6,
+      "status": "pass"
+    },
+    {
+      "arm": "gglm",
+      "count": 3,
+      "status": "pass"
+    },
+    {
+      "arm": "gglm",
+      "count": 2,
+      "status": "unavailable"
+    },
+    {
+      "arm": "greg",
+      "count": 2,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "greg",
+      "count": 3,
+      "status": "pass"
+    },
+    {
+      "arm": "ppmlhdfe",
+      "count": 4,
+      "status": "pass"
+    },
+    {
+      "arm": "ppmlhdfe",
+      "count": 1,
+      "status": "unavailable"
+    },
+    {
+      "arm": "pyfixest",
+      "count": 1,
+      "status": "accuracy_failure"
+    },
+    {
+      "arm": "pyfixest",
+      "count": 5,
+      "status": "pass"
+    },
+    {
+      "arm": "pyfixest",
+      "count": 4,
+      "status": "unavailable"
+    },
+    {
+      "arm": "reghdfe",
+      "count": 5,
+      "status": "pass"
+    }
+  ],
+  "complete_arms": 55,
+  "complete_groups": 10,
+  "interpretation": "The pilot is operationally complete with accepted accounting. Native estimator failures and accuracy disagreements are terminal outcomes, excluded from finite paired benchmark summaries; no solver options or tolerances were changed.",
+  "job_id": "7522274",
+  "maximum_estimator_rss_gib": 6.871135711669922,
+  "maximum_scheduler_vmem_gib": 13.004,
+  "maximum_task_seconds": 5054.0,
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "native_failures": [
+    {
+      "arm": "pyfixest",
+      "cell": "ols-two_fe_sparse-n983040-k50-t28-width",
+      "error": "ValueError: Demeaning failed after 10000 iterations.",
+      "rss_samples": 19373,
+      "status": "worker_failure"
+    },
+    {
+      "arm": "pyfixest",
+      "cell": "ols-three_fe_sparse-n983040-k10-t4-main",
+      "error": "ValueError: Demeaning failed after 10000 iterations.",
+      "rss_samples": 21369,
+      "status": "worker_failure"
+    },
+    {
+      "arm": "gglm",
+      "cell": "ppml-two_fe_sparse-n983040-k50-t28-width",
+      "error": null,
+      "rss_samples": 0,
+      "status": "startup_timeout"
+    },
+    {
+      "arm": "ppmlhdfe",
+      "cell": "ppml-two_fe_sparse-n983040-k50-t28-width",
+      "error": null,
+      "rss_samples": 94629,
+      "status": "command_timeout"
+    },
+    {
+      "arm": "pyfixest",
+      "cell": "ppml-two_fe_sparse-n983040-k50-t28-width",
+      "error": "ValueError: Demeaning failed after 10000 iterations.",
+      "rss_samples": 17141,
+      "status": "worker_failure"
+    },
+    {
+      "arm": "gglm",
+      "cell": "ppml-three_fe_sparse-n983040-k10-t4-main",
+      "error": null,
+      "rss_samples": 0,
+      "status": "worker_failure"
+    },
+    {
+      "arm": "pyfixest",
+      "cell": "ppml-three_fe_sparse-n983040-k10-t4-main",
+      "error": "ValueError: Demeaning failed after 10000 iterations.",
+      "rss_samples": 21636,
+      "status": "worker_failure"
+    }
+  ],
+  "reference_passes": 9,
+  "reference_timeouts": 1,
+  "registered_groups": 8,
+  "schema": "systematic-pilot-acceptance-v1"
+}

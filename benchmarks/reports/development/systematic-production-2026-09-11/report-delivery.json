@@ -1,0 +1,28 @@
+{
+  "schema": "systematic-stopped-delivery-v1",
+  "created_utc": "2026-09-12T00:34:55.850806+00:00",
+  "campaign_stopped": true,
+  "monitor_deleted": true,
+  "no_resubmission": true,
+  "report_validation": "benchmarks/reports/systematic-stopped-2026-09-11/report-validation.json",
+  "report_validation_sha256": "0c113abdb614522bd623324d0475d0b1c33665c8248bcb1505c650a8080d95e7",
+  "pdfs": {
+    "discussion.pdf": {
+      "pages": 8,
+      "sha256": "d338e48552a2954955a831087f10fe78eec00dcb7dab62e6d9be0486926cd006",
+      "raster_images": 0,
+      "visual_review": "all pages passed"
+    },
+    "figure-atlas.pdf": {
+      "pages": 45,
+      "sha256": "6b8e20b76d7a9364d5d947a417f3a69c86adcc314ae3bc4dc59e3da607562926",
+      "raster_images": 0,
+      "visual_review": "all pages passed"
+    }
+  },
+  "evidence_zip_sha256": "377342b3a9d498859de9338433d81da8e88f7922e8aec3cec25b4ccbd8900425",
+  "evidence_zip_bytes": 47988396,
+  "evidence_zip_members": 45992,
+  "evidence_zip_integrity": "pass",
+  "raw_logs_archive_sha256": "669238af56f360c7cb3856b0a613c798c932437e3a8c806cd2d3828e2613a6eb"
+}

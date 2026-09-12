@@ -1,0 +1,56 @@
+model,design,n,k,threads,arm,status,comparison_status,seconds,peak_rss_gib,error
+ols,one_fe,61440,10,4,areg,pass,pass,0.081,0.06807327270507812,
+ols,one_fe,61440,10,4,fereg,pass,candidate,0.096,0.08572769165039062,
+ols,one_fe,61440,10,4,fixest,pass,pass,0.0369999999999999,0.26183319091796875,{}
+ols,one_fe,61440,10,4,greg,pass,pass,0.029,0.07268905639648438,
+ols,one_fe,61440,10,4,pyfixest,pass,pass,0.046670261999679497,0.24090576171875,
+ols,one_fe,61440,10,4,reghdfe,pass,pass,0.093,0.08967208862304688,
+ols,strong_d6,3932160,10,28,areg,pass,pass,34.022,2.165058135986328,
+ols,strong_d6,3932160,10,28,fereg,pass,candidate,15.985,2.119548797607422,
+ols,strong_d6,3932160,10,28,fixest,pass,pass,3.724,2.2512435913085938,{}
+ols,strong_d6,3932160,10,28,greg,pass,pass,23.752,1.896087646484375,
+ols,strong_d6,3932160,10,28,pyfixest,pass,pass,7.137370169999485,3.485321044921875,
+ols,strong_d6,3932160,10,28,reghdfe,pass,pass,105.043,1.9223785400390625,
+ols,three_fe_sparse,983040,10,4,areg,pass,accuracy_failure,8.563,0.6537246704101562,
+ols,three_fe_sparse,983040,10,4,fereg,pass,candidate,5.599,1.0453643798828125,
+ols,three_fe_sparse,983040,10,4,fixest,pass,accuracy_failure,19.102,0.6838531494140625,{}
+ols,three_fe_sparse,983040,10,4,greg,pass,accuracy_failure,49.962,0.5515174865722656,
+ols,three_fe_sparse,983040,10,4,pyfixest,worker_failure,unavailable,392.5961555440008,0.9512519836425781,ValueError: Demeaning failed after 10000 iterations.
+ols,three_fe_sparse,983040,10,4,reghdfe,pass,pass,155.786,0.6130027770996094,
+ols,two_fe_sparse,983040,50,28,areg,pass,accuracy_failure,30.085,2.0743331909179688,
+ols,two_fe_sparse,983040,50,28,fereg,pass,candidate,5.712,1.5579147338867188,
+ols,two_fe_sparse,983040,50,28,fixest,pass,accuracy_failure,8.303,1.9736518859863281,{}
+ols,two_fe_sparse,983040,50,28,greg,pass,accuracy_failure,92.177,2.0072975158691406,
+ols,two_fe_sparse,983040,50,28,pyfixest,worker_failure,unavailable,407.83224587899895,3.088134765625,ValueError: Demeaning failed after 10000 iterations.
+ols,two_fe_sparse,983040,50,28,reghdfe,pass,pass,216.614,2.010089874267578,
+ols,weak_d3,61440,10,1,areg,pass,pass,1.417,0.09553909301757812,
+ols,weak_d3,61440,10,1,fereg,pass,candidate,1.176,0.11803436279296875,
+ols,weak_d3,61440,10,1,fixest,pass,pass,0.849,0.2649116516113281,{}
+ols,weak_d3,61440,10,1,greg,pass,pass,0.576,0.0892791748046875,
+ols,weak_d3,61440,10,1,pyfixest,pass,pass,9.893742489999568,0.24155426025390625,
+ols,weak_d3,61440,10,1,reghdfe,pass,pass,4.752,0.0916900634765625,
+ppml,one_fe,61440,10,4,feppml,pass,candidate,0.793,0.10199356079101562,
+ppml,one_fe,61440,10,4,fixest,pass,pass,0.268,0.2879295349121094,{}
+ppml,one_fe,61440,10,4,gglm,pass,pass,0.08,0.08466339111328125,
+ppml,one_fe,61440,10,4,ppmlhdfe,pass,pass,1.036,0.10590362548828125,
+ppml,one_fe,61440,10,4,pyfixest,pass,accuracy_failure,0.13294525600213092,0.26331329345703125,
+ppml,strong_d6,3932160,10,28,feppml,pass,candidate,221.54,6.871135711669922,
+ppml,strong_d6,3932160,10,28,fixest,pass,pass,15.935,3.667888641357422,{}
+ppml,strong_d6,3932160,10,28,gglm,pass,pass,218.485,2.433300018310547,
+ppml,strong_d6,3932160,10,28,ppmlhdfe,pass,pass,377.984,3.0406112670898438,
+ppml,strong_d6,3932160,10,28,pyfixest,pass,pass,23.513233035999292,5.188541412353516,
+ppml,three_fe_sparse,983040,10,4,feppml,pass,candidate,40.711,1.749664306640625,
+ppml,three_fe_sparse,983040,10,4,fixest,pass,pass,81.555,1.1924629211425781,{}
+ppml,three_fe_sparse,983040,10,4,gglm,worker_failure,unavailable,,,
+ppml,three_fe_sparse,983040,10,4,ppmlhdfe,pass,pass,544.612,0.9185791015625,
+ppml,three_fe_sparse,983040,10,4,pyfixest,worker_failure,unavailable,389.36554000300384,1.1060256958007812,ValueError: Demeaning failed after 10000 iterations.
+ppml,two_fe_sparse,983040,50,28,feppml,pass,candidate,101.842,5.852283477783203,
+ppml,two_fe_sparse,983040,50,28,fixest,pass,accuracy_failure,77.656,4.027683258056641,{}
+ppml,two_fe_sparse,983040,50,28,gglm,startup_timeout,unavailable,,,
+ppml,two_fe_sparse,983040,50,28,ppmlhdfe,command_timeout,unavailable,,2.9626007080078125,
+ppml,two_fe_sparse,983040,50,28,pyfixest,worker_failure,unavailable,599.3625903040011,3.775615692138672,ValueError: Demeaning failed after 10000 iterations.
+ppml,weak_d3,61440,10,1,feppml,pass,candidate,1.876,0.15462112426757812,
+ppml,weak_d3,61440,10,1,fixest,pass,accuracy_failure,1.658,0.2951087951660156,{}
+ppml,weak_d3,61440,10,1,gglm,pass,pass,2.321,0.09749221801757812,
+ppml,weak_d3,61440,10,1,ppmlhdfe,pass,pass,7.292,0.11864089965820312,
+ppml,weak_d3,61440,10,1,pyfixest,pass,pass,11.979882209998323,0.26238250732421875,

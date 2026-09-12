@@ -1,0 +1,44 @@
+{
+  "completed": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 1
+    },
+    {
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "repetition": 1
+    }
+  ],
+  "host": "scc-wc1",
+  "job_id": "7522274",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "pending": [],
+  "plan_sha256": "3930e947a0a41ca23ea7cd19eb1cefd4f9f5d221a773dd09f63c44864696a54a",
+  "status": "complete",
+  "task_id": 3,
+  "wall_seconds": 678.9290149049993
+}

@@ -1,0 +1,124 @@
+{
+  "arm_status": {
+    "areg": "pass",
+    "fereg": "pass",
+    "fixest": "pass",
+    "greg": "pass",
+    "pyfixest": "worker_failure",
+    "reghdfe": "pass"
+  },
+  "cell": {
+    "design": "two_fe_sparse",
+    "effects": [
+      "g1",
+      "g2"
+    ],
+    "k": 50,
+    "model": "ols",
+    "n": 983040,
+    "section": "width",
+    "suite": "panels",
+    "threads": 28
+  },
+  "comparisons": [
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": true,
+        "covariance_available": true,
+        "df_a": true,
+        "df_r": true,
+        "rss": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": true
+      },
+      "left": "fereg",
+      "max_coefficient_error": 2.9319602301569603e-13,
+      "max_se_error": 7.999243628598052e-16,
+      "right": "reghdfe",
+      "status": "pass"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": false,
+        "covariance": false,
+        "covariance_available": true,
+        "rss": false,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": false
+      },
+      "left": "fereg",
+      "max_coefficient_error": 1.0747606304928325e-08,
+      "max_se_error": 1.580514961000215e-07,
+      "right": "areg",
+      "status": "accuracy_failure"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": true,
+        "covariance": false,
+        "covariance_available": true,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "standard_errors": false
+      },
+      "left": "fereg",
+      "max_coefficient_error": 4.773959005888173e-14,
+      "max_se_error": 1.5805560760000746e-07,
+      "right": "greg",
+      "sample_limitation": "Only retained row counts are exposed by this comparator",
+      "status": "accuracy_failure"
+    },
+    {
+      "checks": {
+        "candidate_converged": true,
+        "coefficient_names": true,
+        "coefficients": false,
+        "comparator_converged": true,
+        "covariance": false,
+        "covariance_available": true,
+        "rss": false,
+        "same_input": true,
+        "same_node_task": true,
+        "same_runtime": true,
+        "sample_count": true,
+        "sample_exact": true,
+        "standard_errors": false
+      },
+      "left": "fereg",
+      "max_coefficient_error": 6.926991436007057e-08,
+      "max_se_error": 1.5806227780606162e-07,
+      "right": "fixest",
+      "status": "accuracy_failure"
+    },
+    {
+      "checks": {},
+      "left": "fereg",
+      "right": "pyfixest",
+      "status": "unavailable"
+    }
+  ],
+  "host": "scc-wf2",
+  "job_id": "7522274",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "oracle_checks": null,
+  "phase": "warm",
+  "repetition": 1,
+  "seed": 104729
+}

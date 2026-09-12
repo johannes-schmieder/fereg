@@ -1,0 +1,34 @@
+{
+  "cause": "Normwise LSMR stopping on unequal column norms leaves individual FE scores above the unchanged outer score threshold. Column equilibration converges under the same inner and outer tolerances.",
+  "estimator_changes": false,
+  "final_acceptance_tolerance_changed": false,
+  "job_id": "7521509",
+  "results": [
+    {
+      "design": "strong_d2",
+      "scaled_final_score": 1.0907941216940974e-13,
+      "scaled_iterations": 7,
+      "seed": 104729,
+      "unscaled_final_score": 3.4582153795290685e-10,
+      "unscaled_iterations": 100
+    },
+    {
+      "design": "two_fe_sparse",
+      "scaled_final_score": 5.200477729612089e-13,
+      "scaled_iterations": 7,
+      "seed": 104729,
+      "unscaled_final_score": 2.9191509114191466e-11,
+      "unscaled_iterations": 100
+    },
+    {
+      "design": "one_fe",
+      "scaled_final_score": 2.3719588384932195e-14,
+      "scaled_iterations": 6,
+      "seed": 8675309,
+      "unscaled_final_score": 1.3617739414924238e-11,
+      "unscaled_iterations": 100
+    }
+  ],
+  "schema": "systematic-oracle-diagnosis-v1",
+  "status": "column-scaling-correction-supported"
+}

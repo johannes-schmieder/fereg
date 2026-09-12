@@ -1,0 +1,26 @@
+{
+  "final-baseline-strong_d3-n983040-k50-t16-s104729-fereg": {
+    "native_peak_missed": false,
+    "native_precommit_rss_gib": 1.732818603515625,
+    "rss_samples": 2,
+    "sampled_peak_rss_gib": 1.763031005859375
+  },
+  "final-candidate-one_fe-n983040-k50-t16-s20260819-fereg": {
+    "native_peak_missed": false,
+    "native_precommit_rss_gib": 1.3839569091796875,
+    "rss_samples": 2,
+    "sampled_peak_rss_gib": 1.8082733154296875
+  },
+  "final-candidate-strong_d3-n983040-k50-t16-s104729-fereg": {
+    "native_peak_missed": true,
+    "native_precommit_rss_gib": 1.7336578369140625,
+    "rss_samples": 2,
+    "sampled_peak_rss_gib": 0.476104736328125
+  },
+  "final-candidate-strong_d3-n983040-k50-t16-s8675309-fereg": {
+    "native_peak_missed": true,
+    "native_precommit_rss_gib": 1.73394775390625,
+    "rss_samples": 2,
+    "sampled_peak_rss_gib": 0.4769287109375
+  }
+}

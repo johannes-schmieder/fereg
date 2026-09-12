@@ -1,0 +1,35 @@
+{
+  "aligned.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "cached-fixed.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "candidate.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "coefficient-it.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "combined.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "guarded.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "input-batch.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "onefe-direct.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "parallel-norms.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "parallel.patch": {
+    "applies_to_base_snapshot": true
+  },
+  "profile.patch": {
+    "applies_to_base_snapshot": true
+  }
+}

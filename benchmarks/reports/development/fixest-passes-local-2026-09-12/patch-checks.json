@@ -1,0 +1,10 @@
+{
+  "baseline": "applied to archived base; every file hash verified",
+  "bridge-hoist": "applied to archived base; every file hash verified",
+  "bridge-tile": "applied to archived base; every file hash verified",
+  "candidate": "applied to archived base; every file hash verified",
+  "incremental": "applied to retained Schur source; every file hash verified",
+  "init-only": "applied to archived base; every file hash verified",
+  "tiles-only": "applied to archived base; every file hash verified",
+  "validation-screen": "applied to archived base; every file hash verified"
+}

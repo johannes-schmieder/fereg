@@ -1,0 +1,49 @@
+{
+  "arm": "gglm",
+  "cell": {
+    "design": "one_fe",
+    "effects": [
+      "g1"
+    ],
+    "k": 10,
+    "model": "ppml",
+    "n": 61440,
+    "section": "main",
+    "suite": "panels",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-wc1",
+  "input_sha256": "4e717ce7c144ae8333e747995c34e763b3449a5666901655568689ece1b26a50",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7522274",
+  "measurement_fingerprint": "04b5e8cf00ae69473fa12923b71842d21d5a05a3e71e28ae3f6a1d2ee4a269a0",
+  "metadata": {
+    "N": 61440.0,
+    "command": "gglm y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10, absorb(g1) mata(BenchG) family(poisson) robust",
+    "processors_lic": 4.0,
+    "processors_mach": 4.0,
+    "rc": 0.0,
+    "sample_kind": "count_only",
+    "seconds": 0.08,
+    "stata_processors": 4.0,
+    "stata_version": 19.0
+  },
+  "peak_process_tree_threads": 4,
+  "peak_rss_gib": 0.08466339111328125,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 6,
+  "schema": "systematic-arm-v1",
+  "seconds": 0.08,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "3"
+}

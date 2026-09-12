@@ -1,0 +1,186 @@
+{
+  "bundles": [
+    {
+      "groups": [
+        {
+          "cell": {
+            "design": "one_fe",
+            "effects": [
+              "g1"
+            ],
+            "k": 10,
+            "model": "ols",
+            "n": 61440,
+            "section": "main",
+            "suite": "panels",
+            "threads": 4
+          },
+          "repetition": 1
+        },
+        {
+          "cell": {
+            "design": "two_fe_sparse",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 50,
+            "model": "ols",
+            "n": 983040,
+            "section": "width",
+            "suite": "panels",
+            "threads": 28
+          },
+          "repetition": 1
+        }
+      ]
+    },
+    {
+      "groups": [
+        {
+          "cell": {
+            "design": "strong_d6",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 10,
+            "model": "ols",
+            "n": 3932160,
+            "section": "main",
+            "suite": "paper",
+            "threads": 28
+          },
+          "repetition": 1
+        },
+        {
+          "cell": {
+            "design": "weak_d3",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 10,
+            "model": "ols",
+            "n": 61440,
+            "section": "main",
+            "suite": "paper",
+            "threads": 1
+          },
+          "repetition": 1
+        }
+      ]
+    },
+    {
+      "groups": [
+        {
+          "cell": {
+            "design": "three_fe_sparse",
+            "effects": [
+              "g1",
+              "g2",
+              "g3"
+            ],
+            "k": 10,
+            "model": "ols",
+            "n": 983040,
+            "section": "main",
+            "suite": "panels",
+            "threads": 4
+          },
+          "repetition": 1
+        },
+        {
+          "cell": {
+            "design": "one_fe",
+            "effects": [
+              "g1"
+            ],
+            "k": 10,
+            "model": "ppml",
+            "n": 61440,
+            "section": "main",
+            "suite": "panels",
+            "threads": 4
+          },
+          "repetition": 1
+        }
+      ]
+    },
+    {
+      "groups": [
+        {
+          "cell": {
+            "design": "two_fe_sparse",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 50,
+            "model": "ppml",
+            "n": 983040,
+            "section": "width",
+            "suite": "panels",
+            "threads": 28
+          },
+          "repetition": 1
+        },
+        {
+          "cell": {
+            "design": "strong_d6",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 10,
+            "model": "ppml",
+            "n": 3932160,
+            "section": "main",
+            "suite": "paper",
+            "threads": 28
+          },
+          "repetition": 1
+        }
+      ]
+    },
+    {
+      "groups": [
+        {
+          "cell": {
+            "design": "weak_d3",
+            "effects": [
+              "g1",
+              "g2"
+            ],
+            "k": 10,
+            "model": "ppml",
+            "n": 61440,
+            "section": "main",
+            "suite": "paper",
+            "threads": 1
+          },
+          "repetition": 1
+        },
+        {
+          "cell": {
+            "design": "three_fe_sparse",
+            "effects": [
+              "g1",
+              "g2",
+              "g3"
+            ],
+            "k": 10,
+            "model": "ppml",
+            "n": 983040,
+            "section": "main",
+            "suite": "panels",
+            "threads": 4
+          },
+          "repetition": 1
+        }
+      ]
+    }
+  ],
+  "mode": "pilot",
+  "schema": "systematic-plan-v1"
+}

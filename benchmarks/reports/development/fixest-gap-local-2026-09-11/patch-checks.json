@@ -1,0 +1,11 @@
+{
+  "blocked-prototype.patch": "pass",
+  "coarse-prototype.patch": "pass",
+  "column-input.patch": "pass",
+  "onefe-ado.patch": "pass",
+  "rejected-parallel-norm.patch": "pass",
+  "retained-kernels.patch": "pass",
+  "schur-prototype.patch": "pass",
+  "tiled-prototype.patch": "pass",
+  "vector-prototype.patch": "pass"
+}

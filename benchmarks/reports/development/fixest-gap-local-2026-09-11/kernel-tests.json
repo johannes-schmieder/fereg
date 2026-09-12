@@ -1,0 +1,46 @@
+{
+  "schema": "fixest-gap-retained-kernel-tests-v1",
+  "base_commit": "d44e36bfa5ad7e41a06752d1008f0b9683f8c8dd",
+  "retained_patch_sha256": "0e9061295ebd3fbf9323be0b5e20b89ec0a3b21adad8a10a403a9e7c72a68d1e",
+  "command": "cargo test --locked --release -p fereg-core fe::borrowed_map::tests::large_two_fe -- --nocapture",
+  "status": "pass",
+  "tests": [
+    "large_two_fe_schur_operator_is_bit_stable_across_threads",
+    "large_two_fe_pcg_recurrence_is_bit_stable_across_threads"
+  ],
+  "passed": 2,
+  "failed": 0,
+  "operator_rhs_stride_pairs": [
+    [
+      1,
+      1
+    ],
+    [
+      11,
+      11
+    ],
+    [
+      52,
+      52
+    ],
+    [
+      51,
+      64
+    ]
+  ],
+  "operator_threads": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "recurrence_threads": [
+    1,
+    7,
+    14
+  ],
+  "weights": "nonconstant positive weights",
+  "log_sha256": "ba829cc9b98118f247781763b2dd4a5ecfaaeb6af21f1a303f108012a241884b",
+  "scope": "local development, not qualification"
+}
