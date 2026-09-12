@@ -66,6 +66,11 @@ categorical projector and fused changing-response/retained-design projection.
 It preserves current-weight reference scales and independent certificates,
 allocates no accelerator matrices, and leaves low-memory and slope routes
 unchanged; see [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md).
+Large, wide one-FE retained reference refreshes assign columns to the existing
+team while preserving each column's row order, stable norms and compensated
+means. Frozen finite solves share an existing identity scratch bank across
+disjoint QR/certificate lifetimes; see
+[ADR 0040](adr/0040-ppml-stable-reference-pass-scheduling.md).
 
 Numeric preparation first classifies borrowed sources without observation-sized
 allocation. After generation-zero admission, the same visitor constructs the

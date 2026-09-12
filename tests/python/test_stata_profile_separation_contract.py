@@ -22,6 +22,7 @@ PUBLIC_PPML_FIXTURES = [
     "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
     "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
     "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+    "tests/stata/parity_ppmlhdfe/feppml_one_fe_passes_oracle.do",
     "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
     "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
     "tests/stata/parity_ppmlhdfe/feppml_time_series.do",

@@ -10,6 +10,58 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 stable reference passes and scratch: adopted local checkpoint
+
+Against `d32f05e45519aaee5c5d44bc87caddb4f68482f3`, two isolated changes are
+adopted: reuse the retained identity bank for frozen-solve QR scratch, then
+schedule current-weight reference norms/means by column for fast PPML with one
+categorical FE at N≥65,536, eight stored columns and multiple installed workers.
+Each column preserves original row order, scaled norms and compensated means;
+there is no observation-sized cache, stale-weight reuse or solver/rank-policy
+change. See [ADR 0040](docs/adr/0040-ppml-stable-reference-pass-scheduling.md).
+
+The [report](benchmarks/reports/development/ppml-reference-passes-local-2026-09-12/README.md)
+and [identities](benchmarks/reports/development/ppml-reference-passes-local-2026-09-12/identities.json)
+bind three plugins and 36 paired comparisons / 72 measured calls. Scheduling
+versus the allocation-only baseline improves public primary command medians
+11.800→10.179 seconds (complete one-FE robust, N983040/K50/16 threads),
+3.741→3.342 (FW/exposure/missing, N245760/K50/four threads), and 3.546→3.075
+(PW/offset/two-way cluster, N245760/K50/16 threads). Median paired gains are
+13.7%, 10.7% and 14.8%. Existing projection and strict/final timers locate the
+savings. Preparation/inference remain near baseline; primary native peaks are
+identical across arms at about 2.523 GB, 633.5 MB and 645.3 MB. All
+observed native action/profile peaks remain within unchanged models. RSS is
+reported separately, including an FW median increase; no RSS gain is claimed.
+
+All scientific exports, sample/status/DoF, actual/reported solver iterations,
+strict retries, fallback decisions and saved outputs are exact. Weak/dense/
+bottleneck/cycle/disconnected/unbalanced, small/narrow, low-memory, restricted,
+saved/separated and row-threshold controls pass. Worst scheduling slowdown is
+55→62 ms on disconnected (+12.7%, +7 ms), below the declared review threshold.
+An allocation-only low-memory flag (878→963 ms) did not reproduce in two
+independent-seed repeats; the original remains archived.
+
+The scratch fix removes the observed one allocation per frozen solve. Real
+16-iteration audits change 16→0 events for fast PW and low-memory FW one-FE
+cases, with passing whole-iteration allocation certificates. Subsequent FW/PW
+scheduling profiles also record zero. The weak-graph audit changes 21→5 events
+and **still fails** that operational certificate, despite stable live/peak
+memory and exact science. The failed broad assertion and narrowed adoption
+claim are explicitly recorded; the five residual events remain open.
+
+[Validation](benchmarks/reports/development/ppml-reference-passes-local-2026-09-12/validation.json)
+records 148 distinct focused Rust tests, three licensed allocation-only fixtures,
+a new N65536/K8 full-dummy Poisson/Hessian/sandwich oracle against the final
+plugin, five registration checks and universal static/native arm64 ABI audits.
+No full scientific profile, SCC, Windows or qualification work ran. Installed
+dist and unrelated Veneto status/evidence remain preserved; nothing was pushed.
+
+Next: localize the five weak-route allocation events, then measure remaining
+raw RHS/stride and within-norm passes or P3 inference ownership. Current-frame
+norm reuse, skipping fresh-input checks, broader generated-column/low-memory
+coverage and P5 centered tiles remain hypotheses. Scheduling does not itself
+remove a mathematical reference-statistic pass.
+
 ## P4 PPML one-FE projection: adopted local development checkpoint
 
 Against `0889721a7c781618dd9f132642a85d065e34afad`, fast PPML with one categorical
@@ -60,12 +112,11 @@ inference. Universal static audits and native arm64 ABI tests pass; no complete
 scientific profile, SCC, Windows or qualification run occurred. The installed
 plugin and unrelated Veneto status/evidence remain preserved.
 
-Next: remaining P4 raw RHS, reference norm/mean and warm stride passes, plus the
-per-iteration allocator event; then P3 inference ownership where measured costs
-justify it. Current-frame norm reuse, skipping a known-fresh initial certificate,
-weighted PPML Schur and P5 centered tiles remain hypotheses. The
+The subsequent reference-pass/scratch checkpoint above supersedes this
+checkpoint's allocator and scheduling resume point. Its original
 [cost audit](benchmarks/reports/development/ppml-one-fe-local-2026-09-12/cost-audit.md)
-separates implemented coverage from these remaining experiments.
+remains source-bound evidence; current-frame norm reuse and the broader pass
+experiments remain open.
 
 ## P1 PPML numeric ownership: adopted local development checkpoint
 

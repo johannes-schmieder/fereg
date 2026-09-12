@@ -1,0 +1,7 @@
+{
+  "baseline": "d32f05e45519aaee5c5d44bc87caddb4f68482f3",
+  "scope": "Local P4 allocation repair and measured remaining-pass evaluation; no qualification",
+  "allocation_acceptance": "Identical scientific outputs/solver work; zero real allocator events in the 16-iteration window, stable capacities, unchanged admission. No command gain required for allocation contract repair; report paired times and memory.",
+  "norm_prototype": "Only adopt a separately isolated subsequent norm/mean scheduling change with exact values, no additional observation workspace and at least 3% primary command gain.",
+  "controls": "Review slowdowns exceeding max(10 ms, 5%); include QR fallback, low/small, weak graphs and relevant weight/covariance/output cases. Repeat flagged controls."
+}

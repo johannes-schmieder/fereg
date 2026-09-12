@@ -4030,6 +4030,15 @@ mod tests {
         assert_eq!(runtime[40][0], 1.0);
         assert!(runtime[41][0] >= 16.0);
         assert!(runtime[1][0] > normal_outer);
+        assert_eq!(
+            runtime[44][0], 0.0,
+            "warm iterations must not allocate identity scratch"
+        );
+        assert_eq!(
+            runtime[72][0], 1.0,
+            "linear session reuse must be certified"
+        );
+        assert_eq!(runtime[75][0], 1.0, "real allocator certificate must pass");
         assert!(runtime[41..76]
             .iter()
             .all(|row| crate::ppml_result::is_stata_publishable(row[0])));

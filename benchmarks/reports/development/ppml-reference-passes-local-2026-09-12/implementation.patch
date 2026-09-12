@@ -1,0 +1,156 @@
+diff --git a/crates/fereg-core/src/ols/linear_session.rs b/crates/fereg-core/src/ols/linear_session.rs
+index 17b9f0e..04c1ce3 100644
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -17,6 +17,7 @@ use crate::metadata::CoefficientSlot;
+ use crate::parallel::ThreadTeam;
+ use crate::prepared_fit_view::PreparedOlsFitView;
+ use crate::sandwich::SandwichDesign;
++use rayon::prelude::*;
+ #[cfg(test)]
+ use std::cell::Cell;
+ #[cfg(test)]
+@@ -4321,27 +4322,66 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+             let weight_scale = self.bread_weight_scale;
+             let mut weight_sum = 0.0_f64;
+             let mut weight_correction = 0.0_f64;
+-            for row in 0..self.response.len() {
+-                let weight = normalized_solver_weight(weights, weight_scale, row)?;
+-                compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
+-                let root = weight.sqrt();
+-                for (column, generated) in retained
+-                    .stored_generated_columns
+-                    .iter()
+-                    .copied()
++            let rows = self.response.len();
++            let parallel_columns = rows >= 65_536
++                && columns >= 8
++                && self.config.execution.mode == PreparedOlsExecutionMode::Fast
++                && matches!(
++                    self.fe_projector.as_ref(),
++                    Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
++                        if score_design.effects().len() == 1
++                )
++                && rayon::current_thread_index().is_some()
++                && rayon::current_num_threads() > 1;
++            if parallel_columns {
++                for row in 0..rows {
++                    let weight = normalized_solver_weight(weights, weight_scale, row)?;
++                    compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
++                }
++                let prepared = self.prepared;
++                let generated_columns = &retained.stored_generated_columns;
++                // Each worker retains the original row order and stable accumulators.
++                // Column ownership avoids a row-sized cache or a floating reduction.
++                self.frozen_workspace
++                    .scores
++                    .par_iter_mut()
++                    .zip(self.frozen_workspace.solve.par_iter_mut())
++                    .zip(retained.reference_means.par_iter_mut())
++                    .zip(self.frozen_workspace.reference_mean_corrections.par_iter_mut())
+                     .enumerate()
+-                {
+-                    let raw_value = self.prepared.fit_column_value(generated, row)?;
+-                    update_scaled_square(
+-                        root * raw_value,
+-                        &mut self.frozen_workspace.scores[column],
+-                        &mut self.frozen_workspace.solve[column],
+-                    )?;
+-                    compensated_add(
+-                        weight * raw_value,
+-                        &mut retained.reference_means[column],
+-                        &mut self.frozen_workspace.reference_mean_corrections[column],
+-                    )?;
++                    .try_for_each(|(column, (((scale, sum), mean), correction))| -> Result<()> {
++                        let generated = generated_columns[column];
++                        for row in 0..rows {
++                            let weight = normalized_solver_weight(weights, weight_scale, row)?;
++                            let raw_value = prepared.fit_column_value(generated, row)?;
++                            update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
++                            compensated_add(weight * raw_value, mean, correction)?;
++                        }
++                        Ok(())
++                    })?;
++            } else {
++                for row in 0..self.response.len() {
++                    let weight = normalized_solver_weight(weights, weight_scale, row)?;
++                    compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
++                    let root = weight.sqrt();
++                    for (column, generated) in retained
++                        .stored_generated_columns
++                        .iter()
++                        .copied()
++                        .enumerate()
++                    {
++                        let raw_value = self.prepared.fit_column_value(generated, row)?;
++                        update_scaled_square(
++                            root * raw_value,
++                            &mut self.frozen_workspace.scores[column],
++                            &mut self.frozen_workspace.solve[column],
++                        )?;
++                        compensated_add(
++                            weight * raw_value,
++                            &mut retained.reference_means[column],
++                            &mut self.frozen_workspace.reference_mean_corrections[column],
++                        )?;
++                    }
+                 }
+             }
+             let denominator = weight_sum + weight_correction;
+@@ -5103,12 +5143,15 @@ fn stream_frozen_solve(
+         rank,
+         "unable to reserve frozen weighted-linear coefficients",
+     )?;
+-    workspace.kept.clear();
++    // The caller holds workspace.kept as the authoritative active identities.
++    // QR identity scratch and the inverse-certificate positions have disjoint
++    // lifetimes, so reuse that bank instead of allocating into the moved slot.
++    workspace.candidate_positions.clear();
+     workspace
+-        .kept
++        .candidate_positions
+         .try_reserve(rank)
+         .map_err(|_| allocation("unable to reserve frozen weighted-linear identities"))?;
+-    workspace.kept.resize(rank, 0);
++    workspace.candidate_positions.resize(rank, 0);
+     let condition_proxy = if let Some(factor_report) = fast_factor {
+         if !solve_guarded_cholesky(
+             &workspace.factor,
+@@ -5163,7 +5206,7 @@ fn stream_frozen_solve(
+             active_positions,
+             rank,
+             &mut workspace.scores,
+-            &mut workspace.kept,
++            &mut workspace.candidate_positions,
+             &mut workspace.coefficients,
+         )? {
+             return Err(invalid_data(
+@@ -5176,7 +5219,7 @@ fn stream_frozen_solve(
+             active_positions,
+             rank,
+             &mut workspace.inverse_lower,
+-            &mut workspace.kept,
++            &mut workspace.candidate_positions,
+             &mut workspace.bread,
+         )? {
+             return Err(invalid_data(
+diff --git a/crates/fereg-plugin/src/ppml_estimate.rs b/crates/fereg-plugin/src/ppml_estimate.rs
+index ba70ab5..f70a082 100644
+--- a/crates/fereg-plugin/src/ppml_estimate.rs
++++ b/crates/fereg-plugin/src/ppml_estimate.rs
+@@ -4030,6 +4030,15 @@ mod tests {
+         assert_eq!(runtime[40][0], 1.0);
+         assert!(runtime[41][0] >= 16.0);
+         assert!(runtime[1][0] > normal_outer);
++        assert_eq!(
++            runtime[44][0], 0.0,
++            "warm iterations must not allocate identity scratch"
++        );
++        assert_eq!(
++            runtime[72][0], 1.0,
++            "linear session reuse must be certified"
++        );
++        assert_eq!(runtime[75][0], 1.0, "real allocator certificate must pass");
+         assert!(runtime[41..76]
+             .iter()
+             .all(|row| crate::ppml_result::is_stata_publishable(row[0])));

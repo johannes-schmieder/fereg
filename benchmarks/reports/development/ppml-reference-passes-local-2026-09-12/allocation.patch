@@ -1,0 +1,61 @@
+diff --git a/crates/fereg-core/src/ols/linear_session.rs b/crates/fereg-core/src/ols/linear_session.rs
+index 17b9f0e..1ec570e 100644
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -5103,12 +5103,15 @@ fn stream_frozen_solve(
+         rank,
+         "unable to reserve frozen weighted-linear coefficients",
+     )?;
+-    workspace.kept.clear();
++    // The caller holds workspace.kept as the authoritative active identities.
++    // QR identity scratch and the inverse-certificate positions have disjoint
++    // lifetimes, so reuse that bank instead of allocating into the moved slot.
++    workspace.candidate_positions.clear();
+     workspace
+-        .kept
++        .candidate_positions
+         .try_reserve(rank)
+         .map_err(|_| allocation("unable to reserve frozen weighted-linear identities"))?;
+-    workspace.kept.resize(rank, 0);
++    workspace.candidate_positions.resize(rank, 0);
+     let condition_proxy = if let Some(factor_report) = fast_factor {
+         if !solve_guarded_cholesky(
+             &workspace.factor,
+@@ -5163,7 +5166,7 @@ fn stream_frozen_solve(
+             active_positions,
+             rank,
+             &mut workspace.scores,
+-            &mut workspace.kept,
++            &mut workspace.candidate_positions,
+             &mut workspace.coefficients,
+         )? {
+             return Err(invalid_data(
+@@ -5176,7 +5179,7 @@ fn stream_frozen_solve(
+             active_positions,
+             rank,
+             &mut workspace.inverse_lower,
+-            &mut workspace.kept,
++            &mut workspace.candidate_positions,
+             &mut workspace.bread,
+         )? {
+             return Err(invalid_data(
+diff --git a/crates/fereg-plugin/src/ppml_estimate.rs b/crates/fereg-plugin/src/ppml_estimate.rs
+index ba70ab5..f70a082 100644
+--- a/crates/fereg-plugin/src/ppml_estimate.rs
++++ b/crates/fereg-plugin/src/ppml_estimate.rs
+@@ -4030,6 +4030,15 @@ mod tests {
+         assert_eq!(runtime[40][0], 1.0);
+         assert!(runtime[41][0] >= 16.0);
+         assert!(runtime[1][0] > normal_outer);
++        assert_eq!(
++            runtime[44][0], 0.0,
++            "warm iterations must not allocate identity scratch"
++        );
++        assert_eq!(
++            runtime[72][0], 1.0,
++            "linear session reuse must be certified"
++        );
++        assert_eq!(runtime[75][0], 1.0, "real allocator certificate must pass");
+         assert!(runtime[41..76]
+             .iter()
+             .all(|row| crate::ppml_result::is_stata_publishable(row[0])));
