@@ -10,25 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## P3 inference ownership: evaluated prototype, adoption pending
+## P3 inference ownership: adopted local checkpoint
 
-The [preliminary evidence](benchmarks/reports/development/ols-inference-ownership-local-2026-09-12/preliminary/README.md)
-compares `f4cebe7` with an isolated one-line prototype lowering ordinary robust/
-clustered OLS's packed-score limit to 32 MiB. It reuses existing strided ownership,
-fused raw moments and residual construction; no production source is changed yet.
-26 pairs / 52 measured calls show primary command gains of 38.8%, 31.4% and
-24.1%, with native peak reductions around 25–26%. Full scientific comparisons
-pass under unchanged tolerances; sample/status/DoF and solver decisions are exact.
-The newly eligible weak control improves; no protected control exceeds the declared
-review envelope. QR profiles retain reconstruction in both arms and improve 4.0%.
+Ordinary fast robust/clustered OLS now packs score values only up to 32 MiB,
+then uses the existing retained strided route when the finite solve permits it.
+This also selects existing stable raw moments and fused residual construction.
+Shared weighted-linear/PPML policy, IID, low memory, rank, memory admission and
+public contracts remain unchanged; see
+[ADR 0043](docs/adr/0043-ols-inference-strided-cache-policy.md).
 
-The explicit-dummy full covariance oracle passes baseline and candidate across
-unit/AW/FW/PW, robust/clustered, full/deficient rank. Twelve distinct focused Rust
-tests and the universal static/native arm64 ABI audits pass. An initial exact
-comparison of numerical certificate metrics was corrected after localizing only
-roundoff differences; the original failure is disclosed. Next: finalize the OLS
-cache policy and source/documentation review, then adopt or reject with this
-source-bound evidence before moving to the remaining P3 work. No SCC ran.
+The [report](benchmarks/reports/development/ols-inference-ownership-local-2026-09-12/README.md)
+binds 29 pairs / 58 measured calls against native baseline `f4cebe7`. The final
+comment-reviewed source rebuild is byte-identical to the prototype plugin.
+Three-seed command medians fall 1.312→0.803 seconds for robust missing,
+0.368→0.253 for PW robust and 0.539→0.409 for FW clustering; paired gains are
+38.8%, 31.4% and 24.1%. Primary native peaks fall about 25–26%, and every observed
+action peak fits the unchanged model. These gains include reference/residual
+passes; strided score certification costs more and covariance time stays similar.
+
+Samples/status/DoF, FE/cluster tables and solver decisions agree exactly. Full
+b/V differences are at most 3.34e-16 / 7.20e-21, with unchanged independent
+certificates/tolerances. Newly eligible weak, no-FE, K65 and interacted two-way
+cluster cases pass. No protected control exceeds max(10 ms, 5%); complete IID
+is +12 ms / 2.1%, small/narrow +1 ms. QR profiles improve 4.0% while retaining
+about 0.12 seconds of score reconstruction in both arms; that work is not removed.
+
+[Validation](benchmarks/reports/development/ols-inference-ownership-local-2026-09-12/adoption/validation.json)
+records eighteen distinct focused Rust tests and an explicit-dummy full-covariance
+Stata oracle on baseline/candidate across unit/AW/FW/PW, robust/clustered and full/
+deficient rank, with r(0) sentinels. Universal static/native arm64 ABI checks pass.
+The initial pilot diagnostic-assertion failure remains disclosed in immutable
+preliminary evidence. No full profile, SCC, Windows or qualification ran;
+installed dist and unrelated Veneto work remain preserved.
+
+P3's packed/strided lifetime comparison is adopted. Next audit actual repeated
+cluster-state/order construction and score consumers, then evaluate useful tiling,
+skew scheduling and low-memory duplicate work. P0/P2/P4–P7, R1–R5 and the later
+agent/CMG/new-SCC phases of the active goal remain open.
 
 ## P1 candidate-run and mixed-source loading: adopted local checkpoint
 

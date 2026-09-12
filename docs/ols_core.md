@@ -77,6 +77,13 @@ requires `df_r > 0`. IID, HC1 robust, and one-/multiway clustered paths have
 independent score, correction, subset, PSD/repair, Wald, and statistic
 certificates.
 
+Fast robust/clustered OLS packs candidate score values up to 32 MiB. Larger
+eligible Cholesky fits retain the standardized solve allocation through the
+existing strided view, with stable raw reference moments and independent score
+checks. QR fits that cannot retain valid score storage use the existing certified
+reconstruction path. This is a layout/cost cutoff, not a rank or memory-admission
+policy; see [ADR 0043](adr/0043-ols-inference-strided-cache-policy.md).
+
 Rust returns complete b/V/status, fit, DoF, solver, FE, cluster, subset,
 certificate, sample, residual, absorbed, saved-FE, resource, and timing
 structures. The public ado makes one substantive plugin call and posts only

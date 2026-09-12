@@ -1,0 +1,43 @@
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index 344d1ad..064fcef 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1298,7 +1298,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
+     fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+         prepared,
+         config,
+-        MAX_FAST_SCORE_CACHE_BYTES,
++        MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
+     )
+ }
+ 
+@@ -1310,10 +1310,10 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
+     max_fast_score_cache_bytes: usize,
+ ) -> Result<CertifiedPreparedOlsFit> {
+     let team = ThreadTeam::new(config.execution.threads);
+-    // A fast-mode inference call will consume these absorbed columns again for
+-    // robust or clustered scores. Retain them whenever the bounded 512 MiB
+-    // cache admits the design; rebuilding and reabsorbing them is always more
+-    // expensive than the observation-major copy the cache performs.
++    // Inference needs the projected columns again. Prefer a packed cache when
++    // its caller's bound admits it; larger Cholesky fits reuse the standardized
++    // solve allocation through a strided view. The established score builder
++    // handles QR fits whose mutated solve matrix cannot be retained.
+     let retain_fast_score_cache = true;
+     team.install(|| {
+         let mut reservation = SystemFitReservation;
+@@ -2105,10 +2105,10 @@ fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReserva
+     Ok(residuals)
+ }
+ 
+-// Keep the accepted packed cache for moderate problems. Above this bound,
+-// Cholesky fits retain the already-absorbed solve matrix and expose its model
+-// columns through the strided score view instead of allocating another N x K
+-// matrix.
++// Shared upper bound for one-shot weighted-linear callers. Ordinary OLS
++// inference selects a lower packed-cache limit at its entry point; larger
++// Cholesky fits reuse their solve allocation through a strided view.
++// Explicit cache-limit callers retain their own policy.
+ const MAX_FAST_SCORE_CACHE_BYTES: usize = 512 * 1024 * 1024;
+ 
+ fn fast_score_cache_fits<P: PreparedOlsFitView + ?Sized>(

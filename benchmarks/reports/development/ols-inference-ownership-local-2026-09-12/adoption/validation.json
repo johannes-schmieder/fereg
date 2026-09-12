@@ -1,0 +1,98 @@
+{
+  "build": {
+    "log_sha256": "47065f6ae81311c87706a09feb58b9b3c6e3e2106d81454525bf2f16b015bbe3",
+    "native_arm64_abi_selftest": true,
+    "universal_static_audit": true,
+    "x86_runtime_run": false
+  },
+  "final_rebuild_byte_identical_to_measured_prototype": true,
+  "focused_rust": {
+    "clustered_passed": 7,
+    "distinct_tests_passed": 18,
+    "failed": 0,
+    "log_sha256": {
+      "clustered-tests.log": "63110254d06366c8b771826d84619442891d9b0ef641187f0e94a4c80ea9b226",
+      "robust-tests.log": "756bf25b2e546824c25d270103536a2a43cfb6ceeebf8c99de7d53d08a84d0e4",
+      "strided-tests.log": "2832a27c1a765cf7472f47d4ba375e34a7978ca3ada2805737188f0fb59ead3c"
+    },
+    "robust_passed": 9,
+    "strided_passed": 4
+  },
+  "initial_pilot_diagnostic_assertion": "Retained as disclosed in preliminary/validation.json; exact assertion mistakenly included floating certificate metrics. Decisions remain exact; original numerical tolerances and independent certificates are unchanged.",
+  "installed_dist_unchanged": true,
+  "licensed_oracle": {
+    "baseline": {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/ols_inference_ownership.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 1
+    },
+    "candidate": {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/ols_inference_ownership.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 1
+    },
+    "fixture_sha256": "aa052339c10278bf60f1b1b3b53e4af2e6cbc5e1f715965691955e65a740f53f",
+    "independent_reference": "Stata regress with explicit fixed-effect dummies; full slope covariance; unit/AW/FW/PW, robust/clustered, full/deficient rank",
+    "model_combinations": 16
+  },
+  "limitations": [
+    "32MiB is a measured development crossover, not a universal optimum",
+    "Strided score certification can be slower; selected complete-route savings include existing fused raw moments/residual construction",
+    "QR score reconstruction remains in both measured arms",
+    "No full scientific profile, SCC, Windows or qualification run"
+  ],
+  "measurement": {
+    "all_action_peaks_within_unchanged_models": true,
+    "max_full_V_absolute_difference": 7.199780051661553e-21,
+    "max_full_b_absolute_difference": 3.3306690738754696e-16,
+    "measured_calls": 58,
+    "pairs": 29,
+    "pilot_pairs": 1,
+    "primary_pairs": 9,
+    "protected_pairs": 16,
+    "qr_profiles": 3
+  },
+  "native_patch_sha256": "729f983dcf3de43bcc22aabf9ec198bf5ea62758b28fff96a2f6170908f62fc1",
+  "plugin_sha256": "dc327ec0cfe16123e200cfb2a88e18fffa3e25b287c0f78e0375ecb48409d0d9",
+  "source_adopted": true
+}

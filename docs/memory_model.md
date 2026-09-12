@@ -39,6 +39,14 @@ route can use certified CG only when that fallback also fits.
 
 ## Fast and low execution
 
+Ordinary fast OLS robust/clustered inference uses a packed score cache up to
+32 MiB. Larger eligible Cholesky fits retain the existing solve matrix through a
+strided view instead of adding a second score-value matrix. QR score rebuilding
+and low-memory scratch remain governed by their existing plans. The selected
+memory estimates are unchanged; a lower cache cutoff does not itself admit a
+previously over-budget fit. See
+[ADR 0043](adr/0043-ols-inference-strided-cache-policy.md).
+
 Fast execution holds the prepared outcome/regressor batch and in-memory score
 workspaces. For large multi-thread absorbed models, its preflight also reserves
 the worst-case level-by-RHS group-mean table used by deterministic parallel MAP
