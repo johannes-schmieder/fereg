@@ -20,14 +20,14 @@ def runtime(path):
 
 
 def collect(root, output, *, pair_prefix="prep", science_marker="exact-science.json",
-            exact_science=True, note=None):
+            exact_science=True, note=None, primary_cases=()):
     output.mkdir(parents=True, exist_ok=True)
     pairs, groups = [], {}
     accepted = set()
     for candidate in sorted((root / "runs").glob(f"{pair_prefix}-*-candidate")):
         if not (candidate / science_marker).exists():
             continue
-        baseline = candidate.with_name(candidate.name.replace("-candidate", "-baseline"))
+        baseline = candidate.with_name(candidate.name.removesuffix("-candidate") + "-baseline")
         record = {"pair": candidate.name.removesuffix("-candidate")}
         for arm, path in [("baseline", baseline), ("candidate", candidate)]:
             result = read_json(path / "result.json")
@@ -44,9 +44,9 @@ def collect(root, output, *, pair_prefix="prep", science_marker="exact-science.j
             }
             accepted.add(path)
         record["case"] = result["cell"]["name"]
-        record["group"] = "profile" if "-profile-" in record["pair"] else (
+        record["group"] = "pilot" if "-pilot-" in record["pair"] else "profile" if "-profile-" in record["pair"] else (
             "recheck" if "-recheck-" in record["pair"] else (
-                "primary" if "-paired-" in record["pair"] else "control"))
+                "primary" if "-paired-" in record["pair"] or record["case"] in primary_cases else "control"))
         record["candidate_baseline_ratio"] = record["candidate"]["command_seconds"] / record["baseline"]["command_seconds"]
         record["exact_science"] = exact_science
         if not exact_science:
@@ -73,7 +73,7 @@ def collect(root, output, *, pair_prefix="prep", science_marker="exact-science.j
             for file in sorted(path.iterdir()):
                 if file.suffix == ".csv" or file.name == science_marker or file.name in {
                     "result.json", "native-science.json", "exact-science.json", "baseline-comparison.json",
-                    "import-hashes.json", "phases.json",
+                    "import-hashes.json", "phases.json", "input-experiment-identity.json", "stata_worker.do",
                 }:
                     archive.write(file, f"runs/{path.name}/{file.name}")
         for path in sorted((root / "preparation-data").glob("*.json")):

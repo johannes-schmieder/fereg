@@ -88,7 +88,7 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
                    str(source or root / "work/candidate"), str(root / "work/refs"), str(data), str(warm), str(output),
                    arm, cell["model"], str(cell["k"]), str(threads), str(len(cell["effects"])), phase, str(import_path)]
         command.extend('"' + str(cell.get(key, "")) + '"' for key in
-                       ("weight", "vce", "absorb", "restriction", "fit_options"))
+                       ("weight", "vce", "absorb", "restriction", "fit_options", "string_columns"))
     maximum_rss = 0
     samples = 0
     peaks_threads = 0

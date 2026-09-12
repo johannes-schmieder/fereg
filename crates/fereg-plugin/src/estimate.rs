@@ -176,6 +176,8 @@ struct ActionObservation {
 // final poll below guarantees no estimation starts after an unobserved stop.
 const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
 const INPUT_BULK_READ_CHUNK_ROWS: usize = 65_536;
+const INPUT_CANDIDATE_BATCH_MIN_ROWS: usize = 16_384;
+const INPUT_BULK_MIN_RUN_ROWS: usize = 64;
 
 pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     #[cfg(test)]
@@ -435,7 +437,10 @@ fn prepare_loaded_ols<T: Send>(
         prepare(loaded)?
     };
     if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
-        eprintln!("FEREG_PHASE|ols_prepare|seconds={:.9}", started.elapsed().as_secs_f64());
+        eprintln!(
+            "FEREG_PHASE|ols_prepare|seconds={:.9}",
+            started.elapsed().as_secs_f64()
+        );
     }
     Ok(prepared)
 }
@@ -1151,7 +1156,15 @@ pub(crate) fn load_ols_input(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
-    if candidate_all && all_sources_numeric {
+    if candidate_all && all_sources_numeric || n >= INPUT_CANDIDATE_BATCH_MIN_ROWS {
+        if let Some(position) = candidate_position {
+            for (row, retained) in candidate.iter_mut().enumerate() {
+                if row % INPUT_INTERRUPT_POLL_STRIDE == 0 {
+                    spi.check_interrupted()?;
+                }
+                *retained = read_candidate_marker(spi, position, row + 1)?;
+            }
+        }
         let mut positions = reserved_empty(
             1 + source_positions.len()
                 + usize::from(analytic_position.is_some())
@@ -1170,7 +1183,7 @@ pub(crate) fn load_ols_input(
         columns.push(outcome.values.as_mut_slice());
         for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
             let OlsSourceLoader::Numeric(destination) = destination else {
-                unreachable!("all source loaders were certified numeric");
+                continue;
             };
             positions.push(*position);
             columns.push(destination.values.as_mut_slice());
@@ -1187,11 +1200,41 @@ pub(crate) fn load_ols_input(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        read_numeric_columns_in_chunks(spi, &positions, &mut columns, &mut missing)?;
-        if input_complete && missing.iter().any(|flags| flags.iter().any(|flag| *flag)) {
+        read_numeric_columns_in_chunks(
+            spi,
+            &positions,
+            &mut columns,
+            &mut missing,
+            (!candidate_all).then_some(candidate.as_slice()),
+        )?;
+        if candidate_all
+            && all_sources_numeric
+            && input_complete
+            && missing.iter().any(|flags| flags.iter().any(|flag| *flag))
+        {
             return Err(invalid_data(
                 "Stata completeness certificate disagrees with numeric input",
             ));
+        }
+        drop(columns);
+        drop(missing);
+        // String dictionaries keep the original encounter order within each
+        // source. Numeric sources need not lose batching because a peer is a
+        // string; excluded rows never reach either kind of SPI read.
+        if !all_sources_numeric {
+            for ((_, loader), position) in source_loaders.iter_mut().zip(&source_positions) {
+                if !matches!(loader, OlsSourceLoader::FixedWidthString { .. }) {
+                    continue;
+                }
+                for (row, retained) in candidate.iter().copied().enumerate() {
+                    if row % INPUT_INTERRUPT_POLL_STRIDE == 0 {
+                        spi.check_interrupted()?;
+                    }
+                    if retained {
+                        loader.read_into(spi, *position, row + 1, row)?;
+                    }
+                }
+            }
         }
     } else {
         for (zero_based, retained_slot) in candidate.iter_mut().enumerate() {
@@ -1200,17 +1243,7 @@ pub(crate) fn load_ols_input(
             }
             let observation = zero_based + 1;
             let retained_candidate = if let Some(candidate_position) = candidate_position {
-                let (candidate_value, candidate_missing) =
-                    spi.read_numeric(candidate_position, observation)?;
-                if candidate_missing
-                    || !candidate_value.is_finite()
-                    || !matches!(candidate_value, 0.0 | 1.0)
-                {
-                    return Err(invalid_data(format!(
-                    "candidate marker at observation {observation} must be nonmissing zero or one",
-                )));
-                }
-                let retained = candidate_value == 1.0;
+                let retained = read_candidate_marker(spi, candidate_position, observation)?;
                 *retained_slot = retained;
                 retained
             } else {
@@ -1259,40 +1292,84 @@ pub(crate) fn load_ols_input(
     })
 }
 
-fn read_numeric_columns_in_chunks(
+fn read_candidate_marker(spi: &mut dyn SpiApi, position: u32, observation: usize) -> Result<bool> {
+    let (value, missing) = spi.read_numeric(position, observation)?;
+    if missing || !value.is_finite() || !matches!(value, 0.0 | 1.0) {
+        return Err(invalid_data(format!(
+            "candidate marker at observation {observation} must be nonmissing zero or one",
+        )));
+    }
+    Ok(value == 1.0)
+}
+
+pub(crate) fn read_numeric_columns_in_chunks(
     spi: &mut dyn SpiApi,
     positions: &[u32],
     columns: &mut [&mut [f64]],
     missing: &mut [&mut [bool]],
+    candidate: Option<&[bool]>,
 ) -> Result<()> {
     if positions.len() != columns.len()
         || missing.len() != columns.len()
         || columns.is_empty()
         || columns
             .iter()
-            .any(|column| column.len() != columns[0].len())
+            .zip(missing.iter())
+            .any(|(column, flags)| column.len() != columns[0].len() || flags.len() != column.len())
+        || candidate.is_some_and(|rows| rows.len() != columns[0].len())
     {
         return Err(invalid("numeric SPI column batch has an invalid shape"));
     }
-    for start in (0..columns[0].len()).step_by(INPUT_BULK_READ_CHUNK_ROWS) {
-        spi.check_interrupted()?;
-        let end = start
-            .checked_add(INPUT_BULK_READ_CHUNK_ROWS)
-            .unwrap_or(columns[0].len())
-            .min(columns[0].len());
-        let mut chunk = Vec::new();
-        chunk
-            .try_reserve_exact(columns.len())
-            .map_err(|_| allocation("unable to reserve numeric SPI chunk"))?;
-        chunk.extend(columns.iter_mut().map(|column| &mut column[start..end]));
-        let mut flags = reserved_empty(missing.len(), "numeric SPI missing chunk")?;
-        for column in missing.iter_mut() {
-            let slice = column
-                .get_mut(start..end)
-                .ok_or_else(|| invalid("numeric SPI missing column has an invalid shape"))?;
-            flags.push(slice);
+    let rows = columns[0].len();
+    let mut start = 0;
+    let mut next_poll = 0;
+    while start < rows {
+        if start >= next_poll {
+            spi.check_interrupted()?;
+            next_poll = start.saturating_add(INPUT_INTERRUPT_POLL_STRIDE);
         }
-        spi.read_numeric_columns(positions, start + 1, &mut chunk, &mut flags)?;
+        if let Some(candidate) = candidate {
+            if !candidate[start] {
+                start += 1;
+                while start < rows && !candidate[start] {
+                    if start >= next_poll {
+                        spi.check_interrupted()?;
+                        next_poll = start.saturating_add(INPUT_INTERRUPT_POLL_STRIDE);
+                    }
+                    start += 1;
+                }
+                continue;
+            }
+        }
+        let mut end = start.saturating_add(INPUT_BULK_READ_CHUNK_ROWS).min(rows);
+        if let Some(candidate) = candidate {
+            if let Some(excluded) = candidate[start..end].iter().position(|retained| !*retained) {
+                end = start + excluded;
+            }
+        }
+        // Fragmented samples must not pay a set of FFI/slice allocations for
+        // every isolated row. Long candidate runs use the same bounded raw
+        // double reader as unrestricted input, with no packing or excluded reads.
+        if candidate.is_some() && end - start < INPUT_BULK_MIN_RUN_ROWS {
+            for row in start..end {
+                for ((position, column), flags) in positions
+                    .iter()
+                    .zip(columns.iter_mut())
+                    .zip(missing.iter_mut())
+                {
+                    let (value, is_missing) = spi.read_numeric(*position, row + 1)?;
+                    column[row] = value;
+                    flags[row] = is_missing;
+                }
+            }
+        } else {
+            let mut chunk = reserved_empty(columns.len(), "numeric SPI chunk")?;
+            chunk.extend(columns.iter_mut().map(|column| &mut column[start..end]));
+            let mut flags = reserved_empty(missing.len(), "numeric SPI missing chunk")?;
+            flags.extend(missing.iter_mut().map(|column| &mut column[start..end]));
+            spi.read_numeric_columns(positions, start + 1, &mut chunk, &mut flags)?;
+        }
+        start = end;
     }
     Ok(())
 }
@@ -2940,6 +3017,7 @@ mod tests {
         string_variables: BTreeSet<u32>,
         strl_variables: BTreeSet<u32>,
         numeric_reads: usize,
+        numeric_batches: Vec<(usize, usize, Vec<u32>)>,
         store_calls: usize,
         fail_store_at: Option<usize>,
         interrupt_at: Option<usize>,
@@ -2971,6 +3049,30 @@ mod tests {
                 .get(&(variable, observation))
                 .copied()
                 .ok_or_else(|| invalid("test numeric cell is absent"))
+        }
+
+        fn read_numeric_columns(
+            &mut self,
+            variables: &[u32],
+            first_observation: usize,
+            columns: &mut [&mut [f64]],
+            missing: &mut [&mut [bool]],
+        ) -> Result<()> {
+            self.numeric_batches
+                .push((first_observation, columns[0].len(), variables.to_vec()));
+            for offset in 0..columns[0].len() {
+                for ((variable, column), flags) in variables
+                    .iter()
+                    .zip(columns.iter_mut())
+                    .zip(missing.iter_mut())
+                {
+                    let (value, is_missing) =
+                        self.read_numeric(*variable, first_observation + offset)?;
+                    column[offset] = value;
+                    flags[offset] = is_missing;
+                }
+            }
+            Ok(())
         }
 
         fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>> {
@@ -3409,6 +3511,7 @@ mod tests {
                 string_variables: BTreeSet::new(),
                 strl_variables: BTreeSet::new(),
                 numeric_reads: 0,
+                numeric_batches: Vec::new(),
                 store_calls: 0,
                 fail_store_at: None,
                 interrupt_at: None,
@@ -3633,6 +3736,183 @@ mod tests {
                 spi.stores.last(),
                 Some(&StoreEvent::Matrix(14, 1, RECEIPT_COMPLETE_COLUMN, 1.0,)),
             );
+        }
+    }
+
+    #[test]
+    fn candidate_numeric_runs_preserve_coordinates_and_bound_bulk_reads() {
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        spi.data.clear();
+        let rows = INPUT_BULK_READ_CHUNK_ROWS + 300;
+        let mut candidate = vec![false; rows];
+        candidate[1..64].fill(true);
+        candidate[65..129].fill(true);
+        candidate[130..131 + INPUT_BULK_READ_CHUNK_ROWS].fill(true);
+        for (row, retained) in candidate.iter().copied().enumerate() {
+            if retained {
+                spi.data
+                    .insert((2, row + 1), (row as f64 - 100.0, row % 17 == 0));
+                spi.data
+                    .insert((3, row + 1), (-(row as f64), row % 23 == 0));
+            }
+        }
+        let mut values = vec![12345.0; rows];
+        let mut peer = vec![12345.0; rows];
+        let mut missing = vec![true; rows];
+        let mut peer_missing = vec![true; rows];
+        read_numeric_columns_in_chunks(
+            &mut spi,
+            &[2, 3],
+            &mut [&mut values, &mut peer],
+            &mut [&mut missing, &mut peer_missing],
+            Some(&candidate),
+        )
+        .expect("candidate run input");
+        assert_eq!(
+            spi.numeric_batches,
+            vec![
+                (66, 64, vec![2, 3]),
+                (131, INPUT_BULK_READ_CHUNK_ROWS, vec![2, 3]),
+            ]
+        );
+        assert_eq!(
+            spi.numeric_reads,
+            2 * candidate.iter().filter(|row| **row).count()
+        );
+        for row in 0..rows {
+            if candidate[row] {
+                assert_eq!(
+                    (values[row], missing[row]),
+                    (row as f64 - 100.0, row % 17 == 0)
+                );
+                assert_eq!(
+                    (peer[row], peer_missing[row]),
+                    (-(row as f64), row % 23 == 0)
+                );
+            } else {
+                assert_eq!(
+                    (values[row], peer[row], missing[row], peer_missing[row]),
+                    (12345.0, 12345.0, true, true)
+                );
+            }
+        }
+        assert!(spi.interrupt_checks > 0);
+        assert_eq!(spi.store_calls, 0);
+    }
+
+    #[test]
+    fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        let mut values = [0.0; 4];
+        let mut missing = [true; 3];
+        assert!(read_numeric_columns_in_chunks(
+            &mut spi,
+            &[2],
+            &mut [&mut values],
+            &mut [&mut missing],
+            None
+        )
+        .is_err());
+        let mut missing = [true; 4];
+        assert!(read_numeric_columns_in_chunks(
+            &mut spi,
+            &[2],
+            &mut [&mut values],
+            &mut [&mut missing],
+            Some(&[true; 3])
+        )
+        .is_err());
+        assert_eq!(spi.numeric_reads, 0);
+        let mut values = vec![0.0; 2 * INPUT_INTERRUPT_POLL_STRIDE];
+        let mut missing = vec![true; values.len()];
+        let candidate = vec![false; values.len()];
+        spi.interrupt_at = Some(2);
+        let error = read_numeric_columns_in_chunks(
+            &mut spi,
+            &[2],
+            &mut [&mut values],
+            &mut [&mut missing],
+            Some(&candidate),
+        )
+        .expect_err("excluded scan remains interruptible");
+        assert_eq!(error.code, ErrorCode::Interrupted);
+        assert_eq!(spi.numeric_reads, 0);
+        assert_eq!(spi.store_calls, 0);
+    }
+
+    #[test]
+    fn large_restricted_mixed_input_batches_only_numeric_candidate_runs() {
+        for fragmented in [false, true] {
+            let (args, mut spi) = fixture(OlsVceKind::Clustered);
+            spi.nobs = INPUT_CANDIDATE_BATCH_MIN_ROWS + 32;
+            spi.data.clear();
+            spi.string_variables.insert(4);
+            let labels = [b"z".to_vec(), b"a".to_vec(), Vec::new()];
+            for row in 0..spi.nobs {
+                let retained = if fragmented {
+                    row % 3 == 0
+                } else {
+                    (65..spi.nobs - 1).contains(&row)
+                };
+                spi.data.insert((1, row + 1), (f64::from(retained), false));
+                if retained {
+                    spi.data.insert((2, row + 1), (row as f64, row % 17 == 0));
+                    spi.data
+                        .insert((3, row + 1), (-(row as f64), row % 23 == 0));
+                    spi.string_data
+                        .insert((4, row + 1), labels[row % 3].clone());
+                }
+            }
+            let action = EstimateActionSpec::parse(&args)
+                .expect("specification")
+                .decode_and_validate(&mut spi)
+                .expect("action");
+            let loaded =
+                load_ols_input(&action.request, false, false, &mut spi).expect("mixed input");
+            assert_eq!(spi.numeric_batches.is_empty(), fragmented);
+            assert!(spi
+                .numeric_batches
+                .iter()
+                .all(|(_, _, positions)| positions == &[2, 3]));
+            for row in 0..spi.nobs {
+                if loaded.candidate[row] {
+                    assert_eq!(
+                        (loaded.outcome.values[row], loaded.outcome.missing[row]),
+                        (row as f64, row % 17 == 0)
+                    );
+                    let x = &loaded.numeric_sources[0].1;
+                    assert_eq!(
+                        (x.values[row], x.missing[row]),
+                        (-(row as f64), row % 23 == 0)
+                    );
+                    let cluster = &loaded.numeric_sources[1].1;
+                    assert_eq!(cluster.missing[row], row % 3 == 2);
+                    if !cluster.missing[row] {
+                        let code = if !fragmented && row % 3 == 0 {
+                            1.0
+                        } else {
+                            0.0
+                        };
+                        assert_eq!(cluster.values[row], code);
+                    }
+                } else {
+                    assert_eq!(
+                        (loaded.outcome.values[row], loaded.outcome.missing[row]),
+                        (0.0, false)
+                    );
+                    let x = &loaded.numeric_sources[0].1;
+                    assert_eq!((x.values[row], x.missing[row]), (0.0, false));
+                    // The existing finalizer also rebases excluded string
+                    // placeholders. They retain their original code-zero
+                    // meaning, while the candidate marker remains authority.
+                    let cluster = &loaded.numeric_sources[1].1;
+                    assert_eq!(
+                        (cluster.values[row], cluster.missing[row]),
+                        (if fragmented { 0.0 } else { 1.0 }, false)
+                    );
+                }
+            }
+            assert_eq!(spi.store_calls, 0);
         }
     }
 

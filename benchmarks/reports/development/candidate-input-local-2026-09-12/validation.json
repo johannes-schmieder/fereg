@@ -1,0 +1,139 @@
+{
+  "baseline_commit": "5411b9b4d37aab1a856b12431db84ecfce1c6f22",
+  "baseline_stata": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/candidate_input_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "build": {
+    "command": "FEREG_GIT_COMMIT=5411b9b-input scripts/build_macos.sh, working directory isolated candidate",
+    "compiler": "Rust 1.85.1",
+    "final_log_sha256": "3f9ffb82c2bd510222302eabdfee97e4bf97315868b660b0a64b7835edddb896",
+    "native_arm64_abi_selftest_pass": true,
+    "universal_static_audit_pass": true,
+    "x86_runtime_run": false
+  },
+  "candidate_stata": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/candidate_input_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_native_input.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_native_preparation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 3
+  },
+  "fixture_sha256": {
+    "tests/stata/development/candidate_input_oracle.do": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+    "tests/stata/development/ols_native_input.do": "7496a8c52687fb150c140783dc9cfaaaef6c1c7b44f1173232695de8ab7cd813",
+    "tests/stata/parity_ppmlhdfe/feppml_native_preparation.do": "c58e0a93e89a6fc6f3c6214672b861226cc568c676a34f5399fd3c0997429a66"
+  },
+  "focused_rust": {
+    "coverage": [
+      "candidate gating and original coordinates",
+      "63/64-row bulk boundary and 65536 chunk boundary",
+      "malformed shapes and interruption",
+      "mixed string coding",
+      "memory mode agreement",
+      "PPML allocation and publication failure"
+    ],
+    "filter": "plugin estimate action tests",
+    "log_sha256": "bbda6c0ae6f31fc6c33737c9b5b8905e7a0c0d1803e1725f87c08c3eff896cd2",
+    "tests_failed": 0,
+    "tests_passed": 43
+  },
+  "initial_attempts": [
+    {
+      "outcome": "fixture used nonexistent EstimateOlsSpec; corrected to existing EstimateActionSpec",
+      "stage": "unit compile"
+    },
+    {
+      "outcome": "excluded placeholders initially expected missing=true and string code zero; corrected to original initialization and deterministic final recoding; production code unchanged",
+      "stage": "unit expectations"
+    },
+    {
+      "log_sha256": "d541e3296f50639ee193e78947b22bea5d4c1d8550c0d64f599592f0c32b3ed8",
+      "outcome": "same-named OLS width-one cache reused for PPML width-two recipe; stopped before any PPML estimate; distinct PPML names fixed cache identity; all four controls then completed",
+      "stage": "PPML control input generation"
+    },
+    {
+      "outcome": "global arm-name replacement also replaced candidate in case name; corrected to final suffix only; original measured evidence unchanged",
+      "stage": "numeric collector"
+    }
+  ],
+  "installed_plugin_unchanged": true,
+  "limitations": [
+    "PPML input time is not separately exposed; finite-solve timing varies despite unchanged science",
+    "First-row error text is preserved by unchanged classifier but the new licensed fixture asserts error code and rollback, not message text",
+    "Not a complete scientific profile or cross-platform qualification"
+  ],
+  "measurement": {
+    "all_action_peaks_within_model": true,
+    "all_science_exact": true,
+    "complete_adjustment_pairs": 3,
+    "completed_pairs": 29,
+    "measured_calls": 58,
+    "no_full_command_gain_claim_for_adjustment_only": true,
+    "pilot_pairs": 1,
+    "primary_pairs": 9,
+    "protected_pairs": 16
+  },
+  "plugins": {
+    "baseline": "3e7c91ec7c2d590d01f45fc99a02459367dfe56bdf5727d9250fe98a09aadf6f",
+    "candidate": "c1c9d8d15fe2586028c82b1c28b3b63a5bd489f68fef6f05d57d5cbba9f00f83"
+  },
+  "qualification_run": false,
+  "scc_run": false,
+  "windows_run": false
+}

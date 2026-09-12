@@ -15,8 +15,14 @@ For an unrestricted all-numeric OLS candidate universe, the Stata thread copies
 bounded observation-order batches directly into Rust-owned columns. Rust
 classifies the ordered numeric missing range using the SDK's runtime
 `SV_missval`, including extended missing codes; no separate ado `markout`
-precheck is needed. Restricted candidates and fixed-width strings retain
-candidate-gated scalar SPI reads. Wide OLS preparation uses the requested
+precheck is needed. At 16,384 original observations, restricted and mixed-source
+input also batches numeric columns over retained runs. Runs shorter than 64 rows
+use scalar reads; all batches are bounded by 65,536 rows. Fixed-width strings
+keep candidate-gated scalar reads and original encounter order, while their
+numeric peers can batch. PPML offsets/exposures share the retained-run reader.
+No excluded source cell is read or additional observation-sized state allocated;
+see [ADR 0042](adr/0042-candidate-run-numeric-loading.md).
+Wide OLS preparation uses the requested
 worker team for independent completeness checks after loading has finished.
 These checks only select the ownership shortcut; the ordinary classification
 path remains authoritative for exclusions, missingness, and domain errors.

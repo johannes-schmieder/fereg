@@ -9,13 +9,15 @@ from common import read_json, sha256, write_json
 from ppml_preparation_compare import PRIMARY
 
 
-def collect(root, output, *, prefix='ppmlprep', science_file='exact-science.json', exact=True):
+def collect(root, output, *, prefix='ppmlprep', science_file='exact-science.json', exact=True, primary_cases=None):
+    if primary_cases is None:
+        primary_cases = {s['name'] for s in PRIMARY}
     output.mkdir(parents=True, exist_ok=True)
     pairs, groups, included = [], {}, set()
     for candidate in sorted((root / 'runs').glob(f'{prefix}-*-candidate')):
         if not (candidate / science_file).exists():
             continue
-        paths = dict(candidate=candidate, baseline=candidate.with_name(candidate.name.replace('-candidate', '-baseline')))
+        paths = dict(candidate=candidate, baseline=candidate.with_name(candidate.name.removesuffix('-candidate') + '-baseline'))
         runtimes = read_json(candidate / 'paired-runtime.json')
         record = dict(pair=candidate.name.removesuffix('-candidate'), science_pass=True, exact_science=exact)
         for arm, path in paths.items():
@@ -37,7 +39,7 @@ def collect(root, output, *, prefix='ppmlprep', science_file='exact-science.json
             included.add(path)
         record['case'] = result['cell']['name']
         record['group'] = ('pilot' if '-pilot-' in record['pair'] else 'profile' if '-trace-' in record['pair']
-            else 'recheck' if '-recheck-' in record['pair'] else 'primary' if record['case'] in {s['name'] for s in PRIMARY} else 'control')
+            else 'recheck' if '-recheck-' in record['pair'] else 'primary' if record['case'] in primary_cases else 'control')
         record['ratio'] = record['candidate']['command_seconds'] / record['baseline']['command_seconds']
         groups.setdefault((record['group'], record['case']), []).append(record)
         pairs.append(record)
@@ -57,7 +59,7 @@ def collect(root, output, *, prefix='ppmlprep', science_file='exact-science.json
     with zipfile.ZipFile(output / 'numeric-evidence.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(included):
             for file in sorted(path.iterdir()):
-                if file.suffix == '.csv' or file.name in {'result.json', science_file, 'paired-runtime.json', 'import-hashes.json', 'stata_worker.do'}:
+                if file.suffix == '.csv' or file.name in {'result.json', science_file, 'paired-runtime.json', 'import-hashes.json', 'stata_worker.do', 'input-experiment-identity.json'}:
                     archive.write(file, f'runs/{path.name}/{file.name}')
         for file in sorted((root / 'ppml-data').glob('*.json')):
             archive.write(file, f'inputs/{file.name}')

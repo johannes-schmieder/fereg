@@ -3,7 +3,7 @@ clear all
 set more off
 set varabbrev off
 set linesize 255
-args source refs data warm output arm model k threads dimensions phase import_path weight vce absorb restriction fit_options
+args source refs data warm output arm model k threads dimensions phase import_path weight vce absorb restriction fit_options string_columns
 local processors = min(`threads', c(processors_lic), c(processors_mach))
 set processors `processors'
 sysdir set PLUS `"`refs'"'
@@ -39,6 +39,9 @@ display as text `"LOCAL_COMMAND|`command'"'
 
 if "`phase'" == "warm" {
     quietly use `"`warm'"', clear
+    foreach variable of local string_columns {
+        quietly generate str32 s_`variable' = cond(missing(`variable'), "", strtrim(string(`variable', "%21.0g")))
+    }
     capture quietly `command'
     local warm_rc = _rc
     if `warm_rc' {
@@ -77,6 +80,11 @@ capture confirm file `"`output'/IMPORT.CHECKED"'
 while _rc {
     sleep 50
     capture confirm file `"`output'/IMPORT.CHECKED"'
+}
+// Optional string-source recipes derive from the audited numeric originals,
+// outside command timing, and identically in both source/artifact arms.
+foreach variable of local string_columns {
+    quietly generate str32 s_`variable' = cond(missing(`variable'), "", strtrim(string(`variable', "%21.0g")))
 }
 file open `mark' using `"`output'/READY"', write text replace
 file write `mark' "READY" _n

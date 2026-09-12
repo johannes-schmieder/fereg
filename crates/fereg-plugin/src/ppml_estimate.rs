@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::estimate::{
     imposed_memory_limit_bytes, load_ols_input, parse_bool, parse_nonnegative_u32,
     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_table, required,
+    read_bindings, read_numeric_columns_in_chunks, read_table, required,
 };
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
@@ -47,7 +47,6 @@ use fereg_core::{MemoryMode, ThreadConfig};
 
 pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
-const INPUT_INTERRUPT_POLL_STRIDE: usize = 1_024;
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 const MAX_PPML_PROTOCOL_FIELDS: usize = 83;
@@ -1072,17 +1071,13 @@ fn load_adjustment(
     };
     let mut values = reserved_filled(candidate.len(), 0.0, "PPML adjustment values")?;
     let mut missing = reserved_filled(candidate.len(), true, "PPML adjustment missing mask")?;
-    for (zero_based, candidate_row) in candidate.iter().copied().enumerate() {
-        if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
-            spi.check_interrupted()?;
-        }
-        if !candidate_row {
-            continue;
-        }
-        let (value, is_missing) = spi.read_numeric(position, zero_based + 1)?;
-        values[zero_based] = value;
-        missing[zero_based] = is_missing;
-    }
+    read_numeric_columns_in_chunks(
+        spi,
+        &[position],
+        &mut [values.as_mut_slice()],
+        &mut [missing.as_mut_slice()],
+        Some(candidate),
+    )?;
     spi.check_interrupted()?;
     Ok(Some(LoadedNumericColumn { values, missing }))
 }

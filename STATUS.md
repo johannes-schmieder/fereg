@@ -10,6 +10,46 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P1 candidate-run and mixed-source loading: adopted local checkpoint
+
+Against `5411b9b4d37aab1a856b12431db84ecfce1c6f22`, shared OLS/PPML input loading
+batches numeric peers of strings and long retained candidate runs at N≥16,384.
+Runs under 64 rows stay scalar, chunks stay bounded at 65,536, and strings keep
+original encounter order. PPML offsets/exposures use the same reader. No new
+observation-sized storage, excluded-cell reads, classifier, memory-admission,
+solver/inference or publication change is introduced; see
+[ADR 0042](docs/adr/0042-candidate-run-numeric-loading.md).
+
+The [report](benchmarks/reports/development/candidate-input-local-2026-09-12/README.md)
+binds isolated plugins and 29 completed pairs / 58 measured calls. Three-seed
+command medians fall 0.615→0.445 seconds for restricted AW OLS, 0.528→0.430 for
+FW OLS with string clustering, and 1.643→1.539 for restricted PW PPML with offset.
+Paired gains are 27.6%, 18.9% and 6.3%. OLS input medians fall 0.390→0.217 and
+0.210→0.113 seconds with stable fit/inference. PPML has no separate input timer;
+its unchanged finite work also varies, so the whole gain is not attributed to
+loading. Complete-data adjustment-only pairs show no reliable command gain.
+
+All scientific exports, samples/status/DoF, certificates, iterations, retries,
+fallback decisions and saved outputs match exactly. All measured action peaks
+fit unchanged models; primary peak medians are unchanged. One AW pair uses 0.7%
+more native peak. Worst graph-control slowdown is weak robust +8 ms / 3.7%;
+complete numeric, fragmented restrictions, small/narrow, low-memory and saved
+controls remain inside the predeclared review envelope. No RSS gain is claimed.
+
+[Validation](benchmarks/reports/development/candidate-input-local-2026-09-12/validation.json)
+records 43 focused plugin tests, three candidate licensed fixtures and the new
+explicit-dummy/Poisson/missing-code oracle on baseline, with r(0) sentinels.
+Universal static and native arm64 ABI audits pass. A PPML control input-cache
+name collision stopped setup before estimation; all four controls passed with
+distinct identities afterward. Initial unit expectation and collector corrections
+are disclosed. Installed dist, unrelated Veneto work and historical evidence
+remain untouched. No SCC, push or qualification ran.
+
+P1 loading is adopted; adjustment-only speedup remains unsupported. Continue P3
+inference ownership/lifetime comparisons and the remaining P0/P2/P4–P7 work.
+The full active goal (including later independent agents, CMG assessment and the
+new small SCC campaign) remains open; P1 completion does not complete #27.
+
 ## P1 PPML ado preparation: adopted local checkpoint
 
 Against `8be388e280eb64af5de9830204a63bee8de3b33d`, remove three nested PPML

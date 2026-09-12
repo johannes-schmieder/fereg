@@ -14,6 +14,8 @@ from route_holdouts import custom
 from run import BASE, MANIFEST, data_for
 
 
+BASELINE = "e93fe437f1d8855e1c3aa47ad03026eb23a9942d"
+
 PRIMARY = [
     dict(name="robust_missing", design="one_fe", n=983040, k=50, threads=16, vce="robust", missing=True),
     dict(name="aw_iid_missing", design="one_fe", n=983040, k=50, threads=16, weight="[aw=w]", missing=True),
@@ -92,7 +94,7 @@ def pair(spec, seed, rotation=0, trace=False, prefix=""):
         manifest = copy.deepcopy(MANIFEST)
         manifest["measurement"]["command_timeout_seconds"] = 90
         result = measure(BASE, cell, "fereg", "warm", data, warm, path, manifest,
-                         identity={"base_commit": "e93fe437f1d8855e1c3aa47ad03026eb23a9942d",
+                         identity={"base_commit": BASELINE,
                                    "variant": arm, "plugin_sha256": sha256(source / "dist/fereg_macos.plugin"),
                                    "seed": seed, "trace": trace}, source=source, trace=trace)
         print(path.name, result["status"], result["seconds"], flush=True)

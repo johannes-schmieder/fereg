@@ -1,0 +1,634 @@
+{
+  "baseline_commit": "5411b9b4d37aab1a856b12431db84ecfce1c6f22",
+  "candidate_build_id": "5411b9b-input",
+  "harness_sha256": {
+    "benchmarks/local_fixest_gap/candidate_input_compare.py": "df82a1b4198d91937b6f2daab996bef9c53a3f110bd016e164b1318f0daa8f20",
+    "benchmarks/local_fixest_gap/collect_ppml_preparation.py": "d8e83ac1a1dace31b6ab0ac9604abc462f51ac3157aa93d62b34ecc5b14707c4",
+    "benchmarks/local_fixest_gap/collect_preparation.py": "5a0b572d86190db4a9ac6de3c02b3c8639aba1a06ee53dc7fe66f62be288579a",
+    "benchmarks/local_fixest_gap/measure.py": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c",
+    "benchmarks/local_fixest_gap/ppml_preparation_compare.py": "c5674d60d41d20375afa3aa43991967e31880bf424c3a9ea20551172d3199e00",
+    "benchmarks/local_fixest_gap/preparation_compare.py": "4db2dfd612bacba05f4f402b5667d3659a1d0e6bf2f50ce9e3fa7c16a8b869b5",
+    "benchmarks/local_fixest_gap/stata_worker.do": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe"
+  },
+  "implementation_patch_sha256": "882830a549f47607df4a8ac9f36ca6616ae65a1f2301ab1ef3e2a3085f73cd89",
+  "installed_plugin_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08",
+  "native_inputs": {
+    "Cargo.lock": {
+      "baseline": "ffc0f8e4dd8dbee7fd11506b4ca2f4ac2ed77e7574f5229dc95c00cb9d7fe5a5",
+      "candidate": "ffc0f8e4dd8dbee7fd11506b4ca2f4ac2ed77e7574f5229dc95c00cb9d7fe5a5"
+    },
+    "Cargo.toml": {
+      "baseline": "a8250be1dfe20f947045847dc73aafffce54b9904eaf67d1ad8d74d9bee6394c",
+      "candidate": "a8250be1dfe20f947045847dc73aafffce54b9904eaf67d1ad8d74d9bee6394c"
+    },
+    "crates/fereg-core/Cargo.toml": {
+      "baseline": "307880d6c094e8e348a2d39d9b3eabb761e71ac37dabd0801195e7c8490ce139",
+      "candidate": "307880d6c094e8e348a2d39d9b3eabb761e71ac37dabd0801195e7c8490ce139"
+    },
+    "crates/fereg-core/build.rs": {
+      "baseline": "09a6d7cfabbf02db308e9527d77a0ff2414f6f8351160d428ae7ef24dd733091",
+      "candidate": "09a6d7cfabbf02db308e9527d77a0ff2414f6f8351160d428ae7ef24dd733091"
+    },
+    "crates/fereg-core/src/data/mod.rs": {
+      "baseline": "3b2b945806228e0be852776126141ee31b4b6bdf1377b727bc2782dd9f756d16",
+      "candidate": "3b2b945806228e0be852776126141ee31b4b6bdf1377b727bc2782dd9f756d16"
+    },
+    "crates/fereg-core/src/data/model_matrix.rs": {
+      "baseline": "3c2c0ad6a22f29fad81713263a1fbb8a0e8e37e151f2572f98ec3aa2182ae0d4",
+      "candidate": "3c2c0ad6a22f29fad81713263a1fbb8a0e8e37e151f2572f98ec3aa2182ae0d4"
+    },
+    "crates/fereg-core/src/data/sample.rs": {
+      "baseline": "ebe70789cf9565d966c52d9695971c7f47fc146ad00bf1d71d2ee16237d373be",
+      "candidate": "ebe70789cf9565d966c52d9695971c7f47fc146ad00bf1d71d2ee16237d373be"
+    },
+    "crates/fereg-core/src/data/weights.rs": {
+      "baseline": "28e174f84297247ed43a0c0b1d154f668cfdb629378ee86edb484e4acbbda09f",
+      "candidate": "28e174f84297247ed43a0c0b1d154f668cfdb629378ee86edb484e4acbbda09f"
+    },
+    "crates/fereg-core/src/diagnostics.rs": {
+      "baseline": "9acab8b3604f194d024601e7d9320d3fbc2a0c9de1d9c142c0b48629fd6ba327",
+      "candidate": "9acab8b3604f194d024601e7d9320d3fbc2a0c9de1d9c142c0b48629fd6ba327"
+    },
+    "crates/fereg-core/src/error.rs": {
+      "baseline": "5c25e077c54c31ece14a80dfcfd95962056dac81b6eec3edcdce546b3d68f2b2",
+      "candidate": "5c25e077c54c31ece14a80dfcfd95962056dac81b6eec3edcdce546b3d68f2b2"
+    },
+    "crates/fereg-core/src/factorize.rs": {
+      "baseline": "5309792f2c8f66dadb0ab69f4d26e0fee99ed3ffb9dad7afc6cde3d7a1791e24",
+      "candidate": "5309792f2c8f66dadb0ab69f4d26e0fee99ed3ffb9dad7afc6cde3d7a1791e24"
+    },
+    "crates/fereg-core/src/fe/accelerated_map.rs": {
+      "baseline": "3dda759d6cc793dfa725c215bbbae0f2d795c64efde4dce9e903625729bb7adc",
+      "candidate": "3dda759d6cc793dfa725c215bbbae0f2d795c64efde4dce9e903625729bb7adc"
+    },
+    "crates/fereg-core/src/fe/auto.rs": {
+      "baseline": "bd34aad4256af3f47f84c3ba94bebf7667eb0e67fe772b8d5b3bba17d58691b7",
+      "candidate": "bd34aad4256af3f47f84c3ba94bebf7667eb0e67fe772b8d5b3bba17d58691b7"
+    },
+    "crates/fereg-core/src/fe/borrowed_map.rs": {
+      "baseline": "f1634637abbe412961f70d05e035fe662771e824c2fe230fd2cb6b72a4733b4c",
+      "candidate": "f1634637abbe412961f70d05e035fe662771e824c2fe230fd2cb6b72a4733b4c"
+    },
+    "crates/fereg-core/src/fe/categorical_request.rs": {
+      "baseline": "11b6603df117e6b4cba0c8270fe26676c57b9db4960a9480d8dda166a5ee6324",
+      "candidate": "11b6603df117e6b4cba0c8270fe26676c57b9db4960a9480d8dda166a5ee6324"
+    },
+    "crates/fereg-core/src/fe/certificate.rs": {
+      "baseline": "f6af01cbcc724381512b884ef05f4ca4dee3be4208fd79be627fd6fc0827a583",
+      "candidate": "f6af01cbcc724381512b884ef05f4ca4dee3be4208fd79be627fd6fc0827a583"
+    },
+    "crates/fereg-core/src/fe/cmg.rs": {
+      "baseline": "d5b8ce7ceeb4f1812b38deef838e80a6a7c0b78c34ae18246a2d3aa28aabff0f",
+      "candidate": "d5b8ce7ceeb4f1812b38deef838e80a6a7c0b78c34ae18246a2d3aa28aabff0f"
+    },
+    "crates/fereg-core/src/fe/components.rs": {
+      "baseline": "12291177ee8882d5893864ef712e27d26b74a3490c4cf49ff5542d0d0444cc4b",
+      "candidate": "12291177ee8882d5893864ef712e27d26b74a3490c4cf49ff5542d0d0444cc4b"
+    },
+    "crates/fereg-core/src/fe/design.rs": {
+      "baseline": "75372272a51475bbca1201d5c033043ae68e9a866ec00e874f3acf71d1caf380",
+      "candidate": "75372272a51475bbca1201d5c033043ae68e9a866ec00e874f3acf71d1caf380"
+    },
+    "crates/fereg-core/src/fe/interaction.rs": {
+      "baseline": "47c326ad497b75779627caf10a61c82ac5078c1277d708c2ae735029f57680d1",
+      "candidate": "47c326ad497b75779627caf10a61c82ac5078c1277d708c2ae735029f57680d1"
+    },
+    "crates/fereg-core/src/fe/lsmr.rs": {
+      "baseline": "38c3c4ab12073cb71cf1f0807564ecffd5a029cf2a33d46ca5bc03d8dd7782e9",
+      "candidate": "38c3c4ab12073cb71cf1f0807564ecffd5a029cf2a33d46ca5bc03d8dd7782e9"
+    },
+    "crates/fereg-core/src/fe/map.rs": {
+      "baseline": "1712f57fa43aac1a665af4d4def98819ed51dc92333cc60c8cf27087f53e1f37",
+      "candidate": "1712f57fa43aac1a665af4d4def98819ed51dc92333cc60c8cf27087f53e1f37"
+    },
+    "crates/fereg-core/src/fe/mod.rs": {
+      "baseline": "d8548403473e28ffe96c71d3eae735601b2bb91611d47ee5e981e931c4b5f139",
+      "candidate": "d8548403473e28ffe96c71d3eae735601b2bb91611d47ee5e981e931c4b5f139"
+    },
+    "crates/fereg-core/src/fe/partition.rs": {
+      "baseline": "7e096d7409e1f2e49029041e5bdc97072bb549575b44a912b9b7330b17acf12a",
+      "candidate": "7e096d7409e1f2e49029041e5bdc97072bb549575b44a912b9b7330b17acf12a"
+    },
+    "crates/fereg-core/src/fe/partition_registry.rs": {
+      "baseline": "0213d22e6f739d718862ec88935d5cc77119751250ade9ee3c5ef29693de9939",
+      "candidate": "0213d22e6f739d718862ec88935d5cc77119751250ade9ee3c5ef29693de9939"
+    },
+    "crates/fereg-core/src/fe/partition_singleton.rs": {
+      "baseline": "f711fef1b7003560608767787fdab8df084eb14c17298ac10553eda069d273d5",
+      "candidate": "f711fef1b7003560608767787fdab8df084eb14c17298ac10553eda069d273d5"
+    },
+    "crates/fereg-core/src/fe/partition_validation.rs": {
+      "baseline": "cb41217b7e8bbe9fedcc8813d3f81abb81e451aab73a88eefab2644ff2ab74d9",
+      "candidate": "cb41217b7e8bbe9fedcc8813d3f81abb81e451aab73a88eefab2644ff2ab74d9"
+    },
+    "crates/fereg-core/src/fe/projection.rs": {
+      "baseline": "ecf4bc025248e37ff2f109a75d43edd9c787259c516ab01f0a5def40e9b0070d",
+      "candidate": "ecf4bc025248e37ff2f109a75d43edd9c787259c516ab01f0a5def40e9b0070d"
+    },
+    "crates/fereg-core/src/fe/report.rs": {
+      "baseline": "242df0d9bb8fdf226c8c294d2e6d0ee35a1783e7b3a842a30ce867922a5a33ec",
+      "candidate": "242df0d9bb8fdf226c8c294d2e6d0ee35a1783e7b3a842a30ce867922a5a33ec"
+    },
+    "crates/fereg-core/src/fe/singleton.rs": {
+      "baseline": "3d32d2af0c03f45a2d46445b7bb7a458d40269f0548cb929a0f40c1ff47fba40",
+      "candidate": "3d32d2af0c03f45a2d46445b7bb7a458d40269f0548cb929a0f40c1ff47fba40"
+    },
+    "crates/fereg-core/src/fe/topology_adapter.rs": {
+      "baseline": "71a59676ec528b75ba665fb6fd5b2483041981b03d54bc7a5952f5ba0adf2f4c",
+      "candidate": "71a59676ec528b75ba665fb6fd5b2483041981b03d54bc7a5952f5ba0adf2f4c"
+    },
+    "crates/fereg-core/src/fe/topology_finalize.rs": {
+      "baseline": "c4acedc5d89b89caf4c9887d47844202232edb342bf104d06b7d3146c089b845",
+      "candidate": "c4acedc5d89b89caf4c9887d47844202232edb342bf104d06b7d3146c089b845"
+    },
+    "crates/fereg-core/src/fe/topology_map.rs": {
+      "baseline": "72e7bad05044726e5b31b90d08d5adad7bcc532b63eb9f3a8f99e75707117323",
+      "candidate": "72e7bad05044726e5b31b90d08d5adad7bcc532b63eb9f3a8f99e75707117323"
+    },
+    "crates/fereg-core/src/fe/topology_registry.rs": {
+      "baseline": "85de8d251cad29bc606ea166e8b2e82c42816ea204b9bfbae8dc1ba22dae4a71",
+      "candidate": "85de8d251cad29bc606ea166e8b2e82c42816ea204b9bfbae8dc1ba22dae4a71"
+    },
+    "crates/fereg-core/src/fe/topology_rhs.rs": {
+      "baseline": "be26d2cb184f6e5490c1c90fbbecf4b12ccaa116ba1f347dbf8efb5cb0a28baf",
+      "candidate": "be26d2cb184f6e5490c1c90fbbecf4b12ccaa116ba1f347dbf8efb5cb0a28baf"
+    },
+    "crates/fereg-core/src/fe/topology_slope_map.rs": {
+      "baseline": "0e9d9be11c99298283cf96105ff27723da51dd5a380377c25fad6ae94ebe160b",
+      "candidate": "0e9d9be11c99298283cf96105ff27723da51dd5a380377c25fad6ae94ebe160b"
+    },
+    "crates/fereg-core/src/fe/topology_source.rs": {
+      "baseline": "f7503103818b3d6b2452094f89d7ec6f4d45980a22870b26ba1bebf722a7e4f9",
+      "candidate": "f7503103818b3d6b2452094f89d7ec6f4d45980a22870b26ba1bebf722a7e4f9"
+    },
+    "crates/fereg-core/src/lib.rs": {
+      "baseline": "b1216d245fe67b1d91c11d3d58c0c60182aef4802ce35e758082d12d5c73326b",
+      "candidate": "b1216d245fe67b1d91c11d3d58c0c60182aef4802ce35e758082d12d5c73326b"
+    },
+    "crates/fereg-core/src/linalg/mod.rs": {
+      "baseline": "d1ef4932047a7511e678857249984c799b155221fa9c5e7067383fd9678f852c",
+      "candidate": "d1ef4932047a7511e678857249984c799b155221fa9c5e7067383fd9678f852c"
+    },
+    "crates/fereg-core/src/linalg/solve.rs": {
+      "baseline": "0d26945641a7f66c84608892f2c6e247395f69acb4550c5a1b07a965c8ffbbc5",
+      "candidate": "0d26945641a7f66c84608892f2c6e247395f69acb4550c5a1b07a965c8ffbbc5"
+    },
+    "crates/fereg-core/src/memory.rs": {
+      "baseline": "af59a56cdb8018ef9bfaac97289c624334ceac3a5765592859f98b7f314c7bc3",
+      "candidate": "af59a56cdb8018ef9bfaac97289c624334ceac3a5765592859f98b7f314c7bc3"
+    },
+    "crates/fereg-core/src/metadata.rs": {
+      "baseline": "6c7391c45400d182e6de8152de4284bd2e2a7dfd5e25c8e704bd7dea83874cb0",
+      "candidate": "6c7391c45400d182e6de8152de4284bd2e2a7dfd5e25c8e704bd7dea83874cb0"
+    },
+    "crates/fereg-core/src/ols/dof.rs": {
+      "baseline": "7d4c15e146b65ee23a825120acd7a841dfa7c857daa4b73d4b006820b6203286",
+      "candidate": "7d4c15e146b65ee23a825120acd7a841dfa7c857daa4b73d4b006820b6203286"
+    },
+    "crates/fereg-core/src/ols/finite_wls_kernel.rs": {
+      "baseline": "305914d327c74d59591ec9d5458f02689ffd142cd421bb9f2ed42645e3610ab7",
+      "candidate": "305914d327c74d59591ec9d5458f02689ffd142cd421bb9f2ed42645e3610ab7"
+    },
+    "crates/fereg-core/src/ols/fit.rs": {
+      "baseline": "7783b704bbbba6a28b729acdb4ecb6fe818780b5fe58c8240e627c99de1216a9",
+      "candidate": "7783b704bbbba6a28b729acdb4ecb6fe818780b5fe58c8240e627c99de1216a9"
+    },
+    "crates/fereg-core/src/ols/linear_session.rs": {
+      "baseline": "8e961e6067f37788b570f51e37a9c316c3d312725b0bf82d3ba4743a9a3baf7d",
+      "candidate": "8e961e6067f37788b570f51e37a9c316c3d312725b0bf82d3ba4743a9a3baf7d"
+    },
+    "crates/fereg-core/src/ols/mod.rs": {
+      "baseline": "18c6bdb466e0d0c74521f6d2b7c81d0b13e1818178f03489ba3c68bf7fb5c702",
+      "candidate": "18c6bdb466e0d0c74521f6d2b7c81d0b13e1818178f03489ba3c68bf7fb5c702"
+    },
+    "crates/fereg-core/src/ols/prepared.rs": {
+      "baseline": "1c896a4e729f166cc57019fd5e88b217dded7ee0579d4e73215eae7649c8bfe1",
+      "candidate": "1c896a4e729f166cc57019fd5e88b217dded7ee0579d4e73215eae7649c8bfe1"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_clusters.rs": {
+      "baseline": "817235109fc613eb62f7626ef387118253887286846dcc868095a620e1f0171a",
+      "candidate": "817235109fc613eb62f7626ef387118253887286846dcc868095a620e1f0171a"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+      "baseline": "072aa2ea8ede11b03438b7a50d88b56bd3b6603bcc74a0b710f9e3fbdf531439",
+      "candidate": "072aa2ea8ede11b03438b7a50d88b56bd3b6603bcc74a0b710f9e3fbdf531439"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_effect.rs": {
+      "baseline": "25072c7e5b781023adc68e6f81fb708fd9adcaf068ad7d26c2d1c7c81432b68c",
+      "candidate": "25072c7e5b781023adc68e6f81fb708fd9adcaf068ad7d26c2d1c7c81432b68c"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_rebase.rs": {
+      "baseline": "cfc0fdfd9486c84c1879c583904f80c472ae4dc6973d02495a46e18c8f6be824",
+      "candidate": "cfc0fdfd9486c84c1879c583904f80c472ae4dc6973d02495a46e18c8f6be824"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_request.rs": {
+      "baseline": "e64494af9f058d348ae29aedbe711e34daf655caa36d16d994c3919546068b7d",
+      "candidate": "e64494af9f058d348ae29aedbe711e34daf655caa36d16d994c3919546068b7d"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_singleton.rs": {
+      "baseline": "9c2add24a1b2e30a2312f8b28c272ca68427d6398be64e6cba0653a75d8c3872",
+      "candidate": "9c2add24a1b2e30a2312f8b28c272ca68427d6398be64e6cba0653a75d8c3872"
+    },
+    "crates/fereg-core/src/ols/prepared_categorical_topology.rs": {
+      "baseline": "6fb902f349418c8ba3116abf095f139a28ebf0ef9378ffe53fb34d3573d085aa",
+      "candidate": "6fb902f349418c8ba3116abf095f139a28ebf0ef9378ffe53fb34d3573d085aa"
+    },
+    "crates/fereg-core/src/ols/prepared_clustered.rs": {
+      "baseline": "04a511d760bfda8f715127c5d8c75ab6fb1902aeb1eb7da6bfec59765c099bc5",
+      "candidate": "04a511d760bfda8f715127c5d8c75ab6fb1902aeb1eb7da6bfec59765c099bc5"
+    },
+    "crates/fereg-core/src/ols/prepared_clustered_view.rs": {
+      "baseline": "566d6e87225941243272f3f691073eae54778e8fef28a821d931fc04af939a05",
+      "candidate": "566d6e87225941243272f3f691073eae54778e8fef28a821d931fc04af939a05"
+    },
+    "crates/fereg-core/src/ols/prepared_clusters.rs": {
+      "baseline": "d97ad363abbcc6cd7cbad10a853671b0a2be41fd7bb2b878bd6b8cc543881b0c",
+      "candidate": "d97ad363abbcc6cd7cbad10a853671b0a2be41fd7bb2b878bd6b8cc543881b0c"
+    },
+    "crates/fereg-core/src/ols/prepared_dof.rs": {
+      "baseline": "820b8dc04485940ecee49e42ba10b7af10bf69caaf8c13ec23baeeea73e49b02",
+      "candidate": "820b8dc04485940ecee49e42ba10b7af10bf69caaf8c13ec23baeeea73e49b02"
+    },
+    "crates/fereg-core/src/ols/prepared_fit.rs": {
+      "baseline": "22698424aa9dba797312e48dde0e235be3f6be5d05968d1dc5cbd259b1ad9966",
+      "candidate": "22698424aa9dba797312e48dde0e235be3f6be5d05968d1dc5cbd259b1ad9966"
+    },
+    "crates/fereg-core/src/ols/prepared_fit_view.rs": {
+      "baseline": "b5eb7cd7d7478f67a101aa93114d8f016ee2683e1b935020f6bd20005ee0b19b",
+      "candidate": "b5eb7cd7d7478f67a101aa93114d8f016ee2683e1b935020f6bd20005ee0b19b"
+    },
+    "crates/fereg-core/src/ols/prepared_inference_view.rs": {
+      "baseline": "4f484f7d8ea4796f7376fca8bcff309a88a60260c68065b164d93f74712739ff",
+      "candidate": "4f484f7d8ea4796f7376fca8bcff309a88a60260c68065b164d93f74712739ff"
+    },
+    "crates/fereg-core/src/ols/prepared_rhs.rs": {
+      "baseline": "f0c3cc781d0098fcbb99e7630bc8e16fbc16e49a0e0d143afc717259d8469635",
+      "candidate": "f0c3cc781d0098fcbb99e7630bc8e16fbc16e49a0e0d143afc717259d8469635"
+    },
+    "crates/fereg-core/src/ols/prepared_robust.rs": {
+      "baseline": "03fa3d246ef96fb490e4476b5ce5408eac024a0333227096ac9e893741fcb711",
+      "candidate": "03fa3d246ef96fb490e4476b5ce5408eac024a0333227096ac9e893741fcb711"
+    },
+    "crates/fereg-core/src/ols/prepared_scores.rs": {
+      "baseline": "66e559f4769aeaee0c50d5f4d1f1bb6a827dedc749a188b2dc62494866691060",
+      "candidate": "66e559f4769aeaee0c50d5f4d1f1bb6a827dedc749a188b2dc62494866691060"
+    },
+    "crates/fereg-core/src/ols/prepared_scratch.rs": {
+      "baseline": "bb5a077585bae270322224705fbaa0ddfc1bc54ea92bfaaaa7c6a483105c9831",
+      "candidate": "bb5a077585bae270322224705fbaa0ddfc1bc54ea92bfaaaa7c6a483105c9831"
+    },
+    "crates/fereg-core/src/ols/prepared_unadjusted.rs": {
+      "baseline": "3b4e3c1a71f7885a23895724a2c457b7b4c78f917b34882d84516497b2381798",
+      "candidate": "3b4e3c1a71f7885a23895724a2c457b7b4c78f917b34882d84516497b2381798"
+    },
+    "crates/fereg-core/src/ols/rank.rs": {
+      "baseline": "17686470929831a67a025b47b33b59e919fbb8114e2823e2b790be10983db1b1",
+      "candidate": "17686470929831a67a025b47b33b59e919fbb8114e2823e2b790be10983db1b1"
+    },
+    "crates/fereg-core/src/ols/topology_dof.rs": {
+      "baseline": "e6b388d7087364a2bdb9c9178ed33cb8ab4894ccd4842f209dff9a00c65da59e",
+      "candidate": "e6b388d7087364a2bdb9c9178ed33cb8ab4894ccd4842f209dff9a00c65da59e"
+    },
+    "crates/fereg-core/src/ols/vce.rs": {
+      "baseline": "2195a5496ab02e4807a8faaea9a318b8e2cdd4af170fab96a790bfcec8904325",
+      "candidate": "2195a5496ab02e4807a8faaea9a318b8e2cdd4af170fab96a790bfcec8904325"
+    },
+    "crates/fereg-core/src/options.rs": {
+      "baseline": "9ab5fa545560dbe2ee61045c7e9837e2a9a2215052107a3d0d74816f85221189",
+      "candidate": "9ab5fa545560dbe2ee61045c7e9837e2a9a2215052107a3d0d74816f85221189"
+    },
+    "crates/fereg-core/src/parallel.rs": {
+      "baseline": "670aafc206365b589a5a7b6ac629f89ffdb99a0fff733975efbfdcf88b53604f",
+      "candidate": "670aafc206365b589a5a7b6ac629f89ffdb99a0fff733975efbfdcf88b53604f"
+    },
+    "crates/fereg-core/src/ppml/categorical_fwl_cmg.rs": {
+      "baseline": "85d1d70074e87c4e8c24e9adb7b65fc86e1cc7e6ac85aafb28eb33aa8a0edca5",
+      "candidate": "85d1d70074e87c4e8c24e9adb7b65fc86e1cc7e6ac85aafb28eb33aa8a0edca5"
+    },
+    "crates/fereg-core/src/ppml/categorical_lsmr.rs": {
+      "baseline": "72997df4d0fcd2afcd59383a3e0adcf2fda7e5d6394fec5afa03906da2cb5575",
+      "candidate": "72997df4d0fcd2afcd59383a3e0adcf2fda7e5d6394fec5afa03906da2cb5575"
+    },
+    "crates/fereg-core/src/ppml/certificate.rs": {
+      "baseline": "992d9cfb385f975ee56d51a1321fa30fb6baf9b6a7e03031fff969ff1001d78a",
+      "candidate": "992d9cfb385f975ee56d51a1321fa30fb6baf9b6a7e03031fff969ff1001d78a"
+    },
+    "crates/fereg-core/src/ppml/family.rs": {
+      "baseline": "19b46d31f1d46b34d0f01df43ed1843964cd63f6797571b5ecfbca8d26c7b999",
+      "candidate": "19b46d31f1d46b34d0f01df43ed1843964cd63f6797571b5ecfbca8d26c7b999"
+    },
+    "crates/fereg-core/src/ppml/irls.rs": {
+      "baseline": "71ef390dffb06f42e9b4eb1b7102f2eacdfea399eab0f034d958eafb080ba914",
+      "candidate": "71ef390dffb06f42e9b4eb1b7102f2eacdfea399eab0f034d958eafb080ba914"
+    },
+    "crates/fereg-core/src/ppml/memory.rs": {
+      "baseline": "23a41e607163e1cba41b0cbcd80c5cce11d7cfaa185e4b779e76f6fb3f75ae01",
+      "candidate": "23a41e607163e1cba41b0cbcd80c5cce11d7cfaa185e4b779e76f6fb3f75ae01"
+    },
+    "crates/fereg-core/src/ppml/mod.rs": {
+      "baseline": "5c0ad8e889d35bbdc45e8123d3e32de2766c29b2736ef4fc308dd15e1da0225d",
+      "candidate": "5c0ad8e889d35bbdc45e8123d3e32de2766c29b2736ef4fc308dd15e1da0225d"
+    },
+    "crates/fereg-core/src/ppml/prepared.rs": {
+      "baseline": "b5811c49a1b9600c1e38895a427d23b092f84b85d517bdf66d3b201bfc2f8db9",
+      "candidate": "b5811c49a1b9600c1e38895a427d23b092f84b85d517bdf66d3b201bfc2f8db9"
+    },
+    "crates/fereg-core/src/ppml/prepared_estimator.rs": {
+      "baseline": "dc6bba7f7c1877aed982ba34116170264ec7684ca01e5f44717118702bc4cfff",
+      "candidate": "dc6bba7f7c1877aed982ba34116170264ec7684ca01e5f44717118702bc4cfff"
+    },
+    "crates/fereg-core/src/ppml/prepared_irls.rs": {
+      "baseline": "ecf1a5eaf9d38f68e83bec4d012a1f262ff5ba8fa75d3c204affcdceeacd03d5",
+      "candidate": "ecf1a5eaf9d38f68e83bec4d012a1f262ff5ba8fa75d3c204affcdceeacd03d5"
+    },
+    "crates/fereg-core/src/ppml/prepared_model.rs": {
+      "baseline": "58eaaf2af38e5c9fcef9948c4c8f09d16f9641c6e96e40f2de520950ca03b8d2",
+      "candidate": "58eaaf2af38e5c9fcef9948c4c8f09d16f9641c6e96e40f2de520950ca03b8d2"
+    },
+    "crates/fereg-core/src/ppml/prepared_separation.rs": {
+      "baseline": "357852e8d6b3a6b4a82fe13bdde907279c4b11473f8ee0a314dbe874c1cf3ce7",
+      "candidate": "357852e8d6b3a6b4a82fe13bdde907279c4b11473f8ee0a314dbe874c1cf3ce7"
+    },
+    "crates/fereg-core/src/ppml/psd.rs": {
+      "baseline": "3c5685d875af15d94571af30d7ae2cfe3f17bf763597d006f9da184e9891e803",
+      "candidate": "3c5685d875af15d94571af30d7ae2cfe3f17bf763597d006f9da184e9891e803"
+    },
+    "crates/fereg-core/src/ppml/residuals.rs": {
+      "baseline": "521bdf0d321eeec5aee4963155684f486afb365202899f5876040f83a75978b2",
+      "candidate": "521bdf0d321eeec5aee4963155684f486afb365202899f5876040f83a75978b2"
+    },
+    "crates/fereg-core/src/ppml/result.rs": {
+      "baseline": "9f68207de8dfb68955ba0bf9f099b7f30875b89cb0d4bb24a8e640ef516fa867",
+      "candidate": "9f68207de8dfb68955ba0bf9f099b7f30875b89cb0d4bb24a8e640ef516fa867"
+    },
+    "crates/fereg-core/src/ppml/solver.rs": {
+      "baseline": "41f6abe48b8d820fa883cee381e4b20b13cc74c5088c916118f10897b3575e7d",
+      "candidate": "41f6abe48b8d820fa883cee381e4b20b13cc74c5088c916118f10897b3575e7d"
+    },
+    "crates/fereg-core/src/ppml/vce.rs": {
+      "baseline": "bd6f91ebb06bd8aa2416c1fd1c122789db04b56769b7d6f84d6974ce3a0d8547",
+      "candidate": "bd6f91ebb06bd8aa2416c1fd1c122789db04b56769b7d6f84d6974ce3a0d8547"
+    },
+    "crates/fereg-core/src/ppml_separation/fe.rs": {
+      "baseline": "1eb1ea5cebe5b30e2f0e8daa2d0448c875bdf5e93bf6e1db8e0203d76af6968a",
+      "candidate": "1eb1ea5cebe5b30e2f0e8daa2d0448c875bdf5e93bf6e1db8e0203d76af6968a"
+    },
+    "crates/fereg-core/src/ppml_separation/ir.rs": {
+      "baseline": "eb61b4f08754f76c5f483e3b8df36d4b233eab8b14dc073580a02d8d1e923d38",
+      "candidate": "eb61b4f08754f76c5f483e3b8df36d4b233eab8b14dc073580a02d8d1e923d38"
+    },
+    "crates/fereg-core/src/ppml_separation/ledger.rs": {
+      "baseline": "e5a29c2daa3421970f667c419a3921951347d073649162c37e5522b8a91b3a20",
+      "candidate": "e5a29c2daa3421970f667c419a3921951347d073649162c37e5522b8a91b3a20"
+    },
+    "crates/fereg-core/src/ppml_separation/mod.rs": {
+      "baseline": "175f1ac9b4d33e0b3f759cc917db5dee9b23db49644b9fc0f99a01a6e50f099b",
+      "candidate": "175f1ac9b4d33e0b3f759cc917db5dee9b23db49644b9fc0f99a01a6e50f099b"
+    },
+    "crates/fereg-core/src/ppml_separation/mu.rs": {
+      "baseline": "406cda3ade13a1499b416a079fc662e331d3d6b2ff94b85e1c1b42e00fec8899",
+      "candidate": "406cda3ade13a1499b416a079fc662e331d3d6b2ff94b85e1c1b42e00fec8899"
+    },
+    "crates/fereg-core/src/ppml_separation/prepared_coordinator.rs": {
+      "baseline": "e9295f9087496fc33ba9070dd9e93b1217670ee2cb88cfcb26816b5bea0d11d3",
+      "candidate": "e9295f9087496fc33ba9070dd9e93b1217670ee2cb88cfcb26816b5bea0d11d3"
+    },
+    "crates/fereg-core/src/ppml_separation/projection.rs": {
+      "baseline": "e0c1838d5c17c83ae714302127c8ce90edfe9aef9159bbf681202c470c50d062",
+      "candidate": "e0c1838d5c17c83ae714302127c8ce90edfe9aef9159bbf681202c470c50d062"
+    },
+    "crates/fereg-core/src/ppml_separation/runner/accounting.rs": {
+      "baseline": "fe8b0fc830ea863f652d2bb8195bfd52b6eb6c7b728ce795fa17325850fb1ea2",
+      "candidate": "fe8b0fc830ea863f652d2bb8195bfd52b6eb6c7b728ce795fa17325850fb1ea2"
+    },
+    "crates/fereg-core/src/ppml_separation/runner/detect.rs": {
+      "baseline": "5c9ca8cb3cbf4bbc55e903d248b1f2d6f1f00cb93c903887664b6de7da7da8d0",
+      "candidate": "5c9ca8cb3cbf4bbc55e903d248b1f2d6f1f00cb93c903887664b6de7da7da8d0"
+    },
+    "crates/fereg-core/src/ppml_separation/runner/mod.rs": {
+      "baseline": "89b084a377a8e2f8e4931b34e590f4f9bee3b4abff91b1c151bb66a3b59fa46d",
+      "candidate": "89b084a377a8e2f8e4931b34e590f4f9bee3b4abff91b1c151bb66a3b59fa46d"
+    },
+    "crates/fereg-core/src/ppml_separation/simplex/mod.rs": {
+      "baseline": "110c7476888ae9e6a305a43cec96220885cdc43a46a38d86a8b1a6caf3686c54",
+      "candidate": "110c7476888ae9e6a305a43cec96220885cdc43a46a38d86a8b1a6caf3686c54"
+    },
+    "crates/fereg-core/src/ppml_separation/simplex/nullspace.rs": {
+      "baseline": "14f4e70014797b4cc29f532d1190f46fa07bbeded3c6a1da8c0bd7065e8460a7",
+      "candidate": "14f4e70014797b4cc29f532d1190f46fa07bbeded3c6a1da8c0bd7065e8460a7"
+    },
+    "crates/fereg-core/src/ppml_separation/simplex/tableau.rs": {
+      "baseline": "053ff40a51c7a38de0cc5594d11961bea61c1c5636b576afc90de563bdf90823",
+      "candidate": "053ff40a51c7a38de0cc5594d11961bea61c1c5636b576afc90de563bdf90823"
+    },
+    "crates/fereg-core/src/ppml_separation/simplex/tests.rs": {
+      "baseline": "59240809bfc997aa2a9e0d850b8023b9f2166f3e218d6986bb7132b0315b27ab",
+      "candidate": "59240809bfc997aa2a9e0d850b8023b9f2166f3e218d6986bb7132b0315b27ab"
+    },
+    "crates/fereg-core/src/ppml_separation/subset.rs": {
+      "baseline": "3b6a5c66efb5c368570c9945e0031f5a5e3ad543820cd2e1c117817baa6f5f39",
+      "candidate": "3b6a5c66efb5c368570c9945e0031f5a5e3ad543820cd2e1c117817baa6f5f39"
+    },
+    "crates/fereg-core/src/protocol.rs": {
+      "baseline": "23d60655c56e1b9faf861a9c123a1a1d27978e6d3aae41408c491f2a5bca05c0",
+      "candidate": "23d60655c56e1b9faf861a9c123a1a1d27978e6d3aae41408c491f2a5bca05c0"
+    },
+    "crates/fereg-core/src/sandwich.rs": {
+      "baseline": "4631846d3d4792c94902b6b3b64d7997ffcae8183c1a6136066c115910942bad",
+      "candidate": "4631846d3d4792c94902b6b3b64d7997ffcae8183c1a6136066c115910942bad"
+    },
+    "crates/fereg-core/src/sandwich/qualified_cluster.rs": {
+      "baseline": "d17039bb3ccc9cc2e0950a0f663e7157ab249e2521f6642031bb24d3c81c33b0",
+      "candidate": "d17039bb3ccc9cc2e0950a0f663e7157ab249e2521f6642031bb24d3c81c33b0"
+    },
+    "crates/fereg-core/src/selftest.rs": {
+      "baseline": "3ae9dfe2b5b6372b2580d6ed5f527e1c31e5e24ca687337b2f1ad9eb1d4f7600",
+      "candidate": "3ae9dfe2b5b6372b2580d6ed5f527e1c31e5e24ca687337b2f1ad9eb1d4f7600"
+    },
+    "crates/fereg-core/tests/feppml_constrained_memory_contract.rs": {
+      "baseline": "30580deeba0c3e7b0571e004ab664ce3caa5feb388b611e2bc0170c1c27708be",
+      "candidate": "30580deeba0c3e7b0571e004ab664ce3caa5feb388b611e2bc0170c1c27708be"
+    },
+    "crates/fereg-core/tests/model_wire_adversarial.rs": {
+      "baseline": "d46aac883a55e3c9b7250727659040ab55e4cb5f04883aa38d6e982d093c3496",
+      "candidate": "d46aac883a55e3c9b7250727659040ab55e4cb5f04883aa38d6e982d093c3496"
+    },
+    "crates/fereg-core/tests/model_wire_roundtrip.rs": {
+      "baseline": "9b07310b8f9c302f766f668bba31201c1a5d688e1b379c0256a6aca847391981",
+      "candidate": "9b07310b8f9c302f766f668bba31201c1a5d688e1b379c0256a6aca847391981"
+    },
+    "crates/fereg-core/tests/numeric_sample_oracle.rs": {
+      "baseline": "e8bba0518a91fe7cdc77a2bc8f9585ab15ca59ed64a007a5d8fa22c71f3962a0",
+      "candidate": "e8bba0518a91fe7cdc77a2bc8f9585ab15ca59ed64a007a5d8fa22c71f3962a0"
+    },
+    "crates/fereg-plugin/Cargo.toml": {
+      "baseline": "457428a8a5e4abc9c202e7bfc79230d7f111475fe53e0b174a951a4096b94197",
+      "candidate": "457428a8a5e4abc9c202e7bfc79230d7f111475fe53e0b174a951a4096b94197"
+    },
+    "crates/fereg-plugin/src/dispatch.rs": {
+      "baseline": "b94907d134da725acb9863b73f7d2de08b469257fab3737157fb97b094a0d195",
+      "candidate": "b94907d134da725acb9863b73f7d2de08b469257fab3737157fb97b094a0d195"
+    },
+    "crates/fereg-plugin/src/estimate.rs": {
+      "baseline": "d922d09ccefe5a33d46fec6d11dbc1dc3eb3c47cf8d2c22885c43ef0b345816a",
+      "candidate": "904bc95367c9a15fa72b5de498d3a304b502c6b2ee39f1e0efe1b5c7d63009fc"
+    },
+    "crates/fereg-plugin/src/ffi.rs": {
+      "baseline": "64f140b59a83ec79d5f5ab7337ae4ae9466738e1bb1370d8898fe0432d4ec893",
+      "candidate": "64f140b59a83ec79d5f5ab7337ae4ae9466738e1bb1370d8898fe0432d4ec893"
+    },
+    "crates/fereg-plugin/src/input.rs": {
+      "baseline": "5f49fe6a6e7fc4ee159c20159656c6b467eab192320a7f5f6aab22a8b82a5431",
+      "candidate": "5f49fe6a6e7fc4ee159c20159656c6b467eab192320a7f5f6aab22a8b82a5431"
+    },
+    "crates/fereg-plugin/src/instrumentation.rs": {
+      "baseline": "6fa358ced2b77f80a5368c5c9e705698fd795989b9177556c8dca0455ba882d0",
+      "candidate": "6fa358ced2b77f80a5368c5c9e705698fd795989b9177556c8dca0455ba882d0"
+    },
+    "crates/fereg-plugin/src/lib.rs": {
+      "baseline": "804450d4e872db2541032674039ace89b79f9e9c665cf0ed0dcd93184f3f1db5",
+      "candidate": "804450d4e872db2541032674039ace89b79f9e9c665cf0ed0dcd93184f3f1db5"
+    },
+    "crates/fereg-plugin/src/output.rs": {
+      "baseline": "7485010ab3b86bbf8799f61dbf235f30a00de4de8c043cba5248fcf5a8400dac",
+      "candidate": "7485010ab3b86bbf8799f61dbf235f30a00de4de8c043cba5248fcf5a8400dac"
+    },
+    "crates/fereg-plugin/src/ppml_estimate.rs": {
+      "baseline": "a16c2bfda2505dff878619cb76d6c81edf8c0c56740f91c534d19743249dfaec",
+      "candidate": "f64878004414c33c09fb1fe80811094bdbaa7562f26e1464b5018be22fa48132"
+    },
+    "crates/fereg-plugin/src/ppml_result.rs": {
+      "baseline": "e6622f044a30a4cd2faf0229e80d87c3f1ca404a337bf1c064826c4effd7709a",
+      "candidate": "e6622f044a30a4cd2faf0229e80d87c3f1ca404a337bf1c064826c4effd7709a"
+    },
+    "crates/fereg-plugin/src/result.rs": {
+      "baseline": "aeb40d330e1ed83f5a0f95bd36a508262b2a5588200b42b959f53b739b1b73c8",
+      "candidate": "aeb40d330e1ed83f5a0f95bd36a508262b2a5588200b42b959f53b739b1b73c8"
+    },
+    "crates/fereg-plugin/src/result_view.rs": {
+      "baseline": "227d1c7c11642297a5a910d5f4500b5e1c974d95abaabd30a3c4e3fd4b581f66",
+      "candidate": "227d1c7c11642297a5a910d5f4500b5e1c974d95abaabd30a3c4e3fd4b581f66"
+    },
+    "crates/fereg-testkit/Cargo.toml": {
+      "baseline": "33236cedc93f36c711c055df068866b45da218c13448322fadcdb0303f8fb9ec",
+      "candidate": "33236cedc93f36c711c055df068866b45da218c13448322fadcdb0303f8fb9ec"
+    },
+    "crates/fereg-testkit/src/explicit_dummy.rs": {
+      "baseline": "25c5682eda95a47e989a8c0b17002f0d53b1a34f3c8ca2e7cb22e13ca71fccd1",
+      "candidate": "25c5682eda95a47e989a8c0b17002f0d53b1a34f3c8ca2e7cb22e13ca71fccd1"
+    },
+    "crates/fereg-testkit/src/explicit_ols.rs": {
+      "baseline": "aa87ec733b072b9023f1674ce95a36bafc7397cf3e7bb3049aeca4608118cf54",
+      "candidate": "aa87ec733b072b9023f1674ce95a36bafc7397cf3e7bb3049aeca4608118cf54"
+    },
+    "crates/fereg-testkit/src/lib.rs": {
+      "baseline": "d369cc9e70265c0fcc1536fd3199d80f90c0ce19d8b9127a6f9909331986f2be",
+      "candidate": "d369cc9e70265c0fcc1536fd3199d80f90c0ce19d8b9127a6f9909331986f2be"
+    },
+    "crates/fereg-testkit/tests/borrowed_map_oracle.rs": {
+      "baseline": "526e017c1ea4efaea23d1c95ef52c13538dcdec220e6743457354f83837d9592",
+      "candidate": "526e017c1ea4efaea23d1c95ef52c13538dcdec220e6743457354f83837d9592"
+    },
+    "crates/fereg-testkit/tests/categorical_cluster_preparation.rs": {
+      "baseline": "717416179b3a600bee3c6a9d819b1e3173546ddc6f2d5c169340fef3a9fc443b",
+      "candidate": "717416179b3a600bee3c6a9d819b1e3173546ddc6f2d5c169340fef3a9fc443b"
+    },
+    "crates/fereg-testkit/tests/categorical_clustered_oracle.rs": {
+      "baseline": "5c22a92a2aff10dd5f25395adcb2dcc7bc2afbcfcb2161e1fc8e3a873e93972c",
+      "candidate": "5c22a92a2aff10dd5f25395adcb2dcc7bc2afbcfcb2161e1fc8e3a873e93972c"
+    },
+    "crates/fereg-testkit/tests/categorical_final_sample_rebase_oracle.rs": {
+      "baseline": "d6c22796135a8d6fe8388e3cc7c1301bd3427bbef5b22cecdec5a1e8ad661e3b",
+      "candidate": "d6c22796135a8d6fe8388e3cc7c1301bd3427bbef5b22cecdec5a1e8ad661e3b"
+    },
+    "crates/fereg-testkit/tests/categorical_fit_oracle.rs": {
+      "baseline": "f5d82dda68d30f786eaccc114147bf1517e458f27d04e7cd3b579c086fed563b",
+      "candidate": "f5d82dda68d30f786eaccc114147bf1517e458f27d04e7cd3b579c086fed563b"
+    },
+    "crates/fereg-testkit/tests/categorical_iid_oracle.rs": {
+      "baseline": "8721d4b14d50e3e5e3e1aa515d8251dceeb8e7f07fe665c25f762022aa912ab9",
+      "candidate": "8721d4b14d50e3e5e3e1aa515d8251dceeb8e7f07fe665c25f762022aa912ab9"
+    },
+    "crates/fereg-testkit/tests/categorical_robust_oracle.rs": {
+      "baseline": "0d4aeeecff540ea361460cfcce5875c147ac455e153764c220a2ae10a87ff57d",
+      "candidate": "0d4aeeecff540ea361460cfcce5875c147ac455e153764c220a2ae10a87ff57d"
+    },
+    "crates/fereg-testkit/tests/fe_certificate_oracle.rs": {
+      "baseline": "721bac2ebb54be771f8ea832eddf201f4a44b00fe292fae48399e6cdae7a64ff",
+      "candidate": "721bac2ebb54be771f8ea832eddf201f4a44b00fe292fae48399e6cdae7a64ff"
+    },
+    "crates/fereg-testkit/tests/intercept_slope_oracle.rs": {
+      "baseline": "d3c29f4418d58d254b7c55aa32ea59f6ccb0db3334a71b1b76f2a2257e41dcf1",
+      "candidate": "d3c29f4418d58d254b7c55aa32ea59f6ccb0db3334a71b1b76f2a2257e41dcf1"
+    },
+    "crates/fereg-testkit/tests/ols_oracle.rs": {
+      "baseline": "fe56aa648b9f2c447626540783528c772ca84fc663a520815915b6b248a2c4c0",
+      "candidate": "fe56aa648b9f2c447626540783528c772ca84fc663a520815915b6b248a2c4c0"
+    },
+    "crates/fereg-testkit/tests/prepared_clustered_oracle.rs": {
+      "baseline": "52ef15e90ef3752aa0656fd5d8dea27f1de71ef3538a22cc26e20691617e0077",
+      "candidate": "52ef15e90ef3752aa0656fd5d8dea27f1de71ef3538a22cc26e20691617e0077"
+    },
+    "crates/fereg-testkit/tests/prepared_fit_oracle.rs": {
+      "baseline": "b215528752d5baa9cac13a2ac59b242a597a55231f700dc9a40059b3ef32956c",
+      "candidate": "b215528752d5baa9cac13a2ac59b242a597a55231f700dc9a40059b3ef32956c"
+    },
+    "crates/fereg-testkit/tests/prepared_robust_oracle.rs": {
+      "baseline": "e76e91f836ded48957ce3cd3e0289091d0fb838b1d712dda8f73f46222e1d678",
+      "candidate": "e76e91f836ded48957ce3cd3e0289091d0fb838b1d712dda8f73f46222e1d678"
+    },
+    "crates/fereg-testkit/tests/weak_graph_decimal_oracle.rs": {
+      "baseline": "7c772e2c75ad6ac506486fa21d094181399dea2dada9250db83a82fd51319dc3",
+      "candidate": "7c772e2c75ad6ac506486fa21d094181399dea2dada9250db83a82fd51319dc3"
+    },
+    "plugin/Makefile": {
+      "baseline": "18451e052fb74e72a15c9642299a83d81f503eb93310e0d67ab6031dab3e5a8e",
+      "candidate": "18451e052fb74e72a15c9642299a83d81f503eb93310e0d67ab6031dab3e5a8e"
+    },
+    "plugin/exports_linux.map": {
+      "baseline": "754786c0c3a5a387319b42ffdbdac5aad339e01dfc98586e151c823939b1dae0",
+      "candidate": "754786c0c3a5a387319b42ffdbdac5aad339e01dfc98586e151c823939b1dae0"
+    },
+    "plugin/exports_macos.txt": {
+      "baseline": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f",
+      "candidate": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f"
+    },
+    "plugin/stata_bridge.c": {
+      "baseline": "9765896b824bd03715642317c980a8b56acaecbd0117a8420fcac26c0440d613",
+      "candidate": "9765896b824bd03715642317c980a8b56acaecbd0117a8420fcac26c0440d613"
+    },
+    "plugin/stata_bridge.h": {
+      "baseline": "425d45cb237f2ad16744bc162a4119bfb423787e6c6d089262ba92af6c88895a",
+      "candidate": "425d45cb237f2ad16744bc162a4119bfb423787e6c6d089262ba92af6c88895a"
+    },
+    "plugin/stplugin.c": {
+      "baseline": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a",
+      "candidate": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a"
+    },
+    "plugin/stplugin.h": {
+      "baseline": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1",
+      "candidate": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+    },
+    "scripts/build_macos.sh": {
+      "baseline": "c00d7a5b006b9c5e164ffcef8e32b5c5c1b0acbb913600b4ff39a32c4e99cfd5",
+      "candidate": "c00d7a5b006b9c5e164ffcef8e32b5c5c1b0acbb913600b4ff39a32c4e99cfd5"
+    }
+  },
+  "native_inputs_count": 150,
+  "plugins": {
+    "baseline": "3e7c91ec7c2d590d01f45fc99a02459367dfe56bdf5727d9250fe98a09aadf6f",
+    "candidate": "c1c9d8d15fe2586028c82b1c28b3b63a5bd489f68fef6f05d57d5cbba9f00f83"
+  },
+  "source_sha256": {
+    "baseline": {
+      "Cargo.lock": "ffc0f8e4dd8dbee7fd11506b4ca2f4ac2ed77e7574f5229dc95c00cb9d7fe5a5",
+      "crates/fereg-plugin/src/estimate.rs": "d922d09ccefe5a33d46fec6d11dbc1dc3eb3c47cf8d2c22885c43ef0b345816a",
+      "crates/fereg-plugin/src/ppml_estimate.rs": "a16c2bfda2505dff878619cb76d6c81edf8c0c56740f91c534d19743249dfaec"
+    },
+    "candidate": {
+      "Cargo.lock": "ffc0f8e4dd8dbee7fd11506b4ca2f4ac2ed77e7574f5229dc95c00cb9d7fe5a5",
+      "crates/fereg-plugin/src/estimate.rs": "904bc95367c9a15fa72b5de498d3a304b502c6b2ee39f1e0efe1b5c7d63009fc",
+      "crates/fereg-plugin/src/ppml_estimate.rs": "f64878004414c33c09fb1fe80811094bdbaa7562f26e1464b5018be22fa48132"
+    }
+  }
+}
