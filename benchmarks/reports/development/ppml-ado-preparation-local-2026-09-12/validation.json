@@ -1,0 +1,109 @@
+{
+  "candidate_fixtures": [
+    {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_native_preparation.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 2
+    },
+    {
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_time_series.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 2
+    }
+  ],
+  "baseline_fixture": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_native_preparation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "independent_oracles": "Analytic Poisson cell means; offset/exposure identity and independent scientific fixture; explicit expected row/drop sample; all 27 Stata missing values; numeric/string clusters and FW/PW singleton behavior; sorted metadata on success and failures.",
+  "static_tests": {
+    "transaction_contract": 17,
+    "profile_registration": 5,
+    "all_pass": true
+  },
+  "native_tests": "No native rebuild or Rust suite rerun: identical hash-bound plugin and unchanged native source. Licensed fixtures load the bound artifact.",
+  "production_draft_failure": "Before benchmark execution, an initial edit removed the weight-variable local still needed by the plugin varlist. Weighted fixture requests failed r(498); restored before the passing checks and every measured call. No scientific assertion was weakened.",
+  "benchmark_start_failure": "Initial sandbox attempt failed at psutil process inventory before any measured call. Authorized RSS-enabled rerun completed.",
+  "scc": false,
+  "windows": false,
+  "full_profile": false,
+  "qualification": false,
+  "installed_plugin_replaced": false
+}

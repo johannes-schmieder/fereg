@@ -80,6 +80,11 @@ sources for separation rebuilds without making a throwaway compact source copy.
 The existing categorical generation constructors, memory envelope and numerical
 sessions remain authoritative; see [ADR 0038](adr/0038-ppml-numeric-selection-ownership.md).
 
+The PPML ado wrappers preserve observation order without nested sort bookkeeping
+and leave input completeness to native classification. They retain candidate and
+weight-expression handling, private shadows and all final publication checks;
+see [ADR 0041](adr/0041-ppml-ado-preparation.md).
+
 The public call graph is:
 
 ```text

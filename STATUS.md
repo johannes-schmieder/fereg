@@ -10,6 +10,46 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P1 PPML ado preparation: adopted local checkpoint
+
+Against `8be388e280eb64af5de9830204a63bee8de3b33d`, remove three nested PPML
+sort-preservation scopes and the optional ado completeness marker/markout/count.
+Candidate and weight-expression handling, authoritative native row/domain rules,
+pre-admission classification and all publication/rollback checks remain intact.
+[ADR 0041](docs/adr/0041-ppml-ado-preparation.md) records the decision.
+
+The [report](benchmarks/reports/development/ppml-ado-preparation-local-2026-09-12/README.md)
+binds the same native plugin in both arms and 25 pairs / 50 measured calls.
+Primary complete-command paired medians improve 2.4% (complete one FE), 1.1%
+(FW/exposure/missing) and 0.4% (PW/offset/two-way cluster). Outer Stata medians
+fall 0.271→0.101, 0.092→0.052 and 0.074→0.042 seconds. Full native work varies;
+these are modest command gains, not native-kernel gains. All full scientific
+exports and solver/retry/fallback decisions are exact. Primary native peaks
+are unchanged and all action peaks fit their unchanged models.
+
+The low-memory control initially slows 957→1085 ms. Six retained follow-ups
+plus that original yield a −1.0% median paired change, with variation mostly in
+unchanged native finite/strict work; no low-memory speedup or precise external
+cause is claimed. Other graph controls slow by at most 6 ms. Four distinct
+candidate licensed fixtures and the baseline native-preparation fixture pass
+with r(0) sentinels; 17 transaction and five registration tests pass. Tests cover
+independent Poisson science, all missing codes, FW/PW, string clusters, singleton
+ordering, saved outputs, original row/sort metadata and injected failure exits.
+The [validation](benchmarks/reports/development/ppml-ado-preparation-local-2026-09-12/validation.json)
+retains the corrected initial weighted-varlist draft failure. Installed/dist and
+separate Veneto work remain untouched. No SCC or qualification ran for this step.
+
+Continue #27's remaining preparation/loading, pass, inference, centered-tile,
+output and scheduling investigations; the five weak-route allocation events also
+remain open. The active user goal now explicitly authorizes completing #27,
+then two independent agent investigations and their evidenced optimizations,
+then assessment of upstream CMG small-component changes, followed by a new small
+SCC benchmark report (about ten tasks, roughly 3–5 hours each, smaller datasets
+across graph families and primarily fixest/pyfixest/reghdfe comparisons). This
+is later work, not a restart of either stopped historical campaign. No push is
+authorized. P0–P7 and R1–R5 completion must be evidenced, not inferred from the
+completed checkpoints.
+
 ## P4 stable reference passes and scratch: adopted local checkpoint
 
 Against `d32f05e45519aaee5c5d44bc87caddb4f68482f3`, two isolated changes are

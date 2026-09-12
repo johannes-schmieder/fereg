@@ -1,5 +1,5 @@
 *! fereg guarded PPML eclass transaction 0.5.0 02sep2026
-program define _fereg_estimate_ppml, eclass sortpreserve
+program define _fereg_estimate_ppml, eclass
     version 18.0
     local hidden_cmdline `"_fereg_estimate_ppml `0'"'
 
@@ -608,14 +608,9 @@ program define _fereg_estimate_ppml, eclass sortpreserve
     if `"`inject'"' == "posthold" exit 3498
 
     local weight_variable `"`fweight'`pweight'"'
+    * Native loading classifies missing values; completeness is an optional
+    * transport hint, not sample authority. No ado copy/markout pass is needed.
     local input_complete 0
-    if `candidate_all' {
-        tempvar complete_input
-        quietly generate byte `complete_input' = `touse'
-        quietly markout `complete_input' `depvar' `source_vars' `weight_variable' `adjustment_variable'
-        quietly count if !`complete_input'
-        local input_complete = (r(N) == 0)
-    }
 
     capture quietly program list __fereg_estimate_plugin
     if _rc {

@@ -1,0 +1,34 @@
+{
+  "baseline_commit": "8be388e280eb64af5de9830204a63bee8de3b33d",
+  "plugin_sha256": "3e7c91ec7c2d590d01f45fc99a02459367dfe56bdf5727d9250fe98a09aadf6f",
+  "installed_dist_plugin_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08",
+  "native_source_matches_previous_measured_snapshot": true,
+  "native_files_checked": 150,
+  "ado_sha256": {
+    "baseline": {
+      "feppml.ado": "73e86873bc34d0342c75a70998cb720c7d5b9eaf83774217adec0b19b1f76d47",
+      "_fereg_ppml.ado": "411b4c942910df9f4328f18410208b779a0fd6805381cda0fc31222da144d137",
+      "_fereg_estimate_ppml.ado": "8b886a9e76863116ec44b39d1b9e7daf24ea9ad0a22e4e2225d74f6f53e4ae03"
+    },
+    "candidate": {
+      "feppml.ado": "5a956bd20e85fe747b5a62a90492241a40a09044785109bdac46aae9b17d4ede",
+      "_fereg_ppml.ado": "b46ad196a6e4dab3098ed9585fc4f37df11fdcc43125b46a949bcd1bde13f6c7",
+      "_fereg_estimate_ppml.ado": "c929520c65b59aab018db20ba43a9411692492d7b9215c340175596b1798f97a"
+    }
+  },
+  "build": "Same already measured universal plugin in both arms; all 150 tracked native source/build inputs match the previous frozen final snapshot; no native rebuild or installed-dist replacement.",
+  "implementation_patch_sha256": "2439873c0cce138516894d9df529fec7e38a392324c420575002d6a3a4f268e8",
+  "harness_source_sha256": {
+    "ppml_ado_compare.py": "20e5e83b36be87f8abb9366658e42f6d9ce3cb5d2c6239382916297717540004",
+    "ppml_preparation_compare.py": "c5674d60d41d20375afa3aa43991967e31880bf424c3a9ea20551172d3199e00",
+    "measure.py": "00746e693e24da4cd4832a58779c7b8c5009446072e84fbde1731b299edbcd50",
+    "collect_ppml_preparation.py": "90a47519f9b03f73d01dd65f935f254603df4b39b99198415a6ea5bb5f5dcd12",
+    "stata_worker.do": "2aae5dfd381d8205b79b40a8a4eb607ea4ea2c986d8e28a3f1b6f9471c5eff7b"
+  },
+  "fixture_source_sha256": {
+    "tests/stata/parity_ppmlhdfe/feppml_native_preparation.do": "c58e0a93e89a6fc6f3c6214672b861226cc568c676a34f5399fd3c0997429a66",
+    "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do": "6555be95562a040ba89aab4485c2ddf7d41f61f5d45e0b5bfacb6f1ca6d4ff33",
+    "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do": "bad00d8e382606f548b835f3eff8332b14ad4a0d9e7eb3170e8e67a3fd938a5c",
+    "tests/stata/parity_ppmlhdfe/feppml_time_series.do": "048a6af4dc4155f4c8a2bbb1c92b1d66d41d0db5c05006d622607cd3a02258b3"
+  }
+}

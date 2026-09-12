@@ -1,5 +1,5 @@
 *! fereg public PPML syntax and result adapter 0.5.0 02sep2026
-program define _fereg_ppml, eclass sortpreserve
+program define _fereg_ppml, eclass
     version 18.0
     local public_display = c(noisily)
     local public_cmdline `"feppml `0'"'
