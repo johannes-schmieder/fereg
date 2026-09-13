@@ -1,0 +1,34 @@
+   Compiling fereg-core v0.5.0 (REPOSITORY/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.62s
+     Running unittests src/lib.rs (EXPERIMENT/test-target/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 2 tests
+test memory::tests::intercept_recovery_memory_covers_outputs_and_rejects_invalid_axes ... ok
+test ols::prepared_fit::tests::saved_intercept_recovery_enforces_joint_budget_before_materialization ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 805 filtered out; finished in 0.02s
+
+     Running tests/feppml_constrained_memory_contract.rs (EXPERIMENT/test-target/debug/deps/feppml_constrained_memory_contract-d3dc76b92ee3a6dc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/model_wire_adversarial.rs (EXPERIMENT/test-target/debug/deps/model_wire_adversarial-e9833c3069a03b78)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/model_wire_roundtrip.rs (EXPERIMENT/test-target/debug/deps/model_wire_roundtrip-27437a9c820a7106)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/numeric_sample_oracle.rs (EXPERIMENT/test-target/debug/deps/numeric_sample_oracle-890a28dc78c63a7f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+

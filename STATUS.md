@@ -10,6 +10,42 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0/P6 recovery admission tested; initial-peak diagnosis corrected
+
+The [source-bound recovery report](benchmarks/reports/development/saved-recovery-admission-local-2026-09-13/README.md)
+records an unadopted five-file extension to the saved-Schur prototype. Plugin
+`247f889a` binds 176 inputs; both architecture builds/native arm64 ABI, 13 core
+recovery tests, five plugin saved tests and all 48 independent saved-OLS oracle
+fits pass. Each intercept-recovery route has a checked incremental reserve.
+An over-budget CG/LSMR attempt can still use the existing admitted MAP fallback;
+valid retained coefficients need no unused Schwarz reserve. PPML/slopes retain
+their existing policies. One/four-worker exact-boundary and failed-product tests
+pass. The public cap fixture rejects one byte below admission with r(909),
+preserves prior estimates/sample/output identities, and succeeds at the exact
+cap: 362557 native bytes versus 381696 usable. This is scoped boundary evidence.
+
+The earlier score-cache-overlap diagnosis is corrected: ordinary robust/clustered
+inference consumes and drops its score design before recovery. A separate exact
+original-PW allocator diagnostic reaches its 581.41 MB whole peak beforehand;
+recovery peaks at 140.70 MB and adds 13.78 MB above entry. Recovery takes 0.697 s,
+with exact full science and saved values. This diagnostic is not pooled into
+command comparisons. The public 424.69 MB base omits the initial solver reserve;
+remaining initial-peak reporting and complete overlap accounting are P0 work.
+
+Twelve incremental cost pairs include six controls/screens, two triggered seeds
+and four bounded A/A/reversed-order follow-ups. All preserve exact science,
+solver fields, native peaks, models and scratch. The original accepting unit
+case slows +36 ms/5.3% and reversed +43 ms/6.1%. One rejecting seed adds 333 ms,
+mostly in earlier CG, but its reversed pair is -7 ms. A/A moves +23/-11 ms.
+The accepting-case cost signal remains unresolved; no admission speedup or
+combined-prototype adoption is claimed. PW/low observed/model gaps remain.
+
+The five changed source files remain uncommitted; accepted numerical baseline
+is `dadd956`. Next resolve initial-solver peak reporting/admission overlap and
+localize the accepting-unit cost before primary saved-Schur adoption comparisons.
+Historical receipts, installed dist, unrelated Veneto work and original untracked
+paths remain preserved. #27 is unfinished; no agents, SCC, qualification or push.
+
 ## P6 original PW screen resumed; recovery admission remains open
 
 The [repaired-baseline screen](benchmarks/reports/development/saved-schur-probe-local-2026-09-13/repaired-baseline/README.md)
@@ -27,13 +63,13 @@ cap and continues with CG: candidate 138 = 8 probe + 64 Schur + 66 CG iterations
 versus baseline 66. Both fallback flags remain set. Reported command/peak includes
 that discarded attempt and final recovery; this is one pair, not adoption.
 
-Both peaks exceed the unchanged 424.69 MB model. The source audit identifies
-retained score storage overlapping the unbudgeted final recovery/fallback chain.
-Next implement checked admission for those overlapping allocations and test
-constrained-budget failure/rollback before further timing or primary repeats.
-The prototype remains uncommitted in prepared_fit.rs and plugin estimate.rs;
-accepted numerical baseline remains `dadd956`, installed dist is unchanged, and
-unrelated Veneto changes remain. #27 is unfinished; no agents/SCC/push.
+Both peaks exceed the unchanged 424.69 MB model. This screen's proposed
+score-cache-overlap diagnosis is corrected by the newer source/allocator audit
+above: the ordinary inference cache is already dropped and the whole peak
+precedes recovery. Recovery admission and constrained rollback now have focused
+evidence, while initial-peak reporting and an incremental cost signal remain
+open. The combined prototype remains unadopted; accepted numerical baseline
+remains `dadd956`, installed dist and unrelated Veneto changes are preserved.
 
 ## P6 prerequisite: negative CG energy independently audited
 

@@ -1,0 +1,33 @@
+--- a/crates/fereg-plugin/src/estimate.rs	2026-09-13 14:48:06
++++ b/crates/fereg-plugin/src/estimate.rs	2026-09-13 14:51:13
+@@ -1694,6 +1694,12 @@
+                 "derived saved-output request mask capacity exhausted",
+             )?;
+         }
++        let recovery_resources = crate::ffi::allocation_usage();
++        let recovery_started = Instant::now();
++        crate::ffi::ppml_phase_allocation_probe(
++            fereg_core::ppml::PpmlPhase::FeRecovery,
++            fereg_core::ppml::PpmlPhaseAllocatorEvent::Begin,
++        );
+         let recovered = categorical.recover_absorbed_effects_fast(
+             absorbed_target
+                 .as_deref()
+@@ -1715,6 +1721,17 @@
+             },
+             fit_config.absorb.solver_memory_budget,
+         )?;
++        let recovery_peak = crate::ffi::ppml_phase_allocation_probe(
++            fereg_core::ppml::PpmlPhase::FeRecovery,
++            fereg_core::ppml::PpmlPhaseAllocatorEvent::End,
++        );
++        let recovery_end = crate::ffi::allocation_usage();
++        eprintln!("RECOVERY_AUDIT|n={n}|retained={}|before_current={}|before_peak={}|recovery_peak={recovery_peak}|end_current={}|end_peak={}|seconds={:.9}|execution_model={}",
++            fit.recovered_fe_coefficients().is_some(),
++            recovery_resources.current_bytes, recovery_resources.peak_bytes,
++            recovery_end.current_bytes, recovery_end.peak_bytes,
++            recovery_started.elapsed().as_secs_f64(),
++            fit_config.absorb.solver_memory_budget.map_or(0, |budget| budget.execution_bytes));
+         let (absorbed_sum, channels) = recovered.into_optional_parts();
+         recovered_absorbed = absorbed_sum;
+         saved_channels = channels;

@@ -1,0 +1,21 @@
+   Compiling fereg-core v0.5.0 (REPOSITORY/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.24s
+     Running unittests src/lib.rs (EXPERIMENT/test-target/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 13 tests
+test fe::topology_slope_map::tests::recovery_output_capacity_overflow_is_an_allocation_error ... ok
+test ppml::memory::tests::partial_fe_save_models_complete_recovery_and_no_save_pays_nothing ... ok
+test memory::tests::intercept_recovery_memory_covers_outputs_and_rejects_invalid_axes ... ok
+test fe::topology_slope_map::tests::recovery_returns_centered_crossed_effects_and_requested_channels ... ok
+test ols::prepared_fit::tests::categorical_recovery_uses_explicit_final_hessian_weights_for_normalization ... ok
+test fe::topology_slope_map::tests::sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights ... ok
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_matches_map_normalization ... ok
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_normalizes_disconnected_components ... ok
+test fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients ... ok
+test ppml::prepared_estimator::tests::saved_slope_recovery_allocation_failure_is_r909_and_atomic ... ok
+test ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state ... ok
+test ols::prepared_fit::tests::saved_intercept_recovery_enforces_joint_budget_before_materialization ... ok
+test fe::topology_slope_map::tests::recovery_waits_for_reconstruction_after_an_early_moment_certificate ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 794 filtered out; finished in 4.80s
+
