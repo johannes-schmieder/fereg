@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 fresh-design within norms: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-fresh-norms-local-2026-09-13/README.md)
+adopts [ADR 0053](docs/adr/0053-ppml-fresh-design-norm-reuse.md) against accepted
+native `ccc1f33`. Fresh fast one-FE PPML construction selects the same successful
+projection's control norms through existing generated-column metadata. It omits
+per-value norm arithmetic during compaction and two K-sized scratch allocations.
+Raw reference norms/means, initial certificates, final checks and rank policy
+remain; multi-FE, low/generic/slope and alternative divisors keep their calculation.
+
+Fifteen pairs / 30 commands include nine primaries over three seeds, five controls
+and one separate private audit. FW/PW median paired command gains are 2.4%/5.1%,
+with projection medians 0.4704→0.4444 and 0.3883→0.3437 seconds. The complete
+unweighted target has no repeatable command gain (+0.02% paired), despite lower
+projection cost. Unchanged finite/strict/preparation variation is preserved and
+not wholly attributed to norm reuse. The largest protected increase is +1 ms;
+no public pair exceeds the prospective regression envelope. The private audit
+adds 65 ms/0.7%, retaining zero events/live/peak growth and stable capacities.
+Native peaks are exact and admitted on all pairs; RSS moves both ways.
+
+Full b/V and discrete scientific/solver fields are exact; independent certificates
+pass. Twenty-nine isolated Rust tests and both independent dummy Poisson/sandwich
+oracle arms pass, as do universal static/native arm64 ABI checks. The new test's
+overstrict cross-projector diagnostic comparison fails identically on accepted
+baseline; only that new comparison was corrected, preserving its fixture,
+scientific envelope, global helper and runtime contracts. All 152 native inputs
+match the measured isolated artifact. Installed dist and unrelated Veneto work
+remain intact; no agents, SCC, push or qualification ran.
+
+Next inspect the duplicate fresh raw-reference norm pass and remaining matrix/
+moment/predictor work. Other P4 items, P0 accounting, P3/P5/P6/P7 and R1–R5 remain
+open. Complete #27 before the authorized independent agents, upstream CMG review
+and small SCC campaign.
+
 ## P4 fresh-input certificate removal: evaluated and rejected
 
 The [source-bound report](benchmarks/reports/development/ppml-fresh-input-local-2026-09-13/README.md)

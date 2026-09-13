@@ -74,6 +74,10 @@ One-FE fused projections copy norms certified by that same call into retained
 storage when the frame and projector weight divisors match. Multi-FE handoffs
 and alternative frame divisors retain the stable current-frame scan; see
 [ADR 0052](adr/0052-ppml-same-call-projection-norms.md).
+Fresh retained construction selects these same-call norms using its stored
+generated-column mapping, avoiding duplicate norm arithmetic during matrix
+compaction while preserving raw reference scales and the initial certificate;
+see [ADR 0053](adr/0053-ppml-fresh-design-norm-reuse.md).
 Large, wide one-FE retained reference refreshes assign columns to the existing
 team while preserving each column's row order, stable norms and compensated
 means. Frozen finite solves share an existing identity scratch bank across

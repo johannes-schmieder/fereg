@@ -1,0 +1,132 @@
+{
+  "distinct_candidate_rust_tests_passed": 29,
+  "test_names": [
+    "fe::borrowed_map::tests::reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths",
+    "fe::borrowed_map::tests::reusable_one_fe_matches_weighted_group_means_and_reuses_warm_residual",
+    "fe::borrowed_map::tests::reusable_one_fe_trailing_norms_follow_current_values_weights_and_width",
+    "fe::borrowed_map::tests::reusable_selected_norms_preserve_mapping_and_reject_invalid_selections",
+    "fe::borrowed_map::tests::reusable_trailing_norms_do_not_publish_on_mismatch_or_failure",
+    "fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients",
+    "fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr",
+    "ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes",
+    "ols::prepared_fit::tests::certified_linear_session_generation_invalidation_is_fail_closed",
+    "ols::prepared_fit::tests::ppml_fresh_norm_selection_preserves_rank_and_explicit_weight_divisors",
+    "ols::prepared_fit::tests::ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis",
+    "ols::prepared_fit::tests::rejected_uncertified_strict_candidate_restores_exact_basis_transaction",
+    "ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool",
+    "ols::prepared_fit::tests::strict_rollback_is_allocation_free_and_preserves_retained_storage",
+    "ppml::family::tests::exposure_requires_strict_positivity",
+    "ppml::memory::tests::model_scales_session_vectors_slots_and_reusable_map_basis_separately",
+    "ppml::memory::tests::reusable_workspace_has_stable_data_sized_capacities",
+    "ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum",
+    "ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state",
+    "ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+    "ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+    "ppml::prepared_irls::tests::bitwise_identical_weights_skip_final_frame_control_reprojection",
+    "ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots",
+    "ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session",
+    "ppml::prepared_irls::tests::strict_candidate_fuses_two_fe_map_design_and_response_projection",
+    "ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints",
+    "ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+    "ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance",
+    "ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target"
+  ],
+  "candidate_target_isolation": "New candidate-only Cargo target; separate baseline-reproducer target.",
+  "baseline_original_diagnostic_test": "Fails with exactly the same generic/categorical absolute FE-certificate diagnostic as the candidate.",
+  "baseline_final_test": "Pass; fixture unchanged, scientific products compared at 2e-12 and both projectors independently certified.",
+  "development_failures": [
+    "New cross-projector fixture initially used a shared helper requiring absolute FE-certificate diagnostics to agree to 512 machine epsilon. Both baseline and candidate fail identically: 5.002265680432952e-12 versus 1.9553313000909888e-11. Only the new fixture comparison was corrected; no global helper, input, numerical tolerance or runtime contract changed. The test compares coefficients/status/rank, bread, residuals, explicit frame scale and independently passing certificates.",
+    "A postprocessing inspection used nonexistent pair key seed and raised KeyError; corrected to the recorded pair identifier. No benchmark or scientific comparison failed."
+  ],
+  "logs_sha256": {
+    "reusable_-final.log": "d9dfdb5ad8ead989dafd8d3aed95827139bd29df835446ad9836153913403691",
+    "ppml_fresh_norm_selection_preserves_rank_and_explicit_weight_divisors-final.log": "3fd538d294ff031fd4c9e8eca0198e104c4930d5b76fc746ba00333bbc2b8601",
+    "bitwise_identical_weights_skip_final_frame_control_reprojection-final.log": "98c5611c3c5f692a92c354e364ca25dec02ab57e24c10daffc720df5aba3b3bb",
+    "strict_-final.log": "09fc0f39546af1d13c0caf38f66e82e150d9edda4327f742120cbb9a9c114289",
+    "ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis-final.log": "1fb206cf39ff7f81d1b0614f998938a4ff90461531683c57613fd7d2ab7aff53",
+    "certified_linear_session_generation_invalidation_is_fail_closed-final.log": "6d2bd15c4d85ddc55e8b1ed368630a11f547fa989ec7de655ee337c3cb4386c3",
+    "baseline-diagnostic-reproducer.log": "2dec66b5dfc0ee383150ec8a1d8ebd7b044bfdde6450d18e495de2525f24b248",
+    "baseline-final-test.log": "f256039d6ee1852bb96d121dfd882aab7fe51481410de8dda7565d3177098f5d",
+    "ppml_fresh_norm_selection_preserves_rank_and_explicit_weight_divisors.log": "69d912bce038235045d5c86fea7551629b76cbe262bffe82fafe7601f701f553",
+    "build.log": "6548557996069862739ef0d6d5914b3553b999b06ada24e86c7dcff4768a4a6a",
+    "screen.log": "114c4058d33e808ae3cf56b4ae8b2852ccb20b1a0708f8fc6b9110ba1dee2b46",
+    "repeat-one_fe_complete.log": "ef161e2951fcf721a95aaa61f6e6fbe9c78b664641d478898066156ab3726e57",
+    "repeat-fw_exposure_missing.log": "a76735ccab1f28710ddefb07b775a8631f7a9b79dabd8d1c94d789d0ef7691b4",
+    "repeat-pw_cluster_offset.log": "1b7bb6072dad3c2cbf48f349d8a11fca2471fb8abb55993637a0d3ddb50af32d",
+    "controls.log": "0b709df1b14e1d4165f668e7d53a91e4fba76823d4188c447f5effb8bbb07f5d",
+    "audit.log": "138983489d9b1a2a4eaf33249890c3bf52b6dcb01d511e37305ad0fa34775fc9",
+    "oracle-run.log": "2cab56446cdf212a61508415b5ec82910b286238d746e9675ef414af6467d8fa"
+  },
+  "oracles": [
+    {
+      "arm": "baseline",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ],
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "plugin_sha256": "a4d4a33aeb8ac6a0c870f38bb86b57d1b10cd81386c004dccb0970b1a992cfee",
+      "log_sha256": "55e0955333271029633fc6817cbadaa87deb0322c84262551b967984a8085d95"
+    },
+    {
+      "arm": "candidate",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ],
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "plugin_sha256": "ef4f1a61a8f5c240e9a7a6de8b2aef835344ab51206e784d12b68c8480d09a75",
+      "log_sha256": "f0e7d01fad352446456b786b00bbe0f3a208457d50a2d6091295d2afa8b6d083"
+    }
+  ],
+  "build": {
+    "universal_static_audit": true,
+    "native_arm64_ABI_self_test": "PASS",
+    "expected_injected_panic_contained": true,
+    "changed_crate_compiled_for_both_architectures": true
+  },
+  "scope": "Local development, isolated artifacts; no cluster or release qualification.",
+  "baseline_native_inputs_verified_against_git_commit": true,
+  "candidate_native_input_count": 152,
+  "main_and_candidate_match_measured_native_inputs": true,
+  "paired_commands": 30,
+  "pairs": 15,
+  "all_pairs_full_b_V_exact": true,
+  "all_native_peaks_exact_and_admitted": true,
+  "public_command_regression_review": "No pair exceeds max(10 ms, 5%). Complete target has no repeatable command gain.",
+  "private_allocation_audit": {
+    "baseline": {
+      "audit_iterations": 16.0,
+      "audit_events_delta": 0.0,
+      "audit_current_growth": 0.0,
+      "audit_peak_growth": 0.0,
+      "ppml_capacity_stable": 1.0,
+      "linear_capacity_stable": 1.0,
+      "audit_scratch_stable": 1.0,
+      "linear_session_allocation_free": 1.0,
+      "fresh_warm_equivalent": 1.0,
+      "allocation_certificate_passed": 1.0,
+      "iteration_allocation_free": 1.0
+    },
+    "candidate": {
+      "audit_iterations": 16.0,
+      "audit_events_delta": 0.0,
+      "audit_current_growth": 0.0,
+      "audit_peak_growth": 0.0,
+      "ppml_capacity_stable": 1.0,
+      "linear_capacity_stable": 1.0,
+      "audit_scratch_stable": 1.0,
+      "linear_session_allocation_free": 1.0,
+      "fresh_warm_equivalent": 1.0,
+      "allocation_certificate_passed": 1.0,
+      "iteration_allocation_free": 1.0
+    }
+  },
+  "portable_oracle_driver": "Recorded driver differs only by reading the licensed Stata executable from STATA_MP_PATH."
+}

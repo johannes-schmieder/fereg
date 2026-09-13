@@ -1394,6 +1394,30 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP norm output exceeds the RHS count",
             ));
         }
+        let rhs_positions = values.ncols() - output.len()..values.ncols();
+        self.absorb_with_selected_norms(
+            weights, values, config, norm_weight_scale, rhs_positions, output,
+        )
+    }
+
+    /// Select norms in caller column order without allocating an index buffer.
+    /// Validate the selection before projection or any write to caller norms.
+    pub(crate) fn absorb_with_selected_norms(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+        norm_weight_scale: f64,
+        rhs_positions: impl ExactSizeIterator<Item = usize> + Clone,
+        output: &mut [f64],
+    ) -> Result<(CertifiedBorrowedMap, bool)> {
+        if rhs_positions.len() != output.len()
+            || rhs_positions.clone().any(|position| position >= values.ncols())
+        {
+            return Err(invalid_argument(
+                "reusable categorical MAP norm selection is not aligned",
+            ));
+        }
         let absorbed = self.absorb(weights, values, config)?;
         if self.design.effects().len() != 1 {
             return Ok((absorbed, false));
@@ -1415,7 +1439,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP certified norms are not aligned",
             ));
         }
-        output.copy_from_slice(&norms[norms.len() - output.len()..]);
+        for (destination, position) in output.iter_mut().zip(rhs_positions) {
+            *destination = norms[position];
+        }
         Ok((absorbed, true))
     }
 
@@ -8811,6 +8837,83 @@ mod tests {
                 }
             });
         }
+    }
+
+    #[test]
+    fn reusable_selected_norms_preserve_mapping_and_reject_invalid_selections() {
+        let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let index = LevelIndex::from_codes(&codes, 4).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(codes.len(), vec![source.effect()]).unwrap();
+        let mut projector = ReusableCategoricalMapAbsorber::new(design, 5, 1).unwrap();
+        let capacities = projector.capacities();
+        let weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0, 6.0, 8.0];
+        let matrix = || {
+            DenseMatrix::from_columns(&[
+                vec![1.0, 3.0, 2.0, -1.0, 5.0, 4.0, 6.0, 8.0],
+                vec![1.0; 8],
+                vec![1e140, 2e140, -3e140, 1e140, 2e140, 5e140, -1e140, 3e140],
+                vec![0.0; 8],
+                vec![1e-140, 2e-140, 5e-140, 3e-140, 0.0, -1e-140, 2e-140, 4e-140],
+            ])
+            .unwrap()
+        };
+        let mut norms = [-1.0; 3];
+        for selection in [[4, 0, 2], [2, 2, 0]] {
+            let (actual, reused) = projector
+                .absorb_with_selected_norms(
+                    BorrowedMapWeights::Provided(&weights),
+                    matrix(),
+                    config(),
+                    8.0,
+                    selection.into_iter(),
+                    &mut norms,
+                )
+                .unwrap();
+            assert!(reused);
+            for (position, &column) in selection.iter().enumerate() {
+                let expected = (0..codes.len()).fold(0.0_f64, |norm, row| {
+                    norm.hypot((weights[row] / 8.0).sqrt() * actual.residualized()[(row, column)])
+                });
+                assert!((norms[position] / expected - 1.0).abs() < 2e-15);
+            }
+        }
+        let saved = norms;
+        assert!(projector
+            .absorb_with_selected_norms(
+                BorrowedMapWeights::Provided(&weights),
+                matrix(),
+                config(),
+                8.0,
+                [0, 5, 2].into_iter(),
+                &mut norms,
+            )
+            .is_err());
+        assert_eq!(norms, saved);
+        assert!(projector
+            .absorb_with_selected_norms(
+                BorrowedMapWeights::Provided(&weights),
+                matrix(),
+                config(),
+                8.0,
+                0..2,
+                &mut norms,
+            )
+            .is_err());
+        assert_eq!(norms, saved);
+        let (_, reused) = projector
+            .absorb_with_selected_norms(
+                BorrowedMapWeights::Provided(&weights),
+                matrix(),
+                config(),
+                4.0,
+                0..3,
+                &mut norms,
+            )
+            .unwrap();
+        assert!(!reused);
+        assert_eq!(norms, saved);
+        assert_eq!(projector.capacities(), capacities);
     }
 
     #[test]

@@ -3982,9 +3982,25 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
                 drop(raw_norms);
                 drop(raw_means);
+                let mut norms_reused = false;
                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                     self.fill_reusable_map_weights()?;
-                    self.absorb_reusable_map(raw)?
+                    if let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
+                        self.fe_projector.as_mut()
+                    {
+                        let (absorbed, reused) = projector.absorb_with_selected_norms(
+                            self.weights.borrowed(),
+                            raw,
+                            self.config.absorb.map,
+                            self.bread_weight_scale.solver_weight_divisor,
+                            stored_generated_columns.iter().map(|column| column + 1),
+                            &mut within_norms,
+                        )?;
+                        norms_reused = reused;
+                        absorbed
+                    } else {
+                        self.absorb_reusable_map(raw)?
+                    }
                 } else {
                     self.prepared.fit_absorb_matrix(
                         self.weights.borrowed(),
@@ -4000,13 +4016,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 let (within, report) = absorbed.into_parts();
                 let stride = within.ncols();
                 let mut values = within.into_row_major();
+                let norm_workspace_columns = if norms_reused { 0 } else { stored_columns };
                 let mut norm_scales = fallible_filled(
-                    stored_columns,
+                    norm_workspace_columns,
                     0.0_f64,
                     "unable to reserve weighted-linear retained norm scales",
                 )?;
                 let mut norm_sums = fallible_filled(
-                    stored_columns,
+                    norm_workspace_columns,
                     1.0_f64,
                     "unable to reserve weighted-linear retained norm sums",
                 )?;
@@ -4023,24 +4040,33 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     let target_start = row.checked_mul(stored_columns).ok_or_else(|| {
                         allocation("weighted-linear retained compact offset overflows")
                     })?;
-                    let root = normalized_solver_weight(
-                        self.weights.borrowed(),
-                        self.bread_weight_scale,
-                        row,
-                    )?
-                    .sqrt();
-                    for (target, generated) in stored_generated_columns.iter().copied().enumerate()
-                    {
-                        let value = values[source_start + generated + 1];
-                        update_scaled_square(
-                            root * value,
-                            &mut norm_scales[target],
-                            &mut norm_sums[target],
-                        )?;
-                        values[target_start + target] = value;
+                    if norms_reused {
+                        for (target, generated) in
+                            stored_generated_columns.iter().copied().enumerate()
+                        {
+                            values[target_start + target] = values[source_start + generated + 1];
+                        }
+                    } else {
+                        let root = normalized_solver_weight(
+                            self.weights.borrowed(),
+                            self.bread_weight_scale,
+                            row,
+                        )?
+                        .sqrt();
+                        for (target, generated) in
+                            stored_generated_columns.iter().copied().enumerate()
+                        {
+                            let value = values[source_start + generated + 1];
+                            update_scaled_square(
+                                root * value,
+                                &mut norm_scales[target],
+                                &mut norm_sums[target],
+                            )?;
+                            values[target_start + target] = value;
+                        }
                     }
                 }
-                for column in 0..stored_columns {
+                for column in 0..norm_workspace_columns {
                     within_norms[column] = stable_norm(norm_scales[column], norm_sums[column])?;
                 }
                 values.truncate(checked_elements(rows, stored_columns)?);

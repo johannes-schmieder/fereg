@@ -10708,6 +10708,125 @@ mod tests {
     }
 
     #[test]
+    fn ppml_fresh_norm_selection_preserves_rank_and_explicit_weight_divisors() {
+        let rows = 257;
+        let groups = (0..rows).map(|r| (r % 7) as f64).collect::<Vec<_>>();
+        let weights = (0..rows).map(|r| (1 + r % 5) as f64).collect::<Vec<_>>();
+        let x1 = (0..rows)
+            .map(|r| 100.0 * groups[r] + (r as f64 * 0.37).sin())
+            .collect::<Vec<_>>();
+        let x2 = (0..rows)
+            .map(|r| (r as f64 * 0.17).cos())
+            .collect::<Vec<_>>();
+        let x3 = x1.iter().map(|value| 2.0 * value).collect::<Vec<_>>();
+        let y = (0..rows)
+            .map(|r| 0.7 * x1[r] - 0.3 * x2[r] + groups[r] + (r as f64 * 0.11).sin())
+            .collect::<Vec<_>>();
+        for kind in [
+            TestWeights::Unit,
+            TestWeights::Frequency(&weights),
+            TestWeights::Probability(&weights),
+        ] {
+            let data = prepared(
+                &y,
+                &[x1.clone(), x2.clone(), x3.clone(), groups.clone()],
+                &[false; 4],
+                Some(&groups),
+                true,
+                kind,
+            );
+            let canonical = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+            let config = PreparedOlsFitConfig {
+                absorb: AbsorbConfig {
+                    solver: FeSolverKind::Map,
+                    ..AbsorbConfig::default()
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let mut generic = CertifiedLinearSession::new(
+                &data,
+                canonical,
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            )
+            .unwrap();
+            let expected_output = generic.solve_fresh().unwrap();
+            let expected = expected_output.fit();
+            assert_eq!(expected.finite_rank(), 2);
+            for factor in [1.0, 8.0] {
+                if canonical.weights().values.is_none() && factor != 1.0 {
+                    continue;
+                }
+                let mut scale = canonical.bread_weight_scale();
+                scale.solver_weight_divisor *= factor;
+                scale.reference_weight_multiplier *= factor;
+                let frame =
+                    LinearSolveFrame::from_parts(canonical.response(), canonical.raw_weights(), scale)
+                        .unwrap();
+                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                    &data,
+                    frame,
+                    config,
+                    LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                    data.fit_owned_fe_design().unwrap(),
+                )
+                .unwrap();
+                let actual_output = session.solve_fresh().unwrap();
+                let actual = actual_output.fit();
+                // The generic and categorical projectors have different raw
+                // FE-certificate rounding, also on unchanged production code.
+                // Compare scientific products and each current-frame certificate;
+                // an explicit divisor need not preserve diagnostic magnitudes.
+                assert_eq!(actual.finite_rank(), expected.finite_rank());
+                assert_eq!(
+                    actual.kept_generated_columns(),
+                    expected.kept_generated_columns()
+                );
+                assert_eq!(
+                    actual.dropped_generated_columns(),
+                    expected.dropped_generated_columns()
+                );
+                assert_eq!(actual.coefficients().len(), expected.coefficients().len());
+                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
+                    assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
+                    assert_eq!(
+                        actual.generated_column_index,
+                        expected.generated_column_index
+                    );
+                    assert_eq!(actual.status, expected.status);
+                    match (actual.value, expected.value) {
+                        (Some(actual), Some(expected)) => assert_close(actual, expected, 2e-12),
+                        (actual, expected) => assert_eq!(actual, expected),
+                    }
+                }
+                assert_eq!(actual.bread().coordinates(), expected.bread().coordinates());
+                assert_eq!(actual.bread().weight_scale(), scale);
+                assert_eq!(
+                    actual.bread().values().len(),
+                    expected.bread().values().len()
+                );
+                for (actual, expected) in actual
+                    .bread()
+                    .values()
+                    .iter()
+                    .zip(expected.bread().values())
+                {
+                    assert_close(*actual, *expected, 2e-12);
+                }
+                assert_eq!(actual.residuals().len(), expected.residuals().len());
+                for (actual, expected) in actual.residuals().iter().zip(expected.residuals()) {
+                    assert_close(*actual, *expected, 2e-12);
+                }
+                assert!(actual.rank_certificate().passed);
+                assert!(actual.score_certificate().passed);
+                assert!(actual.bread().certificate().passed);
+                assert!(actual.absorption_report().certified());
+                assert!(actual.residual_absorption_report().certified());
+            }
+        }
+    }
+
+    #[test]
     fn ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis() {
         let groups = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
         let x = groups
