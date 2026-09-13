@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 fresh-input certificate removal: evaluated and rejected
+
+The [source-bound report](benchmarks/reports/development/ppml-fresh-input-local-2026-09-13/README.md)
+evaluates a standalone fresh one-FE entry against accepted `ccc1f33`. Fresh raw
+responses/design blocks skip the initial certificate, project once and independently
+certify against original reference norms. The first sweep consumes the unchanged
+iteration budget; retained warm residuals keep iteration-zero checks. The prototype
+is rejected and its exact source/patch/artifacts remain archived. All 152 restored
+native hashes match accepted `ccc1f33`; no prototype remains in active source.
+
+Sixteen pairs / 32 commands include nine primaries, five controls and two low-FW
+rechecks. Complete/FW/PW command medians are 9.683→9.751 / 3.223→3.209 /
+2.979→2.821 seconds, with median paired changes +0.7%/−0.8%/−4.7%.
+The only command target exceeding the prospective gain threshold has a 126 ms
+median reduction in unchanged finite solving versus about 4 ms in projection.
+A material complete-command gain attributable to the changed work is unproven.
+The low-FW control first costs 72 ms; rechecks save 96 ms and cost 29 ms.
+Every observation remains, without treating changing direction as a root cause.
+
+Full paired b/V and discrete scientific/solver decisions are exact. Native peaks
+are exact and admitted, with no memory gain. Twenty-eight isolated candidate
+tests and both independent full-dummy Poisson/sandwich oracles pass, including
+parallel weighted group means, fresh/prior equality, warm-zero and iteration
+budgets, current-frame norms, stale-rank and transaction/generation checks.
+Universal static/native arm64 ABI checks pass. No private allocation audit ran
+after rejection; no new allocation-free claim is made.
+
+This completes the bounded P4 fresh-input/current-frame norm evaluation: same-call
+fused norm reuse is adopted and standalone fresh-certificate removal is rejected.
+Next evaluate fresh-design norm construction and remaining matrix/moment/predictor
+passes, then the remaining #27 packages. The two independent agents, upstream CMG
+assessment and small SCC campaign remain after #27. Installed dist, all 97 unrelated
+Veneto lines and prior evidence remain intact; no push, agents, cluster or qualification.
+
 ## P4 same-call projection norms: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-norm-reuse-local-2026-09-13/README.md)
@@ -38,9 +72,8 @@ oracle arms and universal static/native arm64 ABI checks pass. All 152 native
 input hashes match the measured isolated plugin a4d4a33a... . Initial scale-field
 compilation error and every measurement are disclosed; no tolerances changed.
 
-Next evaluate fresh raw one-FE certificates and fresh-design norm construction,
-then remaining P4 passes and #27 packages. The combined P4 fresh-input/norm item
-remains open. The two independent agents, upstream CMG assessment and small SCC
+The subsequent fresh-certificate evaluation is rejected above. Fresh-design norm
+construction, remaining P4 passes and other #27 packages remain open. The two independent agents, upstream CMG assessment and small SCC
 campaign remain after #27. Installed dist, all 97 unrelated Veneto lines and
 historical receipts remain intact; no push, agents, cluster or qualification.
 

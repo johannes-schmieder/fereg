@@ -1,0 +1,253 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 96503da..c3c9347 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -1420,10 +1420,31 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
+     }
+ 
+     pub(crate) fn absorb(
++        &mut self,
++        weights: BorrowedMapWeights<'_>,
++        values: DenseMatrix,
++        config: MapConfig,
++    ) -> Result<CertifiedBorrowedMap> {
++        self.absorb_impl(weights, values, config, false)
++    }
++
++    /// Fresh raw one-FE inputs need one projection and its independent final
++    /// certificate. Retained residual candidates must use the warm entry.
++    pub(crate) fn absorb_initial(
++        &mut self,
++        weights: BorrowedMapWeights<'_>,
++        values: DenseMatrix,
++        config: MapConfig,
++    ) -> Result<CertifiedBorrowedMap> {
++        self.absorb_impl(weights, values, config, true)
++    }
++
++    fn absorb_impl(
+         &mut self,
+         weights: BorrowedMapWeights<'_>,
+         mut values: DenseMatrix,
+         config: MapConfig,
++        fresh_input: bool,
+     ) -> Result<CertifiedBorrowedMap> {
+         validate_config(config)?;
+         let rhs_count = values.ncols();
+@@ -1454,20 +1475,41 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
+         )?;
+         let setup_seconds = setup_started.elapsed().as_secs_f64();
+         let solve_started = Instant::now();
++        let completed_iterations = usize::from(fresh_input && self.design.effects().len() == 1);
++        if completed_iterations != 0 {
++            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
++                &self.design,
++                weights,
++                &mut values,
++                &mut self.workspace,
++                None,
++                config.symmetric,
++            )?;
++        }
+         let initial_certification_started = Instant::now();
+-        let initial = certify_initial(
+-            &self.design,
+-            weights,
+-            &values,
+-            config.tolerance,
+-            &mut self.workspace,
+-        )?;
++        let initial = if completed_iterations == 0 {
++            certify_initial(
++                &self.design,
++                weights,
++                &values,
++                config.tolerance,
++                &mut self.workspace,
++            )?
++        } else {
++            certify(
++                &self.design,
++                weights,
++                &values,
++                config.tolerance,
++                &mut self.workspace,
++            )?
++        };
+         let initial_certification_seconds = initial_certification_started.elapsed().as_secs_f64();
+         if initial.passed {
+             return certified_result(
+                 values,
+                 SolveStopReason::Certified,
+-                0,
++                completed_iterations,
+                 initial,
+                 setup_seconds,
+                 solve_started.elapsed().as_secs_f64(),
+@@ -1599,7 +1641,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
+         }
+ 
+         let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
+-        for iteration in 1..=pilot_limit {
++        for iteration in completed_iterations.saturating_add(1)..=pilot_limit {
+             borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                 &self.design,
+                 weights,
+@@ -8773,9 +8815,13 @@ mod tests {
+                         })
+                         .collect();
+                     let raw = DenseMatrix::from_columns(&columns).unwrap();
++                    let prior = projector
++                        .absorb(BorrowedMapWeights::Provided(&weights), raw.clone(), config())
++                        .unwrap();
+                     let actual = projector
+-                        .absorb(BorrowedMapWeights::Provided(&weights), raw, config())
++                        .absorb_initial(BorrowedMapWeights::Provided(&weights), raw, config())
+                         .unwrap();
++                    assert_eq!(actual.residualized(), prior.residualized());
+                     assert!(actual.report().certified());
+                     assert_eq!(actual.report().iterations, 1);
+                     for column in 0..width {
+@@ -8813,6 +8859,76 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn reusable_initial_projection_counts_sweeps_and_keeps_multife_warm_checks() {
++        let codes = [0_u32, 0, 1, 1, 0, 0, 1, 1];
++        let index = LevelIndex::from_codes(&codes, 2).unwrap();
++        let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++        let second_codes = [0_u32, 1, 0, 1, 0, 1, 0, 1];
++        let second_index = LevelIndex::from_codes(&second_codes, 2).unwrap();
++        let second = ValidatedBorrowedInterceptSource::new(&second_codes, 2, &second_index).unwrap();
++        for multi in [false, true] {
++            let effects = if multi {
++                vec![source.effect(), second.effect()]
++            } else {
++                vec![source.effect()]
++            };
++            let design = BorrowedInterceptFeDesign::new(codes.len(), effects).unwrap();
++            let mut projector = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
++            let capacities = projector.capacities();
++            let one_step = MapConfig {
++                max_iterations: 1,
++                ..config()
++            };
++            let actual = projector
++                .absorb_initial(
++                    BorrowedMapWeights::Unit,
++                    DenseMatrix::zeros(codes.len(), 1).unwrap(),
++                    one_step,
++                )
++                .unwrap();
++            assert_eq!(actual.report().iterations, usize::from(!multi));
++            assert!(actual.report().certified());
++            let (within, _) = actual.into_parts();
++            let warm = projector
++                .absorb(BorrowedMapWeights::Unit, within, one_step)
++                .unwrap();
++            assert_eq!(warm.report().iterations, 0);
++            let invalid = MapConfig {
++                max_iterations: 0,
++                ..config()
++            };
++            assert_eq!(
++                projector
++                    .absorb_initial(
++                        BorrowedMapWeights::Unit,
++                        DenseMatrix::zeros(codes.len(), 1).unwrap(),
++                        invalid,
++                    )
++                    .unwrap_err()
++                    .code,
++                ErrorCode::InvalidArgument
++            );
++            if !multi {
++                let values =
++                    DenseMatrix::from_columns(&[vec![0.1, 0.3, 0.8, 1.4, 0.7, 0.2, 1.1, 0.9]]).unwrap();
++                let weights = [1.0, 3.0, 5.0, 7.0, 2.0, 4.0, 6.0, 8.0];
++                let strict = MapConfig {
++                    tolerance: 1e-30,
++                    ..one_step
++                };
++                let error = projector
++                    .absorb_initial(BorrowedMapWeights::Provided(&weights), values, strict)
++                    .unwrap_err();
++                assert_eq!(
++                    error.message,
++                    "reusable categorical MAP exhausted its iteration budget without certification"
++                );
++            }
++            assert_eq!(projector.capacities(), capacities);
++        }
++    }
++
+     #[test]
+     fn reusable_one_fe_trailing_norms_follow_current_values_weights_and_width() {
+         let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+diff --git a/crates/fereg-core/src/ols/linear_session.rs b/crates/fereg-core/src/ols/linear_session.rs
+index 3192ae5..b4bdbcd 100644
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -2491,7 +2491,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+         )?;
+         let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+             self.fill_reusable_map_weights()?;
+-            self.absorb_reusable_map(raw)?
++            self.absorb_reusable_map_initial(raw)?
+         } else {
+             self.prepared
+                 .fit_absorb_matrix(self.weights.borrowed(), raw, self.config.absorb)?
+@@ -2505,6 +2505,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+         Ok((response.into_row_major(), report))
+     }
+ 
++    fn absorb_reusable_map_initial(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        if let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
++            self.fe_projector.as_mut()
++        {
++            projector.absorb_initial(self.weights.borrowed(), values, self.config.absorb.map)
++        } else {
++            self.absorb_reusable_map(values)
++        }
++    }
++
+     fn absorb_reusable_map(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
+         let raw_weights = self.weights.borrowed();
+         let projector = self.fe_projector.as_mut().ok_or_else(|| {
+@@ -2693,7 +2703,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+                     std::mem::take(&mut self.frozen_workspace.response),
+                 )?;
+                 let absorbed = if reusable_map {
+-                    self.absorb_reusable_map(raw_response)?
++                    self.absorb_reusable_map_initial(raw_response)?
+                 } else {
+                     self.prepared.fit_absorb_matrix(
+                         self.weights.borrowed(),
+@@ -3984,7 +3994,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+                 drop(raw_means);
+                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+                     self.fill_reusable_map_weights()?;
+-                    self.absorb_reusable_map(raw)?
++                    self.absorb_reusable_map_initial(raw)?
+                 } else {
+                     self.prepared.fit_absorb_matrix(
+                         self.weights.borrowed(),
+@@ -4065,7 +4075,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+                 )?;
+                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+                     self.fill_reusable_map_weights()?;
+-                    self.absorb_reusable_map(raw_response)?
++                    self.absorb_reusable_map_initial(raw_response)?
+                 } else {
+                     self.prepared.fit_absorb_matrix(
+                         self.weights.borrowed(),
+@@ -4109,7 +4119,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
+                     drop(norms);
+                     drop(means);
+                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+-                        self.absorb_reusable_map(raw)?
++                        self.absorb_reusable_map_initial(raw)?
+                     } else {
+                         self.prepared.fit_absorb_matrix(
+                             self.weights.borrowed(),
