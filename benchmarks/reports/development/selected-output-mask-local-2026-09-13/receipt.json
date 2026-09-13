@@ -1,0 +1,26 @@
+{
+  "baseline_commit": "25b1bb3ad6a632cf9b0217abdaa7d231f8ddb0ed",
+  "accepted_numerical_commit": "257f4cee74ee0b3e80c55e1f1867b486e26410b5",
+  "candidate_plugin_sha256": "79ff38b2cf3caf177e4d013cdd4fb43e6fd453a6f4b4697e7d6436b74969bbab",
+  "baseline_plugin_sha256": "c64ead0763d662a8f7bd1c74f1058426ea03f90c871ff387e76a6fe935b2e3da",
+  "source_inputs": 176,
+  "changed_inputs": [
+    "crates/fereg-core/src/fe/mod.rs",
+    "crates/fereg-core/src/fe/topology_slope_map.rs",
+    "crates/fereg-core/src/ols/prepared_categorical_data.rs"
+  ],
+  "patch_sha256": "d0c51624a8d020203177e0c847593d90d946730ff928f234acdde5e2621b517b",
+  "native_test_count": 17,
+  "independent_oracle_fits_per_arm": 48,
+  "first_screen_pairs": 3,
+  "separate_profile_pairs": 1,
+  "numeric_archive_sha256": "33af24852cf295b9bf36d2267643ed7edda75ae95a5e0f1f0e742eaf99c543ea",
+  "disposition": "Reject the standalone selected-output mask change: no target reaches the prospective complete-command or native-peak threshold. Restore accepted source; P6 final-state versus retained-coefficient recovery remains open.",
+  "limitations": [
+    "No further primary seeds or protected performance campaign after first-screen rejection",
+    "Single-seed PW native-peak decrease is untraced, exceeds the single skipped-vector payload and is not assigned causally to this change",
+    "Independent combined-output/rollback validation is internal transaction coverage, not an expanded public Stata surface",
+    "No hardware-traffic or isolated recovery-allocation measurement; available low-mode trace does not isolate the skipped vector",
+    "Current one-FE Auto already lacks retained coefficient batches; broader saved-output retention still requires investigation"
+  ]
+}

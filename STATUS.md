@@ -10,6 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 selected-output mask: evaluated and rejected
+
+The [isolated report](benchmarks/reports/development/selected-output-mask-local-2026-09-13/README.md)
+rejects the standalone three-file recovery mask change against accepted numerical
+`257f4ce` (evidence HEAD `25b1bb3`). Plugin `79ff38b2` binds 176 inputs, passes
+both architecture builds/arm64 ABI, all 17 topology/recovery tests and 48
+independent explicit-dummy saved-output fits per artifact. Unit/AW/FW/PW,
+one/two FE, fast/low, partial/combined outputs and rollback pass.
+
+The three prescribed screens are 0.207→0.207 / 0.329→0.315 / 0.409→0.412 seconds
+for unit saved, AW low saved and PW two-FE clustered partial saved. None meets
+the fixed command/native-peak threshold. Full b/V, sample/status/DoF/FE/cluster
+and saved values are exact. Unit/AW native peaks are unchanged and admitted.
+PW falls 398.11→394.59 MB for an untraced reason, but both exceed the unchanged
+107.15 MB model; this is a P0 gap, not memory acceptance. PW sampled RSS rises.
+The separate AW profile is 0.310→0.313 seconds with unchanged native peak and
+no isolated recovery-allocation timer. No additional seeds or protected
+performance campaign ran after rejection. The full patch and receipts are
+archived and all 176 accepted build inputs restored; no production source
+changes remain from either P5 or this mask experiment.
+
+P6 saved outputs remains open. The next substantive comparison is fast two-FE
+saved output without retaining all initial projection coefficients, using the
+existing accepted-final-target recovery. Include final recovery/fallback cost
+and resolve its overlapping memory accounting; one-FE Auto already omits that
+initial coefficient batch. The remaining P0/P3/P4/P6/P7 and R1–R5 work precedes
+the authorized agents, upstream CMG review and later small SCC campaign.
+Installed dist and unrelated Veneto work remain unchanged. No push.
+
 ## P5 centered tiles: evaluated and rejected for native adoption
 
 The [final QR/publication report](benchmarks/reports/development/centered-tiles-probe-local-2026-09-13/qr-public/README.md)

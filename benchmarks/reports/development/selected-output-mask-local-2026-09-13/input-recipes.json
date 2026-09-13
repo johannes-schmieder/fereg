@@ -1,0 +1,340 @@
+{
+  "aw_low_saved-n983040-s104729.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "3f72c8726c1d1357c5e9be7a49aa37466d3080c379d6836116bf458bba6323a4",
+      "c2": "9071b36003b5e67e25ae95c207e1fa9c442709abe4ab668a476d00c329bd0098",
+      "g1": "a819e3a50ed95cda8a0f179abe03e7051981a8dbca5fcf463f96589afb5c5ebc",
+      "obs_id": "daf0813c4e4e0e769fa1a1a3c145f200edab4a85bd5775471b11748968e8ddd5",
+      "w": "a789f559d3b595646b6f12b1f7978e1725c158859d01e391052734160f77452b",
+      "x1": "e5c078f36951c5d460256d210b845c17d01af31af37deebb1288b7d0366aee4e",
+      "y": "53e125cf82a1a89b6b76c4a2a44ca6c8858353cb01cf1e6fbb8ba8f5a324636b"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 983040,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "fit_options": "memory(low)",
+      "k": 1,
+      "missing": true,
+      "n": 983040,
+      "name": "aw_low_saved",
+      "threads": 4,
+      "weight": "[aw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104729,
+    "sha256": "8052383a63b544073b4aa2818458a537e74c63d4b33d80c707ac4d575340c47e",
+    "source_sha256": "304724605f81a2f4b9fc129378dc28e9ed790c115e660d3ac63923d0f4ba0de1"
+  },
+  "aw_low_saved-n7680-s104730.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "e7c8c11a4c38a0e155af65782076d9dde583593daa7a83851f96682f5c940c4b",
+      "c2": "a5240af96ebf9abaa3f8f97cb1e530bd6766d8fe4a17841e82b99b7b5352bd64",
+      "g1": "4fa45884b49b47753740adba2ff1b8a787254b318bc371e965e97b9cc0e40edb",
+      "obs_id": "b55ef77d4e23e41f2beaa064268537a703874ea3bd0f403e96f97c0623c233fd",
+      "w": "8e7c5d63bf751a326c006347126c53d5a40acfef1ef472e4799c2f886c757d2c",
+      "x1": "329fc9fed1bd5e62096cf308b3d9815c39b39a2ffa1f66ec6be0e18d8c45587b",
+      "y": "ca3be41a3501a747a880b13b1e9130ff7aab73f61e044428aa1a5e0886c29168"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 7680,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "fit_options": "memory(low)",
+      "k": 1,
+      "missing": true,
+      "n": 983040,
+      "name": "aw_low_saved",
+      "threads": 4,
+      "weight": "[aw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104730,
+    "sha256": "b61c5d77f31d4ec827e09edd4fce2ff601317660700169d406877a1ed8969c2d",
+    "source_sha256": "e22d335427a9600599714da012378e38328dde74bc2fa7c7636d8dcec671d6bb"
+  },
+  "pw_two_fe_partial-n245760-s104729.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "61fc90dda8f20ede0d97f9368f035b5bad25d7834359c7fe837ddc04b8e92958",
+      "c2": "6a478c406d139ad70e2137bf2fc565a5dae77a548569bdfa0e6885ae9c5fe895",
+      "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+      "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+      "obs_id": "50668f3758d5d038f29095b603f7caf7d3c4fff17d3e3b76c130fde4651ca48f",
+      "w": "ff09af1e1c6062b82beb8133a5d97182c3686a842891708b6e84a7e2e877c694",
+      "x1": "80bf71e3f54bff0eeb79d9010c307b825a830551470e0c751d61c0c70e14c5ed",
+      "x10": "664e328e872fb07d7c88f3bcff6e55730ba82684c0e0c78a56efaf31bc0884f8",
+      "x2": "ecc05e4cc585ddd67e709c57776ae82132076d600eec6a7748525a77375dc166",
+      "x3": "c2c9fd931648622d61be80a39c1c6b1b285b25428688544ae07c9a2838440742",
+      "x4": "250de2f5a28c82bfe43f8a6be47b421085f7c04f4a22ae1d77ed3e1026baa54e",
+      "x5": "299fb71f9b5bf6a48ead9b36f4f633bd56c19eb83b5c9b8045a35b6937181eb1",
+      "x6": "f3971b994fd27f5b05b427f9266e3afa448b016cff1d75a418e05cabf3fe37c6",
+      "x7": "881ac3b4331a12b5016f07e5ae2a5ac35bd113f93811665b13bae9152a8e0089",
+      "x8": "285f087518f40a8f5f0ba3e911ae84fca1d1c9e86824c66f4d15a5132db1e722",
+      "x9": "cd4db482731d903ea04739a62671fa3630f381ca3b9b3de3a1c96c4a1cf913de",
+      "y": "2fb08081427cc2f7e5da52253709b5bda39efa8d3067695dc42ca79b379d58d7"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "g2",
+      "x1",
+      "x2",
+      "x3",
+      "x4",
+      "x5",
+      "x6",
+      "x7",
+      "x8",
+      "x9",
+      "x10",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 10,
+    "n": 245760,
+    "recipe": {
+      "absorb": "saved_g=g1 g2",
+      "design": "strong_d2",
+      "k": 10,
+      "missing": true,
+      "n": 245760,
+      "name": "pw_two_fe_partial",
+      "threads": 16,
+      "vce": "cluster c1",
+      "weight": "[pw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104729,
+    "sha256": "05c8d3bff93b9cec36a19b363cb8f4d329222e3649762df9648d42e12da55c9b",
+    "source_sha256": "2be8809ca7841c77cca39e43ebda205b003dca383ed444d515e558c5c9a55f14"
+  },
+  "pw_two_fe_partial-n7680-s104730.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "e0bbe30ce332730c64826aca0ece6b57be8e76c4f11816538075fd2f019a668a",
+      "c2": "a5240af96ebf9abaa3f8f97cb1e530bd6766d8fe4a17841e82b99b7b5352bd64",
+      "g1": "426ceb4886710112fd8ed44dbcbc626b95186c8928e12df5a440648c0a2ae3a9",
+      "g2": "6c102beaf0d9586a9b7c2d965d4fc35af111140bd133e80adc2e6333f50e495b",
+      "obs_id": "b55ef77d4e23e41f2beaa064268537a703874ea3bd0f403e96f97c0623c233fd",
+      "w": "8e7c5d63bf751a326c006347126c53d5a40acfef1ef472e4799c2f886c757d2c",
+      "x1": "0857e81cf5bf8ba00da63f629e313271603ac7127bd70e5a1f6b6c51830a3ac5",
+      "x10": "fd45be8cfb4fa2cadf4c46972b0aeb79481c85a577bf3edc5570af9aef5f729c",
+      "x2": "d6f6b7740ad5d190e31cf7156be8aba52229108a1ce9c0134c8841420a55bce1",
+      "x3": "93bc44223b5c98b2143c6849c263d7f0d791ccef6b8ba2cae57c48388dbd39ec",
+      "x4": "61d42d8d62083d8a386e0e005777fa54bc17f057c186b1c1110747f934121986",
+      "x5": "0e73ae7d17cdf99321398f1d370da67b5322193e5ac43f53eac40843a7dea677",
+      "x6": "8ff817d1ab4a4cb9aaca5c8f55c641bed421484afccb38ec25262f65cec713e5",
+      "x7": "58bc8a8f08be458dee532d2157d3013ac25379ecf70d3169ea2ba8391afe7721",
+      "x8": "d0bd2954db174ff73b07cb8c8be7fdba2c4508569ca5b3ed96caf22de4537e74",
+      "x9": "1c18f310a89379c492734f9779f0f17c15b632ba6ceffa7c822bea7e5b8d6777",
+      "y": "309cd5af3870719f4b6026595d29534a5d567e34ff7dbe8c071cc91969ab7d8f"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "g2",
+      "x1",
+      "x2",
+      "x3",
+      "x4",
+      "x5",
+      "x6",
+      "x7",
+      "x8",
+      "x9",
+      "x10",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 10,
+    "n": 7680,
+    "recipe": {
+      "absorb": "saved_g=g1 g2",
+      "design": "strong_d2",
+      "k": 10,
+      "missing": true,
+      "n": 245760,
+      "name": "pw_two_fe_partial",
+      "threads": 16,
+      "vce": "cluster c1",
+      "weight": "[pw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104730,
+    "sha256": "56240e0825a6eb5f0f2efda61dee5fc46fbde8da7e60f74cee10651bfe1ef7bb",
+    "source_sha256": "a9e11ab6c4f9e9b595cf019fedc618cf99fa71d65a71c4a9d934cb6c135d89ae"
+  },
+  "unit_saved-n983040-s104729.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "3f72c8726c1d1357c5e9be7a49aa37466d3080c379d6836116bf458bba6323a4",
+      "c2": "9071b36003b5e67e25ae95c207e1fa9c442709abe4ab668a476d00c329bd0098",
+      "g1": "a819e3a50ed95cda8a0f179abe03e7051981a8dbca5fcf463f96589afb5c5ebc",
+      "obs_id": "daf0813c4e4e0e769fa1a1a3c145f200edab4a85bd5775471b11748968e8ddd5",
+      "w": "76ba3470f42eb5765136be4ee515195f8b97ea14ce7d9ca824a1b7f110d3b827",
+      "x1": "196483c1e6fb990d4056051050f26926018dcd38f1e70d9aca96a156d8e8ed1a",
+      "y": "53e125cf82a1a89b6b76c4a2a44ca6c8858353cb01cf1e6fbb8ba8f5a324636b"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 983040,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "k": 1,
+      "n": 983040,
+      "name": "unit_saved",
+      "threads": 4
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104729,
+    "sha256": "1bf7cb6b26dfa949e8f51187c11cc6ef05e60e9e27784cfcfc89c0166cbd9ae1",
+    "source_sha256": "304724605f81a2f4b9fc129378dc28e9ed790c115e660d3ac63923d0f4ba0de1"
+  },
+  "unit_saved-n7680-s104730.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "e7c8c11a4c38a0e155af65782076d9dde583593daa7a83851f96682f5c940c4b",
+      "c2": "a5240af96ebf9abaa3f8f97cb1e530bd6766d8fe4a17841e82b99b7b5352bd64",
+      "g1": "4fa45884b49b47753740adba2ff1b8a787254b318bc371e965e97b9cc0e40edb",
+      "obs_id": "b55ef77d4e23e41f2beaa064268537a703874ea3bd0f403e96f97c0623c233fd",
+      "w": "f37bb02e8c1b357b7df4498ae11cf4dd34c15518494516c3a0aca460607f604d",
+      "x1": "0857e81cf5bf8ba00da63f629e313271603ac7127bd70e5a1f6b6c51830a3ac5",
+      "y": "ca3be41a3501a747a880b13b1e9130ff7aab73f61e044428aa1a5e0886c29168"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 7680,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "k": 1,
+      "n": 983040,
+      "name": "unit_saved",
+      "threads": 4
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 104730,
+    "sha256": "1a9986104a3d83e21e8a3ac87d66e56d8add397150723962550bb64b49e74855",
+    "source_sha256": "e22d335427a9600599714da012378e38328dde74bc2fa7c7636d8dcec671d6bb"
+  },
+  "aw_low_saved-n983040-s67280421.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "3f72c8726c1d1357c5e9be7a49aa37466d3080c379d6836116bf458bba6323a4",
+      "c2": "9071b36003b5e67e25ae95c207e1fa9c442709abe4ab668a476d00c329bd0098",
+      "g1": "a819e3a50ed95cda8a0f179abe03e7051981a8dbca5fcf463f96589afb5c5ebc",
+      "obs_id": "daf0813c4e4e0e769fa1a1a3c145f200edab4a85bd5775471b11748968e8ddd5",
+      "w": "a789f559d3b595646b6f12b1f7978e1725c158859d01e391052734160f77452b",
+      "x1": "eaabcd8b6cf8ffaa53a05fb56c872b6f5f7797b5b9b13ec4da202251d68e2d1a",
+      "y": "4bd0738358bd1ef75d59a3bfaaf4df1f52a07ac4ea5fee56526f1dcbd1d3b8cd"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 983040,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "fit_options": "memory(low)",
+      "k": 1,
+      "missing": true,
+      "n": 983040,
+      "name": "aw_low_saved",
+      "threads": 4,
+      "weight": "[aw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 67280421,
+    "sha256": "aacc5323d15daea248fe851fe97d54ae66cd60e758d1c3b227ee2c5cce203c77",
+    "source_sha256": "60e044fd067c90f8b31032f16c6f39bfbbdf2ab2c98e1f68c32d71db9f7edf6b"
+  },
+  "aw_low_saved-n7680-s67280422.json": {
+    "binary_missing_encoding": "Stata system missing (2^1023)",
+    "column_sha256": {
+      "c1": "e7c8c11a4c38a0e155af65782076d9dde583593daa7a83851f96682f5c940c4b",
+      "c2": "a5240af96ebf9abaa3f8f97cb1e530bd6766d8fe4a17841e82b99b7b5352bd64",
+      "g1": "4fa45884b49b47753740adba2ff1b8a787254b318bc371e965e97b9cc0e40edb",
+      "obs_id": "b55ef77d4e23e41f2beaa064268537a703874ea3bd0f403e96f97c0623c233fd",
+      "w": "8e7c5d63bf751a326c006347126c53d5a40acfef1ef472e4799c2f886c757d2c",
+      "x1": "d4f6952d3ff8f98de132aedaa9f9f24f59cb1cbc5c86e824a1b0c52eae166d67",
+      "y": "7bacff23b35a1b2c640a0ab019ccbfe9016f666bcf20f72dc1ed6bbe48729a52"
+    },
+    "columns": [
+      "obs_id",
+      "g1",
+      "x1",
+      "y",
+      "w",
+      "c1",
+      "c2"
+    ],
+    "k": 1,
+    "n": 7680,
+    "recipe": {
+      "absorb": "saved_g=g1",
+      "design": "one_fe",
+      "fit_options": "memory(low)",
+      "k": 1,
+      "missing": true,
+      "n": 983040,
+      "name": "aw_low_saved",
+      "threads": 4,
+      "weight": "[aw=w]"
+    },
+    "schema": "ols-preparation-input-v1",
+    "seed": 67280422,
+    "sha256": "d1d8e4c3e3ddf69b748241f3b92c95844d8e64e21ae5577f3fcc6198c80eedf1",
+    "source_sha256": "3793fa49e795d15d7d70dc3a4dd3c71febd1d90f002a80682fb8d72ab47f35c9"
+  }
+}
