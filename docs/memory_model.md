@@ -27,6 +27,12 @@ solver peak fits. If LSMR does not fit but CG does, auto visibly selects CG. If
 neither certified route fits, estimation returns `r(909)` before allocating a
 large solver workspace.
 
+Prepared direct intercept CG applies that joint check at its adapter boundary,
+including explicit CG and preselected automatic CG calls that bypass the
+LSMR/CG planner. It uses the installed team and charges five coefficient batches
+when categorical CG retains them. Empty topology and slope adapters retain their
+existing paths; see [ADR 0060](adr/0060-prepared-direct-cg-memory-admission.md).
+
 Topology-selected CMG uses the same joint budget. Before hierarchy
 construction, fereg consumes CMG's upstream checked conservative estimate for
 the graph, hierarchy, parallel plan, and reusable workspace pool, then adds

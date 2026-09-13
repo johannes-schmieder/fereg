@@ -1,0 +1,7 @@
+# Direct prepared CG admission repair
+
+Compare accepted numerical dadd956 at evidence HEAD de6988b, artifact e831a657, against the isolated two-file repair. No saved-Schur or final-recovery planning changes belong to either arm. Direct intercept CG now applies the existing CG-plus-retained-coefficient model before working allocations, using the installed team.
+
+Require the closed-form Rust regression to fail before the repair and pass after it, including exact/one-byte-short admission for direct, explicit-dispatch and preselected-auto CG, unit/supplied weights, simple/categorical topology, retained coefficients and 1/4 installed workers. Verify licensed public exact-cap success and one-byte-short r(909) with full rollback. Run the existing independent 48-fit saved-OLS oracle, plus a direct-CG variant of the small weighted-within dummy fixture, on the isolated candidate. Existing accepted baseline oracle evidence is preserved.
+
+Then compare six fixed accepted CG-repair controls: saved unit, repaired saved PW, weak_d3, low_fw, small_aw and complete_unit. Rotate arm order; no build/test/diagnostic may overlap timings. Preserve exact b/V/sample/status/DoF/solver decisions and saved values at their original tolerances. Record command, native, input, solver setup/solve, allocation/model/scratch and RSS. No speedup is hypothesized. Investigate any slowdown exceeding both 5% and 10 ms with two reversed same-request pairs; no broad new seed campaign. Existing public base-model omissions are not full-route bounds.

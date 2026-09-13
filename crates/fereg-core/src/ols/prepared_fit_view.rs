@@ -338,6 +338,60 @@ pub(crate) trait PreparedOlsFitView: Sync {
     }
 }
 
+// Direct prepared dispatch can bypass the automatic LSMR/CG planner. Apply
+// that same joint bound before CG allocates, including its retained coefficient
+// recurrence. Structural-constant and slope adapters keep their separate plans.
+fn admit_prepared_intercept_cg(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs_columns: usize,
+    budget: Option<crate::memory::FeSolverMemoryBudget>,
+    retain_coefficients: bool,
+) -> Result<()> {
+    let Some(budget) = budget else {
+        return Ok(());
+    };
+    if design.effects().is_empty() {
+        return Ok(());
+    }
+    let mut levels = Vec::new();
+    levels
+        .try_reserve_exact(design.effects().len())
+        .map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve CG planning level counts",
+            )
+        })?;
+    levels.extend(design.effects().iter().map(|effect| effect.n_levels()));
+    let estimate = crate::memory::estimate_fe_solver_memory(
+        design.nobs(),
+        rhs_columns,
+        &levels,
+        rayon::current_num_threads(),
+        None,
+    )?;
+    let coefficients = if retain_coefficients {
+        estimate.coefficient_batch_bytes.checked_mul(5)
+    } else {
+        Some(0)
+    };
+    let required = coefficients
+        .and_then(|bytes| estimate.cg_bytes.checked_add(bytes))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "prepared CG workspace memory overflows",
+            )
+        })?;
+    if !budget.fits(required) {
+        return Err(FeregError::new(
+            ErrorCode::Allocation,
+            "prepared CG does not fit the joint execution/CG memory plan",
+        ));
+    }
+    Ok(())
+}
+
 impl PreparedOlsFitView for PreparedOlsData {
     fn fit_model(&self) -> &PreparedOlsModel {
         &self.model
@@ -492,6 +546,7 @@ impl PreparedOlsFitView for PreparedOlsData {
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.borrowed_intercept_fe_design()?;
+        admit_prepared_intercept_cg(&design, values.ncols(), config.solver_memory_budget, false)?;
         absorb_borrowed_intercept_cg_with_structural_constant_certified(
             &design, weights, values, config.map,
         )
@@ -734,8 +789,17 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         if self.has_absorbed_slope() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else if config.retain_coefficients {
+            return self.fit_absorb_owned_matrix(weights, values, config);
+        }
+        if config.solver_memory_budget.is_some() {
+            admit_prepared_intercept_cg(
+                &self.fit_borrowed_cmg_design()?,
+                values.ncols(),
+                config.solver_memory_budget,
+                config.retain_coefficients,
+            )?;
+        }
+        if config.retain_coefficients {
             absorb_finalized_categorical_topology_cg_retaining_certified(
                 self.fe_topology(),
                 weights,

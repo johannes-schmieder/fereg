@@ -6953,6 +6953,129 @@ mod tests {
         .expect("prepared data")
     }
 
+    #[test]
+    fn direct_prepared_cg_checks_joint_budget_with_retained_coefficients() {
+        let n = 96;
+        let effects = [
+            (0..n).map(|row| (row % 4) as f64).collect::<Vec<_>>(),
+            (0..n).map(|row| ((row / 4) % 3) as f64).collect::<Vec<_>>(),
+        ];
+        let noise = (0..n)
+            .map(|row| if (row / 12) % 2 == 0 { -1.0 } else { 1.0 })
+            .collect::<Vec<_>>();
+        let y = (0..n)
+            .map(|row| 2.0 * effects[0][row] + 3.0 * effects[1][row] + noise[row])
+            .collect::<Vec<_>>();
+        let simple_y = (0..n)
+            .map(|row| 2.0 * effects[0][row] + noise[row])
+            .collect::<Vec<_>>();
+        let simple = prepared(
+            &simple_y,
+            &[],
+            &[],
+            Some(&effects[0]),
+            false,
+            TestWeights::Unit,
+        );
+        let categorical = prepared_multiway_categorical(&y, &[], &effects);
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for (view, outcome, levels, retain) in [
+                        (
+                            &simple as &dyn PreparedOlsFitView,
+                            &simple_y,
+                            vec![4],
+                            false,
+                        ),
+                        (
+                            &categorical as &dyn PreparedOlsFitView,
+                            &y,
+                            vec![4, 3],
+                            false,
+                        ),
+                        (
+                            &categorical as &dyn PreparedOlsFitView,
+                            &y,
+                            vec![4, 3],
+                            true,
+                        ),
+                    ] {
+                        let model =
+                            crate::memory::estimate_fe_solver_memory(n, 1, &levels, threads, None)
+                                .unwrap();
+                        let incremental = model.cg_bytes
+                            + if retain {
+                                5 * model.coefficient_batch_bytes
+                            } else {
+                                0
+                            };
+                        let execution = 137;
+                        let supplied = (0..n).map(|row| 1.0 + (row % 4) as f64).collect::<Vec<_>>();
+                        for weights in [
+                            BorrowedMapWeights::Unit,
+                            BorrowedMapWeights::Provided(&supplied),
+                        ] {
+                            for dispatch in 0..3 {
+                                let run = |usable| {
+                                    let mut config = AbsorbConfig::default();
+                                    config.solver = FeSolverKind::Cg;
+                                    config.retain_coefficients = retain;
+                                    config.solver_memory_budget =
+                                        Some(crate::memory::FeSolverMemoryBudget {
+                                            execution_bytes: execution,
+                                            usable_bytes: usable,
+                                        });
+                                    let values =
+                                        DenseMatrix::from_row_major(n, 1, outcome.to_vec())
+                                            .unwrap();
+                                    match dispatch {
+                                        0 => view.fit_absorb_cg(weights, values, config),
+                                        1 => view.fit_absorb_matrix(weights, values, config),
+                                        _ => {
+                                            let mut session = FitFeAbsorber {
+                                                session: None,
+                                                lsmr: None,
+                                                auto_direct_solver: Some(FeSolverKind::Cg),
+                                                auto_discarded_setup_seconds: 0.0,
+                                                auto_setup_warning: None,
+                                                schur_config: None,
+                                                schur_probe: None,
+                                            };
+                                            absorb_fit_matrix(
+                                                view,
+                                                weights,
+                                                values,
+                                                config,
+                                                &mut session,
+                                                true,
+                                                false,
+                                            )
+                                        }
+                                    }
+                                };
+                                let error = run(execution + incremental - 1)
+                                    .expect_err("CG must reject before its workspace");
+                                assert_eq!(error.code, ErrorCode::Allocation);
+                                assert!(error.message.contains("joint execution/CG memory plan"));
+                                let fit = run(execution + incremental).unwrap();
+                                assert!(fit.report().certified());
+                                let (residual, _, coefficients) = fit.into_full_parts();
+                                assert_eq!(coefficients.is_some(), retain);
+                                for (&actual, &expected) in residual.as_slice().iter().zip(&noise) {
+                                    assert!((actual - expected).abs() < 1e-10);
+                                }
+                                assert_eq!(run(0).unwrap_err().code, ErrorCode::Allocation);
+                            }
+                        }
+                    }
+                });
+        }
+    }
+
     fn prepared_multiway_categorical(
         outcome: &[f64],
         regressors: &[Vec<f64>],

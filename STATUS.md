@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0 prerequisite: prepared direct-CG admission repaired
+
+The [source-bound report](benchmarks/reports/development/prepared-cg-admission-local-2026-09-13/README.md)
+adopts [ADR 0060](docs/adr/0060-prepared-direct-cg-memory-admission.md). Simple and
+categorical direct-CG adapters now enforce the existing joint execution/CG
+budget, including retained coefficient recurrence and the installed team. The
+isolated candidate `fdc3e141` changes two files against accepted `dadd956` at
+`de6988b`; it excludes the unadopted saved-Schur/recovery prototype. Arithmetic,
+reference scales, weights/sample/rank/VCE/DoF and certificates remain unchanged.
+
+The closed-form missing-admission test fails before the fix and passes afterward
+across 36 dispatch/weight/topology/worker combinations. All 65 isolated prepared-
+fit tests, 48 saved-OLS dummy fits and one/seven-worker weighted direct-CG oracle
+checks pass. Public one-byte-short admission returns r(909) with prior results,
+sample/order and requested-output absence preserved. Exact admission succeeds
+at 296259 native bytes within 311496 usable. Both architecture builds and native
+arm64 ABI checks pass. Eight fixed paired commands preserve exact scientific
+exports and solver decisions; largest increase is PW +18 ms/0.5%. Explicit-CG
+pairs are +12 ms/0.4% and +4 ms/1.9%. None triggers repeats. Native peaks are
+exact except low FW -4608 bytes; public base/scratch models remain unchanged.
+RSS moves both ways. This is a correctness repair, not a speed or memory gain.
+
+A separate three-request diagnostic on the unadopted saved prototype records
+actual initial joint checks: unit 827.75 MB and PW 831.18 MB, versus observed
+378.71/581.41 MB and public bases 418.80/424.69 MB. PW rechecks CG continuation;
+low FW checks CMG construction/retention. Recovery planning takes 3.334/3.250
+microseconds on the full saved requests, so its direct scalar cost cannot
+explain earlier 36–43 ms increases. Their cause remains unresolved; no flagged
+observation is discarded. Full recovery remains 0.385/0.622 s in these separate
+diagnostics, which are excluded from ordinary timing comparisons.
+
+Next rebase the saved-Schur/recovery prototype on this repair, complete its
+initial/final overlap admission review, and compare complete saved-output cost
+against the repaired accepted baseline. P0 reporting/other-route accounting and
+P6 adoption remain open; the five prior prototype files remain uncommitted.
+Installed dist, 97 unrelated STATUS additions, original untracked paths and
+separate Veneto work remain preserved. No agents, SCC, qualification or push.
+
 ## P0/P6 recovery admission tested; initial-peak diagnosis corrected
 
 The [source-bound recovery report](benchmarks/reports/development/saved-recovery-admission-local-2026-09-13/README.md)
