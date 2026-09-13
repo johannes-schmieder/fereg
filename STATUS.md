@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 fresh raw reference norms: evaluated and rejected
+
+The [source-bound report](benchmarks/reports/development/ppml-raw-norms-local-2026-09-13/README.md)
+evaluates raw norm reuse against accepted `6ad8b20`. A frame compatibility guard
+allows fresh one-FE construction to omit its duplicate raw norm scan and copy
+original-input norms from the same successful projection. Raw means, reference
+scaling, initial/final certificates and rank policy remain. The prototype is
+archived and reversed; all 152 accepted native input hashes are restored.
+
+Fourteen pairs / 28 commands include nine primaries over three seeds and five
+controls. Complete/FW/PW median paired command changes are −0.9%/−1.8%/+1.4%:
+none reaches the prospective 2% gain. Projection falls in all nine primary pairs,
+by 16–129 ms, but unchanged finite/strict timing variation prevents adoption.
+No extra seeds or private allocation audit were run after the repeated screen
+failed. All native peaks are exact and admitted; RSS moves both ways. Largest
+protected increase is weak two FE +6 ms, below the review envelope.
+
+Full b/V and discrete scientific/solver fields are exact; independent certificates
+pass. Thirty isolated Rust tests and both independent dummy Poisson/sandwich
+oracle arms pass, including original-input hypot norms, changing/extreme weights,
+warm-zero returns and output nonmutation. Universal static/native arm64 ABI checks
+pass. No test failure or tolerance change occurred. Installed dist and unrelated
+Veneto work remain intact; no agents, SCC, push or qualification ran.
+
+Accepted native remains `6ad8b20`, including selected within-norm reuse. Next
+localize the larger remaining finite/strict matrix, moment and predictor costs;
+raw-reference reuse is rejected as a standalone step, with possible combined
+layout work left as a hypothesis. Other #27 packages and R1–R5 remain open.
+Complete #27 before the authorized agents, CMG assessment and small SCC campaign.
+
 ## P4 fresh-design within norms: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-fresh-norms-local-2026-09-13/README.md)
