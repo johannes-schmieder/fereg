@@ -1,0 +1,13 @@
+{
+  "chunks": 60,
+  "cluster_groups": 97,
+  "extended_boundaries": 53,
+  "giant_group_rows": 884736,
+  "new_group_comparisons_upper_bound": 1172,
+  "note": "Logical comparison count from the exact complete primary recipe and current 16384-row/64-block policies. The new bound uses the focused <=22 comparisons test for up to 2^20 rows. Not instrumented command counters, physical bytes or hardware traffic. Group reduction, row sorting and chunk count remain.",
+  "old_adjacent_group_comparisons": 23445563,
+  "other_group_rows": 1024,
+  "physical_rows": 983040,
+  "provisional_boundaries": 59,
+  "schema": "source-derived-boundary-work-v1"
+}

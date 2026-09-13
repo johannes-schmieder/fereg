@@ -823,6 +823,24 @@ struct ClusterSubsetMeats {
     groups: usize,
 }
 
+/// Extend a boundary to the end of its group in an already sorted row order.
+/// A giant group may cover many provisional boundaries; binary search avoids
+/// rescanning its tail while preserving every chunk and reduction order.
+fn extend_cluster_boundary(
+    order: &[usize],
+    boundary: usize,
+    mut same_group: impl FnMut(usize, usize) -> bool,
+) -> usize {
+    if boundary == 0 || boundary >= order.len() {
+        return boundary;
+    }
+    let prior = order[boundary - 1];
+    if !same_group(prior, order[boundary]) {
+        return boundary;
+    }
+    boundary + 1 + order[boundary + 1..].partition_point(|row| same_group(prior, *row))
+}
+
 fn reduce_one_cluster_subset<D, M, R>(
     design: D,
     multipliers: M,
@@ -860,14 +878,9 @@ where
     )?;
     boundaries[chunks] = nrows;
     for (chunk, target) in boundaries.iter_mut().enumerate().take(chunks).skip(1) {
-        let mut boundary = chunk * nrows / chunks;
-        while boundary < nrows
-            && compare_cluster_rows(dimensions, mask, order[boundary - 1], order[boundary])
-                == Ordering::Equal
-        {
-            boundary += 1;
-        }
-        *target = boundary;
+        *target = extend_cluster_boundary(&order, chunk * nrows / chunks, |left, right| {
+            compare_cluster_rows(dimensions, mask, left, right) == Ordering::Equal
+        });
     }
     for chunk in 1..chunks {
         boundaries[chunk] = boundaries[chunk].max(boundaries[chunk - 1]);
@@ -1463,6 +1476,60 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cluster_boundaries_match_linear_group_ends_for_every_subset() {
+        for nrows in [0usize, 1, 2, 7, 64, 257, 8193] {
+            for skew in [false, true] {
+                let first: Vec<u32> = (0..nrows)
+                    .map(|row| if skew && row % 20 != 0 { 0 } else { 1 + (row % 17) as u32 })
+                    .collect();
+                let second: Vec<u32> = (0..nrows).map(|row| ((row / 7) % 3) as u32).collect();
+                let third: Vec<u32> = (0..nrows).map(|row| (row / 23) as u32).collect();
+                let dimensions = [first.as_slice(), second.as_slice(), third.as_slice()];
+                for mask in 1..8 {
+                    let mut order: Vec<usize> = (0..nrows).rev().collect();
+                    order.sort_unstable_by(|left, right| {
+                        compare_cluster_rows(&dimensions, mask, *left, *right)
+                            .then_with(|| left.cmp(right))
+                    });
+                    for boundary in 0..=nrows {
+                        let mut expected = boundary;
+                        while expected > 0 && expected < nrows
+                            && compare_cluster_rows(&dimensions, mask, order[expected-1], order[expected]) == Ordering::Equal
+                        {
+                            expected += 1;
+                        }
+                        let actual = extend_cluster_boundary(&order, boundary, |left, right| {
+                            compare_cluster_rows(&dimensions, mask, left, right) == Ordering::Equal
+                        });
+                        assert_eq!(actual, expected, "rows={nrows}, skew={skew}, mask={mask}, boundary={boundary}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cluster_boundary_search_bounds_giant_group_work_and_keeps_short_edges_cheap() {
+        let nrows = 1usize << 20;
+        let order: Vec<usize> = (0..nrows).collect();
+        for boundary in [1, nrows/4, nrows/2, nrows-1] {
+            let mut comparisons = 0;
+            let end = extend_cluster_boundary(&order, boundary, |_, _| {
+                comparisons += 1;
+                true
+            });
+            assert_eq!(end, nrows);
+            assert!(comparisons <= 22, "{comparisons} comparisons");
+            let mut comparisons = 0;
+            assert_eq!(extend_cluster_boundary(&order, boundary, |_, _| {
+                comparisons += 1;
+                false
+            }), boundary);
+            assert_eq!(comparisons, 1);
+        }
+    }
 
     struct Reservation;
 

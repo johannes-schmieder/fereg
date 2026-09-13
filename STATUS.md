@@ -10,6 +10,37 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3/P7 cluster-boundary setup: adopted local checkpoint
+
+OLS ordered clustering and PPML paired-independent reductions now share a bounded
+search for each sorted cluster's end. It preserves every chunk/boundary, empty
+chunk, row/reduction order and allocation; see
+[ADR 0047](docs/adr/0047-bounded-cluster-boundaries.md). It removes repeated scans
+through giant clusters without splitting their numerical reductions.
+
+The [report](benchmarks/reports/development/cluster-boundaries-local-2026-09-12/README.md)
+binds twenty pairs / forty measured commands against `fdf4624`. Repeated skewed
+OLS command medians fall 0.430→0.401 seconds (6.5% paired, 27–37 ms savings).
+PPML inference falls 0.06969→0.03532, but total command medians only fall
+2.914→2.893 (1.1% paired, variable 7–47 ms savings). Adoption rests on OLS's
+repeatable complete-command gain. Primary native/scratch peaks are unchanged.
+
+All science, samples, saved outputs and non-time solver decisions are exact.
+The initial PPML two-way control slows 43 ms/12.5%, localized to unchanged solve
+phases; three fresh rechecks improve 19/53/17 ms. The original result is retained,
+and the source of timing variation is not established. Other controls stay within
+the review envelope. Weak OLS retains a pre-existing memory-model discrepancy.
+Twenty-five focused Rust tests and both strengthened 65,536-row Stata/Mata oracle
+arms pass; the first OLS oracle was enlarged after review because it did not cross
+a chunk boundary. Adopted native inputs match the measured plugin exactly;
+universal static/native arm64 ABI audits pass. Installed dist, unrelated Veneto
+work and historical evidence remain intact; no SCC, qualification or push ran.
+
+Next address P0's observed/model memory discrepancies, then remaining P2/P3/P4
+passes and P5 centered-tile work, carrying winners through P6/P7. R1–R5 remain
+open. Finish #27 before the authorized independent agents, upstream CMG review
+and new small SCC campaign.
+
 ## P3/P6 interaction coding: adopted local checkpoint
 
 Categorical FE/cluster interactions now use one shared exact dense tuple mapping

@@ -643,14 +643,9 @@ where
     )?;
     boundaries[chunks] = nobs;
     for (chunk, target) in boundaries.iter_mut().enumerate().take(chunks).skip(1) {
-        let mut boundary = chunk * nobs / chunks;
-        while boundary < nobs
-            && compare_rows(dimensions, mask, order[boundary - 1], order[boundary])
-                == Ordering::Equal
-        {
-            boundary += 1;
-        }
-        *target = boundary;
+        *target = super::extend_cluster_boundary(&order, chunk * nobs / chunks, |left, right| {
+            compare_rows(dimensions, mask, left, right) == Ordering::Equal
+        });
     }
     for chunk in 1..chunks {
         boundaries[chunk] = boundaries[chunk].max(boundaries[chunk - 1]);
