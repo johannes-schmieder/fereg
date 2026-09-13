@@ -1600,6 +1600,15 @@ fn build_derived_observation_outputs_in_team(
             |fitted| match (fitted.generated_column_index, fitted.value) {
                 (Some(column), Some(coefficient)) => Some(Ok((column, coefficient))),
                 (None, None) => None,
+                (Some(_), None)
+                    if matches!(
+                        fitted.status,
+                        PreparedOlsFitStatus::CollinearWithFixedEffects
+                            | PreparedOlsFitStatus::NumericallyRankDeficient
+                    ) =>
+                {
+                    None
+                }
                 _ => Some(Err(invalid(
                     "derived OLS output coefficient identity is incomplete",
                 ))),
@@ -4112,6 +4121,36 @@ mod tests {
                 assert_eq!(parallel_spi.matrices["RRUNTIME"][29], vec![1.0, 1.0]);
                 assert_eq!(parallel_spi.receipt_complete(), 1.0);
             }
+        }
+    }
+
+    #[test]
+    fn saved_outputs_allow_a_generated_column_omitted_by_absorption() {
+        for memory in ["fast", "low"] {
+            let (mut args, mut spi) = saved_output_fixture();
+            replace_argument(&mut args, "memory", format!("memory={memory}"));
+            for observation in 1..=spi.nobs {
+                let group = spi.data[&(4, observation)].0;
+                spi.data.insert((3, observation), (group, false));
+            }
+            estimate_ols_test(&args, &mut spi).expect("omitted generated column has no xb term");
+            assert_eq!(spi.matrices["RSTATUS"][0][1], 3.0);
+            assert_eq!(spi.matrices["RB"][0][0], 0.0);
+            let overall = (1..=spi.nobs)
+                .map(|row| spi.data[&(2, row)].0)
+                .sum::<f64>()
+                / spi.nobs as f64;
+            for observation in 1..=spi.nobs {
+                let first = (observation - 1) / 2 * 2 + 1;
+                let mean = (spi.data[&(2, first)].0 + spi.data[&(2, first + 1)].0) / 2.0;
+                let y = spi.data[&(2, observation)].0;
+                assert!((stored_numeric(&spi, 6, observation) - (y - mean)).abs() <= 1e-11);
+                assert!((stored_numeric(&spi, 8, observation) - overall).abs() <= 1e-11);
+                assert!((stored_numeric(&spi, 9, observation) - mean).abs() <= 1e-11);
+                assert!((stored_numeric(&spi, 10, observation) - (mean - overall)).abs() <= 1e-11);
+                assert!((stored_numeric(&spi, 11, observation) - (mean - overall)).abs() <= 1e-11);
+            }
+            assert_eq!(spi.receipt_complete(), 1.0);
         }
     }
 

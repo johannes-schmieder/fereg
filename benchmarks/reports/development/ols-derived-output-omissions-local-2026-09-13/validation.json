@@ -1,0 +1,14 @@
+{
+  "plugin_tests": 95,
+  "closed_form_fast_low_red_green": true,
+  "independent_omitted_output_cases_per_arm": 4,
+  "ordinary_saved_oracle_fits": 48,
+  "original_warm_full_requests": 2,
+  "paired_cost_checks": 8,
+  "supplemental_AA_pairs": 2,
+  "supplemental_AB_pairs": 2,
+  "universal_build": true,
+  "native_arm64_ABI": true,
+  "initial_wrong_status_assertion": "4 corrected to existing FE-collinearity wire status 3",
+  "performance_claim": "none; original PW cost flags remain unresolved despite smaller subsequent AB differences"
+}

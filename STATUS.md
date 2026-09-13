@@ -10,6 +10,57 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 prerequisite: omitted-column output publication repaired
+
+The [source-bound repair](benchmarks/reports/development/ols-derived-output-omissions-local-2026-09-13/README.md)
+adopts [ADR 0061](docs/adr/0061-ols-derived-output-omitted-columns.md) against
+accepted `834703b`. OLS derived outputs now skip generated columns carrying the
+existing FE-collinear or numerical-rank-deficient status and no coefficient.
+Canonical slots, rank, zero public coordinates and all numerical fit/inference
+and transaction policies remain. The isolated one-file candidate `fe066c02`
+excludes the saved-Schur/recovery prototype and binds 176 inputs.
+
+A closed-form regression fails at the original selector and passes in fast/low
+modes after repair. The initial post-fix test's wrong wire-status assertion is
+preserved and corrected to existing status 3. All 95 plugin tests, four weighted
+independent omission/output oracle cases per artifact and 48 ordinary saved-output
+fits pass. The exact original slope and rank-deficient saved warm/full requests
+now succeed, retaining ranks 15/49 and independent native certificates. Universal
+build/static and actual arm64 ABI checks pass. Public base-model gaps on those
+functional requests remain P0 work.
+
+Eight cost pairs retain exact full science/solver fields and native/base/scratch
+peaks. PW adds 819 ms/21.6%, then reversed repeats change -70 and +1961 ms/44.5%.
+The excess lies mainly in unchanged initial CG; its cause is not established.
+Four prescribed follow-ups keep A/A separate: A/A +132/-9 ms; A/B +48 ms/1.35%
+and +9 ms/0.25%. All flags remain disclosed. This is a correctness adoption with
+timing uncertainty, not a speed or universal memory claim.
+
+The [expanded saved-Schur screen](benchmarks/reports/development/saved-schur-controls-local-2026-09-13/README.md)
+preserves the still-unadopted five-file prototype on `834703b`. Nine original
+primary pairs pass: unit/AW/PW command medians 2.896→0.694 / 82.925→65.283 /
+3.499→2.582 seconds, paired gains 76.1%/22.3%/25.8%, including rejected probes
+and AW/PW continuation costs. Median native peaks fall 54.9%/31.2%/30.9%.
+Fifteen core/five plugin checks, 48 independent saved fits and initial/recovery
+exact/one-byte-short admission checks pass; full overlap audit and limitations
+are archived. Five protected pairs have exact science and at most +5 ms.
+
+Weak, disconnected and unbalanced saved comparisons fail baseline parity.
+Grounded direct dummy/SVD and separate LSQR/LSMR oracles agree within 9e-13;
+candidate residual/FE outputs all pass the original thresholds. The baseline
+misses residual tolerance on 1/1/155 rows and first-FE tolerance on 216 unbalanced
+rows. These three adjudicated comparisons remain failed parity evidence, outside
+passing timing aggregates. The subsequent slope warm-up exposes the publication
+bug repaired above; no failed input or seed was replaced.
+
+Next rebase the saved-Schur/recovery prototype on this omission repair and finish
+the original adoption comparison. The old screen's three-FE saved, deficient-rank
+saved and explicit-CG saved pairs remain unexecuted; the fixed original slope
+pair also needs comparison. Retain all baseline-error adjudications and timing
+flags. P6 adoption/P0 whole-action reporting and other #27 items remain open.
+Installed dist, 97 unrelated STATUS additions and all 358 original untracked paths
+remain preserved. No agents, SCC, qualification, dependency update or push.
+
 ## P0 prerequisite: prepared direct-CG admission repaired
 
 The [source-bound report](benchmarks/reports/development/prepared-cg-admission-local-2026-09-13/README.md)

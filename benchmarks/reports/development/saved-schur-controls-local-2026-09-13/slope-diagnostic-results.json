@@ -1,0 +1,12 @@
+[
+  {
+    "arm": "baseline",
+    "rc": 498,
+    "log_sha256": "22855f7304cec1eef35cee6e5d2ca40b3be47023449e96c8e69cc8998cf1fa37"
+  },
+  {
+    "arm": "candidate",
+    "rc": 498,
+    "log_sha256": "037b97186c11fe3e424534c9ccd4dee0243c9589a4ac1d321a99dffa8209a48e"
+  }
+]
