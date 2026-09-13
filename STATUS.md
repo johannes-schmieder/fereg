@@ -48,6 +48,33 @@ CMG assessment and new small SCC campaign. Installed dist, the 97 unrelated Vene
 STATUS additions and all pre-existing local evidence remain intact. No SCC,
 qualification or push occurred.
 
+## P0 attempted-memory reporting: implementation in progress
+
+The [source-bound prototype audit](benchmarks/reports/development/solver-memory-reporting-local-2026-09-13/README.md)
+records eight uncommitted core files against adopted `7663a87`. A new report field
+preserves recorded workspace estimates across attempted LSMR, certified CG
+continuation, rejected Schur probes, retained batches and low-memory report merges.
+It reuses current admission estimates. Zero means no increment was recorded, not
+complete coverage. The public runtime/model scalar is deliberately unchanged
+until all relevant attempts are represented. No reporting prototype is adopted.
+
+Sixty-nine distinct focused tests and the plugin type-check pass on the bound
+152-input source. Tests distinguish a larger failed LSMR attempt from final CG,
+exclude an unbuilt memory-rejected route, retain exact batch results, and merge
+the peak correctly in every batch order. No plugin build, licensed fixture or
+timing comparison has run for these reporting changes. The earlier batching
+adoption and its measured binary remain a separate accepted checkpoint.
+
+Next propagate CMG construction/rejection/error estimates and simultaneous
+retained-hierarchy/CG-polish memory. Score reconstruction currently discards its
+absorption report in `prepared_scores.rs`; include that separate solver session
+and saved-FE recovery before publishing the complete action estimate and ratio.
+Generic/slope routes and no-budget callers also need coverage. Then run focused
+admission/scientific checks and a bounded command comparison. #27 now has the
+three evidenced P3 inference/subset/skew checkboxes and the P7 PPML scheduling
+checkbox updated, plus the `7663a87` adoption comment. Other packages and the later
+agent/CMG/new-SCC phases remain open. No push or cluster work occurred.
+
 ## P0/R1 borrowed LSMR transport: adopted local checkpoint
 
 The borrowed categorical LSMR adapter now delays its overwritten candidate
