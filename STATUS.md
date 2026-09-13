@@ -48,32 +48,45 @@ CMG assessment and new small SCC campaign. Installed dist, the 97 unrelated Vene
 STATUS additions and all pre-existing local evidence remain intact. No SCC,
 qualification or push occurred.
 
-## P0 attempted-memory reporting: implementation in progress
+## P0 attempted-memory reporting: expanded prototype, not adopted
 
-The [source-bound prototype audit](benchmarks/reports/development/solver-memory-reporting-local-2026-09-13/README.md)
-records eight uncommitted core files against adopted `7663a87`. A new report field
-preserves recorded workspace estimates across attempted LSMR, certified CG
-continuation, rejected Schur probes, retained batches and low-memory report merges.
-It reuses current admission estimates. Zero means no increment was recorded, not
-complete coverage. The public runtime/model scalar is deliberately unchanged
-until all relevant attempts are represented. No reporting prototype is adopted.
+The [expanded source-bound report](benchmarks/reports/development/solver-memory-reporting-expanded-local-2026-09-13/README.md)
+records thirteen uncommitted native files against adopted `7663a87`, superseding
+the initial eight-file prototype's coverage statement without changing that
+historical receipt. CMG construction/rejection/error estimates now survive into
+fit reports, including retained hierarchy/coefficient overlap with CG polishing.
+Transient/retained borrowed LSMR records estimates without a supplied memory cap
+and uses the installed team; generic intercept-only LSMR preserves failed attempts.
+Fast/low inference score reconstruction now contributes its separate solver peak.
+The public selected-memory scalar and observed/model ratio remain unchanged.
 
-Sixty-nine distinct focused tests and the plugin type-check pass on the bound
-152-input source. Tests distinguish a larger failed LSMR attempt from final CG,
-exclude an unbuilt memory-rejected route, retain exact batch results, and merge
-the peak correctly in every batch order. No plugin build, licensed fixture or
-timing comparison has run for these reporting changes. The earlier batching
-adoption and its measured binary remain a separate accepted checkpoint.
+All 152 native inputs are bound to an isolated universal candidate plugin,
+`8b6f3ffaa711581367de389c9341d47ef57d2810c76188048852b10083b5b4d5`.
+Static/native arm64 ABI checks, plugin type-check, 128 distinct focused Rust
+tests and six licensed oracle invocations pass. The CMG budget test rejects
+one byte below its modeled retained-state-plus-polish overlap and accepts the
+exact amount, preserving residuals/coefficients and final-report persistence.
+The independent Stata dummy oracles cover weighted inference, CMG/LSMR,
+1/7 workers, saved effects and low pools 1/5/10.
 
-Next propagate CMG construction/rejection/error estimates and simultaneous
-retained-hierarchy/CG-polish memory. Score reconstruction currently discards its
-absorption report in `prepared_scores.rs`; include that separate solver session
-and saved-FE recovery before publishing the complete action estimate and ratio.
-Generic/slope routes and no-budget callers also need coverage. Then run focused
-admission/scientific checks and a bounded command comparison. #27 now has the
-three evidenced P3 inference/subset/skew checkboxes and the P7 PPML scheduling
-checkbox updated, plus the `7663a87` adoption comment. Other packages and the later
-agent/CMG/new-SCC phases remain open. No push or cluster work occurred.
+The fifteen original comparison pairs retain exact full science/non-time solver
+fields. CMG low/wide command medians are 0.128→0.128 / 0.214→0.210 seconds;
+weak PPML is 0.412→0.413. Wide weak OLS is 1.006→1.054 (+4.8% median paired),
+with +49/+9/+51 ms individual changes and the last crossing max(10 ms, 5%).
+Six prescribed follow-up pairs keep identical-binary A/A separate from A/B:
+A/A differences −9/+20/+21 ms; A/B −4/+13/+52 ms. The +52 ms loss again crosses
+the envelope. These are 21 pairs / 42 calls total, with no observation excluded.
+A/A variation does not explain the recurring losses. Do not adopt or count this
+reporting prototype as a gain; its missing coverage and timing cost remain open.
+
+Next complete slope/signed-cover and generic CG/MAP/owned-design accounting,
+saved-effect recovery attempt/overlap/admission, retained coefficient overlaps,
+and construction/discarded-work counters. Localize the weak wide cost before
+publishing a complete action model. Public underreports remain visible, including
+54.93 MB observed versus 1.045 MB modeled on small weak OLS. Separate Veneto
+changes, historical receipts and installed dist remain intact. No push, new
+cluster work, broad qualification or independent-agent phase occurred.
+
 
 ## P0/R1 borrowed LSMR transport: adopted local checkpoint
 

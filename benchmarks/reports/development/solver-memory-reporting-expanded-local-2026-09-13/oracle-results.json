@@ -1,0 +1,80 @@
+[
+  {
+    "arm": "baseline",
+    "fixture": "ols_lsmr_reuse",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|ols_lsmr_reuse|rc=0",
+      "REPORTING_ORACLE_DONE|ols_lsmr_reuse|rc=0"
+    ],
+    "fixture_sha256": "14faa3425c7c81ef402c0b2e405cd4727bd9af525301e19b49450057cfe3b058",
+    "plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6",
+    "log_sha256": "bc7ead2f277b8d490afb332f21b985eb09d6d991726ed6ef54b7b95ecd83f85f"
+  },
+  {
+    "arm": "baseline",
+    "fixture": "within_weighted_ols",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|within_weighted_ols|rc=0",
+      "REPORTING_ORACLE_DONE|within_weighted_ols|rc=0"
+    ],
+    "fixture_sha256": "e4767d48fd68e0418ea30f0977936024f76be1641154bf79d1c0fee7c8f32bd0",
+    "plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6",
+    "log_sha256": "ec8b685a8736588e759bc333789bdb38f73cb936d576e04900c3cd7e8412e768"
+  },
+  {
+    "arm": "baseline",
+    "fixture": "within_weighted_cmg",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|within_weighted_cmg|rc=0",
+      "REPORTING_ORACLE_DONE|within_weighted_cmg|rc=0"
+    ],
+    "fixture_sha256": "85987f292ca3c4538d784a1d0ea83d96653d745630f1040a152eb3b97996f521",
+    "plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6",
+    "log_sha256": "5b51407af82048a0c360b81bcd486ac816ef954583c17d25b691d6f20020bab7"
+  },
+  {
+    "arm": "candidate",
+    "fixture": "ols_lsmr_reuse",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|ols_lsmr_reuse|rc=0",
+      "REPORTING_ORACLE_DONE|ols_lsmr_reuse|rc=0"
+    ],
+    "fixture_sha256": "14faa3425c7c81ef402c0b2e405cd4727bd9af525301e19b49450057cfe3b058",
+    "plugin_sha256": "8b6f3ffaa711581367de389c9341d47ef57d2810c76188048852b10083b5b4d5",
+    "log_sha256": "5ef5276f13b8486c7eac2c53862718756f2377f547337d692574e1e4ac4104e5"
+  },
+  {
+    "arm": "candidate",
+    "fixture": "within_weighted_ols",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|within_weighted_ols|rc=0",
+      "REPORTING_ORACLE_DONE|within_weighted_ols|rc=0"
+    ],
+    "fixture_sha256": "e4767d48fd68e0418ea30f0977936024f76be1641154bf79d1c0fee7c8f32bd0",
+    "plugin_sha256": "8b6f3ffaa711581367de389c9341d47ef57d2810c76188048852b10083b5b4d5",
+    "log_sha256": "09aad83c77cb51d8416cac465fbac67f713b2fa99648d62fe173a2e15814b004"
+  },
+  {
+    "arm": "candidate",
+    "fixture": "within_weighted_cmg",
+    "rc": 0,
+    "process_rc": 0,
+    "sentinels": [
+      "END_FIXTURE|within_weighted_cmg|rc=0",
+      "REPORTING_ORACLE_DONE|within_weighted_cmg|rc=0"
+    ],
+    "fixture_sha256": "85987f292ca3c4538d784a1d0ea83d96653d745630f1040a152eb3b97996f521",
+    "plugin_sha256": "8b6f3ffaa711581367de389c9341d47ef57d2810c76188048852b10083b5b4d5",
+    "log_sha256": "cd020b0d31252d6710a5920194c2a1f1bd7584688828f0a05038d49d7ca909d3"
+  }
+]

@@ -1,0 +1,194 @@
+{
+  "cmg-reviewed-tests": {
+    "tests": [
+      "fe::cmg::tests::component_quantiles_use_stable_nearest_lower_order_statistic",
+      "fe::cmg::tests::auto_direct_terminal_cg_guard_matches_locked_primary_boundaries",
+      "fe::cmg::tests::auto_hierarchy_guard_applies_only_to_costly_iterative_terminals",
+      "fe::cmg::tests::hierarchy_work_counts_recursive_level_visits",
+      "fe::cmg::tests::control_seed_admission_consumes_only_finite_certified_evidence",
+      "fe::cmg::tests::auto_route_is_invariant_to_core_effect_order",
+      "fe::cmg::tests::more_than_sixty_four_nuisance_columns_are_rejected",
+      "fe::cmg::tests::auto_cmg_memory_preflight_rejects_before_graph_construction",
+      "fe::cmg::tests::early_prepared_memory_bound_covers_exact_topology_and_frame",
+      "fe::cmg::tests::prepared_nuisance_grouping_preserves_memory_caps_and_zero_nuisance_policy",
+      "fe::cmg::tests::prepared_cmg_seed_weight_boundary_and_memory_are_explicit",
+      "ppml::categorical_fwl_cmg::tests::graph_batch_capacity_covers_nuisance_without_exceeding_the_pool",
+      "fe::cmg::tests::prepared_topology_rejects_a_different_design_with_the_same_profile",
+      "fe::cmg::tests::upstream_cmg_errors_have_an_explicit_fail_closed_public_class",
+      "ppml::categorical_fwl_cmg::tests::fused_workspace_estimate_is_monotone",
+      "fe::cmg::tests::three_way_profile_uses_two_largest_effects_as_core_in_every_order",
+      "fe::cmg::tests::one_effect_uses_exact_direct_projection_but_retains_cmg_request",
+      "ppml::categorical_fwl_cmg::tests::pivoted_cholesky_recovers_a_permuted_spd_system",
+      "ppml::categorical_fwl_cmg::tests::certificate_topology_is_bound_to_the_fit_lifetime_design",
+      "fe::cmg::tests::nested_rank_deficient_nuisance_effect_is_handled",
+      "fe::cmg::tests::duplicate_matches_and_disconnected_components_are_supported",
+      "fe::cmg::tests::multiple_rhs_calls_reuse_one_hierarchy",
+      "ppml::prepared_estimator::tests::public_cmg_rejects_four_fixed_effect_dimensions",
+      "fe::cmg::tests::weighted_two_way_projection_agrees_with_certified_cg",
+      "fe::cmg::tests::prepared_cmg_tracks_executor_width_across_one_four_one",
+      "fe::cmg::tests::multiple_nuisance_effects_agree_with_full_multi_effect_cg",
+      "fe::cmg::tests::absorbed_nuisance_effect_agrees_with_full_multi_effect_cg",
+      "fe::cmg::tests::auto_route_matches_calibrated_akm_shape_boundaries",
+      "ppml::solver::tests::cmg_fallback_is_visible_and_permanent_in_the_report",
+      "ppml::solver::tests::automatic_report_accepts_admitted_lsmr_but_not_untrained_cmg",
+      "ppml::categorical_fwl_cmg::tests::nuisance_reduction_requires_exact_nesting_in_a_selected_core",
+      "fe::cmg::tests::swapping_cmg_bipartition_orientation_preserves_the_certified_projection",
+      "ppml::prepared_irls::tests::cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work",
+      "fe::cmg::tests::auto_requested_cmg_skips_map_pilot_and_certifies",
+      "ppml::prepared_estimator::tests::public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation",
+      "ppml::prepared_estimator::tests::public_cmg_numerical_failure_falls_back_to_map_permanently",
+      "ppml::prepared_estimator::tests::public_cmg_non_numerical_failures_remain_fatal",
+      "ppml::prepared_estimator::tests::public_cmg_fallback_retains_retry_timing_and_certificate_evidence",
+      "ppml::prepared_estimator::tests::public_cmg_retries_only_the_failed_projection_rhs",
+      "ppml::prepared_irls::tests::cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame",
+      "ppml::categorical_fwl_cmg::tests::finite_certificate_preserves_literal_moments_across_thread_counts",
+      "ppml::prepared_estimator::tests::public_cmg_matches_the_map_ppml_oracle",
+      "fe::cmg::tests::prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated",
+      "fe::cmg::tests::cmg_reports_and_admits_retained_state_with_cg_polish",
+      "ppml::prepared_irls::tests::cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates",
+      "fe::cmg::tests::prepared_nuisance_potentials_are_current_weight_and_remove_only_duplicate_solves",
+      "fe::cmg::tests::auto_hierarchy_guard_rejects_mixed_cliff_but_retains_all_tiny_graph",
+      "ppml::prepared_irls::tests::cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates",
+      "fe::cmg::tests::prepared_batches_align_with_the_admitted_pool_without_changing_solutions",
+      "fe::cmg::tests::prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs"
+    ],
+    "log_sha256": "47be290ee0b4b5bdbf328d35cf015930ed4eebc94fd097424b7bfcaf68fd251e"
+  },
+  "lsmr-final": {
+    "tests": [
+      "fe::auto::tests::auto_lsmr_threshold_is_frozen_and_inclusive",
+      "fe::lsmr::tests::lsmr_setup_capacity_overflow_is_an_allocation_error",
+      "fe::lsmr_batch::tests::transport_capacity_errors_keep_allocation_classification",
+      "memory::tests::lsmr_recurrence_model_matches_independent_allocator_payloads",
+      "memory::tests::lsmr_batch_model_bounds_window_frames_and_retained_outputs",
+      "ols::prepared_fit::tests::low_report_merge_preserves_certified_lsmr_cg_continuation_in_any_order",
+      "fe::topology_slope_map::tests::sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights",
+      "fe::lsmr::tests::lsmr_matches_two_way_additive_projection",
+      "fe::lsmr::tests::automatic_preconditioner_falls_back_for_roundoff_indefiniteness",
+      "fe::lsmr::tests::lsmr_absorbs_group_specific_slopes",
+      "fe::auto::tests::explicit_lsmr_falls_back_to_certified_map_when_budget_is_exhausted",
+      "ppml::categorical_lsmr::tests::augmented_operator_obeys_adjoint_identity",
+      "ols::tests::map_and_lsmr_agree_on_identified_slope",
+      "fe::topology_slope_map::tests::coefficient_lsmr_recovery_normalizes_disconnected_components",
+      "fe::topology_slope_map::tests::coefficient_lsmr_recovery_matches_map_normalization",
+      "fe::lsmr_batch::tests::a_later_window_failure_returns_no_partial_batch",
+      "fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients",
+      "fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr",
+      "fe::borrowed_map::tests::checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally",
+      "ols::prepared_fit::tests::prepared_lsmr_path_matches_certified_map_fit",
+      "ppml::categorical_lsmr::tests::checkpoint_memory_charges_batch_outputs_and_concurrent_recurrences",
+      "ppml::categorical_lsmr::tests::core_pair_memory_charges_exactly_two_core_width_bridge_buffers",
+      "ppml::categorical_lsmr::tests::exact_certificate_does_not_erase_a_finite_moment_through_split_underflow",
+      "ppml::categorical_lsmr::tests::exact_certificate_does_not_turn_overflowing_squares_into_a_false_pass",
+      "ppml::categorical_lsmr::tests::exact_certificate_rejects_an_uncorrected_target",
+      "ppml::categorical_lsmr::tests::first_pass_predictor_clamps_prior_certificate_misses",
+      "ppml::categorical_lsmr::tests::first_pass_predictor_initializes_to_the_scheduled_tolerance",
+      "ppml::categorical_lsmr::tests::core_pair_bridge_matches_its_dense_symmetric_block_factor",
+      "ppml::categorical_lsmr::tests::frame_preparation_preserves_column_order_diagonals",
+      "ppml::categorical_lsmr::tests::joint_lsmr_frame_trace_is_deterministic_and_complete",
+      "ppml::categorical_lsmr::tests::joint_memory_charges_only_the_selected_schwarz_topology",
+      "ppml::categorical_lsmr::tests::joint_memory_estimate_rejects_invalid_and_overflowing_shapes",
+      "ppml::categorical_lsmr::tests::first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement",
+      "ppml::categorical_lsmr::tests::joint_policy_keeps_two_effect_schwarz_and_uses_one_core_pair_for_multiway",
+      "ppml::categorical_lsmr::tests::joint_memory_estimate_scales_with_retained_design_and_thread_team",
+      "ppml::categorical_lsmr::tests::schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries",
+      "ppml::categorical_lsmr::tests::first_pass_predictor_rejects_weight_and_schedule_jumps",
+      "ppml::categorical_lsmr::tests::sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs",
+      "ppml::categorical_lsmr::tests::topology_identity_rejects_a_different_effect_partition_with_the_same_total_levels",
+      "ppml::categorical_lsmr::tests::topology_identity_rejects_an_equal_shaped_replacement",
+      "ppml::categorical_lsmr::tests::weighted_moment_reorders_a_nonzero_subnormal_split_factor",
+      "ppml::prepared_estimator::tests::automatic_lsmr_admission_preserves_map_only_surfaces",
+      "ppml::categorical_lsmr::tests::joint_core_pair_uses_the_same_two_largest_effects_under_every_permutation",
+      "ppml::prepared_irls::tests::initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit",
+      "ppml::solver::tests::automatic_report_accepts_admitted_lsmr_but_not_untrained_cmg",
+      "ppml::solver::tests::certified_lsmr_checkpoint_has_independent_engine_identity",
+      "ppml::solver::tests::checkpoint_lsmr_numerical_fallback_is_row_local_and_nonpermanent",
+      "ppml::solver::tests::lsmr_engine_selection_uses_only_the_active_control_boundary",
+      "ppml::categorical_lsmr::tests::joint_solver_supports_zero_finite_columns_with_three_effects",
+      "ppml::categorical_lsmr::tests::exact_certificate_is_thread_count_deterministic",
+      "ppml::categorical_lsmr::tests::joint_solver_reuses_a_certified_incremental_state_across_weight_frames",
+      "fe::borrowed_map::tests::lsmr_continuation_certificate_uses_the_supplied_original_rhs_scale",
+      "ppml::categorical_lsmr::tests::joint_solver_tracks_retained_team_across_one_four_one",
+      "fe::borrowed_map::tests::routed_auto_selects_lsmr_for_a_slow_chain_graph",
+      "ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+      "ppml::prepared_estimator::tests::zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity",
+      "ppml::prepared_estimator::tests::public_lsmr_checkpoint_workspace_is_required_before_canonical_work",
+      "ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+      "ols::prepared_fit::tests::initial_checkpoint_lsmr_falls_back_only_after_numerical_noncertification",
+      "ppml::prepared_estimator::tests::explicit_lsmr_matches_map_and_reports_its_concrete_engine",
+      "fe::borrowed_map::tests::uncertified_lsmr_candidate_is_polished_and_fully_accounted",
+      "fe::borrowed_map::tests::constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fits",
+      "fe::borrowed_map::tests::forced_large_axis_route_uses_schwarz_lsmr_then_certified_cg",
+      "ols::prepared_fit::tests::low_lsmr_batches_match_fast_across_pool_sizes",
+      "fe::borrowed_map::tests::retained_lsmr_reuses_preparation_and_preserves_each_batch",
+      "ols::prepared_fit::tests::initial_full_width_lsmr_preserves_canonical_multiway_rank_policy",
+      "fe::lsmr_batch::tests::windows_preserve_all_outputs_against_the_upstream_full_batch"
+    ],
+    "log_sha256": "236b4845af70f531b72107abcc1a945054fdca15dd16e8b7791d0383dbe052ad"
+  },
+  "merge-final": {
+    "tests": [
+      "ols::prepared_fit::tests::low_report_merge_rejects_uncertified_or_incompatible_continuations",
+      "ols::prepared_fit::tests::low_report_merge_preserves_certified_lsmr_cg_continuation_in_any_order"
+    ],
+    "log_sha256": "c9d48a030da0397eba2a56941115941e445b2bb3f424a508bd0a0050ed90f4e4"
+  },
+  "robust-final": {
+    "tests": [
+      "ols::prepared_robust::tests::singular_psd_is_certified_while_material_indefiniteness_is_fatal",
+      "ols::prepared_robust::tests::singular_psd_slope_covariance_makes_robust_wald_undefined",
+      "ols::prepared_robust::tests::rank_zero_no_x_path_has_no_score_matrix_and_certifies",
+      "ols::prepared_robust::tests::unit_aweight_pweight_and_scaled_pweight_follow_pinned_hc1_contract",
+      "ols::prepared_robust::tests::low_memory_robust_covariance_routes_through_bit_exact_shared_serial_reducer",
+      "ols::prepared_robust::tests::compact_fweights_equal_literal_row_expansion_including_full_covariance",
+      "ols::prepared_robust::tests::reported_and_hidden_intercepts_share_slope_block_and_exact_fit_is_psd_singular",
+      "ols::prepared_robust::tests::strided_score_storage_matches_packed_robust_inference",
+      "ols::prepared_robust::tests::score_reconstruction_retains_its_separate_solver_memory_report",
+      "ols::prepared_robust::tests::every_robust_reservation_and_mutation_fails_closed"
+    ],
+    "log_sha256": "69ad9351d5c0fde46bcf831e42c19580aab577e930bdff4214b268aa10416c98"
+  },
+  "schur-correct-filter": {
+    "tests": [
+      "fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map"
+    ],
+    "log_sha256": "876de5e2e026385a1be017b42d53fa94e15c2af42df9b53beff9930213865df7"
+  },
+  "distinct_tests_passed": 128,
+  "plugin_typecheck": {
+    "status": "pass",
+    "log_sha256": "76e094451560e1a3f129fe208e47b7b3a520951c7a1365bf91519f4e17555376"
+  },
+  "build": {
+    "universal_static_and_native_arm64_abi": "pass",
+    "log_sha256": "f49e08fd03b9630bd845d1ae7c1c6b949aef98d19130a14e431aaa359c76c13b",
+    "warning": "CmgAbsorber::build is used only by tests after profiled construction was adopted by the internal caller; its production dead-code warning remains in this unadopted snapshot."
+  },
+  "disposition": "Unadopted: reporting coverage incomplete; wide weak OLS has unresolved command increases above the prescribed review envelope.",
+  "excluded_prelaunch_checks": [
+    {
+      "log": "cmg-memory-tests.log",
+      "sha256": "8cf4b01802168dbe0900478daace8bea2d86820797245bb415dc04f8a7b46edb"
+    },
+    {
+      "log": "borrowed-tests.log",
+      "sha256": "a6f3960827c4160c700dbed149d2c707eb6e5601ed35b9dd43f63eb3e4a2608c"
+    },
+    {
+      "log": "schur-final.log",
+      "sha256": "b0949443467be81dcacd95567ffe21bac5eddd5a63d7567ad4b36add7fa4f58e"
+    },
+    {
+      "log": "comparison.log",
+      "sha256": "6d76cbfc3f641035974d2075db4cbae92fdc4990404e3834b84201cc2ed5dc44"
+    }
+  ],
+  "excluded_prelaunch_description": "CMG signature migration initially missed four test arguments; a borrowed helper initially used an unqualified effect type; both compile failures were corrected. One Schur filter matched zero tests and was replaced with the actual named fixture. Default-sandbox RSS enumeration failed before any Stata launch; the authorized process-statistics run succeeded. These are not numerical fixture failures or timed observations.",
+  "executed_script_sha256": {
+    "compare.py": "bb1a79304ae815ba7394bc1e9cc950a7f59b9746bd9deb8d0e743933714747da",
+    "followup.py": "16eb59a07180946ddee315f9732edb047b2b75970c2cc920645f17f18095cb0b",
+    "run_oracles.py": "0cffa327345a796f693fafa692b99700f53a0813118380b669f48f0b6143a849"
+  },
+  "replay_script_note": "Archived scripts replace local source/interpreter paths with adjacent files and FEREG_LOCAL_BENCH_ROOT/STATA_MP_PATH. Workloads, order, seeds, scientific assertions and numerical code are unchanged.",
+  "installed_plugin_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08"
+}
