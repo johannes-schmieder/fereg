@@ -1,0 +1,41 @@
+{
+  "completed": true,
+  "failure_detail": "Stata fixture returned r(459)",
+  "failure_kind": "stata_error",
+  "results": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_lsmr_reuse.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/within_weighted_ols.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": "Stata fixture returned r(459)",
+      "failure_kind": "stata_error",
+      "fixture": "tests/stata/development/lsmr_batch_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 459,
+      "status": "failure"
+    }
+  ],
+  "schema_version": 1,
+  "stata_edition": "MP",
+  "stata_machine_type": "Mac (Apple Silicon)",
+  "stata_os": "Unix",
+  "stata_processors": 8,
+  "stata_rc": 459,
+  "stata_version": "19",
+  "status": "failure",
+  "tests_failed": 1,
+  "tests_passed": 2
+}

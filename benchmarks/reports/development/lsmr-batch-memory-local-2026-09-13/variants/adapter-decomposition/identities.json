@@ -1,0 +1,6 @@
+{
+  "baseline": "model-only/identities.json",
+  "candidate": "wide-guard/identities.json",
+  "baseline_plugin_sha256": "947d75f9c34a7f728b55f4f79653e233f2edc54c300c2d406ec1eb139833bdb6",
+  "candidate_plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6"
+}

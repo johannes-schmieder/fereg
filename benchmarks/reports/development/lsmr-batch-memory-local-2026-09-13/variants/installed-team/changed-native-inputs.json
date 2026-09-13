@@ -1,0 +1,9 @@
+{
+  "crates/fereg-core/src/fe/borrowed_map.rs": "ba6b04db35186948f1c6a058657a866f0be0e8e3f183556c28f4f92eaaafde65",
+  "crates/fereg-core/src/fe/lsmr.rs": "ed0eba38aab56db80877dfe6956891f972bedd9bef5a4d1829d6c162e625740c",
+  "crates/fereg-core/src/fe/lsmr_batch.rs": "cfafe279029594f467830f83277b245c7878e8adc5dc6e44c91a97bb9e127c94",
+  "crates/fereg-core/src/fe/mod.rs": "15a0bdeaef977643989c34eb4303584d81f6d93c51a416fced6ddbd04192bb90",
+  "crates/fereg-core/src/memory.rs": "8a8668bede1aab84b930902c753a6d0d68b54adc099f32efbf67003ec8d1f013",
+  "crates/fereg-core/src/memory/categorical_schwarz.rs": "4f4fd02a1799607986f3a31c6b27b90bb3909e68bb7010fa67f823897c077fec",
+  "crates/fereg-core/src/ppml/categorical_lsmr.rs": "15497f13a01f04412d496e036a103e767900c251f12ae0d12293b41429423490"
+}

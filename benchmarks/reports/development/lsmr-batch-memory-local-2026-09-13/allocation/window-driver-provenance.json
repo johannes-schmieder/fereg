@@ -1,0 +1,5 @@
+{
+  "original_sha256": "37e595eea3bfafbcf52aa1f138e220189dfcd5ea7eb0478eeb1ff9743fbc8642",
+  "archived_sha256": "54a769df76e25bce184a20e53a7d1eaf6a1ea4bc5052daf1bbf344b672bd8f9f",
+  "changes": "Only binary/output paths use explicit environment variables, and output requires a fresh directory. Numeric recipes, order, comparisons and collection are unchanged. Never run into this immutable report directory."
+}

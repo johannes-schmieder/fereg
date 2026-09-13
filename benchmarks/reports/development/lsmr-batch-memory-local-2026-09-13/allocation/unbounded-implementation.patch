@@ -1,0 +1,503 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index b580e4b..44f8056 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -10585,10 +10585,13 @@ mod tests {
+             estimate_fe_solver_memory(observations, 1, &[workers, workers + 1], 1, lsmr.local_size)
+                 .expect("solver memory");
+         assert!(memory.cg_bytes < memory.lsmr_schwarz_bytes);
++        let weights: Vec<f64> = (0..observations)
++            .map(|row| 0.5 + (row % 19) as f64 / 19.0)
++            .collect();
+         let run = |usable_bytes| {
+             absorb_borrowed_intercept_auto_routed_certified(
+                 &design,
+-                BorrowedMapWeights::Unit,
++                BorrowedMapWeights::Provided(&weights),
+                 DenseMatrix::from_columns(std::slice::from_ref(&outcome)).expect("matrix"),
+                 config(),
+                 lsmr,
+@@ -10608,6 +10611,16 @@ mod tests {
+             .first()
+             .is_some_and(|warning| { warning.contains("joint execution/solver memory plan") }));
+ 
++        // The old model charged the compensation table but omitted the equally
++        // sized primary table. Check rejection before any LSMR numerical work.
++        let bounded = run(327_680).expect("small budget must use certified CG");
++        assert_eq!(bounded.report().used_solver, FeSolverKind::Cg);
++        assert!(bounded.report().fallback_used);
++        assert!(bounded.report().warnings.iter().any(|warning| {
++            warning.contains("joint execution/solver memory plan")
++        }));
++        assert_eq!(bounded.residualized(), cg.residualized());
++
+         let error = run(memory.cg_bytes - 1).expect_err("neither route may allocate");
+         assert_eq!(error.code, ErrorCode::Allocation);
+         assert!(error.message.contains("neither LSMR nor CG"));
+diff --git a/crates/fereg-core/src/memory.rs b/crates/fereg-core/src/memory.rs
+index c8d3799..4c1be90 100644
+--- a/crates/fereg-core/src/memory.rs
++++ b/crates/fereg-core/src/memory.rs
+@@ -2,6 +2,12 @@ use crate::error::{ErrorCode, FeregError, Result};
+ use crate::fe::LsmrPreconditioner;
+ use crate::options::MemoryMode;
+ 
++mod categorical_schwarz;
++pub(crate) use categorical_schwarz::{
++    categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
++    CategoricalSchwarzMemoryEstimate,
++};
++
+ const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
+ const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
+ 
+@@ -207,7 +213,8 @@ pub fn estimate_phase2_memory(
+ ///
+ /// The model deliberately separates CG, LSMR recurrence, Schwarz topology,
+ /// RHS copies, and thread reductions.  It assumes prepared categorical codes
+-/// and memberships remain borrowed.  Arithmetic is checked so a malformed or
++/// remain borrowed at the adapter; upstream locality copies are charged.
++/// Arithmetic is checked so a malformed or
+ /// adversarial dimension fails before allocation.
+ pub fn estimate_fe_solver_memory(
+     observations: usize,
+@@ -281,44 +288,120 @@ pub fn estimate_fe_solver_memory(
+         scalar_rhs_bytes,
+     ])?;
+ 
+-    // Modified LSMR processes batch columns with shared observation-space
+-    // recurrence storage. The execution plan already owns the returned dense
+-    // candidate, so the incremental peak charges one RHS materialization and
+-    // one shared recurrence/history block rather than K copies of both.
+-    let recurrence_vectors = local_reorthogonalization_size
+-        .unwrap_or(0)
+-        .checked_add(4)
+-        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "LSMR history count overflows"))?
+-        as u128;
+-    let krylov_bytes = checked_mul(
+-        checked_mul(n, recurrence_vectors, "LSMR shared Krylov axis")?,
++    // Pinned within runs a separate recurrence for each RHS. Nested Rayon
++    // work can suspend an outer solve, so thread count alone is not an
++    // admission bound on live RHS frames. History is in coefficient space.
++    let history = (local_reorthogonalization_size.unwrap_or(0) as u128)
++        .min(n)
++        .min(levels);
++    let recurrence = |coefficient_vectors| -> Result<u128> {
++        checked_mul(
++            checked_mul(
++                checked_sum(&[
++                    checked_mul(n, 2, "LSMR observation recurrence")?,
++                    checked_mul(levels, coefficient_vectors, "LSMR coefficient recurrence")?,
++                ])?,
++                rhs,
++                "LSMR concurrent RHS recurrences",
++            )?,
++            8,
++            "LSMR recurrence bytes",
++        )
++    };
++    let krylov_bytes = recurrence(checked_sum(&[
++        6,
++        checked_mul(history, 2, "modified LSMR history lanes")?,
++    ])?)?;
++    let off_krylov_bytes = recurrence(checked_sum(&[5, history])?)?;
++
++    // Each RHS operator owns its largest scatter block. Small blocks also
++    // allocate fold/reduce accumulators; with_min_len bounds the number of
++    // leaves independently of the nested task schedule. Charge both fold and
++    // reduction identities for every leaf, plus the final result.
++    let fold_levels = if observations > 10_000 {
++        effect_level_counts
++            .iter()
++            .copied()
++            .filter(|&count| count < 100_000)
++            .max()
++            .unwrap_or(0) as u128
++    } else {
++        0
++    };
++    let min_rows = (observations / threads).max(1024);
++    let fold_leaves = observations.div_ceil(min_rows) as u128;
++    let scatter_bytes = checked_mul(
++        checked_mul(
++            checked_sum(&[
++                maximum_levels,
++                checked_mul(
++                    fold_levels,
++                    checked_sum(&[checked_mul(fold_leaves, 2, "LSMR scatter leaves")?, 1])?,
++                    "LSMR scatter fold and reduction storage",
++                )?,
++            ])?,
++            rhs,
++            "LSMR per-RHS scatter storage",
++        )?,
+         8,
+-        "LSMR shared Krylov bytes",
++        "LSMR scatter bytes",
+     )?;
+-    let lsmr_common = checked_sum(&[
+-        rhs_copy_bytes,
+-        krylov_bytes,
+-        thread_reduction_bytes,
+-        checked_mul(levels, 16, "LSMR coefficient workspace")?,
++    // Both locality-permuted input and weighted RHS can be owned per solve.
++    // During assembly the individual results coexist with combined banks;
++    // these are a different peak from the recurrence, not additive to it.
++    let rhs_transform_bytes = checked_mul(matrix_bytes, 2, "LSMR permuted and weighted RHS")?;
++    let batch_output_bytes = checked_mul(
++        checked_sum(&[matrix_bytes, coefficient_batch_bytes])?,
++        2,
++        "LSMR individual and combined output banks",
++    )?;
++    let metadata_bytes = checked_sum(&[
++        checked_mul(rhs, 256, "LSMR RHS descriptors and result metadata")?,
++        checked_mul(effects, 128, "LSMR effect and layout metadata")?,
+     ])?;
+-    let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal preconditioner")?;
+-    let topology_bytes = checked_sum(&[
+-        checked_mul(n, effects, "Schwarz observation-effect topology")?,
+-        checked_mul(levels, 48, "Schwarz level topology")?,
+-        checked_mul(n, 24, "Schwarz cross-tab edge workspace")?,
+-        schwarz_weighted_correction_bytes(n, effect_level_counts)?,
++    let common = |recurrence_bytes| -> Result<u128> {
++        checked_sum(&[
++            rhs_copy_bytes,
++            checked_sum(&[recurrence_bytes, rhs_transform_bytes, scatter_bytes])?
++                .max(batch_output_bytes),
++            thread_reduction_bytes,
++            metadata_bytes,
++        ])
++    };
++    let schwarz = estimate_categorical_schwarz_memory(
++        n,
++        effects,
++        levels,
++        maximum_levels,
++        threads as u128,
++        checked_sum(&[
++            categorical_dense_cross_tab_bytes(n, effect_level_counts)?,
++            schwarz_weighted_correction_bytes(n, effect_level_counts)?,
++        ])?,
++    )?;
++    let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal build and retained inverse")?;
++    let lsmr_off_bytes = checked_sum(&[common(off_krylov_bytes)?, schwarz.solver_frame_bytes])?;
++    let lsmr_diagonal_bytes = checked_sum(&[
++        common(krylov_bytes)?,
++        schwarz.solver_frame_bytes,
++        diagonal_bytes,
+     ])?;
+-    let lsmr_off_bytes = lsmr_common;
+-    let lsmr_diagonal_bytes = checked_sum(&[lsmr_common, diagonal_bytes])?;
+-    // Schwarz cross-tabs are constructed during setup and released or reused
+-    // before the Krylov solve reaches its peak. Model the larger stage plus
+-    // the small persistent level factor, not the impossible sum of both peaks.
+-    let schwarz_setup_peak = checked_sum(&[rhs_copy_bytes, topology_bytes, diagonal_bytes])?;
+-    let schwarz_solve_peak = checked_sum(&[lsmr_common, diagonal_bytes])?;
+-    let lsmr_schwarz_bytes = schwarz_setup_peak
+-        .max(schwarz_solve_peak)
+-        .checked_add(checked_mul(levels, 8, "persistent Schwarz level factor")?)
+-        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "Schwarz peak estimate overflows"))?;
++    let topology_bytes = schwarz.build_peak_bytes;
++    let schwarz_setup_peak = checked_sum(&[rhs_copy_bytes, topology_bytes, metadata_bytes])?;
++    // The shared retained estimate charges up to four complete pooled objects.
++    // Each live RHS can additionally own one complete apply stack.
++    let schwarz_batch_apply_bytes = checked_mul(
++        schwarz.apply_peak_bytes,
++        rhs,
++        "LSMR concurrent Schwarz applies",
++    )?;
++    let schwarz_solve_peak = checked_sum(&[
++        common(krylov_bytes)?,
++        schwarz.solver_frame_bytes,
++        schwarz.retained_bytes,
++        schwarz_batch_apply_bytes,
++    ])?;
++    let lsmr_schwarz_bytes = schwarz_setup_peak.max(schwarz_solve_peak);
+     let borrowed_code_copy_avoided_bytes = checked_sum(&[
+         checked_mul(
+             checked_mul(n, effects, "avoided FE codes")?,
+@@ -549,6 +632,46 @@ mod tests {
+         assert!(estimate.borrowed_code_copy_avoided_bytes > 0);
+     }
+ 
++    #[test]
++    fn lsmr_recurrence_model_matches_independent_allocator_payloads() {
++        // Pinned modified-LSMR payloads independently captured by the rectangular
++        // operator/barrier probe in lsmr-transport-local-2026-09-12. They exclude
++        // transport, scatter, preconditioners and result-container bookkeeping.
++        for (rows, levels, rhs, history, payload) in [
++            (8192, 4096, 1, None, 327_680),
++            (8192, 4096, 1, Some(4), 589_824),
++            (8192, 4096, 4, Some(4), 2_359_296),
++            (16384, 4096, 4, Some(4), 2_883_584),
++            (8192, 6144, 4, Some(4), 3_276_800),
++            (32, 8, 4, Some(100), 7_680),
++        ] {
++            let estimate = estimate_fe_solver_memory(rows, rhs, &[levels], 4, history).unwrap();
++            assert_eq!(estimate.krylov_bytes, payload);
++            assert!(estimate.lsmr_diagonal_bytes > payload);
++        }
++    }
++
++    #[test]
++    fn ols_schwarz_admission_includes_dense_tables_before_solving() {
++        let estimate = estimate_fe_solver_memory(320, 1, &[160, 161], 1, Some(4)).unwrap();
++        // This table alone exceeds the old complete LSMR estimate. The weighted
++        // builder additionally owns an equally sized compensation table.
++        let table_bytes = 160_u128 * 161 * 8;
++        assert!(estimate.topology_bytes >= 2 * table_bytes);
++        assert!(estimate.lsmr_schwarz_bytes >= estimate.topology_bytes);
++        assert!(estimate.cg_bytes < 327_680);
++        assert!(estimate.lsmr_schwarz_bytes > 327_680);
++    }
++
++    #[test]
++    fn lsmr_batch_bounds_do_not_assume_one_rhs_frame_per_worker() {
++        let one = estimate_fe_solver_memory(8192, 1, &[2048, 2048], 1, Some(4)).unwrap();
++        let four = estimate_fe_solver_memory(8192, 4, &[2048, 2048], 1, Some(4)).unwrap();
++        assert_eq!(four.krylov_bytes, 4 * one.krylov_bytes);
++        assert!(four.lsmr_off_bytes > one.lsmr_off_bytes);
++        assert!(four.lsmr_schwarz_bytes > one.lsmr_schwarz_bytes);
++    }
++
+     #[test]
+     fn joint_budget_selects_only_complete_solver_plans() {
+         let estimate = estimate_fe_solver_memory(100_000, 2, &[10_000, 4_000], 4, Some(4))
+diff --git a/crates/fereg-core/src/ppml/categorical_lsmr.rs b/crates/fereg-core/src/ppml/categorical_lsmr.rs
+index a9a11de..289e9f8 100644
+--- a/crates/fereg-core/src/ppml/categorical_lsmr.rs
++++ b/crates/fereg-core/src/ppml/categorical_lsmr.rs
+@@ -15,6 +15,10 @@ use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
+ use crate::data::DenseMatrix;
+ use crate::error::{ErrorCode, FeregError, Result};
+ use crate::fe::{retained_effect_order_by_levels, FeDesign};
++use crate::memory::{
++    categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
++    CategoricalSchwarzMemoryEstimate,
++};
+ use crate::options::ThreadConfig;
+ use crate::parallel::{InstalledThreadTeam, ThreadTeam};
+ use crate::prepared_fit_view::PreparedOlsFitView;
+@@ -2032,59 +2036,26 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
+             "PPML checkpoint LSMR memory estimate requires a positive RHS width",
+         ));
+     }
+-    let shape = CategoricalLsmrMemoryShape::new(
++    // This is the same borrowed categorical batch adapter used by OLS. Share
++    // its full-RHS recurrence, scatter, output overlap and Schwarz estimates;
++    // nested Rayon does not limit live RHS frames to the worker count.
++    let solver = crate::memory::estimate_fe_solver_memory(
+         rows,
+-        0,
++        rhs,
+         effect_level_counts,
+         threads,
+-        CategoricalLsmrPolicy::Reuse,
++        Some(4),
+     )?;
+-    let concurrent_rhs = (rhs as u128).min(shape.threads);
+-    let rhs = rhs as u128;
+-
+-    // The input matrix, column-major RHS copies, returned demeaned batch, and
+-    // returned coefficient batch can coexist until canonical recertification.
+-    let retained_batch_values = checked_sum_memory(&[
+-        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR input matrix")?,
+-        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR RHS copies")?,
+-        checked_mul_memory(shape.rows, rhs, "checkpoint LSMR demeaned outputs")?,
+-        checked_mul_memory(shape.levels, rhs, "checkpoint LSMR coefficient outputs")?,
+-        shape.rows,
+-    ])?;
+-    let retained_batch_bytes =
+-        bytes_for_memory::<f64>(retained_batch_values, "checkpoint LSMR retained batch")?;
+-
+-    // Modified Golub--Kahan plus the solution recurrence and local history.
+-    // This deliberately over-bounds opaque upstream per-RHS allocations.
+-    let recurrence_per_rhs = checked_sum_memory(&[
+-        checked_mul_memory(shape.rows, 3, "checkpoint LSMR observation recurrence")?,
+-        checked_mul_memory(shape.levels, 14, "checkpoint LSMR coefficient recurrence")?,
+-    ])?;
+-    let recurrence_peak = bytes_for_memory::<f64>(
+-        checked_mul_memory(
+-            recurrence_per_rhs,
+-            concurrent_rhs,
+-            "checkpoint LSMR concurrent recurrences",
++    checked_sum_memory(&[
++        solver.lsmr_schwarz_bytes,
++        // OLS charges its caller-owned input in the execution model. A PPML
++        // checkpoint constructs this matrix on top of the retained session.
++        bytes_for_memory::<f64>(
++            checked_mul_memory(rows as u128, rhs as u128, "checkpoint LSMR input matrix")?,
++            "checkpoint LSMR input matrix bytes",
+         )?,
+-        "checkpoint LSMR recurrence bytes",
+-    )?;
+-    let solve_peak = checked_sum_memory(&[
+-        retained_batch_bytes,
+-        shape.schwarz.retained_bytes,
+-        shape.schwarz.solver_frame_bytes,
+-        shape.schwarz.apply_peak_bytes,
+-        recurrence_peak,
+-    ])?;
+-    let build_peak = checked_sum_memory(&[retained_batch_bytes, shape.schwarz.build_peak_bytes])?;
+-    Ok(solve_peak.max(build_peak))
+-}
+-
+-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+-pub(super) struct CategoricalSchwarzMemoryEstimate {
+-    pub(super) retained_bytes: u128,
+-    pub(super) build_peak_bytes: u128,
+-    pub(super) apply_peak_bytes: u128,
+-    pub(super) solver_frame_bytes: u128,
++        bytes_for_memory::<f64>(rows as u128, "checkpoint LSMR certificate workspace")?,
++    ])
+ }
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+@@ -2188,147 +2159,6 @@ impl CategoricalLsmrMemoryShape {
+     }
+ }
+ 
+-fn categorical_dense_cross_tab_bytes(rows: u128, level_counts: &[usize]) -> Result<u128> {
+-    // The pinned within cross_tab/accumulate.rs chooses dense whenever
+-    // L_i * L_j <= 5,000,000 OR its 8-byte table costs no more than 12N.
+-    // Pair construction is parallel; charge all simultaneously live tables.
+-    // The existing edge bound separately covers CSR output and sparse scratch.
+-    let sparse_bytes = checked_mul_memory(rows, 12, "PPML LSMR sparse cross-tab scratch")?;
+-    let mut dense_bytes = 0;
+-    for (index, &left) in level_counts.iter().enumerate() {
+-        for &right in &level_counts[index + 1..] {
+-            let cells =
+-                checked_mul_memory(left as u128, right as u128, "PPML LSMR cross-tab cells")?;
+-            let bytes = bytes_for_memory::<f64>(cells, "PPML LSMR dense cross-tab scratch")?;
+-            if cells <= 5_000_000 || bytes <= sparse_bytes {
+-                dense_bytes = checked_add_memory(dense_bytes, bytes, "PPML LSMR dense pair peak")?;
+-            }
+-        }
+-    }
+-    Ok(dense_bytes)
+-}
+-
+-/// Upper-bound the owned `within::Solver` categorical/Schwarz state used by
+-/// both PPML LSMR routes. Every factor-pair can contain N distinct edges; the
+-/// accounting charges both CSR orientations, construction copies, per-level
+-/// maps/factors, locality-sort copies, and concurrent Schwarz apply buffers.
+-fn estimate_categorical_schwarz_memory(
+-    rows: u128,
+-    effects: u128,
+-    levels: u128,
+-    maximum_levels: u128,
+-    threads: u128,
+-    dense_cross_tab_bytes: u128,
+-) -> Result<CategoricalSchwarzMemoryEstimate> {
+-    let pairs = checked_mul_memory(
+-        effects,
+-        effects.saturating_sub(1),
+-        "PPML LSMR factor-pair count",
+-    )? / 2;
+-    let edges = checked_mul_memory(rows, pairs, "PPML LSMR factor-pair edges")?;
+-    let pair_level_incidence = checked_mul_memory(
+-        levels,
+-        effects.saturating_sub(1),
+-        "PPML LSMR pair-level incidence",
+-    )?;
+-
+-    // Constants include payload slack for opaque upstream vector and factor
+-    // records, not an empirically selected routing threshold.
+-    let retained_edge_bytes = checked_mul_memory(edges, 80, "PPML LSMR retained edge bytes")?;
+-    let retained_level_bytes = checked_mul_memory(
+-        pair_level_incidence,
+-        80,
+-        "PPML LSMR retained pair-level bytes",
+-    )?;
+-    let diagonal_bytes = bytes_for_memory::<f64>(levels, "PPML LSMR retained diagonal")?;
+-
+-    // The additive executor pools at most four buffers. During an apply,
+-    // nested Rayon work cannot have more live global accumulators than the
+-    // retained team width. Each buffer also has two local-solve scratches,
+-    // conservatively sized to two maximum FE blocks.
+-    let local_scratch_values =
+-        checked_mul_memory(maximum_levels, 4, "PPML LSMR Schwarz local scratch values")?;
+-    let global_apply_values = checked_add_memory(
+-        levels,
+-        local_scratch_values,
+-        "PPML LSMR Schwarz apply values",
+-    )?;
+-    let retained_pool_bytes = bytes_for_memory::<f64>(
+-        checked_mul_memory(
+-            global_apply_values,
+-            threads.min(4),
+-            "PPML LSMR retained Schwarz pools",
+-        )?,
+-        "PPML LSMR retained Schwarz pool bytes",
+-    )?;
+-    let apply_peak_bytes = bytes_for_memory::<f64>(
+-        checked_mul_memory(
+-            global_apply_values,
+-            threads,
+-            "PPML LSMR concurrent Schwarz buffers",
+-        )?,
+-        "PPML LSMR concurrent Schwarz bytes",
+-    )?;
+-    let retained_bytes = checked_sum_memory(&[
+-        retained_edge_bytes,
+-        retained_level_bytes,
+-        diagonal_bytes,
+-        retained_pool_bytes,
+-    ])?;
+-
+-    let categorical_copy_bytes = checked_sum_memory(&[
+-        bytes_for_memory::<u32>(
+-            checked_mul_memory(rows, effects, "PPML LSMR sorted categorical cells")?,
+-            "PPML LSMR sorted categorical bytes",
+-        )?,
+-        bytes_for_memory::<u32>(rows, "PPML LSMR observation permutation")?,
+-    ])?;
+-    let solver_frame_bytes = checked_sum_memory(&[
+-        categorical_copy_bytes,
+-        bytes_for_memory::<f64>(rows, "PPML LSMR square-root weights")?,
+-        bytes_for_memory::<usize>(
+-            checked_add_memory(
+-                pair_level_incidence,
+-                effects,
+-                "PPML LSMR categorical metadata count",
+-            )?,
+-            "PPML LSMR categorical metadata bytes",
+-        )?,
+-    ])?;
+-
+-    // Construction may simultaneously hold caller-order and sorted weights,
+-    // stable-sort scratch, active maps, both transient cross tabs, the newly
+-    // built retained factor, and the solver frame that takes ownership.
+-    let sort_scratch_bytes = checked_sum_memory(&[
+-        checked_mul_memory(rows, 16, "PPML LSMR stable-sort scratch")?,
+-        bytes_for_memory::<usize>(
+-            checked_add_memory(maximum_levels, 1, "PPML LSMR sort cursor count")?,
+-            "PPML LSMR sort cursor bytes",
+-        )?,
+-    ])?;
+-    let build_edge_bytes = checked_mul_memory(edges, 64, "PPML LSMR transient edge bytes")?;
+-    let build_level_bytes = checked_mul_memory(
+-        pair_level_incidence,
+-        64,
+-        "PPML LSMR transient pair-level bytes",
+-    )?;
+-    let build_peak_bytes = checked_sum_memory(&[
+-        solver_frame_bytes,
+-        bytes_for_memory::<f64>(rows, "PPML LSMR source weight copy")?,
+-        sort_scratch_bytes,
+-        build_edge_bytes,
+-        build_level_bytes,
+-        dense_cross_tab_bytes,
+-        retained_bytes,
+-    ])?;
+-    Ok(CategoricalSchwarzMemoryEstimate {
+-        retained_bytes,
+-        build_peak_bytes,
+-        apply_peak_bytes,
+-        solver_frame_bytes,
+-    })
+-}
+-
+ pub(super) fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+     left.checked_add(right).ok_or_else(|| allocation(context))
+ }

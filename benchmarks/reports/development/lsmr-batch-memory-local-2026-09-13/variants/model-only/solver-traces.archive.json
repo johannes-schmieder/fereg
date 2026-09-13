@@ -1,0 +1,5 @@
+{
+  "sha256": "67876c172a4159ec5e3000e26035eb5dd9b8736cc025d449a2d729f928791169",
+  "json_sha256": "c887fa7bd373a0b2023d5b50bed0424d4cb98b63a1908e984dcb210b157615f1",
+  "contents": "Structured native solver trace lines only, grouped by run; includes warm-up and measured commands, not licensed logs. The wide-guard records include rows to distinguish samples."
+}

@@ -1,0 +1,18 @@
+{
+  "args": [
+    320,
+    1,
+    1,
+    160,
+    161,
+    "schwarz",
+    1,
+    0,
+    1,
+    "chain"
+  ],
+  "rc": 0,
+  "stdout": "{\"n\":320,\"rhs\":1,\"threads\":1,\"left_levels\":160,\"right_levels\":161,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":false,\"setup_peak\":425777,\"retained_with_transport\":29064,\"solve_increment\":55984,\"complete_peak\":425777,\"result_bytes\":15857,\"history_lanes\":2,\"iterations\":1,\"converged\":true,\"seconds\":0.000096209,\"modeled_solver_bytes\":575016,\"within_bound\":true}\n",
+  "stderr": "",
+  "binary_sha256": "e2317d1f7e3bb52a45e800071162464a4482ba65c8a2ac67df4792381d8777da"
+}

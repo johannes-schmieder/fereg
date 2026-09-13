@@ -1,0 +1,9 @@
+{
+  "all_pairs_exact_science": true,
+  "all_pairs_science_pass": true,
+  "completed_pairs": 6,
+  "contents": "Portable synthetic input hashes/recipes; full b/V and diagnostic tables; sample hashes; action and phase timings, allocations and sampled RSS; saved outputs; per-run worker copies where available. No licensed logs, binaries, request paths or private data.",
+  "measured_calls": 12,
+  "primary_pairs": 0,
+  "sha256": "67c4efdff555a7b2c0a9775b6268495c31439fe2122ecbd47b8cd733672213f4"
+}

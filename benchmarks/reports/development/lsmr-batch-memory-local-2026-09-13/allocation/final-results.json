@@ -1,0 +1,153 @@
+{
+  "binary_sha256": "531c7bc0a1bb1267e5a4cebc94c1f41699b8ce89189c4c4331eeead265104bca",
+  "probe_source_sha256": "7f340d2b1e592393703c5e461984e63f687274d8127b5123d5a0888eaf595fdb",
+  "source_identity": "wide-guard/identities.json",
+  "note": "Standalone pinned-within lifetime/allocation replay with the candidate model and explicit production guard widths. Does not call the private production adapter. Some bounded 80-iteration probes may be unconverged; these are allocation evidence, not scientific or performance acceptance.",
+  "results": [
+    {
+      "args": [
+        320,
+        1,
+        1,
+        160,
+        161,
+        "schwarz",
+        1,
+        1,
+        1
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":320,\"rhs\":1,\"threads\":1,\"left_levels\":160,\"right_levels\":161,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":true,\"setup_peak\":292564,\"retained_with_transport\":38852,\"solve_increment\":47488,\"complete_peak\":292564,\"result_bytes\":10321,\"history_lanes\":0,\"iterations\":1,\"converged\":true,\"seconds\":0.000056209,\"modeled_solver_bytes\":575016,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        7680,
+        2,
+        1,
+        1745,
+        1720,
+        "schwarz",
+        0,
+        1,
+        2
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":7680,\"rhs\":2,\"threads\":1,\"left_levels\":1745,\"right_levels\":1720,\"preconditioner\":\"schwarz\",\"weighted\":false,\"permuted\":true,\"setup_peak\":24354993,\"retained_with_transport\":561712,\"solve_increment\":787392,\"complete_peak\":24354993,\"result_bytes\":289490,\"history_lanes\":2,\"iterations\":30,\"converged\":true,\"seconds\":0.007216958,\"modeled_solver_bytes\":50635112,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        8192,
+        4,
+        1,
+        2048,
+        2048,
+        "off",
+        1,
+        1,
+        4
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":8192,\"rhs\":4,\"threads\":1,\"left_levels\":2048,\"right_levels\":2048,\"preconditioner\":\"off\",\"weighted\":true,\"permuted\":true,\"setup_peak\":491824,\"retained_with_transport\":426288,\"solve_increment\":869096,\"complete_peak\":1295384,\"result_bytes\":393364,\"history_lanes\":1,\"iterations\":80,\"converged\":false,\"seconds\":0.026352,\"modeled_solver_bytes\":2753840,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        30720,
+        11,
+        4,
+        6981,
+        6908,
+        "diagonal",
+        1,
+        1,
+        11
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":30720,\"rhs\":11,\"threads\":4,\"left_levels\":6981,\"right_levels\":6908,\"preconditioner\":\"diagonal\",\"weighted\":true,\"permuted\":true,\"setup_peak\":3564104,\"retained_with_transport\":3429472,\"solve_increment\":13189248,\"complete_peak\":16618720,\"result_bytes\":3925915,\"history_lanes\":8,\"iterations\":80,\"converged\":false,\"seconds\":0.092783667,\"modeled_solver_bytes\":37722504,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        30720,
+        11,
+        4,
+        6981,
+        6908,
+        "schwarz",
+        1,
+        0,
+        11
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":30720,\"rhs\":11,\"threads\":4,\"left_levels\":6981,\"right_levels\":6908,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":false,\"setup_peak\":7231040,\"retained_with_transport\":4467108,\"solve_increment\":14063280,\"complete_peak\":18530388,\"result_bytes\":5701979,\"history_lanes\":8,\"iterations\":35,\"converged\":true,\"seconds\":0.062517333,\"modeled_solver_bytes\":94804752,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        122880,
+        11,
+        4,
+        27927,
+        27629,
+        "diagonal",
+        0,
+        0,
+        11
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":122880,\"rhs\":11,\"threads\":4,\"left_levels\":27927,\"right_levels\":27629,\"preconditioner\":\"diagonal\",\"weighted\":false,\"permuted\":false,\"setup_peak\":11702984,\"retained_with_transport\":11258536,\"solve_increment\":52860280,\"complete_peak\":64118816,\"result_bytes\":15702691,\"history_lanes\":10,\"iterations\":80,\"converged\":false,\"seconds\":0.401766792,\"modeled_solver_bytes\":150882336,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        122880,
+        67,
+        4,
+        27927,
+        27629,
+        "schwarz",
+        1,
+        1,
+        4
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":122880,\"rhs\":67,\"threads\":4,\"left_levels\":27927,\"right_levels\":27629,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":true,\"setup_peak\":85023728,\"retained_with_transport\":74299640,\"solve_increment\":147831707,\"complete_peak\":222131347,\"result_bytes\":102745659,\"history_lanes\":8,\"iterations\":40,\"converged\":true,\"seconds\":1.5885805830000002,\"modeled_solver_bytes\":571522576,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        30720,
+        11,
+        7,
+        24,
+        25,
+        "schwarz",
+        1,
+        1,
+        11
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":30720,\"rhs\":11,\"threads\":7,\"left_levels\":24,\"right_levels\":25,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":true,\"setup_peak\":3564104,\"retained_with_transport\":3336824,\"solve_increment\":6933016,\"complete_peak\":10269840,\"result_bytes\":2714843,\"history_lanes\":14,\"iterations\":1,\"converged\":true,\"seconds\":0.0027975,\"modeled_solver_bytes\":16948336,\"within_bound\":true}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        320,
+        1,
+        1,
+        160,
+        161,
+        "schwarz",
+        1,
+        0,
+        1,
+        "chain"
+      ],
+      "rc": 0,
+      "stdout": "{\"n\":320,\"rhs\":1,\"threads\":1,\"left_levels\":160,\"right_levels\":161,\"preconditioner\":\"schwarz\",\"weighted\":true,\"permuted\":false,\"setup_peak\":425777,\"retained_with_transport\":29064,\"solve_increment\":55984,\"complete_peak\":425777,\"result_bytes\":15857,\"history_lanes\":2,\"iterations\":1,\"converged\":true,\"seconds\":0.000041708,\"modeled_solver_bytes\":575016,\"within_bound\":true}\n",
+      "stderr": ""
+    }
+  ]
+}

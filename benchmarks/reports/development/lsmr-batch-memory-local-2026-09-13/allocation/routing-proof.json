@@ -1,0 +1,19 @@
+{
+  "fixture": "fe::borrowed_map::tests::constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fits",
+  "observations": 320,
+  "effect_levels": [
+    160,
+    161
+  ],
+  "rhs": 1,
+  "threads": 1,
+  "weights": "0.5 + (original_row % 19)/19.0",
+  "solver_budget_bytes": 327680,
+  "baseline": "Requested Cg assertion fails: old model admits Lsmr.",
+  "candidate": "Selects certified Cg, emits joint-memory warning, exact residual agreement with the certified CG control; insufficient CG budget still fails Allocation.",
+  "baseline_proof_log_sha256": "337254c0252c0cf1fbce47f637a0f8054a3558e28095a095ee205a93d7e10135",
+  "independent_allocation_witness_bytes": 425777,
+  "revised_solver_model_bytes": 575016,
+  "initial_test_correction": "The first 65536-byte test passed on both artifacts and did not distinguish them. It is not evidence of a baseline defect. The subsequent weighted327680-byte test fails on baseline and passes on candidate.",
+  "cached_target_correction": "A reused test target once ran a stale baseline test binary. Isolated targets and checked compile paths/test counts provide the accepted test results."
+}
