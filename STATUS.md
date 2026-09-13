@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P2 constant-weight specialization: evaluated and rejected
+
+The [source-bound screen](benchmarks/reports/development/constant-weights-local-2026-09-13/README.md)
+compares an isolated one-file prototype against accepted `4e18c22`. It detected
+constant weights during existing validation, omitted normalized weight arithmetic,
+and preserved original slices/scales for solver handoffs and raw certificates.
+No target met the prospectively required 5% and 10 ms command gain. Four target
+pairs changed −2 ms/−0.8% (narrow AW), −13 ms/−2.1% (wide AW), +5 ms/+1.2%
+(FW cluster) and +3 ms/+1.0% (weighted Schur). The wide native phase saved only
+1.7 ms; most apparent command savings were outside the modified kernel.
+
+All six pairs / twelve commands preserve exact full science and solver decisions.
+Two focused tests, universal static/native arm64 ABI checks and all runtime
+certificates pass. Primary native peaks are unchanged and admitted; sampled RSS
+moves in both directions, and the weak control retains its old model discrepancy.
+No extra timing seeds or independent full-estimation oracle campaign ran because
+the prospective screen rejected adoption. The source, patch, plugin identities
+and all observations are preserved. After verifying the archived 152-file source
+manifest and exact patch, only the prototype was reversed; native source remains
+accepted `4e18c22`. Constant specialization is evaluated-and-rejected, not claimed
+impossible in other workloads or platforms.
+
+Next test fresh low-memory one-FE outcome/column blocks, then remaining #27 work.
+The authorized two independent agents, upstream CMG assessment and small SCC
+campaign remain after #27. Installed dist, all 97 unrelated Veneto STATUS lines
+and pre-existing evidence remain intact; no push, agents, cluster jobs or
+qualification occurred.
+
 ## P2 categorical one-FE initial projection: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/categorical-one-fe-local-2026-09-13/README.md)
