@@ -69,6 +69,14 @@ preconditioner across response/regressor batches under ADR 0032. Every batch
 still receives its independent FE certificate. Retained LSMR state is
 released before finite QR and output recovery, or before any CG continuation.
 
+Fresh low-memory outcome and regressor blocks use the existing initial
+absorption entry point. Eligible one-FE automatic projection omits the raw
+certificate, retaining the independent projected-value certificate. The
+outcome consumes its one-column matrix storage; within norms reuse certified
+values only when the frame and projector use the same weight normalization.
+Raw reference norms and warm residual handling remain unchanged; see
+[ADR 0051](adr/0051-low-memory-fresh-block-projection.md).
+
 ## DoF, inference, and outputs
 
 Centralized DoF combines effective N, finite rank, absorbed rank, nesting, and

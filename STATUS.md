@@ -10,6 +10,41 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P2 low-memory fresh blocks: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/low-one-fe-local-2026-09-13/README.md)
+adopts [ADR 0051](docs/adr/0051-low-memory-fresh-block-projection.md) against
+accepted native `4e18c22`. Low-memory raw outcome/regressor blocks use the
+existing fresh absorption entry. The projected outcome consumes its one-column
+storage; certified within norms are reused only with matching frame/projector
+weight normalization. Explicit alternative divisors retain their original norm
+calculation. Raw reference scales, QR, warm residuals, retained solvers, saved
+products, scratch layout and admission remain intact.
+
+Seventeen pairs / 34 measured commands include nine primary comparisons across
+three seeds, seven controls and one separate trace. Narrow AW command medians
+fall 0.369→0.336 seconds (8.9% median paired gain) and native peak 95.62→87.75 MB,
+exactly one 7,864,320-byte outcome column (8.2%). Unit and PW-cluster command
+gains are 4.6% and 2.6%; all primary pairs improve. Candidate primary peaks fit
+their unchanged models; the AW baseline exceeded its model. Existing low-FW
+interaction (8.77 vs 6.70 MB) and weak (22.87 vs 9.41 MB) gaps remain P0 work.
+Sampled primary RSS falls, but saved/weak controls rise; no universal RSS claim.
+
+Full paired b/V, sample/status/DoF and solver decisions are exact. Independent
+certificates and saved values pass. Thirty-two distinct Rust tests, both arms
+of the explicit-dummy/frequency-expansion Stata oracle, universal static audits
+and the native arm64 ABI/self-test pass. No protected command slows in the
+selected single pairs. The trace locates the gain in native fitting; input,
+preparation and IID covariance work remain close. The report preserves the
+initial missing-PATH Rust launch and all measured observations.
+
+This completes the remaining P2 fresh-block evaluation. Next inspect PPML
+fresh-input/current-frame norm reuse and remaining repeated passes, then the
+remaining #27 inference, centered-tile, output/generated-column, scheduling and
+research items. The two independent agents, upstream CMG assessment and small
+SCC campaign remain after #27. Installed dist, all 97 unrelated Veneto STATUS
+lines and pre-existing evidence are preserved; no push or cluster work occurred.
+
 ## P2 constant-weight specialization: evaluated and rejected
 
 The [source-bound screen](benchmarks/reports/development/constant-weights-local-2026-09-13/README.md)
@@ -32,7 +67,7 @@ manifest and exact patch, only the prototype was reversed; native source remains
 accepted `4e18c22`. Constant specialization is evaluated-and-rejected, not claimed
 impossible in other workloads or platforms.
 
-Next test fresh low-memory one-FE outcome/column blocks, then remaining #27 work.
+The subsequent low-memory fresh-block adoption is recorded above; other #27 work remains.
 The authorized two independent agents, upstream CMG assessment and small SCC
 campaign remain after #27. Installed dist, all 97 unrelated Veneto STATUS lines
 and pre-existing evidence remain intact; no push, agents, cluster jobs or
